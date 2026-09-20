@@ -1,0 +1,15 @@
+"""Build the current design from this folder in an installed FreeCAD GUI."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import FreeCADGui as Gui
+
+from gondola.assembly import build_assembly, style_assembly
+
+doc = build_assembly()
+style_assembly(doc)
+Gui.activeDocument().activeView().viewAxonometric()
+Gui.activeDocument().activeView().fitAll()
+doc.save()

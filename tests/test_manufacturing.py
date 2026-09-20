@@ -1,0 +1,134 @@
+"""Exercise native BOM grouping and its independent audit without FreeCAD."""
+
+import importlib.util
+import json
+import sys
+import tempfile
+import types
+import unittest
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class HardwareBomTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(prefix="gondola-bom-")
+        self.addCleanup(directory.cleanup)
+        self.output = Path(directory.name)
+        root = Path(__file__).resolve().parents[1]
+        modules = {
+            "FreeCAD": Mock(),
+            "MeshPart": Mock(),
+            "gondola.cad": types.SimpleNamespace(world_shape=Mock()),
+            "gondola.validation.geometry": types.SimpleNamespace(
+                intersection_volume=Mock()
+            ),
+        }
+        with patch.dict(sys.modules, modules):
+            self.manufacturing = load_module(
+                "gondola._manufacturing_under_test", root / "gondola/manufacturing.py"
+            )
+            self.equipment = load_module(
+                "gondola.validation._equipment_under_test",
+                root / "gondola/validation/equipment.py",
+            )
+        self.manufacturing.source_fingerprint = Mock(return_value="current source")
+        self.equipment.source_fingerprint = Mock(return_value="current source")
+        self.hardware = []
+        for sku, quantity in self.equipment.EXPECTED_PURCHASE_QUANTITIES.items():
+            for index in range(quantity):
+                self.hardware.append(
+                    types.SimpleNamespace(
+                        Name=f"{sku}_{index}",
+                        Label=sku,
+                        HardwareSKU=sku,
+                        MaterialSelection=(
+                            "Nylon PA66"
+                            if sku == "M3_MF_30_PLUS_6"
+                            else "A2 stainless steel"
+                        ),
+                        ThreadStandard="M3 x 0.5; right-hand",
+                        SourceURL="https://example.com/stack-hardware",
+                        PrintPart=False,
+                    )
+                )
+        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M3_HEX_NUT"]
+        # One purchase specification has different native evidence and wording
+        # at the stack, rail clamps and journals. It must remain one BOM row.
+        for obj in nuts[4:7]:
+            obj.ThreadStandard = "ISO metric coarse M3 x 0.5, right hand"
+        for obj in nuts[7:]:
+            obj.SourceURL = "https://example.com/journal-nuts"
+        self.document = types.SimpleNamespace(
+            DesignRegistry=types.SimpleNamespace(
+                HardwareParts=self.hardware,
+                PrintedParts=[],
+                SourceFingerprint="current source",
+            )
+        )
+        self.source = self.output / "gondola.FCStd"
+        self.bom_path = self.output / "gondola_hardware_bom.json"
+
+    def export(self):
+        return self.manufacturing.export_hardware_bom(
+            self.hardware, self.output, "gondola"
+        )
+
+    def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
+        bom = self.export()
+        self.assertEqual(bom["purchased_hardware_quantity"], 42)
+        self.assertEqual(bom["unique_purchase_spec_count"], 6)
+        self.assertEqual(len(bom["items"]), 6)
+        nuts = next(row for row in bom["items"] if row["sku"] == "M3_HEX_NUT")
+        self.assertEqual(nuts["quantity"], 11)
+        self.assertEqual(
+            nuts["sources"],
+            ["https://example.com/journal-nuts", "https://example.com/stack-hardware"],
+        )
+        self.assertEqual(
+            nuts["thread_descriptions"],
+            ["ISO metric coarse M3 x 0.5, right hand", "M3 x 0.5; right-hand"],
+        )
+        self.assertNotIn("source", nuts)
+        self.assertNotIn("thread", nuts)
+        self.assertEqual(json.loads(self.bom_path.read_text()), bom)
+        audit = self.equipment.hardware_check(self.document, self.source)
+        self.assertTrue(audit["passed"])
+        self.assertTrue(audit["bom_each_instance_exactly_once"])
+        self.assertTrue(audit["not_printed"])
+
+    def test_audit_rejects_missing_or_fabricated_group_evidence(self):
+        for key in ("sources", "thread_descriptions"):
+            for operation in ("remove", "add", "omit"):
+                with self.subTest(field=key, operation=operation):
+                    bom = self.export()
+                    nuts = next(
+                        row for row in bom["items"] if row["sku"] == "M3_HEX_NUT"
+                    )
+                    if operation == "remove":
+                        nuts[key].pop()
+                    elif operation == "add":
+                        nuts[key] = sorted(nuts[key] + ["unmodeled evidence"])
+                    else:
+                        del nuts[key]
+                    self.bom_path.write_text(json.dumps(bom))
+                    audit = self.equipment.hardware_check(self.document, self.source)
+                    self.assertFalse(audit["passed"])
+                    self.assertFalse(
+                        next(
+                            row
+                            for row in audit["bom_rows"]
+                            if row["sku"] == "M3_HEX_NUT"
+                        )["matches_native_instances"]
+                    )
+
+
+if __name__ == "__main__":
+    unittest.main()

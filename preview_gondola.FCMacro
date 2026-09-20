@@ -1,0 +1,17 @@
+"""Render the current assembly; terminal use returns after writing previews."""
+
+import os
+import sys
+from pathlib import Path
+
+from PySide import QtCore
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gondola.preview import render_previews
+
+QtCore.QTimer.singleShot(
+    1200,
+    lambda: render_previews(
+        close_after=os.environ.get("GONDOLA_CLOSE_AFTER_PREVIEW") == "1"
+    ),
+)

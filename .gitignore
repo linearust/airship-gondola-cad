@@ -1,0 +1,11 @@
+/build/
+/output/
+__pycache__/
+*.py[cod]
+*.FCBak
+*.FCStd1
+*.FCStd[0-9]
+*.FCStd.*
+*.log
+.venv/
+.ruff_cache/
