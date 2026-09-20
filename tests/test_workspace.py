@@ -58,8 +58,9 @@ class WorkspacePortability(unittest.TestCase):
                 check=True,
             )
             state = json.loads(result.stdout)
-            self.assertEqual(state["scoped_listed_equipment_mass_g"], 55.932)
+            self.assertEqual(state["scoped_listed_equipment_mass_g"], 57.432)
             self.assertEqual(state["inventory"]["purchased_hardware"], 42)
+            self.assertEqual(state["inventory"]["purchased_hardware_types"], 7)
             self.assertIn("yaw_motor", state["excluded_equipment"])
             self.assertFalse(state["production_released"])
             self.assertIn(
@@ -67,7 +68,7 @@ class WorkspacePortability(unittest.TestCase):
                 {entry["key"] for entry in state["unresolved_interfaces"]},
             )
 
-    def test_frozen_reference_is_the_checked_pre_refactor_design(self):
+    def test_frozen_reference_matches_the_reviewed_fixture_checksum(self):
         from gondola.config import BASELINE_FILE, BASELINE_SHA256
 
         baseline = BASELINE_FILE

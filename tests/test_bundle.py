@@ -70,14 +70,14 @@ class BundleIntegrityTests(unittest.TestCase):
             "schema_version": 1,
             "source_fingerprint": self.fingerprint,
             "purchased_hardware_quantity": 42,
-            "unique_purchase_spec_count": 6,
+            "unique_purchase_spec_count": 7,
             "items": [
                 {
                     "purchase_code": f"hardware_{index}",
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 4, 4, 3, 7, 20))
+                for index, quantity in enumerate((4, 4, 4, 3, 8, 3, 16))
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")

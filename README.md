@@ -12,7 +12,8 @@ source definitions and generated BOM instead of treating it as a separate design
   gondola status` reads this contract without FreeCAD or network access.
 - `gondola/parts/`: geometry in millimetres. `universal_board.py` owns the board
   dimensions shared by `metric_hardware.py`; `equipment_envelopes.py` contains
-  reference envelopes, not printable parts.
+  reference envelopes, not printable parts. `fastener_spec.py` owns the shared
+  nominal M2 interfaces; do not duplicate hardware dimensions in printed parts.
 - `gondola/assembly.py`: native assembly and its expression-driven controls.
   `gondola/cad.py`: shared native metadata and coordinate transforms.
 - `gondola/manufacturing.py`: unique part exports and purchased hardware BOM.
@@ -22,12 +23,14 @@ source definitions and generated BOM instead of treating it as a separate design
 - `references/`: retained primary dimension/port/voltage evidence. These files
   are inputs, including images not loaded programmatically. External URLs and
   the Notion edit timestamp record previous evidence, not live verification.
-- `tests/fixtures/rev_i_geometry.FCStd`: immutable pre-refactor reference for
-  geometry and native controls. Rev J permits only the specified 378-to-340 mm
-  rail change; the comparator derives its expected rail from this frozen solid.
+- `tests/fixtures/rev_k_geometry.FCStd`: pinned reviewed reference for geometry
+  and native controls. `tests/fixtures/rev_k_review.json` records the deliberate
+  Rev J → K changes, source identities and retired fixture in Git history.
+  Further geometry revisions require a reviewed replacement fixture and new
+  manufacturing/clearance evidence.
   Never regenerate the fixture merely to pass a check.
 
-## Manufacturing decision — Rev J
+## Manufacturing decision — Rev K
 
 Decision reviewed 2026-09-20: use **340 mm nominal rail length**, with PA12 **SLS
 preferred for the fit prototype** and MJF remaining an alternative. The supplier's
@@ -41,10 +44,20 @@ when required. Use the same agreed material, process and finish for coupons and
 full parts. The [size guide](https://creallo.com/ko/guide/design-spec-guide)
 lists SLS 340 × 340 × 600 and MJF 380 × 380 × 280 mm, but includes split-and-join
 fabrication. Require confirmation that the rail will be manufactured in one piece.
-The stored 45-degree rail orientation is only a size screen. Even the previous
+The stored 45-degree rail export is about 259.14 × 259.14 × 7 mm, leaving about
+80.86 mm total X/Y size margin against the 340 mm screen. This is only a size
+screen. Even the previous
 378 mm rail passed that screen; 340 mm follows the user's preferred length ceiling.
 
-The 1 mm continuous base and tape wings remain intentional functional flexures.
+Use a 1.5 mm nominal target for general functional walls, above the 0.8 mm
+published minimum. The board keeps a 2 mm deck and 1.8 mm ribs; the journal
+D-flat wall, propeller guard and frame service webs are at least 1.5 mm at the
+validated sections. Remove redundant grid material instead of thinning these walls.
+
+The 1.2 mm continuous rail base and tape wings remain intentional functional flexures.
+This is an explicit exception to the general 1.5 mm target. Reliefs widen from
+3 to 4.5 mm to accommodate the thicker flexure; do not claim identical bending
+stiffness from the idealized beam approximation.
 Shortening the rail does not resolve their manufacturing exception. Creallo's
 [wall-thickness guidance](https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes)
 applies the long, thin, broad-part recommendation to both SLS and MJF. Obtain
@@ -55,7 +68,22 @@ The seven tape-pad centres and three default module positions remain unchanged.
 Pad ends have 1 mm nominal axial margin. Keep the entire 18 mm shoe on the rail:
 its centre must stay within ±161 mm, also respecting clamp lands and neighboring
 parts. The outermost land centres at ±162 mm are not fully supported shoe stations.
-The hardware purchase quantities below remain unchanged.
+Clamp within 4 mm of a full land centre. Purchased quantities remain 42, but
+all designed structural threads are now M2. Preserve the three identical boards.
+
+The scope is the indoor LTA blimp gondola: two main motors, two tilt servos and
+MTF-02P are included; yaw propulsion and fins/fin servos are excluded. The optical
+sensor faces +Z, away from the balloon plane Z=0. Its conservative optical reserve
+must remain clear; verify actual lens datums, wiring and mounting on the purchased
+unit. The radio moves 4 mm toward +Y and P-AS moves 1 mm toward −Y; the
+conservative optical reserve keeps at least 1 mm nominal clearance to each.
+
+`gondola/mass_budget.py` reports installed print volume × PA12 density and
+simplified hardware volume × assumed density. Build metrics and the saved-CAD
+validation both contain the budget. Compare structural mass on the same equipment
+scope; adding the 1.5 g MTF-02P is not a failed weight reduction. Do not describe
+these estimates as measured all-up mass: wiring, adhesive, OEM fasteners and other
+unmeasured items remain excluded.
 
 ## Procurement checklist
 
@@ -66,24 +94,41 @@ specifications, not verified seller listings or physical-fit approvals.
 
 Mechanical quantities come from the validated `build/gondola_hardware_bom.json`;
 purchase conditions are defined in `gondola/parts/metric_hardware.py`.
-The current assembly uses six purchase types and 42 pieces:
+The current assembly uses seven purchase types and 42 pieces:
 
 | CAD SKU | Required purchase specification | Installed quantity |
 |---|---|---:|
-| `M3_MF_30_PLUS_6` | PA66 nylon male/female hex standoff; M3; body 30 mm + male stud 6 mm; across flats at most 6 mm; usable female thread depth at least 6 mm | 4 |
-| `M3X6_SOCKET_CAP` | A2 stainless socket cap screw; M3 × 6 mm; DIN 912 / ISO 4762 | 4 |
-| `M3X16_SOCKET_CAP` | A2 stainless socket cap screw; M3 × 16 mm; DIN 912 / ISO 4762 | 4 |
-| `M3x8_ISO4026_DIN913` | A2 stainless flat-point socket set screw; M3 × 8 mm; DIN 913 / ISO 4026 | 3 |
-| `M3_HEX_NUT` | A2 stainless regular M3 hex nut; across flats 5.5 mm; height 2.4 mm | 11 |
-| `M3_WASHER_3.2_7_0.5` | A2 stainless flat washer; inside diameter 3.2 mm × outside diameter 7 mm × thickness 0.5 mm | 16 |
+| `M2_MF_30_PLUS_5` | PA66 nylon male/female hex standoff; M2; body 30 mm + male stud 5 mm; across flats 4 mm; usable female thread depth at least 4 mm | 4 |
+| `M2X6_SOCKET_CAP` | A2 stainless socket cap screw; M2 × 6 mm; DIN 912 / ISO 4762 | 4 |
+| `M2X14_SOCKET_CAP` | A2 stainless socket cap screw; M2 × 14 mm; DIN 912 / ISO 4762 | 4 |
+| `M2x6_ISO4026_DIN913` | A2 stainless flat-point socket set screw; M2 × 6 mm; DIN 913 / ISO 4026 | 3 |
+| `M2_HEX_NUT` | A2 stainless regular M2 DIN 934 hex nut for stack and journals; across flats 4 mm; height 1.6 mm | 8 |
+| `M2_SQUARE_NUT_DIN562` | A2 stainless M2 DIN 562 flat square nut for rail clamps; nominal width 4 mm and thickness 1.2 mm; accepted width 3.6–4.0 mm, thickness 0.8–1.2 mm; verify corner profile | 3 |
+| `M2_WASHER_2.2_5_0.3` | A2 stainless flat washer; inside diameter 2.2 mm × outside diameter 5 mm × thickness 0.3 mm | 16 |
 
-All threaded interfaces above are M3 × 0.5, right-hand; washers are unthreaded.
-Socket cap screw lengths are measured under the head; the set screw is 8 mm
+All threaded interfaces above are M2 × 0.4, right-hand; washers are unthreaded.
+Socket cap screw lengths are measured under the head; the set screw is 6 mm
 overall. Retain the flat-point set screw requirement. The 42-piece total excludes
 OEM motor/servo fasteners. A separate fit-coupon assembly can borrow one clamp
-screw/nut pair; add one pair only if it must remain assembled independently.
+screw/square-nut pair; add one pair only if it must remain assembled independently.
 Each additional equipment-board level needs four more matching standoffs and
 reuses the top nuts/washers. The current journal design uses printed sleeves.
+
+Keep the three rail-clamp square nuts separate from the eight stack/journal hex
+nuts. A tolerance-small M2 hex nut can rotate inside the 4.6 mm clamp pocket;
+do not substitute it for the square nut. [Accu's DIN 562 M2 specification](https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2)
+lists width 4.0–3.6 mm, while [PTS lists 4.0–3.7 mm](https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202).
+Both list thickness 1.2–0.8 mm. Use the more conservative 3.6 mm minimum width
+for the geometric check, and verify the chosen supplier's actual dimensions.
+
+The rotation screen assumes ±0.3 mm error on the total 4.6 mm pocket width,
+giving a 4.3–4.9 mm range. At the minimum pocket, a 4.0 mm nut has 0.3 mm total
+insertion clearance. At the maximum pocket, an ideal 3.6 mm square has a 5.0912 mm
+diagonal, exceeding the pocket by 0.1912 mm. This margin assumes intact square
+corners. Accu describes an unchamfered nut but flags chamfer details as variable;
+confirm corner geometry, usable threads and rotational retention with the actual
+nut and printed coupon. The screen does not qualify tightening torque, holding
+force or the supplier's achieved local tolerance.
 
 Onboard equipment selection comes from `gondola/design_contract.py`:
 
@@ -94,6 +139,7 @@ Onboard equipment selection comes from `gondola/design_contract.py`:
 | Propeller | Gemfan 1610, 40 mm, two blades; one CW and one CCW; 1.5 mm shaft-hole variant for the RS1102 shaft | 2 |
 | Tilt servo | DSpower DS-M005, 300-degree version | 2 |
 | Battery | 2S LiPo, 450 mAh provisional selection; confirm actual dimensions and mass | 1 |
+| Optical-flow / range sensor | MicoAir MTF-02P; 21.6 × 16 × 6.5 mm reference envelope | 1 |
 | Telemetry module | LR900-A | 1 |
 | Positioning module | LinkTrack P-AS | 1 |
 
@@ -112,8 +158,8 @@ Additional consumables and electrical accessories:
   The CAD reserves are provisional spaces; verify actual component dimensions.
 - Flexible wiring, compatible connectors, heat-shrink tubing and strain relief;
   wire gauge, lengths and routing remain to be selected for the electrical assembly.
-- Tools if not already owned: 1.5 mm and 2.5 mm hex keys, a 5.5 mm nut wrench,
-  and a wrench matching the selected standoff's hex flats.
+- Tools if not already owned: 0.9 mm and 1.5 mm hex keys, a 4 mm nut wrench,
+  and a wrench matching the selected standoff's 4 mm hex flats.
 
 Unresolved procurement interfaces must remain explicit:
 
@@ -124,7 +170,7 @@ Unresolved procurement interfaces must remain explicit:
   unfinished; purchasing the listed hardware alone does not complete it.
 - Resolve the stored servo-label rating of 3.7–4.2 V versus the listed 3.7–5 V
   rating against the purchased unit before choosing its power supply/regulator.
-  Do not substitute M3 hardware for unspecified OEM fasteners.
+  Do not substitute M2 hardware for unspecified OEM fasteners.
 
 When geometry, inventory or equipment selection changes, regenerate and validate
 the BOM, then update this checklist in the same change. Do not infer physical

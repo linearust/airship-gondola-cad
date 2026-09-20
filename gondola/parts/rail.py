@@ -1,4 +1,4 @@
-"""PA12 T rail, over-tape wings and bidirectional M3 clamp.
+"""PA12 T rail, over-tape wings and bidirectional M2 clamp.
 
 All dimensions mm. The rail lies on the envelope at Z0. Tape is laid OVER
 each lateral wing and continues onto the envelope. It never crosses the
@@ -20,20 +20,25 @@ from gondola.cad import (
     union,
 )
 from gondola.design_contract import RAIL_LENGTH_MM
+from gondola.parts import fastener_spec as fastener
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
 PAD_CENTRES = (-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
-PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.0
+PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.2
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
 HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 7.0
-SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 24.0, 2.0, 10.2
+SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.2
 CLEARANCE = 0.45
 CLAMP_Z = 6.2
 CLAMP_SHIFT_Y = 0.45
-NUT_AF, NUT_POCKET_AF, NUT_THICKNESS = 5.5, 6.0, 2.4
-LAND_PITCH, FLEX_GAP = 18.0, 3.0
-SCREW_LENGTH = 8.0
+NUT_AF = fastener.SQUARE_NUT_AF
+NUT_POCKET_AF, NUT_THICKNESS = 4.6, fastener.SQUARE_NUT_HEIGHT
+NUT_POCKET_Y, NUT_POCKET_DEPTH = 6.95, 2.2
+CLAMP_LAND_OFFSET = 4.0
+RELEASE_TRAVEL = 1.2
+LAND_PITCH, FLEX_GAP = 18.0, 4.5
+SCREW_LENGTH = fastener.SET_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
 SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 
@@ -45,8 +50,8 @@ def half_turn(s):
 
 
 def rounded_plate(x, length=PAD_LENGTH, width=PAD_WIDTH):
-    p = box(length, width, 1, (x - length / 2, -width / 2, 0))
-    es = [e for e in p.Edges if e.BoundBox.ZLength > 0.99]
+    p = box(length, width, PAD_THICKNESS, (x - length / 2, -width / 2, 0))
+    es = [e for e in p.Edges if e.BoundBox.ZLength > PAD_THICKNESS - 0.01]
     return p.makeFillet(min(3.0, width / 3, length / 3), es)
 
 
@@ -54,7 +59,12 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     # Closely spaced head lands preserve a sliding path; narrow reliefs allow
     # bending through the unbroken base instead of a stiff full-height beam.
     base = rounded_plate(0, length, BASE_WIDTH)
-    web = box(length, WEB_WIDTH, HEAD_BOTTOM - 1, (-length / 2, -WEB_WIDTH / 2, 1))
+    web = box(
+        length,
+        WEB_WIDTH,
+        HEAD_BOTTOM - PAD_THICKNESS,
+        (-length / 2, -WEB_WIDTH / 2, PAD_THICKNESS),
+    )
     cap = box(
         length,
         HEAD_WIDTH,
@@ -69,15 +79,15 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     ):
         x = (i + 0.5) * LAND_PITCH
         if abs(x) < length / 2:
-            s = s.cut(box(FLEX_GAP, 12, 7, (x - FLEX_GAP / 2, -6, 1)))
+            s = s.cut(box(FLEX_GAP, 12, 7, (x - FLEX_GAP / 2, -6, PAD_THICKNESS)))
     s = s.removeSplitter()
-    # Concave fillets at web-to-base flex roots. The3mm slot keeps a2mm
-    # full-thickness-free hinge between the two0.5mm root transitions.
+    # Longer reliefs offset the thicker flexure; preserve 0.5 mm root fillets.
+    # This is a bending-compliance design choice, not a fatigue qualification.
     roots = [
         e
         for e in s.Edges
-        if abs(e.BoundBox.ZMin - 1) < 1e-7
-        and abs(e.BoundBox.ZMax - 1) < 1e-7
+        if abs(e.BoundBox.ZMin - PAD_THICKNESS) < 1e-7
+        and abs(e.BoundBox.ZMax - PAD_THICKNESS) < 1e-7
         and e.BoundBox.XLength < 1e-7
         and abs(e.BoundBox.YLength - WEB_WIDTH) < 1e-7
         and abs(e.CenterOfMass.x) < length / 2 - 0.1
@@ -117,19 +127,28 @@ def hex_along_y(af, y0, length, z=CLAMP_Z):
     )
 
 
-def nut_pocket_void():
-    # Side-load from +X before fitting equipment; flats prevent nut rotation.
-    h = hex_along_y(NUT_POCKET_AF, 6.9, 3.2)
-    entry = box(11, 3.2, NUT_POCKET_AF, (0, 6.9, CLAMP_Z - NUT_POCKET_AF / 2))
-    return union([h, entry])
+def nut_pocket_void(width=NUT_POCKET_AF):
+    # Square flats retain useful rotation blocking with M2 supplier tolerances.
+    # Load from +X before equipment installation; validate the actual coupon.
+    return box(
+        11 + width / 2,
+        NUT_POCKET_DEPTH,
+        width,
+        (-width / 2, NUT_POCKET_Y, CLAMP_Z - width / 2),
+    )
 
 
 def screw_bore_void():
-    return Part.makeCylinder(1.9, 10, V(0, 4, CLAMP_Z), V(0, 1, 0))
+    return Part.makeCylinder(1.4, 10, V(0, 4, CLAMP_Z), V(0, 1, 0))
 
 
 def shoe_shape():
-    s = box(SHOE_LENGTH, SHOE_WIDTH, TOP_Z - SHOE_BOTTOM, (-9, -12, SHOE_BOTTOM))
+    s = box(
+        SHOE_LENGTH,
+        SHOE_WIDTH,
+        TOP_Z - SHOE_BOTTOM,
+        (-SHOE_LENGTH / 2, -SHOE_WIDTH / 2, SHOE_BOTTOM),
+    )
     void = union([nut_pocket_void(), screw_bore_void()])
     s = s.cut(capture_void()).cut(void).cut(half_turn(void)).removeSplitter()
     if not s.isValid() or len(s.Solids) != 1:
@@ -139,18 +158,28 @@ def shoe_shape():
 
 def set_screw_shape(released=False):
     # In the locked assembly the shoe moves +Y .45 until its far jaw seats.
-    tip = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y + (1.5 if released else 0)
-    s = Part.makeCone(1.0, 1.5, 0.5, V(0, tip, CLAMP_Z), V(0, 1, 0)).fuse(
-        Part.makeCylinder(1.5, SCREW_LENGTH - 0.5, V(0, tip + 0.5, CLAMP_Z), V(0, 1, 0))
+    tip = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y + (RELEASE_TRAVEL if released else 0)
+    s = Part.makeCone(0.65, 1.0, 0.35, V(0, tip, CLAMP_Z), V(0, 1, 0)).fuse(
+        Part.makeCylinder(
+            1.0, SCREW_LENGTH - 0.35, V(0, tip + 0.35, CLAMP_Z), V(0, 1, 0)
+        )
     )
-    recess = hex_along_y(1.5, tip + SCREW_LENGTH - 2, 2.1)
+    recess = hex_along_y(fastener.SET_SCREW_KEY, tip + SCREW_LENGTH - 1.2, 1.3)
     return s.cut(recess)
 
 
-def nut_shape():
-    return hex_along_y(NUT_AF, 7.3, NUT_THICKNESS).cut(
-        Part.makeCylinder(1.5, 4, V(0, 6.5, CLAMP_Z), V(0, 1, 0))
-    )
+def nut_shape(across_flats=NUT_AF, thickness=NUT_THICKNESS):
+    # Clamp load seats the nut against the outside wall of the loading slot.
+    return box(
+        across_flats,
+        thickness,
+        across_flats,
+        (
+            -across_flats / 2,
+            NUT_POCKET_Y + NUT_POCKET_DEPTH - thickness,
+            CLAMP_Z - across_flats / 2,
+        ),
+    ).cut(Part.makeCylinder(1.0, 4, V(0, 6.5, CLAMP_Z), V(0, 1, 0)))
 
 
 def _hardware(doc, parent, name, label, shape, sku, notes):
@@ -161,7 +190,7 @@ def _hardware(doc, parent, name, label, shape, sku, notes):
     for key, value in [
         ("Role", "Purchased metric hardware"),
         ("HardwareSKU", sku),
-        ("ThreadStandard", "ISO metric coarse M3 x 0.5, right hand"),
+        ("ThreadStandard", "ISO metric coarse M2 x 0.4, right hand"),
         ("Notes", notes),
         ("ModelDetail", "Simplified thread envelope; do not print"),
         (
@@ -181,27 +210,28 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
     screw = _hardware(
         doc,
         parent,
-        prefix + "M3ClampScrew",
-        "M3 x 8 flat-point socket set screw",
+        prefix + "RailClampScrew",
+        "M2 x 6 flat-point socket set screw",
         set_screw_shape(),
-        "M3x8_ISO4026_DIN913",
-        "ISO4026 / DIN913 M3x0.5 x8, flat point, 1.5mm hex key. Friction clamp; no removable printed key. "
-        "Loosen three turns (1.5mm) to slide. Hand snug only; no qualified torque or holding force. "
+        "M2x6_ISO4026_DIN913",
+        "ISO4026 / DIN913 M2x0.4 x6, flat point, 0.9mm hex key. Friction clamp; no removable printed key. "
+        "Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. "
         "Screw remains in the captured nut during normal adjustment.",
     )
     nut = _hardware(
         doc,
         parent,
-        prefix + "M3ClampNut",
-        "M3 hex nut, AF5.5 x2.4",
+        prefix + "RailClampNut",
+        "M2 DIN562 square nut, AF4 x1.2",
         nut_shape(),
-        "M3_HEX_NUT",
-        "Metric M3x0.5 regular hex nut AF5.5mm, thickness2.4mm. PositiveY port loads from+X; negativeY port loads from-X. Choose one port before mounting equipment. "
-        "Insert screw to retain nut. Pocket is6.0mm AF; fit coupon required.",
+        "M2_SQUARE_NUT_DIN562",
+        "Metric M2x0.4 DIN562 square nut AF4mm, thickness1.2mm. PositiveY port loads from+X; negativeY port loads from-X. Choose one port before mounting equipment. "
+        "Insert screw to retain nut. Square pocket is4.6mm wide; actual nut width/corners and coupon fit must be checked. Do not substitute a hex nut. "
+        "Model seats the nut against the outside slot wall under clamp load; thin-nut torque and retention remain unqualified.",
     )
-    from gondola.parts.metric_hardware import NUT_SOURCE
+    from gondola.parts.metric_hardware import SQUARE_NUT_SOURCE
 
-    nut.SourceURL = NUT_SOURCE
+    nut.SourceURL = SQUARE_NUT_SOURCE
     for o in (screw, nut):
         set_property(
             o,
@@ -218,14 +248,14 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
 def tape_shape(x, sign=1):
     # Separate left/right strips: accessible placement from outside, no threading.
     yz = [
-        (6, 1),
-        (16, 1),
+        (6, PAD_THICKNESS),
+        (16, PAD_THICKNESS),
         (20, 0),
         (36, 0),
         (36, TAPE_THICKNESS),
         (20, TAPE_THICKNESS),
-        (16, 1 + TAPE_THICKNESS),
-        (6, 1 + TAPE_THICKNESS),
+        (16, PAD_THICKNESS + TAPE_THICKNESS),
+        (6, PAD_THICKNESS + TAPE_THICKNESS),
     ]
     s = polygon_extrusion([(x - 6, sign * y, z) for y, z in yz], (12, 0, 0))
     return s
@@ -246,15 +276,15 @@ def build_rail(doc):
         App.Rotation(),
         f"PA12 SLS preferred, MJF alternative; one-piece target {LENGTH:g}x32x7mm; export oriented45deg inXY for size screening. Confirm process and one-piece acceptance with supplier before ordering. "
         "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
-        "Unbroken1mm base;15mm head lands separated by3mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. "
-        f"Clamp only on a full land, preferably within+/-5mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
-        "The1mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
+        "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. "
+        f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
+        "The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
     )
     set_property(o, "PrintProcess", "PA12 SLS or MJF")
     set_property(
         o,
         "ManufacturingException",
-        f"1mm narrow continuous flexure and tape wings require supplier review as functional flexures; do not treat as an ordinary {LENGTH:g}mm broad plate.",
+        f"1.2mm narrow continuous flexure and tape wings require supplier review as functional flexures; do not treat as an ordinary {LENGTH:g}mm broad plate.",
     )
     set_property(o, "SourceURL", SOURCE)
     tapes = []
@@ -283,7 +313,7 @@ def build_rail(doc):
 
 def build_coupons(doc):
     group = create_group(
-        doc, "ContinuousRailFitCoupons", "Print first | rail and M3 captive-nut fit"
+        doc, "ContinuousRailFitCoupons", "Print first | rail and M2 captive-nut fit"
     )
     r = create_printed_part(
         doc,
@@ -298,10 +328,10 @@ def build_coupons(doc):
         doc,
         group,
         "ShoeFitSample",
-        "PRINT FIRST | integral rail shoe with M3 nut slot",
+        "PRINT FIRST | integral rail shoe with M2 nut slot",
         shoe_shape(),
         App.Rotation(),
-        "Use purchased M3x8 DIN913 and M3 nut. Sample checks nut loading, screw access and the sliding fit. No printed threads.",
+        "Use purchased M2x6 DIN913 and M2 DIN562 square nut. Sample checks nut loading, rotation blocking, screw access and the sliding fit. No printed threads.",
     )
     return {"group": group, "printed": [r, s]}
 
@@ -372,10 +402,12 @@ def validate_mechanism():
         "seated_intersections_mm3": rows,
         "capture_collision_probes_mm3": capture,
         "released_slide_path": phases,
-        "release": "Loosen M3x0.5 screw three turns, slide along rail; remove at an open rail end. No lift-off in the middle.",
+        "release": "Loosen M2x0.4 screw three turns, slide along rail; remove at an open rail end. No lift-off in the middle.",
         "axial_lock": "Friction only; no numerical retention/torque qualification.",
         "tape": "Two separate strips over each side wing, not under rail, not across central cap",
-        "tape_to_shoe_nominal_vertical_gap_mm": SHOE_BOTTOM - 1 - TAPE_THICKNESS,
+        "tape_to_shoe_nominal_vertical_gap_mm": SHOE_BOTTOM
+        - PAD_THICKNESS
+        - TAPE_THICKNESS,
     }
 
 

@@ -8,6 +8,6 @@ STEM = "gondola"
 OUTPUT_DIR = (
     Path(os.environ.get("GONDOLA_OUTPUT_DIR", ROOT / "build")).expanduser().resolve()
 )
-BASELINE_FILE = ROOT / "tests" / "fixtures" / "rev_i_geometry.FCStd"
-BASELINE_SHA256 = "f0dad60f28f6f353446e7d1bfa165ff99a5442e9b678ab8c6deb92d44f303ce9"
+BASELINE_FILE = ROOT / "tests" / "fixtures" / "rev_k_geometry.FCStd"
+BASELINE_SHA256 = "5dcf9fcf2b411afca68acc8459dff7d6fcfc15abaee8e1012433b73ca89ba2a1"
 ARTIFACT_SCHEMA_VERSION = 1

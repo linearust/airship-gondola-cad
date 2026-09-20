@@ -1,8 +1,7 @@
-"""Check frozen Rev I geometry with the approved 378-to-340 mm rail change.
+"""Compare every saved shape and native control with the pinned approved CAD.
 
-Every saved shape is compared in local and world coordinates. The expected rail
-is derived only from the immutable fixture; current construction code cannot
-silently redefine the approved difference. All other shapes remain unchanged.
+No current-source geometry or per-part exceptions redefine the frozen reference.
+A design revision requires an explicit, reviewed fixture transition.
 """
 
 import json
@@ -10,13 +9,15 @@ import os
 from pathlib import Path
 
 import FreeCAD as App
-import Part
 
 from gondola.cad import (
     world_shape,
 )
 from gondola.config import BASELINE_FILE, BASELINE_SHA256, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import SCOPED_LISTED_EQUIPMENT_MASS_G
+from gondola.design_contract import (
+    MANUFACTURING_DECISION,
+    SCOPED_LISTED_EQUIPMENT_MASS_G,
+)
 from gondola.manufacturing import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -156,9 +157,7 @@ def unresolved_scope(doc):
     forbidden = [
         obj.Name
         for obj in registry.ReferenceParts
-        if any(
-            token in obj.Name.lower() for token in ("yaw", "mtf", "finservo", "hl3604")
-        )
+        if any(token in obj.Name.lower() for token in ("yaw", "finservo", "hl3604"))
     ]
     coupling_ok = all(
         obj is not None
@@ -168,17 +167,32 @@ def unresolved_scope(doc):
         and "unfinished" in str(obj.Notes).lower()
         for obj in couplings
     )
+    mtf = doc.getObject("ModuleMTF02PEnvelope")
+    optical = doc.getObject("MTF02POpticalClearanceReserve")
+    optical_scope_ok = (
+        mtf is not None
+        and mtf in registry.ReferenceParts
+        and mtf not in registry.PrintedParts
+        and mtf not in registry.HardwareParts
+        and optical is not None
+        and optical in registry.ClearanceVolumes
+        and optical not in registry.PrintedParts
+        and optical not in registry.HardwareParts
+    )
     rail_exception = str(doc.ContinuousRail.ManufacturingException)
+    flexure_description = f"{MANUFACTURING_DECISION['nominal_rail_flexure_mm']:g}mm"
     status = str(registry.Status)
     return {
         "scope_exclusions": str(registry.ScopeExclusions),
         "forbidden_device_references": forbidden,
         "horn_couplings_remain_unfinished_clearance_only": coupling_ok,
+        "mtf02p_device_and_optical_reserve_are_reference_only": optical_scope_ok,
         "rail_flexure_exception": rail_exception,
         "qualification_status": status,
         "passed": not forbidden
         and coupling_ok
-        and "1mm" in rail_exception
+        and optical_scope_ok
+        and flexure_description in rail_exception.replace(" ", "")
         and "unqualified" in status.lower()
         and abs(
             float(registry.ScopedListedEquipmentMassGrams)
@@ -188,39 +202,32 @@ def unresolved_scope(doc):
     }
 
 
-def approved_rail_shape(frozen_rail):
-    """Shorten only the frozen rail, preserving its original section and ends.
-
-    Keep x=-169..169, including all seven tape pads, and transplant the original
-    2 mm end pieces inward by exactly 19 mm. Their new ranges (-170..-168 and
-    168..170) overlap the retained rail by 1 mm. This preserves the original
-    rounded base/cap ends and excludes the obsolete reliefs at x=+/-171.
-
-    These fixed dimensions encode the approved change independently of the
-    current rail generator. Never replace this with rail_shape(current_length).
-    """
-    bounds = frozen_rail.optimalBoundingBox(False, False)
-
-    def section(start, stop):
-        clip = Part.makeBox(
-            stop - start,
-            bounds.YLength + 2,
-            bounds.ZLength + 2,
-            App.Vector(start, bounds.YMin - 1, bounds.ZMin - 1),
-        )
-        return frozen_rail.common(clip)
-
-    center = section(-169, 169)
-    left = section(-189, -187)
-    left.translate(App.Vector(19, 0, 0))
-    right = section(187, 189)
-    right.translate(App.Vector(-19, 0, 0))
-    approved = center.multiFuse([left, right]).removeSplitter()
-    if not approved.isValid() or len(approved.Solids) != 1:
-        raise RuntimeError(
-            "Approved frozen-rail transformation is not one valid solid."
-        )
-    return approved
+def compare_shape_objects(actual, expected):
+    """Compare complete local/world BReps and placement, including symmetry cases."""
+    local = geometry_comparison(local_shape(actual), local_shape(expected))
+    world = geometry_comparison(world_shape(actual), world_shape(expected))
+    same_type = actual.TypeId == expected.TypeId
+    same_placement = actual.getGlobalPlacement().isSame(
+        expected.getGlobalPlacement(), 1e-7
+    )
+    same_solids = len(actual.Shape.Solids) == len(expected.Shape.Solids)
+    return {
+        "object": actual.Name,
+        "local_shape": local,
+        "world_shape": world,
+        "object_type_unchanged": same_type,
+        "world_placement_unchanged": same_placement,
+        "solid_count_unchanged": same_solids,
+        "passed": same_type
+        and same_placement
+        and same_solids
+        and all(
+            comparison["difference_mm3"] < TOL
+            and comparison["bounds_difference_mm"] < TOL
+            and comparison["volume_difference_mm3"] < TOL
+            for comparison in (local, world)
+        ),
+    }
 
 
 def validate(source=None, baseline=None):
@@ -234,7 +241,7 @@ def validate(source=None, baseline=None):
     }
     if before[os.path.relpath(baseline, ROOT)] != BASELINE_SHA256:
         raise ValueError(
-            "Frozen Rev I baseline checksum mismatch; do not regenerate the baseline from current source."
+            "Frozen approved baseline checksum mismatch; do not regenerate the baseline from current source."
         )
     docs = []
     try:
@@ -246,50 +253,10 @@ def validate(source=None, baseline=None):
         previous.recompute()
         actual, expected = shape_objects(current), shape_objects(previous)
         names_match = set(actual) == set(expected)
-        rows = []
-        for name in sorted(set(actual) & set(expected)):
-            expected_local = local_shape(expected[name])
-            expected_world = world_shape(expected[name])
-            comparison_basis = "Unmodified frozen Rev I geometry"
-            if name == "ContinuousRail":
-                expected_local = approved_rail_shape(expected_local)
-                expected_world = expected_local.copy()
-                expected_world.Placement = expected[name].getGlobalPlacement()
-                comparison_basis = (
-                    "Frozen Rev I rail center with original ends translated inward "
-                    "19 mm each; approved total length 340 mm"
-                )
-            local = geometry_comparison(local_shape(actual[name]), expected_local)
-            world = geometry_comparison(world_shape(actual[name]), expected_world)
-            same_type = actual[name].TypeId == expected[name].TypeId
-            same_placement = (
-                actual[name]
-                .getGlobalPlacement()
-                .isSame(expected[name].getGlobalPlacement(), 1e-7)
-            )
-            same_solids = len(actual[name].Shape.Solids) == len(
-                expected[name].Shape.Solids
-            )
-            rows.append(
-                {
-                    "object": name,
-                    "comparison_basis": comparison_basis,
-                    "local_shape": local,
-                    "world_shape": world,
-                    "object_type_unchanged": same_type,
-                    "world_placement_unchanged": same_placement,
-                    "solid_count_unchanged": same_solids,
-                    "passed": same_type
-                    and same_placement
-                    and same_solids
-                    and all(
-                        comparison["difference_mm3"] < TOL
-                        and comparison["bounds_difference_mm"] < TOL
-                        and comparison["volume_difference_mm3"] < TOL
-                        for comparison in (local, world)
-                    ),
-                }
-            )
+        rows = [
+            compare_shape_objects(actual[name], expected[name])
+            for name in sorted(set(actual) & set(expected))
+        ]
         current_registry = registry_contents(current.DesignRegistry)
         previous_registry = registry_contents(previous.DesignRegistry)
         current_expressions, previous_expressions = (
@@ -301,19 +268,7 @@ def validate(source=None, baseline=None):
         report = {
             "source": os.path.relpath(source, ROOT),
             "baseline": os.path.relpath(baseline, ROOT),
-            "scope": "Regression against frozen Rev I plus the approved 378-to-340 mm rail shortening. Every local/world shape and saved native control is checked; existing unqualified interfaces remain unqualified.",
-            "approved_geometry_changes": [
-                {
-                    "object": "ContinuousRail",
-                    "original_length_mm": 378.0,
-                    "approved_length_mm": 340.0,
-                    "preserved_center_x_mm": [-169.0, 169.0],
-                    "original_end_sections_x_mm": [[-189.0, -187.0], [187.0, 189.0]],
-                    "end_translations_x_mm": [19.0, -19.0],
-                    "expected_geometry_source": "Immutable frozen Rev I fixture only",
-                    "unchanged_features": "Seven tape-pad locations, T section, remaining flex reliefs, root fillets and rounded terminal profiles",
-                }
-            ],
+            "scope": "Strict regression against the pinned approved design. Every local/world shape, placement, registry and saved native control is checked without geometry exceptions; unresolved interfaces remain unqualified.",
             "file_hashes_before": before,
             "source_sha256": file_sha256(source),
             "source_fingerprint": fingerprint_before,

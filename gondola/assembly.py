@@ -24,6 +24,7 @@ from gondola.design_contract import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
+from gondola.mass_budget import mass_budget
 from gondola.parts.equipment_envelopes import build_equipment
 from gondola.provenance import source_fingerprint
 
@@ -40,7 +41,7 @@ def add_assembly_notes(doc):
         ),
         (
             "Rail continuity",
-            "Unbroken1mm base;15mm head lands at18mm pitch,3mm flex gaps. The short shoe slides across these gaps. One printed part.",
+            "Unbroken1.2mm base;13.5mm head lands at18mm pitch,4.5mm flex gaps. The short shoe slides across these gaps. One printed part.",
         ),
         (
             "Tape OVER wings",
@@ -48,11 +49,11 @@ def add_assembly_notes(doc):
         ),
         (
             "Clamp",
-            "M3x0.5 x8 ISO4026/DIN913 flat-point set screw and M3 hex nut.1.5mm metric hex key. No separate printed rail keys or pins.",
+            "M2x0.4 x6 ISO4026/DIN913 flat-point set screw and M2 hex nut.0.9mm metric hex key. No separate printed rail keys or pins.",
         ),
         (
             "Adjustment",
-            "Loosen3turns. Slide along rail. Clamp only over solid head land, preferably within5mm of an18mm-pitch land centre. Keep the whole18mm shoe on the rail; check module/rotor clearances after moving.",
+            "Loosen3turns. Slide along rail. Clamp only over solid head land, preferably within4mm of an18mm-pitch land centre. Keep the whole18mm shoe on the rail; check module/rotor clearances after moving.",
         ),
         (
             "Removal",
@@ -60,11 +61,11 @@ def add_assembly_notes(doc):
         ),
         (
             "Board",
-            "Same board at every level; fourØ4.2 holes andØ8 pads for commonM3 stacking. No battery/FC-specific mounting patterns.",
+            "Same board at every level; fourØ3.2 holes andØ6.5 pads for commonM2 stacking. No battery/FC-specific mounting patterns.",
         ),
         (
             "Stack",
-            "M3 male/female standoffs body30mm+stud6mm;32mm board pitch. M3x6 bottom screws; topM3nuts;3.2x7x0.5 washers.",
+            "M2 male/female standoffs body30mm+stud5mm;32mm board pitch. M2x6 bottom screws; topM2nuts;2.2x5x0.3 washers.",
         ),
         (
             "Extend",
@@ -72,15 +73,15 @@ def add_assembly_notes(doc):
         ),
         (
             "PA12",
-            "SLS preferred, MJF alternative; ±0.3%/min±0.3mm.45deg print orientation passes published size screening. Creallo combines SLS/MJF quotes; agree process and ONE-PIECE manufacture. Supplier must accept1mm narrow functional flexures.",
+            "SLS preferred, MJF alternative; ±0.3%/min±0.3mm.45deg print orientation passes published size screening. Creallo combines SLS/MJF quotes; agree process and ONE-PIECE manufacture. Supplier must accept1.2mm narrow functional flexures.",
         ),
         (
             "Screw side",
-            "Select BatteryClampApproach, PropulsionClampApproach or ElectronicsClampApproach under AssemblySettings. Either side accepts the same M3 screw/nut pair; unused port remains empty. Shoe and board are180deg symmetric.",
+            "Select BatteryClampApproach, PropulsionClampApproach or ElectronicsClampApproach under AssemblySettings. Either side accepts the same M2 screw/nut pair; unused port remains empty. Shoe and board are180deg symmetric.",
         ),
         (
             "Notion2026-09-20",
-            "Two main300deg DS-M005/RS1102 tilt units, bounded±150deg,1:1. No yaw motor, fin servos or underside MTF sensor.55.932g scoped listed equipment subtotal excludes structure/hardware/wiring.",
+            "Two main300deg DS-M005/RS1102 tilt units, bounded±150deg,1:1. Includes MTF-02P; no yaw motor or fin servos.57.432g scoped listed equipment subtotal excludes structure/hardware/wiring.",
         ),
         (
             "Wiring",
@@ -92,11 +93,11 @@ def add_assembly_notes(doc):
         ),
         (
             "Hardware",
-            "All NEW threaded hardware M3x0.5 ISO metric coarse. No old customG6.6 printed threads. Gold parts excluded from print exports.",
+            "All NEW threaded hardware M2x0.4 ISO metric coarse. No old customG6.6 printed threads. Gold parts excluded from print exports.",
         ),
         (
             "OEM interfaces",
-            "RS1102 motor screw pattern/thread depth and DS-M005 horn coupling must be checked from real parts; supplied OEM screws are not replaced by guessedM3.",
+            "RS1102 motor screw pattern/thread depth and DS-M005 horn coupling must be checked from real parts; supplied OEM screws are not replaced by guessedM2.",
         ),
         (
             "Mechanical limits",
@@ -198,7 +199,7 @@ def build_assembly():
         set_property(
             m,
             "RailPositionNotes",
-            f"Default land centre. Clamp within5mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
+            f"Default land centre. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
         )
         m.setExpression("Placement.Base.x", "RailPositionX")
         m.setExpression(
@@ -245,7 +246,7 @@ def build_assembly():
             suffix + "PhaseLeadLoopReserve",
             "phase-lead slack-loop space outside rotor sweep",
             Part.makeTorus(8, 1.5, V(38, sign * 80, 48.2), V(1, 0, 0)),
-            "Illustrative reserve for flexible three-phase motor leads at bounded±150deg tilt. This is not a rigid cable route or a specified bend radius. Check actual silicone leads at every tilt angle, strain relief, current capacity and connector clearance. Do not pass leads through the occupied M3 journal bore.",
+            "Illustrative reserve for flexible three-phase motor leads at bounded±150deg tilt. This is not a rigid cable route or a specified bend radius. Check actual silicone leads at every tilt angle, strain relief, current capacity and connector clearance. Do not pass leads through the occupied M2 journal bore.",
         )
         o.Role = "Clearance"
         o.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
@@ -282,7 +283,7 @@ def build_assembly():
     set_property(
         reg,
         "Status",
-        "PA12 CAD fit prototype:1mm rail-flexure supplier exception, tape/curvature, friction retention, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
+        "PA12 CAD fit prototype:1.2mm rail-flexure supplier exception, tape/curvature, friction retention, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
     )
     set_property(reg, "SourceFingerprint", fingerprint)
     set_property(reg, "NotionSource", NOTION_URL)
@@ -296,7 +297,7 @@ def build_assembly():
     set_property(
         reg,
         "ScopeExclusions",
-        "Yaw motor, fins/fin servos, underside MTF-02P, optional360deg servo conversion",
+        "Yaw motor, fins/fin servos, optional360deg servo conversion",
     )
     set_property(reg, "ReleaseStatus", json.dumps(release_status(), ensure_ascii=False))
     doc.recompute()
@@ -323,6 +324,7 @@ def build_assembly():
     metrics = {
         "source_fingerprint": fingerprint,
         "revision": DESIGN_REVISION,
+        "mass_budget": mass_budget(printed, hardware),
         "rail_length_mm": rail.LENGTH,
         "rail_count": 1,
         "rail_head_relief_gap_mm": rail.FLEX_GAP,

@@ -38,6 +38,7 @@ from gondola.manufacturing import (
     mesh_from_shape,
     print_shape,
 )
+from gondola.mass_budget import mass_budget
 from gondola.parts import metric_hardware as hardware
 from gondola.parts import rail
 from gondola.parts import universal_board as platform
@@ -239,7 +240,7 @@ def rail_check(registry, shapes):
             }
         )
     nut_rotation = []
-    for angle in (-30, 30):
+    for angle in (-45, 45):
         nut = rail.nut_shape().copy()
         nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
         vol = intersection_volume(nut, nominal)
@@ -250,6 +251,51 @@ def rail_check(registry, shapes):
                 "blocked": vol > TOL,
             }
         )
+    # A nominal M2 hex nut nearly fits inside its own oversize pocket when
+    # rotated; nominal interference alone cannot establish capture. Screen
+    # the square replacement using the smallest published nut and a slot
+    # enlarged by the supplier's 0.3 mm dimensional tolerance.
+    pocket_tolerance = 0.3
+    largest_slot = rail.NUT_POCKET_AF + pocket_tolerance
+    smallest_slot = rail.NUT_POCKET_AF - pocket_tolerance
+    tolerance_shoe = nominal.cut(rail.nut_pocket_void(largest_slot))
+    tolerance_shoe = tolerance_shoe.cut(
+        rail.half_turn(rail.nut_pocket_void(largest_slot))
+    )
+    tolerance_rotations = []
+    for angle in (-45, 45):
+        smallest_nut = rail.nut_shape(
+            rail.fastener.SQUARE_NUT_MIN_AF, rail.fastener.SQUARE_NUT_MIN_HEIGHT
+        )
+        smallest_nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
+        vol = intersection_volume(smallest_nut, tolerance_shoe)
+        tolerance_rotations.append(
+            {
+                "rotation_deg": angle,
+                "blocking_intersection_mm3": vol,
+                "passed": vol > TOL,
+            }
+        )
+    minimum_diagonal = rail.fastener.SQUARE_NUT_MIN_AF * math.sqrt(2)
+    insertion_clearance = smallest_slot - rail.NUT_AF
+    tolerance_capture = {
+        "square_nut_af_range_mm": [rail.fastener.SQUARE_NUT_MIN_AF, rail.NUT_AF],
+        "square_nut_thickness_range_mm": [
+            rail.fastener.SQUARE_NUT_MIN_HEIGHT,
+            rail.NUT_THICKNESS,
+        ],
+        "slot_width_range_mm": [smallest_slot, largest_slot],
+        "minimum_total_insertion_clearance_mm": insertion_clearance,
+        "minimum_square_diagonal_mm": minimum_diagonal,
+        "rotation_blocking_width_margin_mm": minimum_diagonal - largest_slot,
+        "minimum_geometric_thread_turns": rail.fastener.SQUARE_NUT_MIN_HEIGHT
+        / rail.fastener.THREAD_PITCH,
+        "rotation_cases": tolerance_rotations,
+        "scope": "Size-only tolerance screen for a square nut with unchamfered corners and a straight slot. Actual corners, distortion, thread engagement, torque and PA12 bearing strength require coupon and load testing; no strength qualification.",
+        "passed": insertion_clearance >= pocket_tolerance - TOL
+        and minimum_diagonal > largest_slot + TOL
+        and all(row["passed"] for row in tolerance_rotations),
+    }
     tape_rows = []
     for name, shape in tapes:
         bb = shape.optimalBoundingBox(False, False)
@@ -277,6 +323,7 @@ def rail_check(registry, shapes):
         "rails": rows,
         "sliding_phase_checks": phase_rows,
         "nominal_nut_rotation_blocking": nut_rotation,
+        "square_nut_tolerance_capture": tolerance_capture,
         "tape_over_wing_checks": tape_rows,
         "head_is_uninterrupted": False,
         "one_piece_unbroken_base": True,
@@ -284,6 +331,7 @@ def rail_check(registry, shapes):
         and all(r["passed"] for r in rows + tape_rows)
         and len(tape_rows) == 2 * len(rail.PAD_CENTRES)
         and all(r["blocked"] for r in nut_rotation)
+        and tolerance_capture["passed"]
         and all(
             r["slide_intersection_mm3"] < TOL
             and r["lift_1mm_blocking_mm3"] > TOL
@@ -301,7 +349,7 @@ def hardware_check(registry):
     for obj in bought:
         standard = str(getattr(obj, "ThreadStandard", ""))
         sku = str(getattr(obj, "HardwareSKU", ""))
-        is_metric = "M3" in standard or "M3" in sku
+        is_metric = "M2" in standard or "M2" in sku
         excluded = obj.Name not in printed_names and not bool(
             getattr(obj, "PrintPart", False)
         )
@@ -352,12 +400,13 @@ def hardware_check(registry):
         and all(row["passed"] for row in material_rows)
     )
     expected_purchases = {
-        "M3_MF_30_PLUS_6_PA66": 4,
-        "M3X6_SOCKET_CAP_A2": 4,
-        "M3_HEX_NUT_A2": 11,
-        "M3_WASHER_3.2_7_0.5_A2": 16,
-        "M3x8_ISO4026_DIN913_A2": 3,
-        "M3X16_SOCKET_CAP_A2": 4,
+        "M2_MF_30_PLUS_5_PA66": 4,
+        "M2X6_SOCKET_CAP_A2": 4,
+        "M2_HEX_NUT_A2": 8,
+        "M2_SQUARE_NUT_DIN562_A2": 3,
+        "M2_WASHER_2.2_5_0.3_A2": 16,
+        "M2x6_ISO4026_DIN913_A2": 3,
+        "M2X14_SOCKET_CAP_A2": 4,
     }
     purchase_counts = {row["purchase_code"]: row["quantity"] for row in bom["items"]}
     return {
@@ -366,7 +415,7 @@ def hardware_check(registry):
         "bill_of_materials": {
             "material_specific_purchases": material_rows,
             "every_hardware_object_included_once": bom_ok,
-            "six_standard_purchase_specifications": purchase_counts
+            "seven_standard_purchase_specifications": purchase_counts
             == expected_purchases,
         },
         "obsolete_printed_fasteners": bad,
@@ -405,7 +454,7 @@ def module_service(registry, objects, shapes):
         screw_release = path_checks(
             [(screw.Name, shapes[screw.Name])],
             fixed,
-            [(0, side * y, 0) for y in (0, 0.25, 0.5, 1, 1.5)],
+            [(0, side * y, 0) for y in (0, 0.25, 0.5, 1, rail.RELEASE_TRAVEL)],
         )
         nut_obstacles = [
             (o.Name, shapes[o.Name])
@@ -417,7 +466,7 @@ def module_service(registry, objects, shapes):
             nut_obstacles,
             [(side * x, 0, 0) for x in (0, 1, 2, 4, 6, 9, 12, 18, 24)],
         )
-        # Tool cylinder deliberately exceeds the circumradius of a1.5mm A/F
+        # Tool cylinder deliberately exceeds the circumradius of the 0.9mm A/F
         # hex key. It checks an accessible straight side approach only.
         screw_bb = shapes[screw.Name].optimalBoundingBox(False, False)
         screw_centre_x = (screw_bb.XMin + screw_bb.XMax) / 2
@@ -438,7 +487,9 @@ def module_service(registry, objects, shapes):
         moving = [
             (
                 o.Name,
-                translated_shape(shapes[o.Name], y=side * 1.5 if o == screw else 0),
+                translated_shape(
+                    shapes[o.Name], y=side * rail.RELEASE_TRAVEL if o == screw else 0
+                ),
             )
             for o in members
         ]
@@ -503,7 +554,7 @@ def module_service(registry, objects, shapes):
             "clamp_screw": screw.Name,
             "clamp_nut": nut.Name,
             "approach_side_y": side,
-            "screw_release_1p5mm_three_turns": screw_release,
+            "screw_release_three_turns": screw_release,
             "nut_insertion_before_screw": nut_load,
             "straight_hex_key_approach_collisions": tool_hits,
             "recentering_after_loosening": centre_release,
@@ -521,7 +572,7 @@ def module_service(registry, objects, shapes):
             and slide["passed"]
             and end_exit["passed"]
             and lift["passed"]
-            and land_offset <= 5 + TOL,
+            and land_offset <= rail.CLAMP_LAND_OFFSET + TOL,
         }
         result.append(row)
         print(
@@ -630,7 +681,7 @@ def bidirectional_service(doc, registry, objects):
         doc.recompute()
 
 
-def planar_wall_regions(shape, maximum=1.01001):
+def planar_wall_regions(shape, maximum=1.51001):
     """Opposed parallel planar faces plus interior samples, not a medial-axis proof."""
     planes = [
         (i, f, f.normalAt(0, 0), f.CenterOfMass)
@@ -690,21 +741,35 @@ def manufacturing_review(doc, registry):
         probes.append(
             {
                 "part": name,
-                "planar_material_regions_up_to_1p01mm": regions,
-                "no_detected_planar_wall_under_1mm": all(
-                    row["material_thickness_mm"] >= 1 - TOL for row in regions
+                "planar_material_regions_up_to_1p51mm": regions,
+                "no_detected_planar_wall_under_1p5mm": all(
+                    row["material_thickness_mm"] >= 1.5 - TOL for row in regions
                 ),
             }
         )
     analytic = [
         (
+            "rail_functional_flexure_thickness",
+            "ContinuousRail",
+            (9, 0, -0.01),
+            (9, 0, 1.3),
+            1.2,
+        ),
+        (
+            "tape_wing_thickness",
+            "ContinuousRail",
+            (0, 12, -0.01),
+            (0, 12, 1.3),
+            1.2,
+        ),
+        (
             "journal_D_flat_wall",
             "PortJournalSleevePositive",
-            (0, 24, 1.99),
+            (0, 24, 1.49),
             (0, 24, 3.01),
-            1.0,
+            1.5,
         ),
-        ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.01), 1.2),
+        ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
         (
             "board_deck_thickness",
             "BatteryUniversalBoard",
@@ -715,15 +780,15 @@ def manufacturing_review(doc, registry):
         (
             "bare_shoe_nut_pocket_roof",
             "PropulsionFixedFrame",
-            (4, 8.5, 9.19),
-            (4, 8.5, 10.21),
-            1.0,
+            (4, 8.0, 8.49),
+            (4, 8.0, 10.21),
+            1.7,
         ),
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (5, 80, 1.99),
-            (5, 80, 5.01),
+            (5, 80, 2.19),
+            (5, 80, 5.21),
             3.0,
         ),
     ]
@@ -752,15 +817,17 @@ def manufacturing_review(doc, registry):
         "wall_guidance_source": MANUFACTURING_DECISION["sources"]["wall_thickness"],
         "guide_scope": f"Thin and broad plate-like parts in SLS/MJF. This is not a blanket 3 mm wall requirement for every small feature, nor permission to claim the {rail.LENGTH:g} mm flexure automatically compliant.",
         "generic_nylon_minimum_mm": 0.8,
+        "general_functional_wall_target_mm": 1.5,
+        "rail_flexure_target_mm": rail.PAD_THICKNESS,
         "short_50mm_guidance_mm": 1.0,
         "board_assessment": {
             "maximum_length_mm": 76,
             "deck_mm": 2,
-            "grid_rib_width_mm": 1.6,
+            "grid_rib_width_mm": platform.RIB,
             "reference_100mm_guidance_mm": 1.5,
         },
         "rail_functional_flexure_exception": exception,
-        "supplier_acceptance_status": "Not yet confirmed: 1 mm narrow flexure, tape wings and one-piece manufacture require quote review.",
+        "supplier_acceptance_status": "Not yet confirmed: 1.2 mm narrow flexure, tape wings and one-piece manufacture require quote review.",
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
@@ -774,8 +841,8 @@ def manufacturing_review(doc, registry):
         },
         "blanket_guide_compliance_claimed": False,
         "passed": bool(exception)
-        and "1mm" in exception
-        and all(row["no_detected_planar_wall_under_1mm"] for row in probes)
+        and "1.2mm" in exception
+        and all(row["no_detected_planar_wall_under_1p5mm"] for row in probes)
         and all(row["passed"] for row in measurements),
     }
 
@@ -784,9 +851,7 @@ def equipment_scope_check(doc, registry, objects, shapes):
     forbidden = [
         o.Name
         for o in registry.ReferenceParts
-        if any(
-            token in o.Name.lower() for token in ("mtf", "yaw", "finservo", "hl3604")
-        )
+        if any(token in o.Name.lower() for token in ("yaw", "finservo", "hl3604"))
     ]
     reserves = []
     expected = (
@@ -931,7 +996,8 @@ def stack_check(registry, objects, shapes):
     upper_devices = [
         o
         for o in registry.ReferenceParts
-        if o.Name in ("ModuleLR900Envelope", "ModulePASEnvelope")
+        if o.Name
+        in ("ModuleLR900Envelope", "ModulePASEnvelope", "ModuleMTF02PEnvelope")
     ]
     moving_objects = [upper] + upper_devices
     omitted = moving_objects + nuts + top_washers
@@ -1199,9 +1265,11 @@ def beam_limitations():
             {
                 "illustrative_radius_mm": radius,
                 "one_pitch_angle_rad": rail.LAND_PITCH / radius,
-                "idealized_1mm_web_strain_with_nominal_gap": rail.LAND_PITCH
+                "idealized_web_strain_with_nominal_gap": rail.PAD_THICKNESS
+                * rail.LAND_PITCH
                 / (2 * radius * nominal_gap),
-                "conservative_1mm_web_strain_with_0p5mm_roots_each_end": rail.LAND_PITCH
+                "web_strain_with_0p5mm_roots_each_end": rail.PAD_THICKNESS
+                * rail.LAND_PITCH
                 / (2 * radius * free_length),
                 "18mm_straight_shoe_sagitta_mm": rail.SHOE_LENGTH**2 / (8 * radius),
             }
@@ -1328,6 +1396,7 @@ def validate(source=None):
         shapes = {o.Name: world_shape(o) for o in objects}
         report = {
             "revision": DESIGN_REVISION,
+            "mass_budget": mass_budget(r.PrintedParts, r.HardwareParts),
             "source": os.path.relpath(source, ROOT),
             "scope": "Independent saved-file rigid-envelope audit; no strength, friction, fit, tape or flight qualification. Local propulsion evidence is recomputed from current source on every run.",
             "source_hashes_before": before,

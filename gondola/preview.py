@@ -57,7 +57,7 @@ def create_attachment_detail_document(side=1):
     from gondola.parts import rail
 
     doc = App.newDocument("AttachmentDetail" + ("Negative" if side < 0 else "Positive"))
-    doc.Label = f"Rev {DESIGN_REVISION} | tape OVER wings and M3 clamp " + (
+    doc.Label = f"Rev {DESIGN_REVISION} | tape OVER wings and M2 clamp " + (
         "NegativeY" if side < 0 else "PositiveY"
     )
     g = create_group(doc, "Attachment", "Attachment detail | not a print assembly")
@@ -83,12 +83,12 @@ def create_attachment_detail_document(side=1):
         return shape if side > 0 else rail.half_turn(shape)
 
     add_detail_object(
-        "PurchasedM3x8",
+        "PurchasedM2x6",
         translated_shape(orient(rail.set_screw_shape()), y=side * 0.45),
         (0.92, 0.64, 0.19),
     )
     add_detail_object(
-        "PurchasedM3Nut",
+        "PurchasedM2Nut",
         translated_shape(orient(rail.nut_shape()), y=side * 0.45),
         (0.92, 0.64, 0.19),
     )

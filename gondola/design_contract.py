@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "J"
+DESIGN_REVISION = "K"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -23,7 +23,10 @@ MANUFACTURING_DECISION = {
     "rationale": "SLS is a suitable prototype candidate; published supplier evidence does not require MJF for this design. Adopt the user's 340 mm length ceiling.",
     "supplier_process_policy": "SLS/MJF quotations are integrated; Creallo selects the process unless a specific process is separately agreed. Request SLS for the initial fit trial.",
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
-    "qualification": "Not qualified: obtain one-piece acceptance and review 1 mm functional flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed process/material/finish for coupons and full parts.",
+    "qualification": "Not qualified: obtain one-piece acceptance and review 1.2 mm functional flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed process/material/finish for coupons and full parts.",
+    "nominal_general_functional_wall_mm": 1.5,
+    "nominal_rail_flexure_mm": 1.2,
+    "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
         "process_policy": "https://creallo.com/ko/blog/posts/sls-mjf-integration-update",
@@ -50,6 +53,7 @@ SELECTED_EQUIPMENT = (
     EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
     EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
     EquipmentSelection("DSpower DS-M005 300deg", 2, 2.0),
+    EquipmentSelection("MicoAir MTF-02P", 1, 1.5),
     EquipmentSelection("LR900-A", 1, 4.0),
     EquipmentSelection("LinkTrack P-AS", 1, 3.45),
 )
@@ -77,7 +81,6 @@ EXCLUDED_EQUIPMENT = (
     "yaw_motor",
     "fins",
     "fin_servos",
-    "MTF_02P_underside_sensor",
     "360_degree_servo_option",
 )
 EXPECTED_INVENTORY = {
@@ -87,7 +90,7 @@ EXPECTED_INVENTORY = {
     "installed_prints": 11,
     "fit_coupons": 2,
     "purchased_hardware": 42,
-    "purchased_hardware_types": 6,
+    "purchased_hardware_types": 7,
     "unique_print_files": 7,
 }
 
@@ -128,7 +131,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "rail_flexure",
-        f"Creallo acceptance of one-piece {RAIL_LENGTH_MM:g}mm rail, 1mm flexures, curvature and depowdering.",
+        f"Creallo acceptance of one-piece {RAIL_LENGTH_MM:g}mm rail, 1.2mm flexures, curvature and depowdering.",
     ),
     UnresolvedInterface(
         "motor_mount",
@@ -148,6 +151,10 @@ UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
         "moving_wires",
         "Actual phase-lead slack/strain relief through bounded ±150deg motion; reserved loops are not routing proof.",
+    ),
+    UnresolvedInterface(
+        "optical_sensor_installation",
+        "Confirm MTF-02P lens datums, mounting/adhesive retention, connector access and unobstructed downward field of view on the actual part.",
     ),
     UnresolvedInterface(
         "finished_mass",
@@ -173,7 +180,7 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12 SLS/MJF",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "scope": "Gondola only: one flexible rail, two tilting main propulsors, interchangeable stackable equipment boards.",
+        "scope": "Indoor LTA blimp gondola including MTF-02P optical-flow/range sensor: one flexible rail, two tilting main propulsors, interchangeable stackable equipment boards.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on generic board; no strap slots;90deg in-plane orientation.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],

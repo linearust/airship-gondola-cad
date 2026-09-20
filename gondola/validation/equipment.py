@@ -1,20 +1,25 @@
 """Read-only audit of service reservations, bought hardware, and source metadata."""
 
+import itertools
 import json
 import os
 from collections import Counter
 from pathlib import Path
 
 import FreeCAD as App
+import Part
 
 from gondola.cad import (
     world_shape,
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
 from gondola.design_contract import EXPECTED_INVENTORY
+from gondola.manufacturing import geometry_comparison
+from gondola.parts import equipment_envelopes as devices
+from gondola.parts import universal_board as board
 from gondola.provenance import file_sha256, source_fingerprint
 
-from .geometry import intersection_volume
+from .geometry import intersection_volume, local_shape
 
 TOL = 1e-6
 RESERVES = (
@@ -22,14 +27,16 @@ RESERVES = (
     "CapacitorServiceReserve",
     "PortPhaseLeadLoopReserve",
     "StarboardPhaseLeadLoopReserve",
+    "MTF02POpticalClearanceReserve",
 )
 EXPECTED_PURCHASE_QUANTITIES = {
-    "M3_MF_30_PLUS_6": 4,
-    "M3X6_SOCKET_CAP": 4,
-    "M3X16_SOCKET_CAP": 4,
-    "M3x8_ISO4026_DIN913": 3,
-    "M3_HEX_NUT": 11,
-    "M3_WASHER_3.2_7_0.5": 16,
+    "M2_MF_30_PLUS_5": 4,
+    "M2X6_SOCKET_CAP": 4,
+    "M2X14_SOCKET_CAP": 4,
+    "M2x6_ISO4026_DIN913": 3,
+    "M2_HEX_NUT": 8,
+    "M2_SQUARE_NUT_DIN562": 3,
+    "M2_WASHER_2.2_5_0.3": 16,
 }
 
 
@@ -91,6 +98,8 @@ def reserve_checks(doc):
                 "conservative_rotor_sweep_comparison": sweeps,
                 "notes": str(getattr(obj, "Notes", "")),
                 "passed": not intersections
+                and shape.isValid()
+                and len(shape.Solids) == 1
                 and all(row["intersection_mm3"] < TOL for row in sweeps)
                 and clearance_only,
             }
@@ -111,6 +120,143 @@ def reserve_checks(doc):
     return checks, pairs
 
 
+def mtf_sensor_check(doc):
+    """Check the included sensor and restore every temporary tilt probe."""
+    registry = doc.DesignRegistry
+    sensor = doc.getObject("ModuleMTF02PEnvelope")
+    reserve = doc.getObject("MTF02POpticalClearanceReserve")
+    if sensor is None or reserve is None:
+        return {
+            "passed": False,
+            "error": "MTF-02P sensor or optical reserve is missing.",
+        }
+    body = world_shape(sensor)
+    optical = world_shape(reserve)
+    body_bounds = body.optimalBoundingBox(False, False)
+    optical_bounds = optical.optimalBoundingBox(False, False)
+    direction = sensor.getGlobalPlacement().Rotation.multVec(sensor.OpticalDirection)
+    body_comparison = geometry_comparison(
+        local_shape(sensor), devices.mtf02p_envelope_shape()
+    )
+    optical_comparison = geometry_comparison(
+        local_shape(reserve), devices.mtf02p_optical_reserve_shape()
+    )
+    upper = world_shape(doc.UpperUniversalBoard)
+    upper_bounds = upper.optimalBoundingBox(False, False)
+    support_probe = Part.makeBox(
+        body_bounds.XLength,
+        body_bounds.YLength,
+        board.BOARD_THICKNESS,
+        App.Vector(
+            body_bounds.XMin,
+            body_bounds.YMin,
+            upper_bounds.ZMax - board.BOARD_THICKNESS,
+        ),
+    )
+    support_area = intersection_volume(upper, support_probe) / board.BOARD_THICKNESS
+    mounting_gap = body_bounds.ZMin - upper_bounds.ZMax
+    adjacent_optical_clearances = []
+    for name in ("ModuleLR900Envelope", "ModulePASEnvelope"):
+        neighbor = world_shape(doc.getObject(name))
+        distance = optical.distToShape(neighbor)[0]
+        adjacent_optical_clearances.append(
+            {
+                "object": name,
+                "nominal_minimum_distance_mm": distance,
+                "required_nominal_distance_mm": 1.0,
+                "passed": distance >= 1.0 - TOL,
+            }
+        )
+    physical = (
+        list(registry.PrintedParts)
+        + list(registry.HardwareParts)
+        + list(registry.ReferenceParts)
+        + list(registry.TapeReferences)
+    )
+    pods = list(registry.TiltingPods)
+    original_tilts = [float(pod.Tilt) for pod in pods]
+    tilt_rows = []
+    try:
+        for angles in itertools.product((-150.0, 0.0, 150.0), repeat=len(pods)):
+            for pod, angle in zip(pods, angles):
+                pod.Tilt = angle
+            doc.recompute()
+            body_hits, optical_hits = [], []
+            for obj in physical:
+                if obj == sensor:
+                    continue
+                other = world_shape(obj)
+                body_volume = intersection_volume(body, other)
+                optical_volume = intersection_volume(optical, other)
+                if body_volume > TOL:
+                    body_hits.append(
+                        {"object": obj.Name, "intersection_mm3": body_volume}
+                    )
+                if optical_volume > TOL:
+                    optical_hits.append(
+                        {"object": obj.Name, "intersection_mm3": optical_volume}
+                    )
+            tilt_rows.append(
+                {
+                    "tilt_degrees": dict(zip((pod.Name for pod in pods), angles)),
+                    "sensor_collisions": body_hits,
+                    "optical_reserve_obstructions": optical_hits,
+                    "passed": not body_hits and not optical_hits,
+                }
+            )
+    finally:
+        for pod, angle in zip(pods, original_tilts):
+            pod.Tilt = angle
+        doc.recompute()
+    registered = (
+        sensor in registry.ReferenceParts
+        and sensor not in registry.PrintedParts
+        and sensor not in registry.HardwareParts
+        and reserve in registry.ClearanceVolumes
+    )
+    direction_matches = (
+        abs(direction.x) < TOL and abs(direction.y) < TOL and abs(direction.z - 1) < TOL
+    )
+    report = {
+        "source": devices.MTF02P_SOURCE,
+        "published_size_mm": list(devices.MTF02P_SIZE_MM),
+        "published_module_mass_g": devices.MTF02P_MASS_G,
+        "body_source_comparison": body_comparison,
+        "optical_reserve_source_comparison": optical_comparison,
+        "optical_direction_world": [direction.x, direction.y, direction.z],
+        "optical_face_world_z_mm": body_bounds.ZMax,
+        "optical_reserve_start_world_z_mm": optical_bounds.ZMin,
+        "optical_reserve_distance_mm": optical_bounds.ZLength,
+        "available_board_material_under_footprint_mm2": support_area,
+        "nominal_insulating_adhesive_allowance_mm": mounting_gap,
+        "adjacent_optical_clearances": adjacent_optical_clearances,
+        "tilt_checks": tilt_rows,
+        "no_new_printed_or_metric_fastener_parts": registered,
+        "installed_optical_field_verified": False,
+        "limits": "Whole-face42deg near-field reservation only. Actual lens origins, in-plane firmware orientation, backside adhesive contact, cable routing and usable ground field require the purchased module; no sensor mounting screws are specified.",
+    }
+    report["passed"] = (
+        registered
+        and direction_matches
+        and body.isValid()
+        and len(body.Solids) == 1
+        and optical.isValid()
+        and len(optical.Solids) == 1
+        and body_comparison["difference_mm3"] < TOL
+        and optical_comparison["difference_mm3"] < TOL
+        and abs(float(sensor.ListedMassGrams) - devices.MTF02P_MASS_G) < TOL
+        and abs(optical_bounds.ZMin - body_bounds.ZMax) < TOL
+        and abs(optical_bounds.ZLength - devices.MTF02P_OPTICAL_RESERVE_MM) < TOL
+        and abs(mounting_gap - 1.0) < TOL
+        and support_area > TOL
+        and all(row["passed"] for row in adjacent_optical_clearances)
+        and len(pods) == 2
+        and len(tilt_rows) == 9
+        and all(row["passed"] for row in tilt_rows)
+    )
+    return report
+
+
 def hardware_check(doc, source):
     registry = doc.DesignRegistry
     quantities = Counter(str(obj.HardwareSKU) for obj in registry.HardwareParts)
@@ -120,7 +266,7 @@ def hardware_check(doc, source):
             str(obj.MaterialSelection)
         )
         expected = (
-            "PA66" if obj.HardwareSKU == "M3_MF_30_PLUS_6" else "A2 stainless steel"
+            "PA66" if obj.HardwareSKU == "M2_MF_30_PLUS_5" else "A2 stainless steel"
         )
         checks.append(
             {
@@ -192,9 +338,14 @@ def validate(source=None):
     try:
         registry = doc.DesignRegistry
         checks, reserve_pairs = reserve_checks(doc)
+        mtf = mtf_sensor_check(doc)
         hardware = hardware_check(doc, source)
         sources = {}
-        for name in ("ModulePASEnvelope", "ModuleLR900Envelope"):
+        for name in (
+            "ModulePASEnvelope",
+            "ModuleLR900Envelope",
+            "ModuleMTF02PEnvelope",
+        ):
             obj = doc.getObject(name)
             sources[name] = {
                 key: str(getattr(obj, key))
@@ -205,7 +356,7 @@ def validate(source=None):
             "source_file": os.path.relpath(source, ROOT),
             "source_sha256": before,
             "source_fingerprint": fingerprint_before,
-            "scope": "Read-only clearance-volume and purchased-hardware audit of the saved native assembly. No CAD objects or placements were changed.",
+            "scope": "Read-only saved-file clearance and purchased-hardware audit. Temporary in-memory MTF optical-obstruction tilt probes are restored; the native file is never saved.",
             "actual_object_counts": {
                 "printed": len(registry.PrintedParts),
                 "hardware": len(registry.HardwareParts),
@@ -214,11 +365,13 @@ def validate(source=None):
             },
             "reserve_checks": checks,
             "reserve_pair_checks": reserve_pairs,
+            "mtf02p_sensor": mtf,
             "hardware": hardware,
             "reference_sources": sources,
             "limits": [
                 "These are reserved clear spaces, not verified dimensions of selected XT30 or capacitor products.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack through 300 degrees.",
+                "The MTF-02P optical reserve screens the first80mm from the entire front face; it is not a calibrated or physically verified field of view.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }
@@ -231,6 +384,7 @@ def validate(source=None):
     report["passed"] = (
         before == after
         and report["source_code_unchanged"]
+        and mtf["passed"]
         and all(row["passed"] for row in checks)
         and all(row["intersection_mm3"] < TOL for row in reserve_pairs)
         and hardware["passed"]

@@ -25,10 +25,13 @@ class HardwareBomTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         modules = {
             "FreeCAD": Mock(),
+            "Part": Mock(),
             "MeshPart": Mock(),
+            "gondola.parts.equipment_envelopes": Mock(),
+            "gondola.parts.universal_board": Mock(),
             "gondola.cad": types.SimpleNamespace(world_shape=Mock()),
             "gondola.validation.geometry": types.SimpleNamespace(
-                intersection_volume=Mock()
+                intersection_volume=Mock(), local_shape=Mock()
             ),
         }
         with patch.dict(sys.modules, modules):
@@ -51,20 +54,20 @@ class HardwareBomTests(unittest.TestCase):
                         HardwareSKU=sku,
                         MaterialSelection=(
                             "Nylon PA66"
-                            if sku == "M3_MF_30_PLUS_6"
+                            if sku == "M2_MF_30_PLUS_5"
                             else "A2 stainless steel"
                         ),
-                        ThreadStandard="M3 x 0.5; right-hand",
+                        ThreadStandard="M2 x 0.4; right-hand",
                         SourceURL="https://example.com/stack-hardware",
                         PrintPart=False,
                     )
                 )
-        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M3_HEX_NUT"]
+        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT"]
         # One purchase specification has different native evidence and wording
-        # at the stack, rail clamps and journals. It must remain one BOM row.
-        for obj in nuts[4:7]:
-            obj.ThreadStandard = "ISO metric coarse M3 x 0.5, right hand"
-        for obj in nuts[7:]:
+        # at the stack and journals. It must remain one BOM row, separate from
+        # the rail's DIN 562 square nuts.
+        for obj in nuts[4:]:
+            obj.ThreadStandard = "ISO metric coarse M2 x 0.4, right hand"
             obj.SourceURL = "https://example.com/journal-nuts"
         self.document = types.SimpleNamespace(
             DesignRegistry=types.SimpleNamespace(
@@ -84,17 +87,21 @@ class HardwareBomTests(unittest.TestCase):
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
         self.assertEqual(bom["purchased_hardware_quantity"], 42)
-        self.assertEqual(bom["unique_purchase_spec_count"], 6)
-        self.assertEqual(len(bom["items"]), 6)
-        nuts = next(row for row in bom["items"] if row["sku"] == "M3_HEX_NUT")
-        self.assertEqual(nuts["quantity"], 11)
+        self.assertEqual(bom["unique_purchase_spec_count"], 7)
+        self.assertEqual(len(bom["items"]), 7)
+        nuts = next(row for row in bom["items"] if row["sku"] == "M2_HEX_NUT")
+        self.assertEqual(nuts["quantity"], 8)
+        square_nuts = next(
+            row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562"
+        )
+        self.assertEqual(square_nuts["quantity"], 3)
         self.assertEqual(
             nuts["sources"],
             ["https://example.com/journal-nuts", "https://example.com/stack-hardware"],
         )
         self.assertEqual(
             nuts["thread_descriptions"],
-            ["ISO metric coarse M3 x 0.5, right hand", "M3 x 0.5; right-hand"],
+            ["ISO metric coarse M2 x 0.4, right hand", "M2 x 0.4; right-hand"],
         )
         self.assertNotIn("source", nuts)
         self.assertNotIn("thread", nuts)
@@ -104,13 +111,22 @@ class HardwareBomTests(unittest.TestCase):
         self.assertTrue(audit["bom_each_instance_exactly_once"])
         self.assertTrue(audit["not_printed"])
 
+    def test_audit_rejects_hex_nut_substitution_for_square_rail_nuts(self):
+        for obj in self.hardware:
+            if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562":
+                obj.HardwareSKU = "M2_HEX_NUT"
+        self.export()
+        audit = self.equipment.hardware_check(self.document, self.source)
+        self.assertFalse(audit["passed"])
+        self.assertTrue(audit["bom_each_instance_exactly_once"])
+
     def test_audit_rejects_missing_or_fabricated_group_evidence(self):
         for key in ("sources", "thread_descriptions"):
             for operation in ("remove", "add", "omit"):
                 with self.subTest(field=key, operation=operation):
                     bom = self.export()
                     nuts = next(
-                        row for row in bom["items"] if row["sku"] == "M3_HEX_NUT"
+                        row for row in bom["items"] if row["sku"] == "M2_HEX_NUT"
                     )
                     if operation == "remove":
                         nuts[key].pop()
@@ -125,7 +141,7 @@ class HardwareBomTests(unittest.TestCase):
                         next(
                             row
                             for row in audit["bom_rows"]
-                            if row["sku"] == "M3_HEX_NUT"
+                            if row["sku"] == "M2_HEX_NUT"
                         )["matches_native_instances"]
                     )
 

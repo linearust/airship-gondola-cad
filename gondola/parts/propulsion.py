@@ -1,7 +1,7 @@
 """Two detachable ±150° main propulsors; all geometry is in millimetres.
 
 The fixed PA12 frame carries two servos and two rotating motor/guard carriers.
-Four identical keyed sleeves provide the journals; standard M3 hardware retains
+Four identical keyed sleeves provide the journals; standard M2 hardware retains
 them. The motor screw pattern and servo-horn coupling remain unmeasured OEM
 interfaces. They are represented as reservations, not fabricated components.
 """
@@ -24,11 +24,15 @@ from . import metric_hardware as metric
 from . import rail
 
 V = App.Vector
-BASE_Z = 2.0
+BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 3.0
+SERVICE_CEILING_Z = 8.0
+CRADLE_WINDOW_BOTTOM_Z = SERVICE_CEILING_Z + 1.5
+GUARD_OUTER_RADIUS = 24.3
+GUARD_INNER_RADIUS = 22.8
 PIVOT_Z = 48.2
 SLEEVE_RADIUS = 4.0
-SLEEVE_BORE_RADIUS = 2.0
+SLEEVE_BORE_RADIUS = 1.5
 SLEEVE_D_FLAT = 3.0
 JOURNAL_RADIUS = 4.45
 CARRIER_D_FLAT = 3.45
@@ -37,17 +41,22 @@ SLEEVE_INNER_Y = 21.55
 SLEEVE_ROUND_START = 26.8
 SLEEVE_FLANGE_Y = 29.45
 SLEEVE_END_Y = 30.95
-SCREW_UNDERHEAD_Y = 31.45
+JOURNAL_SCREW_LENGTH = metric.JOURNAL_SCREW_LENGTH
+SCREW_UNDERHEAD_Y = SLEEVE_END_Y + metric.WASHER_THICKNESS
+INNER_WASHER_Y = SLEEVE_INNER_Y - metric.WASHER_THICKNESS
+JOURNAL_NUT_Y = INNER_WASHER_Y - metric.NUT_HEIGHT
+JOURNAL_SCREW_SKU = f"M{metric.THREAD_DIAMETER:g}X{JOURNAL_SCREW_LENGTH:g}_SOCKET_CAP"
+JOURNAL_NUT_SKU = f"M{metric.THREAD_DIAMETER:g}_HEX_NUT"
+JOURNAL_WASHER_SKU = (
+    f"M{metric.THREAD_DIAMETER:g}_WASHER_"
+    f"{metric.WASHER_ID:g}_{metric.WASHER_OD:g}_{metric.WASHER_THICKNESS:g}"
+)
 SERVO_SOURCE = "https://www.dspowerservo.com/ds-m005-mini-servo-product/"
 SERVO_DRAWING = "https://cdn.globalso.com/dspowerservo/m0055.jpg"
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
-JOURNAL_SCREW_SOURCE = (
-    "https://www.accu.co.uk/metric-cap-head-screws/3822-SSCF-M3-16-A2"
-)
-JOURNAL_NUT_SOURCE = "https://www.accu.co.uk/hexagon-nuts/7888-HPN-M3-A2"
-JOURNAL_WASHER_SOURCE = (
-    "https://www.pgb-europe.com/en-gb/9763/flat-washer-din-125a-m-3-a2-320-7-05"
-)
+JOURNAL_SCREW_SOURCE = metric.JOURNAL_SCREW_SOURCE
+JOURNAL_NUT_SOURCE = metric.NUT_SOURCE
+JOURNAL_WASHER_SOURCE = metric.WASHER_SOURCE
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 BEARING_SOURCE = "https://www.ezo-brg.co.jp/english/product/spec.php?eid=00213&unit=mm"
@@ -103,7 +112,7 @@ def _fixed_side(sign):
     # Four equal corner columns and a simple rim support the servo envelope.
     cradle = box(19.2, 18.4, -4.25 - top, (-5.6, -55.5, top))
     cradle = cradle.cut(box(14.4, 13.6, -top + 2, (-3.2, -53.1, top - 1)))
-    window_bottom = top + 4
+    window_bottom = CRADLE_WINDOW_BOTTOM_Z - PIVOT_Z
     for y in (-55.5, -39.5):
         cradle = cradle.cut(
             box(14.4, 2.6, -8.25 - window_bottom, (-3.2, y - 0.1, window_bottom))
@@ -121,18 +130,23 @@ def _fixed_side(sign):
 
 
 def integral_frame_shape():
-    # Wings meet the exact shared shoe at Y+/-12. Never refill its nut slot,
+    # Wings meet the exact shared shoe sides. Never refill its nut slot,
     # bore or T-channel with the former crossmember geometry.
     wings = box(18, 70, FOOT_THICKNESS, (-9, -35, BASE_Z)).cut(
-        box(20, 24, 20, (-10, -12, 0))
+        box(20, rail.SHOE_WIDTH, 20, (-10, -rail.SHOE_WIDTH / 2, 0))
     )
     frame = union([_fixed_side(1), _fixed_side(-1), wings, rail.shoe_shape()])
-    # A 1.5mm hex driver reaches the selected captured M3 screw from either Y side.
+    # The metric hex driver reaches the selected clamp screw from either Y side.
     # This corridor stays outside the shared shoe and opens through the
     # low portions of the outrigger legs; SLS/MJF permits the local ceiling.
     for side in (-1, 1):
-        # Top Z8 leaves a 1mm web below the cradle window floor at Z9.
-        service = box(6.4, 103, 4.0, (-3.2, 12, 4.0))
+        # Keep 1.5 mm above the corridor independently of foot/base thickness.
+        service = box(
+            6.4,
+            103,
+            SERVICE_CEILING_Z - 4.0,
+            (-3.2, rail.SHOE_WIDTH / 2, 4.0),
+        )
         if side < 0:
             service = mirrored_y(service, -1)
         frame = frame.cut(service)
@@ -164,8 +178,8 @@ def moving_carrier_shape():
             box(20, 10, 12, (-10, y - 2, CARRIER_D_FLAT))
         )
         parts.append(strut.cut(bore))
-    guard = cylinder(24, 2, (11, 0, 0), (1, 0, 0)).cut(
-        cylinder(22.8, 4, (10, 0, 0), (1, 0, 0))
+    guard = cylinder(GUARD_OUTER_RADIUS, 2, (11, 0, 0), (1, 0, 0)).cut(
+        cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
     )
     parts.extend([guard, box(2, 4, 9, (11, -26, -4.5)), box(2, 4, 9, (11, 22, -4.5))])
     shape = union(parts)
@@ -210,11 +224,11 @@ def _journal_hardware(doc, moving, prefix, side):
     specs = [
         (
             "Bolt",
-            metric.screw_shape(16),
+            metric.screw_shape(JOURNAL_SCREW_LENGTH),
             SCREW_UNDERHEAD_Y,
             -1,
-            "M3X16_SOCKET_CAP",
-            "M3x16 socket cap bolt, M3x0.5. Clamps only the hollow sleeve between washers; it must not pinch the stationary frame. Nominal3.2mm projects beyond the2.4mm nut. The thread does not rub the journal.",
+            JOURNAL_SCREW_SKU,
+            f"M2x{JOURNAL_SCREW_LENGTH:g} socket cap bolt, M2x{metric.THREAD_PITCH:g}. Clamps only the hollow sleeve between washers; it must not pinch the stationary frame. Nominal{JOURNAL_NUT_Y - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH):g}mm projects beyond the{metric.NUT_HEIGHT:g}mm nut. The thread does not rub the journal.",
             JOURNAL_SCREW_SOURCE,
         ),
         (
@@ -222,26 +236,26 @@ def _journal_hardware(doc, moving, prefix, side):
             metric.washer_shape(),
             SLEEVE_END_Y,
             1,
-            "M3_WASHER_3.2_7_0.5",
-            "Purchased3.2x7x0.5mm washer under the M3 bolt head; bears on sleeve flange.",
+            JOURNAL_WASHER_SKU,
+            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm washer under the M2 bolt head; bears on sleeve flange.",
             JOURNAL_WASHER_SOURCE,
         ),
         (
             "InnerWasher",
             metric.washer_shape(),
-            SLEEVE_INNER_Y - 0.5,
+            INNER_WASHER_Y,
             1,
-            "M3_WASHER_3.2_7_0.5",
-            "Purchased3.2x7x0.5mm washer bears on the sleeve end, with0.45mm nominal clearance to the carrier inner face.",
+            JOURNAL_WASHER_SKU,
+            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm washer bears on the sleeve end, with0.45mm nominal clearance to the carrier inner face.",
             JOURNAL_WASHER_SOURCE,
         ),
         (
             "Nut",
             metric.nut_shape(),
-            SLEEVE_INNER_Y - 0.5 - 2.4,
+            JOURNAL_NUT_Y,
             1,
-            "M3_HEX_NUT",
-            "Purchased M3x0.5 regular nut, AF5.5 height2.4. Full nut engagement retains the removable sleeve. No printed thread or clip. Nut retention under vibration remains a physical assembly check.",
+            JOURNAL_NUT_SKU,
+            f"Purchased M2x{metric.THREAD_PITCH:g} regular nut, AF{metric.NUT_AF:g} height{metric.NUT_HEIGHT:g}. Full nut engagement retains the removable sleeve. No printed thread or clip. Nut retention under vibration remains a physical assembly check.",
             JOURNAL_NUT_SOURCE,
         ),
     ]
@@ -251,7 +265,7 @@ def _journal_hardware(doc, moving, prefix, side):
             doc,
             moving,
             prefix + "Journal" + suffix + kind,
-            "BUY | M3 journal " + kind,
+            "BUY | M2 journal " + kind,
             _hardware_shape(shape, side, y0, axis),
             sku,
             note,
@@ -405,7 +419,7 @@ def build_propulsion_module(doc, parent=None):
     module = create_group(
         doc,
         "MainPropulsionModule",
-        "Main propulsion | PA12 frame, continuous rail and M3 retention",
+        "Main propulsion | PA12 frame, continuous rail and M2 retention",
     )
     if parent is not None:
         parent.addObject(module)
@@ -416,7 +430,7 @@ def build_propulsion_module(doc, parent=None):
         doc,
         module,
         "PropulsionFixedFrame",
-        "PRINT | PA12 integral paired propulsion frame and M3-clamped rail shoe",
+        "PRINT | PA12 integral paired propulsion frame and M2-clamped rail shoe",
         integral_frame_shape(),
         App.Rotation(V(0, 0, 1), 45),
         "",
@@ -426,13 +440,13 @@ def build_propulsion_module(doc, parent=None):
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     printed, refs, clear, hardware, pods = [frame], [], [], [], []
     frame.Label = (
-        "PRINT | PA12 integral paired propulsion frame and M3-clamped rail shoe"
+        "PRINT | PA12 integral paired propulsion frame and M2-clamped rail shoe"
     )
     frame.Notes = (
         "Continuous T-rail shoe, both outrigger feet and servo cradles are one PA12 SLS/MJF part. "
-        "Common foot bottomZ2 clears nominal1mm rail pads and0.15mm tape; feet/base are3mm thick. Pivots are at(0,+/-80,48.2). "
-        "The exact common shoe includes the M3 captive nut pocket and screw bore; choose one of the rotationally symmetric clamp ports; each has side-loaded nut access. "
-        "Hollow printed D sleeves are retained by purchased M3 hardware; no printed pin or retaining clip. "
+        f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet/base are{FOOT_THICKNESS:g}mm thick. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
+        "The exact common shoe includes the M2 captive nut pocket and screw bore; choose one of the rotationally symmetric clamp ports; each has side-loaded nut access. "
+        "Hollow printed D sleeves are retained by purchased M2 hardware; no printed pin or retaining clip. "
         "Assemble journals and their screws before fitting the servo; the coaxial servo later blocks direct journal screw access. A small cradle output-rim relief permits8mm sleeve retraction, then lift before moving farther. "
         "Rail friction, journal fit, supplier tolerances and the motor/servo-horn interfaces require physical validation."
     )
@@ -443,7 +457,7 @@ def build_propulsion_module(doc, parent=None):
     set_property(
         frame,
         "RailRetention",
-        "Choose either symmetric M3 captive-nut clamp port; fit one screw/nut pair only",
+        "Choose either symmetric M2 captive-nut clamp port; fit one screw/nut pair only",
     )
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
     set_property(
@@ -491,19 +505,23 @@ def build_propulsion_module(doc, parent=None):
                         App.Rotation(V(1, 0, 0), 90)
                     )
                 ),
-                "PA12 SLS/MJF hollow journal: OD8, through bore4, D flatZ3.0 leaves1.0mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M3 hardware clamps sleeve ends only. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
+                "PA12 SLS/MJF hollow journal: OD8, through bore3, D flatZ3.0 leaves1.5mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M2 hardware clamps sleeve ends only. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
             )
             sleeve.PrintNotes = (
                 sleeve.Notes
                 + " Depowder both open ends and verify sleeve/keyed-bore fit before assembly."
             )
-            set_property(sleeve, "PrintSKU", "JournalSleeve_M3_Retained")
+            set_property(
+                sleeve,
+                "PrintSKU",
+                f"JournalSleeve_M{metric.THREAD_DIAMETER:g}_Retained",
+            )
             printed.append(sleeve)
             hardware.extend(_journal_hardware(doc, moving, prefix, side))
         coupling = doc.getObject(prefix + "Coupling")
         coupling.Role = "Clearance"
         coupling.Label = "REFERENCE | unfinished OEM servo horn/coupling space"
-        coupling.Notes = "Space reservation only. Official DS-M005 page states28T horn; spline dimensions and horn retention screw diameter/pitch/length are not published. Use the vendor-supplied horn/fastener after confirming metric compatibility; do not substitute M3 into this interface. Required horn-to-D-sleeve torque connection remains unfinished."
+        coupling.Notes = "Space reservation only. Official DS-M005 page states28T horn; spline dimensions and horn retention screw diameter/pitch/length are not published. Use the vendor-supplied horn/fastener after confirming metric compatibility; do not substitute M2 into this interface. Required horn-to-D-sleeve torque connection remains unfinished."
         coupling.ManufacturingStatus = (
             "Clearance placeholder only, not actual hardware or printable coupling"
         )
@@ -516,7 +534,7 @@ def build_propulsion_module(doc, parent=None):
         set_property(
             servo,
             "OEMFastenerStatus",
-            "Unresolved vendor horn screw;28T horn specified, ear holesØ1.8 on19.5mm pitch. Do not forceM3 into OEM features.",
+            "Unresolved vendor horn screw;28T horn specified, ear holesØ1.8 on19.5mm pitch. Do not forceM2 into OEM features.",
         )
         set_property(servo, "OEMDrawingURL", SERVO_DRAWING)
         motor = doc.getObject(prefix + "Motor")
@@ -526,14 +544,14 @@ def build_propulsion_module(doc, parent=None):
             "Official RS1102 data omit mounting screw size/pitch, PCD and thread depth. Vendor-supplied fastener requires metric identification before release.",
         )
         bound = doc.getObject(prefix + "SweepBound")
-        bound.Notes = "Conservative moving bound for integral carrier and guard plus hollow sleeves/purchased M3 retention; journal interfaces intentionally enter the stationary frame. External module/rail clearance can be tested against this full bound."
+        bound.Notes = "Conservative moving bound for integral carrier and guard plus hollow sleeves/purchased M2 retention; journal interfaces intentionally enter the stationary frame. External module/rail clearance can be tested against this full bound."
         bound.LateralHalfWidth = CARRIER_OUTER_Y
         bound.JournalHeadHalfSpan = 35
     group = module
-    group.Notes = "One detachable two-propulsor module. Seven printed parts; common M3 purchased bolts/nuts/washers retain hollow torque sleeves. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
+    group.Notes = "One detachable two-propulsor module. Seven printed parts; common M2 purchased bolts/nuts/washers retain hollow torque sleeves. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
     group.SupportPlaneZ = BASE_Z
     group.RailCenters = (
-        "One continuous T rail atY0; commonM3 captive-nut friction clamp"
+        "One continuous T rail atY0; commonM2 captive-nut friction clamp"
     )
     # Stable part numbering and registry order are independent of build order.
     printed = [
@@ -593,16 +611,16 @@ def build_propulsion_module(doc, parent=None):
             "printed_journal_pins": 0,
             "printed_hollow_unthreaded_sleeves": 4,
             "purchased_journal_quantities": {
-                "M3x16_socket_cap": 4,
-                "M3_hex_nut": 4,
-                "M3_flat_washer_3.2x7x0.5": 8,
+                f"M2x{JOURNAL_SCREW_LENGTH:g}_socket_cap": 4,
+                "M2_hex_nut": 4,
+                f"M2_flat_washer_{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}": 8,
             },
         }
     )
     metrics["carrier_interface"] = {
         "shoe": "Exact gondola.parts.rail.shoe_shape; integrated",
         "feet_bottom_z_mm": BASE_Z,
-        "retention": "M3x8 DIN913/ISO4026 screw in captured M3 nut, supplied by root builder",
+        "retention": f"M2x{rail.SCREW_LENGTH:g} DIN913/ISO4026 screw in captured M2 nut, supplied by root builder",
         "hex_driver_access": "From either+Y or-Y, alongX0/Z6.2; symmetric6.4mm-wide service corridors outside shoe",
         "nut_loading_access": "Use the selected side of the symmetric common shoe; preserve nut-pocket loading corridor",
         "printed_rail_key": False,
@@ -610,18 +628,19 @@ def build_propulsion_module(doc, parent=None):
         "selectable_clamp_ports": 2,
     }
     metrics["journal"] = {
-        "sleeve_od_mm": 8,
-        "sleeve_bore_mm": 4,
-        "sleeve_D_flat_z_mm": 3.0,
-        "minimum_sleeve_wall_mm": 1.0,
-        "cheek_and_carrier_bore_mm": 8.9,
-        "carrier_D_flat_z_mm": 3.45,
+        "sleeve_od_mm": 2 * SLEEVE_RADIUS,
+        "sleeve_bore_mm": 2 * SLEEVE_BORE_RADIUS,
+        "sleeve_D_flat_z_mm": SLEEVE_D_FLAT,
+        "minimum_sleeve_wall_mm": SLEEVE_D_FLAT - SLEEVE_BORE_RADIUS,
+        "cheek_and_carrier_bore_mm": 2 * JOURNAL_RADIUS,
+        "carrier_D_flat_z_mm": CARRIER_D_FLAT,
         "nominal_radial_and_flat_clearance_mm": 0.45,
         "nominal_total_carrier_width_clearance_mm": 0.9,
         "worst_case_width_clearance_two_0_3mm_size_errors_mm": 0.3,
-        "retention": "M3x16 bolt, two3.2x7x0.5 washers and M3nut per sleeve; sleeve ends carry clamp load, cheeks remain free",
-        "thread_engagement_mm": 2.4,
-        "bolt_tip_projection_beyond_nut_mm": 3.2,
+        "retention": f"M2x{JOURNAL_SCREW_LENGTH:g} bolt, two {metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g} washers and M2 nut per sleeve; sleeve ends carry clamp load, cheeks remain free",
+        "thread_engagement_mm": metric.NUT_HEIGHT,
+        "bolt_tip_projection_beyond_nut_mm": JOURNAL_NUT_Y
+        - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH),
         "torque_path": "Unfinished OEM horn coupling -> keyed hollow sleeve -> D bore carrier. Metric retention bolt alone is not the drive coupling.",
         "fit_limit": "Nominal geometry only; local printed fit, accumulated position error and axial endplay require measured assembly/finishing.",
     }
@@ -643,7 +662,7 @@ def build_propulsion_module(doc, parent=None):
     )
     metrics["journal_assembly_order"] = [
         "Leave servos off the cradle while fitting the rotating carriers.",
-        "Insert hollow D sleeves from outside, fit washers andM3x16 bolts/nuts without pinching stationary cheeks.",
+        f"Insert hollow D sleeves from outside, fit washers and M2x{JOURNAL_SCREW_LENGTH:g} bolts/nuts without pinching stationary cheeks.",
         "Fit vendor motor fasteners, then servos and measured horn coupling.",
         "For driven-side journal service, remove servo first; withdraw sleeve8mm, lift2mm, then move away.",
     ]
@@ -677,7 +696,7 @@ def build_propulsion_module(doc, parent=None):
         "source": BEARING_SOURCE,
         "inner_race_abutment_maximum_diameter_mm": 4.9,
         "why_not_installed": [
-            "StandardM3 washerOD7 would bridge the small bearing races.",
+            "A 3 mm bearing bore does not locate the selected M2 retention bolt; a new spindle interface would be required.",
             "Bearing housing fit, inner-race spacers and axial housing retention would add interfaces.",
             "DS-M005 actual28T horn spline dimensions and horn fastener remain unpublished; bearing substitution cannot solve that drive interface.",
             "Replacing only idle sleeves would add a second axle specification and handed carrier parts instead of one repeated sleeve SKU.",
@@ -687,7 +706,9 @@ def build_propulsion_module(doc, parent=None):
     metrics["process_design_reference"] = {
         "source": CREALLO_SOURCE,
         "process": "PA12 SLS/MJF",
-        "minimum_feature_wall_mm": 1.0,
+        "minimum_feature_wall_mm": 1.5,
+        "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
+        "cradle_service_roof_mm": CRADLE_WINDOW_BOTTOM_Z - SERVICE_CEILING_Z,
         "long_frame_base_thickness_mm": FOOT_THICKNESS,
         "supplier_review_required": "The3mm foot/base follows the200mm-and-longer thin-part guidance; narrow journal/cage walls are local features, not a load qualification.",
     }

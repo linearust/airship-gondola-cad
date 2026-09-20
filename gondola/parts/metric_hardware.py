@@ -1,4 +1,4 @@
-"""Purchased M3 stack hardware, modeled as simple dimensional envelopes.
+"""Purchased M2 stack hardware, modeled as simple dimensional envelopes.
 
 No modeled helical threads, no custom printed fasteners. The exact procurement
 item remains unselected; the cited manufacturers substantiate the purchasing
@@ -16,37 +16,55 @@ import Part
 from gondola.cad import set_property as _set_property
 from gondola.cad import translated_shape
 
+from .fastener_spec import BODY_LENGTH as BODY_LENGTH
+from .fastener_spec import FEMALE_DEPTH as FEMALE_DEPTH
+from .fastener_spec import FEMALE_DEPTH_PURCHASE_MIN as FEMALE_DEPTH_PURCHASE_MIN
+from .fastener_spec import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
+from .fastener_spec import NUT_AF as NUT_AF
+from .fastener_spec import NUT_HEIGHT as NUT_HEIGHT
+from .fastener_spec import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
+from .fastener_spec import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
+from .fastener_spec import SCREW_LENGTH as SCREW_LENGTH
+from .fastener_spec import SET_SCREW_KEY as SET_SCREW_KEY
+from .fastener_spec import SET_SCREW_LENGTH as SET_SCREW_LENGTH
+from .fastener_spec import SOCKET_DEPTH as SOCKET_DEPTH
+from .fastener_spec import SOCKET_KEY as SOCKET_KEY
+from .fastener_spec import SQUARE_NUT_AF as SQUARE_NUT_AF
+from .fastener_spec import SQUARE_NUT_HEIGHT as SQUARE_NUT_HEIGHT
+from .fastener_spec import SQUARE_NUT_MIN_AF as SQUARE_NUT_MIN_AF
+from .fastener_spec import SQUARE_NUT_MIN_HEIGHT as SQUARE_NUT_MIN_HEIGHT
+from .fastener_spec import STANDOFF_AF as STANDOFF_AF
+from .fastener_spec import STUD_LENGTH as STUD_LENGTH
+from .fastener_spec import THREAD_DIAMETER as THREAD_DIAMETER
+from .fastener_spec import THREAD_PITCH as THREAD_PITCH
+from .fastener_spec import WASHER_ID as WASHER_ID
+from .fastener_spec import WASHER_OD as WASHER_OD
+from .fastener_spec import WASHER_THICKNESS as WASHER_THICKNESS
 from .universal_board import BOARD_THICKNESS, STACK_CENTRES
 
 set_property = partial(_set_property, group="Purchased hardware")
 
 V = App.Vector
-THREAD_DIAMETER = 3.0
-THREAD_PITCH = 0.5
-BODY_LENGTH = 30.0
-STUD_LENGTH = 6.0
-STANDOFF_AF = 6.0
-FEMALE_DEPTH = 7.0
-SCREW_LENGTH = 6.0
-SCREW_HEAD_DIAMETER = 5.5
-SCREW_HEAD_HEIGHT = 3.0
-NUT_AF = 5.5
-NUT_HEIGHT = 2.4
-WASHER_ID = 3.2
-WASHER_OD = 7.0
-WASHER_THICKNESS = 0.5
 PURCHASED_COLOR = (0.86, 0.67, 0.27)
-STANDOFF_SOURCE = "https://www.vital-parts.co.uk/threaded-hex-standoffs-male-female/11442-hmf-m3-30-s6-alu"
+STANDOFF_SOURCE = (
+    "https://everhardwarestore.com/wp-content/uploads/2018/03/Nylon-Standoff-1.pdf"
+)
 WASHER_SOURCE = (
-    "https://www.pgb-europe.com/en-gb/9763/flat-washer-din-125a-m-3-a2-320-7-05"
+    "https://www.orbitalfasteners.co.uk/products/"
+    "m2-form-a-flat-washer-stainless-steel-a2-304-din-125-2-2x5-0x0-3mm-"
 )
-SCREW_SOURCE = "https://www.accu.co.uk/metric-cap-head-screws/152193-SSCF-M3-6-A2-BL"
-NUT_SOURCE = (
-    "https://www.owlett-jaton.com/media/wysiwyg/PDFs/Owlett-Jaton_The_Catalogue_1.pdf"
+SCREW_SOURCE = "https://www.accu.co.uk/metric-cap-head-screws/3792-SSCF-M2-6-A2"
+JOURNAL_SCREW_SOURCE = (
+    "https://www.accu.co.uk/metric-cap-head-screws/3796-SSCF-M2-14-A2"
 )
-THREAD_SOURCE = "https://www.bossard.com/-/media/bossard-group/website/documents/technical-resources/en/f-079-en.pdf"
+NUT_SOURCE = "https://www.accu.co.uk/hexagon-nuts/7884-HPN-M2-A2"
+SQUARE_NUT_SOURCE = "https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2"
+SQUARE_NUT_PTS_SOURCE = (
+    "https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202"
+)
+THREAD_SOURCE = SCREW_SOURCE
 NYLON_STANDOFF_CANDIDATE = (
-    "https://www.rctimer.com/10pcs-m3x306mm-nylon-hex-standoff-male-female-p0683.html"
+    "https://everhardwarestore.com/product/m2-0-4-nylon-standoff-hex-m-f-spacers"
 )
 PURCHASING_STATUS = (
     "Specification only; no AliExpress SKU, supplier lot or actual purchased sample "
@@ -58,61 +76,82 @@ PURCHASING_STATUS = (
 # Keep these requirements with the native bought-part objects so a generated BOM
 # contains the purchase conditions without relying on a separate guide.
 PROCUREMENT_SPECS = {
-    "M3_MF_30_PLUS_6": {
-        "search_query": "M3 30+6 PA66 nylon male female standoff",
+    "M2_MF_30_PLUS_5": {
+        "search_query": "M2 30+5 PA66 nylon male female standoff 4mm hex",
         "requirements": (
-            "PA66 nylon, M3 x 0.5 right-hand male/female hex standoff. "
-            "Shoulder-to-shoulder body length 30 mm plus 6 mm male stud; not "
-            "30 mm overall. Across flats at most 6 mm; usable female thread "
-            "depth at least 6 mm. Confirm all dimensions and material with seller."
+            "PA66 nylon, M2 x 0.4 right-hand male/female hex standoff. "
+            "Shoulder-to-shoulder body length 30 mm plus 5 mm male stud; not "
+            "30 mm overall. Nominal across flats 4 mm; usable female thread "
+            "depth at least 4 mm (CAD nominal depth 5 mm). Confirm all dimensions "
+            "and material with seller."
         ),
         "candidate_url": NYLON_STANDOFF_CANDIDATE,
         "evidence_notes": (
-            "Rctimer documents a nylon M3 30+6 product family; PA66 grade, across "
-            "flats and female thread depth remain unverified. SourceURL is an "
-            "aluminium dimensional example, not evidence of PA66 material or "
-            "a selected procurement item."
+            "Ever Hardware's drawing lists M2*30+5, PA66, L30, male D5, "
+            "female E5 and across-flats B4. The linked product page quotes "
+            "1000-piece quantities. A small-quantity seller, usable thread "
+            "depth, tolerances and actual sample remain unverified."
         ),
     },
-    "M3X6_SOCKET_CAP": {
-        "search_query": "M3x6 DIN912 A2 socket cap screw",
+    "M2X6_SOCKET_CAP": {
+        "search_query": "M2x6 DIN912 A2 socket cap screw",
         "requirements": (
-            "A2 stainless steel, M3 x 0.5 right-hand, 6 mm under-head length. "
-            "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 5.5 mm, "
-            "head height 3 mm and 2.5 mm hex key."
+            "A2 stainless steel, M2 x 0.4 right-hand, 6 mm under-head length. "
+            "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 3.8 mm, "
+            "head height 2 mm and 1.5 mm hex key."
         ),
     },
-    "M3X16_SOCKET_CAP": {
-        "search_query": "M3x16 DIN912 A2 socket cap screw",
+    "M2X14_SOCKET_CAP": {
+        "search_query": "M2x14 DIN912 A2 socket cap screw",
         "requirements": (
-            "A2 stainless steel, M3 x 0.5 right-hand, 16 mm under-head length. "
-            "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 5.5 mm, "
-            "head height 3 mm and 2.5 mm hex key. Retains the printed sleeve; "
+            "A2 stainless steel, M2 x 0.4 right-hand, 14 mm under-head length. "
+            "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 3.8 mm, "
+            "head height 2 mm and 1.5 mm hex key. Retains the printed sleeve; "
             "it is not a substitute for an unspecified OEM motor or horn screw."
         ),
     },
-    "M3x8_ISO4026_DIN913": {
-        "search_query": "M3x8 DIN913 flat point stainless set screw",
+    "M2x6_ISO4026_DIN913": {
+        "search_query": "M2x6 DIN913 flat point stainless set screw",
         "requirements": (
-            "A2 stainless steel, M3 x 0.5 right-hand, 8 mm overall length. "
-            "DIN 913 / ISO 4026 flat-point set screw with 1.5 mm hex key. "
+            "A2 stainless steel, M2 x 0.4 right-hand, 6 mm overall length. "
+            "DIN 913 / ISO 4026 flat-point set screw with 0.9 mm hex key. "
             "Do not substitute a cup point or cone point. One screw/nut pair "
             "per bottom module; the unused opposite clamp port stays empty."
         ),
     },
-    "M3_HEX_NUT": {
-        "search_query": "M3 DIN934 A2 hex nut 5.5 2.4",
+    "M2_HEX_NUT": {
+        "search_query": "M2 DIN934 A2 hex nut 4 1.6",
         "requirements": (
-            "A2 stainless steel, regular M3 x 0.5 right-hand hex nut; nominal "
-            "across flats 5.5 mm and height 2.4 mm. Same specification for "
-            "stack, rail clamps and journal retention."
+            "A2 stainless steel, DIN 934 M2 x 0.4 right-hand hex nut; nominal "
+            "across flats 4 mm and height 1.6 mm. Eight nuts for stack and "
+            "journal retention; rail clamps require separate DIN 562 square nuts. Confirm these dimensions "
+            "rather than substituting on an ISO 4032 label alone."
         ),
     },
-    "M3_WASHER_3.2_7_0.5": {
-        "search_query": "M3 stainless washer 3.2 7 0.5",
+    "M2_SQUARE_NUT_DIN562": {
+        "search_query": "M2 DIN562 A2 flat square nut 4 1.2",
         "requirements": (
-            "A2 stainless steel flat washer, unthreaded; nominal bore 3.2 mm, "
-            "outside diameter 7 mm and thickness 0.5 mm. Same specification "
+            "A2 stainless steel, DIN 562 M2 x 0.4 right-hand flat square nut. "
+            "Nominal width 4 mm and height 1.2 mm; accepted width 3.6-4.0 mm "
+            "and height 0.8-1.2 mm. Three rail clamps only. Preserve square "
+            "corners for anti-rotation; verify actual corner form and captive "
+            "fit with the printed coupon. Do not substitute a hex nut."
+        ),
+        "candidate_url": SQUARE_NUT_SOURCE,
+        "evidence_notes": (
+            "Accu HFSN-M2-A2 lists width 4 +0/-0.4 mm (minimum 3.6 mm) "
+            "and height 1.2 +0/-0.4 mm. PTS A56202 lists width 4.0-3.7 mm "
+            "and height 1.2-0.8 mm: " + SQUARE_NUT_PTS_SOURCE + ". "
+            "The tolerance check uses the broader Accu minimum width 3.6 mm. "
+            "The dimensional examples do not verify the selected seller lot, "
+            "corner form, thread strength or printed pocket retention."
+        ),
+    },
+    "M2_WASHER_2.2_5_0.3": {
+        "search_query": "M2 stainless washer 2.2 5 0.3",
+        "requirements": (
+            "A2 stainless steel flat washer, unthreaded; nominal bore 2.2 mm, "
+            "outside diameter 5 mm and thickness 0.3 mm. Same specification "
             "for stack and journal retention."
         ),
     },
@@ -191,7 +230,7 @@ def screw_shape(length=SCREW_LENGTH):
         SCREW_HEAD_DIAMETER / 2, SCREW_HEAD_HEIGHT, V(0, 0, -SCREW_HEAD_HEIGHT)
     )
     shank = Part.makeCylinder(THREAD_DIAMETER / 2, length)
-    drive = hex_prism(2.5, 1.4, -3.1)
+    drive = hex_prism(SOCKET_KEY, SOCKET_DEPTH + 0.1, -SCREW_HEAD_HEIGHT - 0.1)
     return head.fuse(shank).cut(drive).removeSplitter()
 
 
@@ -240,7 +279,7 @@ def add_hardware(
     set_property(
         obj,
         "ThreadStandard",
-        "ISO metric coarse M3 x 0.5; right-hand. Washer is unthreaded.",
+        "ISO metric coarse M2 x 0.4; right-hand. Washer is unthreaded.",
     )
     set_property(obj, "NominalThreadDiameter", THREAD_DIAMETER, "App::PropertyLength")
     set_property(obj, "ThreadPitch", THREAD_PITCH, "App::PropertyLength")
@@ -273,26 +312,26 @@ def add_hardware(
 
 def stack_contract(levels=1):
     return {
-        "thread": "M3 x 0.5 ISO metric coarse, right-hand",
+        "thread": "M2 x 0.4 ISO metric coarse, right-hand",
         "standoff": {
             "body_length_mm": BODY_LENGTH,
             "male_stud_length_mm": STUD_LENGTH,
             "across_flats_envelope_mm": STANDOFF_AF,
             "female_thread_depth_mm": FEMALE_DEPTH,
-            "female_depth_purchase_requirement_mm": 6.0,
+            "female_depth_purchase_requirement_mm": FEMALE_DEPTH_PURCHASE_MIN,
             "material": "Nylon PA66 selected for mass; verify supplier drawing matches this envelope",
             "source": STANDOFF_SOURCE,
-            "procurement": procurement_spec("M3_MF_30_PLUS_6"),
+            "procurement": procurement_spec("M2_MF_30_PLUS_5"),
         },
         "base_screw": {
-            "size": "M3 x 6 socket cap screw",
+            "size": "M2 x 6 socket cap screw",
             "head_diameter_mm": SCREW_HEAD_DIAMETER,
             "head_height_mm": SCREW_HEAD_HEIGHT,
-            "hex_key_mm": 2.5,
+            "hex_key_mm": SOCKET_KEY,
             "source": SCREW_SOURCE,
         },
         "top_nut": {
-            "size": "M3 standard hex nut",
+            "size": "M2 DIN 934 hex nut",
             "across_flats_mm": NUT_AF,
             "height_mm": NUT_HEIGHT,
             "source": NUT_SOURCE,
@@ -319,17 +358,17 @@ def stack_contract(levels=1):
         - WASHER_THICKNESS
         - NUT_HEIGHT,
         "washer_arrangement": "Washers only under bottom screw heads and top nuts. Standoff shoulders seat directly on board pads.",
-        "material_commonality": "PA66 M/F posts; stainless steel nuts, washers and screws. One common M3 nut and washer specification across rail, stack and propulsion reduces distinct procurement items.",
-        "purchasing_sku_count_for_base_assembly": 6,
+        "material_commonality": "PA66 M/F posts; stainless steel nuts, washers and screws. Stack and propulsion share one M2 hex-nut and washer specification. The three rail clamps use separate DIN 562 square nuts for captive anti-rotation.",
+        "purchasing_sku_count_for_base_assembly": len(PROCUREMENT_SPECS),
         "choice_rationale": "M/F posts retain the same four clearance holes and allow another level with four new posts; F/F alternatives need different connecting hardware for expansion.",
         "assembly_order": "Fit base screws and washers to the lower board off the rail, then add posts; remove the complete module from the rail before accessing bottom screws.",
         "choice_of_rail_screw_direction": "Independent of stack fasteners; the symmetric shoe provides two opposed clamp ports.",
         "adding_level": "Move the existing top washers and nuts to the new top board. Screw four new M/F standoffs directly onto the preceding studs through the intermediate board. This preserves the32mm pitch.",
         "purchase_quantities": {
-            "M3_MF_30_plus_6_standoff": 4 * levels,
-            "M3x6_screw": 4,
-            "M3_hex_nut": 4,
-            "M3_flat_washer_3.2x7x0.5": 8,
+            "M2_MF_30_plus_5_standoff": 4 * levels,
+            "M2x6_screw": 4,
+            "M2_hex_nut": 4,
+            "M2_flat_washer_2.2x5x0.3": 8,
         },
         "thread_standard_source": THREAD_SOURCE,
         "limits": "Dimensional envelope and nominal engagement only; supplier dimensions, thread strength, fastening torque and assembled fit remain to be checked.",
@@ -351,11 +390,11 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
                 doc,
                 parent,
                 prefix + "Post" + str(level + 1) + "_" + str(index),
-                "BUY | M3 male/female hex standoff30+6mm",
+                "BUY | M2 male/female hex standoff 30+5 mm",
                 standoff_shape(),
-                "M3_MF_30_PLUS_6",
-                "30mm shoulder-to-shoulder body,6mm male stud, nominal6mm A/F envelope and7mm female depth. "
-                "Purchase PA66 nylon M3x0.5, female thread depth at least6mm. Check the chosen supplier drawing. "
+                "M2_MF_30_PLUS_5",
+                "30 mm shoulder-to-shoulder body, 5 mm male stud, nominal 4 mm A/F and 5 mm female depth. "
+                "Purchase PA66 nylon M2x0.4, usable female thread depth at least 4 mm. Check the chosen supplier drawing and sample. "
                 "No washer under the female end; it bears directly on the board pad.",
                 STANDOFF_SOURCE,
             )
@@ -371,9 +410,9 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
             doc,
             parent,
             prefix + "BottomWasher" + str(index),
-            "BUY | M3 flat washer3.2×7×0.5",
+            "BUY | M2 flat washer 2.2×5×0.3 mm",
             washer_shape(),
-            "M3_WASHER_3.2_7_0.5",
+            "M2_WASHER_2.2_5_0.3",
             "Distributes screw-head pressure on the lower printed corner pad.",
             WASHER_SOURCE,
             "A2 stainless steel",
@@ -384,10 +423,10 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
             doc,
             parent,
             prefix + "BaseScrew" + str(index),
-            "BUY | M3×6 socket cap screw",
+            "BUY | M2×6 socket cap screw",
             screw_shape(),
-            "M3X6_SOCKET_CAP",
-            "M3x0.5 thread,6mm length measured from the bearing face. Through2mm board and0.5mm washer, nominal female engagement is3.5mm. "
+            "M2X6_SOCKET_CAP",
+            "M2x0.4 thread, 6 mm length measured from the bearing face. Through 2 mm board and 0.3 mm washer, nominal female engagement is 3.7 mm. "
             "Source documents common head dimensions; the final supplier lot is unselected.",
             SCREW_SOURCE,
             "A2 stainless steel",
@@ -398,9 +437,9 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
             doc,
             parent,
             prefix + "TopWasher" + str(index),
-            "BUY | M3 flat washer3.2×7×0.5",
+            "BUY | M2 flat washer 2.2×5×0.3 mm",
             washer_shape(),
-            "M3_WASHER_3.2_7_0.5",
+            "M2_WASHER_2.2_5_0.3",
             "Install between the final top board and nut. Move this washer and nut to the new top when adding a stack level.",
             WASHER_SOURCE,
             "A2 stainless steel",
@@ -411,10 +450,10 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
             doc,
             parent,
             prefix + "TopNut" + str(index),
-            "BUY | M3 standard hex nut",
+            "BUY | M2 DIN 934 hex nut",
             nut_shape(),
-            "M3_HEX_NUT",
-            "M3x0.5, nominal5.5mm A/F and2.4mm height. With2mm board and0.5mm washer on a6mm stud, full nut engagement leaves1.1mm stud projection. "
+            "M2_HEX_NUT",
+            "M2x0.4, nominal 4 mm A/F and 1.6 mm height. With 2 mm board and 0.3 mm washer on a 5 mm stud, full nut engagement leaves 1.1 mm stud projection. "
             "Purchase a matching standard metric nut; simplified CAD bore does not model thread strength.",
             NUT_SOURCE,
             "A2 stainless steel",
@@ -434,12 +473,16 @@ def build_stack(doc, parent, prefix="MetricStack", lower_board_bottom_z=10.2, le
 
 
 def validate_stack_envelopes():
-    post = translated_shape(standoff_shape(), z=10)
-    bolt = translated_shape(screw_shape(), z=7.5)
-    upper = translated_shape(nut_shape(), z=42.5)
-    bottom_washer = translated_shape(washer_shape(), z=7.5)
-    top_washer = translated_shape(washer_shape(), z=42)
-    following = translated_shape(standoff_shape(), z=42)
+    lower_board_bottom = 8.0
+    post_bottom = lower_board_bottom + BOARD_THICKNESS
+    upper_board_top = post_bottom + BODY_LENGTH + BOARD_THICKNESS
+    base_bearing_face = lower_board_bottom - WASHER_THICKNESS
+    post = translated_shape(standoff_shape(), z=post_bottom)
+    bolt = translated_shape(screw_shape(), z=base_bearing_face)
+    upper = translated_shape(nut_shape(), z=upper_board_top + WASHER_THICKNESS)
+    bottom_washer = translated_shape(washer_shape(), z=base_bearing_face)
+    top_washer = translated_shape(washer_shape(), z=upper_board_top)
+    following = translated_shape(standoff_shape(), z=upper_board_top)
     shapes = {
         "post": post,
         "screw": bolt,
@@ -462,9 +505,9 @@ def validate_stack_envelopes():
         "unintended_envelope_intersections": collisions,
         "next_level_standoff_envelope_intersection_mm3": next_overlap,
         "nominal_engagement_mm": {
-            "base_screw": 3.5,
-            "next_standoff": 4.0,
-            "top_nut": 2.4,
+            "base_screw": SCREW_LENGTH - BOARD_THICKNESS - WASHER_THICKNESS,
+            "next_standoff": STUD_LENGTH - BOARD_THICKNESS,
+            "top_nut": NUT_HEIGHT,
         },
         "thread_retention_is_simulated": False,
         "passed": not collisions

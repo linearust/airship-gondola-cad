@@ -49,7 +49,7 @@ def build_argument_parser():
         ),
         (
             "compare",
-            "Compare saved shapes and controls against Rev I with the approved 340 mm rail change.",
+            "Compare saved shapes and controls against the reviewed frozen design fixture.",
         ),
     ):
         child = commands.add_parser(name, help=help_text)

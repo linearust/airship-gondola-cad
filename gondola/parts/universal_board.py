@@ -1,7 +1,7 @@
 """One interchangeable open-grid board, with purchased metric stacking.
 
 The battery, flight-controller and upper equipment levels use the same solid.
-Only the common rail clamp and four M3 clearance holes are built into the part;
+Only the common rail clamp and four M2 clearance holes are built into the part;
 there are no device-specific posts, custom printed threads or battery features.
 """
 
@@ -16,10 +16,10 @@ from gondola.cad import set_property
 
 V = App.Vector
 BOARD_X, BOARD_Y, BOARD_THICKNESS, BOARD_BOTTOM = 64.0, 76.0, 2.0, 10.2
-RIB, RIM, COLUMNS, ROWS = 1.6, 2.4, 5, 6
+RIB, RIM, COLUMNS, ROWS = 1.8, 2.4, 3, 4
 STACK_CENTRES = ((-26.0, -32.0), (-26.0, 32.0), (26.0, -32.0), (26.0, 32.0))
-STACK_HOLE_DIAMETER, STACK_PAD_DIAMETER = 4.2, 8.0
-CENTRE_PATCH_X, CENTRE_PATCH_Y = 18.0, 24.0
+STACK_HOLE_DIAMETER, STACK_PAD_DIAMETER = 3.2, 6.5
+CENTRE_PATCH_X, CENTRE_PATCH_Y = 18.0, 22.0
 PRINT_ROTATION = App.Rotation(V(1, 0, 0), 180)
 CREALLO_SOURCE = "https://creallo.com/en/guide/design-spec-guide"
 
@@ -63,6 +63,29 @@ def board_shape(include_shoe=True):
         )
         for x, y in STACK_CENTRES
     ]
+    # Smaller M2 bearing pads need explicit load paths to the perimeter;
+    # relying on accidental contact with a dense grid leaves isolated islands.
+    for x, y in STACK_CENTRES:
+        additions.extend(
+            [
+                box(
+                    BOARD_X / 2 - abs(x),
+                    3.2,
+                    BOARD_THICKNESS,
+                    x if x > 0 else -BOARD_X / 2,
+                    y - 1.6,
+                    BOARD_BOTTOM,
+                ),
+                box(
+                    3.2,
+                    BOARD_Y / 2 - abs(y),
+                    BOARD_THICKNESS,
+                    x - 1.6,
+                    y if y > 0 else -BOARD_Y / 2,
+                    BOARD_BOTTOM,
+                ),
+            ]
+        )
     if include_shoe:
         from gondola.parts import rail
 
@@ -94,7 +117,11 @@ def board_contract():
             (BOARD_X - 2 * RIM - (COLUMNS - 1) * RIB) / COLUMNS,
             (BOARD_Y - 2 * RIM - (ROWS - 1) * RIB) / ROWS,
         ],
-        "integral_shoe_outer_bound_mm": {"x": [-9, 9], "y": [-12, 12], "z": [2, 10.2]},
+        "integral_shoe_outer_bound_mm": {
+            "x": [-9, 9],
+            "y": [-11, 11],
+            "z": [2.2, 10.2],
+        },
         "central_structural_patch_mm": [
             CENTRE_PATCH_X,
             CENTRE_PATCH_Y,
@@ -103,10 +130,10 @@ def board_contract():
         "stack_hole_centres_xy_mm": STACK_CENTRES,
         "stack_hole_diameter_mm": STACK_HOLE_DIAMETER,
         "stack_bearing_pad_diameter_mm": STACK_PAD_DIAMETER,
-        "purchased_stack_thread": "M3 x0.5",
+        "purchased_stack_thread": "M2 x0.4",
         "standoff_body_mm": 30,
         "board_pitch_mm": 32,
-        "free_height_below_next_shoe_mm": 30 - (BOARD_BOTTOM - 2),
+        "free_height_below_next_shoe_mm": 30 - (BOARD_BOTTOM - 2.2),
         "process": "PA12 SLS or MJF",
         "process_design_reference": {
             "source": CREALLO_SOURCE,
@@ -115,11 +142,11 @@ def board_contract():
             "minimum_supported_wall_mm": 0.8,
             "minimum_mating_clearance_mm": 0.3,
         },
-        "nominal_diametral_M3_clearance_mm": STACK_HOLE_DIAMETER - 3,
+        "nominal_diametral_M2_clearance_mm": STACK_HOLE_DIAMETER - 2,
         "minimum_diametral_clearance_if_hole_is_0p3mm_undersize_mm": STACK_HOLE_DIAMETER
         - 0.3
-        - 3,
-        "tolerance_note": "Ø4.2mm is an unthreaded clearance hole with extra allowance for multi-post alignment. The published tolerance is dimensional, not a GD&T true-position guarantee; verify actual hole positions and purchased fasteners.",
+        - 2,
+        "tolerance_note": "Ø3.2mm is an unthreaded clearance hole with extra allowance for multi-post alignment. The published tolerance is dimensional, not a GD&T true-position guarantee; verify actual hole positions and purchased fasteners.",
         "features_omitted": [
             "device-specific FC/P-AS posts",
             "printed stack threads",
@@ -133,7 +160,7 @@ def board_contract():
             "reference_length_mm": 100,
             "reference_wall_mm": 1.5,
             "deck_thickness_mm": 2,
-            "rib_width_mm": 1.6,
+            "rib_width_mm": RIB,
             "interpretation": "76mm board is assessed against the100mm entry, not the200mm-and-longer3mm entry; no strength qualification is implied.",
         },
         "scope": "Static geometric specification; no strength, adhesive, thread-torque or physical fit test is implied.",
@@ -143,14 +170,14 @@ def board_contract():
 def build_board(doc, parent, name="UniversalBoardI"):
     shape = board_shape().copy()
     obj = doc.addObject("Part::Feature", name)
-    obj.Label = "PRINT | universal64×76 lattice board | M3 stack + rail clamp"
+    obj.Label = "PRINT | universal64×76 lattice board | M2 stack + rail clamp"
     obj.Shape = shape
     if parent is not None:
         parent.addObject(obj)
     set_property(obj, "Role", "Printed universal mounting board")
     set_property(obj, "PrintPart", True, "App::PropertyBool")
     set_property(obj, "PrintSKU", "UniversalBoardI")
-    set_property(obj, "StandardPartCode", "UNIVERSAL-64x76-M3-I")
+    set_property(obj, "StandardPartCode", "UNIVERSAL-64x76-M2-K")
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
     set_property(
         obj, "PrintRotation", PRINT_ROTATION, "App::PropertyRotation", "Printing"
@@ -170,9 +197,9 @@ def build_board(doc, parent, name="UniversalBoardI"):
     set_property(
         obj,
         "PrintNotes",
-        "PA12 SLS or MJF part.1.6mm ribs,2mm board thickness and open cells; manufacturer packs/orients the job. "
+        "PA12 SLS or MJF part.1.8mm ribs,2mm board thickness and open cells; manufacturer packs/orients the job. "
         "Supplied orientation is for inspection/export and is not a claim of FDM support-free printing. "
-        "M3 clearance holes are Ø4.2mm. Powder must be removed from the open clamp/nut pocket before assembly. "
+        "M2 clearance holes are Ø3.2mm. Powder must be removed from the open clamp/nut pocket before assembly. "
         "Buy the metric hardware separately; do not print reference hardware.",
         group="Printing",
     )
@@ -201,13 +228,13 @@ def build_board(doc, parent, name="UniversalBoardI"):
     set_property(
         obj,
         "RetainedHolePurpose",
-        "Four standard M3 stack positions on52×64mm pattern; no FC-specific hole pattern or custom printed threads",
+        "Four standard M2 stack positions on52×64mm pattern; no FC-specific hole pattern or custom printed threads",
     )
     set_property(
         obj,
         "Notes",
         "Integral common rail shoe replaces separate carriage. Mount equipment on the existing flat grid; no battery or adhesive-specific features. "
-        "Use purchased M3×0.5 hardware for30mm clear board gap /32mm repeatable pitch. Source code regenerates dimensional variants.",
+        "Use purchased M2×0.4 hardware for30mm clear board gap /32mm repeatable pitch. Source code regenerates dimensional variants.",
     )
     set_property(obj, "SourceURL", CREALLO_SOURCE)
     if App.GuiUp:
@@ -222,11 +249,11 @@ def validate_board(include_shoe=True):
     shape = board_shape(include_shoe)
     holes = []
     for x, y in STACK_CENTRES:
-        envelope = Part.makeCylinder(1.5, BOARD_THICKNESS, V(x, y, BOARD_BOTTOM))
+        envelope = Part.makeCylinder(1.0, BOARD_THICKNESS, V(x, y, BOARD_BOTTOM))
         holes.append(
             {
                 "centre_xy_mm": [x, y],
-                "M3_shaft_intersection_mm3": shape.common(envelope).Volume,
+                "M2_shaft_intersection_mm3": shape.common(envelope).Volume,
             }
         )
     rotated = shape.copy()
@@ -253,7 +280,7 @@ def validate_board(include_shoe=True):
         and mesh.isSolid()
         and mesh.countComponents() == 1
         and symmetry_difference < 1e-6
-        and all(h["M3_shaft_intersection_mm3"] < 1e-7 for h in holes),
+        and all(h["M2_shaft_intersection_mm3"] < 1e-7 for h in holes),
     }
 
 

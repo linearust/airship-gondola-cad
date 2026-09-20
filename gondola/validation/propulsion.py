@@ -19,7 +19,7 @@ from gondola.config import OUTPUT_DIR, STEM
 from gondola.manufacturing import geometry_comparison, mesh_checks, print_shape
 from gondola.parts import propulsion, rail
 
-from .geometry import intersection_volume
+from .geometry import intersection_volume, local_shape
 
 TOL = 1e-5
 
@@ -52,10 +52,10 @@ def validate(source=None):
         report = {
             "scope": "Current source local fit and service envelopes; not a measured OEM or structural qualification.",
             "rail_contact_overlap_mm3": intersection_volume(
-                translated_shape(frame, y=0.45), rail.rail_shape()
+                translated_shape(frame, y=rail.CLAMP_SHIFT_Y), rail.rail_shape()
             ),
             "negative_seated_rail_contact_overlap_mm3": intersection_volume(
-                translated_shape(frame, y=-0.45), rail.rail_shape()
+                translated_shape(frame, y=-rail.CLAMP_SHIFT_Y), rail.rail_shape()
             ),
             "clamp_screw_frame_overlap_mm3": intersection_volume(
                 frame, rail.set_screw_shape()
@@ -69,7 +69,12 @@ def validate(source=None):
             ),
         }
         # Both side approaches must clear the fixed frame below the equipment.
-        key = Part.makeCylinder(0.9, 110, App.Vector(0, 12.7, 6.2), App.Vector(0, 1, 0))
+        key = Part.makeCylinder(
+            0.9,
+            110,
+            App.Vector(0, rail.SHOE_WIDTH / 2 + 0.7, rail.CLAMP_Z),
+            App.Vector(0, 1, 0),
+        )
         report["clamp_driver_frame_overlap_mm3"] = intersection_volume(frame, key)
         report["negative_clamp_driver_frame_overlap_mm3"] = intersection_volume(
             frame, rail.half_turn(key)
@@ -150,6 +155,47 @@ def validate(source=None):
         report["minimum_sleeve_flat_wall_mm"] = (
             propulsion.SLEEVE_D_FLAT - propulsion.SLEEVE_BORE_RADIUS
         )
+        # Measure changed walls on actual solids, independently of declarations.
+        wall_probes = [
+            (
+                "sleeve_D_flat",
+                "PortJournalSleevePositive",
+                (0, 24, 1.49),
+                (0, 24, 3.01),
+            ),
+            ("guard_radial", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31)),
+        ]
+        for side in (-1, 1):
+            for y in (26.1, 41.3):
+                wall_probes.append(
+                    (
+                        f"cradle_service_roof_{side}_{y}",
+                        "PropulsionFixedFrame",
+                        (0, side * y, 7.99),
+                        (0, side * y, 9.51),
+                    )
+                )
+        wall_rows = []
+        for label, name, start, end in wall_probes:
+            section = local_shape(doc.getObject(name)).common(
+                Part.makeLine(App.Vector(*start), App.Vector(*end))
+            )
+            thickness = sum(edge.Length for edge in section.Edges)
+            wall_rows.append(
+                {
+                    "feature": label,
+                    "measured_wall_mm": thickness,
+                    "passed": thickness >= 1.5 - TOL,
+                }
+            )
+        report["functional_wall_probes"] = wall_rows
+        report["journal_hardware_frame_clearance"] = [
+            {
+                "part": obj.Name,
+                "overlap_frame_mm3": intersection_volume(world_shape(obj), frame),
+            }
+            for obj in module["hardware"]
+        ]
         report["geometry"] = []
         for obj in module["printed"]:
             shape = print_shape(obj)
@@ -188,7 +234,8 @@ def validate(source=None):
             and len(report["geometry"]) == 7
             and report["all_hardware_A2"]
             and report["no_rail_key_metadata"]
-            and report["minimum_sleeve_flat_wall_mm"] >= 1 - TOL
+            and report["minimum_sleeve_flat_wall_mm"] >= 1.5 - TOL
+            and all(row["passed"] for row in report["functional_wall_probes"])
             and all(
                 row["valid_brep"]
                 and row["solid_count"] == 1
