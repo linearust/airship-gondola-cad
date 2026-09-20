@@ -1,7 +1,8 @@
 # Agent operating contract
 
-This file is for AI agents working in this repository. Do not turn it into a
-human-facing project guide or duplicate generated dimensions/BOM tables here.
+This file is for AI agents working in this repository. The procurement checklist
+below summarizes the current design; keep it synchronized with the authoritative
+source definitions and generated BOM instead of treating it as a separate design.
 
 ## Authorities
 
@@ -22,6 +23,79 @@ human-facing project guide or duplicate generated dimensions/BOM tables here.
   the Notion edit timestamp record previous evidence, not live verification.
 - `tests/fixtures/rev_i_geometry.FCStd`: immutable pre-refactor reference for
   geometry and native controls. Never regenerate it merely to pass a check.
+
+## Procurement checklist
+
+Scope: one gondola's installed parts, excluding spares, printed parts, ground
+equipment, charger and balloon. Subtract items already owned or included in
+equipment accessory kits before proposing a purchase. These are required design
+specifications, not verified seller listings or physical-fit approvals.
+
+Mechanical quantities come from the validated `build/gondola_hardware_bom.json`;
+purchase conditions are defined in `gondola/parts/metric_hardware.py`.
+The current assembly uses six purchase types and 42 pieces:
+
+| CAD SKU | Required purchase specification | Installed quantity |
+|---|---|---:|
+| `M3_MF_30_PLUS_6` | PA66 nylon male/female hex standoff; M3; body 30 mm + male stud 6 mm; across flats at most 6 mm; usable female thread depth at least 6 mm | 4 |
+| `M3X6_SOCKET_CAP` | A2 stainless socket cap screw; M3 × 6 mm; DIN 912 / ISO 4762 | 4 |
+| `M3X16_SOCKET_CAP` | A2 stainless socket cap screw; M3 × 16 mm; DIN 912 / ISO 4762 | 4 |
+| `M3x8_ISO4026_DIN913` | A2 stainless flat-point socket set screw; M3 × 8 mm; DIN 913 / ISO 4026 | 3 |
+| `M3_HEX_NUT` | A2 stainless regular M3 hex nut; across flats 5.5 mm; height 2.4 mm | 11 |
+| `M3_WASHER_3.2_7_0.5` | A2 stainless flat washer; inside diameter 3.2 mm × outside diameter 7 mm × thickness 0.5 mm | 16 |
+
+All threaded interfaces above are M3 × 0.5, right-hand; washers are unthreaded.
+Socket cap screw lengths are measured under the head; the set screw is 8 mm
+overall. Retain the flat-point set screw requirement. The 42-piece total excludes
+OEM motor/servo fasteners. A separate fit-coupon assembly can borrow one clamp
+screw/nut pair; add one pair only if it must remain assembled independently.
+Each additional equipment-board level needs four more matching standoffs and
+reuses the top nuts/washers. The current journal design uses printed sleeves.
+
+Onboard equipment selection comes from `gondola/design_contract.py`:
+
+| Equipment | Selected model or specification | Installed quantity |
+|---|---|---:|
+| Flight controller with ESC | MicoAir743v2-AIO-35A | 1 |
+| Brushless motor | Happymodel RS1102, 10000KV | 2 |
+| Propeller | Gemfan 1610, 40 mm, two blades; one CW and one CCW; 1.5 mm shaft-hole variant for the RS1102 shaft | 2 |
+| Tilt servo | DSpower DS-M005, 300-degree version | 2 |
+| Battery | 2S LiPo, 450 mAh provisional selection; confirm actual dimensions and mass | 1 |
+| Telemetry module | LR900-A | 1 |
+| Positioning module | LinkTrack P-AS | 1 |
+
+The propeller interface is supported by the [RS1102 shaft specification](https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/)
+and [Gemfan 1610 shaft-hole options](https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html).
+The requested 450–2000 mAh battery range does not establish that larger packs fit.
+Ground telemetry counterparts and UWB anchors are outside this gondola inventory.
+
+Additional consumables and electrical accessories:
+
+- 12 mm-wide single-sided adhesive tape over each rail wing onto the balloon;
+  select adhesive compatibility and final length through the physical fit trial.
+- Adhesive hook-and-loop for the battery and electrically insulating mounting
+  pads/adhesive for the flight controller and sensor modules.
+- One XT30 pigtail and one 220 µF, 35 V capacitor, if absent from the FC kit.
+  The CAD reserves are provisional spaces; verify actual component dimensions.
+- Flexible wiring, compatible connectors, heat-shrink tubing and strain relief;
+  wire gauge, lengths and routing remain to be selected for the electrical assembly.
+- Tools if not already owned: 1.5 mm and 2.5 mm hex keys, a 5.5 mm nut wrench,
+  and a wrench matching the selected standoff's hex flats.
+
+Unresolved procurement interfaces must remain explicit:
+
+- RS1102 mounting screw diameter, pitch, pattern and safe engagement depth need
+  actual motor/vendor confirmation.
+- DS-M005 mounting-ear fasteners, supplied 28T horn and horn-retaining screw
+  need actual part confirmation. The horn-to-printed-sleeve torque connection is
+  unfinished; purchasing the listed hardware alone does not complete it.
+- Resolve the stored servo-label rating of 3.7–4.2 V versus the listed 3.7–5 V
+  rating against the purchased unit before choosing its power supply/regulator.
+  Do not substitute M3 hardware for unspecified OEM fasteners.
+
+When geometry, inventory or equipment selection changes, regenerate and validate
+the BOM, then update this checklist in the same change. Do not infer physical
+qualification or production release from these quantities or purchase links.
 
 ## Execution
 
