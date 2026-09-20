@@ -81,17 +81,19 @@ class MassBudgetTests(unittest.TestCase):
 
     def test_baseline_comparison_keeps_equipment_addition_separate_from_saving(self):
         report = mass_budget([part("Rail", 1000)], [])
-        baseline = report["comparison_to_rev_j"]
+        self.assertFalse(report["device_mounting_hardware_included"])
+        self.assertIn("not yet dimensioned or counted", report["comparison_limit"])
+        baseline = report["comparison_to_rev_k"]
         self.assertEqual(
-            baseline["source_commit"], "ecb0f602bfd00d4e4d0f43584f0dc7b6f91db327"
+            baseline["source_commit"], "30476c7b639c0932fb8ee809a8567abc32a84063"
         )
-        self.assertAlmostEqual(baseline["printed_g"], 52.670273671675204)
-        self.assertAlmostEqual(baseline["hardware_g"], 20.343155229055647)
-        self.assertAlmostEqual(baseline["structure_hardware_g"], 73.01342890073083)
+        self.assertAlmostEqual(baseline["printed_g"], 50.85958674920927)
+        self.assertAlmostEqual(baseline["hardware_g"], 7.659729290165907)
+        self.assertAlmostEqual(baseline["structure_hardware_g"], 58.51931603937518)
         self.assertAlmostEqual(
-            baseline["original_accounted_subtotal_g"], 128.94542890073083
+            baseline["original_accounted_subtotal_g"], 115.95131603937517
         )
-        self.assertAlmostEqual(baseline["new_equipment_increment_g"], 1.5)
+        self.assertAlmostEqual(baseline["new_equipment_increment_g"], 0.0)
         self.assertAlmostEqual(
             baseline["same_equipment_scope_subtotal_g"]
             - report["accounted_subtotal_g"],

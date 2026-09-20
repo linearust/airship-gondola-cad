@@ -37,75 +37,59 @@ def add_assembly_notes(doc):
     rows = [
         (
             f"REV {DESIGN_REVISION}",
-            f"{RAIL_LENGTH_MM:g}mm single flexible rail. Standard64x76mm board. PA12 SLS preferred; MJF alternative. Gold=buy; teal/grey=print.",
+            f"{RAIL_LENGTH_MM:g}mm PA12 rail with role-specific battery/electronics mounts. Gold=buy; teal/grey=print.",
         ),
         (
-            "Rail continuity",
-            "Unbroken1.2mm base;13.5mm head lands at18mm pitch,4.5mm flex gaps. The short shoe slides across these gaps. One printed part.",
+            "Rail",
+            "One continuous 1.2mm flexible base with 13.5mm head lands, 4.5mm reliefs and seven tape-pad stations. Supplier acceptance and full-length bend testing remain required.",
         ),
         (
-            "Tape OVER wings",
-            "Use separate12mm-wide single-sided strips on EACH lateral wing, then onto balloon. No double-sided tape beneath rail. Never cross the central running head or hinge gaps.",
+            "Tape",
+            "12mm single-sided strips OVER each wing onto the envelope. Keep running head and flex gaps clear. Battery, LR900-A and MTF-02P retain adhesive mounting.",
         ),
         (
             "Clamp",
-            "M2x0.4 x6 ISO4026/DIN913 flat-point set screw and M2 hex nut.0.9mm metric hex key. No separate printed rail keys or pins.",
-        ),
-        (
-            "Adjustment",
-            "Loosen3turns. Slide along rail. Clamp only over solid head land, preferably within4mm of an18mm-pitch land centre. Keep the whole18mm shoe on the rail; check module/rotor clearances after moving.",
+            "M2x6 DIN913 flat-point screw and DIN562 M2 SQUARE nut, one pair per module. Do not substitute a hex nut. Use 0.9mm hex key; loosen three turns before sliding.",
         ),
         (
             "Removal",
-            "Slide modules off a rail END. Remove an intervening neighboring module before the middle propulsion module. End access must remain clear.",
+            "Modules slide off a rail end. Remove the neighboring battery/electronics module before propulsion. Keep each 18mm shoe fully supported and clamp within 4mm of a full land centre.",
         ),
         (
-            "Board",
-            "Same board at every level; fourØ3.2 holes andØ6.5 pads for commonM2 stacking. No battery/FC-specific mounting patterns.",
+            "Mounts",
+            "Small battery adhesive deck and one open electronics carrier replace the three oversized identical boards and their 30mm stack. No unused upper rail shoe or expansion hardware.",
         ),
         (
-            "Stack",
-            "M2 male/female standoffs body30mm+stud5mm;32mm board pitch. M2x6 bottom screws; topM2nuts;2.2x5x0.3 washers.",
+            "Confirmed holes",
+            "FC: 25.5mm square, manufacturer 45deg orientation. P-AS: two M2 holes, 23mm pitch. Device fastening planes and fastener lengths are not inferred from the overall bounding boxes.",
         ),
         (
-            "Extend",
-            "Add same board+4same standoffs. Move top washers/nuts to new top. Washers only under bottom screwheads and top nuts.",
-        ),
-        (
-            "PA12",
-            "SLS preferred, MJF alternative; ±0.3%/min±0.3mm.45deg print orientation passes published size screening. Creallo combines SLS/MJF quotes; agree process and ONE-PIECE manufacture. Supplier must accept1.2mm narrow functional flexures.",
-        ),
-        (
-            "Screw side",
-            "Select BatteryClampApproach, PropulsionClampApproach or ElectronicsClampApproach under AssemblySettings. Either side accepts the same M2 screw/nut pair; unused port remains empty. Shoe and board are180deg symmetric.",
-        ),
-        (
-            "Notion2026-09-20",
-            "Two main300deg DS-M005/RS1102 tilt units, bounded±150deg,1:1. Includes MTF-02P; no yaw motor or fin servos.57.432g scoped listed equipment subtotal excludes structure/hardware/wiring.",
-        ),
-        (
-            "Wiring",
-            "XT30,35V220uF capacitor and outside-rotor cable-loop reserves are provisional CLEARANCE shapes. Inspect them via DesignRegistry.ClearanceVolumes. Size actual parts and prove phase-lead slack through±150deg; no unlimited rotation.",
-        ),
-        (
-            "Fit",
-            "Rail gap0.45mm per side. Nominal total0.9mm leaves0.3mm under two±0.3mm size errors. Not a physical fit guarantee. Print sample pair first.",
-        ),
-        (
-            "Hardware",
-            "All NEW threaded hardware M2x0.4 ISO metric coarse. No old customG6.6 printed threads. Gold parts excluded from print exports.",
+            "FC clearance",
+            "Reserve 8mm below the entire conservative FC envelope above the mount face. This is our wiring-space allowance, not a published connector dimension. Use the supplied M2x7.5 silicone sleeves and purchased spacers; final assembled height/fasteners remain to measure.",
         ),
         (
             "OEM interfaces",
-            "RS1102 motor screw pattern/thread depth and DS-M005 horn coupling must be checked from real parts; supplied OEM screws are not replaced by guessedM2.",
+            "Only published device mounting patterns may be generated. Do not invent servo spline, horn attachment, PCB thickness or motor screw insertion depth. Exact mounting holes do not certify a complete bolted assembly.",
         ),
         (
-            "Mechanical limits",
-            "Friction lock, PA12 bending/fatigue, tape attachment, thrust loads and OEM fit require physical tests. Flat CAD service paths do not certify a curved installed rail.",
+            "Scope",
+            "Two DS-M005/RS1102 main tilt units, bounded +/-150deg, 1:1. Includes MTF-02P. No yaw motor, fins or fin servos.",
+        ),
+        (
+            "Purchasing",
+            "Buy standard fasteners, spacers and OEM horns. Printed D journals are custom torque interfaces, not generic replacement bearings; the horn connection remains unresolved.",
+        ),
+        (
+            "Clearance",
+            "Optical field, FC wiring and electrical accessories are conservative reservations. Verify actual connectors, antenna, moving phase leads and adhesive retention.",
+        ),
+        (
+            "PA12",
+            "SLS preferred; MJF alternative by supplier agreement. Nominal functional walls at least 1.5mm, with the recorded 1.2mm rail flexure exception. No strength or flight qualification from CAD checks.",
         ),
         (
             "References",
-            "Source: gondola/parts/*.py; unresolved interfaces: gondola/design_contract.py. Primary dimension evidence is in references/; purchasing requirements are native hardware properties.",
+            "Source: gondola/parts/. Confirmed interfaces: mounting_interfaces.py. Remaining evidence: design_contract.py. Buy only the hardware specifications; do not print equipment/reference/clearance shapes.",
         ),
     ]
     for i, (a, b) in enumerate(rows, 1):
@@ -159,9 +143,9 @@ def style_assembly(doc):
 
 def build_assembly():
     from gondola.manufacturing import export_hardware_bom, export_print_parts
+    from gondola.parts import equipment_mounts as mounts
     from gondola.parts import metric_hardware as metric
     from gondola.parts import propulsion, rail
-    from gondola.parts import universal_board as board
 
     fingerprint = source_fingerprint()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -182,11 +166,13 @@ def build_assembly():
         settings.addProperty("App::PropertyEnumeration", key, "Clamp direction")
         setattr(settings, key, ["PositiveY", "NegativeY"])
         setattr(settings, key, default)
-    battery = create_group(doc, "BatteryEquipmentModule", "Battery | universal board")
+    battery = create_group(
+        doc, "BatteryEquipmentModule", "Battery | compact adhesive mount"
+    )
     elec = create_group(
         doc,
         "ElectronicsEquipmentModule",
-        "Electronics | two identical universal boards",
+        "Electronics | open carrier with confirmed mounting patterns",
     )
     pr = propulsion.build_propulsion_module(doc)
     modules = [battery, pr["group"], elec]
@@ -213,21 +199,10 @@ def build_assembly():
             + sidekey
             + "; change before assembling. PositiveY nut loads+X, NegativeY nut loads-X.",
         )
-    boards = [
-        board.build_board(doc, battery, "BatteryUniversalBoard"),
-        board.build_board(doc, elec, "FCUniversalBoard"),
-        board.build_board(doc, elec, "UpperUniversalBoard"),
+    mounts_list = [
+        mounts.build_mount(doc, battery, "battery"),
+        mounts.build_mount(doc, elec, "electronics"),
     ]
-    boards[-1].Placement.Base = V(0, 0, metric.BODY_LENGTH + board.BOARD_THICKNESS)
-    for o in boards:
-        set_print_sku(o, "UniversalBoard")
-    stack = metric.build_stack(
-        doc,
-        elec,
-        prefix="EquipmentStack",
-        lower_board_bottom_z=board.BOARD_BOTTOM,
-        levels=1,
-    )
     clamps = []
     for m, key in zip(modules, sidekeys):
         clamps += rail.build_clamp_hardware(doc, m, m.Name, "AssemblySettings." + key)
@@ -252,11 +227,11 @@ def build_assembly():
         o.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
         clearance.append(o)
     coupon = rail.build_coupons(doc)
-    printed = ra["printed"] + boards + pr["printed"]
-    hardware = stack["hardware"] + clamps + pr.get("hardware", [])
+    printed = ra["printed"] + mounts_list + pr["printed"]
+    hardware = clamps + pr.get("hardware", [])
     for objects, cat in [
         (ra["printed"], "Rail"),
-        (boards, "Universal boards"),
+        (mounts_list, "Equipment mounts"),
         (pr["printed"], "Propulsion"),
         (coupon["printed"], "Fit samples"),
     ]:
@@ -268,10 +243,7 @@ def build_assembly():
         ("ClearanceVolumes", clearance),
         ("FitCoupons", coupon["printed"]),
         ("Modules", modules),
-        ("StandardBoards", boards),
-        ("StackPosts", stack["posts"]),
-        ("StackLocks", stack["locks"]),
-        ("StackWashers", stack["washers"]),
+        ("EquipmentMounts", mounts_list),
         ("RailSegments", ra["printed"]),
         ("RailLocks", clamps),
         ("HardwareParts", hardware),
@@ -329,12 +301,9 @@ def build_assembly():
         "rail_count": 1,
         "rail_head_relief_gap_mm": rail.FLEX_GAP,
         "rail_land_pitch_mm": rail.LAND_PITCH,
-        "board_size_mm": [board.BOARD_X, board.BOARD_Y, board.BOARD_THICKNESS],
-        "board_holes_mm": board.STACK_HOLE_DIAMETER,
-        "stack_clear_gap_mm": metric.BODY_LENGTH,
-        "stack_pitch_mm": metric.BODY_LENGTH + board.BOARD_THICKNESS,
-        "upper_shoe_clearance_mm": metric.BODY_LENGTH
-        - (board.BOARD_BOTTOM - rail.SHOE_BOTTOM),
+        "equipment_mounts": {
+            kind: mounts.mount_contract(kind) for kind in ("battery", "electronics")
+        },
         "installed_printed_part_count": len(printed),
         "purchased_hardware_count": len(hardware),
         "unique_stl_count": manifest["unique_stl_count"],
@@ -343,7 +312,6 @@ def build_assembly():
         "rail_volume_cm3": ra["printed"][0].Shape.Volume / 1000,
         "overall_bounds_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
         "rail": rr,
-        "stack": stack["metrics"],
         "propulsion": pr["metrics"],
         "status": reg.Status,
         "total_flight_mass": "Not established: add actual battery, printed material, hardware, adhesive, wiring and equipment.",
@@ -351,11 +319,7 @@ def build_assembly():
     (OUT / (STEM + "_metrics.json")).write_text(json.dumps(metrics, indent=2) + "\n")
     print(
         json.dumps(
-            {
-                k: v
-                for k, v in metrics.items()
-                if k not in ("rail", "stack", "propulsion")
-            },
+            {k: v for k, v in metrics.items() if k not in ("rail", "propulsion")},
             indent=2,
         ),
         flush=True,

@@ -1,9 +1,10 @@
 """Measured/provisional equipment envelopes; never exported as printed parts.
 
-All Z values refer to the balloon-facing rail plane Z=0. Device-specific mounts
-remain intentionally absent; uncertainty is carried as clearance metadata.
+All Z values refer to the balloon-facing rail plane Z=0. Confirmed hole axes are
+represented; unpublished PCB bearing planes and fastener stacks remain unknown.
 """
 
+import json
 import math
 
 import FreeCAD as App
@@ -15,23 +16,92 @@ from gondola.cad import (
 )
 from gondola.design_contract import NOTION_URL
 
+from . import equipment_mounts as mounts
+from . import mounting_interfaces as interfaces
+
 V = App.Vector
-FC_SOURCE = "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual"
-LR_SOURCE = "https://micoair.cn/zh/docs/telemetry/lr900/lr900-telemetry"
-PAS_SOURCE = (
-    "https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf"
-)
+FC_SOURCE = interfaces.FC_SOURCE
+LR_SOURCE = interfaces.LR_SOURCE
+PAS_SOURCE = interfaces.PAS_SOURCE
 BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-pack-with-xt30-plug-long-size-for-h-frame.html"
-MTF02P_SOURCE = "https://micoair.cn/zh/docs/sensors/sensors/mtf-02-02p-sensors"
-MTF02P_PRODUCT_SOURCE = "https://micoair.com/optical_range_sensor_mtf-02p/"
-MTF02P_DIMENSION_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/66f661b664e82-df0e9d69d2-971f59dd57.webp"
-MTF02P_SIZE_MM = (21.6, 16.0, 6.5)
-MTF02P_CENTRE_XY = (0.0, 5.0)
-MTF02P_BOTTOM_Z = 45.2
-MTF02P_MASS_G = 1.5
-MTF02P_FLOW_FOV_DEG = 42.0
-MTF02P_TOF_FOV_DEG = 2.0
+MTF02P_SOURCE = interfaces.MTF02P_SOURCE
+MTF02P_PRODUCT_SOURCE = interfaces.MTF02P_PRODUCT_SOURCE
+MTF02P_DIMENSION_IMAGE = interfaces.MTF02P_DIMENSION_IMAGE
+MTF02P_SIZE_MM = interfaces.MTF02P_SIZE_MM
+MTF02P_CENTRE_XY = mounts.MTF02P_CENTRE_XY
+MTF02P_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+MTF02P_MASS_G = interfaces.MTF02P_MASS_G
+MTF02P_FLOW_FOV_DEG = interfaces.MTF02P_FLOW_FOV_DEG
+MTF02P_TOF_FOV_DEG = interfaces.MTF02P_TOF_FOV_DEG
 MTF02P_OPTICAL_RESERVE_MM = 80.0
+FC_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
+PAS_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE
+LR_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+
+
+def fc_envelope_shape():
+    """Published overall envelope and hole XY axes; the PCB plane is unknown."""
+    length, width, height = interfaces.FC_SIZE_MM
+    shape = Part.makeBox(length, width, height, V(-length / 2, -width / 2, 0))
+    for x, y in interfaces.FC_HOLE_CENTRES:
+        shape = shape.cut(
+            Part.makeCylinder(interfaces.FC_HOLE_DIAMETER / 2, height + 2, V(x, y, -1))
+        )
+    shape.rotate(V(), V(0, 0, 1), mounts.FC_ROTATION_DEG)
+    shape.translate(V(*mounts.FC_CENTRE_XY, FC_BOTTOM_Z))
+    return shape
+
+
+def pas_envelope_shape():
+    """Use the source drawing frame: X width 27, Y length 32, antenna +Y."""
+    length, width, height = interfaces.PAS_SIZE_MM
+    x, y = mounts.PAS_CENTRE_XY
+    shape = Part.makeBox(
+        length, width, height, V(x - length / 2, y - width / 2, PAS_BOTTOM_Z)
+    )
+    for hx, hy in mounts.PAS_HOLE_CENTRES:
+        shape = shape.cut(
+            Part.makeCylinder(
+                interfaces.PAS_HOLE_DIAMETER / 2,
+                height + 2,
+                V(hx, hy, PAS_BOTTOM_Z - 1),
+            )
+        )
+    return shape
+
+
+def lr900_envelope_shape():
+    """The published LR900-A size excludes its SMA socket and antenna."""
+    length, width, height = interfaces.LR_SIZE_MM
+    x, y = mounts.LR_CENTRE_XY
+    return Part.makeBox(
+        length, width, height, V(x - length / 2, y - width / 2, LR_BOTTOM_Z)
+    )
+
+
+def _interface_metadata(obj, key, hole_centres=(), hole_diameter=None):
+    set_property(
+        obj,
+        "MountingEvidence",
+        json.dumps(interfaces.MOUNTING_EVIDENCE[key], sort_keys=True),
+    )
+    set_property(obj, "MountingStackVerified", False, "App::PropertyBool")
+    set_property(obj, "PCBHeightMeasured", False, "App::PropertyBool")
+    if hole_diameter is not None:
+        set_property(
+            obj, "PublishedMountHoleDiameter", hole_diameter, "App::PropertyLength"
+        )
+        set_property(
+            obj,
+            "VerifiedHoleAxesXY",
+            [V(x, y, 0) for x, y in hole_centres],
+            "App::PropertyVectorList",
+        )
+        set_property(
+            obj,
+            "HoleAxisScope",
+            "XY axes only. Cylindrical cuts pass through the reference envelope for registration; no real PCB thickness or bearing-plane Z is claimed.",
+        )
 
 
 def mtf02p_envelope_shape():
@@ -70,7 +140,11 @@ def build_equipment(doc, battery_group, electronics_group):
     battery_group.addObject(battery)
     battery.Label = "REFERENCE | provisional2S battery, long axisY"
     battery.Length, battery.Width, battery.Height = 61, 16, 15
-    for name, value in [("CentreX", 0), ("CentreY", 0), ("BottomZ", 13.2)]:
+    for name, value in [
+        ("CentreX", 0),
+        ("CentreY", 0),
+        ("BottomZ", mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE),
+    ]:
         set_property(battery, name, value, "App::PropertyDistance")
     set_property(battery, "InPlaneRotation", 90, "App::PropertyAngle")
     battery.setExpression("Placement.Rotation.Angle", "InPlaneRotation")
@@ -87,7 +161,7 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(
         battery,
         "Notes",
-        "Same UniversalBoard as FC.1mm nominal adhesive allowance; select actual pack and adhesive. No printed battery attachment patterns.",
+        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
     max_pack = create_reference(
@@ -100,55 +174,80 @@ def build_equipment(doc, battery_group, electronics_group):
     )
     # Preserve the device's local frame separately from its mounting elevation.
     max_pack.Placement.Base.z = 2.2
-    fc = Part.makeBox(36, 36, 8, V(-18, -18, 0))
-    for x in (-12.75, 12.75):
-        for y in (-12.75, 12.75):
-            fc = fc.cut(Part.makeCylinder(1.5, 10, V(x, y, -1)))
-    fc.rotate(V(), V(0, 0, 1), -45)
-    fc.translate(V(0, 0, 15.2))
     fc_obj = create_reference(
         doc,
         electronics_group,
         "ModuleFCEnvelope",
         "MicoAir743v2-AIO-35A",
-        fc,
-        "36x36x8mm simplified envelope;3mm stand-off/insulating adhesive allowance above common deck. "
-        "No device-specific posts or holes in board; use user-selected insulating adhesive pads on ribs or a removable adapter. "
-        "Underside chips, cooling and actual adhesive placement require physical inspection.",
+        fc_envelope_shape(),
+        "Published36x36x8mm envelope; confirmed25.5mm square hole pattern and diameter3mm, rotated-45deg. "
+        "Our carrier provides M2 clearance holes on these XY axes. The included four M2x7.5mm silicone dampening sleeves are purchased parts; their compressed geometry is not modeled. "
+        "An8mm design allowance separates the component-envelope minimum from the carrier face, with an open-X wiring corridor. This is not a manufacturer-required spacer height or PCB bearing-plane location. "
+        "Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
         FC_SOURCE,
+    )
+    _interface_metadata(
+        fc_obj, "FC", mounts.FC_HOLE_CENTRES, interfaces.FC_HOLE_DIAMETER
+    )
+    set_property(
+        fc_obj,
+        "PublishedMountHolePitch",
+        interfaces.FC_HOLE_PITCH,
+        "App::PropertyLength",
+    )
+    set_property(fc_obj, "DimensionDrawingSource", interfaces.FC_DIMENSION_SOURCE)
+    set_property(fc_obj, "IncludedDamperSource", interfaces.FC_PACKAGE_SOURCE)
+    set_property(
+        fc_obj,
+        "DesignUnderbodyClearance",
+        mounts.FC_WIRING_CLEARANCE,
+        "App::PropertyLength",
     )
     radio = create_reference(
         doc,
         electronics_group,
         "ModuleLR900Envelope",
-        "LR900-A on common upper board",
-        Part.makeBox(29.5, 13, 9, V(-14.75, 15.5, 41)),
-        "Same common upper board atZ44.2 with1mm mounting adhesive allowance. Shifted4mm toward+Y to leave at least1mm nominal clearance from the conservative MTF-02P optical reserve; antenna/connectors need actual cable clearance.",
+        "LR900-A on continuous adhesive pad",
+        lr900_envelope_shape(),
+        "Published29.5x13x9mm body excludes SMA antenna socket. Provisional1mm insulating adhesive allowance above the continuous carrier pad. No verified mounting-hole pattern. Actual underside contact, antenna, connector insertion and cable bend clearance remain unmeasured.",
         LR_SOURCE,
     )
-    radio.Placement.Base.z = 4.2
-    pas_shape = Part.makeBox(32, 27, 7, V(-16, -32, 41))
+    _interface_metadata(radio, "LR")
     pas = create_reference(
         doc,
         electronics_group,
         "ModulePASEnvelope",
-        "LinkTrack P-AS on common upper board",
-        pas_shape,
-        "Planning envelope shifted1mm toward-Y to leave at least1mm nominal clearance from the conservative MTF-02P optical reserve. Adhesive/adapter mounting is separate from the generic board. Antenna and real cable clearance remain to check.",
+        "LinkTrack P-AS | confirmed two M2 mounting axes",
+        pas_envelope_shape(),
+        "Official drawing frame X27xY32mm, antenna+Y; two diameter2.2mm holes spaced23mm,6.7mm from the connector-side edge. "
+        "The specification table lists7mm overall height while the mechanical drawing shows5.3mm; retain7mm conservatively. "
+        "Our4mm underbody service allowance is not a measured PCB bearing-plane height. Buy the spacer/fastener stack after checking actual PCB, antenna and GH1.25 connector access; no unverified mounting hardware is generated.",
         PAS_SOURCE,
     )
-    pas.Placement.Base.z = 4.2
+    _interface_metadata(
+        pas, "PAS", mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_DIAMETER
+    )
+    set_property(
+        pas, "PublishedMountHolePitch", interfaces.PAS_HOLE_PITCH, "App::PropertyLength"
+    )
+    set_property(
+        pas,
+        "DesignUnderbodyClearance",
+        mounts.PAS_SERVICE_CLEARANCE,
+        "App::PropertyLength",
+    )
     mtf = create_reference(
         doc,
         electronics_group,
         "ModuleMTF02PEnvelope",
         "MicoAir MTF-02P | optical face away from balloon (+Z)",
         mtf02p_envelope_shape(),
-        "Published21.6x16x6.5mm overall envelope and1.5g module mass. Provisional insulating adhesive pads on the upper board leave1mm mounting allowance. "
+        "Published21.6x16x6.5mm overall envelope and1.5g module mass. Provisional insulating adhesive on the continuous carrier pad leaves1mm mounting allowance. "
         "The optical/component face points toward world+Z, away from balloon planeZ0. Match the purchased board orientation and firmware rotation setting; no default in-plane yaw is claimed. "
         "Backside components, adhesive contact/retention and cable routing require the actual sensor. No mounting-hole pattern or retaining screw is assumed.",
         MTF02P_SOURCE,
     )
+    _interface_metadata(mtf, "MTF02P")
     set_property(mtf, "ProductSource", MTF02P_PRODUCT_SOURCE)
     set_property(mtf, "DimensionDrawingSource", MTF02P_DIMENSION_IMAGE)
     set_property(mtf, "ListedMassGrams", MTF02P_MASS_G, "App::PropertyFloat")
@@ -180,17 +279,35 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(optical, "OpticalDirection", V(0, 0, 1), "App::PropertyVector")
     set_property(optical, "InstalledOpticalFieldVerified", False, "App::PropertyBool")
     refs = [battery, fc_obj, radio, pas, mtf]
-    clearance = [max_pack, optical]
+    wiring = create_reference(
+        doc,
+        electronics_group,
+        "FCWiringClearanceReserve",
+        "FC underbody open-X wiring corridor | design allowance8mm",
+        mounts.fc_wiring_reserve_shape(),
+        "Our8mm free-height,8mm-wide X corridor atY5..13 below the full FC component envelope. Both X ends remain open and the route avoids the confirmed mounting axes. This is a routing reservation, not an exact cable model, measured connector clearance or selected spacer/bolt length. Actual damper outside dimensions remain unknown. Keep wires clear of ESC cooling and remove the module before clamp service.",
+        FC_SOURCE,
+    )
+    wiring.Role = "Clearance"
+    wiring.Label = "RESERVE | FC underbody wiring corridor"
+    set_property(
+        wiring,
+        "DesignClearanceHeight",
+        mounts.FC_WIRING_CLEARANCE,
+        "App::PropertyLength",
+    )
+    set_property(wiring, "ManufacturerSpecifiedHeight", False, "App::PropertyBool")
+    clearance = [max_pack, optical, wiring]
     auxiliary = [
         (
             "XT30ServiceReserve",
             "XT30 pigtail service reserve10x22x15",
-            Part.makeBox(10, 22, 15, V(-30, -11, 45.2)),
+            Part.makeBox(10, 22, 15, V(-43, -11, 13.2)),
         ),
         (
             "CapacitorServiceReserve",
             "35V220uF capacitor reserve diameter10x16",
-            Part.makeCylinder(5, 16, V(24, 0, 45.2)),
+            Part.makeCylinder(5, 16, V(30, 22, 13.2)),
         ),
     ]
     for name, label, shape in auxiliary:
@@ -200,7 +317,7 @@ def build_equipment(doc, battery_group, electronics_group):
             name,
             label,
             shape,
-            "Provisional space reservation, not a measured component model or chosen SKU. Latest Notion requires XT30 pigtail and35V220uF capacitor. Mount above upper board with insulating adhesive; keep leads clear.",
+            "Provisional space reservation, not a measured component model, selected SKU or designed retaining mount. Latest Notion requires XT30 pigtail and35V220uF capacitor. Final insulation, lead routing and mechanical retention remain to be selected; no printed attachment or invented hole is added.",
             NOTION_URL,
         )
         o.Role = "Clearance"

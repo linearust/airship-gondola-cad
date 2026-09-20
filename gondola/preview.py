@@ -178,7 +178,7 @@ def render_previews(close_after=False):
             (doc, "axon", "_preview.png", "all", 1900, 1200),
             (doc, "top", "_top.png", "all", 1900, 1200),
             (doc, "axon", "_rail.png", "rail", 1900, 800),
-            (doc, "axon", "_stack.png", "stack", 1400, 1400),
+            (doc, "axon", "_electronics.png", "electronics", 1400, 1400),
             (doc, "axon", "_propulsion.png", "propulsion", 1800, 1300),
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),
@@ -207,12 +207,10 @@ def render_previews(close_after=False):
                             o in doc.DesignRegistry.RailSegments
                             or o in doc.DesignRegistry.TapeReferences
                         )
-                    elif scope == "stack":
+                    elif scope == "electronics":
                         o.ViewObject.Visibility = (
-                            o.Name in ("FCUniversalBoard", "UpperUniversalBoard")
-                            or o in doc.DesignRegistry.StackPosts
-                            or o in doc.DesignRegistry.StackLocks
-                            or o in doc.DesignRegistry.StackWashers
+                            o.getParentGeoFeatureGroup()
+                            == doc.ElectronicsEquipmentModule
                         )
                     elif scope == "structure":
                         o.ViewObject.Visibility = (

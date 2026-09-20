@@ -1,6 +1,6 @@
 """Recompute local propulsion fit and removal evidence from current geometry.
 
-These rigid envelopes deliberately keep the OEM motor fasteners, servo ears,
+These rigid envelopes keep the OEM motor fasteners, servo saddle retention,
 and horn-to-sleeve torque connection unresolved. They prove no loaded operation.
 """
 
@@ -108,8 +108,11 @@ def validate(source=None):
                 )
                 positions = [(dy, 0) for dy in (0, 0.2, 0.5, 1, 2, 4, 6, 7, 7.5, 8)]
                 if driven:
-                    positions += [(8, z) for z in (0.5, 1, 2)] + [
-                        (dy, 2) for dy in (10, 15, 20, 30)
+                    positions += [
+                        (8, z)
+                        for z in (0.5, 1, 2, 5, 8, propulsion.SLEEVE_SERVICE_LIFT)
+                    ] + [
+                        (dy, propulsion.SLEEVE_SERVICE_LIFT) for dy in (10, 15, 20, 30)
                     ]
                 else:
                     positions += [(dy, 0) for dy in (10, 15, 20, 30)]
@@ -166,13 +169,57 @@ def validate(source=None):
             ("guard_radial", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31)),
         ]
         for side in (-1, 1):
-            for y in (26.1, 41.3):
+            wall_probes.extend(
+                [
+                    (
+                        f"foot_deck_{side}",
+                        "PropulsionFixedFrame",
+                        (4.5, side * 80, propulsion.BASE_Z - 0.01),
+                        (
+                            4.5,
+                            side * 80,
+                            propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01,
+                        ),
+                    ),
+                    (
+                        f"foot_edge_rib_{side}",
+                        "PropulsionFixedFrame",
+                        (
+                            4.89,
+                            side * 80,
+                            propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.75,
+                        ),
+                        (
+                            6.41,
+                            side * 80,
+                            propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.75,
+                        ),
+                    ),
+                ]
+            )
+            for index, x in enumerate(propulsion.SERVO_MOUNT_X):
+                y = side * (
+                    propulsion.PIVOT_HALF_SPAN
+                    + propulsion.SERVO_MOUNT_PLANE_Y
+                    - propulsion.SERVO_MOUNT_TAB_THICKNESS / 2
+                )
                 wall_probes.append(
                     (
-                        f"cradle_service_roof_{side}_{y}",
+                        f"servo_saddle_upper_land_{side}_{index}",
                         "PropulsionFixedFrame",
-                        (0, side * y, 7.99),
-                        (0, side * y, 9.51),
+                        (x, y, propulsion.PIVOT_Z + 0.99),
+                        (x, y, propulsion.PIVOT_Z + 3.51),
+                    )
+                )
+            # Cross the steeper A-frame web approximately normal to its slope;
+            # this measures its actual perpendicular width on each mirrored pod.
+            for x in (-8, 15.5):
+                wall_probes.append(
+                    (
+                        f"inclined_servo_support_{side}_{x}",
+                        "PropulsionFixedFrame",
+                        (x, side * 37.3, 24.0796296296),
+                        (x, side * 40.5, 24.8203703704),
                     )
                 )
         wall_rows = []
@@ -189,6 +236,38 @@ def validate(source=None):
                 }
             )
         report["functional_wall_probes"] = wall_rows
+        report["servo_mount_axes"] = []
+        for side in (-1, 1):
+            for x in propulsion.SERVO_MOUNT_X:
+                start = side * (
+                    propulsion.PIVOT_HALF_SPAN
+                    + propulsion.SERVO_MOUNT_PLANE_Y
+                    - propulsion.SERVO_MOUNT_TAB_THICKNESS
+                    - 0.1
+                )
+                axis = Part.makeCylinder(
+                    0.99,
+                    propulsion.SERVO_MOUNT_TAB_THICKNESS + 0.2,
+                    App.Vector(x, start, propulsion.PIVOT_Z),
+                    App.Vector(0, side, 0),
+                )
+                report["servo_mount_axes"].append(
+                    {
+                        "side": side,
+                        "x_mm": x,
+                        "through_axis_overlap_mm3": intersection_volume(frame, axis),
+                        "interface": "Open2mm saddle; ear thickness and final retention unverified",
+                    }
+                )
+        report["servo_case_frame_clearance"] = [
+            {
+                "part": prefix + "Servo",
+                "overlap_frame_mm3": intersection_volume(
+                    world_shape(doc.getObject(prefix + "Servo")), frame
+                ),
+            }
+            for prefix in ("Port", "Starboard")
+        ]
         report["journal_hardware_frame_clearance"] = [
             {
                 "part": obj.Name,
@@ -232,6 +311,8 @@ def validate(source=None):
             and len(report["sleeve_service_servo_removed"]) == 4
             and len(report["motor_and_prop_insertion"]) == 4
             and len(report["geometry"]) == 7
+            and len(report["servo_mount_axes"]) == 4
+            and report["purchased_hardware"] == 16
             and report["all_hardware_A2"]
             and report["no_rail_key_metadata"]
             and report["minimum_sleeve_flat_wall_mm"] >= 1.5 - TOL

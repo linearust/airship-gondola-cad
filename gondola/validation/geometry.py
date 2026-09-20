@@ -24,40 +24,6 @@ def local_shape(obj):
     return shape
 
 
-def compare_identical_boards(boards):
-    from gondola.manufacturing import geometry_comparison
-
-    if not boards:
-        return {"passed": False, "error": "No standardized boards in the registry"}
-    master = local_shape(boards[0])
-    comparisons = []
-    for obj in boards:
-        shape = local_shape(obj)
-        bounds_delta = max(
-            abs(getattr(master.BoundBox, name) - getattr(shape.BoundBox, name))
-            for name in ("XMin", "XMax", "YMin", "YMax", "ZMin", "ZMax")
-        )
-        comparison = geometry_comparison(master, shape)
-        diff = comparison["difference_mm3"]
-        row = {
-            "board": obj.Name,
-            "reference_board": boards[0].Name,
-            "local_bounds_difference_mm": bounds_delta,
-            "volume_difference_mm3": abs(master.Volume - shape.Volume),
-            "symmetric_difference_mm3": diff,
-            "geometry_comparison_method": comparison["method"],
-            "single_valid_solid": shape.isValid() and len(shape.Solids) == 1,
-        }
-        row["passed"] = row["single_valid_solid"] and bounds_delta < TOL and diff < TOL
-        comparisons.append(row)
-    return {
-        "physical_board_copies": len(boards),
-        "comparisons": comparisons,
-        "meaning": "One common physical geometry, independent of object name, use, or assembly placement.",
-        "passed": len(boards) >= 2 and all(row["passed"] for row in comparisons),
-    }
-
-
 def intersection_volume(first, second):
     """Reject disjoint bounding boxes before the exact solid intersection."""
     if not first.BoundBox.intersect(second.BoundBox):

@@ -1,180 +1,159 @@
 # Agent operating contract
 
-This file is for AI agents working in this repository. The procurement checklist
-below summarizes the current design; keep it synchronized with the authoritative
-source definitions and generated BOM instead of treating it as a separate design.
+This file is for AI agents. Keep design decisions, procurement requirements and
+validation gates synchronized with source and generated artifacts. It is not a
+human assembly manual or a declaration of physical qualification.
 
 ## Authorities
 
-- `gondola/design_contract.py`: scope decisions, nominal rail-length requirement,
-  manufacturing decision, equipment selection, evidence
-  discrepancies, inventory and unresolved physical interfaces. `python3 -m
-  gondola status` reads this contract without FreeCAD or network access.
-- `gondola/parts/`: geometry in millimetres. `universal_board.py` owns the board
-  dimensions shared by `metric_hardware.py`; `equipment_envelopes.py` contains
-  reference envelopes, not printable parts. `fastener_spec.py` owns the shared
-  nominal M2 interfaces; do not duplicate hardware dimensions in printed parts.
-- `gondola/assembly.py`: native assembly and its expression-driven controls.
-  `gondola/cad.py`: shared native metadata and coordinate transforms.
-- `gondola/manufacturing.py`: unique part exports and purchased hardware BOM.
-  `gondola/validation/`: saved geometry, exports, service paths and baseline checks.
-- `gondola/config.py`: artifact schema and pinned regression fixture identity.
-  `gondola/provenance.py`: source/artifact hashes. `gondola/bundle.py`: package gates.
-- `references/`: retained primary dimension/port/voltage evidence. These files
-  are inputs, including images not loaded programmatically. External URLs and
-  the Notion edit timestamp record previous evidence, not live verification.
-- `tests/fixtures/rev_k_geometry.FCStd`: pinned reviewed reference for geometry
-  and native controls. `tests/fixtures/rev_k_review.json` records the deliberate
-  Rev J → K changes, source identities and retired fixture in Git history.
-  Further geometry revisions require a reviewed replacement fixture and new
-  manufacturing/clearance evidence.
-  Never regenerate the fixture merely to pass a check.
+- `gondola/design_contract.py`: scope, revision, inventory and unresolved evidence.
+  `python3 -m gondola status` works without FreeCAD or network access.
+- `gondola/parts/mounting_interfaces.py`: published electronic mounting patterns,
+  sources and explicit unknowns. Never infer PCB bearing planes from box heights.
+- `gondola/parts/equipment_mounts.py`: compact battery support and open electronics
+  carrier. `equipment_envelopes.py`: purchased-device envelopes and reserves.
+- `gondola/parts/propulsion.py`: frame, carriers, custom torque journals and the
+  published servo/motor interface decisions. `rail.py`: shared rail/shoe/clamp.
+- `gondola/parts/fastener_spec.py`: common purchased M2 dimensions.
+  `metric_hardware.py`: the five modeled mechanism hardware purchase types.
+- `gondola/assembly.py`: assembly and native expression controls.
+  `cad.py`: metadata and local/world transforms.
+- `gondola/manufacturing.py`: unique print exports and hardware BOM.
+  `validation/`: saved geometry, motion, mounting, service and export checks.
+- `gondola/config.py`: artifact schema and pinned regression identity.
+  `provenance.py` and `bundle.py`: source/artifact hashes and package gates.
+- `references/`: retained primary evidence, including drawings used by agents.
+- `tests/fixtures/`: one reviewed pinned CAD reference and its transition audit.
+  Older fixtures remain in Git history. Never regenerate a fixture merely to
+  pass a failing comparison; audit deliberate shape, placement and scope changes.
 
-## Manufacturing decision — Rev K
+## Rev L decisions
 
-Decision reviewed 2026-09-20: use **340 mm nominal rail length**, with PA12 **SLS
-preferred for the fit prototype** and MJF remaining an alternative. The supplier's
-published evidence does not establish that this design requires MJF. This is a
-design choice, not physical qualification or a guaranteed maximum as-built length.
-`MANUFACTURING_DECISION` in `gondola/design_contract.py` owns this decision.
+Scope remains one indoor LTA blimp gondola: two main propulsors, two tilt servos,
+FC, battery, LR900-A, LinkTrack P-AS and MTF-02P. Yaw propulsion, fins and fin
+servos are excluded. Preserve bounded independent tilt of +/-150 degrees.
 
-[Creallo's 2026-05-12 policy](https://creallo.com/ko/blog/posts/sls-mjf-integration-update)
-combines SLS/MJF quotes and lets Creallo choose the process; agree SLS separately
-when required. Use the same agreed material, process and finish for coupons and
-full parts. The [size guide](https://creallo.com/ko/guide/design-spec-guide)
-lists SLS 340 × 340 × 600 and MJF 380 × 380 × 280 mm, but includes split-and-join
-fabrication. Require confirmation that the rail will be manufactured in one piece.
-The stored 45-degree rail export is about 259.14 × 259.14 × 7 mm, leaving about
-80.86 mm total X/Y size margin against the 340 mm screen. This is only a size
-screen. Even the previous
-378 mm rail passed that screen; 340 mm follows the user's preferred length ceiling.
+The user's latest instruction supersedes the previous identical-board and
+no-device-holes requirements. Remove the three 64x76 universal boards, unused
+upper rail shoe and tall four-post expansion stack. Keep two role-specific
+printed mounts: a 16x52x2 mm continuous battery adhesive deck and one open
+carrier connecting only the required electronic mounting pads and adhesive
+surfaces. Both integrate the shared rail shoe; do not add separate adapter
+fasteners without a demonstrated benefit.
 
-Use a 1.5 mm nominal target for general functional walls, above the 0.8 mm
-published minimum. The board keeps a 2 mm deck and 1.8 mm ribs; the journal
-D-flat wall, propeller guard and frame service webs are at least 1.5 mm at the
-validated sections. Remove redundant grid material instead of thinning these walls.
+Confirmed interfaces and conservative design reservations are distinct:
 
-The 1.2 mm continuous rail base and tape wings remain intentional functional flexures.
-This is an explicit exception to the general 1.5 mm target. Reliefs widen from
-3 to 4.5 mm to accommodate the thicker flexure; do not claim identical bending
-stiffness from the idealized beam approximation.
-Shortening the rail does not resolve their manufacturing exception. Creallo's
-[wall-thickness guidance](https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes)
-applies the long, thin, broad-part recommendation to both SLS and MJF. Obtain
-supplier review and test full-rail straightness, balloon curvature, fatigue,
-tape retention and sliding/clamping fit; the short coupons cannot prove these.
+| Device | CAD implementation | Unresolved; do not invent |
+|---|---|---|
+| MicoAir743v2-AIO-35A | Official 25.5x25.5 mm pattern, diameter3 mm device holes, 45-degree orientation; carrier has four diameter2.6 mm M2 clearance holes with continuous diameter6.5 mm pads | PCB bearing-plane Z, rubber groove/OD/compressed height, exact spacer and screw lengths |
+| LinkTrack P-AS | Official two diameter2.2 mm device holes, 23 mm pitch, 6.7 mm from connector-side edge; carrier has diameter2.6 mm M2 clearance holes | PCB bearing-plane Z, actual fastening stack; datasheet7 mm vs drawing5.3 mm height conflict |
+| DS-M005 | Official ear axes: 19.50 mm pitch and -5.82/+13.68 mm relative to output axis; ear underside10.20 mm from case bottom. Open U-saddles use those axes and preserve material around them | Case-to-axis offset, ear thickness, bolt length and actual seating; supplied 28T horn geometry and retaining screw |
+| RS1102 10000KV | Official three M1.4 threads on PCD6.6 recorded as evidence; no newly generated motor fastening holes | Rear shaft/clip keepout and safe insertion depth. Adding closed clearance holes beside the existing diameter4.4 relief leaves only about0.2 mm ligament; do not manufacture this thin wall or guess a smaller rear keepout |
+| LR900-A | Small continuous insulating adhesive pad; no invented holes | No confirmed hole pattern; listed29.5x13x9 mm excludes SMA socket, antenna and plugged cables |
+| MTF-02P | Small continuous insulating adhesive pad; no invented holes; optical face points away from balloon (+Z) | Backside contact, connector access and lens datums |
 
-The seven tape-pad centres and three default module positions remain unchanged.
-Pad ends have 1 mm nominal axial margin. Keep the entire 18 mm shoe on the rail:
-its centre must stay within ±161 mm, also respecting clamp lands and neighboring
-parts. The outermost land centres at ±162 mm are not fully supported shoe stations.
-Clamp within 4 mm of a full land centre. Purchased quantities remain 42, but
-all designed structural threads are now M2. Preserve the three identical boards.
+The FC manufacturer supplies four **M2x7.5 mm silicone dampening sleeves**.
+Use those bought parts; do not print substitute dampers or an unverified spline.
+The model allocates **8 mm below the full FC envelope** above the carrier face.
+A separate8x8 mm X-open wiring corridor is offset to Y=5..13 mm so it avoids
+all four FC attachment axes. This is a design space allowance, not a measured
+plug/bend-radius requirement or a completed mounting stack. Select purchased
+spacers and fasteners after measuring the real PCB/damper stack; preserve the
+reserved lower-envelope clearance. P-AS has4 mm nominal service space below its
+conservative7 mm envelope. Its antenna is toward+Y and remains exposed.
 
-The scope is the indoor LTA blimp gondola: two main motors, two tilt servos and
-MTF-02P are included; yaw propulsion and fins/fin servos are excluded. The optical
-sensor faces +Z, away from the balloon plane Z=0. Its conservative optical reserve
-must remain clear; verify actual lens datums, wiring and mounting on the purchased
-unit. The radio moves 4 mm toward +Y and P-AS moves 1 mm toward −Y; the
-conservative optical reserve keeps at least 1 mm nominal clearance to each.
+References: [FC manual](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual),
+[FC included parts](https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec6.webp),
+[P-AS drawing](https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf),
+[confirmed DS-M005 product](https://www.dspowerservo.com/ds-m005-mini-servo-product/),
+[RS1102 drawing](https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg).
 
-`gondola/mass_budget.py` reports installed print volume × PA12 density and
-simplified hardware volume × assumed density. Build metrics and the saved-CAD
-validation both contain the budget. Compare structural mass on the same equipment
-scope; adding the 1.5 g MTF-02P is not a failed weight reduction. Do not describe
-these estimates as measured all-up mass: wiring, adhesive, OEM fasteners and other
-unmeasured items remain excluded.
+Simplify frame load paths and remove redundant material without thinning
+functional walls below1.5 mm. The custom D journals remain because they transmit
+torque into the carriers as well as supporting rotation. A generic purchased
+bearing is not a direct replacement: it still needs correctly supported races,
+axial retention and the unpublished OEM horn interface. Do not add a speculative
+bearing/shaft conversion merely to replace a custom part with more parts.
+The electronics carrier uses 5x2 mm cantilever arms. Its solid connectivity and
+clearance checks do not establish stiffness, vibration resistance or adhesive
+retention; verify those with the actual supported devices.
 
-## Procurement checklist
+## Manufacturing and mass
 
-Scope: one gondola's installed parts, excluding spares, printed parts, ground
-equipment, charger and balloon. Subtract items already owned or included in
-equipment accessory kits before proposing a purchase. These are required design
-specifications, not verified seller listings or physical-fit approvals.
+PA12 SLS is preferred for the fit prototype; MJF remains an alternative. Rail
+nominal length is **340 mm**. Its stored45-degree print envelope is approximately
+259.14x259.14x7 mm. This is a size screen, not as-built dimensional certification.
+[Creallo combines SLS/MJF quotations](https://creallo.com/ko/blog/posts/sls-mjf-integration-update)
+and normally chooses the process; agree a specific process and one-piece rail
+manufacture separately. Use the same material/process/finish for coupons and parts.
 
-Mechanical quantities come from the validated `build/gondola_hardware_bom.json`;
-purchase conditions are defined in `gondola/parts/metric_hardware.py`.
-The current assembly uses seven purchase types and 42 pieces:
+Use1.5 mm nominal functional walls,2 mm mounting decks and the validated section
+sizes. The1.2 mm rail base/tape wings are an explicit functional-flexure exception,
+not blanket compliance with [Creallo's broad thin-part guidance](https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes).
+Retain18 mm land pitch,4.5 mm reliefs and0.5 mm root fillets: these features enable
+curvature and protect flexure roots rather than merely decorating the part.
+Supplier review, full-rail bending/fatigue, tape retention and loaded clamp/journal
+tests remain required. A short coupon does not qualify the full rail.
 
-| CAD SKU | Required purchase specification | Installed quantity |
+Keep every18 mm shoe fully on the rail: centre |X|<=161 mm, also respecting
+neighbors and clamp lands. Clamp within4 mm of a full land centre. The outermost
+pad/land centres at+/-162 mm are not fully supported shoe stations. Rail wings
+still use single-sided tape OVER the wings; no tape beneath the rail or across
+its running head. The shared shoe retains both selectable clamp directions.
+
+`mass_budget.py` reports printed BRep volume x PA12 density and simplified bought
+mechanism volume x assumed material density, compared with reviewed Rev K.
+**FC/P-AS mounting spacers/dampers/fasteners and OEM motor/servo fasteners are not
+fully dimensioned or included.** The modeled saving is not the final net saving
+after those new attachment parts are bought. Wiring, adhesive, antenna and other
+unmeasured items are also excluded; never call this a measured all-up mass.
+
+## Procurement contract
+
+Prefer standard parts purchasable on AliExpress. The generated BOM includes
+precise requirements and AliExpress search links. Searches and manufacturer
+examples are not verified seller options, stock, delivery or supplier-lot fit.
+Do not print bought fasteners, ordinary spacers, dampers, servo horns or devices.
+Actual selected seller options must match the dimensional specification.
+
+Modeled mechanism hardware: **five types,22 pieces**, excluding spares and device
+mounting kits whose lengths/bearing planes remain unresolved:
+
+| CAD SKU | Required specification | Quantity |
 |---|---|---:|
-| `M2_MF_30_PLUS_5` | PA66 nylon male/female hex standoff; M2; body 30 mm + male stud 5 mm; across flats 4 mm; usable female thread depth at least 4 mm | 4 |
-| `M2X6_SOCKET_CAP` | A2 stainless socket cap screw; M2 × 6 mm; DIN 912 / ISO 4762 | 4 |
-| `M2X14_SOCKET_CAP` | A2 stainless socket cap screw; M2 × 14 mm; DIN 912 / ISO 4762 | 4 |
-| `M2x6_ISO4026_DIN913` | A2 stainless flat-point socket set screw; M2 × 6 mm; DIN 913 / ISO 4026 | 3 |
-| `M2_HEX_NUT` | A2 stainless regular M2 DIN 934 hex nut for stack and journals; across flats 4 mm; height 1.6 mm | 8 |
-| `M2_SQUARE_NUT_DIN562` | A2 stainless M2 DIN 562 flat square nut for rail clamps; nominal width 4 mm and thickness 1.2 mm; accepted width 3.6–4.0 mm, thickness 0.8–1.2 mm; verify corner profile | 3 |
-| `M2_WASHER_2.2_5_0.3` | A2 stainless flat washer; inside diameter 2.2 mm × outside diameter 5 mm × thickness 0.3 mm | 16 |
+| `M2X14_SOCKET_CAP` | A2 stainless M2x14, DIN912/ISO4762, under-head length14, head diameter3.8/height2, hex key1.5 mm | 4 |
+| `M2_HEX_NUT` | A2 DIN934 M2x0.4, AF4/height1.6 mm; journal retention only | 4 |
+| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3 mm | 8 |
+| `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, DIN913/ISO4026, hex key0.9 mm | 3 |
+| `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2 mm; accepted width3.6–4.0/height0.8–1.2 mm, verify corners | 3 |
 
-All threaded interfaces above are M2 × 0.4, right-hand; washers are unthreaded.
-Socket cap screw lengths are measured under the head; the set screw is 6 mm
-overall. Retain the flat-point set screw requirement. The 42-piece total excludes
-OEM motor/servo fasteners. A separate fit-coupon assembly can borrow one clamp
-screw/square-nut pair; add one pair only if it must remain assembled independently.
-Each additional equipment-board level needs four more matching standoffs and
-reuses the top nuts/washers. The current journal design uses printed sleeves.
+The rail clamps require square nuts; do not substitute small hex nuts.
+[Accu](https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2) permits minimum
+width3.6 mm while [PTS](https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202)
+lists3.7 mm. The check uses3.6 mm and a4.6 mm pocket with+/-0.3 mm size error:
+minimum insertion clearance0.3 mm, theoretical45-degree blocking margin0.1912 mm.
+Verify actual corners, usable threads, torque and retention with the coupon.
 
-Keep the three rail-clamp square nuts separate from the eight stack/journal hex
-nuts. A tolerance-small M2 hex nut can rotate inside the 4.6 mm clamp pocket;
-do not substitute it for the square nut. [Accu's DIN 562 M2 specification](https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2)
-lists width 4.0–3.6 mm, while [PTS lists 4.0–3.7 mm](https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202).
-Both list thickness 1.2–0.8 mm. Use the more conservative 3.6 mm minimum width
-for the geometric check, and verify the chosen supplier's actual dimensions.
+Onboard devices: MicoAir743v2-AIO-35A x1; RS1102 10000KV x2; Gemfan1610 40 mm,
+1.5 mm bore, CW/CCW x1 each; DS-M005 300-degree x2;2S450mAh XT30 battery x1
+(dimensions/mass provisional); MTF-02P x1; LR900-A x1; LinkTrack P-AS x1.
+Subtract items already owned or included in equipment kits. Yaw/fin/ground
+hardware is outside this inventory.
 
-The rotation screen assumes ±0.3 mm error on the total 4.6 mm pocket width,
-giving a 4.3–4.9 mm range. At the minimum pocket, a 4.0 mm nut has 0.3 mm total
-insertion clearance. At the maximum pocket, an ideal 3.6 mm square has a 5.0912 mm
-diagonal, exceeding the pocket by 0.1912 mm. This margin assumes intact square
-corners. Accu describes an unchamfered nut but flags chamfer details as variable;
-confirm corner geometry, usable threads and rotational retention with the actual
-nut and printed coupon. The screen does not qualify tightening torque, holding
-force or the supplier's achieved local tolerance.
+Additional purchased attachment parts are required, **not completed BOM rows**:
+FC has four M2 attachment locations with its included dampers; P-AS has two M2
+locations; each servo has two diameter1.8 mm ear holes suitable for a designed
+M1.6 clearance fastening, not an identified OEM screw. Select actual spacer,
+washer, nut and screw lengths only after their bearing planes are known. Motor
+mounting is still unresolved despite its confirmed M1.4 pattern. No generated
+part substitutes for the supplied28T horn or its retaining screw.
 
-Onboard equipment selection comes from `gondola/design_contract.py`:
-
-| Equipment | Selected model or specification | Installed quantity |
-|---|---|---:|
-| Flight controller with ESC | MicoAir743v2-AIO-35A | 1 |
-| Brushless motor | Happymodel RS1102, 10000KV | 2 |
-| Propeller | Gemfan 1610, 40 mm, two blades; one CW and one CCW; 1.5 mm shaft-hole variant for the RS1102 shaft | 2 |
-| Tilt servo | DSpower DS-M005, 300-degree version | 2 |
-| Battery | 2S LiPo, 450 mAh provisional selection; confirm actual dimensions and mass | 1 |
-| Optical-flow / range sensor | MicoAir MTF-02P; 21.6 × 16 × 6.5 mm reference envelope | 1 |
-| Telemetry module | LR900-A | 1 |
-| Positioning module | LinkTrack P-AS | 1 |
-
-The propeller interface is supported by the [RS1102 shaft specification](https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/)
-and [Gemfan 1610 shaft-hole options](https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html).
-The requested 450–2000 mAh battery range does not establish that larger packs fit.
-Ground telemetry counterparts and UWB anchors are outside this gondola inventory.
-
-Additional consumables and electrical accessories:
-
-- 12 mm-wide single-sided adhesive tape over each rail wing onto the balloon;
-  select adhesive compatibility and final length through the physical fit trial.
-- Adhesive hook-and-loop for the battery and electrically insulating mounting
-  pads/adhesive for the flight controller and sensor modules.
-- One XT30 pigtail and one 220 µF, 35 V capacitor, if absent from the FC kit.
-  The CAD reserves are provisional spaces; verify actual component dimensions.
-- Flexible wiring, compatible connectors, heat-shrink tubing and strain relief;
-  wire gauge, lengths and routing remain to be selected for the electrical assembly.
-- Tools if not already owned: 0.9 mm and 1.5 mm hex keys, a 4 mm nut wrench,
-  and a wrench matching the selected standoff's 4 mm hex flats.
-
-Unresolved procurement interfaces must remain explicit:
-
-- RS1102 mounting screw diameter, pitch, pattern and safe engagement depth need
-  actual motor/vendor confirmation.
-- DS-M005 mounting-ear fasteners, supplied 28T horn and horn-retaining screw
-  need actual part confirmation. The horn-to-printed-sleeve torque connection is
-  unfinished; purchasing the listed hardware alone does not complete it.
-- Resolve the stored servo-label rating of 3.7–4.2 V versus the listed 3.7–5 V
-  rating against the purchased unit before choosing its power supply/regulator.
-  Do not substitute M2 hardware for unspecified OEM fasteners.
-
-When geometry, inventory or equipment selection changes, regenerate and validate
-the BOM, then update this checklist in the same change. Do not infer physical
-qualification or production release from these quantities or purchase links.
+Consumables remain12 mm single-sided compatible tape, battery hook-and-loop,
+insulating adhesive pads for LR/MTF, flexible wire/connectors/heat-shrink/strain
+relief, one XT30 pigtail and one220uF35V capacitor if absent from the FC kit.
+Keep optics, antenna regions and FC ESC cooling surfaces clear. Servo supply
+voltage3.7–4.2 V on the stored label versus3.7–5 V on the confirmed product page
+remains a source discrepancy; verify the actual supplied unit before powering it.
 
 ## Execution
 
@@ -216,15 +195,14 @@ GUI entry points are `build_gondola.FCMacro` and `preview_gondola.FCMacro`.
 
 ## Change constraints
 
-- Keep native object names and expressions stable during code-only refactors;
-  the baseline comparison exercises every saved shape and native control.
-  A deliberate geometry change needs an explained baseline change and new evidence.
-- Use shared metadata, transforms, schema and hash helpers. Preserve local,
-  world and print coordinate distinctions; do not mutate cached shapes.
-- Print only manifest-listed parts. Purchased hardware, equipment envelopes and
-  clearance reserves remain excluded. Quantities belong to generated manifests.
-- Keep physical/OEM interfaces unresolved until their required evidence exists.
-  Passing CAD checks does not establish loaded operation, manufacturing approval,
-  electrical compatibility or complete flight mass.
-- Keep generated success reports tied to current source and artifact hashes.
-  Never bypass package gates or copy old reports into a new build.
+- Keep source evidence separate from design allowances. Only confirmed mounting
+  axes may become holes; unknown Z dimensions or thread depths stay unresolved.
+- Preserve shared shoe capture, both clamp approaches, bounded independent tilt,
+  service paths, optical clearance and the explicit FC wiring corridor.
+- Geometry revisions need a documented old/new shape and native-control audit,
+  then a newly pinned fixture. Never add a comparison exception to conceal damage.
+- Print only manifest-listed parts. Hardware/equipment/reserves stay excluded.
+- Source changes invalidate generated reports: rebuild, preview, validate, compare
+  and bundle for the same source/CAD/exports. Never copy a previous success report.
+- CAD success does not establish friction holding force, strength, electrical
+  compatibility, physical mounting-stack fit or flight readiness.

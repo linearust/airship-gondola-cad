@@ -2,8 +2,9 @@
 
 The fixed PA12 frame carries two servos and two rotating motor/guard carriers.
 Four identical keyed sleeves provide the journals; standard M2 hardware retains
-them. The motor screw pattern and servo-horn coupling remain unmeasured OEM
-interfaces. They are represented as reservations, not fabricated components.
+them. Official servo-ear axes locate open mounting saddles. The motor screw
+pattern is known, but its seating/engagement and the servo-horn coupling remain
+unqualified interfaces rather than invented fasteners.
 """
 
 import FreeCAD as App
@@ -25,9 +26,10 @@ from . import rail
 
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
-FOOT_THICKNESS = 3.0
+FOOT_THICKNESS = 2.0
+FOOT_RIB_HEIGHT = 1.5
+FOOT_RIB_WIDTH = 1.5
 SERVICE_CEILING_Z = 8.0
-CRADLE_WINDOW_BOTTOM_Z = SERVICE_CEILING_Z + 1.5
 GUARD_OUTER_RADIUS = 24.3
 GUARD_INNER_RADIUS = 22.8
 PIVOT_Z = 48.2
@@ -54,12 +56,15 @@ JOURNAL_WASHER_SKU = (
 SERVO_SOURCE = "https://www.dspowerservo.com/ds-m005-mini-servo-product/"
 SERVO_DRAWING = "https://cdn.globalso.com/dspowerservo/m0055.jpg"
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
+MOTOR_DRAWING = (
+    "https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg"
+)
 JOURNAL_SCREW_SOURCE = metric.JOURNAL_SCREW_SOURCE
 JOURNAL_NUT_SOURCE = metric.NUT_SOURCE
 JOURNAL_WASHER_SOURCE = metric.WASHER_SOURCE
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
-BEARING_SOURCE = "https://www.ezo-brg.co.jp/english/product/spec.php?eid=00213&unit=mm"
+BEARING_SOURCE = "https://www.nsk.com/engineering/products/bearings/ball-bearings/deep-groove-ball-bearings/extra-small-ball-bearings-and-miniature-ball-bearings-metric-series-with-flamge/mf63zz-esm-md-wf.html"
 
 
 # The local tilt axis is Y; motor thrust is +X at zero tilt. Fixed frame geometry
@@ -71,6 +76,23 @@ MOTOR_DIAMETER = 13.5
 MOTOR_LENGTH = 14.0
 PROPELLER_DIAMETER = 40.0
 PROPELLER_HUB_THICKNESS = 5.0
+SERVO_BODY_LENGTH = 16.2
+SERVO_BODY_HEIGHT = 17.4
+SERVO_BODY_WIDTH = 8.3
+SERVO_BODY_BASE_Y = -55.0
+SERVO_CASE_MIN_X = -4.1  # Packaging assumption: case-to-output-axis datum unpublished.
+SERVO_EAR_UNDERSIDE = 10.2
+SERVO_MOUNT_X = (-5.82, 13.68)
+SERVO_MOUNT_CLEARANCE_DIAMETER = 2.0
+SERVO_MOUNT_TAB_THICKNESS = 2.0
+SERVO_MOUNT_TAB_HALF_HEIGHT = 3.5
+SERVO_MOUNT_PLANE_Y = SERVO_BODY_BASE_Y + SERVO_EAR_UNDERSIDE
+SERVO_SUPPORT_OUTER_X = (-9.32, 17.18)
+SERVO_CASE_CLEARANCE = 0.3
+SLEEVE_SERVICE_LIFT = 10.0
+MOTOR_MOUNT_THREAD = "M1.4"
+MOTOR_MOUNT_PCD = 6.6
+MOTOR_MOUNT_COUNT = 3
 
 
 def cylinder(radius, length, origin, direction=(0, 1, 0)):
@@ -92,15 +114,19 @@ def _capsule_window(width, z_low, z_high, y, depth):
 def _fixed_side(sign):
     bottom = BASE_Z - PIVOT_Z
     top = bottom + FOOT_THICKNESS
-    foot = union(
-        [
-            box(12.8, 73, FOOT_THICKNESS, (-6.4, -42, bottom)),
-            box(22, 25, FOOT_THICKNESS, (-7, -58, bottom)),
-        ]
-    )
-    foot = foot.cut(box(14, 11, FOOT_THICKNESS + 2, (-3, -51, bottom - 1)))
+    foot = box(12.8, 73, FOOT_THICKNESS, (-6.4, -42, bottom))
     foot = foot.cut(box(8, 46, FOOT_THICKNESS + 2, (-4, -23, bottom - 1)))
+    servo_foot = box(26.5, 25, FOOT_THICKNESS, (-9.32, -58, bottom)).cut(
+        box(21.7, 20.2, FOOT_THICKNESS + 2, (-6.92, -55.6, bottom - 1))
+    )
+    foot = foot.fuse(servo_foot)
     parts = [foot]
+    # Two-millimetre open feet retain 1.5 mm-wide raised edge ribs; this removes
+    # broad redundant plate material without making a long flat 2 mm sheet.
+    for x in (-6.4, 4.9):
+        parts.append(box(FOOT_RIB_WIDTH, 73, FOOT_RIB_HEIGHT, (x, -42, top)))
+    for x in (-9.32, 15.68):
+        parts.append(box(FOOT_RIB_WIDTH, 25, FOOT_RIB_HEIGHT, (x, -58, top)))
     for y in (-28, 28):
         # Constant-width posts and ordinary circular bores: no FDM roof relief.
         cheek = union(
@@ -109,21 +135,49 @@ def _fixed_side(sign):
         cheek = cheek.cut(_capsule_window(8, top + 5, -7.5, y - 2, 4))
         cheek = cheek.cut(cylinder(JOURNAL_RADIUS, 4, (0, y - 2, 0)))
         parts.append(cheek)
-    # Four equal corner columns and a simple rim support the servo envelope.
-    cradle = box(19.2, 18.4, -4.25 - top, (-5.6, -55.5, top))
-    cradle = cradle.cut(box(14.4, 13.6, -top + 2, (-3.2, -53.1, top - 1)))
-    window_bottom = CRADLE_WINDOW_BOTTOM_Z - PIVOT_Z
-    for y in (-55.5, -39.5):
-        cradle = cradle.cut(
-            box(14.4, 2.6, -8.25 - window_bottom, (-3.2, y - 0.1, window_bottom))
+    # Official ear centres and underside datum locate the supports. Closed
+    # holes would leave sub-millimetre walls against the nominal case envelope:
+    # open each Ø2 saddle toward the case instead of printing that fragile web.
+    for index, hole_x in enumerate(SERVO_MOUNT_X):
+        outer = SERVO_SUPPORT_OUTER_X[index]
+        inner = (
+            SERVO_CASE_MIN_X - SERVO_CASE_CLEARANCE
+            if index == 0
+            else SERVO_CASE_MIN_X + SERVO_BODY_LENGTH + SERVO_CASE_CLEARANCE
         )
-    for x in (-5.6, 11.2):
-        cradle = cradle.cut(
-            box(2.6, 13.6, -8.25 - window_bottom, (x - 0.1, -53.1, window_bottom))
+        left, right = sorted((outer, inner))
+        tab_y = SERVO_MOUNT_PLANE_Y - SERVO_MOUNT_TAB_THICKNESS
+        tab = box(
+            right - left,
+            SERVO_MOUNT_TAB_THICKNESS,
+            2 * SERVO_MOUNT_TAB_HALF_HEIGHT,
+            (left, tab_y, -SERVO_MOUNT_TAB_HALF_HEIGHT),
         )
-    # Journal service remains possible after the servo is removed.
-    cradle = cradle.cut(cylinder(5.9, 6, (0, -41, 0)))
-    parts.append(cradle)
+        saddle_radius = SERVO_MOUNT_CLEARANCE_DIAMETER / 2
+        tab = tab.cut(cylinder(saddle_radius, 4, (hole_x, tab_y - 1, 0)))
+        slot_left, slot_right = sorted((hole_x, inner))
+        tab = tab.cut(
+            box(
+                slot_right - slot_left + 0.02,
+                4,
+                SERVO_MOUNT_CLEARANCE_DIAMETER,
+                (slot_left - 0.01, tab_y - 1, -saddle_radius),
+            )
+        )
+        parts.append(tab)
+        support_x = outer if index == 0 else outer - 2.4
+        # An open A-frame carries each saddle to the perimeter foot. The two
+        # inclined webs are 2 mm wide in Y and 2.4 mm in X, not a solid cradle.
+        for anchor_y in (-55.6, -37.4):
+            points = [
+                V(support_x, anchor_y, top),
+                V(support_x, anchor_y + 2, top),
+                V(support_x, SERVO_MOUNT_PLANE_Y, -SERVO_MOUNT_TAB_HALF_HEIGHT),
+                V(support_x, tab_y, -SERVO_MOUNT_TAB_HALF_HEIGHT),
+            ]
+            parts.append(
+                Part.Face(Part.makePolygon(points + [points[0]])).extrude(V(2.4, 0, 0))
+            )
     shape = mirrored_y(union(parts), sign)
     shape.translate(V(0, sign * PIVOT_HALF_SPAN, PIVOT_Z))
     return shape
@@ -138,9 +192,9 @@ def integral_frame_shape():
     frame = union([_fixed_side(1), _fixed_side(-1), wings, rail.shoe_shape()])
     # The metric hex driver reaches the selected clamp screw from either Y side.
     # This corridor stays outside the shared shoe and opens through the
-    # low portions of the outrigger legs; SLS/MJF permits the local ceiling.
+    # low portions of the outrigger legs and keeps the open support windows free.
     for side in (-1, 1):
-        # Keep 1.5 mm above the corridor independently of foot/base thickness.
+        # Cut the local foot cap above Z4; its remaining base is 1.8 mm thick.
         service = box(
             6.4,
             103,
@@ -161,7 +215,7 @@ def moving_carrier_shape():
     rear = union(
         [
             cylinder(8.2, 1.5, (-8.5, 0, 0), (1, 0, 0)),
-            box(1.5, 52, 9, (-8.5, -26, -4.5)),
+            box(1.5, 52, 6.4, (-8.5, -26, -3.2)),
         ]
     )
     rear = rear.cut(cylinder(2.2, 3, (-9, 0, 0), (1, 0, 0)))
@@ -181,7 +235,9 @@ def moving_carrier_shape():
     guard = cylinder(GUARD_OUTER_RADIUS, 2, (11, 0, 0), (1, 0, 0)).cut(
         cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
     )
-    parts.extend([guard, box(2, 4, 9, (11, -26, -4.5)), box(2, 4, 9, (11, 22, -4.5))])
+    parts.extend(
+        [guard, box(2, 4, 6.4, (11, -26, -3.2)), box(2, 4, 6.4, (11, 22, -3.2))]
+    )
     shape = union(parts)
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Motor carrier/guard is not one solid")
@@ -339,7 +395,7 @@ def _create_pod(doc, module, prefix, sign):
         prefix + "Motor",
         "RS1102 · motor envelope Ø13.5 × 14 mm",
         cylinder(MOTOR_DIAMETER / 2, MOTOR_LENGTH, (-7, 0, 0), (1, 0, 0)),
-        "Published outer envelope only. Bell/base datums, mounting-hole pitch, thread and usable screw depth are unverified.",
+        "Conservative packaging cylinder, not exact bell/base geometry. Official drawing specifies overall length14, body datum8.8 and shaft projection4; this cylinder must not be used to derive a mounting depth. Three M1.4 mounting axes on PCD6.6 are published, but usable screw depth and rear clip clearance remain unverified.",
         MOTOR_SOURCE,
     )
     set_property(motor, "Diameter", MOTOR_DIAMETER, "App::PropertyLength")
@@ -374,14 +430,21 @@ def _create_pod(doc, module, prefix, sign):
         propeller.ViewObject.ShapeColor = (0.68, 0.81, 0.96)
         propeller.ViewObject.Transparency = 70
 
-    servo_y = -55 if sign > 0 else 37.6
+    servo_y = (
+        SERVO_BODY_BASE_Y if sign > 0 else -(SERVO_BODY_BASE_Y + SERVO_BODY_HEIGHT)
+    )
     servo = _reference(
         doc,
         assembly,
         prefix + "Servo",
         prefix + " · DS-M005 case reference",
-        box(16.2, 17.4, 8.3, (-4.1, servo_y, -4.15)),
-        "Case envelope only, excluding ears, horn and spline. Output axis along Y, with provisional coupling gap. Measure the supplied horn before designing a connection. Do not connect directly to 2S LiPo.",
+        box(
+            SERVO_BODY_LENGTH,
+            SERVO_BODY_HEIGHT,
+            SERVO_BODY_WIDTH,
+            (SERVO_CASE_MIN_X, servo_y, -SERVO_BODY_WIDTH / 2),
+        ),
+        "Published current case envelope16.2x8.3x17.4, excluding ears, horn and spline. Output axis is Y at X=Z=0. Case X offset4.1 is a packaging assumption, not an official axis-to-edge dimension; the drawing instead fixes mounting-hole axes at X=-5.82/+13.68 and ear underside10.2 from the case bottom. Verify case clearance before manufacturing. No ear thickness or horn geometry is invented. Do not connect directly to2S LiPo.",
         SERVO_DRAWING,
     )
     coupling_y = -37.6 if sign > 0 else 30
@@ -443,11 +506,12 @@ def build_propulsion_module(doc, parent=None):
         "PRINT | PA12 integral paired propulsion frame and M2-clamped rail shoe"
     )
     frame.Notes = (
-        "Continuous T-rail shoe, both outrigger feet and servo cradles are one PA12 SLS/MJF part. "
-        f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet/base are{FOOT_THICKNESS:g}mm thick. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
+        "Continuous T-rail shoe, both ribbed outrigger feet and open servo-ear supports are one PA12 SLS/MJF part. "
+        f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet are{FOOT_THICKNESS:g}mm thick with{FOOT_RIB_HEIGHT:g}mm-high edge ribs. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
         "The exact common shoe includes the M2 captive nut pocket and screw bore; choose one of the rotationally symmetric clamp ports; each has side-loaded nut access. "
         "Hollow printed D sleeves are retained by purchased M2 hardware; no printed pin or retaining clip. "
-        "Assemble journals and their screws before fitting the servo; the coaxial servo later blocks direct journal screw access. A small cradle output-rim relief permits8mm sleeve retraction, then lift before moving farther. "
+        "Official servo-ear centres locate two2mm open saddles for a prospective M1.6 through-fastener. Slots open toward the case to remove otherwise sub-millimetre walls; ear thickness, bolt length and retention are not yet approved. "
+        f"Assemble journals before fitting the servo. For driven-side removal retract8mm, lift{SLEEVE_SERVICE_LIFT:g}mm above the ear saddles, then move outward. "
         "Rail friction, journal fit, supplier tolerances and the motor/servo-horn interfaces require physical validation."
     )
     frame.PrintNotes = "PA12 SLS/MJF. Depowder the through T-channel, side nut pocket, screw bore, hollow sleeves and open windows. No printed thread. STL contains this integrated frame only; purchased gold hardware must be excluded."
@@ -487,7 +551,7 @@ def build_propulsion_module(doc, parent=None):
             "Front guard ID45.6mm admits the40mm propeller and13.5mm motor axially. "
             "D bores use nominal radius4.45 and flatZ3.45; hollow sleeve radius4/flatZ3.0 preserves a positive torque path. "
             "Boss endsY+/-26.55 give0.9mm total width clearance between stationary cheek inner facesY+/-27. "
-            "Motor screw pattern, metric thread and allowed engagement remain unverified; no invented mounting holes."
+            "Official RS1102 drawing gives3 M1.4 axes on PCD6.6. Holes remain uncut: a1.8mm clearance hole would leave only0.2mm between it and the existing4.4mm rear-shaft relief, and the rear clip diameter/head seating/depth are unverified. No false mounting approval."
         )
         carrier.PrintNotes = "PA12 SLS/MJF integral carrier/guard. Depowder open guard, rear relief and D journal bores. Install motor and propeller through the front opening; actual motor and horn fastening require measured vendor interfaces."
         update_print_orientation(carrier)
@@ -541,8 +605,9 @@ def build_propulsion_module(doc, parent=None):
         set_property(
             motor,
             "OEMFastenerStatus",
-            "Official RS1102 data omit mounting screw size/pitch, PCD and thread depth. Vendor-supplied fastener requires metric identification before release.",
+            "Official drawing:3-M1.4 equally spaced on PCD6.6. Separate pitch, thread depth and safe engagement are unpublished. No final fastener length or mounting geometry is approved.",
         )
+        set_property(motor, "OEMDrawingURL", MOTOR_DRAWING)
         bound = doc.getObject(prefix + "SweepBound")
         bound.Notes = "Conservative moving bound for integral carrier and guard plus hollow sleeves/purchased M2 retention; journal interfaces intentionally enter the stationary frame. External module/rail clearance can be tested against this full bound."
         bound.LateralHalfWidth = CARRIER_OUTER_Y
@@ -605,6 +670,7 @@ def build_propulsion_module(doc, parent=None):
             "device_reference_count": len(refs),
             "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
             "frame_foot_thickness_mm": FOOT_THICKNESS,
+            "frame_foot_edge_rib_height_mm": FOOT_RIB_HEIGHT,
             "symmetric_clamp_service": True,
             "integrated_guard_carriers": True,
             "printed_retaining_clips": 0,
@@ -663,8 +729,8 @@ def build_propulsion_module(doc, parent=None):
     metrics["journal_assembly_order"] = [
         "Leave servos off the cradle while fitting the rotating carriers.",
         f"Insert hollow D sleeves from outside, fit washers and M2x{JOURNAL_SCREW_LENGTH:g} bolts/nuts without pinching stationary cheeks.",
-        "Fit vendor motor fasteners, then servos and measured horn coupling.",
-        "For driven-side journal service, remove servo first; withdraw sleeve8mm, lift2mm, then move away.",
+        "Resolve motor mount seating/engagement and servo saddle fastening before fitting vendor motor fasteners, servos and measured horn coupling.",
+        f"For driven-side journal service, remove servo first; withdraw sleeve8mm, lift{SLEEVE_SERVICE_LIFT:g}mm, then move away.",
     ]
     metrics["OEM_interfaces"] = {
         "DS_M005": {
@@ -673,11 +739,34 @@ def build_propulsion_module(doc, parent=None):
             "horn_spline_teeth": 28,
             "mounting_ear_hole_diameter_mm": 1.8,
             "mounting_ear_pitch_mm": 19.5,
+            "mounting_axes_relative_to_output_mm": list(SERVO_MOUNT_X),
+            "ear_underside_from_case_bottom_mm": SERVO_EAR_UNDERSIDE,
+            "printed_mount_interface": "Two Y-axis open saddles, nominal2mm width, for prospective M1.6 through-bolts; not a verified closed-hole or OEM screw specification.",
+            "mount_saddle_width_mm": SERVO_MOUNT_CLEARANCE_DIAMETER,
+            "mount_saddle_thickness_mm": SERVO_MOUNT_TAB_THICKNESS,
+            "mount_saddle_bearing_plane_y_mm": SERVO_MOUNT_PLANE_Y,
+            "case_axis_to_edge_offset_mm": None,
+            "case_axis_to_edge_packaging_assumption_mm": -SERVO_CASE_MIN_X,
+            "ear_thickness_mm": None,
+            "mount_fastener_length_mm": None,
+            "release_limit": "Verify supplied case/ear dimensions, washers and open-saddle retention before load-bearing use; no OEM ear solid is fabricated.",
             "horn_retention_screw": "Unspecified; verify vendor fastener and actual horn.",
         },
         "RS1102": {
             "source": MOTOR_SOURCE,
-            "motor_mount_screw_pitch_diameter_pattern_depth": "Not specified by examined manufacturer data; remains unresolved.",
+            "drawing": MOTOR_DRAWING,
+            "retained_drawing": "references/rs1102_dimensions.jpg",
+            "mount_thread_designation": MOTOR_MOUNT_THREAD,
+            "mount_hole_count": MOTOR_MOUNT_COUNT,
+            "mount_pitch_circle_diameter_mm": MOTOR_MOUNT_PCD,
+            "mount_angular_spacing_deg": 120,
+            "thread_pitch_mm": None,
+            "thread_usable_depth_mm": None,
+            "mount_holes_implemented": False,
+            "existing_rear_relief_diameter_mm": 4.4,
+            "candidate_clearance_diameter_mm": 1.8,
+            "candidate_closed_hole_ligament_mm": MOTOR_MOUNT_PCD / 2 - 2.2 - 0.9,
+            "mount_hole_deferral_reason": "A closed1.8mm hole leaves0.2mm beside the4.4mm rear relief. Rear shaft/clip diameter, bolt-head seat and safe engagement are unpublished; do not shrink the relief or fabricate seating/depth assumptions.",
         },
     }
     metrics["printed_parts"] = [
@@ -692,12 +781,13 @@ def build_propulsion_module(doc, parent=None):
     metrics["printed_volume_mm3"] = sum(o.Shape.Volume for o in printed)
     metrics["purchased_substitution_review"] = {
         "decision": "Retain four identical removable D sleeves; a standard bearing alone does not replace their drive and retention functions.",
-        "candidate": "MR83ZZ, manufacturer-confirmed3x8x3mm",
+        "candidate": "MF63ZZ, manufacturer-confirmed3x6x2.5mm; flange7.2x0.6mm",
         "source": BEARING_SOURCE,
-        "inner_race_abutment_maximum_diameter_mm": 4.9,
+        "inner_race_abutment_maximum_diameter_mm": 3.7,
         "why_not_installed": [
             "A 3 mm bearing bore does not locate the selected M2 retention bolt; a new spindle interface would be required.",
             "Bearing housing fit, inner-race spacers and axial housing retention would add interfaces.",
+            "An ordinary5mm-diameter M2 washer or shoulder-bolt head exceeds the3.7mm maximum inner-race abutment; dedicated seating is required.",
             "DS-M005 actual28T horn spline dimensions and horn fastener remain unpublished; bearing substitution cannot solve that drive interface.",
             "Replacing only idle sleeves would add a second axle specification and handed carrier parts instead of one repeated sleeve SKU.",
         ],
@@ -708,14 +798,17 @@ def build_propulsion_module(doc, parent=None):
         "process": "PA12 SLS/MJF",
         "minimum_feature_wall_mm": 1.5,
         "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
-        "cradle_service_roof_mm": CRADLE_WINDOW_BOTTOM_Z - SERVICE_CEILING_Z,
+        "servo_support_web_width_mm": 2.0,
+        "servo_support_web_depth_mm": 2.4,
+        "foot_edge_rib_width_mm": FOOT_RIB_WIDTH,
+        "foot_edge_rib_height_mm": FOOT_RIB_HEIGHT,
         "long_frame_base_thickness_mm": FOOT_THICKNESS,
-        "supplier_review_required": "The3mm foot/base follows the200mm-and-longer thin-part guidance; narrow journal/cage walls are local features, not a load qualification.",
+        "supplier_review_required": "Two-millimetre open feet use raised1.5mm edge ribs and A-frame ear supports instead of broad plate/cradle material. General local wall target remains1.5mm. The long integrated frame still needs supplier stiffness/warp review and physical load checks; ribs do not establish qualification.",
     }
     metrics["unfinished_interfaces"] = [
-        "RS1102 actual metric mounting screw and hole pattern/depth",
+        "RS1102 rear clearance, screw head seating and safe engagement; known3-M1.4/PCD6.6 pattern not yet cut",
         "DS-M005 vendor horn screw and horn-to-sleeve coupling",
-        "Servo mounting-ear retention",
+        "Servo case-to-axis offset, ear thickness and purchased open-saddle fastener/retention",
         "Printed journal tolerances and running clearance",
         "Nut retention and clamp holding force",
         "Motor wires and strain relief",

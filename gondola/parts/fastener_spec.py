@@ -6,12 +6,6 @@ than proven load capacity, thread retention or an approved supplier lot.
 
 THREAD_DIAMETER = 2.0
 THREAD_PITCH = 0.4
-BODY_LENGTH = 30.0
-STUD_LENGTH = 5.0
-STANDOFF_AF = 4.0
-FEMALE_DEPTH = 5.0
-FEMALE_DEPTH_PURCHASE_MIN = 4.0
-SCREW_LENGTH = 6.0
 SCREW_HEAD_DIAMETER = 3.8
 SCREW_HEAD_HEIGHT = 2.0
 SOCKET_KEY = 1.5

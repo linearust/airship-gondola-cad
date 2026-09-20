@@ -45,11 +45,23 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertEqual(
             len(registry.HardwareParts), EXPECTED_INVENTORY["purchased_hardware"]
         )
+        self.assertEqual(
+            {obj.Name for obj in registry.EquipmentMounts},
+            {"BatteryMount", "ElectronicsMount"},
+        )
+        self.assertEqual(
+            len(registry.EquipmentMounts), EXPECTED_INVENTORY["equipment_mounts"]
+        )
+        self.assertTrue(
+            {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(
+                registry.PropertiesList
+            )
+        )
         hardware_skus = Counter(obj.HardwareSKU for obj in registry.HardwareParts)
         self.assertEqual(
             len(hardware_skus), EXPECTED_INVENTORY["purchased_hardware_types"]
         )
-        self.assertEqual(hardware_skus["M2_HEX_NUT"], 8)
+        self.assertEqual(hardware_skus["M2_HEX_NUT"], 4)
         self.assertEqual(hardware_skus["M2_SQUARE_NUT_DIN562"], 3)
         result = unresolved_scope(self.reference)
         self.assertTrue(result["passed"], result)

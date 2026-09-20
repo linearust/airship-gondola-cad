@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "K"
+DESIGN_REVISION = "L"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -64,6 +64,8 @@ SCOPED_LISTED_EQUIPMENT_MASS_G = round(
 SOURCE_DISCREPANCIES = {
     "servo_supply_voltage": {
         "manufacturer_label_v": [3.7, 4.2],
+        "manufacturer_product_page_v": [3.7, 5.0],
+        "confirmed_product_url": "https://www.dspowerservo.com/ds-m005-mini-servo-product/",
         "notion_listed_v": [3.7, 5.0],
         "evidence": "references/ds_m005_voltage_label.jpg",
         "status": "verify actual servo voltage before electrical integration",
@@ -85,13 +87,13 @@ EXCLUDED_EQUIPMENT = (
 )
 EXPECTED_INVENTORY = {
     "rails": 1,
-    "identical_boards": 3,
+    "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 11,
+    "installed_prints": 10,
     "fit_coupons": 2,
-    "purchased_hardware": 42,
-    "purchased_hardware_types": 7,
-    "unique_print_files": 7,
+    "purchased_hardware": 22,
+    "purchased_hardware_types": 5,
+    "unique_print_files": 8,
 }
 
 
@@ -127,7 +129,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_supply_voltage",
-        "Resolve manufacturer label 3.7–4.2V versus BOM 3.7–5V against the purchased servo before powering it.",
+        "Resolve manufacturer label 3.7–4.2V versus user-confirmed manufacturer product page and BOM 3.7–5V against the purchased servo before powering it.",
     ),
     UnresolvedInterface(
         "rail_flexure",
@@ -135,14 +137,19 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "motor_mount",
-        "Actual RS1102 screw diameter/pitch, mounting pattern and safe thread engagement.",
+        "RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.",
     ),
     UnresolvedInterface(
         "servo_drive",
         "Measured DS-M005 28T horn connection, torque transfer to D sleeve and horn retaining fastener.",
     ),
     UnresolvedInterface(
-        "servo_ear_retention", "Actual servo ear fit and metric retaining fasteners."
+        "servo_ear_retention",
+        "DS-M005 ear hole axes and underside datum are published; verify actual case offset, ear thickness, bearing contact and M1.6 clearance-fastener length.",
+    ),
+    UnresolvedInterface(
+        "electronic_mounting_stack",
+        "FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.",
     ),
     UnresolvedInterface(
         "physical_retention",
@@ -180,9 +187,9 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12 SLS/MJF",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "scope": "Indoor LTA blimp gondola including MTF-02P optical-flow/range sensor: one flexible rail, two tilting main propulsors, interchangeable stackable equipment boards.",
+        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two tilting main propulsors, a compact battery mount and one open electronics carrier with confirmed mounting-hole patterns.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
-        "battery_attachment": "Adhesive hook-and-loop on generic board; no strap slots;90deg in-plane orientation.",
+        "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; no unnecessary stacking holes; 90deg in-plane orientation.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],
         "scoped_listed_equipment_mass_g": SCOPED_LISTED_EQUIPMENT_MASS_G,
         "source_discrepancies": SOURCE_DISCREPANCIES,

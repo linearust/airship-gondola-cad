@@ -16,7 +16,8 @@ from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
 from gondola.design_contract import EXPECTED_INVENTORY
 from gondola.manufacturing import geometry_comparison
 from gondola.parts import equipment_envelopes as devices
-from gondola.parts import universal_board as board
+from gondola.parts import equipment_mounts as mounts
+from gondola.parts import mounting_interfaces as interfaces
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .geometry import intersection_volume, local_shape
@@ -28,15 +29,14 @@ RESERVES = (
     "PortPhaseLeadLoopReserve",
     "StarboardPhaseLeadLoopReserve",
     "MTF02POpticalClearanceReserve",
+    "FCWiringClearanceReserve",
 )
 EXPECTED_PURCHASE_QUANTITIES = {
-    "M2_MF_30_PLUS_5": 4,
-    "M2X6_SOCKET_CAP": 4,
     "M2X14_SOCKET_CAP": 4,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_HEX_NUT": 8,
+    "M2_HEX_NUT": 4,
     "M2_SQUARE_NUT_DIN562": 3,
-    "M2_WASHER_2.2_5_0.3": 16,
+    "M2_WASHER_2.2_5_0.3": 8,
 }
 
 
@@ -120,6 +120,374 @@ def reserve_checks(doc):
     return checks, pairs
 
 
+def _comparison_passed(comparison):
+    return all(
+        comparison[key] < TOL
+        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
+    )
+
+
+def _in_parent_frame(shape, parent):
+    result = shape.copy()
+    result.Placement = parent.getGlobalPlacement().multiply(result.Placement)
+    return result
+
+
+def mounting_pad_check(
+    shape, centre, *, bottom, thickness, hole_diameter, pad_diameter
+):
+    """Measure the entire bearing annulus and bore, not a few points on a grid."""
+    origin = App.Vector(centre[0], centre[1], bottom)
+    bore = Part.makeCylinder(hole_diameter / 2, thickness, origin)
+    annulus = Part.makeCylinder(pad_diameter / 2, thickness, origin).cut(bore)
+    obstruction = intersection_volume(shape, bore)
+    missing_material = annulus.cut(shape).Volume
+    return {
+        "centre_xy_mm": list(centre),
+        "hole_diameter_mm": hole_diameter,
+        "pad_diameter_mm": pad_diameter,
+        "nominal_radial_wall_mm": (pad_diameter - hole_diameter) / 2,
+        "bore_obstruction_mm3": obstruction,
+        "missing_full_thickness_bearing_annulus_mm3": missing_material,
+        "passed": obstruction < TOL
+        and missing_material < TOL
+        and (pad_diameter - hole_diameter) / 2 >= 1.5 - TOL,
+    }
+
+
+def mounting_check(doc):
+    """Inspect saved supports, confirmed XY axes, free space and removal paths.
+
+    Pending device fasteners, PCB bearing planes and compressed dampers are not
+    modeled. These tests prove the printed interfaces and explicit reservations;
+    they do not claim a completed, retained equipment assembly.
+    """
+    registry = doc.DesignRegistry
+    physical = (
+        list(registry.PrintedParts)
+        + list(registry.HardwareParts)
+        + list(registry.ReferenceParts)
+        + list(registry.TapeReferences)
+    )
+    shapes = {obj.Name: world_shape(obj) for obj in physical}
+    support_rows = []
+    expected_supports = {"BatteryMount": "battery", "ElectronicsMount": "electronics"}
+    for name, kind in expected_supports.items():
+        obj = doc.getObject(name)
+        if obj is None:
+            support_rows.append({"object": name, "passed": False, "error": "missing"})
+            continue
+        shape = local_shape(obj)
+        comparison = geometry_comparison(shape, mounts.mount_shape(kind))
+        expected_contract = json.loads(json.dumps(mounts.mount_contract(kind)))
+        try:
+            contract_matches = json.loads(obj.MountContract) == expected_contract
+        except (AttributeError, ValueError, TypeError):
+            contract_matches = False
+        no_posts = abs(shape.BoundBox.ZMax - mounts.SUPPORT_FACE_Z) < TOL
+        unverified_stack = "MountingStackVerified" in obj.PropertiesList and not bool(
+            obj.MountingStackVerified
+        )
+        support_rows.append(
+            {
+                "object": name,
+                "kind": kind,
+                "source_comparison": comparison,
+                "contract_matches": contract_matches,
+                "single_valid_solid": shape.isValid() and len(shape.Solids) == 1,
+                "no_unverified_device_posts_above_support_face": no_posts,
+                "mounting_stack_remains_unverified": unverified_stack,
+                "passed": obj in registry.EquipmentMounts
+                and obj in registry.PrintedParts
+                and shape.isValid()
+                and len(shape.Solids) == 1
+                and _comparison_passed(comparison)
+                and contract_matches
+                and no_posts
+                and unverified_stack,
+            }
+        )
+    carrier = doc.getObject("ElectronicsMount")
+    if carrier is None:
+        return {"supports": support_rows, "passed": False}
+    carrier_shape = local_shape(carrier)
+    parent = doc.ElectronicsEquipmentModule
+    mounting_rows = []
+    device_specs = (
+        (
+            "ModuleFCEnvelope",
+            mounts.FC_HOLE_CENTRES,
+            interfaces.FC_HOLE_DIAMETER,
+            devices.fc_envelope_shape,
+        ),
+        (
+            "ModulePASEnvelope",
+            mounts.PAS_HOLE_CENTRES,
+            interfaces.PAS_HOLE_DIAMETER,
+            devices.pas_envelope_shape,
+        ),
+    )
+    for name, centres, device_hole_diameter, factory in device_specs:
+        if name == "ModuleFCEnvelope":
+            rotation = App.Rotation(App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
+            confirmed = [
+                rotation.multVec(App.Vector(x, y, 0))
+                + App.Vector(*mounts.FC_CENTRE_XY, 0)
+                for x, y in interfaces.FC_HOLE_CENTRES
+            ]
+        else:
+            confirmed = [
+                App.Vector(x + mounts.PAS_CENTRE_XY[0], y + mounts.PAS_CENTRE_XY[1], 0)
+                for x, y in interfaces.PAS_HOLE_CENTRES
+            ]
+        axes_match = len(centres) == len(confirmed) and all(
+            min((App.Vector(*centre, 0) - expected).Length for expected in confirmed)
+            < TOL
+            for centre in centres
+        )
+        obj = doc.getObject(name)
+        body = shapes[name]
+        comparison = geometry_comparison(body, _in_parent_frame(factory(), parent))
+        bounds = body.optimalBoundingBox(False, False)
+        holes = []
+        for centre in centres:
+            pad = mounting_pad_check(
+                carrier_shape,
+                centre,
+                bottom=mounts.DECK_BOTTOM_Z,
+                thickness=mounts.DECK_THICKNESS,
+                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+            )
+            world_axis = parent.getGlobalPlacement().multVec(App.Vector(*centre, 0))
+            axis_probe = Part.makeCylinder(
+                device_hole_diameter / 2,
+                bounds.ZLength + 2,
+                App.Vector(world_axis.x, world_axis.y, bounds.ZMin - 1),
+            )
+            obstruction = intersection_volume(body, axis_probe)
+            pad["device_hole_diameter_mm"] = device_hole_diameter
+            pad["device_hole_axis_obstruction_mm3"] = obstruction
+            pad["passed"] &= obstruction < TOL
+            holes.append(pad)
+        mounting_rows.append(
+            {
+                "device": name,
+                "confirmed_hole_count": len(centres),
+                "mount_axes_match_published_device_pattern": axes_match,
+                "device_source_comparison": comparison,
+                "holes": holes,
+                "passed": axes_match
+                and _comparison_passed(comparison)
+                and all(row["passed"] for row in holes),
+            }
+        )
+    adhesive_rows = []
+    for mount_name, device_name, centre, size in (
+        ("BatteryMount", "ModuleBatteryEnvelope", (0, 0), mounts.BATTERY_DECK_SIZE),
+        (
+            "ElectronicsMount",
+            "ModuleLR900Envelope",
+            mounts.LR_CENTRE_XY,
+            mounts.LR_ADHESIVE_SIZE,
+        ),
+        (
+            "ElectronicsMount",
+            "ModuleMTF02PEnvelope",
+            mounts.MTF02P_CENTRE_XY,
+            mounts.MTF02P_ADHESIVE_SIZE,
+        ),
+    ):
+        support = doc.getObject(mount_name)
+        owner = support.getParentGeoFeatureGroup()
+        pad = Part.makeBox(
+            size[0],
+            size[1],
+            mounts.DECK_THICKNESS,
+            App.Vector(
+                centre[0] - size[0] / 2, centre[1] - size[1] / 2, mounts.DECK_BOTTOM_Z
+            ),
+        )
+        pad_world = _in_parent_frame(pad, owner)
+        missing = pad_world.cut(shapes[mount_name]).Volume
+        pad_bounds = pad_world.optimalBoundingBox(False, False)
+        device_bounds = shapes[device_name].optimalBoundingBox(False, False)
+        covered = all(
+            getattr(pad_bounds, axis + "Min")
+            >= getattr(device_bounds, axis + "Min") - TOL
+            and getattr(pad_bounds, axis + "Max")
+            <= getattr(device_bounds, axis + "Max") + TOL
+            for axis in ("X", "Y")
+        )
+        gap = device_bounds.ZMin - pad_bounds.ZMax
+        adhesive_rows.append(
+            {
+                "device": device_name,
+                "continuous_support_area_mm2": size[0] * size[1],
+                "missing_pad_material_mm3": missing,
+                "pad_within_device_plan_envelope": covered,
+                "adhesive_allowance_mm": gap,
+                "passed": missing < TOL
+                and covered
+                and abs(gap - mounts.ADHESIVE_ALLOWANCE) < TOL,
+            }
+        )
+    free_height_rows = []
+    for name, expected_gap in (
+        ("ModuleFCEnvelope", mounts.FC_WIRING_CLEARANCE),
+        ("ModulePASEnvelope", mounts.PAS_SERVICE_CLEARANCE),
+    ):
+        bounds = shapes[name].optimalBoundingBox(False, False)
+        support_top = (
+            parent.getGlobalPlacement()
+            .multVec(App.Vector(0, 0, mounts.SUPPORT_FACE_Z))
+            .z
+        )
+        gap = bounds.ZMin - support_top
+        # A complete envelope rectangle is conservative around the rotated FC.
+        space = Part.makeBox(
+            bounds.XLength,
+            bounds.YLength,
+            expected_gap,
+            App.Vector(bounds.XMin, bounds.YMin, support_top),
+        )
+        hits = [
+            {
+                "object": other.Name,
+                "intersection_mm3": intersection_volume(space, shapes[other.Name]),
+            }
+            for other in physical
+            if intersection_volume(space, shapes[other.Name]) > TOL
+        ]
+        free_height_rows.append(
+            {
+                "device": name,
+                "measured_underbody_gap_mm": gap,
+                "required_underbody_gap_mm": expected_gap,
+                "full_underbody_reservation_collisions": hits,
+                "passed": abs(gap - expected_gap) < TOL and not hits,
+            }
+        )
+    reserve = doc.getObject("FCWiringClearanceReserve")
+    wiring = {"passed": False, "error": "missing FC wiring corridor"}
+    if reserve is not None:
+        actual = world_shape(reserve)
+        comparison = geometry_comparison(
+            actual, _in_parent_frame(mounts.fc_wiring_reserve_shape(), parent)
+        )
+        hits = [
+            obj.Name
+            for obj in physical
+            if intersection_volume(actual, shapes[obj.Name]) > TOL
+        ]
+        local_reserve = local_shape(reserve)
+        axis_distances = []
+        for x, y in mounts.FC_HOLE_CENTRES:
+            axis = Part.makeLine(
+                App.Vector(x, y, mounts.SUPPORT_FACE_Z),
+                App.Vector(x, y, mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE),
+            )
+            distance = local_reserve.distToShape(axis)[0]
+            axis_distances.append(
+                {
+                    "mount_axis_xy_mm": [x, y],
+                    "distance_mm": distance,
+                    "passed": distance >= 5.0 - TOL,
+                }
+            )
+        wiring = {
+            "source_comparison": comparison,
+            "physical_collisions": hits,
+            "clearance_from_confirmed_mount_axes": axis_distances,
+            "scope": "Eight-mm-high open wiring corridor offset from mounting axes. Future damper/spacer envelopes and plugged leads require actual dimensions.",
+            "passed": reserve in registry.ClearanceVolumes
+            and reserve not in registry.PrintedParts
+            and reserve not in registry.HardwareParts
+            and _comparison_passed(comparison)
+            and not hits
+            and all(row["passed"] for row in axis_distances),
+        }
+    service_rows = []
+    for name in (
+        "ModuleBatteryEnvelope",
+        "ModuleFCEnvelope",
+        "ModulePASEnvelope",
+        "ModuleLR900Envelope",
+        "ModuleMTF02PEnvelope",
+    ):
+        bounds = shapes[name].optimalBoundingBox(False, False)
+        sweep = Part.makeBox(
+            bounds.XLength,
+            bounds.YLength,
+            bounds.ZLength + 32,
+            App.Vector(bounds.XMin, bounds.YMin, bounds.ZMin),
+        )
+        hits = [
+            obj.Name
+            for obj in physical
+            if obj.Name != name and intersection_volume(sweep, shapes[obj.Name]) > TOL
+        ]
+        service_rows.append(
+            {
+                "device": name,
+                "upward_travel_mm": 32,
+                "method": "Continuous conservative bounding-prism sweep",
+                "collisions": hits,
+                "passed": not hits,
+            }
+        )
+    evidence_matches = (
+        json.loads(str(carrier.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE
+    )
+    pending_metadata = []
+    for name, key in (
+        ("ModuleFCEnvelope", "FC"),
+        ("ModulePASEnvelope", "PAS"),
+        ("ModuleLR900Envelope", "LR"),
+        ("ModuleMTF02PEnvelope", "MTF02P"),
+    ):
+        obj = doc.getObject(name)
+        documented = (
+            json.loads(str(obj.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE[key]
+        )
+        unverified = not bool(obj.MountingStackVerified) and not bool(
+            obj.PCBHeightMeasured
+        )
+        pending_metadata.append(
+            {
+                "device": name,
+                "evidence_matches": documented,
+                "mounting_stack_and_pcb_height_unverified": unverified,
+                "passed": documented and unverified,
+            }
+        )
+    registered_names = {obj.Name for obj in registry.EquipmentMounts}
+    return {
+        "supports": support_rows,
+        "confirmed_device_holes": mounting_rows,
+        "continuous_adhesive_pads": adhesive_rows,
+        "underbody_clearance": free_height_rows,
+        "fc_wiring_corridor": wiring,
+        "device_upward_service": service_rows,
+        "native_mounting_evidence_matches_sources": evidence_matches,
+        "pending_device_mounting_evidence": pending_metadata,
+        "limits": "Printed XY mounting interfaces and reservations only. Purchase FC dampers and device mounting hardware after confirming PCB bearing planes, compressed damper heights and bolt/spacer lengths. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",
+        "passed": registered_names == set(expected_supports)
+        and len(registry.EquipmentMounts) == 2
+        and all(
+            row["passed"]
+            for row in support_rows
+            + mounting_rows
+            + adhesive_rows
+            + free_height_rows
+            + service_rows
+        )
+        and wiring["passed"]
+        and evidence_matches
+        and all(row["passed"] for row in pending_metadata),
+    }
+
+
 def mtf_sensor_check(doc):
     """Check the included sensor and restore every temporary tilt probe."""
     registry = doc.DesignRegistry
@@ -141,19 +509,19 @@ def mtf_sensor_check(doc):
     optical_comparison = geometry_comparison(
         local_shape(reserve), devices.mtf02p_optical_reserve_shape()
     )
-    upper = world_shape(doc.UpperUniversalBoard)
+    upper = world_shape(doc.ElectronicsMount)
     upper_bounds = upper.optimalBoundingBox(False, False)
     support_probe = Part.makeBox(
         body_bounds.XLength,
         body_bounds.YLength,
-        board.BOARD_THICKNESS,
+        mounts.DECK_THICKNESS,
         App.Vector(
             body_bounds.XMin,
             body_bounds.YMin,
-            upper_bounds.ZMax - board.BOARD_THICKNESS,
+            upper_bounds.ZMax - mounts.DECK_THICKNESS,
         ),
     )
-    support_area = intersection_volume(upper, support_probe) / board.BOARD_THICKNESS
+    support_area = intersection_volume(upper, support_probe) / mounts.DECK_THICKNESS
     mounting_gap = body_bounds.ZMin - upper_bounds.ZMax
     adjacent_optical_clearances = []
     for name in ("ModuleLR900Envelope", "ModulePASEnvelope"):
@@ -265,9 +633,7 @@ def hardware_check(doc, source):
         materials.setdefault(str(obj.HardwareSKU), set()).add(
             str(obj.MaterialSelection)
         )
-        expected = (
-            "PA66" if obj.HardwareSKU == "M2_MF_30_PLUS_5" else "A2 stainless steel"
-        )
+        expected = "A2 stainless steel"
         checks.append(
             {
                 "object": obj.Name,
@@ -339,6 +705,7 @@ def validate(source=None):
         registry = doc.DesignRegistry
         checks, reserve_pairs = reserve_checks(doc)
         mtf = mtf_sensor_check(doc)
+        mounting = mounting_check(doc)
         hardware = hardware_check(doc, source)
         sources = {}
         for name in (
@@ -366,6 +733,7 @@ def validate(source=None):
             "reserve_checks": checks,
             "reserve_pair_checks": reserve_pairs,
             "mtf02p_sensor": mtf,
+            "equipment_mounts": mounting,
             "hardware": hardware,
             "reference_sources": sources,
             "limits": [
@@ -385,6 +753,7 @@ def validate(source=None):
         before == after
         and report["source_code_unchanged"]
         and mtf["passed"]
+        and mounting["passed"]
         and all(row["passed"] for row in checks)
         and all(row["intersection_mm3"] < TOL for row in reserve_pairs)
         and hardware["passed"]

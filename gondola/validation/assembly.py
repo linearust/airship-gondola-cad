@@ -39,14 +39,13 @@ from gondola.manufacturing import (
     print_shape,
 )
 from gondola.mass_budget import mass_budget
-from gondola.parts import metric_hardware as hardware
-from gondola.parts import rail
-from gondola.parts import universal_board as platform
+from gondola.parts import equipment_mounts as mounts
+from gondola.parts import propulsion, rail
 from gondola.provenance import file_sha256, source_fingerprint
 
+from .equipment import mounting_check
 from .geometry import (
     belongs_to_group,
-    compare_identical_boards,
     compare_mesh_surfaces,
     intersection_volume,
     local_shape,
@@ -400,11 +399,9 @@ def hardware_check(registry):
         and all(row["passed"] for row in material_rows)
     )
     expected_purchases = {
-        "M2_MF_30_PLUS_5_PA66": 4,
-        "M2X6_SOCKET_CAP_A2": 4,
-        "M2_HEX_NUT_A2": 8,
+        "M2_HEX_NUT_A2": 4,
         "M2_SQUARE_NUT_DIN562_A2": 3,
-        "M2_WASHER_2.2_5_0.3_A2": 16,
+        "M2_WASHER_2.2_5_0.3_A2": 8,
         "M2x6_ISO4026_DIN913_A2": 3,
         "M2X14_SOCKET_CAP_A2": 4,
     }
@@ -415,8 +412,7 @@ def hardware_check(registry):
         "bill_of_materials": {
             "material_specific_purchases": material_rows,
             "every_hardware_object_included_once": bom_ok,
-            "seven_standard_purchase_specifications": purchase_counts
-            == expected_purchases,
+            "declared_purchase_specifications": purchase_counts == expected_purchases,
         },
         "obsolete_printed_fasteners": bad,
         "all_rail_clamps_are_purchased": clamp_names <= {o.Name for o in bought},
@@ -650,14 +646,21 @@ def bidirectional_service(doc, registry, objects):
                         **module_service(registry, objects, shapes),
                     }
                 )
-        symmetry = []
-        for obj in registry.StandardBoards:
-            shape = local_shape(obj)
-            rotated = shape.copy()
-            rotated.rotate(V(), V(0, 0, 1), 180)
-            comparison = geometry_comparison(shape, rotated)
-            symmetry.append({"part": obj.Name, **comparison})
+        # Dedicated equipment supports may be asymmetric. Their actual shared
+        # capture/nut geometry must still be exact, not just non-interfering.
         shoe = rail.shoe_shape()
+        shoe_box = Part.makeBox(
+            rail.SHOE_LENGTH,
+            rail.SHOE_WIDTH,
+            rail.TOP_Z - rail.SHOE_BOTTOM,
+            V(-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
+        )
+        captures = []
+        for obj in list(registry.EquipmentMounts) + [doc.PropulsionFixedFrame]:
+            actual = local_shape(obj).common(shoe_box)
+            comparison = geometry_comparison(actual, shoe)
+            captures.append({"part": obj.Name, **comparison})
+        symmetry = []
         rotated = shoe.copy()
         rotated.rotate(V(), V(0, 0, 1), 180)
         symmetry.append(
@@ -666,13 +669,20 @@ def bidirectional_service(doc, registry, objects):
         return {
             "native_approach_combinations": combinations,
             "full_service_sequences": services,
-            "face_up_half_turn_symmetry": symmetry,
+            "common_shoe_half_turn_symmetry": symmetry,
+            "saved_integral_shoes_match_source": captures,
             "unused_port_has_no_extra_hardware": len(registry.RailLocks) == 6,
             "scope": "Choice is made before clamp assembly. Changing the enum is not a physical screw-transfer path. Each port separately has a nut loading, tool approach, loosening and end-removal route.",
             "passed": len(combinations) == 8
             and len(services) == 2
             and all(row["passed"] for row in combinations + services)
-            and all(row["difference_mm3"] < TOL for row in symmetry)
+            and len(captures) == 3
+            and all(
+                row["difference_mm3"] < TOL
+                and row["bounds_difference_mm"] < TOL
+                and row["volume_difference_mm3"] < TOL
+                for row in symmetry + captures
+            )
             and len(registry.RailLocks) == 6,
         }
     finally:
@@ -731,7 +741,8 @@ def line_wall(shape, a, b):
 def manufacturing_review(doc, registry):
     probes = []
     for name in (
-        "BatteryUniversalBoard",
+        "BatteryMount",
+        "ElectronicsMount",
         "PropulsionFixedFrame",
         "PortMotorCarrier",
         "PortJournalSleevePositive",
@@ -771,11 +782,11 @@ def manufacturing_review(doc, registry):
         ),
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
         (
-            "board_deck_thickness",
-            "BatteryUniversalBoard",
-            (31.5, 0, 10.19),
-            (31.5, 0, 12.21),
-            2.0,
+            "battery_mount_deck_thickness",
+            "BatteryMount",
+            (0, 20, mounts.DECK_BOTTOM_Z - 0.01),
+            (0, 20, mounts.SUPPORT_FACE_Z + 0.01),
+            mounts.DECK_THICKNESS,
         ),
         (
             "bare_shoe_nut_pocket_roof",
@@ -787,9 +798,9 @@ def manufacturing_review(doc, registry):
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (5, 80, 2.19),
-            (5, 80, 5.21),
-            3.0,
+            (4.5, 80, propulsion.BASE_Z - 0.01),
+            (4.5, 80, propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01),
+            propulsion.FOOT_THICKNESS,
         ),
     ]
     measurements = []
@@ -820,18 +831,20 @@ def manufacturing_review(doc, registry):
         "general_functional_wall_target_mm": 1.5,
         "rail_flexure_target_mm": rail.PAD_THICKNESS,
         "short_50mm_guidance_mm": 1.0,
-        "board_assessment": {
-            "maximum_length_mm": 76,
-            "deck_mm": 2,
-            "grid_rib_width_mm": platform.RIB,
-            "reference_100mm_guidance_mm": 1.5,
+        "equipment_mount_assessment": {
+            "deck_mm": mounts.DECK_THICKNESS,
+            "load_path_arm_width_mm": mounts.ARM_WIDTH,
+            "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
+            "contracts": [
+                mounts.mount_contract(kind) for kind in ("battery", "electronics")
+            ],
         },
         "rail_functional_flexure_exception": exception,
         "supplier_acceptance_status": "Not yet confirmed: 1.2 mm narrow flexure, tape wings and one-piece manufacture require quote review.",
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Open rail channel, through nut entries, open grid and through journals; depowder before installing hardware. No sealed hollow print is claimed.",
+        "powder_removal": "Open rail channel, through nut entries, open support arms and through journals; depowder before installing hardware. No sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,
@@ -859,6 +872,7 @@ def equipment_scope_check(doc, registry, objects, shapes):
         "CapacitorServiceReserve",
         "PortPhaseLeadLoopReserve",
         "StarboardPhaseLeadLoopReserve",
+        "FCWiringClearanceReserve",
     )
     for name in expected:
         obj = doc.getObject(name)
@@ -956,123 +970,6 @@ def tilt_check(doc, registry, objects, shapes):
             }
         )
     return {"pods": rows, "passed": len(rows) == 2 and all(r["passed"] for r in rows)}
-
-
-def stack_check(registry, objects, shapes):
-    posts = list(registry.StackPosts)
-    nuts = [o for o in registry.StackLocks if "TopNut" in o.Name]
-    screws = [o for o in registry.StackLocks if "Base" in o.Name]
-    top_washers = [o for o in registry.StackWashers if "Top" in o.Name]
-    upper = max(registry.StandardBoards, key=lambda o: o.getGlobalPlacement().Base.z)
-    release_rows = []
-    for obj, sign in [(o, 1) for o in nuts + top_washers] + [(o, -1) for o in screws]:
-        omitted_nuts = nuts if obj in top_washers else []
-        owner = next((m for m in registry.Modules if belongs_to_group(obj, m)), None)
-        obstacles = [
-            (o.Name, shapes[o.Name])
-            for o in objects
-            if o != obj
-            and o not in omitted_nuts
-            and (sign > 0 or (owner is not None and belongs_to_group(o, owner)))
-        ]
-        path = path_checks(
-            [(obj.Name, shapes[obj.Name])],
-            obstacles,
-            [(0, 0, sign * z) for z in (0, 0.5, 1, 2, 4, 6, 8, 10)],
-        )
-        release_rows.append(
-            {
-                "part": obj.Name,
-                "path": path,
-                "service_condition": (
-                    "Remove module from rail before underside screw service"
-                    if sign < 0
-                    else "Accessible from above"
-                ),
-                "thread_geometry_is_simplified": True,
-                "passed": path["passed"],
-            }
-        )
-    upper_devices = [
-        o
-        for o in registry.ReferenceParts
-        if o.Name
-        in ("ModuleLR900Envelope", "ModulePASEnvelope", "ModuleMTF02PEnvelope")
-    ]
-    moving_objects = [upper] + upper_devices
-    omitted = moving_objects + nuts + top_washers
-    lift = path_checks(
-        [(o.Name, shapes[o.Name]) for o in moving_objects],
-        [(o.Name, shapes[o.Name]) for o in objects if o not in omitted],
-        [(0, 0, z) for z in (0, 0.5, 1, 2, 4, 6, 8, 16, 32)],
-    )
-    pitch = hardware.BODY_LENGTH + platform.BOARD_THICKNESS
-    extra = [
-        (o.Name + "_NextLevel", translated_shape(shapes[o.Name], z=pitch))
-        for o in posts
-    ]
-    extra += [
-        (upper.Name + "_NextLevel", translated_shape(shapes[upper.Name], z=pitch))
-    ]
-    extra += [
-        (o.Name + "_Reused", translated_shape(shapes[o.Name], z=pitch))
-        for o in nuts + top_washers
-    ]
-    fixed = [(o.Name, shapes[o.Name]) for o in objects if o not in nuts + top_washers]
-    extension_hits = pair_collisions(extra, fixed)
-    upper_local = translated_shape(platform.board_shape(), z=pitch)
-    hypothetical = [(upper.Name, upper_local)] + [
-        (
-            o.Name,
-            translated_shape(
-                hardware.standoff_shape(),
-                x,
-                y,
-                platform.BOARD_BOTTOM + platform.BOARD_THICKNESS,
-            ),
-        )
-        for o, (x, y) in zip(posts, hardware.STACK_CENTRES)
-    ]
-    battery_rows = []
-    for adhesive in (1.0, 3.0):
-        pack = Part.makeBox(
-            18, 66, 17, V(-9, -33, platform.BOARD_BOTTOM + 2 + adhesive)
-        )
-        collisions = pair_collisions([("BatteryReference", pack)], hypothetical)
-        clearance = pack.distToShape(upper_local)[0]
-        battery_rows.append(
-            {
-                "adhesive_mm": adhesive,
-                "collisions": collisions,
-                "upper_board_clearance_mm": clearance,
-                "passed": not collisions and clearance > 0.5,
-            }
-        )
-    return {
-        "purchased_stack_contract": hardware.stack_contract(),
-        "post_count": len(posts),
-        "base_screw_count": len(screws),
-        "top_nut_count": len(nuts),
-        "washer_count": len(registry.StackWashers),
-        "fastener_release_envelopes": release_rows,
-        "upper_board_lift_after_top_hardware_removal": lift,
-        "third_level_extension": {
-            "board_pitch_mm": pitch,
-            "identical_board_and_posts": True,
-            "reused_top_hardware": len(nuts + top_washers),
-            "collisions": extension_hits,
-        },
-        "maximum_battery_under_identical_upper_board": battery_rows,
-        "retention_tested": False,
-        "passed": len(posts) == 4
-        and len(screws) == 4
-        and len(nuts) == 4
-        and len(registry.StackWashers) == 8
-        and all(r["passed"] for r in release_rows)
-        and lift["passed"]
-        and not extension_hits
-        and all(r["passed"] for r in battery_rows),
-    }
 
 
 def battery_check(doc, objects):
@@ -1417,28 +1314,23 @@ def validate(source=None):
             ],
         }
         print(
-            "Checking neutral assembly, rail/tape, common boards and purchased hardware",
+            "Checking neutral assembly, rail/tape, dedicated mounts and purchased hardware",
             flush=True,
         )
         report["neutral_assembly"] = neutral_check(objects, shapes)
         report["continuous_rail"] = rail_check(r, shapes)
-        report["standard_boards"] = compare_identical_boards(list(r.StandardBoards))
-        board_source = geometry_comparison(
-            local_shape(r.StandardBoards[0]), platform.board_shape()
-        )
-        report["standard_boards"]["saved_master_matches_current_source"] = board_source
-        report["standard_boards"]["passed"] &= board_source["difference_mm3"] < TOL
+        report["equipment_mounts"] = mounting_check(doc)
         report["metric_hardware"] = hardware_check(r)
         report["assembly_inventory"] = {
             "installed_printed_parts": len(printed),
             "purchased_hardware_items": len(r.HardwareParts),
             "fit_sample_prints": len(r.FitCoupons),
-            "identical_board_count": len(r.StandardBoards),
+            "equipment_mount_count": len(r.EquipmentMounts),
             "single_rail_count": len(r.RailSegments),
             "passed": len(printed) == EXPECTED_INVENTORY["installed_prints"]
             and len(r.HardwareParts) == EXPECTED_INVENTORY["purchased_hardware"]
             and len(r.FitCoupons) == EXPECTED_INVENTORY["fit_coupons"]
-            and len(r.StandardBoards) == EXPECTED_INVENTORY["identical_boards"]
+            and len(r.EquipmentMounts) == EXPECTED_INVENTORY["equipment_mounts"]
             and len(r.RailSegments) == EXPECTED_INVENTORY["rails"],
         }
         print(
@@ -1455,7 +1347,7 @@ def validate(source=None):
             flush=True,
         )
         report["module_service"] = bidirectional_service(doc, r, objects)
-        print("Checking independent tilt and purchased stack extension", flush=True)
+        print("Checking independent tilt and equipment service clearances", flush=True)
         report["independent_tilt"] = tilt_check(doc, r, objects, shapes)
         external = [
             (o.Name, shapes[o.Name])
@@ -1474,7 +1366,6 @@ def validate(source=None):
             "checks": sweep_rows,
             "passed": len(sweep_rows) == 2 and all(row["passed"] for row in sweep_rows),
         }
-        report["stack"] = stack_check(r, objects, shapes)
         report["battery_reference_fit"] = battery_check(doc, objects)
         print("Checking PA12 export identity and saved-file preservation", flush=True)
         report["print_export"] = export_check(source, r)
@@ -1496,13 +1387,12 @@ def validate(source=None):
         checks = (
             "neutral_assembly",
             "continuous_rail",
-            "standard_boards",
+            "equipment_mounts",
             "metric_hardware",
             "assembly_inventory",
             "module_service",
             "independent_tilt",
             "continuous_external_rotor_sweeps",
-            "stack",
             "battery_reference_fit",
             "print_export",
             "local_propulsion_evidence",

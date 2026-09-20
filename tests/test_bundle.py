@@ -35,14 +35,14 @@ class BundleIntegrityTests(unittest.TestCase):
         self.cad_path.write_bytes(b"saved CAD")
         self.cad_sha = bundle.file_sha256(self.cad_path)
         self.parts = []
-        for index, quantity in enumerate((1, 3, 1, 2, 4, 1, 1)):
+        for index, quantity in enumerate((1, 1, 1, 1, 2, 4, 1, 1)):
             stl = f"part_{index}.stl"
             step = f"part_{index}.step"
             stl_data = f"STL {index}".encode()
             step_data = f"STEP {index}".encode()
             (self.folder / stl).write_bytes(stl_data)
             (self.folder / step).write_bytes(step_data)
-            coupon = int(index >= 5)
+            coupon = int(index >= 6)
             self.parts.append(
                 {
                     "sku": f"part_{index}",
@@ -59,8 +59,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.manifest = {
             "schema_version": 1,
             "source_fingerprint": self.fingerprint,
-            "unique_stl_count": 7,
-            "installed_printed_part_count": 11,
+            "unique_stl_count": 8,
+            "installed_printed_part_count": 10,
             "additional_coupon_printed_part_count": 2,
             "parts": self.parts,
         }
@@ -69,15 +69,15 @@ class BundleIntegrityTests(unittest.TestCase):
         self.bom = {
             "schema_version": 1,
             "source_fingerprint": self.fingerprint,
-            "purchased_hardware_quantity": 42,
-            "unique_purchase_spec_count": 7,
+            "purchased_hardware_quantity": 22,
+            "unique_purchase_spec_count": 5,
             "items": [
                 {
                     "purchase_code": f"hardware_{index}",
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 4, 4, 3, 8, 3, 16))
+                for index, quantity in enumerate((4, 4, 8, 3, 3))
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")
@@ -162,8 +162,8 @@ class BundleIntegrityTests(unittest.TestCase):
         archive = self.package()
         with zipfile.ZipFile(archive) as zipped:
             names = set(zipped.namelist())
-            self.assertEqual(sum(name.endswith(".stl") for name in names), 7)
-            self.assertEqual(sum(name.endswith(".step") for name in names), 7)
+            self.assertEqual(sum(name.endswith(".stl") for name in names), 8)
+            self.assertEqual(sum(name.endswith(".step") for name in names), 8)
             self.assertNotIn("obsolete.stl", names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(
