@@ -13,6 +13,11 @@ import FreeCAD as App
 import MeshPart
 
 from .config import ARTIFACT_SCHEMA_VERSION
+from .design_contract import (
+    MANUFACTURING_DECISION,
+    PUBLISHED_PROCESS_SIZE_MM,
+    RAIL_LENGTH_MM,
+)
 from .provenance import file_sha256, source_fingerprint
 
 MESH_PARAMETERS = {
@@ -175,12 +180,16 @@ def export_print_parts(assembly, installed, coupons, out, stem):
             and checks["solid_count"] == 1
             and checks["watertight_mesh"]
             and checks["mesh_components"] == 1
-            and bounds.XLength <= 340
-            and bounds.YLength <= 340
-            and bounds.ZLength <= 280
+            and all(
+                size
+                <= min(limits[axis] for limits in PUBLISHED_PROCESS_SIZE_MM.values())
+                for axis, size in enumerate(
+                    (bounds.XLength, bounds.YLength, bounds.ZLength)
+                )
+            )
         ):
             raise RuntimeError(
-                "Invalid PA12 print part or outside shared SLS/MJF envelope "
+                "Invalid PA12 print part or outside shared SLS/MJF size screen "
                 + sku
                 + str(checks)
             )
@@ -243,14 +252,13 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "source_fingerprint": source_fingerprint(),
         "mesh_parameters": MESH_PARAMETERS,
         "units": "mm",
-        "process": "PA12 SLS/MJF; agree the process with supplier",
+        "process": "PA12 SLS preferred; MJF alternative; agree the process with Creallo",
+        "manufacturing_decision": MANUFACTURING_DECISION,
         "manufacturing_release_status": "FIT PROTOTYPE ONLY: narrow rail flexures need supplier acceptance; actual RS1102 mounting and DS-M005 horn torque connection remain unfinished.",
-        "published_machine_envelope_mm": {
-            "SLS": [340, 340, 600],
-            "MJF": [380, 380, 280],
-        },
-        "thin_flexure_exception": "The1mm continuous narrow rail base needs supplier review; nominal0.8mm minimum is not blanket compliance with3mm long/broad SLS PA12 guidance.",
-        "one_piece_acceptance": "Supplier must confirm the378mm rail as one piece; published guide is not a manufacturing acceptance.",
+        "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
+        "size_screen_is_one_piece_acceptance": False,
+        "thin_flexure_exception": "The1mm continuous narrow rail base needs supplier review; nominal0.8mm minimum is not blanket compliance with3mm long/broad PA12 guidance for SLS/MJF.",
+        "one_piece_acceptance": f"Supplier must confirm the {RAIL_LENGTH_MM:g}mm rail as one piece; published guide includes split-and-join fabrication and is not a manufacturing acceptance.",
         "unique_stl_count": len(entries),
         "installed_printed_part_count": len(installed),
         "additional_coupon_printed_part_count": len(coupons),

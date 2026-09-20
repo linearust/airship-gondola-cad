@@ -1,4 +1,4 @@
-"""Rev I: one interchangeable open-grid board, with purchased metric stacking.
+"""One interchangeable open-grid board, with purchased metric stacking.
 
 The battery, flight-controller and upper equipment levels use the same solid.
 Only the common rail clamp and four M3 clearance holes are built into the part;
@@ -76,7 +76,7 @@ def board_shape(include_shoe=True):
         )
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
-        raise RuntimeError("Rev I universal board is not one valid solid")
+        raise RuntimeError("Universal board is not one valid solid")
     return shape
 
 

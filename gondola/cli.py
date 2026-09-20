@@ -49,7 +49,7 @@ def build_argument_parser():
         ),
         (
             "compare",
-            "Prove current saved shapes and controls equal the frozen pre-refactor Rev I.",
+            "Compare saved shapes and controls against Rev I with the approved 340 mm rail change.",
         ),
     ):
         child = commands.add_parser(name, help=help_text)

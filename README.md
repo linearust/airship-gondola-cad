@@ -6,7 +6,8 @@ source definitions and generated BOM instead of treating it as a separate design
 
 ## Authorities
 
-- `gondola/design_contract.py`: scope decisions, equipment selection, evidence
+- `gondola/design_contract.py`: scope decisions, nominal rail-length requirement,
+  manufacturing decision, equipment selection, evidence
   discrepancies, inventory and unresolved physical interfaces. `python3 -m
   gondola status` reads this contract without FreeCAD or network access.
 - `gondola/parts/`: geometry in millimetres. `universal_board.py` owns the board
@@ -22,7 +23,39 @@ source definitions and generated BOM instead of treating it as a separate design
   are inputs, including images not loaded programmatically. External URLs and
   the Notion edit timestamp record previous evidence, not live verification.
 - `tests/fixtures/rev_i_geometry.FCStd`: immutable pre-refactor reference for
-  geometry and native controls. Never regenerate it merely to pass a check.
+  geometry and native controls. Rev J permits only the specified 378-to-340 mm
+  rail change; the comparator derives its expected rail from this frozen solid.
+  Never regenerate the fixture merely to pass a check.
+
+## Manufacturing decision — Rev J
+
+Decision reviewed 2026-09-20: use **340 mm nominal rail length**, with PA12 **SLS
+preferred for the fit prototype** and MJF remaining an alternative. The supplier's
+published evidence does not establish that this design requires MJF. This is a
+design choice, not physical qualification or a guaranteed maximum as-built length.
+`MANUFACTURING_DECISION` in `gondola/design_contract.py` owns this decision.
+
+[Creallo's 2026-05-12 policy](https://creallo.com/ko/blog/posts/sls-mjf-integration-update)
+combines SLS/MJF quotes and lets Creallo choose the process; agree SLS separately
+when required. Use the same agreed material, process and finish for coupons and
+full parts. The [size guide](https://creallo.com/ko/guide/design-spec-guide)
+lists SLS 340 × 340 × 600 and MJF 380 × 380 × 280 mm, but includes split-and-join
+fabrication. Require confirmation that the rail will be manufactured in one piece.
+The stored 45-degree rail orientation is only a size screen. Even the previous
+378 mm rail passed that screen; 340 mm follows the user's preferred length ceiling.
+
+The 1 mm continuous base and tape wings remain intentional functional flexures.
+Shortening the rail does not resolve their manufacturing exception. Creallo's
+[wall-thickness guidance](https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes)
+applies the long, thin, broad-part recommendation to both SLS and MJF. Obtain
+supplier review and test full-rail straightness, balloon curvature, fatigue,
+tape retention and sliding/clamping fit; the short coupons cannot prove these.
+
+The seven tape-pad centres and three default module positions remain unchanged.
+Pad ends have 1 mm nominal axial margin. Keep the entire 18 mm shoe on the rail:
+its centre must stay within ±161 mm, also respecting clamp lands and neighboring
+parts. The outermost land centres at ±162 mm are not fully supported shoe stations.
+The hardware purchase quantities below remain unchanged.
 
 ## Procurement checklist
 

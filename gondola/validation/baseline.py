@@ -1,7 +1,8 @@
-"""Prove a code-only refactor preserves the frozen Rev I CAD and its controls.
+"""Check frozen Rev I geometry with the approved 378-to-340 mm rail change.
 
-The baseline is deliberately outside generated output. Geometry equality is
-checked for every saved shape, including hidden references and fit samples.
+Every saved shape is compared in local and world coordinates. The expected rail
+is derived only from the immutable fixture; current construction code cannot
+silently redefine the approved difference. All other shapes remain unchanged.
 """
 
 import json
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 
 import FreeCAD as App
+import Part
 
 from gondola.cad import (
     world_shape,
@@ -186,6 +188,41 @@ def unresolved_scope(doc):
     }
 
 
+def approved_rail_shape(frozen_rail):
+    """Shorten only the frozen rail, preserving its original section and ends.
+
+    Keep x=-169..169, including all seven tape pads, and transplant the original
+    2 mm end pieces inward by exactly 19 mm. Their new ranges (-170..-168 and
+    168..170) overlap the retained rail by 1 mm. This preserves the original
+    rounded base/cap ends and excludes the obsolete reliefs at x=+/-171.
+
+    These fixed dimensions encode the approved change independently of the
+    current rail generator. Never replace this with rail_shape(current_length).
+    """
+    bounds = frozen_rail.optimalBoundingBox(False, False)
+
+    def section(start, stop):
+        clip = Part.makeBox(
+            stop - start,
+            bounds.YLength + 2,
+            bounds.ZLength + 2,
+            App.Vector(start, bounds.YMin - 1, bounds.ZMin - 1),
+        )
+        return frozen_rail.common(clip)
+
+    center = section(-169, 169)
+    left = section(-189, -187)
+    left.translate(App.Vector(19, 0, 0))
+    right = section(187, 189)
+    right.translate(App.Vector(-19, 0, 0))
+    approved = center.multiFuse([left, right]).removeSplitter()
+    if not approved.isValid() or len(approved.Solids) != 1:
+        raise RuntimeError(
+            "Approved frozen-rail transformation is not one valid solid."
+        )
+    return approved
+
+
 def validate(source=None, baseline=None):
     fingerprint_before = source_fingerprint()
     source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
@@ -211,24 +248,39 @@ def validate(source=None, baseline=None):
         names_match = set(actual) == set(expected)
         rows = []
         for name in sorted(set(actual) & set(expected)):
-            local = geometry_comparison(
-                local_shape(actual[name]), local_shape(expected[name])
-            )
-            world = geometry_comparison(
-                world_shape(actual[name]), world_shape(expected[name])
-            )
+            expected_local = local_shape(expected[name])
+            expected_world = world_shape(expected[name])
+            comparison_basis = "Unmodified frozen Rev I geometry"
+            if name == "ContinuousRail":
+                expected_local = approved_rail_shape(expected_local)
+                expected_world = expected_local.copy()
+                expected_world.Placement = expected[name].getGlobalPlacement()
+                comparison_basis = (
+                    "Frozen Rev I rail center with original ends translated inward "
+                    "19 mm each; approved total length 340 mm"
+                )
+            local = geometry_comparison(local_shape(actual[name]), expected_local)
+            world = geometry_comparison(world_shape(actual[name]), expected_world)
             same_type = actual[name].TypeId == expected[name].TypeId
+            same_placement = (
+                actual[name]
+                .getGlobalPlacement()
+                .isSame(expected[name].getGlobalPlacement(), 1e-7)
+            )
             same_solids = len(actual[name].Shape.Solids) == len(
                 expected[name].Shape.Solids
             )
             rows.append(
                 {
                     "object": name,
+                    "comparison_basis": comparison_basis,
                     "local_shape": local,
                     "world_shape": world,
                     "object_type_unchanged": same_type,
+                    "world_placement_unchanged": same_placement,
                     "solid_count_unchanged": same_solids,
                     "passed": same_type
+                    and same_placement
                     and same_solids
                     and all(
                         comparison["difference_mm3"] < TOL
@@ -249,7 +301,19 @@ def validate(source=None, baseline=None):
         report = {
             "source": os.path.relpath(source, ROOT),
             "baseline": os.path.relpath(baseline, ROOT),
-            "scope": "Refactor regression against frozen Rev I. Shape equality and saved native controls only; existing unqualified interfaces remain unqualified.",
+            "scope": "Regression against frozen Rev I plus the approved 378-to-340 mm rail shortening. Every local/world shape and saved native control is checked; existing unqualified interfaces remain unqualified.",
+            "approved_geometry_changes": [
+                {
+                    "object": "ContinuousRail",
+                    "original_length_mm": 378.0,
+                    "approved_length_mm": 340.0,
+                    "preserved_center_x_mm": [-169.0, 169.0],
+                    "original_end_sections_x_mm": [[-189.0, -187.0], [187.0, 189.0]],
+                    "end_translations_x_mm": [19.0, -19.0],
+                    "expected_geometry_source": "Immutable frozen Rev I fixture only",
+                    "unchanged_features": "Seven tape-pad locations, T section, remaining flex reliefs, root fillets and rounded terminal profiles",
+                }
+            ],
             "file_hashes_before": before,
             "source_sha256": file_sha256(source),
             "source_fingerprint": fingerprint_before,

@@ -1,4 +1,4 @@
-"""Rev I PA12 SLS/MJF T rail, over-tape wings and bidirectional M3 clamp.
+"""PA12 T rail, over-tape wings and bidirectional M3 clamp.
 
 All dimensions mm. The rail lies on the envelope at Z0. Tape is laid OVER
 each lateral wing and continues onto the envelope. It never crosses the
@@ -19,9 +19,10 @@ from gondola.cad import (
     translated_shape,
     union,
 )
+from gondola.design_contract import RAIL_LENGTH_MM
 
 V = App.Vector
-LENGTH = 378.0
+LENGTH = RAIL_LENGTH_MM
 PAD_CENTRES = (-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.0
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
@@ -234,26 +235,26 @@ def build_rail(doc):
     group = create_group(
         doc,
         "ContinuousRailSystem",
-        "378mm continuous rail | single-sided tape over wings",
+        f"{LENGTH:g}mm continuous rail | single-sided tape over wings",
     )
     o = create_printed_part(
         doc,
         group,
         "ContinuousRail",
-        "PRINT | PA12 continuous T rail 378mm",
+        f"PRINT | PA12 continuous T rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "PA12 SLS/MJF one-piece target378x32x7mm; export oriented45deg inXY for both listed build envelopes. Confirm one-piece acceptance with supplier before ordering. "
+        f"PA12 SLS preferred, MJF alternative; one-piece target {LENGTH:g}x32x7mm; export oriented45deg inXY for size screening. Confirm process and one-piece acceptance with supplier before ordering. "
         "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
         "Unbroken1mm base;15mm head lands separated by3mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. "
-        "Clamp only on a full land, preferably within+/-5mm of its centre. Curvature and tape grip require a physical trial. No printed rail lock pins. "
-        "The1mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad SLS PA12 recommendation. Supplier review and physical curvature/tape trial required.",
+        f"Clamp only on a full land, preferably within+/-5mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
+        "The1mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
     )
     set_property(o, "PrintProcess", "PA12 SLS or MJF")
     set_property(
         o,
         "ManufacturingException",
-        "1mm narrow continuous flexure and tape wings require supplier review as functional flexures; do not treat as an ordinary378mm broad plate.",
+        f"1mm narrow continuous flexure and tape wings require supplier review as functional flexures; do not treat as an ordinary {LENGTH:g}mm broad plate.",
     )
     set_property(o, "SourceURL", SOURCE)
     tapes = []

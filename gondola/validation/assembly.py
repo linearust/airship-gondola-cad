@@ -1,4 +1,4 @@
-"""Independent read-only saved-assembly audit of the Rev I gondola.
+"""Independent read-only saved-assembly audit of the current gondola.
 
 This audit tests rigid CAD envelopes. It does not certify friction retention,
 metric-thread strength, printed running fits, tape adhesion or hinge fatigue.
@@ -23,10 +23,13 @@ from gondola.cad import (
 from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
 from gondola.design_contract import (
     CREALLO_GUIDE_URL,
+    DESIGN_REVISION,
     EXCLUDED_EQUIPMENT,
     EXPECTED_INVENTORY,
+    MANUFACTURING_DECISION,
     NOTION_LAST_EDITED,
     NOTION_URL,
+    PUBLISHED_PROCESS_SIZE_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
 )
 from gondola.manufacturing import (
@@ -109,6 +112,19 @@ def neutral_check(objects, shapes):
     }
 
 
+def rail_shoe_section(shapes, centre_y=0):
+    """Isolate actual printed capture material below the board/frame deck."""
+    compound = Part.makeCompound(shapes)
+    bounds = compound.optimalBoundingBox(False, False)
+    band = Part.makeBox(
+        bounds.XLength + 2,
+        rail.SHOE_WIDTH,
+        rail.HEAD_TOP + rail.CLEARANCE - rail.SHOE_BOTTOM,
+        V(bounds.XMin - 1, centre_y - rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
+    )
+    return compound.common(band)
+
+
 def rail_check(registry, shapes):
     objects = list(registry.RailSegments)
     rows = []
@@ -116,13 +132,18 @@ def rail_check(registry, shapes):
         s = local_shape(obj)
         comparison = geometry_comparison(s, rail.rail_shape())
         base_samples = []
-        for x in range(-186, 187, 3):
+        sample_count = math.ceil(rail.LENGTH / 3)
+        for index in range(sample_count):
+            x = -rail.LENGTH / 2 + (index + 0.5) * rail.LENGTH / sample_count
             base_samples.append(
                 {"x_mm": x, "in_unbroken_base": s.isInside(V(x, 0, 0.5), TOL, True)}
             )
         relief_samples = []
-        for i in range(-10, 10):
+        relief_range = math.ceil(rail.LENGTH / rail.LAND_PITCH)
+        for i in range(-relief_range, relief_range + 1):
             x = (i + 0.5) * rail.LAND_PITCH
+            if abs(x) >= rail.LENGTH / 2:
+                continue
             relief_samples.append(
                 {
                     "x_mm": x,
@@ -131,6 +152,48 @@ def rail_check(registry, shapes):
                 }
             )
         bb = s.optimalBoundingBox(False, False)
+        pad_rows = []
+        for x in rail.PAD_CENTRES:
+            pad = rail.rounded_plate(x)
+            pad_bounds = pad.optimalBoundingBox(False, False)
+            margin = min(pad_bounds.XMin - bb.XMin, bb.XMax - pad_bounds.XMax)
+            missing_volume = abs(pad.cut(s).Volume)
+            pad_rows.append(
+                {
+                    "centre_x_mm": x,
+                    "pad_x_bounds_mm": [pad_bounds.XMin, pad_bounds.XMax],
+                    "nearest_rail_end_margin_mm": margin,
+                    "missing_pad_material_mm3": missing_volume,
+                    "passed": margin >= -TOL and missing_volume < TOL,
+                }
+            )
+        rail_world_bounds = shapes[obj.Name].optimalBoundingBox(False, False)
+        installed_shoes = []
+        for module in registry.Modules:
+            shoe = rail_shoe_section(
+                [
+                    shapes[part.Name]
+                    for part in registry.PrintedParts
+                    if belongs_to_group(part, module)
+                ],
+                module.Placement.Base.y,
+            )
+            shoe_bounds = shoe.optimalBoundingBox(False, False)
+            margin = min(
+                shoe_bounds.XMin - rail_world_bounds.XMin,
+                rail_world_bounds.XMax - shoe_bounds.XMax,
+            )
+            installed_shoes.append(
+                {
+                    "module": module.Name,
+                    "actual_capture_material_x_bounds_mm": [
+                        shoe_bounds.XMin,
+                        shoe_bounds.XMax,
+                    ],
+                    "nearest_rail_end_margin_mm": margin,
+                    "passed": shoe.Volume > TOL and margin >= -TOL,
+                }
+            )
         rows.append(
             {
                 "object": obj.Name,
@@ -138,11 +201,18 @@ def rail_check(registry, shapes):
                 "size_mm": [bb.XLength, bb.YLength, bb.ZLength],
                 "unbroken_base_samples": base_samples,
                 "relief_samples": relief_samples,
+                "pad_end_margins": pad_rows,
+                "installed_shoe_end_margins": installed_shoes,
+                "fully_supported_nominal_shoe_centre_x_range_mm": [
+                    bb.XMin + rail.SHOE_LENGTH / 2,
+                    bb.XMax - rail.SHOE_LENGTH / 2,
+                ],
                 "single_valid_solid": s.isValid() and len(s.Solids) == 1,
                 "passed": s.isValid()
                 and len(s.Solids) == 1
                 and comparison["difference_mm3"] < TOL
                 and abs(bb.XLength - rail.LENGTH) < TOL
+                and all(row["passed"] for row in pad_rows + installed_shoes)
                 and all(r["in_unbroken_base"] for r in base_samples)
                 and all(r["base_present"] and r["head_absent"] for r in relief_samples),
             }
@@ -397,6 +467,29 @@ def module_service(registry, objects, shapes):
             moving, obstacles, [(math.copysign(d, travel), 0, 0) for d in distances]
         )
         moved = [(name, translated_shape(s, x=travel)) for name, s in moving]
+        printed_names = {obj.Name for obj in registry.PrintedParts}
+        exited_shoe = rail_shoe_section(
+            [shape for name, shape in moved if name in printed_names]
+        )
+        exited_bounds = exited_shoe.optimalBoundingBox(False, False)
+        rail_bounds = Part.makeCompound(
+            [shapes[obj.Name] for obj in registry.RailSegments]
+        ).optimalBoundingBox(False, False)
+        end_gap = (
+            exited_bounds.XMin - rail_bounds.XMax
+            if direction > 0
+            else rail_bounds.XMin - exited_bounds.XMax
+        )
+        end_exit = {
+            "actual_capture_material_x_bounds_mm": [
+                exited_bounds.XMin,
+                exited_bounds.XMax,
+            ],
+            "rail_x_bounds_mm": [rail_bounds.XMin, rail_bounds.XMax],
+            "axial_clearance_before_lifting_mm": end_gap,
+            "required_clearance_mm": 2.0,
+            "passed": exited_shoe.Volume > TOL and end_gap >= 2 - TOL,
+        }
         lift = path_checks(
             moved, obstacles, [(0, 0, z) for z in (0, 0.5, 1, 2, 4, 8, 16, 32)]
         )
@@ -418,6 +511,7 @@ def module_service(registry, objects, shapes):
             "lift_after_end_exit": lift,
             "recommended_exit_direction_x": direction,
             "module_centre_at_exit_x_mm": target_x,
+            "shoe_fully_past_rail_end": end_exit,
             "clamp_land_centre_offset_mm": land_offset,
             "axial_lock_type": "Friction clamp only; no numerical holding-force proof",
             "passed": screw_release["passed"]
@@ -425,6 +519,7 @@ def module_service(registry, objects, shapes):
             and not tool_hits
             and centre_release["passed"]
             and slide["passed"]
+            and end_exit["passed"]
             and lift["passed"]
             and land_offset <= 5 + TOL,
         }
@@ -648,13 +743,14 @@ def manufacturing_review(doc, registry):
     exception = str(getattr(registry.RailSegments[0], "ManufacturingException", ""))
     return {
         "source": CREALLO_GUIDE_URL,
-        "published_sls_pa12_thin_broad_guidance_mm": [
+        "published_sls_mjf_pa12_thin_broad_guidance_mm": [
             [50, 1.0],
             [100, 1.5],
             [150, 2.0],
             ["200+", 3.0],
         ],
-        "guide_scope": "Thin and broad plate-like parts. This is not a blanket 3 mm wall requirement for every small feature, nor permission to claim the 378 mm flexure automatically compliant.",
+        "wall_guidance_source": MANUFACTURING_DECISION["sources"]["wall_thickness"],
+        "guide_scope": f"Thin and broad plate-like parts in SLS/MJF. This is not a blanket 3 mm wall requirement for every small feature, nor permission to claim the {rail.LENGTH:g} mm flexure automatically compliant.",
         "generic_nylon_minimum_mm": 0.8,
         "short_50mm_guidance_mm": 1.0,
         "board_assessment": {
@@ -1032,8 +1128,10 @@ def export_check(source, registry):
         )
         bb = mesh.BoundBox
         sizes = [bb.XLength, bb.YLength, bb.ZLength]
-        fits = all(d <= limit + TOL for d, limit in zip(sizes, (380, 380, 280)))
-        fits_sls = all(d <= limit + TOL for d, limit in zip(sizes, (340, 340, 600)))
+        published_size_checks = {
+            process: all(d <= limit + TOL for d, limit in zip(sizes, limits))
+            for process, limits in PUBLISHED_PROCESS_SIZE_MM.items()
+        }
         good = (
             master.isValid()
             and len(master.Solids) == 1
@@ -1042,8 +1140,7 @@ def export_check(source, registry):
             and hashes_match
             and mesh_matches
             and step_matches
-            and fits
-            and fits_sls
+            and all(published_size_checks.values())
             and entry["quantity"] == len(instances)
             and all(r["difference_mm3"] < TOL for r in equivalence)
             and not (set(entry["instances"]) & bought_names)
@@ -1060,8 +1157,7 @@ def export_check(source, registry):
                 "actual_stl_bounds_mm": sizes,
                 "watertight_mesh": mesh.isSolid(),
                 "mesh_components": mesh.countComponents(),
-                "fits_nominal_380x380x280_envelope": fits,
-                "fits_nominal_340x340x600_envelope": fits_sls,
+                "within_published_fabrication_size": published_size_checks,
                 "quantity": entry["quantity"],
                 "deduplicated_geometry": equivalence,
                 "passed": good,
@@ -1072,6 +1168,9 @@ def export_check(source, registry):
     return {
         "process": "SLS/MJF powder-bed PA12; FDM downward-facet rules are not acceptance criteria",
         "supplier_single_piece_acceptance_still_required": True,
+        "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
+        "published_size_guide_scope": MANUFACTURING_DECISION["size_guide_scope"],
+        "one_piece_machine_fit_proven": False,
         "source_identity": identity,
         "unique_stl_count": len(rows),
         "installed_printed_count": len(registry.PrintedParts),
@@ -1228,7 +1327,7 @@ def validate(source=None):
         )
         shapes = {o.Name: world_shape(o) for o in objects}
         report = {
-            "revision": "I",
+            "revision": DESIGN_REVISION,
             "source": os.path.relpath(source, ROOT),
             "scope": "Independent saved-file rigid-envelope audit; no strength, friction, fit, tape or flight qualification. Local propulsion evidence is recomputed from current source on every run.",
             "source_hashes_before": before,
@@ -1371,4 +1470,6 @@ def validate(source=None):
 if __name__ == "__main__":
     result = validate(sys.argv[1] if len(sys.argv) > 1 else None)
     if not result["passed"]:
-        raise SystemExit("Rev I independent audit failed; inspect the validation JSON.")
+        raise SystemExit(
+            "Independent assembly audit failed; inspect the validation JSON."
+        )

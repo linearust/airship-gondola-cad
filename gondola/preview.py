@@ -1,4 +1,4 @@
-"""Render Rev I assembly and explanatory native CAD details, then show assembly."""
+"""Render the assembly and explanatory native CAD details, then show assembly."""
 
 import json
 import os
@@ -15,6 +15,7 @@ from gondola.assembly import style_assembly
 from gondola.cad import create_group, translated_shape, world_shape
 from gondola.config import OUTPUT_DIR as OUT
 from gondola.config import STEM
+from gondola.design_contract import DESIGN_REVISION
 from gondola.provenance import file_sha256, source_fingerprint
 
 
@@ -55,10 +56,8 @@ def frame_for_export(active, view, width, height):
 def create_attachment_detail_document(side=1):
     from gondola.parts import rail
 
-    doc = App.newDocument(
-        "RevIAttachmentDetail" + ("Negative" if side < 0 else "Positive")
-    )
-    doc.Label = "Rev I | tape OVER wings and M3 clamp " + (
+    doc = App.newDocument("AttachmentDetail" + ("Negative" if side < 0 else "Positive"))
+    doc.Label = f"Rev {DESIGN_REVISION} | tape OVER wings and M3 clamp " + (
         "NegativeY" if side < 0 else "PositiveY"
     )
     g = create_group(doc, "Attachment", "Attachment detail | not a print assembly")

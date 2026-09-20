@@ -18,6 +18,7 @@ from gondola.cad import (
     union,
     update_print_orientation,
 )
+from gondola.design_contract import DESIGN_REVISION
 
 from . import metric_hardware as metric
 from . import rail
@@ -577,7 +578,7 @@ def build_propulsion_module(doc, parent=None):
     }
     metrics.update(
         {
-            "revision": "I",
+            "revision": DESIGN_REVISION,
             "status": "Paired detachable PA12 SLS/MJF fit prototype; device interfaces and retention not flight validated",
             "metal_structural_journal_parts_required": True,
             "printed_part_count": len(printed),

@@ -1,4 +1,4 @@
-"""Rev I: over-taped378mm single rail and ordinary purchased metric hardware."""
+"""Single flexible rail, over-wing tape and purchased metric hardware."""
 
 import json
 
@@ -16,9 +16,11 @@ from gondola.cad import (
 from gondola.config import OUTPUT_DIR as OUT
 from gondola.config import STEM
 from gondola.design_contract import (
+    DESIGN_REVISION,
     MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
+    RAIL_LENGTH_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
@@ -30,11 +32,11 @@ V = App.Vector
 
 def add_assembly_notes(doc):
     s = doc.addObject("Spreadsheet::Sheet", "StartHere")
-    s.Label = "READ FIRST | Rev I | rail/tape/metric hardware"
+    s.Label = f"READ FIRST | Rev {DESIGN_REVISION} | rail/tape/metric hardware"
     rows = [
         (
-            "REV I",
-            "378mm single flexible rail. Standard64x76mm board. PA12 SLS/MJF. Gold=buy; teal/grey=print.",
+            f"REV {DESIGN_REVISION}",
+            f"{RAIL_LENGTH_MM:g}mm single flexible rail. Standard64x76mm board. PA12 SLS preferred; MJF alternative. Gold=buy; teal/grey=print.",
         ),
         (
             "Rail continuity",
@@ -50,7 +52,7 @@ def add_assembly_notes(doc):
         ),
         (
             "Adjustment",
-            "Loosen3turns. Slide along rail. Clamp only over solid head land, preferably within5mm of an18mm-pitch land centre. Check module/rotor clearances after moving.",
+            "Loosen3turns. Slide along rail. Clamp only over solid head land, preferably within5mm of an18mm-pitch land centre. Keep the whole18mm shoe on the rail; check module/rotor clearances after moving.",
         ),
         (
             "Removal",
@@ -70,7 +72,7 @@ def add_assembly_notes(doc):
         ),
         (
             "PA12",
-            "SLS/MJF, ±0.3%/min±0.3mm.45deg rail print envelope fits both listed machine bounds. Request ONE-PIECE manufacture; supplier must accept1mm narrow flexures as a functional exception to long/broad-part guidance.",
+            "SLS preferred, MJF alternative; ±0.3%/min±0.3mm.45deg print orientation passes published size screening. Creallo combines SLS/MJF quotes; agree process and ONE-PIECE manufacture. Supplier must accept1mm narrow functional flexures.",
         ),
         (
             "Screw side",
@@ -166,11 +168,11 @@ def build_assembly():
     if not rr["passed"]:
         raise RuntimeError("Rail mechanism validation failed before assembly.")
     (OUT / (STEM + "_rail_validation.json")).write_text(json.dumps(rr, indent=2) + "\n")
-    doc = App.newDocument("GondolaPA12RevI")
-    doc.Label = "Gondola Rev I |378mm rail, over-tape, metric hardware"
+    doc = App.newDocument("GondolaPA12Rev" + DESIGN_REVISION)
+    doc.Label = f"Gondola Rev {DESIGN_REVISION} |{rail.LENGTH:g}mm rail, over-tape, metric hardware"
     add_assembly_notes(doc)
     ra = rail.build_rail(doc)
-    # 45deg flat orientation fits both published SLS and MJF envelopes.
+    # 45deg flat orientation leaves margin within both published size screens.
     ra["printed"][0].PrintRotation = App.Rotation(V(0, 0, 1), 45)
     settings = doc.addObject("App::FeaturePython", "AssemblySettings")
     settings.Label = "EDIT | clamp approach for each module"
@@ -196,7 +198,7 @@ def build_assembly():
         set_property(
             m,
             "RailPositionNotes",
-            "Default land centre. Slide freely; clamp within5mm of an18mm-pitch land centre. Avoid other modules and exposed ends.",
+            f"Default land centre. Clamp within5mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
         )
         m.setExpression("Placement.Base.x", "RailPositionX")
         m.setExpression(
@@ -320,7 +322,7 @@ def build_assembly():
         raise RuntimeError("Source changed during build; rebuild before validation.")
     metrics = {
         "source_fingerprint": fingerprint,
-        "revision": "I",
+        "revision": DESIGN_REVISION,
         "rail_length_mm": rail.LENGTH,
         "rail_count": 1,
         "rail_head_relief_gap_mm": rail.FLEX_GAP,

@@ -1,4 +1,4 @@
-"""Rev I purchased M3 stack hardware, modeled as simple dimensional envelopes.
+"""Purchased M3 stack hardware, modeled as simple dimensional envelopes.
 
 No modeled helical threads, no custom printed fasteners. The exact procurement
 item remains unselected; the cited manufacturers substantiate the purchasing

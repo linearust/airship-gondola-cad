@@ -9,6 +9,28 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
+DESIGN_REVISION = "J"
+# User's nominal CAD length ceiling; part geometry consumes this requirement.
+RAIL_LENGTH_MM = 340.0
+PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
+MANUFACTURING_DECISION = {
+    "reviewed_on": "2026-09-20",
+    "supplier": "Creallo",
+    "material": "PA12",
+    "preferred_process": "SLS",
+    "alternative_process": "MJF subject to supplier agreement and fit trials",
+    "nominal_rail_length_mm": RAIL_LENGTH_MM,
+    "rationale": "SLS is a suitable prototype candidate; published supplier evidence does not require MJF for this design. Adopt the user's 340 mm length ceiling.",
+    "supplier_process_policy": "SLS/MJF quotations are integrated; Creallo selects the process unless a specific process is separately agreed. Request SLS for the initial fit trial.",
+    "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
+    "qualification": "Not qualified: obtain one-piece acceptance and review 1 mm functional flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed process/material/finish for coupons and full parts.",
+    "sources": {
+        "dimensions_and_tolerances": CREALLO_GUIDE_URL,
+        "process_policy": "https://creallo.com/ko/blog/posts/sls-mjf-integration-update",
+        "process_capability": "https://creallo.com/ko/capability/process/3DP/SLS",
+        "wall_thickness": "https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes",
+    },
+}
 
 
 # Scoped selection from the source BOM, not measured all-up flight mass.
@@ -106,7 +128,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "rail_flexure",
-        "Creallo acceptance of one-piece 378mm rail, 1mm flexures, curvature and depowdering.",
+        f"Creallo acceptance of one-piece {RAIL_LENGTH_MM:g}mm rail, 1mm flexures, curvature and depowdering.",
     ),
     UnresolvedInterface(
         "motor_mount",
@@ -147,9 +169,10 @@ def release_status():
 
 def project_status():
     return {
-        "design_revision": "I",
+        "design_revision": DESIGN_REVISION,
         "units": "mm",
         "printed_material": "PA12 SLS/MJF",
+        "manufacturing_decision": MANUFACTURING_DECISION,
         "scope": "Gondola only: one flexible rail, two tilting main propulsors, interchangeable stackable equipment boards.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on generic board; no strap slots;90deg in-plane orientation.",
