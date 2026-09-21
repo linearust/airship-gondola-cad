@@ -60,11 +60,11 @@ class OpticalMountTests(unittest.TestCase):
         measured = base.common(slab)
         self.assertLess(abs(platform.cut(measured).Volume), 1e-5)
         self.assertLess(abs(measured.cut(platform).Volume), 1e-5)
-        self.assertEqual(set(stack_interface.HOLE_CENTRES), {(-20, -20), (20, 20)})
+        self.assertEqual(set(stack_interface.HOLE_CENTRES), {(-22, -22), (22, 22)})
         for x, y in stack_interface.HOLE_CENTRES:
             bore = Part.makeCylinder(1.3, 2, App.Vector(x, y, 0))
             self.assertLess(abs(base.common(bore).Volume), 1e-5)
-        for x, y in ((-20, 20), (20, -20)):
+        for x, y in ((-22, 22), (22, -22)):
             removed_pad = Part.makeCylinder(3.25, 2, App.Vector(x, y, 0))
             self.assertLess(abs(base.common(removed_pad).Volume), 1e-5)
 

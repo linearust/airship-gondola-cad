@@ -11,9 +11,17 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "Q"
+DESIGN_REVISION = "R"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
+# Project structural interface, independent of the FC mounting-hole pattern.
+STACK_PITCH_MM = 44.0
+STACK_HOLE_CENTRES = tuple(
+    (sign * STACK_PITCH_MM / 2, sign * STACK_PITCH_MM / 2) for sign in (-1, 1)
+)
+STACK_AXIS_LOCATIONS = (
+    " and ".join(f"({x:g}, {y:g})" for x, y in STACK_HOLE_CENTRES) + " mm"
+)
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
     "reviewed_on": "2026-09-20",
@@ -305,7 +313,7 @@ def project_status():
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "optical_stack_host": OPTICAL_STACK_HOST,
-        "optical_stack_scope": "Common structural two-axis diagonal M2 interface at (-20,-20)/(20,20)mm on battery and electronics carriers; two bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
+        "optical_stack_scope": f"Common structural two-axis diagonal M2 interface at {STACK_AXIS_LOCATIONS} on battery and electronics carriers; two bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,

@@ -11,6 +11,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import box, create_group, create_printed_part, set_property, union
+from gondola.contracts.design import STACK_AXIS_LOCATIONS
 from gondola.contracts.hardware import SQUARE_NUT_SOURCE, STACK_SCREW_SOURCE
 
 from . import purchased_hardware, stack_interface
@@ -117,7 +118,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": "Two diagonal M2 clearance axes at (-20,-20)/(20,20), shared open bar; supported by two purchased columns independently of the FC dampers",
+        "standard_stack_interface": f"Two diagonal M2 clearance axes at {STACK_AXIS_LOCATIONS}, shared open bar; supported by two purchased columns independently of the FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,

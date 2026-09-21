@@ -15,7 +15,8 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
   `print_export.py`, `procurement.py` and `mass_budget.py` define export accounting.
 - `gondola/validation/` and `tests/fixtures/` define regression checks;
-  `validation/manufacturing.py` owns wall measurements and process allowances.
+  `validation/manufacturing.py` owns wall measurements and process allowances;
+  `validation/wiring.py` owns reserve geometry and declared access margins.
   `config.py`, `provenance.py` and `bundle.py` enforce artifact identity.
 - `cli.py` dispatches commands; `freecad_runtime.py` manages the AppImage process.
 
@@ -27,6 +28,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - Model only supported interfaces. Do not invent device holes, bearing planes,
   thread depths, mounting kits, cable datums or electrical compatibility.
   Preserve source discrepancies and explicit design allowances.
+- Check connector handling and wire reserves against both physical parts and
+  other reserved spaces. Keep sampled attitude checks distinct from continuous
+  bounds; nominal clearances do not verify actual plugs, latches or harnesses.
 - Preserve the native geared input/output expressions and bounded, non-wrapping
   tilt controls. Validate gear contact, coupled motion and bearing/fastener
   retention together. Purchased gear profiles are reference geometry, never

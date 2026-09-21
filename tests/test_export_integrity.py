@@ -33,6 +33,7 @@ class ExportIntegrityTests(unittest.TestCase):
             "gondola.parts.optical_sensor": Mock(),
             "gondola.parts.stack_interface": Mock(),
             "gondola.validation.optical": Mock(),
+            "gondola.validation.wiring": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.contracts.equipment_interfaces": Mock(),
             "gondola.cad": types.SimpleNamespace(world_shape=Mock()),
@@ -257,7 +258,11 @@ class ExportIntegrityTests(unittest.TestCase):
             return result
 
         with (
-            patch.object(self.equipment, "reserve_checks", return_value=([], [])),
+            patch.object(
+                self.equipment.wiring_validation,
+                "reserve_checks",
+                return_value=([], []),
+            ),
             patch.object(
                 self.equipment, "mtf_sensor_check", return_value={"passed": True}
             ),

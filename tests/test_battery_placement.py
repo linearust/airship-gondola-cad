@@ -116,7 +116,9 @@ class BatteryPlacementTests(unittest.TestCase):
     def test_column_gap_fails_before_geometric_contact(self):
         spacer = self.doc.OpticalStackSpacer0
         before = App.Placement(spacer.Placement)
-        spacer.Placement.Base.x += 3
+        # Move the wider stack's left column into the required margin, while
+        # keeping its solid clear of every permitted battery placement.
+        spacer.Placement.Base.x += 5
         self.doc.recompute()
         try:
             result = self.check()

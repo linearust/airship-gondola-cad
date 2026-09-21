@@ -24,10 +24,10 @@ class WiringReserveTests(unittest.TestCase):
             stack_interface,
             wiring_reserves,
         )
-        from gondola.validation import equipment
+        from gondola.validation import wiring as wiring_validation
 
         cls.wiring = wiring_reserves
-        cls.audit = equipment
+        cls.audit = wiring_validation
         cls.expected = wiring_reserves.reserve_shapes()
         cls.expected["MTF02PConnectorReserve"] = (
             optical_sensor.connector_reserve_shape()
@@ -42,6 +42,9 @@ class WiringReserveTests(unittest.TestCase):
         )
         optical = optical_mount.build_optical_mount(cls.doc, battery)
         stack_interface.attach_to_host(optical["group"], battery)
+        optical["hardware"] += stack_interface.build_stack_hardware(
+            cls.doc, optical["group"]
+        )
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )
@@ -50,7 +53,7 @@ class WiringReserveTests(unittest.TestCase):
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
             "PrintedParts": [carrier] + optical["printed"],
-            "HardwareParts": [],
+            "HardwareParts": optical["hardware"],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
             "TapeReferences": [],
@@ -125,29 +128,85 @@ class WiringReserveTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertEqual(len(result["continuous_reserved_space_collisions"]), 1)
 
-    def test_disconnected_fc_exit_is_rejected(self):
+    def test_disconnected_fc_reservation_is_rejected(self):
         expected = self.expected["FCWiringClearanceReserve"]
-        severed = expected.cut(Part.makeBox(1, 30, 4, App.Vector(-26, -1, 14.2)))
+        bounds = expected.BoundBox
+        severed = expected.cut(
+            Part.makeBox(
+                1,
+                bounds.YLength + 2,
+                bounds.ZLength + 2,
+                App.Vector(-0.5, bounds.YMin - 1, bounds.ZMin - 1),
+            )
+        )
         self.assertGreater(len(severed.Solids), 1)
         result = self.audit.connector_reserve_geometry_check(severed, expected, {})
         self.assertFalse(result["one_connected_solid"])
         self.assertFalse(result["passed"])
 
-    def test_optical_gap_requires_margin_beyond_zero_interference(self):
-        fc = self.expected["FCWiringClearanceReserve"]
-        # A displaced obstruction may be clear yet closer than the design margin.
-        optical = Part.makeBox(1, 1, 1, App.Vector(fc.BoundBox.XMax + 0.5, -0.5, 21))
-        self.assertLess(fc.common(optical).Volume, 1e-6)
-        self.assertLess(fc.distToShape(optical)[0], 1)
-        others = {
-            "MTF02POpticalClearanceReserve": optical,
-            "ModuleLR900Envelope": self.doc.ModuleLR900Envelope.Shape,
-            "ModulePASEnvelope": self.doc.ModulePASEnvelope.Shape,
-            "XT30ServiceReserve": self.expected["XT30ServiceReserve"],
-        }
-        results = self.audit.connector_buffer_checks(fc, others)
-        self.assertFalse(results[0]["passed"])
-        self.assertTrue(all(row["passed"] for row in results[1:]))
+    def test_named_gap_rejects_clear_but_cramped_geometry(self):
+        source = Part.makeBox(2, 2, 2)
+        requirements = {"FC": {"Optical": 1.5}}
+        for gap, expected in ((0.5, False), (1.5, True), (2.0, True)):
+            with self.subTest(gap=gap):
+                other = Part.makeBox(2, 2, 2, App.Vector(2 + gap, 0, 0))
+                self.assertLess(source.common(other).Volume, 1e-6)
+                result = self.audit.named_gap_checks(
+                    {"FC": source, "Optical": other}, requirements
+                )[0]
+                self.assertAlmostEqual(result["measured_gap_mm"], gap)
+                self.assertEqual(result["passed"], expected)
+
+    def test_missing_non_solid_or_nested_geometry_cannot_pass_clearance(self):
+        source = Part.makeBox(4, 4, 4)
+        validation_cache = {}
+        invalid = (None, Part.Shape(), Part.makeLine(App.Vector(), App.Vector(1, 0, 0)))
+        for other in invalid:
+            with self.subTest(other=other):
+                result = self.audit.named_gap_checks(
+                    {"FC": source, "Cable": other},
+                    {"FC": {"Cable": 1.5}},
+                    validation_cache=validation_cache,
+                )[0]
+                self.assertFalse(result["passed"])
+                self.assertIn("error", result)
+        contained = Part.makeSphere(0.25, App.Vector(2, 2, 2))
+        result = self.audit.measure_clearances(
+            source, {"ContainedCable": contained}, validation_cache=validation_cache
+        )[0]
+        self.assertFalse(result["passed"])
+        self.assertGreater(result["intersection_mm3"], 0.06)
+        clear = Part.makeBox(1, 1, 1, App.Vector(6, 0, 0))
+        self.assertTrue(
+            self.audit.named_gap_checks(
+                {"FC": source, "Cable": clear},
+                {"FC": {"Cable": 1.5}},
+                validation_cache=validation_cache,
+            )[0]["passed"]
+        )
+
+    def test_required_reserve_removed_from_registry_is_rejected(self):
+        registry = self.doc.DesignRegistry
+        original = list(registry.ClearanceVolumes)
+        try:
+            registry.ClearanceVolumes = [
+                obj for obj in original if obj.Name != "CapacitorServiceReserve"
+            ]
+            checks, pairs = self.saved_reserve_results()
+            self.assertFalse(
+                next(
+                    row for row in checks if row["object"] == "CapacitorServiceReserve"
+                )["passed"]
+            )
+            self.assertTrue(
+                any(
+                    not row["passed"]
+                    for row in pairs
+                    if "CapacitorServiceReserve" in (row["a"], row["b"])
+                )
+            )
+        finally:
+            registry.ClearanceVolumes = original
 
     def test_native_contract_and_unverified_fit_cannot_be_promoted(self):
         obj = self.doc.MTF02PConnectorReserve

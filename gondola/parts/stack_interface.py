@@ -1,7 +1,7 @@
 """Project-standard structural stack, separate from FC holes and soft dampers.
 
-Both rail equipment carriers use the same two diagonal M2 axes of a 40 mm square. Purchased
-25 mm nylon spacers support one interchangeable optical head; no printed posts.
+Both rail equipment carriers share the project's diagonal M2 mounting pair.
+Purchased 25 mm nylon spacers support one interchangeable optical head; no printed posts.
 """
 
 import json
@@ -11,13 +11,18 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, box, set_property, union
+from gondola.contracts.design import (
+    STACK_AXIS_LOCATIONS,
+    STACK_HOLE_CENTRES,
+    STACK_PITCH_MM,
+)
 from gondola.contracts.hardware import STACK_SCREW_SOURCE, STACK_SPACER_SOURCE
 
 from . import purchased_hardware
 
 V = App.Vector
-PITCH_MM = 40.0
-HOLE_CENTRES = tuple((sign * PITCH_MM / 2, sign * PITCH_MM / 2) for sign in (-1, 1))
+PITCH_MM = STACK_PITCH_MM
+HOLE_CENTRES = STACK_HOLE_CENTRES
 HOLE_DIAMETER = 2.6
 PAD_DIAMETER = 6.5
 ARM_WIDTH = 5.0
@@ -34,7 +39,7 @@ SUPPORTED_HOSTS = {
 
 def interface_contract():
     return {
-        "standard": "Project structural stack: two M2 clearance axes at (-20,-20) and (20,20) mm",
+        "standard": f"Project structural stack: two M2 clearance axes at {STACK_AXIS_LOCATIONS}",
         "industry_standard_claimed": False,
         "axis_spacing_mm": math.sqrt(2) * PITCH_MM,
         "hole_centres_xy_mm": HOLE_CENTRES,

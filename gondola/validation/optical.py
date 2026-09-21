@@ -1,6 +1,6 @@
 """Read-only saved optical-stack evidence, clearance and service audit.
 
-Moving-part collision checks sample 25 attitudes per host. The separate broad
+Mechanism and connector-access checks sample 25 attitudes per host. The separate broad
 optical cone conservatively contains the external field over the entire angle
 range; neither check qualifies physical fit, friction, cables or gravity trim.
 """
@@ -8,6 +8,7 @@ range; neither check qualifies physical fit, friction, cables or gravity trim.
 import itertools
 import json
 import math
+from functools import partial
 
 import FreeCAD as App
 import Part
@@ -18,10 +19,12 @@ from gondola.parts import (
     optical_mount,
     optical_sensor,
     stack_interface,
+    wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
 
 from .geometry import intersection_volume, local_shape, translation_sweep
+from .wiring import RESERVES, collision_hits, measure_clearances, named_gap_checks
 
 TOL = 1e-5
 V = App.Vector
@@ -43,11 +46,7 @@ def _same_placement(first, second):
 
 
 def _hits(shape, obstacles):
-    return [
-        {"object": name, "intersection_mm3": volume}
-        for name, other in obstacles.items()
-        if (volume := intersection_volume(shape, other)) > TOL
-    ]
+    return collision_hits(shape, obstacles, tolerance=TOL)
 
 
 def _json_equal(first, second):
@@ -346,6 +345,10 @@ def _external_field_bound(group):
 
 def _host_checks(doc, host, physical, kit):
     group = doc.OpticalFlowModule
+    validation_cache = {}
+    find_hits = partial(
+        collision_hits, tolerance=TOL, validation_cache=validation_cache
+    )
     stack_interface.attach_to_host(group, host)
     fixed = {obj.Name: world_shape(obj) for obj in physical if obj not in kit}
     rotor = {
@@ -359,6 +362,13 @@ def _host_checks(doc, host, physical, kit):
         for obj in doc.DesignRegistry.ClearanceVolumes
         if obj.Name not in rotor and not belongs_to_group(obj, group)
     }
+    # Required named external reservations cannot disappear from the registry.
+    # The sensor's own connector/field share a designed boundary and are excluded.
+    for name in RESERVES:
+        if name in ("MTF02PConnectorReserve", "MTF02POpticalClearanceReserve"):
+            continue
+        if name not in reservations:
+            reservations[name] = None
     external = {**fixed, **rotor}
     rows = []
     maximum_depth = -math.inf
@@ -368,9 +378,11 @@ def _host_checks(doc, host, physical, kit):
         collisions = []
         reserved_hits = []
         for name, shape in own.items():
-            collisions += [{"moving": name, **hit} for hit in _hits(shape, external)]
+            collisions += [
+                {"moving": name, **hit} for hit in find_hits(shape, external)
+            ]
             reserved_hits += [
-                {"moving": name, **hit} for hit in _hits(shape, reservations)
+                {"moving": name, **hit} for hit in find_hits(shape, reservations)
             ]
         for (name, shape), (other, target) in itertools.combinations(own.items(), 2):
             volume = intersection_volume(shape, target)
@@ -386,8 +398,30 @@ def _host_checks(doc, host, physical, kit):
                 if name != "ModuleMTF02PEnvelope"
             },
         }
-        optic_hits = _hits(world_shape(doc.MTF02POpticalClearanceReserve), obstacles)
-        connector_hits = _hits(world_shape(doc.MTF02PConnectorReserve), obstacles)
+        optical_reserve = world_shape(doc.MTF02POpticalClearanceReserve)
+        connector_reserve = world_shape(doc.MTF02PConnectorReserve)
+        optic_hits = find_hits(optical_reserve, obstacles)
+        connector_hits = find_hits(connector_reserve, obstacles)
+        optical_reserve_hits = find_hits(optical_reserve, reservations)
+        connector_reserve_gaps = measure_clearances(
+            connector_reserve,
+            reservations,
+            minimum_gap_mm=wiring_reserves.CONNECTOR_SERVICE_GAP_MM,
+            tolerance=TOL,
+            validation_cache=validation_cache,
+        )
+        neighbour_gaps = named_gap_checks(
+            {
+                **fixed,
+                **own,
+                **reservations,
+                "MTF02POpticalClearanceReserve": optical_reserve,
+                "MTF02PConnectorReserve": connector_reserve,
+            },
+            wiring_reserves.MINIMUM_NEIGHBOUR_GAPS,
+            tolerance=TOL,
+            validation_cache=validation_cache,
+        )
         inverse = doc.OpticalPitchStage.getGlobalPlacement().inverse()
         depth = max(
             inverse.multVec(point).z
@@ -410,19 +444,27 @@ def _host_checks(doc, host, physical, kit):
                 "reserved_space_intrusions": reserved_hits,
                 "optical_obstructions": optic_hits,
                 "connector_obstructions": connector_hits,
+                "optical_reserved_space_intrusions": optical_reserve_hits,
+                "connector_reserved_space_clearances": connector_reserve_gaps,
+                "neighbour_clearance_buffers": neighbour_gaps,
                 "body_forward_extent_mm": depth,
                 "native_rotation_matches": control_ok,
                 "passed": not collisions
                 and not reserved_hits
                 and not optic_hits
                 and not connector_hits
+                and not optical_reserve_hits
+                and all(
+                    row["passed"] for row in connector_reserve_gaps + neighbour_gaps
+                )
                 and control_ok
                 and depth <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
             }
         )
     optical_mount.set_angles(doc, 0, 0)
     bound, dimensions = _external_field_bound(group)
-    bound_hits = _hits(bound, external)
+    bound_hits = find_hits(bound, external)
+    bound_reserve_hits = find_hits(bound, reservations)
     pivot = group.getGlobalPlacement().multVec(V(0, 0, optical_mount.ROLL_PIVOT_Z))
     # Norm bounds every forward projection for all roll/pitch combinations.
     depth_bound = (
@@ -438,9 +480,11 @@ def _host_checks(doc, host, physical, kit):
     continuous = {
         **dimensions,
         "external_obstructions": bound_hits,
+        "external_reserved_space_intrusions": bound_reserve_hits,
         "all_angles_body_depth_upper_bound_mm": depth_bound,
-        "method": "Conservative full-angle circular cone against external parts and complete rotor bounds; norm upper bound covers full modeled-body depth",
+        "method": "Conservative full-angle circular cone against external parts, complete rotor bounds and named wire/access reservations; norm upper bound covers full modeled-body depth",
         "passed": not bound_hits
+        and not bound_reserve_hits
         and depth_bound <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
     }
     service = []
@@ -459,7 +503,7 @@ def _host_checks(doc, host, physical, kit):
         if device.getParentGeoFeatureGroup() != host:
             continue
         sweep, method = translation_sweep(world_shape(device), (0, 0, 32))
-        hits = _hits(
+        hits = find_hits(
             sweep, {obj.Name: world_shape(obj) for obj in retained if obj != device}
         )
         service.append(
@@ -488,7 +532,7 @@ def _host_checks(doc, host, physical, kit):
 def mtf_sensor_check(doc):
     """Temporarily probe both hosts and restore all native changes; never save."""
     report = {
-        "scope": "Saved CAD geometry only. 25 sampled self-mechanism attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
+        "scope": "Saved CAD geometry only. 25 sampled mechanism and connector-access attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
     }
     evidence = _source_evidence(doc)
     report["source_evidence"] = evidence
