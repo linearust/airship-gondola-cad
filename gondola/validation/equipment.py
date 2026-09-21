@@ -52,7 +52,6 @@ RESERVES = (
     "PASConnectorReserve",
     "MTF02PConnectorReserve",
 )
-EXPECTED_PURCHASE_QUANTITIES = PURCHASED_HARDWARE_QUANTITIES
 
 
 def connector_reserve_geometry_check(actual, expected, obstacles):
@@ -724,7 +723,7 @@ def hardware_check(doc, source):
         and set(bom_names) == {obj.Name for obj in registry.HardwareParts},
         "bom_stated_quantity": bom["purchased_hardware_quantity"],
         "bom_stated_unique_specs": bom["unique_purchase_spec_count"],
-        "passed": dict(quantities) == EXPECTED_PURCHASE_QUANTITIES
+        "passed": dict(quantities) == PURCHASED_HARDWARE_QUANTITIES
         and bom.get("purchase_scope") == hardware_bom_scope()
         and all(row["passed"] for row in checks)
         and identity_matches

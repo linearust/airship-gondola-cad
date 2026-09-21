@@ -59,7 +59,7 @@ class HardwareBomTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.equipment.source_fingerprint = Mock(return_value="current source")
         self.hardware = []
-        for sku, quantity in self.equipment.EXPECTED_PURCHASE_QUANTITIES.items():
+        for sku, quantity in self.equipment.PURCHASED_HARDWARE_QUANTITIES.items():
             for index in range(quantity):
                 self.hardware.append(
                     types.SimpleNamespace(

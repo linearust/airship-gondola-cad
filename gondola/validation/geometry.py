@@ -105,11 +105,6 @@ def _stl_triangle(points):
     )
 
 
-def mesh_triangle_signature(mesh):
-    """Compare triangles at STL precision, independent of vertex/facet order."""
-    return sorted(_stl_triangle(facet.Points) for facet in mesh.Facets)
-
-
 def _subtract(first, second):
     return tuple(a - b for a, b in zip(first, second))
 

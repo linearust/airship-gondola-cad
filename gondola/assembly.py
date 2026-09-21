@@ -21,7 +21,6 @@ from gondola.design_contract import (
     NOTION_LAST_EDITED,
     NOTION_URL,
     OPTICAL_STACK_HOST,
-    RAIL_LENGTH_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     WIRING_PURCHASE_PLAN,
     release_status,
@@ -31,78 +30,6 @@ from gondola.parts.equipment_envelopes import build_equipment
 from gondola.provenance import source_fingerprint
 
 V = App.Vector
-
-
-def add_assembly_notes(doc):
-    s = doc.addObject("Spreadsheet::Sheet", "StartHere")
-    s.Label = f"READ FIRST | Rev {DESIGN_REVISION} | rail/tape/metric hardware"
-    rows = [
-        (
-            f"REV {DESIGN_REVISION}",
-            f"{RAIL_LENGTH_MM:g}mm PA12 rail with role-specific battery/electronics mounts. Gold=buy; teal/grey=print.",
-        ),
-        (
-            "Rail",
-            "One continuous 1.2mm flexible base with 13.5mm head lands, 4.5mm reliefs and seven tape-pad stations. Supplier acceptance and full-length bend testing remain required.",
-        ),
-        (
-            "Tape",
-            "12mm single-sided strips OVER each wing onto the envelope. Keep running head and flex gaps clear. Battery, LR900-A and MTF-02P retain adhesive mounting.",
-        ),
-        (
-            "Clamp",
-            "M2x6 DIN913 flat-point screw and DIN562 M2 SQUARE nut, one pair per module. Do not substitute a hex nut. Use 0.9mm hex key; loosen three turns before sliding.",
-        ),
-        (
-            "Removal",
-            "Disconnect external leads before sliding modules off a rail end. Remove the neighboring battery/electronics module before propulsion. Keep each 18mm shoe fully supported and clamp within 4mm of a full land centre.",
-        ),
-        (
-            "Mounts",
-            "Battery and electronics carriers share two diagonal M2 clearance axes at (-20,-20)/(20,20)mm. Two purchased 25mm PA66 spacers support the interchangeable optical head independently of the FC dampers.",
-        ),
-        (
-            "Optical stack",
-            "Default host: battery carrier. Reparent the complete kit to the electronics carrier using stack_interface.attach_to_host. Manually align both axes within +/-20deg and clamp; added mass does not self-level a locked sensor. Remove the head before servicing equipment below it; columns remain installed.",
-        ),
-        (
-            "Confirmed holes",
-            "FC: 25.5mm square, manufacturer 45deg orientation. P-AS: two M2 holes, 23mm pitch. Device fastening planes and fastener lengths are not inferred from the overall bounding boxes.",
-        ),
-        (
-            "FC clearance",
-            "Reserve 8mm below the entire conservative FC envelope above the mount face. This is our wiring-space allowance, not a published connector dimension. Use the supplied M2x7.5 silicone sleeves and purchased spacers; final assembled height/fasteners remain to measure.",
-        ),
-        (
-            "OEM interfaces",
-            "Only published device mounting patterns may be generated. Do not invent servo spline, horn attachment, PCB thickness or motor screw insertion depth. Exact mounting holes do not certify a complete bolted assembly.",
-        ),
-        (
-            "Scope",
-            "Two DS-M005/RS1102 main tilt units, bounded +/-150deg, 1:1. Includes MTF-02P. No yaw motor, fins or fin servos.",
-        ),
-        (
-            "Purchasing",
-            "Buy standard fasteners, spacers and OEM horns. Printed D journals are custom torque interfaces, not generic replacement bearings; the horn connection remains unresolved.",
-        ),
-        (
-            "Clearance",
-            "FC has a connected underbody/perimeter wiring reservation and rounded exits. Connector service lanes are design allowances; unplug leads before device or module removal. Verify actual port locations, antenna, moving phase leads and adhesive retention.",
-        ),
-        (
-            "PA12",
-            "SLS preferred; MJF alternative by supplier agreement. Nominal functional walls at least 1.5mm, with the recorded 1.2mm rail flexure exception. No strength or flight qualification from CAD checks.",
-        ),
-        (
-            "References",
-            "Source: gondola/parts/. Confirmed interfaces: mounting_interfaces.py. Remaining evidence: design_contract.py. Buy only the hardware specifications; do not print equipment/reference/clearance shapes.",
-        ),
-    ]
-    for i, (a, b) in enumerate(rows, 1):
-        s.set("A%d" % i, a)
-        s.set("B%d" % i, b)
-    s.setColumnWidth("A", 175)
-    s.setColumnWidth("B", 1100)
 
 
 def style_assembly(doc):
@@ -168,7 +95,6 @@ def build_assembly():
     (OUT / (STEM + "_rail_validation.json")).write_text(json.dumps(rr, indent=2) + "\n")
     doc = App.newDocument("GondolaPA12Rev" + DESIGN_REVISION)
     doc.Label = f"Gondola Rev {DESIGN_REVISION} |{rail.LENGTH:g}mm rail, over-tape, metric hardware"
-    add_assembly_notes(doc)
     ra = rail.build_rail(doc)
     # 45deg flat orientation leaves margin within both published size screens.
     ra["printed"][0].PrintRotation = App.Rotation(V(0, 0, 1), 45)

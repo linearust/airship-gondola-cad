@@ -3,7 +3,7 @@
 import unittest
 from types import SimpleNamespace
 
-from gondola.validation.geometry import compare_mesh_surfaces, mesh_triangle_signature
+from gondola.validation.geometry import compare_mesh_surfaces
 
 
 def mesh(*triangles):
@@ -22,9 +22,6 @@ class MeshSurfaceTests(unittest.TestCase):
 
     def test_planar_diagonal_change_preserves_surface(self):
         other = mesh((self.a, self.b, self.d), (self.b, self.c, self.d))
-        self.assertNotEqual(
-            mesh_triangle_signature(self.square), mesh_triangle_signature(other)
-        )
         result = compare_mesh_surfaces(self.square, other)
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["actual_retriangulated_facets"], 2)

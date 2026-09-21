@@ -58,7 +58,6 @@ JOURNAL_SCREW_SOURCE = metric.JOURNAL_SCREW_SOURCE
 JOURNAL_NUT_SOURCE = metric.SQUARE_NUT_SOURCE
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
-BEARING_SOURCE = "https://www.nsk.com/engineering/products/bearings/ball-bearings/deep-groove-ball-bearings/extra-small-ball-bearings-and-miniature-ball-bearings-metric-series-with-flamge/mf63zz-esm-md-wf.html"
 
 
 # The local tilt axis is Y; motor thrust is +X at zero tilt. Fixed frame geometry
@@ -268,7 +267,7 @@ def journal_sleeve_shape(side):
     return mirrored_y(sleeve, side)
 
 
-def _hardware_shape(shape, side, y0, axis_sign=1):
+def _hardware_shape(shape, side, y0, axis_sign):
     s = shape.copy()
     s.rotate(V(), V(1, 0, 0), -90 * axis_sign)
     s.translate(V(0, y0, 0))
@@ -433,7 +432,7 @@ def _create_pod(doc, module, prefix, sign):
         SERVO_DRAWING,
     )
     coupling_y = -37.6 if sign > 0 else 30
-    coupling = _reference(
+    _reference(
         doc,
         assembly,
         prefix + "Coupling",
@@ -460,17 +459,15 @@ def _create_pod(doc, module, prefix, sign):
     set_property(bound, "RadialBound", 30, "App::PropertyLength")
     set_property(bound, "LateralHalfWidth", CARRIER_OUTER_Y, "App::PropertyLength")
     set_property(bound, "JournalHeadHalfSpan", 35, "App::PropertyLength")
-    return moving, [motor, shaft, propeller, servo], [bound, coupling]
+    return moving, [motor, shaft, propeller, servo]
 
 
-def build_propulsion_module(doc, parent=None):
+def build_propulsion_module(doc):
     module = create_group(
         doc,
         "MainPropulsionModule",
         "Main propulsion | PA12 frame, continuous rail and M2 retention",
     )
-    if parent is not None:
-        parent.addObject(module)
     set_property(module, "Notes", "")
     set_property(module, "SupportPlaneZ", BASE_Z, "App::PropertyLength")
     set_property(module, "RailCenters", "")
@@ -486,10 +483,7 @@ def build_propulsion_module(doc, parent=None):
     set_property(frame, "CarriageContactZ", BASE_Z, "App::PropertyLength")
     set_property(frame, "IntegratedRailShoe", True, "App::PropertyBool")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
-    printed, refs, clear, hardware, pods = [frame], [], [], [], []
-    frame.Label = (
-        "PRINT | PA12 integral paired propulsion frame and M2-clamped rail shoe"
-    )
+    refs, hardware, pods = [], [], []
     frame.Notes = (
         "Continuous T-rail shoe, both open outrigger feet and open servo-ear supports are one PA12 SLS/MJF part. "
         f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet are{FOOT_THICKNESS:g}mm thick without raised edge ribs; stiffness remains unqualified. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
@@ -500,8 +494,6 @@ def build_propulsion_module(doc, parent=None):
         "Rail friction, journal fit, supplier tolerances and the motor/servo-horn interfaces require physical validation."
     )
     frame.PrintNotes = "PA12 SLS/MJF. Depowder the through T-channel, side nut pocket, screw bore, hollow sleeves and open windows. No printed thread. STL contains this integrated frame only; purchased gold hardware must be excluded."
-    frame.CarriageContactZ = BASE_Z
-    frame.IntegratedRailShoe = True
     set_property(frame, "PivotHeight", PIVOT_Z, "App::PropertyLength")
     set_property(
         frame,
@@ -514,12 +506,10 @@ def build_propulsion_module(doc, parent=None):
         "ClampServiceDirections",
         "+Y or -Y; opposite nut-loading directions +X or -X",
     )
-    update_print_orientation(frame)
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
-        moving, devices, reservations = _create_pod(doc, module, prefix, sign)
+        moving, devices = _create_pod(doc, module, prefix, sign)
         pods.append(moving)
         refs.extend(devices)
-        clear.extend(reservations)
         carrier = create_printed_part(
             doc,
             moving,
@@ -529,8 +519,6 @@ def build_propulsion_module(doc, parent=None):
             App.Rotation(V(0, 1, 0), -90),
             "",
         )
-        printed.append(carrier)
-        carrier.Label = "PRINT | integral motor carrier and propeller guard"
         carrier.Notes = (
             "One PA12 SLS/MJF part combines rear motor plate, journal struts, integral1.5mm retention caps and propeller guard. "
             "Front guard ID45.6mm admits the40mm propeller and13.6mm maximum motor envelope axially. "
@@ -539,7 +527,6 @@ def build_propulsion_module(doc, parent=None):
             "Official RS1102 drawing gives3 M1.4 axes on PCD6.6. Holes remain uncut: a1.8mm clearance hole would leave only0.2mm between it and the existing4.4mm rear-shaft relief, and the rear clip diameter/head seating/depth are unverified. No false mounting approval."
         )
         carrier.PrintNotes = "PA12 SLS/MJF integral carrier/guard. Depowder open guard, rear relief and D journal bores. Install motor and propeller through the front opening; actual motor and horn fastening require measured vendor interfaces."
-        update_print_orientation(carrier)
         for side, suffix in ((-1, "Negative"), (1, "Positive")):
             sleeve = create_printed_part(
                 doc,
@@ -565,20 +552,14 @@ def build_propulsion_module(doc, parent=None):
                 "PrintSKU",
                 f"JournalSleeve_M{metric.THREAD_DIAMETER:g}_Retained",
             )
-            printed.append(sleeve)
             hardware.extend(_journal_hardware(doc, moving, prefix, side))
         coupling = doc.getObject(prefix + "Coupling")
-        coupling.Role = "Clearance"
-        coupling.Label = "REFERENCE | unfinished OEM servo horn/coupling space"
         coupling.Notes = "Space reservation only. Official DS-M005 page states28T horn; spline dimensions and horn retention screw diameter/pitch/length are not published. Use the vendor-supplied horn/fastener after confirming metric compatibility; do not substitute M2 into this interface. Required horn-to-D-sleeve torque connection remains unfinished."
         coupling.ManufacturingStatus = (
             "Clearance placeholder only, not actual hardware or printable coupling"
         )
-        coupling.SourceURL = SERVO_SOURCE
         if App.GuiUp:
             coupling.ViewObject.ShapeColor = (0.95, 0.62, 0.18)
-            coupling.ViewObject.Transparency = 88
-            coupling.ViewObject.Visibility = False
         servo = doc.getObject(prefix + "Servo")
         set_property(
             servo,
@@ -595,12 +576,8 @@ def build_propulsion_module(doc, parent=None):
         set_property(motor, "OEMDrawingURL", MOTOR_DRAWING)
         bound = doc.getObject(prefix + "SweepBound")
         bound.Notes = "Conservative moving bound for integral carrier and guard plus hollow sleeves/purchased M2 retention; journal interfaces intentionally enter the stationary frame. External module/rail clearance can be tested against this full bound."
-        bound.LateralHalfWidth = CARRIER_OUTER_Y
-        bound.JournalHeadHalfSpan = 35
-    group = module
-    group.Notes = "One detachable two-propulsor module. Seven printed parts; common M2 purchased bolts and square nuts retain hollow torque sleeves against integral carrier caps; no washers. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
-    group.SupportPlaneZ = BASE_Z
-    group.RailCenters = (
+    module.Notes = "One detachable two-propulsor module. Seven printed parts; common M2 purchased bolts and square nuts retain hollow torque sleeves against integral carrier caps; no washers. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
+    module.RailCenters = (
         "One continuous T rail atY0; commonM2 captive-nut friction clamp"
     )
     # Stable part numbering and registry order are independent of build order.
@@ -766,20 +743,6 @@ def build_propulsion_module(doc, parent=None):
         for o in printed
     ]
     metrics["printed_volume_mm3"] = sum(o.Shape.Volume for o in printed)
-    metrics["purchased_substitution_review"] = {
-        "decision": "Retain four identical removable D sleeves; a standard bearing alone does not replace their drive and retention functions.",
-        "candidate": "MF63ZZ, manufacturer-confirmed3x6x2.5mm; flange7.2x0.6mm",
-        "source": BEARING_SOURCE,
-        "inner_race_abutment_maximum_diameter_mm": 3.7,
-        "why_not_installed": [
-            "A 3 mm bearing bore does not locate the selected M2 retention bolt; a new spindle interface would be required.",
-            "Bearing housing fit, inner-race spacers and axial housing retention would add interfaces.",
-            "An ordinary5mm-diameter M2 washer or shoulder-bolt head exceeds the3.7mm maximum inner-race abutment; dedicated seating is required.",
-            "DS-M005 actual28T horn spline dimensions and horn fastener remain unpublished; bearing substitution cannot solve that drive interface.",
-            "Replacing only idle sleeves would add a second axle specification and handed carrier parts instead of one repeated sleeve SKU.",
-        ],
-        "marketplace_status": "Common bearing size is searchable on AliExpress, but no seller SKU or lot is verified.",
-    }
     metrics["process_design_reference"] = {
         "source": CREALLO_SOURCE,
         "process": "PA12 SLS/MJF",
@@ -802,7 +765,7 @@ def build_propulsion_module(doc, parent=None):
         "Actual tilt endpoint stops",
     ]
     return {
-        "group": group,
+        "group": module,
         "printed": printed,
         "references": refs,
         "clearances": clear,

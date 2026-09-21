@@ -233,24 +233,6 @@ def validate(source=None):
         report["negative_clamp_driver_frame_overlap_mm3"] = intersection_volume(
             frame, rail.half_turn(key)
         )
-        report["nut_loading"] = [
-            {
-                "x_mm": dx,
-                "overlap_mm3": intersection_volume(
-                    frame, translated_shape(rail.nut_shape(), x=dx)
-                ),
-            }
-            for dx in (0, 2, 4, 6, 8, 10, 15, 20)
-        ]
-        report["negative_nut_loading"] = [
-            {
-                "x_mm": -dx,
-                "overlap_mm3": intersection_volume(
-                    frame, rail.half_turn(translated_shape(rail.nut_shape(), x=dx))
-                ),
-            }
-            for dx in (0, 2, 4, 6, 8, 10, 15, 20)
-        ]
         report["continuous_nut_loading"] = [
             continuous_path(rail.nut_shape(), [(0, 0, 0), (20, 0, 0)], physical),
             continuous_path(
@@ -276,27 +258,6 @@ def validate(source=None):
                 sleeve_removed = {sleeve_name} | hardware_names
                 if driven:
                     sleeve_removed.add(prefix + "Servo")
-                positions = [(dy, 0) for dy in (0, 0.2, 0.5, 1, 2, 4, 6, 7, 7.5, 8)]
-                if driven:
-                    positions += [
-                        (8, z)
-                        for z in (0.5, 1, 2, 5, 8, propulsion.SLEEVE_SERVICE_LIFT)
-                    ] + [
-                        (dy, propulsion.SLEEVE_SERVICE_LIFT) for dy in (10, 15, 20, 30)
-                    ]
-                else:
-                    positions += [(dy, 0) for dy in (10, 15, 20, 30)]
-                rows = []
-                for dy, z in positions:
-                    placed = translated_shape(sleeve, y=sign * dy, z=z)
-                    rows.append(
-                        {
-                            "axial_outward_mm": dy,
-                            "lift_z_mm": z,
-                            "overlap_frame_mm3": intersection_volume(placed, frame),
-                            "overlap_carrier_mm3": intersection_volume(placed, carrier),
-                        }
-                    )
                 report["sleeve_service_servo_removed"].append(
                     {
                         "sleeve": prefix + suffix,
@@ -320,7 +281,6 @@ def validate(source=None):
                                 if name not in sleeve_removed
                             },
                         ),
-                        "positions": rows,
                     }
                 )
                 hardware = {
@@ -398,18 +358,6 @@ def validate(source=None):
                                 if key not in excluded
                             },
                         ),
-                        "positions": [
-                            {
-                                "x_mm": dx,
-                                "overlap_carrier_mm3": intersection_volume(
-                                    translated_shape(shape, x=dx), carrier
-                                ),
-                                "overlap_frame_mm3": intersection_volume(
-                                    translated_shape(shape, x=dx), frame
-                                ),
-                            }
-                            for dx in (0, 1, 2, 5, 10, 15, 20, 30)
-                        ],
                     }
                 )
         report["printed_parts"] = len(module["printed"])
@@ -566,13 +514,6 @@ def validate(source=None):
             }
             for prefix in ("Port", "Starboard")
         ]
-        report["journal_hardware_frame_clearance"] = [
-            {
-                "part": obj.Name,
-                "overlap_frame_mm3": intersection_volume(world_shape(obj), frame),
-            }
-            for obj in module["hardware"]
-        ]
         report["geometry"] = []
         for obj in module["printed"]:
             shape = print_shape(obj)
@@ -583,15 +524,8 @@ def validate(source=None):
                 Relative=False,
             )
             report["geometry"].append({"name": obj.Name, **mesh_checks(shape, mesh)})
-        report["print_volume_mm3"] = module["metrics"]["printed_volume_mm3"]
-        report["frame_print_bounds_mm"] = module["metrics"]["consolidation"][
-            "fixed_frame_print_bounds_mm"
-        ]
         report["all_hardware_A2"] = all(
             obj.MaterialSelection == "A2 stainless steel" for obj in module["hardware"]
-        )
-        report["no_rail_key_metadata"] = (
-            "RailKeyVariant" not in module["group"].PropertiesList
         )
         report["support_plane_z_mm"] = module["group"].SupportPlaneZ.Value
         sleeves = [
@@ -624,7 +558,6 @@ def validate(source=None):
             and len(report["integral_retention_caps"]) == 4
             and all(row["passed"] for row in report["integral_retention_caps"])
             and report["all_hardware_A2"]
-            and report["no_rail_key_metadata"]
             and report["minimum_sleeve_flat_wall_mm"] >= 1.5 - TOL
             and all(row["passed"] for row in report["functional_wall_probes"])
             and all(

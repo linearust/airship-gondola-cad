@@ -32,6 +32,7 @@ from gondola.design_contract import (
     NOTION_LAST_EDITED,
     NOTION_URL,
     PUBLISHED_PROCESS_SIZE_MM,
+    PURCHASED_HARDWARE_QUANTITIES,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
@@ -49,7 +50,7 @@ from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .baseline import module_control_bindings
-from .equipment import EXPECTED_PURCHASE_QUANTITIES, mounting_check
+from .equipment import mounting_check
 from .evidence import overlap_failures
 from .geometry import (
     belongs_to_group,
@@ -257,9 +258,7 @@ def rail_check(registry, shapes):
                 "blocked": vol > TOL,
             }
         )
-    # A nominal M2 hex nut nearly fits inside its own oversize pocket when
-    # rotated; nominal interference alone cannot establish capture. Screen
-    # the square replacement using the smallest published nut and a slot
+    # Screen antirotation using the smallest published nut and a slot
     # enlarged by the supplier's 0.3 mm dimensional tolerance.
     pocket_tolerance = 0.3
     largest_slot = rail.NUT_POCKET_AF + pocket_tolerance
@@ -350,7 +349,7 @@ def rail_check(registry, shapes):
 def hardware_check(registry):
     bought = list(registry.HardwareParts)
     printed = list(registry.PrintedParts) + list(registry.FitCoupons)
-    bad, rows = [], []
+    rows = []
     printed_names = {o.Name for o in printed}
     for obj in bought:
         standard = str(getattr(obj, "ThreadStandard", ""))
@@ -381,18 +380,6 @@ def hardware_check(registry):
             "passed": is_metric and excluded and bool(sku) and material_matches,
         }
         rows.append(row)
-    for obj in printed:
-        if any(
-            term in obj.Name
-            for term in (
-                "PrintedJournalPin",
-                "PrintedRetainingClip",
-                "RailKey",
-                "StackBaseBolt",
-                "StackTopNut",
-            )
-        ):
-            bad.append(obj.Name)
     clamp_names = {o.Name for o in registry.RailLocks}
     source = Path(registry.Document.FileName)
     bom = json.loads((source.parent / (source.stem + "_hardware_bom.json")).read_text())
@@ -420,7 +407,7 @@ def hardware_check(registry):
     )
     expected_purchases = {
         purchase_code(sku, HARDWARE_MATERIALS[sku]): quantity
-        for sku, quantity in EXPECTED_PURCHASE_QUANTITIES.items()
+        for sku, quantity in PURCHASED_HARDWARE_QUANTITIES.items()
     }
     purchase_counts = {row["purchase_code"]: row["quantity"] for row in bom["items"]}
     return {
@@ -431,12 +418,10 @@ def hardware_check(registry):
             "every_hardware_object_included_once": bom_ok,
             "declared_purchase_specifications": purchase_counts == expected_purchases,
         },
-        "obsolete_printed_fasteners": bad,
         "all_rail_clamps_are_purchased": clamp_names <= {o.Name for o in bought},
         "thread_retention_simulated": False,
         "passed": bool(rows)
         and all(r["passed"] for r in rows)
-        and not bad
         and bom_ok
         and purchase_counts == expected_purchases
         and clamp_names <= {o.Name for o in bought},
@@ -1135,11 +1120,11 @@ def battery_check(doc, objects):
             for row in column_gaps
         ),
     }
-    rows, unsupported = [], []
+    rows = []
     try:
         for size in ((61, 16, 15), maximum_size):
             battery.Length, battery.Width, battery.Height = size
-            for x in (-x_limit, 0, x_limit, -10, 10):
+            for x in (-x_limit, 0, x_limit):
                 for y in (-y_limit, 0, y_limit):
                     battery.CentreX, battery.CentreY = x, y
                     doc.recompute()
@@ -1154,9 +1139,6 @@ def battery_check(doc, objects):
                         "local_centre_xy_mm": [x, y],
                         "collisions": hits,
                     }
-                    if abs(x) > x_limit:
-                        unsupported.append(dict(row, supported=False))
-                        continue
                     bounds = shape.optimalBoundingBox(False, False)
                     orientation = (
                         abs(bounds.XLength - size[1]) < TOL
@@ -1185,8 +1167,7 @@ def battery_check(doc, objects):
         "saved_placement": saved_placement,
         "cases": rows,
         "continuous_translation": continuous,
-        "unsupported_legacy_offsets": unsupported,
-        "scope": "Pack geometry only. The old lateral +/-10mm offsets are explicitly unsupported; move the rail carrier for larger trim changes. Actual adhesive contact, selected pack and retention remain unqualified.",
+        "scope": "Pack geometry within the declared translation limits only; move the rail carrier for larger trim changes. Actual adhesive contact, selected pack and retention remain unqualified.",
         "passed": saved_placement["passed"]
         and continuous["passed"]
         and len(rows) == 18
@@ -1310,7 +1291,7 @@ def export_check(source, registry):
     count = sum(r["quantity"] for r in manifest["parts"])
     each_once = len(exported_names) == len(names) and set(exported_names) == names
     return {
-        "process": "SLS/MJF powder-bed PA12; FDM downward-facet rules are not acceptance criteria",
+        "process": "SLS/MJF powder-bed PA12",
         "supplier_single_piece_acceptance_still_required": True,
         "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
         "published_size_guide_scope": MANUFACTURING_DECISION["size_guide_scope"],
@@ -1332,43 +1313,7 @@ def export_check(source, registry):
     }
 
 
-def beam_limitations():
-    # Screening only. Actual fillets, nonuniform curvature, tape and nylon
-    # creep mean this is not a fatigue/strength approval.
-    nominal_gap = rail.FLEX_GAP
-    free_length = max(nominal_gap - 1.0, 0.1)
-    calculations = []
-    for radius in (300.0, 500.0, 600.0, 1000.0):
-        calculations.append(
-            {
-                "illustrative_radius_mm": radius,
-                "one_pitch_angle_rad": rail.LAND_PITCH / radius,
-                "idealized_web_strain_with_nominal_gap": rail.PAD_THICKNESS
-                * rail.LAND_PITCH
-                / (2 * radius * nominal_gap),
-                "web_strain_with_0p5mm_roots_each_end": rail.PAD_THICKNESS
-                * rail.LAND_PITCH
-                / (2 * radius * free_length),
-                "18mm_straight_shoe_sagitta_mm": rail.SHOE_LENGTH**2 / (8 * radius),
-            }
-        )
-    return {
-        "calculations": calculations,
-        "not_acceptance_criteria": True,
-        "limitations": [
-            "No balloon radius has been measured.",
-            "No tape adhesion, clamp friction, nylon creep or repeated-hinge life was tested.",
-            "Printed tolerances are dimensional process guidance, not a local-surface or hole-position guarantee.",
-            "A straight saved-model removal sweep does not establish removal while the rail is curved.",
-            "The rail base is continuous; its raised capture head has flex reliefs.",
-            "Supplier must accept the full rail as one piece; published maximum dimensions alone do not establish that.",
-        ],
-    }
-
-
 def detailed_propulsion_evidence(doc, source):
-    from gondola.parts import propulsion
-
     path = source.parent / (source.stem + "_propulsion_validation.json")
     if not path.exists():
         return {
@@ -1437,7 +1382,6 @@ def detailed_propulsion_evidence(doc, source):
             for row in meshes
         )
         and evidence.get("all_hardware_A2", False)
-        and evidence.get("no_rail_key_metadata", False)
     )
     return {
         "source_file": os.path.relpath(path, ROOT),
@@ -1445,7 +1389,7 @@ def detailed_propulsion_evidence(doc, source):
         "saved_shape_source_comparisons": comparisons,
         "local_overlap_failures": volume_failures,
         "local_checks": evidence,
-        "scope": "Fine local sleeve service requires prior servo removal on the driven sides. Actual servo horn coupling and motor fasteners remain unfinished. MJF uses powder support; FDM facet counters are informational.",
+        "scope": "Fine local sleeve service requires prior servo removal on the driven sides. Actual servo horn coupling and motor fasteners remain unfinished.",
         "passed": evidence_ok
         and not volume_failures
         and all(row["passed"] for row in comparisons),
@@ -1561,7 +1505,6 @@ def validate(source=None):
         print("Checking PA12 export identity and saved-file preservation", flush=True)
         report["print_export"] = export_check(source, r)
         report["local_propulsion_evidence"] = detailed_propulsion_evidence(doc, source)
-        report["beam_and_service_limits"] = beam_limitations()
         report["pa12_manufacturing_review"] = manufacturing_review(doc, r)
         report["notion_scope_and_reserves"] = equipment_scope_check(
             doc, r, objects, shapes

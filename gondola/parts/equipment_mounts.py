@@ -60,17 +60,17 @@ def _deck(size, centre):
     )
 
 
-def _arm(start, end, width=ARM_WIDTH):
+def _arm(start, end):
     """A constant-width horizontal rib with rounded free ends."""
     dx, dy = end[0] - start[0], end[1] - start[1]
     length = math.hypot(dx, dy)
-    shape = box(length, width, DECK_THICKNESS, (0, -width / 2, DECK_BOTTOM_Z))
+    shape = box(length, ARM_WIDTH, DECK_THICKNESS, (0, -ARM_WIDTH / 2, DECK_BOTTOM_Z))
     shape.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(dy, dx)))
     shape.translate(V(*start, 0))
     return union(
         [shape]
         + [
-            Part.makeCylinder(width / 2, DECK_THICKNESS, V(x, y, DECK_BOTTOM_Z))
+            Part.makeCylinder(ARM_WIDTH / 2, DECK_THICKNESS, V(x, y, DECK_BOTTOM_Z))
             for x, y in (start, end)
         ]
     )
@@ -96,7 +96,7 @@ def fc_wiring_reserve_shape():
 
 
 @functools.lru_cache(None)
-def mount_shape(kind, include_shoe=True):
+def mount_shape(kind):
     if kind == "battery":
         pieces = [_deck(BATTERY_DECK_SIZE, (0.0, 0.0))]
         holes = ()
@@ -118,8 +118,7 @@ def mount_shape(kind, include_shoe=True):
         ]
     else:
         raise ValueError("Unknown equipment mount kind: " + str(kind))
-    if include_shoe:
-        pieces.append(rail.shoe_shape())
+    pieces.append(rail.shoe_shape())
     shape = stack_interface.add_host_interface(union(pieces))
     for x, y in holes:
         shape = shape.cut(
@@ -195,7 +194,6 @@ def build_mount(doc, parent, kind):
         notes,
     )
     set_property(obj, "Role", "Printed equipment carrier")
-    set_property(obj, "PrintPart", True, "App::PropertyBool")
     set_property(obj, "PrintSKU", name)
     set_property(obj, "MountKind", kind)
     stack_interface.annotate_interface(obj)

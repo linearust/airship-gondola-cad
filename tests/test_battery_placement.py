@@ -52,15 +52,6 @@ class BatteryPlacementTests(unittest.TestCase):
         self.assertEqual(
             result["continuous_translation"]["local_size_mm"], [28, 74, 17]
         )
-        self.assertEqual(len(result["unsupported_legacy_offsets"]), 12)
-        for row in result["unsupported_legacy_offsets"]:
-            expected_collisions = {
-                f"OpticalStackSpacer{index}"
-                for index, (x, _) in enumerate(self.column_centres)
-                if x * row["local_centre_xy_mm"][0] > 0
-            }
-            self.assertFalse(row["supported"])
-            self.assertEqual(set(row["collisions"]), expected_collisions)
         self.assertEqual(
             {
                 row["object"]

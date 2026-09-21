@@ -97,7 +97,8 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     return s
 
 
-def capture_void(length=22):
+def capture_void():
+    length = 22
     return union(
         [
             box(
@@ -116,11 +117,11 @@ def capture_void(length=22):
     )
 
 
-def hex_along_y(af, y0, length, z=CLAMP_Z):
+def hex_along_y(af, y0, length):
     r = af / math.sqrt(3)
     return polygon_extrusion(
         [
-            (r * math.cos(math.radians(a)), y0, z + r * math.sin(math.radians(a)))
+            (r * math.cos(math.radians(a)), y0, CLAMP_Z + r * math.sin(math.radians(a)))
             for a in range(0, 360, 60)
         ],
         (0, length, 0),
@@ -156,9 +157,9 @@ def shoe_shape():
     return s
 
 
-def set_screw_shape(released=False):
+def set_screw_shape():
     # In the locked assembly the shoe moves +Y .45 until its far jaw seats.
-    tip = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y + (RELEASE_TRAVEL if released else 0)
+    tip = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y
     s = Part.makeCone(0.65, 1.0, 0.35, V(0, tip, CLAMP_Z), V(0, 1, 0)).fuse(
         Part.makeCylinder(
             1.0, SCREW_LENGTH - 0.35, V(0, tip + 0.35, CLAMP_Z), V(0, 1, 0)

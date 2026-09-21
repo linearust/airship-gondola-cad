@@ -238,12 +238,9 @@ def render_previews(close_after=False):
                             or o in doc.DesignRegistry.HardwareParts
                         )
                     elif scope == "propulsion":
-                        p = o.getParentGeoFeatureGroup()
-                        anc = []
-                        while p:
-                            anc.append(p)
-                            p = p.getParentGeoFeatureGroup()
-                        o.ViewObject.Visibility = doc.DesignRegistry.Modules[1] in anc
+                        o.ViewObject.Visibility = belongs_to_group(
+                            o, doc.MainPropulsionModule
+                        )
                 if scope == "wiring":
                     for o in doc.DesignRegistry.ClearanceVolumes:
                         if "WiringContract" in o.PropertiesList:

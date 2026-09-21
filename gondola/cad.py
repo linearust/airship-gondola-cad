@@ -96,13 +96,13 @@ def create_printed_part(doc, parent, name, label, shape, rotation, notes):
     return obj
 
 
-def update_print_orientation(obj, rotation=None):
-    """Refresh propulsion orientation metadata after replacing its local shape.
+def update_print_orientation(obj):
+    """Refresh propulsion print placement and height from its stored rotation.
 
     Replacing Shape.Placement rather than composing it is intentional: these
     parts are expressed in their journal frame before the assembly moves them.
     """
-    rotation = rotation or obj.PrintRotation
+    rotation = obj.PrintRotation
     bed = obj.Shape.copy()
     bed.Placement = App.Placement(App.Vector(), rotation)
     bounds = bed.BoundBox

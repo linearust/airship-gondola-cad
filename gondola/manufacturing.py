@@ -116,31 +116,12 @@ def geometry_comparison(first, second):
 
 
 def mesh_checks(shape, mesh):
-    """Check mesh connectivity and preserve orientation diagnostics.
-
-    Downward-face area is informational only for powder-bed PA12; it is not a
-    support requirement or a replacement for the manufacturer's build setup.
-    """
-    base_area, overhang_area = 0.0, 0.0
-    for facet in mesh.Facets:
-        points = [App.Vector(*point) for point in facet.Points]
-        normal = facet.Normal
-        area = (points[1] - points[0]).cross(points[2] - points[0]).Length / 2
-        if normal.z < -0.99 and max(point.z for point in points) < 1e-4:
-            base_area += area
-        if (
-            normal.z < -math.sqrt(0.5) - 1e-5
-            and max(point.z for point in points) > 0.201
-        ):
-            overhang_area += area
+    """Check solid validity, watertightness and connectivity for PA12 exports."""
     return {
         "valid_brep": shape.isValid(),
         "solid_count": len(shape.Solids),
         "watertight_mesh": mesh.isSolid(),
         "mesh_components": mesh.countComponents(),
-        "bed_contact_area_mm2": base_area,
-        "steep_downward_face_area_above_first_layer_mm2": overhang_area,
-        "overhang_check_is_slicer_replacement": False,
     }
 
 
@@ -278,9 +259,6 @@ def export_print_parts(assembly, installed, coupons, out, stem):
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "single_part_volume_cm3": shape.Volume / 1000,
                 "duplicate_geometry_verification": duplicate_checks,
-                "process": "PA12 SLS/MJF powder-bed process",
-                "supports_required": False,
-                "support_notes": "Powder supports the part. FDM overhang diagnostics do not apply to SLS/MJF.",
                 "print_notes": str(getattr(obj, "PrintNotes", "")),
                 "checks": checks,
             }

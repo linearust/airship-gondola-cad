@@ -11,9 +11,6 @@ FC_SIZE_MM = (36.0, 36.0, 8.0)
 FC_HOLE_PITCH = 25.5
 FC_HOLE_DIAMETER = 3.0
 FC_HOLE_CENTRES = tuple((x, y) for x in (-12.75, 12.75) for y in (-12.75, 12.75))
-FC_INCLUDED_DAMPER_COUNT = 4
-FC_INCLUDED_DAMPER_FASTENER_SIZE = "M2"
-FC_INCLUDED_DAMPER_LISTED_LENGTH = 7.5
 
 PAS_SOURCE = (
     "https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf"
@@ -21,7 +18,6 @@ PAS_SOURCE = (
 PAS_SIZE_MM = (27.0, 32.0, 7.0)
 PAS_HOLE_DIAMETER = 2.2
 PAS_HOLE_PITCH = 23.0
-PAS_HOLE_FROM_CONNECTOR_EDGE = 6.7
 PAS_HOLE_CENTRES = ((-11.5, -9.3), (11.5, -9.3))
 
 LR_SOURCE = "https://micoair.cn/zh/docs/telemetry/lr900/lr900-telemetry"

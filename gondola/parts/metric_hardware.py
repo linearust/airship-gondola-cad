@@ -18,14 +18,10 @@ from gondola.cad import set_property as _set_property
 from .fastener_spec import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
 from .fastener_spec import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
 from .fastener_spec import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
-from .fastener_spec import SET_SCREW_KEY as SET_SCREW_KEY
-from .fastener_spec import SET_SCREW_LENGTH as SET_SCREW_LENGTH
 from .fastener_spec import SOCKET_DEPTH as SOCKET_DEPTH
 from .fastener_spec import SOCKET_KEY as SOCKET_KEY
 from .fastener_spec import SQUARE_NUT_AF as SQUARE_NUT_AF
 from .fastener_spec import SQUARE_NUT_HEIGHT as SQUARE_NUT_HEIGHT
-from .fastener_spec import SQUARE_NUT_MIN_AF as SQUARE_NUT_MIN_AF
-from .fastener_spec import SQUARE_NUT_MIN_HEIGHT as SQUARE_NUT_MIN_HEIGHT
 from .fastener_spec import THREAD_DIAMETER as THREAD_DIAMETER
 from .fastener_spec import THREAD_PITCH as THREAD_PITCH
 
@@ -47,14 +43,12 @@ STACK_SCREW_DRAWING_SOURCE = (
 STACK_SCREW_LENGTH = 5.0
 STACK_SCREW_HEAD_DIAMETER = 4.0
 STACK_SCREW_HEAD_HEIGHT = 1.3
-STACK_SCREW_MATERIAL = "Nylon PA66"
 STACK_SPACER_SOURCE = (
     "https://www.kangyang-usa.com/wp-content/uploads/2026/09/HPS2-H-18-2.pdf"
 )
 STACK_SPACER_AF = 4.0
 STACK_SPACER_LENGTH = 25.0
 STACK_SPACER_THREAD_DEPTH_REFERENCE = 4.0
-STACK_SPACER_MATERIAL = "Nylon PA66"
 SQUARE_NUT_SOURCE = "https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2"
 SQUARE_NUT_PTS_SOURCE = (
     "https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202"
