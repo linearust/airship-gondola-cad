@@ -403,6 +403,8 @@ def procurement_and_scope_metadata(obj):
         "MaximumAngle",
         "StackEnd",
         "FDMPrintValidated",
+        "GearConfiguration",
+        "DriveContract",
     )
     values = {}
     for name in fields:

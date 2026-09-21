@@ -83,6 +83,14 @@ def _boundary_signature(shape):
     )
 
 
+def _topologically_empty(shape):
+    """Empty compounds count as empty; zero-volume faces and wires do not."""
+    return shape.isNull() or not any(
+        getattr(shape, topology)
+        for topology in ("Solids", "Shells", "Faces", "Wires", "Edges", "Vertexes")
+    )
+
+
 def geometry_comparison(first, second):
     """Compare solid geometry, accepting no nonempty symmetric difference."""
     first_bounds = first.optimalBoundingBox(False, False)
@@ -104,14 +112,24 @@ def geometry_comparison(first, second):
                 "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
                 "bounds_difference_mm": bounds_delta,
                 "volume_difference_mm3": volume_delta,
+                "closed_solid_identity_by_empty_cuts": False,
             }
     cuts = [first.cut(second), second.cut(first)]
     difference = sum(0.0 if shape.isNull() else abs(shape.Volume) for shape in cuts)
+    # FreeCAD's Volume uses OCC's nonadaptive integral. STEP reparameterization
+    # can change that scalar slightly despite identical solid boundaries. Only
+    # actual empty topology in BOTH directions certifies this alternative;
+    # retain the raw volume discrepancy for diagnosis.
+    empty_cut_identity = all(
+        shape.isValid() and len(shape.Solids) == 1 and shape.isClosed()
+        for shape in (first, second)
+    ) and all(_topologically_empty(shape) for shape in cuts)
     return {
         "difference_mm3": difference,
         "method": "BRep symmetric difference",
         "bounds_difference_mm": bounds_delta,
         "volume_difference_mm3": volume_delta,
+        "closed_solid_identity_by_empty_cuts": empty_cut_identity,
     }
 
 

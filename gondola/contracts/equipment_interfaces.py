@@ -4,6 +4,8 @@ Hole coordinates use the centre of each published mounting pattern/plan envelope
 No PCB bearing plane, screw length or damper compression is inferred from photos.
 """
 
+from .drive import GEARS
+
 FC_SOURCE = "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual"
 FC_DIMENSION_SOURCE = "https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec5.webp"
 FC_PACKAGE_SOURCE = "https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec6.webp"
@@ -119,7 +121,7 @@ PROPULSION_EVIDENCE = {
     "GEABP": {
         "sources": [GEAR_SOURCE, GEAR_CATALOG_SOURCE],
         "retained_evidence": "references/misumi_geabp_catalog.pdf",
-        "selected_parts": ["GEABP0.5-60-3-B-3", "GEABP0.5-20-3-B-3"],
+        "supported_parts": [gear.sku for gear in GEARS.values()],
         "module_mm": 0.5,
         "pressure_angle_deg": 20.0,
         "bore_mm": 3.0,
@@ -128,11 +130,14 @@ PROPULSION_EVIDENCE = {
         "total_axial_length_mm": 8.0,
         "hub_extension_mm": 5.0,
         "set_screw_axis_from_hub_end_mm": 2.5,
-        "driver_pitch_outside_root_hub_diameters_mm": [30.0, 31.0, 28.75, 10.0],
+        "driver_pitch_outside_root_hub_diameters_mm": {
+            "60": [30.0, 31.0, 28.75, 10.0],
+            "64": [32.0, 33.0, 30.75, 10.0],
+        },
         "driven_pitch_outside_root_hub_diameters_mm": [10.0, 11.0, 8.75, 8.5],
         "material": "White POM; no metal hub insert for this module",
         "included_fastener": "One M3 radial set screw per standard gear, SCM435 with black oxide finish; length, tip style and tightening torque are not established here.",
-        "scope": "Catalog gear dimensions support simplified purchased envelopes. Tooth contact, backlash, hub strength and printed shaft-centre tolerances require physical qualification; a nominal 20 mm centre distance is not proof of mesh.",
+        "scope": "Catalog gear dimensions support simplified purchased envelopes. Tooth contact, backlash, hub strength and printed shaft-centre tolerances require physical qualification; nominal centre distance is not proof of mesh. The supported drivers share their bore, hub diameter, axial stack and set-screw axial location, allowing the same input shaft and factory flat. Tooth-to-set-screw azimuth is not fixed: clock the actual gear and shaft flat before securing the horn coupling.",
     },
     "PSFU3": {
         "sources": [SHAFT_SOURCE, SHAFT_CATALOG_SOURCE],

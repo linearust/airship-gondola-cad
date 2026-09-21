@@ -5,6 +5,7 @@ models; manufacture only the marked PA12 parts. Unverified OEM interfaces and
 physical fits remain explicit release blockers.
 """
 
+import json
 import math
 
 import FreeCAD as App
@@ -19,6 +20,20 @@ from gondola.cad import (
     union,
 )
 from gondola.contracts.design import DESIGN_REVISION
+from gondola.contracts.drive import (
+    DRIVE_CONFIGURATIONS,
+    FACE_WIDTH_MM,
+    GEARS,
+    INPUT_MOUNT_HALF_SPAN,
+    INPUT_MOUNT_Z_MM,
+    INPUT_SLIDE_TRAVEL_MM,
+    MESH_CLEARANCE_MAX_MM,
+    MODULE_MM,
+    PIVOT_Z_MM,
+    RADIAL_X,
+    RADIAL_Z,
+    SELECTED_DRIVE,
+)
 from gondola.contracts.equipment_interfaces import (
     BEARING_SOURCE,
     GEAR_SOURCE,
@@ -38,7 +53,7 @@ from . import purchased_hardware, rail
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 2.0
-PIVOT_Z = 48.2
+PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = 80.0
 MINIMUM_TILT_DEG = -180.0
 MAXIMUM_TILT_DEG = 180.0
@@ -59,19 +74,16 @@ MOTOR_DRAWING = (
 )
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
-DRIVER_TEETH = 60
-OUTPUT_TEETH = 20
-GEAR_MODULE = 0.5
-GEAR_FACE_WIDTH = 3.0
+GEAR_MODULE = MODULE_MM
+GEAR_FACE_WIDTH = FACE_WIDTH_MM
 GEAR_TOTAL_WIDTH = 8.0
 GEAR_HUB_START_Y = 38.5
 GEAR_FACE_START_Y = 43.5
 GEAR_END_Y = 46.5
-GEAR_CENTER_DISTANCE = 20.0
-GEAR_RATIO = DRIVER_TEETH / OUTPUT_TEETH
-INPUT_AXIS_X = 8.0
-INPUT_AXIS_Z = PIVOT_Z - math.sqrt(GEAR_CENTER_DISTANCE**2 - INPUT_AXIS_X**2)
-MESH_ADJUSTMENT_MAX = 0.19
+# Shared printed geometry uses the 60/20 datum for both installed gear choices.
+INPUT_AXIS_X = DRIVE_CONFIGURATIONS["60_20"].input_x_mm
+INPUT_AXIS_Z = DRIVE_CONFIGURATIONS["60_20"].input_z_mm
+MESH_ADJUSTMENT_MAX = MESH_CLEARANCE_MAX_MM
 BEARING_INNER_DIAMETER = 3.0
 BEARING_OUTER_DIAMETER = 6.0
 BEARING_WIDTH = 2.5
@@ -213,14 +225,24 @@ def _output_support(sign):
             [post, cup, box(18, 4, FOOT_THICKNESS, (-9, y_start + 80, BASE_Z))]
         )
     # Low fixed face lies below the bought horn's complete radial envelope.
-    mount_face = box(36, 2, 7.5, (INPUT_AXIS_X - 18, 17, 4.2))
-    for x in (INPUT_AXIS_X - 12, INPUT_AXIS_X + 12):
-        mount_face = mount_face.cut(cylinder(1.1, 3, (x, 16.5, 8.5)))
+    mount_face = union(
+        [
+            box(36, 2, 6.8, (INPUT_AXIS_X - 18, 17, 4.2)),
+            box(40, 2, 3.0, (INPUT_AXIS_X - 20, 17, 4.2)),
+        ]
+    )
+    for x in (
+        INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN,
+        INPUT_AXIS_X + INPUT_MOUNT_HALF_SPAN,
+    ):
+        mount_face = mount_face.cut(cylinder(1.1, 3, (x, 16.5, INPUT_MOUNT_Z_MM)))
     parts.append(mount_face)
     parts.extend(
         [
-            _beam((-7, 25, 3.2), (INPUT_AXIS_X - 16, 18, 3.4)),
-            _beam((7, 25, 3.2), (INPUT_AXIS_X + 16, 18, 3.4)),
+            _beam((-7, 25, 3.2), (INPUT_AXIS_X - 20, 25, 3.4)),
+            _beam((INPUT_AXIS_X - 20, 25, 3.4), (INPUT_AXIS_X - 20, 18, 3.4)),
+            _beam((7, 25, 3.2), (INPUT_AXIS_X + 20, 25, 3.4)),
+            _beam((INPUT_AXIS_X + 20, 25, 3.4), (INPUT_AXIS_X + 20, 18, 3.4)),
         ]
     )
     result = union(parts)
@@ -241,23 +263,29 @@ def integral_frame_shape():
     return _checked(frame, "Paired bearing frame")
 
 
+def _input_mount_slot(x):
+    """An oblique through-slot parallel to the line joining the gear axes."""
+    start = V(x, 18.5, INPUT_MOUNT_Z_MM - INPUT_AXIS_Z)
+    end = start - V(RADIAL_X, 0, RADIAL_Z) * INPUT_SLIDE_TRAVEL_MM
+    normal = V(-RADIAL_Z, 0, RADIAL_X) * 1.2
+    vertices = [start + normal, end + normal, end - normal, start - normal]
+    bridge = Part.Face(Part.makePolygon(vertices + [vertices[0]])).extrude(V(0, 3, 0))
+    return union([cylinder(1.2, 3, tuple(start)), cylinder(1.2, 3, tuple(end)), bridge])
+
+
 def input_cartridge_shape():
     # Local axis X=Z=0; Y uses the Port module's absolute station distances.
-    plate = box(36, 2, 6.7, (-18, 19, 5 - INPUT_AXIS_Z))
-    # Keep the rail clamp's straight key corridor open at both mesh limits.
-    # The nearby 2.4 mm mounting slot retains at least 1.55 mm of material.
+    # The two retained M2 bolts guide the common input unit along parallel slots.
+    # Loosen to adjust, set the measured mesh, then clamp both bolts; this is not
+    # a precision running slide. A separate printed rail would add no useful
+    # constraint inside the wider PA12 fit clearance.
+    plate = box(36, 2, 6.5, (-18, 19, 5.6 - INPUT_AXIS_Z))
+    # Full-stroke rail-key reservation; the neighboring slot keeps a 1.57 mm web.
     plate = plate.cut(
-        box(2.5, 3, 3.5, (-INPUT_AXIS_X - 1.25, 18.5, 4.5 - INPUT_AXIS_Z))
+        box(3.0, 3, 4.7, (-INPUT_AXIS_X - 1.73, 18.5, 4.5 - INPUT_AXIS_Z))
     )
-    for x in (-12, 12):
-        hole = union(
-            [
-                cylinder(1.2, 3, (x, 18.5, 8.5 - INPUT_AXIS_Z)),
-                cylinder(1.2, 3, (x, 18.5, 9 - INPUT_AXIS_Z)),
-                box(2.4, 3, 0.5, (x - 1.2, 18.5, 8.5 - INPUT_AXIS_Z)),
-            ]
-        )
-        plate = plate.cut(hole)
+    for x in (-INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_HALF_SPAN):
+        plate = plate.cut(_input_mount_slot(x))
     cups = [
         _bearing_cup(32.5, opens_positive=False).mirror(V(), V(1, 0, 0)),
         _bearing_cup(34, opens_positive=True),
@@ -292,6 +320,8 @@ def input_cartridge_shape():
 
 def gear_shape(teeth, phase_degrees=0):
     """Nominal involute display outline; no unverified hub or tooth manufacturing."""
+    if teeth not in GEARS:
+        raise ValueError(f"Unsupported purchased gear: {teeth} teeth")
     pitch = GEAR_MODULE * teeth / 2
     root = GEAR_MODULE * (teeth - 2.5) / 2
     tip = GEAR_MODULE * (teeth + 2) / 2
@@ -323,7 +353,7 @@ def gear_shape(teeth, phase_degrees=0):
                 )
     face = Part.Face(Part.makePolygon(points + [points[0]]))
     tooth_body = face.extrude(V(0, GEAR_FACE_WIDTH, 0))
-    hub_radius = 5 if teeth == DRIVER_TEETH else 4.25
+    hub_radius = GEARS[teeth].hub_diameter_mm / 2
     gear = union([tooth_body, cylinder(hub_radius, 5, (0, GEAR_HUB_START_Y, 0))])
     gear = gear.cut(cylinder(1.5, 8.2, (0, GEAR_HUB_START_Y - 0.1, 0)))
     # Supplied M3 radial set screw is included in this bought assembly. Its exact
@@ -556,7 +586,17 @@ def _build_coupling(doc, parent, prefix, sign):
     }
 
 
-def manufacturing_wall_probes():
+def manufacturing_wall_probes(drive=SELECTED_DRIVE):
+    offset_x = drive.input_x_mm - INPUT_AXIS_X
+    offset_z = drive.input_z_mm - INPUT_AXIS_Z
+    upper_slot_x = (
+        INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN - RADIAL_X * INPUT_SLIDE_TRAVEL_MM
+    )
+    upper_slot_z = INPUT_MOUNT_Z_MM - RADIAL_Z * INPUT_SLIDE_TRAVEL_MM + 1.2
+
+    def at(x, z):
+        return (x + offset_x, 20, z + offset_z)
+
     return [
         (
             "output_bearing_outer_wall",
@@ -571,6 +611,27 @@ def manufacturing_wall_probes():
             (-3.5, 110.49, PIVOT_Z),
             (-3.5, 112.01, PIVOT_Z),
             1.5,
+        ),
+        (
+            "input_mount_slot_upper_wall",
+            "PortInputSupport",
+            at(upper_slot_x, upper_slot_z - 0.01),
+            at(upper_slot_x, 12.11),
+            12.1 - upper_slot_z,
+        ),
+        (
+            "input_mount_slot_lower_wall",
+            "PortInputSupport",
+            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN, 5.59),
+            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_Z_MM - 1.19),
+            INPUT_MOUNT_Z_MM - 1.2 - 5.6,
+        ),
+        (
+            "input_mount_slot_to_key_web",
+            "PortInputSupport",
+            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN + 1.19, INPUT_MOUNT_Z_MM),
+            at(-1.72, INPUT_MOUNT_Z_MM),
+            1.57,
         ),
     ]
 
@@ -592,7 +653,7 @@ def _build_frame(doc, module):
     return frame
 
 
-def _build_output_pod(doc, assembly, prefix, sign):
+def _build_output_pod(doc, assembly, prefix, sign, spec):
     """Build one rotating carrier and its fixed bearings in native object order."""
     printed, hardware = [], []
     pod = create_group(doc, prefix + "Pod", prefix + " motor/guard and output gear")
@@ -607,7 +668,7 @@ def _build_output_pod(doc, assembly, prefix, sign):
     set_property(
         pod,
         "Notes",
-        "Bounded output -180..180 degrees, no endpoint wrap. Input servo moves oppositely by one third. Verify actual servo travel, wire loops, backlash and endpoint margins before operation.",
+        f"Bounded output -180..180 degrees, no endpoint wrap. Input servo moves oppositely by 1/{spec.ratio:g}. Verify actual servo travel, wire loops, backlash and endpoints before operation.",
     )
     carrier = _print(
         doc,
@@ -688,19 +749,19 @@ def _build_output_pod(doc, assembly, prefix, sign):
             )
         )
     driver_angle = math.degrees(
-        math.atan2(PIVOT_Z - INPUT_AXIS_Z, -sign * INPUT_AXIS_X)
+        math.atan2(PIVOT_Z - spec.input_z_mm, -sign * spec.input_x_mm)
     )
-    output_angle = driver_angle + 180 + 180 / OUTPUT_TEETH
-    output_gear = gear_shape(OUTPUT_TEETH, output_angle)
+    output_angle = driver_angle + 180 + 180 / spec.output.teeth
+    output_gear = gear_shape(spec.output.teeth, output_angle)
     output_gear = mirrored_y(output_gear, sign)
     output_gear = _shifted(output_gear, y=-sign * 80)
     hardware.append(
         _buy(
             doc,
             pod,
-            prefix + "OutputGear20T",
+            prefix + "OutputGear",
             output_gear,
-            "GEABP0.5-20-3-B-3",
+            spec.output.sku,
             "Bought POM20T module0.5 bore3H7,face3,overall8,hubØ8.5; included radialM3 set screw provides shaft grip. Set-screw length/tip and allowable torque unverified. CAD tooth profile is nominal visualization only.",
             GEAR_SOURCE,
             "POM",
@@ -709,16 +770,19 @@ def _build_output_pod(doc, assembly, prefix, sign):
     return pod, printed, hardware, driver_angle
 
 
-def _build_input_drive(doc, cartridge, prefix, sign, driver_angle):
+def _build_input_drive(doc, cartridge, prefix, sign, driver_angle, spec):
     """Create the coupled rotating input axle and purchased driver gear."""
     hardware = []
     drive = create_group(
-        doc, prefix + "InputDrive", prefix + " input axle rotates at -output/3"
+        doc,
+        prefix + "InputDrive",
+        prefix + f" input axle rotates at -output/{spec.ratio:g}",
     )
     cartridge.addObject(drive)
     drive.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
     drive.setExpression(
-        "Placement.Rotation.Angle", f"-{prefix}Pod.Placement.Rotation.Angle / 3"
+        "Placement.Rotation.Angle",
+        f"-{prefix}Pod.Placement.Rotation.Angle / {spec.ratio:g}",
     )
     hardware.append(
         _buy(
@@ -739,10 +803,10 @@ def _build_input_drive(doc, cartridge, prefix, sign, driver_angle):
         _buy(
             doc,
             drive,
-            prefix + "DriverGear60T",
-            mirrored_y(gear_shape(DRIVER_TEETH, driver_angle), sign),
-            "GEABP0.5-60-3-B-3",
-            "Bought POM60T module0.5 bore3H7,face3,overall8,hubØ10; supplied radialM3 set screw. Input drives20T at threefold opposite rotation; output torque is reduced, not multiplied. Tooth outline is nominal display geometry.",
+            prefix + "DriverGear",
+            mirrored_y(gear_shape(spec.driver.teeth, driver_angle), sign),
+            spec.driver.sku,
+            f"Bought POM{spec.driver.teeth}T module0.5 bore3H7,face3,overall8,hubØ10; supplied radialM3 set screw. Input drives20T at {spec.ratio:g}-fold opposite rotation; output torque is reduced, not multiplied. Tooth outline is nominal display geometry.",
             GEAR_SOURCE,
             "POM",
         )
@@ -780,7 +844,12 @@ def _build_input_bearings(doc, cartridge, prefix, sign):
                 cartridge,
                 prefix + "InputBearingCap" + suffix,
                 cap,
-                "Common MR63ZZ outer-race cap. 0.5mm running clearance separates rotating adapter/gear hubs from the cap; no inner-ring spacer is printed.",
+                "Common MR63ZZ outer-race cap. 0.5mm running clearance separates rotating adapter/gear hubs from the cap; no inner-ring spacer is printed."
+                + (
+                    " Outer input-cap service: remove the output gear and detach the input cartridge first, then remove its driver gear before withdrawing this cap's fasteners. The larger driver gear blocks bolt withdrawal when installed."
+                    if suffix == "Outer"
+                    else ""
+                ),
                 rotation=_reflection_print_rotation(
                     (suffix == "Inner") != (sign < 0), (cap_side < 0) != (sign < 0)
                 ),
@@ -835,14 +904,14 @@ def _build_servo(doc, cartridge, prefix, sign):
             prefix + "Servo",
             "KST X06 V6.0 case20×7×16.6;6g",
             servo,
-            "Official case envelope with output axis5mm from case end. Case front|Y|13; exposed spline reaches15.7. Published ear axes use M1.6x8 DIN84 through-bolts and open printed saddles. NominalØ2 OEMholes provide0.2mm radial clearance;Ø3 screwhead has0.5mm case/end-edge margin; M1.6 nut flats face the case for0.4mm nominal clearance. SmoothØ3.90×2.7 spline envelope shows the published interface without inventing15T tooth geometry. Ear transverse outline is a conservative7mm envelope; verify actual bearing footprint and fit. Ear holesØ2/pitch24 are verified but no unverified OEM horn screw is invented. Actual loaded±60 travel and PWM calibration remain unqualified.",
+            "Official case envelope with output axis5mm from case end. Case front|Y|13; exposed spline reaches15.7. Published ear axes use M1.6x8 DIN84 through-bolts and open printed saddles. NominalØ2 OEMholes provide0.2mm radial clearance;Ø3 screwhead has0.5mm case/end-edge margin; M1.6 nut flats face the case for0.4mm nominal clearance. SmoothØ3.90×2.7 spline envelope shows the published interface without inventing15T tooth geometry. Ear transverse outline is a conservative7mm envelope; verify actual bearing footprint and fit. Ear holesØ2/pitch24 are verified but no unverified OEM horn screw is invented. Actual required loaded travel and PWM calibration remain unqualified.",
             X06_DATASHEET_SOURCE,
         )
     )
     return references, hardware
 
 
-def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle):
+def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle, spec):
     """Build the adjustable input support, drive, servo and horn coupling."""
     printed, hardware, references, clearances = [], [], [], []
     cartridge = create_group(
@@ -852,14 +921,14 @@ def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle):
     )
     assembly.addObject(cartridge)
     set_property(cartridge, "MeshClearance", 0.0, "App::PropertyLength", "Adjustment")
-    cartridge.Placement.Base = V(sign * INPUT_AXIS_X, 0, INPUT_AXIS_Z)
+    cartridge.Placement.Base = V(sign * spec.input_x_mm, 0, spec.input_z_mm)
     cartridge.setExpression(
         "Placement.Base.x",
-        f"{sign * INPUT_AXIS_X:g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
+        f"{sign * spec.input_x_mm:g} mm * (1 + min({spec.max_mesh_clearance_mm:g} mm; max(0 mm; MeshClearance)) / {spec.center_distance_mm:g} mm)",
     )
     cartridge.setExpression(
         "Placement.Base.z",
-        f"{PIVOT_Z:g} mm - {PIVOT_Z - INPUT_AXIS_Z:.14g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
+        f"{PIVOT_Z:g} mm - {PIVOT_Z - spec.input_z_mm:.14g} mm * (1 + min({spec.max_mesh_clearance_mm:g} mm; max(0 mm; MeshClearance)) / {spec.center_distance_mm:g} mm)",
     )
     cartridge_shape = input_cartridge_shape()
     if sign < 0:
@@ -871,26 +940,26 @@ def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle):
             cartridge,
             prefix + "InputSupport",
             cartridge_shape,
-            "Two supported input bearings isolate gear radial loads from the servo coupling. Mounting slots permit0..0.19mm radial increase of center distance while preserving gear phase. Set measured mesh and backlash; the adjustment is not a measured gear-fit guarantee. KST case rests on an open cradle; published ear axes use open mounting saddles andM1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
+            "Two supported input bearings isolate gear radial loads from the servo coupling. Common parallel slots accommodate both supported gear pairs; the entire servo, coupling, shaft and two input bearings move together. Existing two M2 bolts guide and clamp the adjusted support. Set the configuration-specific center distance and then the bounded fine mesh clearance; slot motion does not change gear ratio. Slots provide no positive lock; verify retained center distance/backlash under loaded reversals and PA12 settling. Full physical stroke is substitution travel, not extra mesh allowance; a slipping 60T cartridge can fully disengage before its outer slot stop. Set measured mesh and backlash; the adjustment is not a measured gear-fit guarantee. KST case rests on an open cradle; published ear axes use open mounting saddles andM1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
             rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
             sku="GearedInputSupport",
         )
     )
     # Heads face outboard for driver access; remove each bolt first while
     # holding its back nut, then move the free nut sideways away from the shoe.
-    for x in (-12, 12):
+    for x in (-INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_HALF_SPAN):
         hardware.extend(
             _bolt_pair(
                 doc,
                 assembly,
                 prefix + ("InputMountNegative" if x < 0 else "InputMountPositive"),
-                (sign * INPUT_AXIS_X + x, sign * 21, 8.5),
+                (sign * INPUT_AXIS_X + x, sign * 21, INPUT_MOUNT_Z_MM),
                 (0, -sign, 0),
                 grip=4,
             )
         )
     drive, drive_hardware = _build_input_drive(
-        doc, cartridge, prefix, sign, driver_angle
+        doc, cartridge, prefix, sign, driver_angle, spec
     )
     hardware.extend(drive_hardware)
     bearing_prints, bearing_hardware = _build_input_bearings(
@@ -976,16 +1045,18 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
     )
 
 
-def _build_propulsion_side(doc, module, prefix, sign):
+def _build_propulsion_side(doc, module, prefix, sign, spec):
     """Assemble one independent gear drive without changing native object order."""
     assembly = create_group(
         doc, prefix + "Assembly", prefix + " independent geared propulsion"
     )
     module.addObject(assembly)
     pod, printed, hardware, driver_angle = _build_output_pod(
-        doc, assembly, prefix, sign
+        doc, assembly, prefix, sign, spec
     )
-    input_parts = _build_input_cartridge(doc, assembly, prefix, sign, driver_angle)
+    input_parts = _build_input_cartridge(
+        doc, assembly, prefix, sign, driver_angle, spec
+    )
     motor_references = _build_motor_references(doc, pod, prefix, sign)
     sweep_reserve = _build_sweep_reserve(doc, assembly, prefix, sign)
     return {
@@ -997,7 +1068,7 @@ def _build_propulsion_side(doc, module, prefix, sign):
     }
 
 
-def _module_metrics(printed, hardware, references):
+def _module_metrics(printed, hardware, references, spec):
     from .servo_coupling import metrics as coupling_metrics
 
     return {
@@ -1013,16 +1084,19 @@ def _module_metrics(printed, hardware, references):
         "device_reference_count": len(references),
         "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
         "gear_drive": {
-            "driver_teeth": DRIVER_TEETH,
-            "output_teeth": OUTPUT_TEETH,
+            "configuration": spec.key,
+            "driver_teeth": spec.driver.teeth,
+            "output_teeth": spec.output.teeth,
             "module_mm": GEAR_MODULE,
-            "nominal_center_mm": 20,
+            "nominal_center_mm": spec.center_distance_mm,
             "face_width_mm": 3,
             "gear_axial_span_mm": [GEAR_HUB_START_Y, GEAR_END_Y],
-            "input_axis_abs_x_mm": INPUT_AXIS_X,
-            "input_axis_z_mm": INPUT_AXIS_Z,
-            "output_to_input_angle_ratio": -3,
+            "input_axis_abs_x_mm": spec.input_x_mm,
+            "input_axis_z_mm": spec.input_z_mm,
+            "output_to_input_angle_ratio": -spec.ratio,
             "mesh_center_distance_increase_mm": [0, MESH_ADJUSTMENT_MAX],
+            "shared_print_slide_travel_mm": INPUT_SLIDE_TRAVEL_MM,
+            "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
         "shaft_topology": {
@@ -1074,12 +1148,25 @@ def _module_metrics(printed, hardware, references):
     }
 
 
-def build_propulsion_module(doc):
+def build_propulsion_module(doc, drive=SELECTED_DRIVE):
+    if DRIVE_CONFIGURATIONS.get(drive.key) != drive:
+        raise ValueError(
+            "Only the sourced, supported drive configurations can be built"
+        )
     module = create_group(
         doc,
         "MainPropulsionModule",
-        "Independent KST X06 60:20 gear drives | four output stubs",
+        f"Independent KST X06 {drive.driver.teeth}:{drive.output.teeth} gear drives | four output stubs",
     )
+    set_property(module, "GearConfiguration", drive.key, group="Drive")
+    set_property(
+        module,
+        "DriveContract",
+        json.dumps(drive.contract(), sort_keys=True),
+        group="Drive",
+    )
+    module.setEditorMode("GearConfiguration", 1)
+    module.setEditorMode("DriveContract", 1)
     frame = _build_frame(doc, module)
     parts = {
         "printed": [frame],
@@ -1089,7 +1176,7 @@ def build_propulsion_module(doc):
         "pods": [],
     }
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
-        side = _build_propulsion_side(doc, module, prefix, sign)
+        side = _build_propulsion_side(doc, module, prefix, sign, drive)
         for kind, objects in parts.items():
             objects.extend(side[kind])
     doc.recompute()
@@ -1102,6 +1189,6 @@ def build_propulsion_module(doc):
         "hardware": parts["hardware"],
         "frame": frame,
         "metrics": _module_metrics(
-            parts["printed"], parts["hardware"], parts["references"]
+            parts["printed"], parts["hardware"], parts["references"], drive
         ),
     }

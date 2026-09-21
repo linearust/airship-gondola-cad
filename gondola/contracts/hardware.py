@@ -7,6 +7,7 @@ Preserve this evidence in native hardware metadata and generated purchase lists.
 import re
 from urllib.parse import quote_plus
 
+from gondola.contracts.drive import GEARS
 from gondola.contracts.equipment_interfaces import (
     BEARING_SOURCE,
     GEAR_SOURCE,
@@ -181,14 +182,15 @@ PROCUREMENT_SPECS = {
     },
 }
 
-for _teeth in (60, 20):
-    _sku = f"GEABP0.5-{_teeth}-3-B-3"
+for _gear in GEARS.values():
+    _sku = _gear.sku
     PROCUREMENT_SPECS[_sku] = {
         "search_query": f"MISUMI {_sku}",
         "candidate_url": GEAR_SOURCE,
         "requirements": (
             f"MISUMI {_sku}: white POM, module 0.5, pressure angle 20 degrees, "
-            f"{_teeth} teeth, 3 mm H7 bore, 3 mm face, 8 mm total length. "
+            f"{_gear.teeth} teeth, 3 mm H7 bore, 3 mm face, 8 mm total length, "
+            f"{_gear.hub_diameter_mm:g} mm hub diameter. "
             "B-type hub with one included M3 SCM435 black-oxide set screw; "
             "do not order a second screw for the same gear. No metal hub insert. "
             "Set-screw length/tip/torque and actual mass remain unverified. "

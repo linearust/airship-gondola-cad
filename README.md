@@ -8,7 +8,8 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - `gondola/contracts/` holds data independent of FreeCAD: `design.py` for scope,
   decisions, inventory and unresolved interfaces; `equipment_interfaces.py` for
   published device evidence; `hardware.py` for purchase specifications and shaft
-  order validation; `fasteners.py` for shared nominal dimensions.
+  order validation; `fasteners.py` for shared nominal dimensions; `drive.py` for
+  the finite gear configurations and source-authoritative `SELECTED_DRIVE`.
   Inspect project status with `python3 -m gondola status`.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
@@ -35,6 +36,12 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   tilt controls. Validate gear contact, coupled motion and bearing/fastener
   retention together. Purchased gear profiles are reference geometry, never
   printable replacements; shaft and bearing fits require physical trials.
+- The shared radial input slide supports the declared 60T/64T drivers with the
+  same output gear and shaft stack. `MeshClearance` adjusts backlash, not ratio.
+  Select the complete drive in source and rebuild geometry, controls and BOM;
+  never add a GUI ratio-only property. An alternative's module checks do not
+  establish a complete gondola baseline. Changing `SELECTED_DRIVE` requires the
+  full fixture audit and release checks below.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

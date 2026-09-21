@@ -35,6 +35,7 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
+from gondola.contracts.drive import SELECTED_DRIVE, drive_for_document
 from gondola.mass_budget import mass_budget
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail, stack_interface
@@ -1065,13 +1066,15 @@ def export_check(source, registry):
         step_matches = (
             step.isValid()
             and len(step.Solids) == 1
-            and all(
-                step_comparison[key] < TOL
-                for key in (
-                    "difference_mm3",
-                    "volume_difference_mm3",
-                    "bounds_difference_mm",
-                )
+            and step_comparison["difference_mm3"] < TOL
+            and step_comparison["bounds_difference_mm"] < TOL
+            # STEP can reparameterize the same curved boundary and change OCC's
+            # nonadaptive scalar volume integral. Retain its raw discrepancy;
+            # bypass only that scalar gate when both closed-solid directional
+            # differences are topologically empty, not merely zero-volume.
+            and (
+                step_comparison["volume_difference_mm3"] < TOL
+                or step_comparison.get("closed_solid_identity_by_empty_cuts") is True
             )
         )
         bb = mesh.BoundBox
@@ -1139,6 +1142,7 @@ def export_check(source, registry):
 
 
 def detailed_propulsion_evidence(doc, source):
+    configuration = drive_for_document(doc)
     path = source.parent / (source.stem + "_propulsion_validation.json")
     if not path.exists():
         return {
@@ -1153,7 +1157,9 @@ def detailed_propulsion_evidence(doc, source):
     # cannot endorse missing retaining material or a changed motor in the native file.
     reference_doc = App.newDocument("SavedPropulsionComparison")
     try:
-        reference = propulsion.build_propulsion_module(reference_doc)
+        reference = propulsion.build_propulsion_module(
+            reference_doc, drive=configuration
+        )
         reference_doc.recompute()
         expected_print_count = len(reference["printed"])
         expected_parts = (
@@ -1198,6 +1204,7 @@ def detailed_propulsion_evidence(doc, source):
     required_cases = {
         "drive_motion": 2,
         "mesh_adjustment": 2,
+        "input_mount_adjustment": 2,
         "gear_mesh_alignment": 2,
         "gear_rotation": 2,
         "bearing_stacks": 8,
@@ -1215,6 +1222,7 @@ def detailed_propulsion_evidence(doc, source):
         "motor_and_prop_insertion": 4,
         "continuous_nut_loading": 2,
         "tilt_clearance": 2,
+        "functional_wall_probes": 6,
     }
     evidence_inventory = {
         key: {"expected": count, "actual": len(evidence.get(key, []))}
@@ -1222,6 +1230,7 @@ def detailed_propulsion_evidence(doc, source):
     }
     evidence_ok = (
         evidence.get("passed", False)
+        and evidence.get("gear_configuration") == configuration.key
         and all(row["expected"] == row["actual"] for row in evidence_inventory.values())
         and len(meshes) == expected_print_count
         and all(
@@ -1234,6 +1243,9 @@ def detailed_propulsion_evidence(doc, source):
         and evidence.get("all_bought_parts_excluded_from_prints", False)
     )
     return {
+        "gear_configuration": configuration.key,
+        "local_configuration_matches_saved": evidence.get("gear_configuration")
+        == configuration.key,
         "source_file": os.path.relpath(path, REPO_ROOT),
         "source_sha256": file_sha256(path),
         "saved_shape_source_comparisons": comparisons,
@@ -1253,7 +1265,6 @@ def validate(source=None):
     )
     from .propulsion import validate as validate_propulsion
 
-    validate_propulsion(source)
     before = {source.name: file_sha256(source)}
     fingerprint_before = source_fingerprint()
     manifest = json.loads(
@@ -1268,6 +1279,13 @@ def validate(source=None):
     doc = App.openDocument(str(source), hidden=True)
     try:
         doc.recompute()
+        configuration = drive_for_document(doc)
+        if configuration != SELECTED_DRIVE:
+            raise ValueError(
+                "Saved gear configuration differs from the source-selected design; "
+                "rebuild and review the configured baseline before full validation."
+            )
+        validate_propulsion(source, drive=configuration)
         r = doc.DesignRegistry
         printed = list(r.PrintedParts)
         objects = list(
@@ -1280,6 +1298,7 @@ def validate(source=None):
         )
         shapes = {o.Name: world_shape(o) for o in objects}
         report = {
+            "gear_configuration": configuration.key,
             "revision": DESIGN_REVISION,
             "mass_budget": mass_budget(r.PrintedParts, r.HardwareParts),
             "source": os.path.relpath(source, REPO_ROOT),

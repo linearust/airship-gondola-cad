@@ -6,12 +6,13 @@ the other contract modules. Geometric test success never changes release status.
 
 from dataclasses import asdict, dataclass
 
+from .drive import SELECTED_DRIVE
 from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "R"
+DESIGN_REVISION = "S"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -104,8 +105,8 @@ PURCHASED_HARDWARE_QUANTITIES = {
     "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
     "M2_SQUARE_NUT_DIN562": 25,
-    "GEABP0.5-60-3-B-3": 2,
-    "GEABP0.5-20-3-B-3": 2,
+    SELECTED_DRIVE.driver.sku: 2,
+    SELECTED_DRIVE.output.sku: 2,
     "MR63ZZ": 8,
     "PSFU3-26-FC5-A18": 2,
     "PSFU3-24-FC5-A3": 2,
@@ -212,11 +213,11 @@ class UnresolvedInterface:
 UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
         "motion_endpoints",
-        "Calibrate each X06 through bounded ±60deg servo motion for the 60T-to-20T speed-increasing pair's opposite-sign ±180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required; never wrap endpoints or command continuous rotation.",
+        f"Calibrate each X06 around nominal ±{180 / SELECTED_DRIVE.ratio:g}deg servo motion for the {SELECTED_DRIVE.driver.teeth}T-to-{SELECTED_DRIVE.output.teeth}T speed-increasing pair's opposite-sign ±180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.",
     ),
     UnresolvedInterface(
         "servo_power_and_load",
-        "Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by three before losses; two 6g servos and extra drive hardware are not a weight-saving claim.",
+        f"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The {SELECTED_DRIVE.ratio:g}:1 angle increase divides ideal output torque by {SELECTED_DRIVE.ratio:g} before losses; two 6g servos and extra drive hardware are not a weight-saving claim.",
     ),
     UnresolvedInterface(
         "rail_flexure",
@@ -236,7 +237,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        "Check the purchased 60T/20T POM pair at nominal 20 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Set the shared radial slide for the installed pair; MeshClearance adjusts mesh, not tooth ratio. Set the measured mesh and lock both retained M2 input-mount fasteners. Verify centre distance and backlash under loaded reversals and after PA12 settling; the slots provide adjustment, not positive locking. The full physical stroke includes gear-substitution travel, not extra mesh allowance: a slipping 60T cartridge can fully disengage before the outer slot stop. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -302,7 +303,8 @@ def project_status():
         "printed_material": "PA12; SLS preferred for fit trial, supplier process agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
-        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased 60T driver turns a 20T output gear; no yaw motor or fin hardware is included.",
+        "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
+        "selected_drive": SELECTED_DRIVE.contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],

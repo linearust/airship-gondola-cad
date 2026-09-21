@@ -18,6 +18,13 @@ from gondola.cad import (
     world_shape,
 )
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
+from gondola.contracts.drive import (
+    FACE_WIDTH_MM,
+    MESH_CLEARANCE_MAX_MM,
+    MODULE_MM,
+    SELECTED_DRIVE,
+    drive_for_document,
+)
 from gondola.parts import propulsion, rail
 from gondola.print_export import geometry_comparison, mesh_checks, print_shape
 
@@ -40,7 +47,7 @@ def gear_mesh_check(
     driver_teeth,
     output_teeth,
     minimum_face_overlap,
-    maximum_centre_adjustment=0.19,
+    maximum_centre_adjustment=MESH_CLEARANCE_MAX_MM,
     minimum_contact_ratio=1.3,
 ):
     """Measure tooth-face engagement independently of the protruding gear hubs.
@@ -121,7 +128,8 @@ def gear_mesh_check(
 
 
 def drive_motion_check(doc, prefix):
-    """Exercise native bounded output and opposite one-third input rotations."""
+    """Exercise native bounded output and the selected opposite input rotation."""
+    configuration = drive_for_document(doc)
     pod = doc.getObject(prefix + "Pod")
     drive = doc.getObject(prefix + "InputDrive")
     if pod is None or drive is None:
@@ -134,7 +142,7 @@ def drive_motion_check(doc, prefix):
             pod.Tilt = requested
             doc.recompute()
             output_angle = min(180.0, max(-180.0, requested))
-            input_angle = -output_angle / 3
+            input_angle = -output_angle / configuration.ratio
             output_matches = pod.Placement.Rotation.isSame(
                 App.Rotation(App.Vector(0, 1, 0), output_angle), 1e-7
             )
@@ -161,6 +169,7 @@ def drive_motion_check(doc, prefix):
     )
     return {
         "pod": prefix,
+        "gear_configuration": configuration.key,
         "cases": rows,
         "opposite_output_endpoints_keep_distinct_input_positions": distinct_endpoints,
         "scope": "Native expressions and declared kinematic ratio only; physical servo endpoint calibration and motor-lead travel remain unverified.",
@@ -176,8 +185,8 @@ def gear_rotation_check(doc, prefix):
     real backlash under load.
     """
     pod = doc.getObject(prefix + "Pod")
-    driver = doc.getObject(prefix + "DriverGear60T")
-    output = doc.getObject(prefix + "OutputGear20T")
+    driver = doc.getObject(prefix + "DriverGear")
+    output = doc.getObject(prefix + "OutputGear")
     if any(obj is None for obj in (pod, driver, output)):
         return {"passed": False, "error": "Missing gear pair or output pod"}
     original_tilt = float(pod.Tilt)
@@ -209,6 +218,9 @@ def mesh_adjustment_check(doc, prefix):
     """Bound the native adjustment and check both operating mesh extremes."""
     pod = doc.getObject(prefix + "Pod")
     cartridge = doc.getObject(prefix + "InputCartridge")
+    configuration = drive_for_document(doc)
+    nominal_distance = configuration.center_distance_mm
+    maximum_clearance = configuration.max_mesh_clearance_mm
     original_tilt = float(pod.Tilt)
     original_adjustment = float(cartridge.MeshClearance.Value)
     rows = []
@@ -216,24 +228,29 @@ def mesh_adjustment_check(doc, prefix):
     sign = 1 if prefix == "Port" else -1
     try:
         pod.Tilt = 0
-        for requested in (-999, 0, 0.19, 999):
+        for requested in (-999, 0, maximum_clearance, 999):
             cartridge.MeshClearance = requested
             doc.recompute()
-            expected = min(0.19, max(0, requested))
+            expected = min(maximum_clearance, max(0, requested))
             base = cartridge.Placement.Base
-            measured = math.hypot(base.x, base.z - propulsion.PIVOT_Z) - 20
-            expected_x = sign * propulsion.INPUT_AXIS_X * (1 + expected / 20)
+            measured = (
+                math.hypot(base.x, base.z - propulsion.PIVOT_Z) - nominal_distance
+            )
+            expected_x = (
+                sign * configuration.input_x_mm * (1 + expected / nominal_distance)
+            )
             expected_z = propulsion.PIVOT_Z + (
-                propulsion.INPUT_AXIS_Z - propulsion.PIVOT_Z
-            ) * (1 + expected / 20)
+                configuration.input_z_mm - propulsion.PIVOT_Z
+            ) * (1 + expected / nominal_distance)
             line_error = math.hypot(base.x - expected_x, base.z - expected_z)
             mesh = gear_mesh_check(
-                world_shape(doc.getObject(prefix + "DriverGear60T")),
-                world_shape(doc.getObject(prefix + "OutputGear20T")),
-                module=0.5,
-                driver_teeth=60,
-                output_teeth=20,
-                minimum_face_overlap=3,
+                world_shape(doc.getObject(prefix + "DriverGear")),
+                world_shape(doc.getObject(prefix + "OutputGear")),
+                module=MODULE_MM,
+                driver_teeth=configuration.driver.teeth,
+                output_teeth=configuration.output.teeth,
+                minimum_face_overlap=FACE_WIDTH_MM,
+                maximum_centre_adjustment=maximum_clearance,
             )
             rows.append(
                 {
@@ -247,7 +264,7 @@ def mesh_adjustment_check(doc, prefix):
                     and mesh["passed"],
                 }
             )
-            if requested in (0, 0.19):
+            if requested in (0, maximum_clearance):
                 phase_checks.append(
                     {"mesh_clearance_mm": expected, **gear_rotation_check(doc, prefix)}
                 )
@@ -400,6 +417,48 @@ def output_stub_check(shaft, motor, pivot_y):
     }
 
 
+def input_mount_adjustment_check(doc, prefix):
+    """Keep both cartridge clamps seated at each supported mesh setting."""
+    cartridge = doc.getObject(prefix + "InputCartridge")
+    configuration = drive_for_document(doc)
+    original = float(cartridge.MeshClearance.Value)
+    rows = []
+    try:
+        for clearance in (0, configuration.max_mesh_clearance_mm):
+            cartridge.MeshClearance = clearance
+            doc.recompute()
+            frame = world_shape(doc.PropulsionFixedFrame)
+            support = world_shape(doc.getObject(prefix + "InputSupport"))
+            support_overlap = intersection_volume(frame, support)
+            clamps = Part.makeCompound([frame, support])
+            for suffix in ("Negative", "Positive"):
+                name = prefix + "InputMount" + suffix
+                fastener = clamp_fastener_check(
+                    clamps,
+                    world_shape(doc.getObject(name + "Bolt")),
+                    world_shape(doc.getObject(name + "Nut")),
+                )
+                rows.append(
+                    {
+                        "bolt": name + "Bolt",
+                        "mesh_clearance_mm": clearance,
+                        "support_frame_intersection_mm3": support_overlap,
+                        **fastener,
+                        "passed": fastener["passed"] and support_overlap < TOL,
+                    }
+                )
+    finally:
+        cartridge.MeshClearance = original
+        doc.recompute()
+    return {
+        "pod": prefix,
+        "gear_configuration": configuration.key,
+        "cases": rows,
+        "scope": "Input support and fixed frame remain nonintersecting, and both fixed cartridge bolts retain seated bearing faces and full nut engagement at both mesh-clearance extremes. These rigid contacts do not qualify tightening torque, slip resistance or PA12 creep.",
+        "passed": len(rows) == 4 and all(row["passed"] for row in rows),
+    }
+
+
 def tilt_clearance_check(doc, module, prefix):
     """Move both coupled groups and inspect live shapes against the fixed parts."""
     pod = doc.getObject(prefix + "Pod")
@@ -416,9 +475,12 @@ def tilt_clearance_check(doc, module, prefix):
     original_tilt = float(pod.Tilt)
     cartridge = doc.getObject(prefix + "InputCartridge")
     original_clearance = float(cartridge.MeshClearance.Value)
+    maximum_clearance = drive_for_document(doc).max_mesh_clearance_mm
     rows = []
     try:
-        for clearance, index in ((c, i) for c in (0, 0.19) for i in range(49)):
+        for clearance, index in (
+            (c, i) for c in (0, maximum_clearance) for i in range(49)
+        ):
             cartridge.MeshClearance = clearance
             angle = -180 + index * 7.5
             pod.Tilt = angle
@@ -491,7 +553,7 @@ def input_cartridge_service_check(doc, module, prefix):
     released = {
         obj.Name for obj in objects if obj.Name.startswith(prefix + "InputMount")
     }
-    removed = released | {prefix + "OutputGear20T"}
+    removed = released | {prefix + "OutputGear"}
     moving = {
         obj.Name: world_shape(obj)
         for obj in objects
@@ -634,11 +696,12 @@ def rail_key_access_check(doc, module):
         doc.getObject(prefix + "InputCartridge") for prefix in ("Port", "Starboard")
     ]
     original_clearances = [float(obj.MeshClearance.Value) for obj in cartridges]
+    maximum_clearance = drive_for_document(doc).max_mesh_clearance_mm
     objects = module["printed"] + module["hardware"] + module["references"]
     screw_bounds = rail.set_screw_shape().optimalBoundingBox(False, False)
     rows = []
     try:
-        for clearance in (0, 0.19):
+        for clearance in (0, maximum_clearance):
             for cartridge in cartridges:
                 cartridge.MeshClearance = clearance
             doc.recompute()
@@ -745,6 +808,7 @@ _REPORT_ROW_KEYS = (
     "gear_mesh_alignment",
     "gear_rotation",
     "mesh_adjustment",
+    "input_mount_adjustment",
     "bearing_stacks",
     "output_stub_clearance",
     "shaft_service",
@@ -804,19 +868,22 @@ def _record_rail_fit_checks(report, frame, physical):
 
 def _record_drive_motion_checks(report, doc, module, physical, prefix):
     """Keep native motion, meshing and coupled service evidence together."""
+    configuration = drive_for_document(doc)
     report["drive_motion"].append(drive_motion_check(doc, prefix))
     report["mesh_adjustment"].append(mesh_adjustment_check(doc, prefix))
+    report["input_mount_adjustment"].append(input_mount_adjustment_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
     report["gear_mesh_alignment"].append(
         {
             "pod": prefix,
             **gear_mesh_check(
-                physical[prefix + "DriverGear60T"],
-                physical[prefix + "OutputGear20T"],
-                module=0.5,
-                driver_teeth=60,
-                output_teeth=20,
-                minimum_face_overlap=3,
+                physical[prefix + "DriverGear"],
+                physical[prefix + "OutputGear"],
+                module=MODULE_MM,
+                driver_teeth=configuration.driver.teeth,
+                output_teeth=configuration.output.teeth,
+                minimum_face_overlap=FACE_WIDTH_MM,
+                maximum_centre_adjustment=configuration.max_mesh_clearance_mm,
             ),
         }
     )
@@ -842,7 +909,7 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
                 ),
             }
         )
-        excluded = {shaft_name, prefix + "OutputGear20T"}
+        excluded = {shaft_name, prefix + "OutputGear"}
         report["shaft_service"].append(
             {
                 "shaft": shaft_name,
@@ -901,7 +968,7 @@ def _record_bearing_checks(
         if bench:
             excluded |= drive_names | {prefix + "Servo"}
         else:
-            excluded.add(prefix + "OutputGear20T")
+            excluded.add(prefix + "OutputGear")
         obstacles = _service_obstacles(
             physical, excluded, members=cartridge_names if bench else None
         )
@@ -921,7 +988,7 @@ def _record_bearing_checks(
 
 def _record_drive_service_checks(report, prefix, sign, physical, cartridge_names):
     """Audit input-shaft, gear, motor and propeller removal paths."""
-    excluded = {prefix + "InputShaft", prefix + "DriverGear60T"}
+    excluded = {prefix + "InputShaft", prefix + "DriverGear"}
     report["shaft_service"].append(
         {
             "shaft": prefix + "InputShaft",
@@ -935,8 +1002,8 @@ def _record_drive_service_checks(report, prefix, sign, physical, cartridge_names
         }
     )
     for suffix, direction, bench in (
-        ("OutputGear20T", -sign, False),
-        ("DriverGear60T", sign, True),
+        ("OutputGear", -sign, False),
+        ("DriverGear", sign, True),
     ):
         name = prefix + suffix
         excluded = {name}
@@ -1031,6 +1098,8 @@ def _record_fastener_checks(report, doc, module, objects, physical):
         )
         service_excluded = {bolt.Name, nut_name}
         service_parts = set(physical)
+        dependencies = []
+        service_group = module["group"].Name
         prerequisites = "Other local propulsion parts stay installed at neutral tilt."
         if "ServoEar" in bolt.Name:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
@@ -1050,25 +1119,58 @@ def _record_fastener_checks(report, doc, module, objects, physical):
                 )
             }
             prerequisites = "Detach the input cartridge using its checked gear-first sequence. Remove both horn-clamp pairs and both halves using their separately checked service paths before releasing an OEM servo ear."
+            service_group = cartridge.Name
+        elif bolt.Name.endswith("InputBearingCapOuterBolt"):
+            prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
+            cartridge = doc.getObject(prefix + "InputCartridge")
+            service_group = cartridge.Name
+            service_parts = {
+                obj.Name for obj in objects if belongs_to_group(obj, cartridge)
+            }
+            gear_name = prefix + "DriverGear"
+            service_excluded.add(gear_name)
+            prerequisites = (
+                "Remove the propulsion module from the rail and disconnect its leads. "
+                "Remove the output gear and cartridge mounting pairs, then detach the "
+                "input cartridge using its checked path. On the bench, remove the "
+                "driver gear using its checked axial path before releasing the outer "
+                "input-bearing cap bolt/nut. All other cartridge parts remain installed."
+            )
+            for key, field, name in (
+                ("input_cartridge_removal", "cartridge", cartridge.Name),
+                ("gear_service", "gear", gear_name),
+            ):
+                matches = [row for row in report[key] if row.get(field) == name]
+                dependencies.append(
+                    {
+                        "check": key,
+                        "object": name,
+                        "passed": len(matches) == 1 and matches[0]["passed"],
+                    }
+                )
+        service = fastener_service_check(
+            physical[bolt.Name],
+            nut,
+            _service_obstacles(physical, service_excluded, members=service_parts),
+            thread_diameter=thread_diameter,
+            nut_lateral_direction=(
+                (1 if nut.BoundBox.Center.x > 0 else -1, 0, 0)
+                if "InputMount" in bolt.Name
+                else None
+            ),
+        )
         report["fastener_service"].append(
             {
                 "bolt": bolt.Name,
                 "nut": nut_name,
                 "assembly_prerequisites": prerequisites,
+                "service_group": service_group,
+                "service_dependencies": dependencies,
+                "retained_service_parts": sorted(service_parts - service_excluded),
                 "removed_local_parts": sorted(service_excluded),
-                **fastener_service_check(
-                    physical[bolt.Name],
-                    nut,
-                    _service_obstacles(
-                        physical, service_excluded, members=service_parts
-                    ),
-                    thread_diameter=thread_diameter,
-                    nut_lateral_direction=(
-                        (1 if nut.BoundBox.Center.x > 0 else -1, 0, 0)
-                        if "InputMount" in bolt.Name
-                        else None
-                    ),
-                ),
+                **service,
+                "passed": service["passed"]
+                and all(row["passed"] for row in dependencies),
             }
         )
     return bolts
@@ -1076,7 +1178,9 @@ def _record_fastener_checks(report, doc, module, objects, physical):
 
 def _record_print_checks(report, module, physical):
     """Measure functional walls and check every printable solid and mesh."""
-    wall_probes = propulsion.manufacturing_wall_probes() + [
+    wall_probes = propulsion.manufacturing_wall_probes(
+        drive=drive_for_document(module["group"].Document)
+    ) + [
         (
             "guard_radial",
             "PortMotorCarrier",
@@ -1131,6 +1235,7 @@ def _complete_report(report, module, bolts):
         "gear_mesh_alignment": 2,
         "gear_rotation": 2,
         "mesh_adjustment": 2,
+        "input_mount_adjustment": 2,
         "bearing_stacks": 8,
         "output_stub_clearance": 4,
         "shaft_service": 6,
@@ -1143,6 +1248,7 @@ def _complete_report(report, module, bolts):
         "rail_key_access": 4,
         "fastener_stacks": len(bolts),
         "fastener_service": len(bolts),
+        "functional_wall_probes": 6,
         "geometry": len(module["printed"]),
     }
     report["expected_evidence_counts"] = expected_counts
@@ -1173,18 +1279,19 @@ def _write_report(report, source):
     )
 
 
-def validate(source=None):
+def validate(source=None, *, drive=SELECTED_DRIVE):
     """Build the source mechanism and audit its actual mating and service shapes."""
     source = (
         Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
     )
     doc = App.newDocument("PropulsionSourceAudit")
     try:
-        module = propulsion.build_propulsion_module(doc)
+        module = propulsion.build_propulsion_module(doc, drive=drive)
         frame = world_shape(module["frame"])
         objects = module["printed"] + module["hardware"] + module["references"]
         physical = {obj.Name: world_shape(obj) for obj in objects}
         report = {
+            "gear_configuration": drive_for_document(doc).key,
             "scope": "Source rigid-envelope, nominal fit and bench-service audit; OEM fit, friction retention and loaded operation remain unqualified.",
             "printed_parts": len(module["printed"]),
             "purchased_hardware": len(module["hardware"]),
