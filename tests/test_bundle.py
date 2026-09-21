@@ -35,14 +35,18 @@ class BundleIntegrityTests(unittest.TestCase):
         self.cad_path.write_bytes(b"saved CAD")
         self.cad_sha = bundle.file_sha256(self.cad_path)
         self.parts = []
-        for index, quantity in enumerate((1, 1, 1, 1, 2, 4, 1, 1, 1, 1, 1)):
+        inventory = bundle.EXPECTED_INVENTORY
+        installed_skus = inventory["unique_print_files"] - inventory["fit_coupons"]
+        quantities = [1] * inventory["unique_print_files"]
+        quantities[0] += inventory["installed_prints"] - installed_skus
+        for index, quantity in enumerate(quantities):
             stl = f"part_{index}.stl"
             step = f"part_{index}.step"
             stl_data = f"STL {index}".encode()
             step_data = f"STEP {index}".encode()
             (self.folder / stl).write_bytes(stl_data)
             (self.folder / step).write_bytes(step_data)
-            coupon = int(index >= 9)
+            coupon = int(index >= installed_skus)
             self.parts.append(
                 {
                     "sku": f"part_{index}",
@@ -59,9 +63,9 @@ class BundleIntegrityTests(unittest.TestCase):
         self.manifest = {
             "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "unique_stl_count": 11,
-            "installed_printed_part_count": 13,
-            "additional_coupon_printed_part_count": 2,
+            "unique_stl_count": inventory["unique_print_files"],
+            "installed_printed_part_count": inventory["installed_prints"],
+            "additional_coupon_printed_part_count": inventory["fit_coupons"],
             "release_status": bundle.release_status(),
             "parts": self.parts,
         }
@@ -70,8 +74,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.bom = {
             "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "purchased_hardware_quantity": 24,
-            "unique_purchase_spec_count": 5,
+            "purchased_hardware_quantity": inventory["purchased_hardware"],
+            "unique_purchase_spec_count": inventory["purchased_hardware_types"],
             "purchase_scope": bundle.hardware_bom_scope(),
             "items": [
                 {
@@ -172,8 +176,14 @@ class BundleIntegrityTests(unittest.TestCase):
         archive = self.package()
         with zipfile.ZipFile(archive) as zipped:
             names = set(zipped.namelist())
-            self.assertEqual(sum(name.endswith(".stl") for name in names), 11)
-            self.assertEqual(sum(name.endswith(".step") for name in names), 11)
+            self.assertEqual(
+                sum(name.endswith(".stl") for name in names),
+                bundle.EXPECTED_INVENTORY["unique_print_files"],
+            )
+            self.assertEqual(
+                sum(name.endswith(".step") for name in names),
+                bundle.EXPECTED_INVENTORY["unique_print_files"],
+            )
             self.assertNotIn("obsolete.stl", names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(

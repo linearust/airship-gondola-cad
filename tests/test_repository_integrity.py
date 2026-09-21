@@ -42,6 +42,8 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 self.assertTrue(set(imports) <= allowed, (path, imports))
 
     def test_status_works_after_copying_without_cad_or_archive(self):
+        from gondola.contracts.design import EXPECTED_INVENTORY
+
         with tempfile.TemporaryDirectory(prefix="gondola-relocated-") as directory:
             copy = Path(directory) / "project"
             copy.mkdir()
@@ -58,9 +60,8 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 check=True,
             )
             state = json.loads(result.stdout)
-            self.assertEqual(state["scoped_listed_equipment_mass_g"], 57.432)
-            self.assertEqual(state["inventory"]["purchased_hardware"], 24)
-            self.assertEqual(state["inventory"]["purchased_hardware_types"], 5)
+            self.assertEqual(state["scoped_listed_equipment_mass_g"], 33.032)
+            self.assertEqual(state["inventory"], EXPECTED_INVENTORY)
             self.assertIn("yaw_motor", state["excluded_equipment"])
             self.assertFalse(state["production_released"])
             self.assertIn(

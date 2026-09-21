@@ -45,7 +45,138 @@ XT30U_MATED_DRAWING = (
 )
 FC_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/09/micoair743-aio-35a-1-01-1-df3dbd14ac.webp"
 LR_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/669f74a433137-ed5c3462e6-6d69324222.webp"
-SERVO_SOURCE = "https://www.dspowerservo.com/ds-m005-mini-servo-product/"
+SERVO_SOURCE = "https://kstservos.com/products/x06-v6-0-hv-micro-digital-metal-gear-glider-1-8kg-torque-servo-motor"
+X06_MANUFACTURER_SOURCE = "https://www.kstsz.com/kstsz_Product_2063755473.html"
+X06_DATASHEET_SOURCE = "https://cdn.shopify.com/s/files/1/0570/1766/3541/files/X06_V6.0_Technical_Specifcation.pdf?v=1700472290"
+# KST May 2023 drawing; nominal dimensions, not printed fit clearances.
+# Longitudinal datum is the case end nearest the output spline; transverse datum
+# is the case centreline. Depths below the case top exclude the projecting spline.
+X06_CASE_SIZE_MM = (20.0, 7.0, 16.6)
+X06_CASE_TOLERANCE_MM = 0.2
+X06_OVERALL_HEIGHT_MM = 19.3
+X06_EAR_SPAN_MM = 28.0
+X06_EAR_HOLE_PITCH_MM = 24.0
+X06_EAR_HOLE_DIAMETER_MM = 2.0
+X06_OUTPUT_FROM_CASE_END_MM = 5.0
+X06_EAR_TOP_FROM_CASE_TOP_MM = 3.7
+X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM = 4.7
+HORN_SOURCE = (
+    "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo"
+)
+HORN_DRAWING_SOURCE = "https://cdn.shopify.com/s/files/1/0712/1472/7353/files/15T-4mm_0415.13.png?v=1764920833"
+
+GEAR_SOURCE = "https://jp.misumi-ec.com/vona2/detail/110302194440/"
+GEAR_CATALOG_SOURCE = "https://jp.misumi-ec.com/pdf/fa/2015/p1_1553.pdf"
+SHAFT_SOURCE = "https://jp.misumi-ec.com/vona2/detail/110302634310/"
+SHAFT_CATALOG_SOURCE = "https://jp.misumi-ec.com/pdf/fa/2015/p1_145.pdf"
+BEARING_SOURCE = (
+    "https://www.nskmicro.co.jp/products/bearing/bearing_size_pdf/single_row_mm.pdf"
+)
+BEARING_FIT_SOURCE = "https://www.nskmicro.co.jp/technical_info/bearing/catalog05.pdf"
+
+PROPULSION_EVIDENCE = {
+    "X06": {
+        "sources": [X06_MANUFACTURER_SOURCE, SERVO_SOURCE, X06_DATASHEET_SOURCE],
+        "retained_evidence": "references/kst_x06_v6_datasheet.pdf",
+        "document_date": "2023-05",
+        "case_size_mm": X06_CASE_SIZE_MM,
+        "case_tolerance_plus_minus_mm": X06_CASE_TOLERANCE_MM,
+        "overall_height_with_spline_mm": X06_OVERALL_HEIGHT_MM,
+        "ear_span_mm": X06_EAR_SPAN_MM,
+        "ear_hole_pitch_mm": X06_EAR_HOLE_PITCH_MM,
+        "ear_hole_diameter_mm": X06_EAR_HOLE_DIAMETER_MM,
+        "output_from_near_case_end_mm": X06_OUTPUT_FROM_CASE_END_MM,
+        "ear_top_from_case_top_mm": X06_EAR_TOP_FROM_CASE_TOP_MM,
+        "ear_underside_from_case_top_mm": X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM,
+        "spline_teeth": 15,
+        "spline_major_diameter_mm": 3.90,
+        "spline_major_tolerance_plus_minus_mm": 0.01,
+        "default_travel_deg": [-60.0, 60.0],
+        "position_reference_us": [1000, 1500, 2000],
+        "listed_mass_g": 6.0,
+        "listed_mass_tolerance_percent": 10,
+        "scope": "KST-authored May 2023 drawing obtained through the distributor. Regular-tab X06 V6.0, not X06H or X06N. Ear thickness is the 4.7 minus 3.7 mm drawing datum difference. Published case tolerance is not a fit allowance. Spline major diameter does not establish horn geometry or a retaining screw thread.",
+        "unknown": "Supplied plastic horn dimensions and OEM retaining screw; selected stock aluminium horn seating, loaded travel and permissible external gear load.",
+    },
+    "KST_0415_13": {
+        "sources": [HORN_SOURCE, HORN_DRAWING_SOURCE],
+        "retained_evidence": "references/kst_0415_13_horn_dimensions.png",
+        "spline_class": "KST 15T-4mm",
+        "hub_diameter_mm": 6.0,
+        "tip_diameter_mm": 4.0,
+        "tip_centre_radius_mm": 13.2,
+        "overall_axial_height_mm": 3.5,
+        "blade_thickness_mm": 1.6,
+        "spline_recess_depth_mm": 2.5,
+        "centre_clearance_diameter_mm": 2.2,
+        "counterbore_diameter_mm": 4.4,
+        "hole_radius_by_diameter_mm": {
+            "0.8": [4.5, 8.0, 11.5],
+            "1.0": [6.8, 10.0, 13.2],
+        },
+        "scope": "KST-authored drawing supplied through a distributor. Nominal geometry supports a conservative blade-capture pocket with explicit fit allowance; exact outline fillets, tolerances, installed seating and OEM screw head/engagement remain sample checks. The centre clearance hole is not an M2 thread specification.",
+    },
+    "GEABP": {
+        "sources": [GEAR_SOURCE, GEAR_CATALOG_SOURCE],
+        "retained_evidence": "references/misumi_geabp_catalog.pdf",
+        "selected_parts": ["GEABP0.5-60-3-B-3", "GEABP0.5-20-3-B-3"],
+        "module_mm": 0.5,
+        "pressure_angle_deg": 20.0,
+        "bore_mm": 3.0,
+        "bore_tolerance": "H7",
+        "face_width_mm": 3.0,
+        "total_axial_length_mm": 8.0,
+        "hub_extension_mm": 5.0,
+        "set_screw_axis_from_hub_end_mm": 2.5,
+        "driver_pitch_outside_root_hub_diameters_mm": [30.0, 31.0, 28.75, 10.0],
+        "driven_pitch_outside_root_hub_diameters_mm": [10.0, 11.0, 8.75, 8.5],
+        "material": "White POM; no metal hub insert for this module",
+        "included_fastener": "One M3 radial set screw per standard gear, SCM435 with black oxide finish; length, tip style and tightening torque are not established here.",
+        "scope": "Catalog gear dimensions support simplified purchased envelopes. Tooth contact, backlash, hub strength and printed shaft-centre tolerances require physical qualification; a nominal 20 mm centre distance is not proof of mesh.",
+    },
+    "PSFU3": {
+        "sources": [SHAFT_SOURCE, SHAFT_CATALOG_SOURCE],
+        "retained_evidence": "references/misumi_psfu_shaft_catalog.pdf",
+        "diameter_mm": 3.0,
+        "diameter_tolerance": "h5: 2.996 to 3.000 mm",
+        "standard_length_range_mm": [10, 400],
+        "standard_length_increment_mm": 1,
+        "end_chamfer_max_mm": 0.2,
+        "selected_order_codes": [
+            "PSFU3-26-FC5-A18",
+            "PSFU3-24-FC5-A3",
+            "PSFU3-14",
+        ],
+        "factory_flat": {
+            "alteration": "FC: one set-screw flat",
+            "depth_for_diameter3_mm": 0.5,
+            "length_mm": 5.0,
+            "input_offset_from_reference_end_mm": 18.0,
+            "driven_offset_from_reference_end_mm": 3.0,
+            "fc_and_a_increment_mm": 1,
+            "fc_max_for_diameter3_mm": 15.0,
+            "a_rule": "0 or at least2mm",
+            "minimum_altered_length_for_d3_to_d12_mm": 20,
+            "installation": "Clock each factory flat under the actual gear's radial M3 set screw after meshing its teeth. The drawing does not specify set-screw azimuth relative to tooth phase. Keep flats outside bearing journals. Factory machining only; no manual grinding of hardened plated shafts.",
+        },
+        "material": "SUJ2 / EN 1.3505 equivalent hardened steel with hard chrome plating",
+        "scope": "The 26mm input and24mm driven shafts use specified factory flats; the14mm idle shafts remain round. None has a shoulder, thread or inherent axial retention. Diameter tolerance does not specify length tolerance or guarantee a bearing slip fit. Supplier confirmation of the complete configured order code remains necessary.",
+    },
+    "MR63ZZ": {
+        "sources": [BEARING_SOURCE, BEARING_FIT_SOURCE],
+        "retained_evidence": [
+            "references/nsk_isc_miniature_bearings.pdf",
+            "references/nsk_isc_bearing_fits.pdf",
+        ],
+        "catalog_printed_pages": [40, 41],
+        "bore_outside_width_mm": [3.0, 6.0, 2.5],
+        "reference_mass_g": 0.27,
+        "inner_ring_abutment_outer_diameter_max_mm": 3.7,
+        "housing_abutment_opening_diameter_min_mm": 5.4,
+        "abutment_fillet_max_mm": 0.1,
+        "scope": "Use shielded MR63ZZ abutment columns, not open MR63 values. Large gear hubs must not touch bearing shields or outer rings. h5 is a catalog transition-fit option, not guaranteed hand assembly; printed seats are not precision H6 bores. Axial retention, fits and preload require sample verification.",
+    },
+}
 
 # Connector-local dimensions, not positions on the equipment PCB. Device manuals
 # name SH/GH families but do not identify the fitted manufacturer's part number.
@@ -180,15 +311,16 @@ DEVICE_CONNECTOR_EVIDENCE = {
         "connection_limit": "Keep the cable outside the optical face and optical reservation. Match the official pinout and firmware orientation to the installed module.",
     },
     "SERVO": {
-        "sources": [SERVO_SOURCE],
-        "documented_types": [],
+        "sources": [SERVO_SOURCE, X06_DATASHEET_SOURCE],
+        "retained_evidence": ["references/kst_x06_v6_datasheet.pdf"],
+        "documented_types": ["Three-contact PWM lead; connector family unverified"],
         "catalog_references": [],
-        "documented_interfaces": "The reviewed DS-M005 manufacturer page and mechanical drawing do not specify its cable connector type or cable dimensions.",
+        "documented_interfaces": "KST X06 V6.0 datasheet identifies orange signal, red supply and brown ground. The pictured three-contact connector has no dimensioned family or cable specification.",
         "orientation_evidence": "No dimensioned lead-exit datum is published in the retained mechanical drawing.",
         "installed_port_centres_mm": None,
         "installed_port_datums_verified": False,
-        "unknown": "Plug family, cable length/diameter, lead-exit coordinates and bend radius. Do not turn seller-specific JR or cable-length options into a manufacturer-confirmed interface.",
-        "connection_limit": "Retain an explicit design routing allowance until the supplied servo lead is checked; do not fabricate an exact plug envelope or pinout.",
+        "unknown": "Plug family, cable length/diameter, lead-exit coordinates and bend radius; do not infer a JST, JR or other connector standard from the picture.",
+        "connection_limit": "Retain an explicit design routing allowance until the supplied lead is checked. Published voltage range is 3.8–8.4 V; the supply branch and connector pin order must match the installed unit.",
     },
 }
 

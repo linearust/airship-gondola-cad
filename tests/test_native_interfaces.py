@@ -26,14 +26,14 @@ class NativeInterfaceTests(unittest.TestCase):
             self.assertIn("M2", part.ThreadStandard)
             self.assertNotIn("unthreaded", part.ThreadStandard.lower())
 
-    def test_shared_nut_and_journal_screw_declare_m2_threads(self):
+    def test_shared_nut_and_clamp_screw_declare_m2_threads(self):
         from gondola.parts import purchased_hardware
 
         document = App.newDocument("HardwareThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parts = (
             ("M2_SQUARE_NUT_DIN562", purchased_hardware.square_nut_shape()),
-            ("M2X14_SOCKET_CAP", purchased_hardware.screw_shape(14)),
+            ("M2X8_SOCKET_CAP", purchased_hardware.screw_shape(8)),
         )
         for index, (sku, shape) in enumerate(parts):
             with self.subTest(sku=sku):

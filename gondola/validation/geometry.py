@@ -31,8 +31,8 @@ def intersection_volume(first, second):
 def translation_sweep(shape, displacement):
     """Return a continuous translational envelope and its construction method.
 
-    Sweeping the boundary faces together with the starting solid gives the exact
-    swept volume for planar faces and cylinders parallel to the displacement.
+    Sweeping only forward-facing boundary faces together with the starting solid
+    gives the exact volume for planar faces and cylinders parallel to the move.
     A periodic curved face extruded across its axis may fold onto itself, so it
     is deliberately not accepted by that construction. Other surfaces use the
     union bounding box of both endpoints: conservative, never an endpoint-only
@@ -50,10 +50,13 @@ def translation_sweep(shape, displacement):
     if vector.Length == 0:
         return shape.copy(), "stationary solid"
     exact = True
+    leading_faces = []
     for face in shape.Faces:
         surface = face.Surface
         name = type(surface).__name__
         if name == "Plane":
+            if face.normalAt(0, 0).dot(vector) > 0:
+                leading_faces.append(face)
             continue
         if (
             name == "Cylinder"
@@ -74,7 +77,15 @@ def translation_sweep(shape, displacement):
             "continuous conservative bounding prism",
         )
     pieces = [shape.copy()]
-    for face in shape.Faces:
+    # Every new swept point is reached by following the move from an exit face
+    # of the original solid. Its outward normal points along the move. This
+    # remains true for concavities and cavity walls; normals of inner faces are
+    # oriented toward the void. Back faces add only already covered volume, and
+    # coaxial-cylinder sides and tangent planes sweep no three-dimensional set.
+    # Skipping these before extrusion avoids degenerate prisms and duplicate
+    # many-edged profiles in gear sweeps, without replacing a continuous sweep
+    # with sampled positions or a convex hull.
+    for face in leading_faces:
         prism = face.extrude(vector)
         if abs(prism.Volume) <= 1e-12:
             continue
@@ -93,6 +104,110 @@ def translation_sweep(shape, displacement):
     if abs(shape.cut(swept).Volume) > TOL or abs(end.cut(swept).Volume) > TOL:
         raise ValueError("Continuous sweep does not contain both endpoint solids.")
     return swept, "continuous planar/coaxial-cylinder face-prism union"
+
+
+def certify_translation_clearance(
+    shape, displacement, obstacles, *, max_depth=18, max_evaluations=4096
+):
+    """Certify a clear translation when a conservative sweep is too broad.
+
+    Distance to a fixed solid is 1-Lipschitz under translation. At each interval
+    midpoint, a distance greater than half the interval travel certifies every
+    position in that interval, including its endpoints. Otherwise subdivide;
+    touching, numerical ambiguity or a work limit fails closed. This constructs
+    no replacement envelope and does not change ``translation_sweep`` fallback.
+    """
+    coordinates = tuple(float(value) for value in displacement)
+    if len(coordinates) != 3 or not all(math.isfinite(x) for x in coordinates):
+        raise ValueError("Translation must contain three finite coordinates.")
+    if shape.isNull() or not shape.isValid() or not shape.Solids:
+        raise ValueError("Clearance certification requires valid solid geometry.")
+    if not isinstance(max_depth, int) or not 0 <= max_depth <= 24:
+        raise ValueError("Certificate depth must be an integer from 0 to 24.")
+    if not isinstance(max_evaluations, int) or max_evaluations < 1:
+        raise ValueError("Certificate evaluation limit must be a positive integer.")
+    for name, obstacle in obstacles.items():
+        if obstacle.isNull() or not obstacle.isValid() or not obstacle.Solids:
+            raise ValueError(f"Invalid certificate obstacle: {name}")
+
+    import FreeCAD as App
+
+    travel = math.sqrt(sum(value * value for value in coordinates))
+    bounds = {name: obstacle.BoundBox for name, obstacle in obstacles.items()}
+    report = {
+        "method": "continuous adaptive translation-distance certificate",
+        "obstacles": sorted(obstacles),
+        "displacement_mm": list(coordinates),
+        "evaluated_positions": 0,
+        "certified_intervals": 0,
+        "maximum_depth_used": 0,
+        "passed": False,
+    }
+    # An obstacle certified for a parent interval is certified for both children.
+    pending = [(0.0, 1.0, 0, tuple(obstacles))]
+    while pending:
+        start, end, depth, names = pending.pop()
+        if report["evaluated_positions"] >= max_evaluations:
+            report["unresolved"] = "Certificate evaluation limit reached."
+            return report
+        middle = (start + end) / 2
+        half_travel = travel * (end - start) / 2
+        placed = shape.copy()
+        placed.translate(App.Vector(*(middle * value for value in coordinates)))
+        placed_bounds = placed.BoundBox
+        report["evaluated_positions"] += 1
+        report["maximum_depth_used"] = max(report["maximum_depth_used"], depth)
+        unresolved = []
+        for name in names:
+            other_bounds = bounds[name]
+            box_distance = math.sqrt(
+                sum(
+                    max(
+                        0.0,
+                        getattr(placed_bounds, axis + "Min")
+                        - getattr(other_bounds, axis + "Max"),
+                        getattr(other_bounds, axis + "Min")
+                        - getattr(placed_bounds, axis + "Max"),
+                    )
+                    ** 2
+                    for axis in ("X", "Y", "Z")
+                )
+            )
+            if box_distance > half_travel + TOL:
+                continue
+            obstacle = obstacles[name]
+            volume = intersection_volume(placed, obstacle)
+            if volume > TOL:
+                report["collision"] = {
+                    "obstacle": name,
+                    "path_fraction": middle,
+                    "intersection_mm3": volume,
+                }
+                return report
+            distance = float(placed.distToShape(obstacle)[0])
+            if not math.isfinite(distance) or distance < 0:
+                report["unresolved"] = f"Invalid kernel distance for {name}."
+                return report
+            if distance <= half_travel + TOL:
+                unresolved.append(name)
+        if not unresolved:
+            report["certified_intervals"] += 1
+            continue
+        if depth >= max_depth:
+            report["unresolved"] = {
+                "reason": "Touching, insufficient clearance or subdivision limit.",
+                "interval": [start, end],
+                "obstacles": unresolved,
+            }
+            return report
+        pending.extend(
+            (
+                (middle, end, depth + 1, tuple(unresolved)),
+                (start, middle, depth + 1, tuple(unresolved)),
+            )
+        )
+    report["passed"] = True
+    return report
 
 
 def _stl_triangle(points):

@@ -101,13 +101,14 @@ class ExportIntegrityTests(unittest.TestCase):
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
-        self.assertEqual(bom["purchased_hardware_quantity"], 24)
-        self.assertEqual(bom["unique_purchase_spec_count"], 5)
-        self.assertEqual(len(bom["items"]), 5)
+        expected = self.equipment.PURCHASED_HARDWARE_QUANTITIES
+        self.assertEqual(bom["purchased_hardware_quantity"], sum(expected.values()))
+        self.assertEqual(bom["unique_purchase_spec_count"], len(expected))
+        self.assertEqual(len(bom["items"]), len(expected))
         self.assertEqual(bom["purchase_scope"], procurement.hardware_bom_scope())
         self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
         nuts = next(row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562")
-        self.assertEqual(nuts["quantity"], 9)
+        self.assertEqual(nuts["quantity"], expected["M2_SQUARE_NUT_DIN562"])
         self.assertEqual(
             nuts["sources"],
             ["https://example.com/first-journal", "https://example.com/journal-nuts"],

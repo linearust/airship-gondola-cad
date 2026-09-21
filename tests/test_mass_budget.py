@@ -22,6 +22,25 @@ def part(name, volume_mm3, *, print_sku=None, hardware_sku=None, material=None):
 
 
 class MassBudgetTests(unittest.TestCase):
+    def test_complete_bearing_reference_mass_replaces_solid_envelope_estimate(self):
+        bearings = [
+            part(name, 100, hardware_sku="MR63ZZ", material="Bearing steel")
+            for name in ("LeftBearing", "RightBearing")
+        ]
+        for obj in bearings:
+            obj.ReferenceMassGrams = 0.27
+            obj.ReferenceMassSource = "https://www.nskmicro.co.jp/products/bearing/bearing_size_pdf/single_row_mm.pdf"
+        report = mass_budget([], bearings)
+        self.assertAlmostEqual(report["current_hardware_g"], 0.54)
+        self.assertIsNone(report["hardware"][0]["density_g_cm3"])
+        self.assertEqual(report["hardware"][0]["reference_unit_mass_g"], 0.27)
+        bearings[1].ReferenceMassGrams = 0.3
+        with self.assertRaisesRegex(ValueError, "Conflicting reference masses"):
+            mass_budget([], bearings)
+        bearings[0].ReferenceMassSource = ""
+        with self.assertRaisesRegex(ValueError, "Invalid reference mass"):
+            mass_budget([], bearings)
+
     def test_counts_actual_instance_volumes_and_groups_by_sku_and_material(self):
         printed = [
             part("Board1", 1000, print_sku="Board"),
@@ -81,7 +100,7 @@ class MassBudgetTests(unittest.TestCase):
 
     def test_current_mass_scope_does_not_embed_a_historical_design(self):
         report = mass_budget([part("Rail", 1000)], [])
-        self.assertFalse(report["device_mounting_hardware_included"])
+        self.assertFalse(report["complete_device_mounting_hardware_included"])
         self.assertIn("not yet dimensioned or counted", report["comparison_limit"])
         self.assertAlmostEqual(report["current_printed_g"], 1.01)
         self.assertEqual(report["current_hardware_g"], 0)

@@ -364,12 +364,23 @@ def hardware_check(registry):
         sku = str(getattr(obj, "HardwareSKU", ""))
         thread_diameter = float(obj.NominalThreadDiameter.Value)
         thread_pitch = float(obj.ThreadPitch.Value)
+        if sku.startswith("M2"):
+            expected_diameter, expected_pitch = 2.0, 0.4
+            thread_description_matches = "M2" in standard
+        elif sku.startswith("M1_6"):
+            expected_diameter, expected_pitch = 1.6, 0.35
+            thread_description_matches = "M1.6" in standard
+        elif sku.startswith("GEABP"):
+            expected_diameter, expected_pitch = 3.0, 0.5
+            thread_description_matches = "M3" in standard
+        else:
+            expected_diameter, expected_pitch = 0.0, 0.0
+            thread_description_matches = "unthreaded" in standard.lower()
         thread_metadata_matches = (
-            "M2" in standard
-            and abs(thread_diameter - 2.0) < TOL
-            and abs(thread_pitch - 0.4) < TOL
+            thread_description_matches
+            and abs(thread_diameter - expected_diameter) < TOL
+            and abs(thread_pitch - expected_pitch) < TOL
         )
-        is_metric = sku.startswith("M2") and thread_metadata_matches
         material_matches = (
             sku in HARDWARE_MATERIALS
             and str(getattr(obj, "MaterialSelection", "")) == HARDWARE_MATERIALS[sku]
@@ -382,10 +393,13 @@ def hardware_check(registry):
             "sku": sku,
             "thread_standard": standard,
             "thread_metadata_matches_part": thread_metadata_matches,
-            "metric_specification_present": is_metric,
+            "interface_specification_present": thread_metadata_matches,
             "material_matches_purchase_specification": material_matches,
             "excluded_from_print_registry": excluded,
-            "passed": is_metric and excluded and bool(sku) and material_matches,
+            "passed": thread_metadata_matches
+            and excluded
+            and bool(sku)
+            and material_matches,
         }
         rows.append(row)
     clamp_names = {o.Name for o in registry.RailLocks}
@@ -807,20 +821,6 @@ def manufacturing_review(doc, registry):
             (0, 12, 1.3),
             1.2,
         ),
-        (
-            "journal_D_flat_wall",
-            "PortJournalSleevePositive",
-            (0, 24, 1.19),
-            (0, 24, 3.01),
-            1.8,
-        ),
-        (
-            "integral_journal_retaining_cap",
-            "PortMotorCarrier",
-            (2, 20.49, 0),
-            (2, 22.01, 0),
-            1.5,
-        ),
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
         (
             "battery_mount_deck_thickness",
@@ -839,8 +839,8 @@ def manufacturing_review(doc, registry):
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (4.5, 80, propulsion.BASE_Z - 0.01),
-            (4.5, 80, propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01),
+            (8.0, 80, propulsion.BASE_Z - 0.01),
+            (8.0, 80, propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01),
             propulsion.FOOT_THICKNESS,
         ),
         (
@@ -873,13 +873,28 @@ def manufacturing_review(doc, registry):
         ),
     ]
     measurements = []
-    for feature, name, start, end, expected in analytic:
-        actual = line_wall(local_shape(doc.getObject(name)), start, end)
+    probes_with_frames = [(probe, False) for probe in analytic] + [
+        (probe, True) for probe in propulsion.manufacturing_wall_probes()
+    ]
+    for (feature, name, start, end, expected), module_coordinates in probes_with_frames:
+        obj = doc.getObject(name)
+        shape = local_shape(obj)
+        if module_coordinates:
+            shape = world_shape(obj)
+            shape.Placement = (
+                doc.MainPropulsionModule.getGlobalPlacement()
+                .inverse()
+                .multiply(shape.Placement)
+            )
+        actual = line_wall(shape, start, end)
         measurements.append(
             {
                 "feature": feature,
                 "part": name,
                 "sample_line_mm": [start, end],
+                "coordinate_frame": "propulsion module"
+                if module_coordinates
+                else "part local",
                 "measured_material_length_mm": actual,
                 "nominal_expected_mm": expected,
                 "passed": abs(actual - expected) < TOL,
@@ -983,7 +998,7 @@ def equipment_scope_check(doc, registry, objects, shapes):
         "not_all_up_mass": True,
         "excluded_device_references_found": forbidden,
         "new_electrical_space_reservations": reserves,
-        "cable_and_OEM_limitations": "Reserve shapes are not measured components, flexible cable routing or proof of cable slack at ±150 degrees. OEM motor retention, servo ears and horn-to-sleeve drive remain unresolved.",
+        "cable_and_OEM_limitations": "Reserve shapes are not measured components, flexible cable routing or proof of cable slack at bounded ±180 degrees. OEM motor retention and measured X06 horn connection remain unresolved.",
         "passed": not forbidden
         and str(registry.NotionSource) == NOTION_URL
         and str(registry.NotionLastEdited) == NOTION_LAST_EDITED
@@ -1006,7 +1021,7 @@ def tilt_check(doc, registry, objects, shapes):
         hits, independent, minimum_z = [], True, float("inf")
         original_tilt = float(pod.Tilt)
         try:
-            for angle in range(-150, 151, 15):
+            for angle in range(-180, 181, 5):
                 pod.Tilt = angle
                 doc.recompute()
                 independent &= all(
@@ -1014,6 +1029,9 @@ def tilt_check(doc, registry, objects, shapes):
                     for o in pods
                     if o != pod
                 )
+                # The input drive follows this pose; query its live placement
+                # once per pose, then reuse each shape across output members.
+                fixed_shapes = {other.Name: world_shape(other) for other in fixed}
                 for obj in moving:
                     moving_shape = world_shape(obj)
                     minimum_z = min(
@@ -1023,7 +1041,7 @@ def tilt_check(doc, registry, objects, shapes):
                         if expected_pair(obj, other):
                             continue
                         overlap_volume = intersection_volume(
-                            moving_shape, shapes[other.Name]
+                            moving_shape, fixed_shapes[other.Name]
                         )
                         if overlap_volume > TOL:
                             hits.append(
@@ -1040,7 +1058,7 @@ def tilt_check(doc, registry, objects, shapes):
         rows.append(
             {
                 "pod": pod.Name,
-                "poses": 21,
+                "poses": 73,
                 "independent": independent,
                 "minimum_z_mm": minimum_z,
                 "collisions": hits,
@@ -1343,6 +1361,7 @@ def detailed_propulsion_evidence(doc, source):
     try:
         reference = propulsion.build_propulsion_module(reference_doc)
         reference_doc.recompute()
+        expected_print_count = len(reference["printed"])
         expected_parts = (
             reference["printed"]
             + reference["hardware"]
@@ -1382,11 +1401,35 @@ def detailed_propulsion_evidence(doc, source):
         for row in overlap_failures(evidence, TOL)
     ]
     meshes = evidence.get("geometry", [])
+    required_cases = {
+        "drive_motion": 2,
+        "mesh_adjustment": 2,
+        "gear_mesh_alignment": 2,
+        "gear_rotation": 2,
+        "bearing_stacks": 8,
+        "output_stub_clearance": 4,
+        "shaft_service": 6,
+        "bearing_service": 8,
+        "gear_service": 4,
+        "input_cartridge_removal": 2,
+        "horn_clamp_service": 4,
+        "rail_key_access": 4,
+        "fastener_stacks": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
+        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
+        "fastener_service": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
+        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
+        "motor_and_prop_insertion": 4,
+        "continuous_nut_loading": 2,
+        "tilt_clearance": 2,
+    }
+    evidence_inventory = {
+        key: {"expected": count, "actual": len(evidence.get(key, []))}
+        for key, count in required_cases.items()
+    }
     evidence_ok = (
         evidence.get("passed", False)
-        and len(evidence.get("sleeve_service_servo_removed", [])) == 4
-        and len(evidence.get("motor_and_prop_insertion", [])) == 4
-        and len(meshes) == 7
+        and all(row["expected"] == row["actual"] for row in evidence_inventory.values())
+        and len(meshes) == expected_print_count
         and all(
             row["valid_brep"]
             and row["solid_count"] == 1
@@ -1394,7 +1437,7 @@ def detailed_propulsion_evidence(doc, source):
             and row["mesh_components"] == 1
             for row in meshes
         )
-        and evidence.get("all_hardware_A2", False)
+        and evidence.get("all_bought_parts_excluded_from_prints", False)
     )
     return {
         "source_file": os.path.relpath(path, REPO_ROOT),
@@ -1402,7 +1445,8 @@ def detailed_propulsion_evidence(doc, source):
         "saved_shape_source_comparisons": comparisons,
         "local_overlap_failures": volume_failures,
         "local_checks": evidence,
-        "scope": "Fine local sleeve service requires prior servo removal on the driven sides. Actual servo horn coupling and motor fasteners remain unfinished.",
+        "required_evidence_inventory": evidence_inventory,
+        "scope": "Recomputed geared-drive mesh, bearings, split output shafts, bounded motion and ordered service paths. Sample fits, loaded retention, cable travel and OEM fastening remain physical qualification requirements.",
         "passed": evidence_ok
         and not volume_failures
         and all(row["passed"] for row in comparisons),

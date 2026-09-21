@@ -7,6 +7,7 @@ geometry, not a tested marketplace SKU. All objects are excluded from STL lists.
 
 import functools
 import math
+import re
 from functools import partial
 from urllib.parse import quote_plus
 
@@ -14,7 +15,14 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import set_property as _set_property
-from gondola.contracts.fasteners import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
+from gondola.contracts.equipment_interfaces import (
+    BEARING_SOURCE,
+    GEAR_SOURCE,
+    HORN_SOURCE,
+    SHAFT_CATALOG_SOURCE,
+    SHAFT_SOURCE,
+)
+from gondola.contracts.fasteners import CLAMP_SCREW_LENGTH as CLAMP_SCREW_LENGTH
 from gondola.contracts.fasteners import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
 from gondola.contracts.fasteners import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
 from gondola.contracts.fasteners import SOCKET_DEPTH as SOCKET_DEPTH
@@ -28,9 +36,13 @@ set_property = partial(_set_property, group="Purchased hardware")
 
 V = App.Vector
 PURCHASED_COLOR = (0.86, 0.67, 0.27)
-JOURNAL_SCREW_SOURCE = (
-    "https://www.accu.co.uk/metric-cap-head-screws/3796-SSCF-M2-14-A2"
+CLAMP_SCREW_SOURCE = (
+    "https://www.accu.co.uk/metric-cap-head-screws/152178-SSCF-M2-8-A2-BL"
 )
+SERVO_SCREW_SOURCE = (
+    "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2"
+)
+SERVO_NUT_SOURCE = "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
 STACK_SCREW_SOURCE = (
     "https://www.ricoplastics.co.uk/shop-components/product/"
     "167-nylon-pan-head-screws-m2-x-5mm/"
@@ -62,15 +74,41 @@ PURCHASING_STATUS = (
 # Keep these requirements with the native bought-part objects so a generated BOM
 # contains the purchase conditions without relying on a separate guide.
 PROCUREMENT_SPECS = {
-    "M2X14_SOCKET_CAP": {
-        "search_query": "M2x14 DIN912 A2 socket cap screw",
+    "M1_6X8_CHEESE_HEAD": {
+        "search_query": "M1.6x8 DIN84 A2 slotted cheese head screw 3mm head",
+        "candidate_url": SERVO_SCREW_SOURCE,
+        "requirements": "A2 stainless M1.6 x 0.35, 8 mm under-head length, DIN 84 slotted cheese head: maximum diameter 3 mm, height 1 mm, slot width 0.4 mm and depth 0.45 mm. Four X06 ear screws. Smaller than the general M2 hardware to provide nominal 0.2 mm radial clearance in the published 2 mm servo ear holes and 0.5 mm head-to-case gap. No washers. Check actual ear seating and safe tightening; not the OEM spline-retaining screw.",
+    },
+    "M1_6_HEX_NUT_DIN934": {
+        "search_query": "M1.6 DIN934 A2 hex nut 3.2mm 1.3mm",
+        "candidate_url": SERVO_NUT_SOURCE,
+        "requirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 ear nuts, accessible with a small wrench. Does not replace the captive M2 DIN 562 square nuts elsewhere. No washers; check actual engagement and printed support faces.",
+    },
+    "MR63ZZ": {
+        "search_query": "NSK Micro Precision ISC MR63ZZ 3x6x2.5 bearing",
+        "candidate_url": BEARING_SOURCE,
+        "requirements": "NSK Micro Precision (ISC) MR63ZZ, 3 x 6 x 2.5 mm, double shielded. Eight installed: four output-axis bearings and four separate input-axis bearings. Do not substitute an open MR63 or a different brand under the same generic size without rechecking fits. Published reference mass 0.27 g each. Do not load the shields; inner-ring abutment OD at most 3.7 mm, housing shoulder opening at least 5.4 mm. Fits and endplay require trials.",
+    },
+    "KST_0415_13": {
+        "search_query": "KST 0415.13 aluminium servo arm 15T 4mm",
+        "candidate_url": HORN_SOURCE,
+        "requirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
+    },
+    "M2X8_SOCKET_CAP": {
+        "search_query": "M2x8 DIN912 A2 socket cap screw",
         "requirements": (
-            "A2 stainless steel, M2 x 0.4 right-hand, 14 mm under-head length. "
+            "A2 stainless steel, M2 x 0.4 right-hand, 8 mm under-head length. "
             "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 3.8 mm, "
-            "head height 2 mm and 1.5 mm hex key. Bears directly on the printed sleeve flange; "
-            "one DIN 562 square nut bears directly on the integral 1.5 mm carrier cap. "
-            "No washers. Nominal nut-side projection is 2.35 mm. Use minimal "
-            "preload and check actual retention; this is not an OEM motor or horn screw."
+            "head height 2 mm and 1.5 mm hex key. Shared propulsion mounting, "
+            "bearing caps and shaft clamps; match each documented grip and "
+            "thread projection. No washers. Use minimal preload and verify "
+            "PA12 retention/creep. This is not an OEM horn or motor screw."
+        ),
+        "evidence_notes": (
+            "Accu's discontinued black-finish A2 example supports nominal "
+            "dimensions only; no finish or current stock requirement is inferred. "
+            "Select a currently available A2 DIN 912 / ISO 4762 screw matching "
+            "the interface. Seller lot, strength and actual mass remain unverified."
         ),
     },
     "M2X5_PA66_PAN_HEAD": {
@@ -147,10 +185,10 @@ PROCUREMENT_SPECS = {
         "requirements": (
             "A2 stainless steel, DIN 562 M2 x 0.4 right-hand flat square nut. "
             "Nominal width 4 mm and height 1.2 mm; accepted width 3.6-4.0 mm "
-            "and height 0.8-1.2 mm. Shared by three rail clamps, four propulsion "
-            "journals and two optical pivots. No washers. Preserve square "
+            "and height 0.8-1.2 mm. Shared by the rail clamps, propulsion clamps, "
+            "bearing caps, input mounts and optical pivots. No washers. Preserve square "
             "corners for rail anti-rotation; verify actual corner form and captive "
-            "fit with the printed coupon. Exposed journal and pivot nuts require "
+            "fit with the printed coupon. Exposed propulsion and pivot nuts require "
             "a holding tool. Do not substitute a hex nut."
         ),
         "candidate_url": SQUARE_NUT_SOURCE,
@@ -165,10 +203,83 @@ PROCUREMENT_SPECS = {
     },
 }
 
+for _teeth in (60, 20):
+    _sku = f"GEABP0.5-{_teeth}-3-B-3"
+    PROCUREMENT_SPECS[_sku] = {
+        "search_query": f"MISUMI {_sku}",
+        "candidate_url": GEAR_SOURCE,
+        "requirements": (
+            f"MISUMI {_sku}: white POM, module 0.5, pressure angle 20 degrees, "
+            f"{_teeth} teeth, 3 mm H7 bore, 3 mm face, 8 mm total length. "
+            "B-type hub with one included M3 SCM435 black-oxide set screw; "
+            "do not order a second screw for the same gear. No metal hub insert. "
+            "Set-screw length/tip/torque and actual mass remain unverified. "
+            "Prefer MISUMI Korea; Korean order acceptance, price and lead time "
+            "are not confirmed by the Japanese dimensional catalog."
+        ),
+    }
+
+
+def _shaft_dimensions(sku):
+    """Decode the verified diameter-3 straight-shaft and one-flat order syntax."""
+    match = re.fullmatch(r"PSFU3-(\d+)(?:-FC(\d+)-A(\d+))?", sku)
+    if match is None:
+        return None
+    length = int(match.group(1))
+    if not 10 <= length <= 400:
+        raise ValueError("PSFU3 standard shaft length must be 10 to 400 mm")
+    flat_length = int(match.group(2)) if match.group(2) is not None else None
+    offset = int(match.group(3)) if match.group(3) is not None else None
+    if flat_length is not None:
+        if length < 20:
+            raise ValueError("PSFU3 FC alteration requires shaft length at least20mm")
+        if not 1 <= flat_length <= 15:
+            raise ValueError("PSFU3 FC flat length must be 1 to 15 mm")
+        if offset == 1 or offset + flat_length > length:
+            raise ValueError("PSFU3 flat offset must be0or≥2mm and fit within shaft")
+    return length, flat_length, offset
+
 
 def procurement_spec(sku):
     """Return a fresh, serializable purchase contract for a modeled CAD SKU."""
-    spec = dict(PROCUREMENT_SPECS[sku])
+    shaft = _shaft_dimensions(sku)
+    if shaft is not None:
+        length, flat_length, offset = shaft
+        flat_requirement = (
+            "No flat is included. "
+            if flat_length is None
+            else (
+                f"Factory FC{flat_length}-A{offset} alteration: one0.5mm-deep "
+                f"flat, {flat_length}mm long, starting{offset}mm from the reference "
+                "end. Clock this flat under the actual gear's radial set screw; "
+                "its angle relative to tooth phase is not published. No manual "
+                "grinding or substitute plain round shaft. "
+            )
+        )
+        spec = {
+            "search_query": f"MISUMI {sku}",
+            "candidate_url": SHAFT_SOURCE,
+            "requirements": (
+                f"MISUMI {sku}: 3 mm h5 x {length} mm straight shaft, "
+                "SUJ2-equivalent hardened hard-chrome steel. Diameter 2.996 to "
+                "3.000 mm. No shoulder or thread is included. "
+                + flat_requirement
+                + "This order "
+                "does not qualify bearing slip fit, shaft-clamp torque transfer "
+                "or gear set-screw retention; verify actual interfaces. Do not "
+                "silently substitute unhardened rod or add unmodeled end machining."
+            ),
+            "evidence_notes": (
+                "MISUMI straight-shaft catalog and current product alteration "
+                "table: FC and A use1mm increments; D3 flat depth0.5mm, "
+                "FC≤15mm, A=0or≥2mm, and altered D3–12 shafts require L≥20mm. "
+                "The selected complete order code must be accepted by the supplier. "
+                "Catalog: " + SHAFT_CATALOG_SOURCE + ". Retained evidence: "
+                "references/misumi_psfu_shaft_catalog.pdf."
+            ),
+        }
+    else:
+        spec = dict(PROCUREMENT_SPECS[sku])
     spec["search_url"] = (
         "https://www.aliexpress.com/wholesale?SearchText="
         + quote_plus(spec["search_query"])
@@ -192,7 +303,7 @@ def add_procurement_properties(obj):
     acquiring an unrelated specification.
     """
     sku = str(obj.HardwareSKU)
-    if sku not in PROCUREMENT_SPECS:
+    if sku not in PROCUREMENT_SPECS and _shaft_dimensions(sku) is None:
         return obj
     spec = procurement_spec(sku)
     for name, key in (
@@ -219,7 +330,7 @@ def hex_prism(across_flats, height, z=0):
 
 
 @functools.lru_cache(None)
-def screw_shape(length=JOURNAL_SCREW_LENGTH):
+def screw_shape(length=CLAMP_SCREW_LENGTH):
     # The bearing face is Z0; the head is below it and the shank points +Z.
     head = Part.makeCylinder(
         SCREW_HEAD_DIAMETER / 2, SCREW_HEAD_HEIGHT, V(0, 0, -SCREW_HEAD_HEIGHT)
@@ -227,6 +338,25 @@ def screw_shape(length=JOURNAL_SCREW_LENGTH):
     shank = Part.makeCylinder(THREAD_DIAMETER / 2, length)
     drive = hex_prism(SOCKET_KEY, SOCKET_DEPTH + 0.1, -SCREW_HEAD_HEIGHT - 0.1)
     return head.fuse(shank).cut(drive).removeSplitter()
+
+
+@functools.lru_cache(None)
+def servo_screw_shape():
+    """DIN 84 M1.6x8 stock envelope, under-head plane Z0 and shank along +Z."""
+    head = Part.makeCylinder(1.5, 1.0, V(0, 0, -1.0))
+    shank = Part.makeCylinder(0.8, 8.0)
+    slot = Part.makeBox(4.0, 0.4, 0.45, V(-2.0, -0.2, -1.0))
+    return head.fuse(shank).cut(slot).removeSplitter()
+
+
+@functools.lru_cache(None)
+def servo_nut_shape():
+    """DIN 934 M1.6 hex nut; nominal geometry omits chamfers and threads."""
+    return (
+        hex_prism(3.2, 1.3)
+        .cut(Part.makeCylinder(0.8, 1.5, V(0, 0, -0.1)))
+        .removeSplitter()
+    )
 
 
 @functools.lru_cache(None)
@@ -285,6 +415,8 @@ def add_hardware(
     notes,
     source="",
     material="A2 stainless steel",
+    thread_diameter=THREAD_DIAMETER,
+    thread_pitch=THREAD_PITCH,
 ):
     if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD") and material != "Nylon PA66":
         raise ValueError("PA66 stack hardware requires explicit Nylon PA66 material.")
@@ -295,7 +427,7 @@ def add_hardware(
     obj.Shape = shape.copy()
     if parent is not None:
         parent.addObject(obj)
-    set_property(obj, "Role", "Purchased metric hardware")
+    set_property(obj, "Role", "Purchased mechanism hardware")
     set_property(obj, "PrintPart", False, "App::PropertyBool")
     set_property(
         obj, "ManufacturingRoute", "Purchase separately; never export as a print part"
@@ -304,15 +436,24 @@ def add_hardware(
     set_property(
         obj,
         "ThreadStandard",
-        "ISO metric coarse M2 x 0.4; right-hand.",
+        (
+            f"ISO metric M{thread_diameter:g} x {thread_pitch:g}; right-hand."
+            if thread_diameter is not None
+            else "Unthreaded purchased interface; no modeled thread."
+        ),
     )
     set_property(
         obj,
         "NominalThreadDiameter",
-        THREAD_DIAMETER,
+        thread_diameter or 0.0,
         "App::PropertyLength",
     )
-    set_property(obj, "ThreadPitch", THREAD_PITCH, "App::PropertyLength")
+    set_property(
+        obj,
+        "ThreadPitch",
+        thread_pitch if thread_diameter else 0.0,
+        "App::PropertyLength",
+    )
     set_property(
         obj,
         "ThreadGeometry",

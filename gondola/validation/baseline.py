@@ -153,11 +153,11 @@ def control_behavior(doc):
         }
         try:
             for requested, expected in (
-                (-999, -150),
+                (-999, -180),
                 (-75, -75),
                 (0, 0),
                 (75, 75),
-                (999, 150),
+                (999, 180),
             ):
                 pod.Tilt = requested
                 doc.recompute()
@@ -293,7 +293,12 @@ def control_behavior(doc):
 
 def unresolved_scope(doc):
     registry = doc.DesignRegistry
-    couplings = [doc.getObject(prefix + "Coupling") for prefix in ("Port", "Starboard")]
+    couplings = [
+        doc.getObject(prefix + suffix)
+        for prefix in ("Port", "Starboard")
+        for suffix in ("HornClampLower", "HornClampUpper")
+    ]
+    horns = [doc.getObject(prefix + "ServoHorn") for prefix in ("Port", "Starboard")]
     forbidden = [
         obj.Name
         for obj in registry.ReferenceParts
@@ -301,11 +306,17 @@ def unresolved_scope(doc):
     ]
     coupling_ok = all(
         obj is not None
-        and obj in registry.ClearanceVolumes
-        and obj not in registry.PrintedParts
+        and obj in registry.PrintedParts
+        and obj not in registry.ClearanceVolumes
         and obj not in registry.HardwareParts
-        and "unfinished" in str(obj.Notes).lower()
+        and "unqualified" in str(getattr(obj, "ManufacturingStatus", "")).lower()
         for obj in couplings
+    ) and all(
+        obj is not None
+        and obj in registry.HardwareParts
+        and obj not in registry.PrintedParts
+        and str(getattr(obj, "HardwareSKU", "")) == "KST_0415_13"
+        for obj in horns
     )
     mtf = doc.getObject("ModuleMTF02PEnvelope")
     optical = doc.getObject("MTF02POpticalClearanceReserve")
@@ -330,7 +341,7 @@ def unresolved_scope(doc):
     return {
         "scope_exclusions": str(registry.ScopeExclusions),
         "forbidden_device_references": forbidden,
-        "horn_couplings_remain_unfinished_clearance_only": coupling_ok,
+        "horn_couplings_use_bought_splines_and_unqualified_printed_clamps": coupling_ok,
         "mtf02p_device_and_optical_reserve_are_reference_only": optical_scope_ok,
         "rail_flexure_exception": rail_exception,
         "qualification_status": status,
@@ -364,6 +375,8 @@ def procurement_and_scope_metadata(obj):
         "ThreadStandard",
         "NominalThreadDiameter",
         "ThreadPitch",
+        "ReferenceMassGrams",
+        "ReferenceMassSource",
         "ShapeModelNotes",
         "SourceURL",
         "PurchaseSearchQuery",

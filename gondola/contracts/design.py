@@ -6,17 +6,19 @@ the other contract modules. Geometric test success never changes release status.
 
 from dataclasses import asdict, dataclass
 
+from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
+
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "P"
+DESIGN_REVISION = "Q"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
     "reviewed_on": "2026-09-20",
     "supplier": "Creallo",
-    "material": "PA12",
+    "material": "PA12; final process/material agreement pending",
     "preferred_process": "SLS",
     "alternative_process": "MJF subject to supplier agreement and fit trials",
     "nominal_rail_length_mm": RAIL_LENGTH_MM,
@@ -37,45 +39,40 @@ MANUFACTURING_DECISION = {
 
 
 # Scoped selection from the source BOM, not measured all-up flight mass.
-# Keep quantity and unit mass together; prints, hardware, wires and tape are excluded.
+# None means unmeasured, not zero. Prints, hardware, wires and tape are excluded.
 @dataclass(frozen=True)
 class EquipmentSelection:
     model: str
     quantity: int
-    listed_unit_mass_g: float
+    listed_unit_mass_g: float | None
 
 
 SELECTED_EQUIPMENT = (
     EquipmentSelection("MicoAir743v2 AIO35A", 1, 10.0),
-    EquipmentSelection(
-        "2S 450mAh LiPo (provisional; requested range 450–2000mAh)", 1, 28.4
-    ),
+    EquipmentSelection("Tattu 2S 450mAh 75C XT30 long pack", 1, None),
     EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
     EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
-    EquipmentSelection("DSpower DS-M005 300deg", 2, 2.0),
+    EquipmentSelection("KST X06 V6.0 regular mounting tabs", 2, 6.0),
     EquipmentSelection("MicoAir MTF-02P", 1, 1.5),
-    EquipmentSelection("LR900-A", 1, 4.0),
+    EquipmentSelection("LR900-A", 1, None),
     EquipmentSelection("LinkTrack P-AS", 1, 3.45),
 )
 SCOPED_LISTED_EQUIPMENT_MASS_G = round(
-    sum(item.quantity * item.listed_unit_mass_g for item in SELECTED_EQUIPMENT), 3
+    sum(
+        item.quantity * item.listed_unit_mass_g
+        for item in SELECTED_EQUIPMENT
+        if item.listed_unit_mass_g is not None
+    ),
+    3,
 )
-# Preserve conflicting primary evidence instead of selecting an electrical rating.
+# Preserve conflicting primary evidence; do not silently tighten supplier tolerance.
 SOURCE_DISCREPANCIES = {
-    "servo_case_dimensions": {
-        "manufacturer_drawing_mm": [16.05, 8.3, 17.2],
-        "manufacturer_product_page_mm": [16.2, 8.3, 17.4],
-        "drawing_evidence": "references/ds_m005_dimensions.jpg",
-        "product_url": "https://www.dspowerservo.com/ds-m005-mini-servo-product/",
-        "status": "Retain the larger published case envelope. Published ear axes and underside datum are separate drawing evidence; verify dimensions on the supplied servo.",
-    },
-    "servo_supply_voltage": {
-        "manufacturer_label_v": [3.7, 4.2],
-        "manufacturer_product_page_v": [3.7, 5.0],
-        "confirmed_product_url": "https://www.dspowerservo.com/ds-m005-mini-servo-product/",
-        "notion_listed_v": [3.7, 5.0],
-        "evidence": "references/ds_m005_voltage_label.jpg",
-        "status": "verify actual servo voltage before electrical integration",
+    "servo_case_tolerance": {
+        "manufacturer_drawing_plus_minus_mm": 0.2,
+        "manufacturer_product_page_plus_minus_mm": 0.1,
+        "drawing_evidence": "references/kst_x06_v6_datasheet.pdf",
+        "sources": [X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE],
+        "status": "Use the May 2023 X06 V6.0 drawing's larger case tolerance; verify the supplied servo before manufacturing its fitted support.",
     },
     "linktrack_power": {
         "datasheet_w": 1.39,
@@ -90,20 +87,38 @@ EXCLUDED_EQUIPMENT = (
     "yaw_motor",
     "fins",
     "fin_servos",
-    "360_degree_servo_option",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X14_SOCKET_CAP": 4,
+    "M2X8_SOCKET_CAP": 20,
+    "M1_6X8_CHEESE_HEAD": 4,
+    "M1_6_HEX_NUT_DIN934": 4,
     "M2X5_PA66_PAN_HEAD": 6,
     "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_SQUARE_NUT_DIN562": 9,
+    "M2_SQUARE_NUT_DIN562": 25,
+    "GEABP0.5-60-3-B-3": 2,
+    "GEABP0.5-20-3-B-3": 2,
+    "MR63ZZ": 8,
+    "PSFU3-26-FC5-A18": 2,
+    "PSFU3-24-FC5-A3": 2,
+    "PSFU3-14": 2,
+    "KST_0415_13": 2,
 }
 
 HARDWARE_MATERIALS = {
-    sku: "Nylon PA66"
-    if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD")
-    else "A2 stainless steel"
+    sku: (
+        "Nylon PA66"
+        if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD")
+        else "POM"
+        if sku.startswith("GEABP")
+        else "SUJ2-equivalent hard-chrome steel"
+        if sku.startswith("PSFU")
+        else "Bearing steel"
+        if sku == "MR63ZZ"
+        else "Aluminium alloy (grade unspecified)"
+        if sku == "KST_0415_13"
+        else "A2 stainless steel"
+    )
     for sku in PURCHASED_HARDWARE_QUANTITIES
 }
 
@@ -111,12 +126,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 13,
+    "installed_prints": 23,
     "optical_mount_parts": 3,
-    "fit_coupons": 2,
+    "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 11,
+    "unique_print_files": 15,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -157,7 +172,7 @@ WIRING_PURCHASE_PLAN = {
         "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
     ],
     "seller_or_completed_harness_verified": False,
-    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, horns and cable ties. Retain the custom rail/shoe and D journal torque interface; no verified stock drop-in removes their function or yields a supported mass saving.",
+    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and split blade-to-shaft adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.",
 }
 
 
@@ -189,11 +204,11 @@ class UnresolvedInterface:
 UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
         "motion_endpoints",
-        "Verify actual DS-M005 travel, mechanical stops and horn clocking through bounded ±150deg motion.",
+        "Calibrate each X06 through bounded ±60deg servo motion for the 60T-to-20T speed-increasing pair's opposite-sign ±180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required; never wrap endpoints or command continuous rotation.",
     ),
     UnresolvedInterface(
-        "servo_supply_voltage",
-        "Resolve manufacturer label 3.7–4.2V versus user-confirmed manufacturer product page and BOM 3.7–5V against the purchased servo before powering it.",
+        "servo_power_and_load",
+        "Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by three before losses; two 6g servos and extra drive hardware are not a weight-saving claim.",
     ),
     UnresolvedInterface(
         "rail_flexure",
@@ -205,11 +220,15 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Measured DS-M005 28T horn connection, torque transfer to D sleeve and horn retaining fastener.",
+        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed blade-capture clamp closure, 3mm axle grip and independently supported input-axis alignment. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. Do not axially preload the servo spline while clamping its axle.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
-        "DS-M005 ear hole axes and underside datum are published; verify actual case offset, ear thickness, bearing contact and M1.6 clearance-fastener length.",
+        "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening.",
+    ),
+    UnresolvedInterface(
+        "gear_mesh_and_shaft_retention",
+        "Check the purchased 60T/20T POM pair at nominal 20 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -217,11 +236,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "physical_retention",
-        "Loaded tests of tape, friction clamps, PA12 flexure life and printed journals.",
+        "Loaded tests of tape, friction clamps, PA12 flexure life and bearing supports.",
     ),
     UnresolvedInterface(
         "moving_wires",
-        "Actual phase-lead slack/strain relief through bounded ±150deg motion; reserved loops are not routing proof.",
+        "Actual phase-lead slack/strain relief through bounded ±180deg output motion; reserved loops are not routing proof and endpoints must not wrap.",
     ),
     UnresolvedInterface(
         "connector_and_wire_fit",
@@ -237,7 +256,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "finished_mass",
-        "Weigh chosen battery, prints, hardware, wiring, connectors and adhesive.",
+        "Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.",
     ),
 )
 
@@ -260,7 +279,7 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
-            "OEM motor/servo mounting fasteners, servo horns and unfinished drive couplings.",
+            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Selected stock horns and modeled adapter hardware are included.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
         ],
         "unmodeled_wiring_purchase_plan": WIRING_PURCHASE_PLAN,
@@ -272,14 +291,15 @@ def project_status():
     return {
         "design_revision": DESIGN_REVISION,
         "units": "mm",
-        "printed_material": "PA12 SLS/MJF",
+        "printed_material": "PA12; SLS preferred for fit trial, supplier process agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
-        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two tilting main propulsors, a compact battery mount and one open electronics carrier with confirmed mounting-hole patterns, sharing an interchangeable manually aligned optical stack.",
+        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased 60T driver turns a 20T output gear; no yaw motor or fin hardware is included.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],
         "scoped_listed_equipment_mass_g": SCOPED_LISTED_EQUIPMENT_MASS_G,
+        "equipment_mass_scope": "Known listed device masses only; battery and radio are unmeasured. Excludes printed parts, drive hardware, wiring and other accessories; not an all-up mass or complete equipment subtotal.",
         "source_discrepancies": SOURCE_DISCREPANCIES,
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,

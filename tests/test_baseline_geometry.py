@@ -123,7 +123,7 @@ class ModuleControlMappingTests(unittest.TestCase):
             pod.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 1)
             set_property(pod, "Tilt", 0, "App::PropertyAngle")
             pod.setExpression(
-                "Placement.Rotation.Angle", "min(150deg; max(-150deg; Tilt))"
+                "Placement.Rotation.Angle", "min(180deg; max(-180deg; Tilt))"
             )
             pods.append(pod)
         registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
@@ -228,6 +228,17 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
 
+    def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):
+        from gondola.validation.baseline import unresolved_scope
+
+        clamp = self.reference.PortHornClampLower
+        original = clamp.ManufacturingStatus
+        try:
+            clamp.ManufacturingStatus = "Production qualified"
+            self.assertFalse(unresolved_scope(self.reference)["passed"])
+        finally:
+            clamp.ManufacturingStatus = original
+
     def test_rail_has_no_comparison_exception(self):
         from gondola.validation.baseline import compare_shape_objects
         from gondola.validation.geometry import local_shape
@@ -262,11 +273,11 @@ class FrozenBaselineTests(unittest.TestCase):
         actual = self.feature("ActualHardware", shape)
         for obj in (expected, actual):
             obj.addProperty("App::PropertyString", "HardwareSKU")
-            obj.HardwareSKU = "M2X14_SOCKET_CAP"
+            obj.HardwareSKU = "M2X8_SOCKET_CAP"
             obj.addProperty("App::PropertyBool", "PrintPart")
             obj.PrintPart = False
             obj.addProperty("App::PropertyString", "PurchaseRequirements")
-            obj.PurchaseRequirements = "A2 stainless steel, M2x14, DIN912"
+            obj.PurchaseRequirements = "A2 stainless steel, M2x8, DIN912"
         self.assertTrue(compare_shape_objects(actual, expected)["passed"])
         actual.HardwareSKU = "M2_HEX_NUT"
         self.assertFalse(compare_shape_objects(actual, expected)["passed"])

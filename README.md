@@ -25,6 +25,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - Model only supported interfaces. Do not invent device holes, bearing planes,
   thread depths, mounting kits, cable datums or electrical compatibility.
   Preserve source discrepancies and explicit design allowances.
+- Preserve the native geared input/output expressions and bounded, non-wrapping
+  tilt controls. Validate gear contact, coupled motion and bearing/fastener
+  retention together. Purchased gear profiles are reference geometry, never
+  printable replacements; shaft and bearing fits require physical trials.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

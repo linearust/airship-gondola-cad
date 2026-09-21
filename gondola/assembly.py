@@ -180,12 +180,13 @@ def build_assembly():
             suffix + "PhaseLeadLoopReserve",
             "phase-lead slack-loop space outside rotor sweep",
             Part.makeTorus(8, 1.5, V(-38, sign * 80, 48.2), V(1, 0, 0)),
-            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±150deg tilt, strain relief and current capacity. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or pass wires through the occupied M2 journal bore.",
+            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or route wires through solid tilt shafts.",
         )
         obj.Role = "Clearance"
         obj.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
         clearance_volumes.append(obj)
     fit_coupons = rail.build_coupons(doc)
+    fit_coupons["printed"] += propulsion.build_fit_coupons(doc)["printed"]
     printed_parts = (
         rail_assembly["printed"]
         + mount_parts
@@ -239,7 +240,7 @@ def build_assembly():
     set_property(
         registry,
         "ScopeExclusions",
-        "Yaw motor, fins/fin servos, optional360deg servo conversion",
+        "Yaw motor, fins and fin servos",
     )
     set_property(
         registry, "ReleaseStatus", json.dumps(release_status(), ensure_ascii=False)
