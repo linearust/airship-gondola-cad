@@ -13,13 +13,13 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, world_shape
-from gondola.manufacturing import geometry_comparison
 from gondola.parts import (
     equipment_mounts,
     optical_mount,
     optical_sensor,
     stack_interface,
 )
+from gondola.print_export import geometry_comparison
 
 from .geometry import intersection_volume, local_shape, translation_sweep
 

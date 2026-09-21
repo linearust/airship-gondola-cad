@@ -11,19 +11,19 @@ import Part
 from gondola.cad import (
     world_shape,
 )
-from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import (
+from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, REPO_ROOT
+from gondola.contracts import equipment_interfaces as interfaces
+from gondola.contracts.design import (
     EXPECTED_INVENTORY,
     HARDWARE_MATERIALS,
     PURCHASED_HARDWARE_QUANTITIES,
     WIRING_PURCHASE_PLAN,
     hardware_bom_scope,
 )
-from gondola.manufacturing import geometry_comparison
 from gondola.parts import equipment_envelopes as devices
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import mounting_interfaces as interfaces
 from gondola.parts import optical_sensor, stack_interface
+from gondola.print_export import geometry_comparison
 from gondola.procurement import (
     PURCHASE_METADATA_FIELDS,
     REQUIRED_PURCHASE_FIELDS,
@@ -75,7 +75,7 @@ def connector_reserve_geometry_check(actual, expected, obstacles):
 
 def connector_buffer_checks(fc_reserve, other_shapes):
     """Measure saved geometry gaps to neighbouring reservations and equipment."""
-    from gondola.parts import wiring_clearance as wiring
+    from gondola.parts import wiring_reserves as wiring
 
     rows = []
     for name in (
@@ -101,17 +101,19 @@ def connector_buffer_checks(fc_reserve, other_shapes):
 
 
 def reserve_checks(doc):
-    from gondola.parts import wiring_clearance as wiring
+    from gondola.parts import wiring_reserves as wiring
 
     registry = doc.DesignRegistry
-    physical = (
+    physical_objects = (
         list(registry.PrintedParts)
         + list(registry.HardwareParts)
         + list(registry.ReferenceParts)
         + list(registry.TapeReferences)
     )
-    shapes = {obj.Name: world_shape(obj) for obj in physical}
-    actual_reserves = {obj.Name: world_shape(obj) for obj in registry.ClearanceVolumes}
+    physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
+    reserve_shapes_by_name = {
+        obj.Name: world_shape(obj) for obj in registry.ClearanceVolumes
+    }
     expected_shapes = wiring.reserve_shapes()
     expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape()
     expected_contracts = wiring.reserve_contracts()
@@ -136,7 +138,7 @@ def reserve_checks(doc):
                     if name == "MTF02PConnectorReserve"
                     else doc.ElectronicsEquipmentModule,
                 ),
-                shapes,
+                physical_shapes_by_name,
             )
             try:
                 contract_matches = json.loads(str(obj.WiringContract)) == json.loads(
@@ -153,12 +155,14 @@ def reserve_checks(doc):
                 and not obj.InstalledConnectorFitVerified
             )
         buffers = (
-            connector_buffer_checks(shape, {**shapes, **actual_reserves})
+            connector_buffer_checks(
+                shape, {**physical_shapes_by_name, **reserve_shapes_by_name}
+            )
             if name == "FCWiringClearanceReserve"
             else []
         )
         intersections, nearest = [], []
-        for other_name, other in shapes.items():
+        for other_name, other in physical_shapes_by_name.items():
             volume = intersection_volume(shape, other)
             if volume > TOL:
                 intersections.append({"object": other_name, "volume_mm3": volume})
@@ -223,8 +227,8 @@ def reserve_checks(doc):
     pairs = []
     for index, name in enumerate(RESERVES):
         for other_name in RESERVES[index + 1 :]:
-            first = actual_reserves.get(name)
-            second = actual_reserves.get(other_name)
+            first = reserve_shapes_by_name.get(name)
+            second = reserve_shapes_by_name.get(other_name)
             present = first is not None and second is not None
             volume = intersection_volume(first, second) if present else None
             pairs.append(
@@ -280,16 +284,16 @@ def mounting_check(doc):
     modeled. These tests prove the printed interfaces and explicit reservations;
     they do not claim a completed, retained equipment assembly.
     """
-    from gondola.parts import wiring_clearance as wiring_clearances
+    from gondola.parts import wiring_reserves as wiring_clearances
 
     registry = doc.DesignRegistry
-    physical = (
+    physical_objects = (
         list(registry.PrintedParts)
         + list(registry.HardwareParts)
         + list(registry.ReferenceParts)
         + list(registry.TapeReferences)
     )
-    shapes = {obj.Name: world_shape(obj) for obj in physical}
+    physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
     support_rows = []
     expected_supports = {"BatteryMount": "battery", "ElectronicsMount": "electronics"}
     for name, kind in expected_supports.items():
@@ -350,23 +354,26 @@ def mounting_check(doc):
     for name, centres, device_hole_diameter, factory in device_specs:
         if name == "ModuleFCEnvelope":
             rotation = App.Rotation(App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
-            confirmed = [
+            published_hole_axes = [
                 rotation.multVec(App.Vector(x, y, 0))
                 + App.Vector(*mounts.FC_CENTRE_XY, 0)
                 for x, y in interfaces.FC_HOLE_CENTRES
             ]
         else:
-            confirmed = [
+            published_hole_axes = [
                 App.Vector(x + mounts.PAS_CENTRE_XY[0], y + mounts.PAS_CENTRE_XY[1], 0)
                 for x, y in interfaces.PAS_HOLE_CENTRES
             ]
-        axes_match = len(centres) == len(confirmed) and all(
-            min((App.Vector(*centre, 0) - expected).Length for expected in confirmed)
+        axes_match = len(centres) == len(published_hole_axes) and all(
+            min(
+                (App.Vector(*centre, 0) - expected).Length
+                for expected in published_hole_axes
+            )
             < TOL
             for centre in centres
         )
         obj = doc.getObject(name)
-        body = shapes[name]
+        body = physical_shapes_by_name[name]
         comparison = geometry_comparison(body, _in_parent_frame(factory(), parent))
         bounds = body.optimalBoundingBox(False, False)
         holes = []
@@ -423,9 +430,11 @@ def mounting_check(doc):
             ),
         )
         pad_world = _in_parent_frame(pad, owner)
-        missing = pad_world.cut(shapes[mount_name]).Volume
+        missing = pad_world.cut(physical_shapes_by_name[mount_name]).Volume
         pad_bounds = pad_world.optimalBoundingBox(False, False)
-        device_bounds = shapes[device_name].optimalBoundingBox(False, False)
+        device_bounds = physical_shapes_by_name[device_name].optimalBoundingBox(
+            False, False
+        )
         covered = all(
             getattr(pad_bounds, axis + "Min")
             >= getattr(device_bounds, axis + "Min") - TOL
@@ -451,7 +460,7 @@ def mounting_check(doc):
         ("ModuleFCEnvelope", mounts.FC_WIRING_CLEARANCE),
         ("ModulePASEnvelope", mounts.PAS_SERVICE_CLEARANCE),
     ):
-        bounds = shapes[name].optimalBoundingBox(False, False)
+        bounds = physical_shapes_by_name[name].optimalBoundingBox(False, False)
         support_top = (
             parent.getGlobalPlacement()
             .multVec(App.Vector(0, 0, mounts.SUPPORT_FACE_Z))
@@ -481,10 +490,12 @@ def mounting_check(doc):
         hits = [
             {
                 "object": other.Name,
-                "intersection_mm3": intersection_volume(space, shapes[other.Name]),
+                "intersection_mm3": intersection_volume(
+                    space, physical_shapes_by_name[other.Name]
+                ),
             }
-            for other in physical
-            if intersection_volume(space, shapes[other.Name]) > TOL
+            for other in physical_objects
+            if intersection_volume(space, physical_shapes_by_name[other.Name]) > TOL
         ]
         free_height_rows.append(
             {
@@ -496,7 +507,7 @@ def mounting_check(doc):
             }
         )
     reserve = doc.getObject("FCWiringClearanceReserve")
-    wiring = {"passed": False, "error": "missing FC wiring corridor"}
+    wiring_report = {"passed": False, "error": "missing FC wiring corridor"}
     if reserve is not None:
         actual = world_shape(reserve)
         comparison = geometry_comparison(
@@ -507,8 +518,8 @@ def mounting_check(doc):
         )
         hits = [
             obj.Name
-            for obj in physical
-            if intersection_volume(actual, shapes[obj.Name]) > TOL
+            for obj in physical_objects
+            if intersection_volume(actual, physical_shapes_by_name[obj.Name]) > TOL
         ]
         local_reserve = local_shape(reserve)
         axis_distances = []
@@ -525,7 +536,7 @@ def mounting_check(doc):
                     "passed": distance >= 5.0 - TOL,
                 }
             )
-        wiring = {
+        wiring_report = {
             "source_comparison": comparison,
             "physical_collisions": hits,
             "clearance_from_confirmed_mount_axes": axis_distances,
@@ -544,25 +555,27 @@ def mounting_check(doc):
         "ModulePASEnvelope",
         "ModuleLR900Envelope",
     ):
-        sweep, sweep_method = translation_sweep(shapes[name], (0, 0, 32))
+        sweep, sweep_method = translation_sweep(
+            physical_shapes_by_name[name], (0, 0, 32)
+        )
         optical_group = doc.getObject("OpticalFlowModule")
         device_parent = doc.getObject(name).getParentGeoFeatureGroup()
         release_head = (
             optical_group is not None
             and optical_group.getParentGeoFeatureGroup() == device_parent
         )
-        removed = {
+        removed_head_names = {
             obj.Name
-            for obj in physical
+            for obj in physical_objects
             if release_head
             and stack_interface.is_removable_head_part(obj, optical_group)
         }
         hits = [
             obj.Name
-            for obj in physical
+            for obj in physical_objects
             if obj.Name != name
-            and obj.Name not in removed
-            and intersection_volume(sweep, shapes[obj.Name]) > TOL
+            and obj.Name not in removed_head_names
+            and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
         ]
         service_rows.append(
             {
@@ -570,7 +583,7 @@ def mounting_check(doc):
                 "upward_travel_mm": 32,
                 "optical_head_must_be_removed_first": release_head,
                 "remaining_columns_and_lower_fasteners_checked": True,
-                "temporarily_removed_head_parts": sorted(removed),
+                "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
                 "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack remove its two upper screws and complete optical head first. Stack columns/lower screws remain installed and are checked. Bare-device path, not a connected harness.",
                 "collisions": hits,
@@ -624,7 +637,7 @@ def mounting_check(doc):
         "confirmed_device_holes": mounting_rows,
         "continuous_adhesive_pads": adhesive_rows,
         "underbody_clearance": free_height_rows,
-        "fc_wiring_corridor": wiring,
+        "fc_wiring_corridor": wiring_report,
         "device_upward_service": service_rows,
         "native_mounting_evidence_matches_sources": evidence_matches,
         "pending_device_mounting_evidence": pending_metadata,
@@ -639,7 +652,7 @@ def mounting_check(doc):
             + free_height_rows
             + service_rows
         )
-        and wiring["passed"]
+        and wiring_report["passed"]
         and evidence_matches
         and all(row["passed"] for row in pending_metadata),
     }
@@ -647,14 +660,14 @@ def mounting_check(doc):
 
 def hardware_check(doc, source):
     registry = doc.DesignRegistry
-    quantities = Counter(str(obj.HardwareSKU) for obj in registry.HardwareParts)
-    materials, checks = {}, []
+    sku_quantities = Counter(str(obj.HardwareSKU) for obj in registry.HardwareParts)
+    materials_by_sku, material_checks = {}, []
     for obj in registry.HardwareParts:
-        materials.setdefault(str(obj.HardwareSKU), set()).add(
+        materials_by_sku.setdefault(str(obj.HardwareSKU), set()).add(
             str(obj.MaterialSelection)
         )
         expected = HARDWARE_MATERIALS.get(str(obj.HardwareSKU))
-        checks.append(
+        material_checks.append(
             {
                 "object": obj.Name,
                 "material": str(obj.MaterialSelection),
@@ -662,11 +675,11 @@ def hardware_check(doc, source):
             }
         )
     bom = json.loads((source.parent / (source.stem + "_hardware_bom.json")).read_text())
-    bom_names = [name for row in bom["items"] for name in row["instances"]]
-    model_hardware = {obj.Name: obj for obj in registry.HardwareParts}
+    bom_instance_names = [name for row in bom["items"] for name in row["instances"]]
+    hardware_by_name = {obj.Name: obj for obj in registry.HardwareParts}
     bom_rows = []
     for row in bom["items"]:
-        instances = [model_hardware.get(name) for name in row["instances"]]
+        instances = [hardware_by_name.get(name) for name in row["instances"]]
         matched = bool(instances) and all(obj is not None for obj in instances)
         if matched:
             procurement_matches = all(
@@ -704,10 +717,12 @@ def hardware_check(doc, source):
     )
     return {
         "total_quantity": len(registry.HardwareParts),
-        "unique_sku_count": len(quantities),
-        "sku_quantities": dict(quantities),
-        "materials_by_sku": {sku: sorted(values) for sku, values in materials.items()},
-        "material_checks": checks,
+        "unique_sku_count": len(sku_quantities),
+        "sku_quantities": dict(sku_quantities),
+        "materials_by_sku": {
+            sku: sorted(values) for sku, values in materials_by_sku.items()
+        },
+        "material_checks": material_checks,
         "bom_source_identity_matches": identity_matches,
         "bom_purchase_scope_matches_contract": bom.get("purchase_scope")
         == hardware_bom_scope(),
@@ -717,15 +732,15 @@ def hardware_check(doc, source):
             and not bool(getattr(obj, "PrintPart", False))
             for obj in registry.HardwareParts
         ),
-        "bom_each_instance_exactly_once": len(bom_names)
+        "bom_each_instance_exactly_once": len(bom_instance_names)
         == EXPECTED_INVENTORY["purchased_hardware"]
-        and len(set(bom_names)) == EXPECTED_INVENTORY["purchased_hardware"]
-        and set(bom_names) == {obj.Name for obj in registry.HardwareParts},
+        and len(set(bom_instance_names)) == EXPECTED_INVENTORY["purchased_hardware"]
+        and set(bom_instance_names) == {obj.Name for obj in registry.HardwareParts},
         "bom_stated_quantity": bom["purchased_hardware_quantity"],
         "bom_stated_unique_specs": bom["unique_purchase_spec_count"],
-        "passed": dict(quantities) == PURCHASED_HARDWARE_QUANTITIES
+        "passed": dict(sku_quantities) == PURCHASED_HARDWARE_QUANTITIES
         and bom.get("purchase_scope") == hardware_bom_scope()
-        and all(row["passed"] for row in checks)
+        and all(row["passed"] for row in material_checks)
         and identity_matches
         and all(row["matches_native_instances"] for row in bom_rows),
     }
@@ -733,39 +748,41 @@ def hardware_check(doc, source):
 
 def validate(source=None):
     fingerprint_before = source_fingerprint()
-    source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
-    before = file_sha256(source)
+    source = (
+        Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
+    )
+    source_hash_before = file_sha256(source)
     bom_path = source.parent / (source.stem + "_hardware_bom.json")
-    bom_before = file_sha256(bom_path)
+    bom_hash_before = file_sha256(bom_path)
     doc = App.openDocument(str(source), hidden=True)
     try:
         registry = doc.DesignRegistry
-        checks, reserve_pairs = reserve_checks(doc)
-        mtf = mtf_sensor_check(doc)
-        mounting = mounting_check(doc)
-        hardware = hardware_check(doc, source)
+        clearance_checks, reserve_pairs = reserve_checks(doc)
+        optical_report = mtf_sensor_check(doc)
+        mounting_report = mounting_check(doc)
+        hardware_report = hardware_check(doc, source)
         try:
             wiring_plan_matches = (
                 json.loads(str(registry.WiringPurchasePlan)) == WIRING_PURCHASE_PLAN
             )
         except (AttributeError, TypeError, ValueError):
             wiring_plan_matches = False
-        sources = {}
+        reference_sources = {}
         for name in (
             "ModulePASEnvelope",
             "ModuleLR900Envelope",
             "ModuleMTF02PEnvelope",
         ):
             obj = doc.getObject(name)
-            sources[name] = {
+            reference_sources[name] = {
                 key: str(getattr(obj, key))
                 for key in obj.PropertiesList
                 if "Source" in key or key == "Notes"
             }
         report = {
-            "source_file": os.path.relpath(source, ROOT),
-            "source_sha256": before,
-            "hardware_bom_sha256_before": bom_before,
+            "source_file": os.path.relpath(source, REPO_ROOT),
+            "source_sha256": source_hash_before,
+            "hardware_bom_sha256_before": bom_hash_before,
             "source_fingerprint": fingerprint_before,
             "scope": "Read-only saved-file clearance and purchased-hardware audit. Temporary in-memory MTF optical-obstruction tilt probes are restored; the native file is never saved.",
             "actual_object_counts": {
@@ -774,13 +791,13 @@ def validate(source=None):
                 "equipment_references": len(registry.ReferenceParts),
                 "tape_references": len(registry.TapeReferences),
             },
-            "reserve_checks": checks,
+            "reserve_checks": clearance_checks,
             "reserve_pair_checks": reserve_pairs,
-            "mtf02p_sensor": mtf,
-            "equipment_mounts": mounting,
-            "hardware": hardware,
+            "mtf02p_sensor": optical_report,
+            "equipment_mounts": mounting_report,
+            "hardware": hardware_report,
             "native_wiring_purchase_plan_matches_contract": wiring_plan_matches,
-            "reference_sources": sources,
+            "reference_sources": reference_sources,
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack through 300 degrees.",
@@ -790,36 +807,39 @@ def validate(source=None):
         }
     finally:
         App.closeDocument(doc.Name)
-    after = file_sha256(source)
-    report["source_sha256_after"] = after
-    report["source_unchanged"] = before == after
+    source_hash_after = file_sha256(source)
+    report["source_sha256_after"] = source_hash_after
+    report["source_unchanged"] = source_hash_before == source_hash_after
     report["hardware_bom_sha256_after"] = file_sha256(bom_path)
-    report["hardware_bom_unchanged"] = bom_before == report["hardware_bom_sha256_after"]
+    report["hardware_bom_unchanged"] = (
+        bom_hash_before == report["hardware_bom_sha256_after"]
+    )
     report["source_code_unchanged"] = fingerprint_before == source_fingerprint()
     report["passed"] = (
-        before == after
+        source_hash_before == source_hash_after
         and report["source_code_unchanged"]
         and report["hardware_bom_unchanged"]
-        and mtf["passed"]
-        and mounting["passed"]
-        and all(row["passed"] for row in checks)
+        and optical_report["passed"]
+        and mounting_report["passed"]
+        and all(row["passed"] for row in clearance_checks)
         and all(row["passed"] for row in reserve_pairs)
-        and hardware["passed"]
+        and hardware_report["passed"]
         and wiring_plan_matches
-        and hardware["not_printed"]
-        and hardware["bom_each_instance_exactly_once"]
-        and hardware["bom_stated_quantity"] == EXPECTED_INVENTORY["purchased_hardware"]
-        and hardware["bom_stated_unique_specs"]
+        and hardware_report["not_printed"]
+        and hardware_report["bom_each_instance_exactly_once"]
+        and hardware_report["bom_stated_quantity"]
+        == EXPECTED_INVENTORY["purchased_hardware"]
+        and hardware_report["bom_stated_unique_specs"]
         == EXPECTED_INVENTORY["purchased_hardware_types"]
     )
-    target = source.parent / (source.stem + "_equipment_validation.json")
-    target.write_text(json.dumps(report, indent=2) + "\n")
+    report_path = source.parent / (source.stem + "_equipment_validation.json")
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
     print(
         json.dumps(
             {
-                "equipment_report": str(target),
+                "equipment_report": str(report_path),
                 "passed": report["passed"],
-                "source_unchanged": before == after,
+                "source_unchanged": source_hash_before == source_hash_after,
             }
         ),
         flush=True,

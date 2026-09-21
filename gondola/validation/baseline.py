@@ -13,15 +13,21 @@ import FreeCAD as App
 from gondola.cad import (
     world_shape,
 )
-from gondola.config import BASELINE_FILE, BASELINE_SHA256, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import (
+from gondola.config import (
+    ARTIFACT_STEM,
+    BASELINE_FILE,
+    BASELINE_SHA256,
+    OUTPUT_DIR,
+    REPO_ROOT,
+)
+from gondola.contracts.design import (
     EXPECTED_INVENTORY,
     MANUFACTURING_DECISION,
     MODULE_STATIONS,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
-from gondola.manufacturing import geometry_comparison
+from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .geometry import local_shape
@@ -440,14 +446,17 @@ def compare_shape_objects(actual, expected):
 
 def validate(source=None, baseline=None):
     fingerprint_before = source_fingerprint()
-    source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
+    source = (
+        Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
+    )
     baseline = Path(baseline).resolve() if baseline else BASELINE
     if source.resolve() == baseline.resolve():
         raise ValueError("Regression source must be distinct from the frozen baseline.")
     before = {
-        os.path.relpath(path, ROOT): file_sha256(path) for path in (source, baseline)
+        os.path.relpath(path, REPO_ROOT): file_sha256(path)
+        for path in (source, baseline)
     }
-    if before[os.path.relpath(baseline, ROOT)] != BASELINE_SHA256:
+    if before[os.path.relpath(baseline, REPO_ROOT)] != BASELINE_SHA256:
         raise ValueError(
             "Frozen approved baseline checksum mismatch; do not regenerate the baseline from current source."
         )
@@ -476,8 +485,8 @@ def validate(source=None, baseline=None):
         controls = control_behavior(current)
         scope = unresolved_scope(current)
         report = {
-            "source": os.path.relpath(source, ROOT),
-            "baseline": os.path.relpath(baseline, ROOT),
+            "source": os.path.relpath(source, REPO_ROOT),
+            "baseline": os.path.relpath(baseline, REPO_ROOT),
             "scope": "Strict regression against the pinned approved design. Every local/world shape, placement, registry and saved native control is checked without geometry exceptions; unresolved interfaces remain unqualified.",
             "file_hashes_before": before,
             "source_sha256": file_sha256(source),
@@ -516,7 +525,8 @@ def validate(source=None, baseline=None):
         for doc in reversed(docs):
             App.closeDocument(doc.Name)
     report["file_hashes_after"] = {
-        os.path.relpath(path, ROOT): file_sha256(path) for path in (source, baseline)
+        os.path.relpath(path, REPO_ROOT): file_sha256(path)
+        for path in (source, baseline)
     }
     report["saved_files_unchanged"] = before == report["file_hashes_after"]
     report["source_code_unchanged"] = fingerprint_before == source_fingerprint()

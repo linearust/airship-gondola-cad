@@ -15,13 +15,13 @@ from pathlib import Path
 
 from .config import (
     ARTIFACT_SCHEMA_VERSION,
+    ARTIFACT_STEM,
     BASELINE_FILE,
     BASELINE_SHA256,
     OUTPUT_DIR,
-    ROOT,
-    STEM,
+    REPO_ROOT,
 )
-from .design_contract import (
+from .contracts.design import (
     EXPECTED_INVENTORY,
     HARDWARE_MATERIALS,
     PURCHASED_HARDWARE_QUANTITIES,
@@ -186,13 +186,13 @@ def _json_bytes(value):
 def build_bundle():
     """Verify saved-CAD/source/export identities, then atomically replace ZIP."""
     output = Path(OUTPUT_DIR)
-    cad = output / (STEM + ".FCStd")
+    cad = output / (ARTIFACT_STEM + ".FCStd")
     inputs = {}
     try:
         cad_sha = file_sha256(cad)
         fingerprint = source_fingerprint()
-        audit_path = output / (STEM + "_validation.json")
-        equipment_path = output / (STEM + "_equipment_validation.json")
+        audit_path = output / (ARTIFACT_STEM + "_validation.json")
+        equipment_path = output / (ARTIFACT_STEM + "_equipment_validation.json")
         audit = _read_json(audit_path, inputs)
         equipment = _read_json(equipment_path, inputs)
         if not (
@@ -208,12 +208,12 @@ def build_bundle():
             )
         _same_source(audit, fingerprint, "validation")
         _same_source(equipment, fingerprint, "equipment validation")
-        baseline_path = output / (STEM + "_baseline_validation.json")
+        baseline_path = output / (ARTIFACT_STEM + "_baseline_validation.json")
         baseline = _read_json(baseline_path, inputs)
         _same_source(baseline, fingerprint, "baseline comparison")
         baseline_hashes = {
-            os.path.relpath(cad, ROOT): cad_sha,
-            os.path.relpath(BASELINE_FILE, ROOT): BASELINE_SHA256,
+            os.path.relpath(cad, REPO_ROOT): cad_sha,
+            os.path.relpath(BASELINE_FILE, REPO_ROOT): BASELINE_SHA256,
         }
         if not (
             baseline.get("passed") is True
@@ -227,9 +227,9 @@ def build_bundle():
                 "Missing, failed or stale baseline comparison. "
                 "Run compare against the frozen baseline after the last build/preview."
             )
-        folder = output / (STEM + "_print_parts")
+        folder = output / (ARTIFACT_STEM + "_print_parts")
         manifest_path = folder / "print_manifest.json"
-        bom_path = output / (STEM + "_hardware_bom.json")
+        bom_path = output / (ARTIFACT_STEM + "_hardware_bom.json")
         manifest = _read_json(manifest_path, inputs)
         bom = _read_json(bom_path, inputs)
         for label, artifact in (("manifest", manifest), ("BOM", bom)):
@@ -245,7 +245,7 @@ def build_bundle():
                 "Hardware BOM purchase scope disagrees with the current design contract."
             )
         _validate_bom(bom)
-        paths = print_artifact_paths(output, STEM, manifest)
+        paths = print_artifact_paths(output, ARTIFACT_STEM, manifest)
         # Snapshot bytes once. The published files are exactly those hashed here,
         # even if another process rewrites an export during ZIP creation.
         snapshots = {name: _snapshot(path, inputs) for name, path in paths.items()}
@@ -259,7 +259,7 @@ def build_bundle():
             raise RuntimeError(
                 "Stale or altered print files, manifest or BOM; run validate again."
             )
-        bom_sha = hashes[STEM + "_hardware_bom.json"]
+        bom_sha = hashes[ARTIFACT_STEM + "_hardware_bom.json"]
         if (
             equipment.get("hardware_bom_sha256_before") != bom_sha
             or equipment.get("hardware_bom_sha256_after") != bom_sha
@@ -272,7 +272,7 @@ def build_bundle():
                 ("file", "file_sha256"),
                 ("step_file", "step_sha256"),
             ):
-                key = STEM + "_print_parts/" + part[name_key]
+                key = ARTIFACT_STEM + "_print_parts/" + part[name_key]
                 if part.get(hash_key) != hashes[key]:
                     raise RuntimeError("Export checksum disagrees with print manifest.")
         state_path = output / "preview_state.json"
@@ -292,9 +292,9 @@ def build_bundle():
             raise RuntimeError("Malformed preview image inventory.")
         files = {
             "print_manifest.json": snapshots.pop(
-                STEM + "_print_parts/print_manifest.json"
+                ARTIFACT_STEM + "_print_parts/print_manifest.json"
             ),
-            "hardware_bom.json": snapshots.pop(STEM + "_hardware_bom.json"),
+            "hardware_bom.json": snapshots.pop(ARTIFACT_STEM + "_hardware_bom.json"),
             "validation/assembly.json": inputs[audit_path],
             "validation/equipment.json": inputs[equipment_path],
             "validation/baseline.json": inputs[baseline_path],
@@ -321,7 +321,7 @@ def build_bundle():
                 },
             }
         )
-        archive = output / (STEM + "_print_parts.zip")
+        archive = output / (ARTIFACT_STEM + "_print_parts.zip")
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(

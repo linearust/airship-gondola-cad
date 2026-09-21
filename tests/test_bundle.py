@@ -27,7 +27,7 @@ class BundleIntegrityTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="gondola-bundle-test-")
         self.addCleanup(self.temp.cleanup)
         self.output = Path(self.temp.name)
-        self.stem = bundle.STEM
+        self.stem = bundle.ARTIFACT_STEM
         self.folder = self.output / (self.stem + "_print_parts")
         self.folder.mkdir()
         self.fingerprint = sha256_bytes(b"source inputs")
@@ -121,8 +121,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.baseline_sha = bundle.file_sha256(self.baseline_file)
         self.baseline_path = self.output / (self.stem + "_baseline_validation.json")
         baseline_hashes = {
-            os.path.relpath(self.cad_path, bundle.ROOT): self.cad_sha,
-            os.path.relpath(self.baseline_file, bundle.ROOT): self.baseline_sha,
+            os.path.relpath(self.cad_path, bundle.REPO_ROOT): self.cad_sha,
+            os.path.relpath(self.baseline_file, bundle.REPO_ROOT): self.baseline_sha,
         }
         self.baseline = {
             "passed": True,

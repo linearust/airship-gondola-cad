@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .config import ARTIFACT_SCHEMA_VERSION
-from .design_contract import hardware_bom_scope
+from .contracts.design import hardware_bom_scope
 from .provenance import source_fingerprint
 
 HARDWARE_MATERIAL_CODES = {

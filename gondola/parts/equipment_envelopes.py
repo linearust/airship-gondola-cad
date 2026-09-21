@@ -13,11 +13,11 @@ from gondola.cad import (
     create_reference,
     set_property,
 )
-from gondola.design_contract import NOTION_URL
+from gondola.contracts import equipment_interfaces as interfaces
+from gondola.contracts.design import NOTION_URL
 
 from . import equipment_mounts as mounts
-from . import mounting_interfaces as interfaces
-from . import wiring_clearance
+from . import wiring_reserves
 from .equipment_metadata import add_interface_metadata, create_wiring_reserve
 
 V = App.Vector
@@ -178,8 +178,8 @@ def build_equipment(doc, battery_group, electronics_group):
     )
     refs = [battery, fc_obj, radio, pas]
     clearance = [max_pack]
-    contracts = wiring_clearance.reserve_contracts()
-    for name, shape in wiring_clearance.reserve_shapes().items():
+    contracts = wiring_reserves.reserve_contracts()
+    for name, shape in wiring_reserves.reserve_shapes().items():
         contract = contracts[name]
         reserve = create_wiring_reserve(doc, electronics_group, name, shape, contract)
         if name == "FCWiringClearanceReserve":

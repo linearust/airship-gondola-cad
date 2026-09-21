@@ -3,7 +3,7 @@
 import math
 import re
 
-from .design_contract import SCOPED_LISTED_EQUIPMENT_MASS_G
+from .contracts.design import SCOPED_LISTED_EQUIPMENT_MASS_G
 from .procurement import hardware_material_code
 
 DENSITIES_G_CM3 = {"PA12": 1.01, "A2": 7.9, "PA66": 1.14}

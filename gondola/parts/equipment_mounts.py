@@ -8,8 +8,8 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import box, create_printed_part, set_property, union
+from gondola.contracts import equipment_interfaces as interfaces
 
-from . import mounting_interfaces as interfaces
 from . import rail, stack_interface
 
 V = App.Vector

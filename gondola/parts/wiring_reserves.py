@@ -11,8 +11,9 @@ import math
 import FreeCAD as App
 import Part
 
+from gondola.contracts import equipment_interfaces as interfaces
+
 from . import equipment_mounts as mounts
-from . import mounting_interfaces as interfaces
 
 V = App.Vector
 FC_PERIPHERAL_DEPTH_MM = 5.0

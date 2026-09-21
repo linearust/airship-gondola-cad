@@ -16,7 +16,7 @@ except ImportError:
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class ModuleControlMappingTests(unittest.TestCase):
     def setUp(self):
-        from gondola.design_contract import ModuleStation
+        from gondola.contracts.design import ModuleStation
 
         self.stations = tuple(
             ModuleStation(name, x, name + "Clamp", "PositiveY")
@@ -94,7 +94,7 @@ class ModuleControlMappingTests(unittest.TestCase):
 
     def test_actual_manual_stages_are_bounded_and_independent(self):
         from gondola.cad import create_group, set_property
-        from gondola.design_contract import MODULE_STATIONS
+        from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts.optical_mount import build_optical_mount
         from gondola.validation.baseline import control_behavior
 
@@ -179,7 +179,7 @@ class FrozenBaselineTests(unittest.TestCase):
         return obj
 
     def test_fixture_inventory_and_unresolved_scope_match_approved_design(self):
-        from gondola.design_contract import (
+        from gondola.contracts.design import (
             EXPECTED_INVENTORY,
             PURCHASED_HARDWARE_QUANTITIES,
         )
@@ -221,7 +221,7 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
 
     def test_fixture_native_controls_remain_independent_and_bounded(self):
-        from gondola.design_contract import MODULE_STATIONS
+        from gondola.contracts.design import MODULE_STATIONS
         from gondola.validation.baseline import control_behavior
 
         result = control_behavior(self.reference)

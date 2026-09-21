@@ -44,7 +44,7 @@ class PreviewCallbacks(unittest.TestCase):
             spec.loader.exec_module(self.preview)
         # A previously imported native submodule may remain on its package.
         self.preview.stack_interface = modules["gondola.parts.stack_interface"]
-        self.preview.OUT = self.output
+        self.preview.OUTPUT_DIR = self.output
         self.preview.source_fingerprint = Mock(return_value="current source")
 
     def read_state(self):

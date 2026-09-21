@@ -12,8 +12,7 @@ import Part
 
 from gondola.cad import box, create_group, create_printed_part, set_property, union
 
-from . import metric_hardware as metric
-from . import stack_interface
+from . import purchased_hardware, stack_interface
 
 V = App.Vector
 ROLL_PIVOT_Z = 8.0
@@ -26,7 +25,7 @@ TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
 TRAY_TOP_Z = 6.5
 ADHESIVE_ALLOWANCE = 1.0
-SCREW_LENGTH = metric.STACK_SCREW_LENGTH
+SCREW_LENGTH = purchased_hardware.STACK_SCREW_LENGTH
 SCREW_BEARING_START = -EAR_THICKNESS
 NUT_START = EAR_THICKNESS
 BOLT_TIP = SCREW_BEARING_START + SCREW_LENGTH
@@ -129,8 +128,10 @@ def mount_contract():
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
         "hardware_per_axis": "PA66 M2x5 slotted pan screw and A2 DIN562 M2 square nut; no washers",
-        "full_nut_engagement_mm": metric.SQUARE_NUT_HEIGHT,
-        "bolt_tip_beyond_nut_mm": BOLT_TIP - NUT_START - metric.SQUARE_NUT_HEIGHT,
+        "full_nut_engagement_mm": purchased_hardware.SQUARE_NUT_HEIGHT,
+        "bolt_tip_beyond_nut_mm": BOLT_TIP
+        - NUT_START
+        - purchased_hardware.SQUARE_NUT_HEIGHT,
         "minimum_nominal_wall_mm": EAR_THICKNESS,
         "fastener_fit_scope": "Nominal screw projection is 0.8mm beyond a 1.2mm nut. Two ears each 0.3mm thicker leave only 0.2mm, before screw-length tolerance. Measure printed thickness and bought screw/nut before use; full physical engagement is unverified.",
         "assembly": "Print all three parts separately; plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
@@ -145,18 +146,18 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
     specs = [
         (
             "Bolt",
-            metric.stack_screw_shape(),
+            purchased_hardware.stack_screw_shape(),
             SCREW_BEARING_START,
             "M2X5_PA66_PAN_HEAD",
-            metric.STACK_SCREW_SOURCE,
+            purchased_hardware.STACK_SCREW_SOURCE,
             "Nylon PA66",
         ),
         (
             "Nut",
-            metric.square_nut_shape(),
+            purchased_hardware.square_nut_shape(),
             NUT_START,
             "M2_SQUARE_NUT_DIN562",
-            metric.SQUARE_NUT_SOURCE,
+            purchased_hardware.SQUARE_NUT_SOURCE,
             "A2 stainless steel",
         ),
     ]
@@ -165,7 +166,7 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
         shape = original.copy()
         shape.rotate(V(), rotation_axis, rotation_degrees)
         shape.translate(V(axial, 0, centre_z) if axis == "X" else V(0, axial, centre_z))
-        obj = metric.add_hardware(
+        obj = purchased_hardware.add_hardware(
             doc,
             parent,
             prefix + kind,

@@ -13,7 +13,7 @@ import FreeCAD as App
 import MeshPart
 
 from .config import ARTIFACT_SCHEMA_VERSION
-from .design_contract import (
+from .contracts.design import (
     MANUFACTURING_DECISION,
     PUBLISHED_PROCESS_SIZE_MM,
     RAIL_LENGTH_MM,

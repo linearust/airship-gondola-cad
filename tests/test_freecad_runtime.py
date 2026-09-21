@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from gondola import cli, runtime
+from gondola import cli, freecad_runtime
 
 
 class FreeCADLauncher(unittest.TestCase):
@@ -19,7 +19,7 @@ class FreeCADLauncher(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="gondola-runtime-")
         self.addCleanup(directory.cleanup)
         self.output = Path(directory.name)
-        self.cad = self.output / (runtime.STEM + ".FCStd")
+        self.cad = self.output / (freecad_runtime.ARTIFACT_STEM + ".FCStd")
         self.cad.write_bytes(b"native assembly")
         self.fingerprint = "current source fingerprint"
         for target, value in (
@@ -27,7 +27,7 @@ class FreeCADLauncher(unittest.TestCase):
             ("mounted_appimage", lambda _: contextlib.nullcontext(self.output)),
             ("source_fingerprint", Mock(return_value=self.fingerprint)),
         ):
-            patcher = patch.object(runtime, target, value)
+            patcher = patch.object(freecad_runtime, target, value)
             patcher.start()
             self.addCleanup(patcher.stop)
 
@@ -43,23 +43,25 @@ class FreeCADLauncher(unittest.TestCase):
 
     def test_relative_source_is_resolved_before_child_changes_directory(self):
         with patch.object(
-            runtime.subprocess, "run", return_value=Mock(returncode=0)
+            freecad_runtime.subprocess, "run", return_value=Mock(returncode=0)
         ) as run:
             self.assertEqual(
-                runtime.run_with_freecad("validate", self.output, source="saved.FCStd"),
+                freecad_runtime.run_with_freecad(
+                    "validate", self.output, source="saved.FCStd"
+                ),
                 0,
             )
         args = run.call_args.args[0]
         self.assertEqual(args[-2:], ["--source", str(Path("saved.FCStd").resolve())])
-        self.assertEqual(run.call_args.kwargs["cwd"], runtime.ROOT)
+        self.assertEqual(run.call_args.kwargs["cwd"], freecad_runtime.REPO_ROOT)
 
     def test_preview_cannot_reuse_previous_success_when_child_writes_nothing(self):
         (self.output / "preview_state.json").write_text(
             json.dumps({"passed": True, "run_id": "previous invocation"})
         )
-        with patch.object(runtime, "_run_preview_process", return_value=0):
+        with patch.object(freecad_runtime, "_run_preview_process", return_value=0):
             with self.assertRaisesRegex(RuntimeError, "did not finish"):
-                runtime.run_with_freecad("preview", self.output)
+                freecad_runtime.run_with_freecad("preview", self.output)
         self.assertFalse(
             json.loads((self.output / "preview_state.json").read_text())["passed"]
         )
@@ -69,17 +71,19 @@ class FreeCADLauncher(unittest.TestCase):
             self.write_result(env, run_id="different invocation")
             return 0
 
-        with patch.object(runtime, "_run_preview_process", side_effect=child):
+        with patch.object(freecad_runtime, "_run_preview_process", side_effect=child):
             with self.assertRaisesRegex(RuntimeError, "this invocation"):
-                runtime.run_with_freecad("preview", self.output)
+                freecad_runtime.run_with_freecad("preview", self.output)
 
     def test_current_preview_result_succeeds(self):
         def child(args, env):
             self.write_result(env)
             return 0
 
-        with patch.object(runtime, "_run_preview_process", side_effect=child):
-            self.assertEqual(runtime.run_with_freecad("preview", self.output), 0)
+        with patch.object(freecad_runtime, "_run_preview_process", side_effect=child):
+            self.assertEqual(
+                freecad_runtime.run_with_freecad("preview", self.output), 0
+            )
 
     def test_preview_rejects_stale_source_or_saved_cad(self):
         for changes, message in (
@@ -92,18 +96,20 @@ class FreeCADLauncher(unittest.TestCase):
                     self.write_result(env, **changes)
                     return 0
 
-                with patch.object(runtime, "_run_preview_process", side_effect=child):
+                with patch.object(
+                    freecad_runtime, "_run_preview_process", side_effect=child
+                ):
                     with self.assertRaisesRegex(RuntimeError, message):
-                        runtime.run_with_freecad("preview", self.output)
+                        freecad_runtime.run_with_freecad("preview", self.output)
 
     def test_preview_failure_after_writing_success_invalidates_result(self):
         def child(args, env):
             self.write_result(env)
             raise RuntimeError("GUI did not close")
 
-        with patch.object(runtime, "_run_preview_process", side_effect=child):
+        with patch.object(freecad_runtime, "_run_preview_process", side_effect=child):
             with self.assertRaisesRegex(RuntimeError, "GUI did not close"):
-                runtime.run_with_freecad("preview", self.output)
+                freecad_runtime.run_with_freecad("preview", self.output)
         self.assertFalse(
             json.loads((self.output / "preview_state.json").read_text())["passed"]
         )
@@ -111,16 +117,22 @@ class FreeCADLauncher(unittest.TestCase):
     def test_preview_timeout_terminates_then_kills_unresponsive_process_group(self):
         process = Mock(pid=4321)
         process.wait.side_effect = [
-            subprocess.TimeoutExpired("FreeCAD", runtime.PREVIEW_TIMEOUT_SECONDS),
-            subprocess.TimeoutExpired("FreeCAD", runtime.PROCESS_STOP_TIMEOUT_SECONDS),
+            subprocess.TimeoutExpired(
+                "FreeCAD", freecad_runtime.PREVIEW_TIMEOUT_SECONDS
+            ),
+            subprocess.TimeoutExpired(
+                "FreeCAD", freecad_runtime.PROCESS_STOP_TIMEOUT_SECONDS
+            ),
             -9,
         ]
         with (
-            patch.object(runtime.subprocess, "Popen", return_value=process) as popen,
-            patch.object(runtime.os, "killpg") as killpg,
+            patch.object(
+                freecad_runtime.subprocess, "Popen", return_value=process
+            ) as popen,
+            patch.object(freecad_runtime.os, "killpg") as killpg,
         ):
             with self.assertRaisesRegex(RuntimeError, "did not finish within"):
-                runtime._run_preview_process(["FreeCAD"], {})
+                freecad_runtime._run_preview_process(["FreeCAD"], {})
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
         self.assertEqual(
             [call.args for call in killpg.call_args_list],
@@ -131,11 +143,11 @@ class FreeCADLauncher(unittest.TestCase):
         process = Mock(pid=4321)
         process.wait.side_effect = [KeyboardInterrupt, -15]
         with (
-            patch.object(runtime.subprocess, "Popen", return_value=process),
-            patch.object(runtime.os, "killpg") as killpg,
+            patch.object(freecad_runtime.subprocess, "Popen", return_value=process),
+            patch.object(freecad_runtime.os, "killpg") as killpg,
         ):
             with self.assertRaises(KeyboardInterrupt):
-                runtime._run_preview_process(["FreeCAD"], {})
+                freecad_runtime._run_preview_process(["FreeCAD"], {})
         killpg.assert_called_once_with(4321, signal.SIGTERM)
 
 
@@ -156,7 +168,7 @@ class CommandLineErrors(unittest.TestCase):
     def test_cli_passes_resolved_source_to_launcher(self):
         with (
             patch.object(cli.importlib.util, "find_spec", return_value=None),
-            patch.object(runtime, "run_with_freecad", return_value=0) as run,
+            patch.object(freecad_runtime, "run_with_freecad", return_value=0) as run,
         ):
             self.assertEqual(cli.main(["validate", "--source", "saved.FCStd"]), 0)
         self.assertEqual(run.call_args.args[3], Path("saved.FCStd").resolve())

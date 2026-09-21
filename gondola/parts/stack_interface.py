@@ -12,7 +12,7 @@ import Part
 
 from gondola.cad import belongs_to_group, box, set_property, union
 
-from . import metric_hardware as metric
+from . import purchased_hardware
 
 V = App.Vector
 PITCH_MM = 40.0
@@ -23,7 +23,7 @@ ARM_WIDTH = 5.0
 DECK_THICKNESS = 2.0
 HOST_DECK_BOTTOM_Z = 10.2
 HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
-SPACER_LENGTH = metric.STACK_SPACER_LENGTH
+SPACER_LENGTH = purchased_hardware.STACK_SPACER_LENGTH
 STACK_TOP_Z = HOST_SUPPORT_Z + SPACER_LENGTH
 SUPPORTED_HOSTS = {
     "BatteryEquipmentModule": "BatteryMount",
@@ -115,15 +115,15 @@ def build_stack_hardware(doc, group):
     hardware = []
     common = "Structural stack only; never print. Hand snug after verifying actual parts, thread depth/engagement and retention; no qualified tightening torque."
     for index, (x, y) in enumerate(HOLE_CENTRES):
-        spacer = metric.add_hardware(
+        spacer = purchased_hardware.add_hardware(
             doc,
             group,
             f"OpticalStackSpacer{index}",
             "BUY | M2 F/F PA66 AF4 x25mm spacer",
-            metric.spacer_shape(),
+            purchased_hardware.spacer_shape(),
             "M2_FF_PA66_AF4_L25",
             common,
-            metric.STACK_SPACER_SOURCE,
+            purchased_hardware.STACK_SPACER_SOURCE,
             "Nylon PA66",
         )
         set_property(spacer, "StackEnd", "Spacer")
@@ -134,16 +134,16 @@ def build_stack_hardware(doc, group):
             ("Upper", DECK_THICKNESS, -1),
         ):
             rotation = App.Rotation(V(0, 0, 1), V(0, 0, direction))
-            bolt = metric.add_hardware(
+            bolt = purchased_hardware.add_hardware(
                 doc,
                 group,
                 f"OpticalStack{end}Bolt{index}",
                 "BUY | M2x5 PA66 slotted pan screw",
-                metric.stack_screw_shape(),
+                purchased_hardware.stack_screw_shape(),
                 "M2X5_PA66_PAN_HEAD",
                 common
                 + " Nominal thread entry3.0mm through printed2mm plate without washers; actual printed thickness, screw tolerance and blind depth must be checked.",
-                metric.STACK_SCREW_SOURCE,
+                purchased_hardware.STACK_SCREW_SOURCE,
                 "Nylon PA66",
             )
             bolt.Placement = App.Placement(V(x, y, bearing_z), rotation)

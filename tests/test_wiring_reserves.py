@@ -12,7 +12,7 @@ except ImportError:
 
 
 @unittest.skipIf(App is None, "requires FreeCAD's Python runtime")
-class WiringClearanceTests(unittest.TestCase):
+class WiringReserveTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from gondola.cad import create_group, set_property
@@ -22,13 +22,13 @@ class WiringClearanceTests(unittest.TestCase):
             optical_mount,
             optical_sensor,
             stack_interface,
-            wiring_clearance,
+            wiring_reserves,
         )
         from gondola.validation import equipment
 
-        cls.wiring = wiring_clearance
+        cls.wiring = wiring_reserves
         cls.audit = equipment
-        cls.expected = wiring_clearance.reserve_shapes()
+        cls.expected = wiring_reserves.reserve_shapes()
         cls.expected["MTF02PConnectorReserve"] = (
             optical_sensor.connector_reserve_shape()
         )

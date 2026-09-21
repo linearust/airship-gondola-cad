@@ -14,10 +14,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-class WorkspacePortability(unittest.TestCase):
+class RepositoryIntegrityTests(unittest.TestCase):
     def test_active_imports_do_not_require_revision_scripts_or_private_tools(self):
         allowed = set(sys.stdlib_module_names) | {
             "gondola",
@@ -28,7 +28,7 @@ class WorkspacePortability(unittest.TestCase):
             "MeshPart",
             "PySide",
         }
-        for path in (ROOT / "gondola").rglob("*.py"):
+        for path in (REPO_ROOT / "gondola").rglob("*.py"):
             source = path.read_text()
             self.assertNotIn("/home/h/", source, path)
             self.assertNotIn("/tmp/.mount_", source, path)
@@ -46,7 +46,7 @@ class WorkspacePortability(unittest.TestCase):
             copy = Path(directory) / "project"
             copy.mkdir()
             shutil.copytree(
-                ROOT / "gondola",
+                REPO_ROOT / "gondola",
                 copy / "gondola",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
@@ -83,19 +83,19 @@ class WorkspacePortability(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="gondola-fingerprint-") as directory:
             copy = Path(directory)
             shutil.copytree(
-                ROOT / "gondola",
+                REPO_ROOT / "gondola",
                 copy / "gondola",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
-            for macro in ROOT.glob("*.FCMacro"):
+            for macro in REPO_ROOT.glob("*.FCMacro"):
                 shutil.copy2(macro, copy / macro.name)
             original = provenance.source_fingerprint()
-            with patch.object(provenance, "ROOT", copy):
+            with patch.object(provenance, "REPO_ROOT", copy):
                 self.assertEqual(original, provenance.source_fingerprint())
                 (copy / "build").mkdir()
                 (copy / "build" / "irrelevant.py").write_text("generated artifact")
                 self.assertEqual(original, provenance.source_fingerprint())
-                source = copy / "gondola" / "design_contract.py"
+                source = copy / "gondola" / "contracts" / "design.py"
                 source.write_text(source.read_text() + "\n# changed design input\n")
                 self.assertNotEqual(original, provenance.source_fingerprint())
 

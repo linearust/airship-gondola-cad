@@ -20,8 +20,8 @@ from gondola.cad import (
     translated_shape,
     world_shape,
 )
-from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import (
+from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, REPO_ROOT
+from gondola.contracts.design import (
     CREALLO_GUIDE_URL,
     DESIGN_REVISION,
     EXCLUDED_EQUIPMENT,
@@ -36,16 +36,16 @@ from gondola.design_contract import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
-from gondola.manufacturing import (
+from gondola.mass_budget import mass_budget
+from gondola.parts import equipment_mounts as mounts
+from gondola.parts import propulsion, rail, stack_interface
+from gondola.print_export import (
     MESH_PARAMETERS,
     geometry_comparison,
     mesh_from_shape,
     print_entry_inventory_check,
     print_shape,
 )
-from gondola.mass_budget import mass_budget
-from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail, stack_interface
 from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -88,12 +88,16 @@ def path_checks(moving, fixed, vectors):
     for vector in vectors:
         hits = []
         for name, shape in moving:
-            s = translated_shape(shape, *vector)
+            moved_shape = translated_shape(shape, *vector)
             for other_name, other in fixed:
-                vol = intersection_volume(s, other)
-                if vol > TOL:
+                overlap_volume = intersection_volume(moved_shape, other)
+                if overlap_volume > TOL:
                     hits.append(
-                        {"moving": name, "fixed": other_name, "intersection_mm3": vol}
+                        {
+                            "moving": name,
+                            "fixed": other_name,
+                            "intersection_mm3": overlap_volume,
+                        }
                     )
         rows.append({"translation_mm": list(vector), "collisions": hits})
     return {"samples": rows, "passed": all(not r["collisions"] for r in rows)}
@@ -137,14 +141,17 @@ def rail_check(registry, shapes):
     objects = list(registry.RailSegments)
     rows = []
     for obj in objects:
-        s = local_shape(obj)
-        comparison = geometry_comparison(s, rail.rail_shape())
+        rail_shape = local_shape(obj)
+        comparison = geometry_comparison(rail_shape, rail.rail_shape())
         base_samples = []
         sample_count = math.ceil(rail.LENGTH / 3)
         for index in range(sample_count):
             x = -rail.LENGTH / 2 + (index + 0.5) * rail.LENGTH / sample_count
             base_samples.append(
-                {"x_mm": x, "in_unbroken_base": s.isInside(V(x, 0, 0.5), TOL, True)}
+                {
+                    "x_mm": x,
+                    "in_unbroken_base": rail_shape.isInside(V(x, 0, 0.5), TOL, True),
+                }
             )
         relief_samples = []
         relief_range = math.ceil(rail.LENGTH / rail.LAND_PITCH)
@@ -155,17 +162,17 @@ def rail_check(registry, shapes):
             relief_samples.append(
                 {
                     "x_mm": x,
-                    "base_present": s.isInside(V(x, 0, 0.5), TOL, True),
-                    "head_absent": not s.isInside(V(x, 0, 6.2), TOL, True),
+                    "base_present": rail_shape.isInside(V(x, 0, 0.5), TOL, True),
+                    "head_absent": not rail_shape.isInside(V(x, 0, 6.2), TOL, True),
                 }
             )
-        bb = s.optimalBoundingBox(False, False)
+        bounds = rail_shape.optimalBoundingBox(False, False)
         pad_rows = []
         for x in rail.PAD_CENTRES:
             pad = rail.rounded_plate(x)
             pad_bounds = pad.optimalBoundingBox(False, False)
-            margin = min(pad_bounds.XMin - bb.XMin, bb.XMax - pad_bounds.XMax)
-            missing_volume = abs(pad.cut(s).Volume)
+            margin = min(pad_bounds.XMin - bounds.XMin, bounds.XMax - pad_bounds.XMax)
+            missing_volume = abs(pad.cut(rail_shape).Volume)
             pad_rows.append(
                 {
                     "centre_x_mm": x,
@@ -206,43 +213,44 @@ def rail_check(registry, shapes):
             {
                 "object": obj.Name,
                 "source_comparison": comparison,
-                "size_mm": [bb.XLength, bb.YLength, bb.ZLength],
+                "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "unbroken_base_samples": base_samples,
                 "relief_samples": relief_samples,
                 "pad_end_margins": pad_rows,
                 "installed_shoe_end_margins": installed_shoes,
                 "fully_supported_nominal_shoe_centre_x_range_mm": [
-                    bb.XMin + rail.SHOE_LENGTH / 2,
-                    bb.XMax - rail.SHOE_LENGTH / 2,
+                    bounds.XMin + rail.SHOE_LENGTH / 2,
+                    bounds.XMax - rail.SHOE_LENGTH / 2,
                 ],
-                "single_valid_solid": s.isValid() and len(s.Solids) == 1,
-                "passed": s.isValid()
-                and len(s.Solids) == 1
+                "single_valid_solid": rail_shape.isValid()
+                and len(rail_shape.Solids) == 1,
+                "passed": rail_shape.isValid()
+                and len(rail_shape.Solids) == 1
                 and comparison["difference_mm3"] < TOL
-                and abs(bb.XLength - rail.LENGTH) < TOL
+                and abs(bounds.XLength - rail.LENGTH) < TOL
                 and all(row["passed"] for row in pad_rows + installed_shoes)
                 and all(r["in_unbroken_base"] for r in base_samples)
                 and all(r["base_present"] and r["head_absent"] for r in relief_samples),
             }
         )
-    nominal = rail.shoe_shape()
-    section = rail.rail_shape(72, (-27, 27))
+    nominal_shoe = rail.shoe_shape()
+    rail_section = rail.rail_shape(72, (-27, 27))
     tapes = [(o.Name, shapes[o.Name]) for o in registry.TapeReferences]
     phase_rows = []
     # An entire relief pitch, including half-millimetre offsets, checks that
     # the rigid short shoe bridges each gap throughout the sliding phase.
     for j in range(37):
         x = j * 0.5
-        shoe = translated_shape(nominal, x=x)
+        shoe = translated_shape(nominal_shoe, x=x)
         phase_rows.append(
             {
                 "phase_x_mm": x,
-                "slide_intersection_mm3": intersection_volume(shoe, section),
+                "slide_intersection_mm3": intersection_volume(shoe, rail_section),
                 "lift_1mm_blocking_mm3": intersection_volume(
-                    translated_shape(shoe, z=1), section
+                    translated_shape(shoe, z=1), rail_section
                 ),
                 "lateral_1mm_blocking_mm3": intersection_volume(
-                    translated_shape(shoe, y=1), section
+                    translated_shape(shoe, y=1), rail_section
                 ),
             }
         )
@@ -250,7 +258,7 @@ def rail_check(registry, shapes):
     for angle in (-45, 45):
         nut = rail.nut_shape().copy()
         nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
-        vol = intersection_volume(nut, nominal)
+        vol = intersection_volume(nut, nominal_shoe)
         nut_rotation.append(
             {
                 "rotation_about_constrained_screw_axis_deg": angle,
@@ -263,14 +271,14 @@ def rail_check(registry, shapes):
     pocket_tolerance = 0.3
     largest_slot = rail.NUT_POCKET_AF + pocket_tolerance
     smallest_slot = rail.NUT_POCKET_AF - pocket_tolerance
-    tolerance_shoe = nominal.cut(rail.nut_pocket_void(largest_slot))
+    tolerance_shoe = nominal_shoe.cut(rail.nut_pocket_void(largest_slot))
     tolerance_shoe = tolerance_shoe.cut(
         rail.half_turn(rail.nut_pocket_void(largest_slot))
     )
     tolerance_rotations = []
     for angle in (-45, 45):
         smallest_nut = rail.nut_shape(
-            rail.fastener.SQUARE_NUT_MIN_AF, rail.fastener.SQUARE_NUT_MIN_HEIGHT
+            rail.fasteners.SQUARE_NUT_MIN_AF, rail.fasteners.SQUARE_NUT_MIN_HEIGHT
         )
         smallest_nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
         vol = intersection_volume(smallest_nut, tolerance_shoe)
@@ -281,20 +289,20 @@ def rail_check(registry, shapes):
                 "passed": vol > TOL,
             }
         )
-    minimum_diagonal = rail.fastener.SQUARE_NUT_MIN_AF * math.sqrt(2)
+    minimum_diagonal = rail.fasteners.SQUARE_NUT_MIN_AF * math.sqrt(2)
     insertion_clearance = smallest_slot - rail.NUT_AF
     tolerance_capture = {
-        "square_nut_af_range_mm": [rail.fastener.SQUARE_NUT_MIN_AF, rail.NUT_AF],
+        "square_nut_af_range_mm": [rail.fasteners.SQUARE_NUT_MIN_AF, rail.NUT_AF],
         "square_nut_thickness_range_mm": [
-            rail.fastener.SQUARE_NUT_MIN_HEIGHT,
+            rail.fasteners.SQUARE_NUT_MIN_HEIGHT,
             rail.NUT_THICKNESS,
         ],
         "slot_width_range_mm": [smallest_slot, largest_slot],
         "minimum_total_insertion_clearance_mm": insertion_clearance,
         "minimum_square_diagonal_mm": minimum_diagonal,
         "rotation_blocking_width_margin_mm": minimum_diagonal - largest_slot,
-        "minimum_geometric_thread_turns": rail.fastener.SQUARE_NUT_MIN_HEIGHT
-        / rail.fastener.THREAD_PITCH,
+        "minimum_geometric_thread_turns": rail.fasteners.SQUARE_NUT_MIN_HEIGHT
+        / rail.fasteners.THREAD_PITCH,
         "rotation_cases": tolerance_rotations,
         "scope": "Size-only tolerance screen for a square nut with unchamfered corners and a straight slot. Actual corners, distortion, thread engagement, torque and PA12 bearing strength require coupon and load testing; no strength qualification.",
         "passed": insertion_clearance >= pocket_tolerance - TOL
@@ -303,24 +311,24 @@ def rail_check(registry, shapes):
     }
     tape_rows = []
     for name, shape in tapes:
-        bb = shape.optimalBoundingBox(False, False)
+        bounds = shape.optimalBoundingBox(False, False)
         centre = shape.CenterOfMass
-        inner = min(abs(bb.YMin), abs(bb.YMax))
+        inner = min(abs(bounds.YMin), abs(bounds.YMax))
         tape_rows.append(
             {
                 "tape": name,
-                "minimum_z_mm": bb.ZMin,
+                "minimum_z_mm": bounds.ZMin,
                 "central_rail_head_clearance_y_mm": inner - rail.HEAD_WIDTH / 2,
-                "x_width_mm": bb.XLength,
+                "x_width_mm": bounds.XLength,
                 "centre_x_mm": centre.x,
                 "rail_intersection_mm3": (
                     intersection_volume(shape, shapes[objects[0].Name])
                     if objects
                     else -1
                 ),
-                "passed": bb.ZMin >= -TOL
+                "passed": bounds.ZMin >= -TOL
                 and inner >= 6 - TOL
-                and bb.XLength <= rail.PAD_LENGTH + TOL,
+                and bounds.XLength <= rail.PAD_LENGTH + TOL,
             }
         )
     return {
@@ -347,11 +355,11 @@ def rail_check(registry, shapes):
 
 
 def hardware_check(registry):
-    bought = list(registry.HardwareParts)
-    printed = list(registry.PrintedParts) + list(registry.FitCoupons)
+    purchased_parts = list(registry.HardwareParts)
+    printed_parts = list(registry.PrintedParts) + list(registry.FitCoupons)
     rows = []
-    printed_names = {o.Name for o in printed}
-    for obj in bought:
+    printed_names = {o.Name for o in printed_parts}
+    for obj in purchased_parts:
         standard = str(getattr(obj, "ThreadStandard", ""))
         sku = str(getattr(obj, "HardwareSKU", ""))
         thread_diameter = float(obj.NominalThreadDiameter.Value)
@@ -383,7 +391,7 @@ def hardware_check(registry):
     clamp_names = {o.Name for o in registry.RailLocks}
     source = Path(registry.Document.FileName)
     bom = json.loads((source.parent / (source.stem + "_hardware_bom.json")).read_text())
-    bom_names = [name for row in bom["items"] for name in row["instances"]]
+    bom_instance_names = [name for row in bom["items"] for name in row["instances"]]
     material_rows = []
     for row in bom["items"]:
         materials = {
@@ -399,10 +407,10 @@ def hardware_check(registry):
                 and row["quantity"] == len(row["instances"]),
             }
         )
-    bom_ok = (
-        len(bom_names) == len(bought)
-        and len(set(bom_names)) == len(bought)
-        and set(bom_names) == {o.Name for o in bought}
+    bom_inventory_matches = (
+        len(bom_instance_names) == len(purchased_parts)
+        and len(set(bom_instance_names)) == len(purchased_parts)
+        and set(bom_instance_names) == {o.Name for o in purchased_parts}
         and all(row["passed"] for row in material_rows)
     )
     expected_purchases = {
@@ -411,20 +419,21 @@ def hardware_check(registry):
     }
     purchase_counts = {row["purchase_code"]: row["quantity"] for row in bom["items"]}
     return {
-        "purchased_item_count": len(bought),
+        "purchased_item_count": len(purchased_parts),
         "parts": rows,
         "bill_of_materials": {
             "material_specific_purchases": material_rows,
-            "every_hardware_object_included_once": bom_ok,
+            "every_hardware_object_included_once": bom_inventory_matches,
             "declared_purchase_specifications": purchase_counts == expected_purchases,
         },
-        "all_rail_clamps_are_purchased": clamp_names <= {o.Name for o in bought},
+        "all_rail_clamps_are_purchased": clamp_names
+        <= {o.Name for o in purchased_parts},
         "thread_retention_simulated": False,
         "passed": bool(rows)
         and all(r["passed"] for r in rows)
-        and bom_ok
+        and bom_inventory_matches
         and purchase_counts == expected_purchases
-        and clamp_names <= {o.Name for o in bought},
+        and clamp_names <= {o.Name for o in purchased_parts},
     }
 
 
@@ -456,7 +465,7 @@ def module_service(registry, objects, shapes):
         bindings = module_control_bindings(registry.Document)
     except (AttributeError, ValueError) as error:
         return {"modules": [], "passed": False, "error": str(error)}
-    result, removed = [], set()
+    service_rows, removed_names = [], set()
     sequence = module_removal_plan(module for _, module in bindings)
     for module, direction in sequence:
         members = [o for o in objects if belongs_to_group(o, module)]
@@ -466,7 +475,7 @@ def module_service(registry, objects, shapes):
         fixed = [
             (o.Name, shapes[o.Name])
             for o in objects
-            if o != screw and o.Name not in removed
+            if o != screw and o.Name not in removed_names
         ]
         side = 1 if module.Placement.Base.y > 0 else -1
         screw_release = path_checks(
@@ -477,7 +486,7 @@ def module_service(registry, objects, shapes):
         nut_obstacles = [
             (o.Name, shapes[o.Name])
             for o in objects
-            if o not in (screw, nut) and o.Name not in removed
+            if o not in (screw, nut) and o.Name not in removed_names
         ]
         nut_load = path_checks(
             [(nut.Name, shapes[nut.Name])],
@@ -486,9 +495,9 @@ def module_service(registry, objects, shapes):
         )
         # Tool cylinder deliberately exceeds the circumradius of the 0.9mm A/F
         # hex key. It checks an accessible straight side approach only.
-        screw_bb = shapes[screw.Name].optimalBoundingBox(False, False)
-        screw_centre_x = (screw_bb.XMin + screw_bb.XMax) / 2
-        tool_y = screw_bb.YMax + 0.1 if side > 0 else screw_bb.YMin - 0.1
+        screw_bounds = shapes[screw.Name].optimalBoundingBox(False, False)
+        screw_centre_x = (screw_bounds.XMin + screw_bounds.XMax) / 2
+        tool_y = screw_bounds.YMax + 0.1 if side > 0 else screw_bounds.YMin - 0.1
         tool = Part.makeCylinder(
             1.0, 65, V(screw_centre_x, tool_y, rail.CLAMP_Z), V(0, side, 0)
         )
@@ -499,7 +508,7 @@ def module_service(registry, objects, shapes):
             }
             for o in objects
             if o not in (screw, nut)
-            and o.Name not in removed
+            and o.Name not in removed_names
             and intersection_volume(tool, shapes[o.Name]) > TOL
         ]
         moving = [
@@ -514,7 +523,7 @@ def module_service(registry, objects, shapes):
         obstacles = [
             (o.Name, shapes[o.Name])
             for o in objects
-            if o not in members and o.Name not in removed
+            if o not in members and o.Name not in removed_names
         ]
         centre_release = path_checks(
             moving, obstacles, [(0, side * y, 0) for y in (0, -0.15, -0.3, -0.45)]
@@ -567,7 +576,7 @@ def module_service(registry, objects, shapes):
         land_offset = min(phase_x, rail.LAND_PITCH - phase_x)
         row = {
             "module": module.Name,
-            "removed_before_this_step": sorted(removed),
+            "removed_before_this_step": sorted(removed_names),
             "clamp_screw": screw.Name,
             "clamp_nut": nut.Name,
             "approach_side_y": side,
@@ -591,7 +600,7 @@ def module_service(registry, objects, shapes):
             and lift["passed"]
             and land_offset <= rail.CLAMP_LAND_OFFSET + TOL,
         }
-        result.append(row)
+        service_rows.append(row)
         print(
             json.dumps(
                 {
@@ -602,13 +611,13 @@ def module_service(registry, objects, shapes):
             ),
             flush=True,
         )
-        removed.update(o.Name for o in members)
+        removed_names.update(o.Name for o in members)
     return {
         "removal_order": [m.Name for m, _ in sequence],
-        "modules": result,
+        "modules": service_rows,
         "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
-        "passed": len(result) == len(MODULE_STATIONS)
-        and all(r["passed"] for r in result),
+        "passed": len(service_rows) == len(MODULE_STATIONS)
+        and all(r["passed"] for r in service_rows),
     }
 
 
@@ -994,8 +1003,8 @@ def tilt_check(doc, registry, objects, shapes):
         moving = [o for o in objects if belongs_to_group(o, pod)]
         fixed = [o for o in objects if o not in moving]
         other_placements = {o.Name: o.Placement.copy() for o in pods if o != pod}
-        hits, independent, zmin = [], True, float("inf")
-        original = float(pod.Tilt)
+        hits, independent, minimum_z = [], True, float("inf")
+        original_tilt = float(pod.Tilt)
         try:
             for angle in range(-150, 151, 15):
                 pod.Tilt = angle
@@ -1006,32 +1015,36 @@ def tilt_check(doc, registry, objects, shapes):
                     if o != pod
                 )
                 for obj in moving:
-                    s = world_shape(obj)
-                    zmin = min(zmin, s.optimalBoundingBox(False, False).ZMin)
+                    moving_shape = world_shape(obj)
+                    minimum_z = min(
+                        minimum_z, moving_shape.optimalBoundingBox(False, False).ZMin
+                    )
                     for other in fixed:
                         if expected_pair(obj, other):
                             continue
-                        vol = intersection_volume(s, shapes[other.Name])
-                        if vol > TOL:
+                        overlap_volume = intersection_volume(
+                            moving_shape, shapes[other.Name]
+                        )
+                        if overlap_volume > TOL:
                             hits.append(
                                 {
                                     "angle_deg": angle,
                                     "moving": obj.Name,
                                     "fixed": other.Name,
-                                    "intersection_mm3": vol,
+                                    "intersection_mm3": overlap_volume,
                                 }
                             )
         finally:
-            pod.Tilt = original
+            pod.Tilt = original_tilt
             doc.recompute()
         rows.append(
             {
                 "pod": pod.Name,
                 "poses": 21,
                 "independent": independent,
-                "minimum_z_mm": zmin,
+                "minimum_z_mm": minimum_z,
                 "collisions": hits,
-                "passed": independent and not hits and zmin >= -TOL,
+                "passed": independent and not hits and minimum_z >= -TOL,
             }
         )
     return {"pods": rows, "passed": len(rows) == 2 and all(r["passed"] for r in rows)}
@@ -1384,7 +1397,7 @@ def detailed_propulsion_evidence(doc, source):
         and evidence.get("all_hardware_A2", False)
     )
     return {
-        "source_file": os.path.relpath(path, ROOT),
+        "source_file": os.path.relpath(path, REPO_ROOT),
         "source_sha256": file_sha256(path),
         "saved_shape_source_comparisons": comparisons,
         "local_overlap_failures": volume_failures,
@@ -1397,7 +1410,9 @@ def detailed_propulsion_evidence(doc, source):
 
 
 def validate(source=None):
-    source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
+    source = (
+        Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
+    )
     from .propulsion import validate as validate_propulsion
 
     validate_propulsion(source)
@@ -1429,7 +1444,7 @@ def validate(source=None):
         report = {
             "revision": DESIGN_REVISION,
             "mass_budget": mass_budget(r.PrintedParts, r.HardwareParts),
-            "source": os.path.relpath(source, ROOT),
+            "source": os.path.relpath(source, REPO_ROOT),
             "scope": "Independent saved-file rigid-envelope audit; no strength, friction, fit, tape or flight qualification. Local propulsion evidence is recomputed from current source on every run.",
             "source_hashes_before": before,
             "source_fingerprint": fingerprint_before,
@@ -1455,7 +1470,7 @@ def validate(source=None):
         report["neutral_assembly"] = neutral_check(objects, shapes)
         report["continuous_rail"] = rail_check(r, shapes)
         report["equipment_mounts"] = mounting_check(doc)
-        report["metric_hardware"] = hardware_check(r)
+        report["purchased_hardware"] = hardware_check(r)
         report["assembly_inventory"] = {
             "installed_printed_parts": len(printed),
             "purchased_hardware_items": len(r.HardwareParts),
@@ -1522,7 +1537,7 @@ def validate(source=None):
             "neutral_assembly",
             "continuous_rail",
             "equipment_mounts",
-            "metric_hardware",
+            "purchased_hardware",
             "assembly_inventory",
             "module_service",
             "independent_tilt",

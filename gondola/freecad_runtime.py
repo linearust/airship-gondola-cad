@@ -13,7 +13,7 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from .config import ROOT, STEM
+from .config import ARTIFACT_STEM, REPO_ROOT
 from .provenance import file_sha256, source_fingerprint
 
 PREVIEW_TIMEOUT_SECONDS = 300
@@ -88,7 +88,7 @@ def _stop_preview_process(process):
 
 
 def _run_preview_process(args, env):
-    process = subprocess.Popen(args, cwd=ROOT, env=env, start_new_session=True)
+    process = subprocess.Popen(args, cwd=REPO_ROOT, env=env, start_new_session=True)
     try:
         return process.wait(timeout=PREVIEW_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired as error:
@@ -122,7 +122,7 @@ def _verify_preview_state(output_dir, run_id, fingerprint):
             raise RuntimeError(
                 "Source changed during preview; rebuild and render again."
             )
-        cad_hash = file_sha256(output_dir / (STEM + ".FCStd"))
+        cad_hash = file_sha256(output_dir / (ARTIFACT_STEM + ".FCStd"))
         if state.get("source_sha256") != cad_hash:
             raise RuntimeError(
                 "Saved CAD changed during preview; render and validate again."
@@ -134,12 +134,14 @@ def _verify_preview_state(output_dir, run_id, fingerprint):
 
 
 def run_with_freecad(command, output_dir, appimage=None, source=None):
-    # AppRun executes from ROOT; resolve caller-relative paths before changing cwd.
+    # AppRun executes from REPO_ROOT; resolve caller-relative paths before changing cwd.
     output_dir = Path(output_dir).expanduser().resolve()
     source = Path(source).expanduser().resolve() if source is not None else None
     with mounted_appimage(locate_appimage(appimage)) as mount:
         env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(mount / "usr" / "lib")))
+        env["PYTHONPATH"] = os.pathsep.join(
+            (str(REPO_ROOT), str(mount / "usr" / "lib"))
+        )
         env["GONDOLA_OUTPUT_DIR"] = str(output_dir)
         if command == "preview":
             run_id = uuid.uuid4().hex
@@ -151,7 +153,7 @@ def run_with_freecad(command, output_dir, appimage=None, source=None):
             )
             env["GONDOLA_CLOSE_AFTER_PREVIEW"] = "1"
             env["GONDOLA_PREVIEW_RUN_ID"] = run_id
-            args = [str(mount / "AppRun"), str(ROOT / "preview_gondola.FCMacro")]
+            args = [str(mount / "AppRun"), str(REPO_ROOT / "preview_gondola.FCMacro")]
             try:
                 returncode = _run_preview_process(args, env)
                 if returncode:
@@ -193,7 +195,7 @@ def run_with_freecad(command, output_dir, appimage=None, source=None):
             ]
             if source:
                 args.extend(["--source", str(source)])
-        completed = subprocess.run(args, cwd=ROOT, env=env)
+        completed = subprocess.run(args, cwd=REPO_ROOT, env=env)
         if completed.returncode:
             return completed.returncode
         return 0

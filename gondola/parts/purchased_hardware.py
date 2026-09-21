@@ -14,16 +14,15 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import set_property as _set_property
-
-from .fastener_spec import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
-from .fastener_spec import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
-from .fastener_spec import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
-from .fastener_spec import SOCKET_DEPTH as SOCKET_DEPTH
-from .fastener_spec import SOCKET_KEY as SOCKET_KEY
-from .fastener_spec import SQUARE_NUT_AF as SQUARE_NUT_AF
-from .fastener_spec import SQUARE_NUT_HEIGHT as SQUARE_NUT_HEIGHT
-from .fastener_spec import THREAD_DIAMETER as THREAD_DIAMETER
-from .fastener_spec import THREAD_PITCH as THREAD_PITCH
+from gondola.contracts.fasteners import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
+from gondola.contracts.fasteners import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
+from gondola.contracts.fasteners import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
+from gondola.contracts.fasteners import SOCKET_DEPTH as SOCKET_DEPTH
+from gondola.contracts.fasteners import SOCKET_KEY as SOCKET_KEY
+from gondola.contracts.fasteners import SQUARE_NUT_AF as SQUARE_NUT_AF
+from gondola.contracts.fasteners import SQUARE_NUT_HEIGHT as SQUARE_NUT_HEIGHT
+from gondola.contracts.fasteners import THREAD_DIAMETER as THREAD_DIAMETER
+from gondola.contracts.fasteners import THREAD_PITCH as THREAD_PITCH
 
 set_property = partial(_set_property, group="Purchased hardware")
 

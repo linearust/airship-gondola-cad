@@ -16,10 +16,10 @@ from gondola.cad import (
     translated_shape,
     world_shape,
 )
-from gondola.config import OUTPUT_DIR, STEM
-from gondola.manufacturing import geometry_comparison, mesh_checks, print_shape
-from gondola.parts import fastener_spec as fastener
+from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
+from gondola.contracts import fasteners
 from gondola.parts import propulsion, rail
+from gondola.print_export import geometry_comparison, mesh_checks, print_shape
 
 from .evidence import overlap_failures
 from .geometry import intersection_volume, local_shape, translation_sweep
@@ -146,7 +146,7 @@ def journal_stack_check(sleeve, hardware, frame, carrier, side):
     nut_low = nut.YMin if side > 0 else -nut.YMax
     bolt_low = bolt.YMin if side > 0 else -bolt.YMax
     core = Part.makeCylinder(
-        fastener.THREAD_DIAMETER * 0.4,
+        fasteners.THREAD_DIAMETER * 0.4,
         nut.YLength,
         App.Vector(0, nut.YMin, propulsion.PIVOT_Z),
         App.Vector(0, 1, 0),
@@ -186,14 +186,16 @@ def journal_stack_check(sleeve, hardware, frame, carrier, side):
         report["axial_capture"]
         and all(r["passed"] for r in contacts + clearance_rows + rotation_rows)
         and missing_core < TOL
-        and nut_low - bolt_low >= fastener.THREAD_PITCH - TOL
+        and nut_low - bolt_low >= fasteners.THREAD_PITCH - TOL
     )
     return report
 
 
 def validate(source=None):
     """Build a fresh local module, check its fits, and write reproducible evidence."""
-    source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
+    source = (
+        Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
+    )
     doc = App.newDocument("PropulsionSourceAudit")
     try:
         module = propulsion.build_propulsion_module(doc)

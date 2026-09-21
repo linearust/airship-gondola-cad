@@ -4,7 +4,7 @@ import json
 import types
 import unittest
 
-from gondola.design_contract import SCOPED_LISTED_EQUIPMENT_MASS_G
+from gondola.contracts.design import SCOPED_LISTED_EQUIPMENT_MASS_G
 from gondola.mass_budget import mass_budget
 
 

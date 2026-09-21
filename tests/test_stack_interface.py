@@ -113,18 +113,18 @@ class StackInterfaceTests(unittest.TestCase):
         self.assertFalse(is_removable_head_part(self.doc.ModuleFCEnvelope, group))
 
     def test_stock_nylon_skus_reject_wrong_material(self):
-        from gondola.parts import metric_hardware as metric
+        from gondola.parts import purchased_hardware
 
         for sku, shape in (
-            ("M2X5_PA66_PAN_HEAD", metric.stack_screw_shape()),
-            ("M2_FF_PA66_AF4_L25", metric.spacer_shape()),
+            ("M2X5_PA66_PAN_HEAD", purchased_hardware.stack_screw_shape()),
+            ("M2_FF_PA66_AF4_L25", purchased_hardware.spacer_shape()),
         ):
             for wrong in ("A2 stainless steel", "PA12", "Nylon PA6"):
                 with (
                     self.subTest(sku=sku, material=wrong),
                     self.assertRaises(ValueError),
                 ):
-                    metric.add_hardware(
+                    purchased_hardware.add_hardware(
                         self.doc,
                         self.kit["group"],
                         "WrongMaterial",

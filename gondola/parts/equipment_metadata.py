@@ -5,8 +5,7 @@ import json
 import FreeCAD as App
 
 from gondola.cad import create_reference, set_property
-
-from . import mounting_interfaces as interfaces
+from gondola.contracts import equipment_interfaces as interfaces
 
 V = App.Vector
 

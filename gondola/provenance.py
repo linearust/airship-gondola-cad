@@ -3,7 +3,7 @@
 import hashlib
 from pathlib import Path
 
-from .config import ROOT
+from .config import REPO_ROOT
 
 
 def file_sha256(path):
@@ -13,10 +13,12 @@ def file_sha256(path):
 
 
 def source_fingerprint():
-    paths = sorted((ROOT / "gondola").rglob("*.py")) + sorted(ROOT.glob("*.FCMacro"))
+    paths = sorted((REPO_ROOT / "gondola").rglob("*.py")) + sorted(
+        REPO_ROOT.glob("*.FCMacro")
+    )
     fingerprint = hashlib.sha256()
     for path in sorted(paths):
-        name = path.relative_to(ROOT).as_posix().encode()
+        name = path.relative_to(REPO_ROOT).as_posix().encode()
         content = path.read_bytes()
         fingerprint.update(len(name).to_bytes(8, "big"))
         fingerprint.update(name)

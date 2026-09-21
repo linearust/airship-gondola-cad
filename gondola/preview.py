@@ -13,9 +13,8 @@ from PySide import QtCore
 
 from gondola.assembly import style_assembly
 from gondola.cad import belongs_to_group, create_group, translated_shape, world_shape
-from gondola.config import OUTPUT_DIR as OUT
-from gondola.config import STEM
-from gondola.design_contract import DESIGN_REVISION
+from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
+from gondola.contracts.design import DESIGN_REVISION
 from gondola.parts import stack_interface
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -157,13 +156,13 @@ class _PreviewSession:
 
 
 def render_previews(close_after=False):
-    session = _PreviewSession(OUT, close_after)
+    session = _PreviewSession(OUTPUT_DIR, close_after)
 
     def start_rendering():
-        OUT.mkdir(parents=True, exist_ok=True)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         session.write_state(passed=False, status="rendering")
         fingerprint = source_fingerprint()
-        doc = App.openDocument(str(OUT / (STEM + ".FCStd")))
+        doc = App.openDocument(str(OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")))
         if doc.DesignRegistry.SourceFingerprint != fingerprint:
             raise RuntimeError("Saved CAD is stale; build before preview.")
         style_assembly(doc)
@@ -173,7 +172,9 @@ def render_previews(close_after=False):
             if default_stack_host == doc.BatteryEquipmentModule
             else doc.BatteryEquipmentModule
         )
-        layout = App.openDocument(str(OUT / (STEM + "_print_parts.FCStd")))
+        layout = App.openDocument(
+            str(OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd"))
+        )
         detail = create_attachment_detail_document()
         negative = create_attachment_detail_document(-1)
         for o in layout.Objects:
@@ -262,7 +263,7 @@ def render_previews(close_after=False):
                 Gui.updateGui()
 
                 def save_image():
-                    image_path = OUT / (STEM + suffix)
+                    image_path = OUTPUT_DIR / (ARTIFACT_STEM + suffix)
                     image_path.unlink(missing_ok=True)
                     view.saveImage(str(image_path), w, h, "White")
                     if not image_path.is_file() or image_path.stat().st_size == 0:
@@ -274,9 +275,13 @@ def render_previews(close_after=False):
             session.schedule(1000, frame_view)
 
         def finish_rendering():
-            detail.saveAs(str(OUT / (STEM + "_attachment_detail.FCStd")))
+            detail.saveAs(
+                str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_detail.FCStd"))
+            )
             layout.save()
-            negative.saveAs(str(OUT / (STEM + "_attachment_opposite.FCStd")))
+            negative.saveAs(
+                str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_opposite.FCStd"))
+            )
             App.setActiveDocument(doc.Name)
             stack_interface.attach_to_host(doc.OpticalFlowModule, default_stack_host)
             style_assembly(doc)
@@ -295,11 +300,13 @@ def render_previews(close_after=False):
                     status="complete",
                     source_fingerprint=fingerprint,
                     image_sha256={
-                        STEM + job[2]: file_sha256(OUT / (STEM + job[2]))
+                        ARTIFACT_STEM + job[2]: file_sha256(
+                            OUTPUT_DIR / (ARTIFACT_STEM + job[2])
+                        )
                         for job in jobs
                     },
-                    source_sha256=file_sha256(OUT / (STEM + ".FCStd")),
-                    images=[STEM + job[2] for job in jobs],
+                    source_sha256=file_sha256(OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")),
+                    images=[ARTIFACT_STEM + job[2] for job in jobs],
                 )
                 if close_after:
                     session.schedule(250, session.close_application)

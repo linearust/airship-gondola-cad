@@ -5,15 +5,17 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 ## Authorities
 
-- `gondola/design_contract.py` defines scope, equipment, manufacturing decisions,
-  inventory and unresolved interfaces. Inspect with `python3 -m gondola status`.
-- `gondola/parts/` defines geometry and mounting, wiring and procurement contracts.
-  `mounting_interfaces.py` distinguishes published evidence from unknowns;
-  `references/` retains that evidence. Preserve it when cleaning unused code.
+- `gondola/contracts/` holds data independent of FreeCAD: `design.py` for scope,
+  decisions, inventory and unresolved interfaces; `equipment_interfaces.py` for
+  published device evidence; `fasteners.py` for shared nominal dimensions.
+  Inspect project status with `python3 -m gondola status`.
+- `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
+  and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
-  `manufacturing.py`, `procurement.py` and `mass_budget.py` define export accounting.
+  `print_export.py`, `procurement.py` and `mass_budget.py` define export accounting.
 - `gondola/validation/` and `tests/fixtures/` define regression checks;
   `config.py`, `provenance.py` and `bundle.py` enforce artifact identity.
+- `cli.py` dispatches commands; `freecad_runtime.py` manages the AppImage process.
 
 ## Editing rules
 
@@ -28,7 +30,7 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
   and service checks. Keep reservations in the moving sensor frame.
 - Passing geometry tests does not resolve physical qualification or change
-  `design_contract.release_status()`. Keep estimated mass exclusions and
+  `contracts.design.release_status()`. Keep estimated mass exclusions and
   unresolved interfaces explicit in generated outputs.
 - Preserve the pinned fixture during refactors. Intentional geometry or native
   contract changes require an old/new shape, placement, control and metadata
@@ -57,15 +59,15 @@ Run the native suite and confirm no tests are skipped:
 python3 - <<'PY_NATIVE'
 import os
 import subprocess
-from gondola.config import ROOT
-from gondola.runtime import locate_appimage, mounted_appimage
+from gondola.config import REPO_ROOT
+from gondola.freecad_runtime import locate_appimage, mounted_appimage
 
 with mounted_appimage(locate_appimage()) as mount:
     env = os.environ.copy()
-    env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(mount / "usr/lib")))
+    env["PYTHONPATH"] = os.pathsep.join((str(REPO_ROOT), str(mount / "usr/lib")))
     subprocess.run(
         [str(mount / "AppRun"), "python", "-m", "unittest", "discover", "-s", "tests", "-v"],
-        cwd=ROOT, env=env, check=True,
+        cwd=REPO_ROOT, env=env, check=True,
     )
 PY_NATIVE
 ```

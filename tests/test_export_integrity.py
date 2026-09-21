@@ -1,4 +1,4 @@
-"""Exercise native BOM grouping and its independent audit without FreeCAD."""
+"""Verify hardware BOM and print-manifest integrity without FreeCAD."""
 
 import importlib.util
 import json
@@ -19,7 +19,7 @@ def load_module(name, path):
     return module
 
 
-class HardwareBomTests(unittest.TestCase):
+class ExportIntegrityTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="gondola-bom-")
         self.addCleanup(directory.cleanup)
@@ -34,7 +34,7 @@ class HardwareBomTests(unittest.TestCase):
             "gondola.parts.stack_interface": Mock(),
             "gondola.validation.optical": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
-            "gondola.parts.mounting_interfaces": Mock(),
+            "gondola.contracts.equipment_interfaces": Mock(),
             "gondola.cad": types.SimpleNamespace(world_shape=Mock()),
             "gondola.validation.geometry": types.SimpleNamespace(
                 intersection_volume=Mock(),
@@ -44,14 +44,14 @@ class HardwareBomTests(unittest.TestCase):
             ),
         }
         with patch.dict(sys.modules, modules):
-            self.manufacturing = load_module(
-                "gondola._manufacturing_under_test", root / "gondola/manufacturing.py"
+            self.print_export = load_module(
+                "gondola._print_export_under_test", root / "gondola/print_export.py"
             )
             self.equipment = load_module(
                 "gondola.validation._equipment_under_test",
                 root / "gondola/validation/equipment.py",
             )
-        self.manufacturing.source_fingerprint = Mock(return_value="current source")
+        self.print_export.source_fingerprint = Mock(return_value="current source")
         patcher = patch.object(
             procurement, "source_fingerprint", return_value="current source"
         )
@@ -292,7 +292,7 @@ class HardwareBomTests(unittest.TestCase):
                 "installed_quantity": installed_count,
                 "coupon_quantity": 1 - installed_count,
             }
-            check = self.manufacturing.print_entry_inventory_check(
+            check = self.print_export.print_entry_inventory_check(
                 entry, [installed], [coupon]
             )
             self.assertTrue(check["passed"])
@@ -300,7 +300,7 @@ class HardwareBomTests(unittest.TestCase):
                 entry["coupon_quantity"],
                 entry["installed_quantity"],
             )
-            check = self.manufacturing.print_entry_inventory_check(
+            check = self.print_export.print_entry_inventory_check(
                 entry, [installed], [coupon]
             )
             self.assertFalse(check["passed"])
@@ -325,114 +325,11 @@ class HardwareBomTests(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 original = getattr(part, attribute)
                 setattr(part, attribute, replacement)
-                result = self.manufacturing.print_entry_inventory_check(
+                result = self.print_export.print_entry_inventory_check(
                     entry, [part], []
                 )
                 self.assertFalse(result["passed"])
                 setattr(part, attribute, original)
-
-
-try:
-    import FreeCAD as App
-    import Part
-except ImportError:
-    App = Part = None
-
-
-@unittest.skipIf(App is None, "Requires FreeCAD")
-class MountingPadGeometryTests(unittest.TestCase):
-    def test_native_rail_clamps_declare_m2_thread_dimensions(self):
-        from gondola.cad import create_group
-        from gondola.parts import rail
-
-        document = App.newDocument("RailThreadRegressionTest")
-        self.addCleanup(App.closeDocument, document.Name)
-        parent = create_group(document, "ClampGroup", "Clamp hardware")
-        hardware = rail.build_clamp_hardware(document, parent, "Test", "0")
-        self.assertEqual(len(hardware), 2)
-        for part in hardware:
-            self.assertEqual(part.NominalThreadDiameter.Value, 2)
-            self.assertEqual(part.ThreadPitch.Value, 0.4)
-            self.assertIn("M2", part.ThreadStandard)
-            self.assertNotIn("unthreaded", part.ThreadStandard.lower())
-
-    def test_shared_nut_and_journal_screw_declare_m2_threads(self):
-        from gondola.parts import metric_hardware as metric
-
-        document = App.newDocument("HardwareThreadRegressionTest")
-        self.addCleanup(App.closeDocument, document.Name)
-        parts = (
-            ("M2_SQUARE_NUT_DIN562", metric.square_nut_shape()),
-            ("M2X14_SOCKET_CAP", metric.screw_shape(14)),
-        )
-        for index, (sku, shape) in enumerate(parts):
-            with self.subTest(sku=sku):
-                obj = metric.add_hardware(
-                    document, None, f"Hardware{index}", sku, shape, sku, "Test only"
-                )
-                self.assertEqual(obj.NominalThreadDiameter.Value, 2)
-                self.assertEqual(obj.ThreadPitch.Value, 0.4)
-                self.assertNotIn("unthreaded", obj.ThreadStandard.lower())
-
-    def test_native_print_factory_sets_explicit_print_flag(self):
-        from gondola.cad import create_group, create_printed_part
-
-        document = App.newDocument("PrintFactoryRegressionTest")
-        self.addCleanup(App.closeDocument, document.Name)
-        parent = create_group(document, "PrintGroup", "Printed test parts")
-        part = create_printed_part(
-            document,
-            parent,
-            "PrintedPart",
-            "Printed factory test",
-            Part.makeBox(2, 3, 4),
-            App.Rotation(),
-            "Test only",
-        )
-        self.assertIn("PrintPart", part.PropertiesList)
-        self.assertTrue(part.PrintPart)
-        self.assertEqual(part.getTypeIdOfProperty("PrintPart"), "App::PropertyBool")
-
-    def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
-
-        shape = mounts.mount_shape("electronics").copy()
-        for centre in mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES:
-            result = mounting_pad_check(
-                shape,
-                centre,
-                bottom=mounts.DECK_BOTTOM_Z,
-                thickness=mounts.DECK_THICKNESS,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
-            )
-            self.assertTrue(result["passed"], result)
-
-    def test_partial_bearing_or_filled_bore_is_rejected(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
-
-        shape = mounts.mount_shape("electronics").copy()
-        centre = mounts.FC_HOLE_CENTRES[0]
-        x, y = centre
-        bottom, thickness = mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
-        missing_edge = shape.cut(
-            Part.makeBox(1, 1, thickness + 2, App.Vector(x - 3.3, y - 0.5, bottom - 1))
-        )
-        blocked_bore = shape.fuse(
-            Part.makeCylinder(0.4, thickness, App.Vector(x, y, bottom))
-        )
-        for changed in (missing_edge, blocked_bore):
-            result = mounting_pad_check(
-                changed,
-                centre,
-                bottom=bottom,
-                thickness=thickness,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
-            )
-            self.assertFalse(result["passed"], result)
 
 
 if __name__ == "__main__":

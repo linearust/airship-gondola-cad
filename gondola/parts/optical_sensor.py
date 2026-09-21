@@ -10,11 +10,11 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import create_reference, set_property
+from gondola.contracts import equipment_interfaces as interfaces
 
-from . import mounting_interfaces as interfaces
 from . import optical_mount as mount
 from .equipment_metadata import add_interface_metadata, create_wiring_reserve
-from .wiring_clearance import device_connector_contract
+from .wiring_reserves import device_connector_contract
 
 V = App.Vector
 SOURCE = interfaces.MTF02P_SOURCE

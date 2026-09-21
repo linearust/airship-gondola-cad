@@ -1,7 +1,7 @@
 """User decisions and unresolved interfaces consumed by CAD and the CLI.
 
-Dimensions belong to parts/*.py. This contract records decisions that geometry
-alone cannot reveal. Geometric test success must never change release status.
+Part geometry belongs to gondola/parts; published interface dimensions belong to
+the other contract modules. Geometric test success never changes release status.
 """
 
 from dataclasses import asdict, dataclass
