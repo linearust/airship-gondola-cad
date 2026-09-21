@@ -233,6 +233,9 @@ def procurement_and_scope_metadata(obj):
         "MountingStackVerified",
         "PCBHeightMeasured",
         "InstalledOpticalFieldVerified",
+        "InstalledConnectorFitVerified",
+        "ConnectorEvidence",
+        "WiringContract",
         "FDMPrintValidated",
     )
     values = {}

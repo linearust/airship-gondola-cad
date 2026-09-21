@@ -18,6 +18,7 @@ from gondola.design_contract import NOTION_URL
 
 from . import equipment_mounts as mounts
 from . import mounting_interfaces as interfaces
+from . import wiring_clearance
 
 V = App.Vector
 FC_SOURCE = interfaces.FC_SOURCE
@@ -87,6 +88,12 @@ def _interface_metadata(obj, key, hole_centres=(), hole_diameter=None):
     )
     set_property(obj, "MountingStackVerified", False, "App::PropertyBool")
     set_property(obj, "PCBHeightMeasured", False, "App::PropertyBool")
+    set_property(
+        obj,
+        "ConnectorEvidence",
+        json.dumps(interfaces.DEVICE_CONNECTOR_EVIDENCE[key], sort_keys=True),
+    )
+    set_property(obj, "InstalledConnectorFitVerified", False, "App::PropertyBool")
     if hole_diameter is not None:
         set_property(
             obj, "PublishedMountHoleDiameter", hole_diameter, "App::PropertyLength"
@@ -243,7 +250,7 @@ def build_equipment(doc, battery_group, electronics_group):
         "MicoAir MTF-02P | optical face away from balloon (+Z)",
         mtf02p_envelope_shape(),
         "Published21.6x16x6.5mm overall envelope and1.5g module mass. Provisional insulating adhesive on the continuous carrier pad leaves1mm mounting allowance. "
-        "The optical/component face points toward world+Z, away from balloon planeZ0. Match the purchased board orientation and firmware rotation setting; no default in-plane yaw is claimed. "
+        "The optical/component face points toward world+Z, away from balloon planeZ0. The connector-access plan adopts the source drawing's SH4 exit toward module+X; align the actual board and firmware rotation accordingly. Individual port coordinates remain unmeasured. "
         "Backside components, adhesive contact/retention and cable routing require the actual sensor. No mounting-hole pattern or retaining screw is assumed.",
         MTF02P_SOURCE,
     )
@@ -252,6 +259,7 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(mtf, "DimensionDrawingSource", MTF02P_DIMENSION_IMAGE)
     set_property(mtf, "ListedMassGrams", MTF02P_MASS_G, "App::PropertyFloat")
     set_property(mtf, "OpticalDirection", V(0, 0, 1), "App::PropertyVector")
+    set_property(mtf, "PlannedConnectorDirection", V(1, 0, 0), "App::PropertyVector")
     set_property(
         mtf, "PublishedOpticalFlowFOV", MTF02P_FLOW_FOV_DEG, "App::PropertyAngle"
     )
@@ -279,48 +287,46 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(optical, "OpticalDirection", V(0, 0, 1), "App::PropertyVector")
     set_property(optical, "InstalledOpticalFieldVerified", False, "App::PropertyBool")
     refs = [battery, fc_obj, radio, pas, mtf]
-    wiring = create_reference(
-        doc,
-        electronics_group,
-        "FCWiringClearanceReserve",
-        "FC underbody open-X wiring corridor | design allowance8mm",
-        mounts.fc_wiring_reserve_shape(),
-        "Our8mm free-height,8mm-wide X corridor atY5..13 below the full FC component envelope. Both X ends remain open and the route avoids the confirmed mounting axes. This is a routing reservation, not an exact cable model, measured connector clearance or selected spacer/bolt length. Actual damper outside dimensions remain unknown. Keep wires clear of ESC cooling and remove the module before clamp service.",
-        FC_SOURCE,
-    )
-    wiring.Role = "Clearance"
-    wiring.Label = "RESERVE | FC underbody wiring corridor"
-    set_property(
-        wiring,
-        "DesignClearanceHeight",
-        mounts.FC_WIRING_CLEARANCE,
-        "App::PropertyLength",
-    )
-    set_property(wiring, "ManufacturerSpecifiedHeight", False, "App::PropertyBool")
-    clearance = [max_pack, optical, wiring]
-    auxiliary = [
-        (
-            "XT30ServiceReserve",
-            "XT30 pigtail service reserve10x22x15",
-            Part.makeBox(10, 22, 15, V(-43, -11, 13.2)),
-        ),
-        (
-            "CapacitorServiceReserve",
-            "35V220uF capacitor reserve diameter10x16",
-            Part.makeCylinder(5, 16, V(30, 22, 13.2)),
-        ),
-    ]
-    for name, label, shape in auxiliary:
-        o = create_reference(
+    clearance = [max_pack, optical]
+    contracts = wiring_clearance.reserve_contracts()
+    for name, shape in wiring_clearance.reserve_shapes().items():
+        contract = contracts[name]
+        reserve = create_reference(
             doc,
             electronics_group,
             name,
-            label,
+            name,
             shape,
-            "Provisional space reservation, not a measured component model, selected SKU or designed retaining mount. Latest Notion requires XT30 pigtail and35V220uF capacitor. Final insulation, lead routing and mechanical retention remain to be selected; no printed attachment or invented hole is added.",
-            NOTION_URL,
+            "Design allowance for connector access and wiring; not an exact installed connector or certified cable route. See the native WiringContract and retained primary connector evidence. Disconnect leads before removing devices or sliding modules.",
+            contract["source_url"],
         )
-        o.Role = "Clearance"
-        o.Label = "RESERVE | " + label
-        clearance.append(o)
+        reserve.Role = "Clearance"
+        reserve.Label = "RESERVE | " + name.removesuffix("Reserve")
+        set_property(reserve, "WiringContract", json.dumps(contract, sort_keys=True))
+        set_property(
+            reserve, "InstalledConnectorFitVerified", False, "App::PropertyBool"
+        )
+        if name == "FCWiringClearanceReserve":
+            set_property(
+                reserve,
+                "DesignClearanceHeight",
+                mounts.FC_WIRING_CLEARANCE,
+                "App::PropertyLength",
+            )
+            set_property(
+                reserve, "ManufacturerSpecifiedHeight", False, "App::PropertyBool"
+            )
+        clearance.append(reserve)
+    capacitor = create_reference(
+        doc,
+        electronics_group,
+        "CapacitorServiceReserve",
+        "35V220uF capacitor reserve diameter10x16",
+        Part.makeCylinder(5, 16, V(30, 22, 13.2)),
+        "Provisional space for the specified35V220uF capacitor, not a selected component or retaining mount. Insulation, leads, actual dimensions and retention remain to be selected; no printed attachment or invented hole is added.",
+        NOTION_URL,
+    )
+    capacitor.Role = "Clearance"
+    capacitor.Label = "RESERVE | 35V220uF capacitor"
+    clearance.append(capacitor)
     return refs, clearance

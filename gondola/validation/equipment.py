@@ -13,7 +13,11 @@ from gondola.cad import (
     world_shape,
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import EXPECTED_INVENTORY, hardware_bom_scope
+from gondola.design_contract import (
+    EXPECTED_INVENTORY,
+    WIRING_PURCHASE_PLAN,
+    hardware_bom_scope,
+)
 from gondola.manufacturing import (
     PURCHASE_METADATA_FIELDS,
     REQUIRED_PURCHASE_FIELDS,
@@ -34,6 +38,10 @@ RESERVES = (
     "StarboardPhaseLeadLoopReserve",
     "MTF02POpticalClearanceReserve",
     "FCWiringClearanceReserve",
+    "LR900NegativeXConnectorReserve",
+    "LR900PositiveXConnectorReserve",
+    "PASConnectorReserve",
+    "MTF02PConnectorReserve",
 )
 EXPECTED_PURCHASE_QUANTITIES = {
     "M2X14_SOCKET_CAP": 4,
@@ -45,7 +53,55 @@ EXPECTED_PURCHASE_QUANTITIES = {
 }
 
 
+def connector_reserve_geometry_check(actual, expected, obstacles):
+    """Check the complete continuous reserved volume, not just its endpoints."""
+    if actual is None or actual.isNull():
+        return {"passed": False, "error": "missing connector reservation"}
+    comparison = geometry_comparison(actual, expected)
+    hits = []
+    for name, shape in obstacles.items():
+        volume = intersection_volume(actual, shape)
+        if volume > TOL:
+            hits.append({"object": name, "intersection_mm3": volume})
+    connected = actual.isValid() and len(actual.Solids) == 1
+    return {
+        "source_comparison": comparison,
+        "one_connected_solid": connected,
+        "continuous_reserved_space_collisions": hits,
+        "passed": connected and _comparison_passed(comparison) and not hits,
+    }
+
+
+def connector_buffer_checks(fc_reserve, other_shapes):
+    """Measure saved geometry gaps to neighbouring reservations and equipment."""
+    from gondola.parts import wiring_clearance as wiring
+
+    rows = []
+    for name in (
+        "MTF02POpticalClearanceReserve",
+        "ModuleLR900Envelope",
+        "ModulePASEnvelope",
+        "XT30ServiceReserve",
+    ):
+        other = other_shapes.get(name)
+        if fc_reserve is None or other is None:
+            rows.append({"object": name, "passed": False, "error": "missing shape"})
+            continue
+        distance = fc_reserve.distToShape(other)[0]
+        rows.append(
+            {
+                "object": name,
+                "measured_gap_mm": distance,
+                "minimum_design_gap_mm": wiring.FC_MINIMUM_NEIGHBOUR_GAP_MM,
+                "passed": distance >= wiring.FC_MINIMUM_NEIGHBOUR_GAP_MM - TOL,
+            }
+        )
+    return rows
+
+
 def reserve_checks(doc):
+    from gondola.parts import wiring_clearance as wiring
+
     registry = doc.DesignRegistry
     physical = (
         list(registry.PrintedParts)
@@ -54,10 +110,45 @@ def reserve_checks(doc):
         + list(registry.TapeReferences)
     )
     shapes = {obj.Name: world_shape(obj) for obj in physical}
+    actual_reserves = {obj.Name: world_shape(obj) for obj in registry.ClearanceVolumes}
+    expected_shapes = wiring.reserve_shapes()
+    expected_contracts = wiring.reserve_contracts()
     checks = []
     for name in RESERVES:
         obj = doc.getObject(name)
+        if obj is None:
+            checks.append({"object": name, "passed": False, "error": "missing"})
+            continue
         shape = world_shape(obj)
+        source_check = None
+        contract_matches = True
+        source_url_matches = True
+        fit_unverified = True
+        if name in expected_shapes:
+            source_check = connector_reserve_geometry_check(
+                shape,
+                _in_parent_frame(expected_shapes[name], doc.ElectronicsEquipmentModule),
+                shapes,
+            )
+            try:
+                contract_matches = json.loads(str(obj.WiringContract)) == json.loads(
+                    json.dumps(expected_contracts[name])
+                )
+            except (AttributeError, TypeError, ValueError):
+                contract_matches = False
+            source_url_matches = (
+                str(getattr(obj, "SourceURL", ""))
+                == expected_contracts[name]["source_url"]
+            )
+            fit_unverified = (
+                "InstalledConnectorFitVerified" in obj.PropertiesList
+                and not obj.InstalledConnectorFitVerified
+            )
+        buffers = (
+            connector_buffer_checks(shape, {**shapes, **actual_reserves})
+            if name == "FCWiringClearanceReserve"
+            else []
+        )
         intersections, nearest = [], []
         for other_name, other in shapes.items():
             volume = intersection_volume(shape, other)
@@ -83,6 +174,8 @@ def reserve_checks(doc):
             obj in registry.ClearanceVolumes
             and obj not in registry.PrintedParts
             and obj not in registry.HardwareParts
+            and obj not in registry.ReferenceParts
+            and str(getattr(obj, "Role", "")) == "Clearance"
         )
         checks.append(
             {
@@ -101,25 +194,37 @@ def reserve_checks(doc):
                     nearest, key=lambda row: row["distance_mm"]
                 )[:5],
                 "conservative_rotor_sweep_comparison": sweeps,
+                "connector_geometry": source_check,
+                "native_wiring_contract_matches": contract_matches,
+                "native_source_url_matches": source_url_matches,
+                "installed_connector_fit_remains_unverified": fit_unverified,
+                "fc_neighbour_clearance_buffers": buffers,
                 "notes": str(getattr(obj, "Notes", "")),
                 "passed": not intersections
                 and shape.isValid()
                 and len(shape.Solids) == 1
                 and all(row["intersection_mm3"] < TOL for row in sweeps)
+                and (source_check is None or source_check["passed"])
+                and contract_matches
+                and source_url_matches
+                and fit_unverified
+                and all(row["passed"] for row in buffers)
                 and clearance_only,
             }
         )
     pairs = []
     for index, name in enumerate(RESERVES):
         for other_name in RESERVES[index + 1 :]:
+            first = actual_reserves.get(name)
+            second = actual_reserves.get(other_name)
+            present = first is not None and second is not None
+            volume = intersection_volume(first, second) if present else None
             pairs.append(
                 {
                     "a": name,
                     "b": other_name,
-                    "intersection_mm3": intersection_volume(
-                        world_shape(doc.getObject(name)),
-                        world_shape(doc.getObject(other_name)),
-                    ),
+                    "intersection_mm3": volume,
+                    "passed": present and volume < TOL,
                 }
             )
     return checks, pairs
@@ -167,6 +272,8 @@ def mounting_check(doc):
     modeled. These tests prove the printed interfaces and explicit reservations;
     they do not claim a completed, retained equipment assembly.
     """
+    from gondola.parts import wiring_clearance as wiring_clearances
+
     registry = doc.DesignRegistry
     physical = (
         list(registry.PrintedParts)
@@ -378,7 +485,10 @@ def mounting_check(doc):
     if reserve is not None:
         actual = world_shape(reserve)
         comparison = geometry_comparison(
-            actual, _in_parent_frame(mounts.fc_wiring_reserve_shape(), parent)
+            actual,
+            _in_parent_frame(
+                wiring_clearances.reserve_shapes()["FCWiringClearanceReserve"], parent
+            ),
         )
         hits = [
             obj.Name
@@ -404,7 +514,7 @@ def mounting_check(doc):
             "source_comparison": comparison,
             "physical_collisions": hits,
             "clearance_from_confirmed_mount_axes": axis_distances,
-            "scope": "Eight-mm-high open wiring corridor offset from mounting axes. Future damper/spacer envelopes and plugged leads require actual dimensions.",
+            "scope": "Connected eight-mm underbody corridor, peripheral housing band and two planning exit bends. Future damper/spacer envelopes, exact plugged leads and qualified cable bend radii require actual dimensions.",
             "passed": reserve in registry.ClearanceVolumes
             and reserve not in registry.PrintedParts
             and reserve not in registry.HardwareParts
@@ -437,6 +547,7 @@ def mounting_check(doc):
                 "device": name,
                 "upward_travel_mm": 32,
                 "method": "Continuous conservative bounding-prism sweep",
+                "prerequisite": "Release mounting hardware/adhesive and disconnect all external leads; this is bare-device removal, not a connected-harness test.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -455,6 +566,17 @@ def mounting_check(doc):
         documented = (
             json.loads(str(obj.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE[key]
         )
+        try:
+            connector_evidence_matches = (
+                json.loads(str(obj.ConnectorEvidence))
+                == interfaces.DEVICE_CONNECTOR_EVIDENCE[key]
+            )
+        except (AttributeError, TypeError, ValueError):
+            connector_evidence_matches = False
+        connector_unverified = (
+            "InstalledConnectorFitVerified" in obj.PropertiesList
+            and not obj.InstalledConnectorFitVerified
+        )
         unverified = not bool(obj.MountingStackVerified) and not bool(
             obj.PCBHeightMeasured
         )
@@ -463,7 +585,12 @@ def mounting_check(doc):
                 "device": name,
                 "evidence_matches": documented,
                 "mounting_stack_and_pcb_height_unverified": unverified,
-                "passed": documented and unverified,
+                "connector_evidence_matches_sources": connector_evidence_matches,
+                "installed_connector_fit_unverified": connector_unverified,
+                "passed": documented
+                and unverified
+                and connector_evidence_matches
+                and connector_unverified,
             }
         )
     registered_names = {obj.Name for obj in registry.EquipmentMounts}
@@ -508,6 +635,12 @@ def mtf_sensor_check(doc):
     body_bounds = body.optimalBoundingBox(False, False)
     optical_bounds = optical.optimalBoundingBox(False, False)
     direction = sensor.getGlobalPlacement().Rotation.multVec(sensor.OpticalDirection)
+    connector_direction = sensor.getGlobalPlacement().Rotation.multVec(
+        getattr(sensor, "PlannedConnectorDirection", App.Vector())
+    )
+    connector_direction_matches = (
+        connector_direction - App.Vector(1, 0, 0)
+    ).Length < TOL
     body_comparison = geometry_comparison(
         local_shape(sensor), devices.mtf02p_envelope_shape()
     )
@@ -597,6 +730,8 @@ def mtf_sensor_check(doc):
         "body_source_comparison": body_comparison,
         "optical_reserve_source_comparison": optical_comparison,
         "optical_direction_world": [direction.x, direction.y, direction.z],
+        "planned_connector_direction_world": list(connector_direction),
+        "planned_connector_direction_matches_plus_x": connector_direction_matches,
         "optical_face_world_z_mm": body_bounds.ZMax,
         "optical_reserve_start_world_z_mm": optical_bounds.ZMin,
         "optical_reserve_distance_mm": optical_bounds.ZLength,
@@ -611,6 +746,7 @@ def mtf_sensor_check(doc):
     report["passed"] = (
         registered
         and direction_matches
+        and connector_direction_matches
         and body.isValid()
         and len(body.Solids) == 1
         and optical.isValid()
@@ -730,6 +866,12 @@ def validate(source=None):
         mtf = mtf_sensor_check(doc)
         mounting = mounting_check(doc)
         hardware = hardware_check(doc, source)
+        try:
+            wiring_plan_matches = (
+                json.loads(str(registry.WiringPurchasePlan)) == WIRING_PURCHASE_PLAN
+            )
+        except (AttributeError, TypeError, ValueError):
+            wiring_plan_matches = False
         sources = {}
         for name in (
             "ModulePASEnvelope",
@@ -759,9 +901,10 @@ def validate(source=None):
             "mtf02p_sensor": mtf,
             "equipment_mounts": mounting,
             "hardware": hardware,
+            "native_wiring_purchase_plan_matches_contract": wiring_plan_matches,
             "reference_sources": sources,
             "limits": [
-                "These are reserved clear spaces, not verified dimensions of selected XT30 or capacitor products.",
+                "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack through 300 degrees.",
                 "The MTF-02P optical reserve screens the first80mm from the entire front face; it is not a calibrated or physically verified field of view.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
@@ -782,8 +925,9 @@ def validate(source=None):
         and mtf["passed"]
         and mounting["passed"]
         and all(row["passed"] for row in checks)
-        and all(row["intersection_mm3"] < TOL for row in reserve_pairs)
+        and all(row["passed"] for row in reserve_pairs)
         and hardware["passed"]
+        and wiring_plan_matches
         and hardware["not_printed"]
         and hardware["bom_each_instance_exactly_once"]
         and hardware["bom_stated_quantity"] == EXPECTED_INVENTORY["purchased_hardware"]

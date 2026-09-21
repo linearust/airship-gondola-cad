@@ -179,6 +179,7 @@ def render_previews(close_after=False):
             (doc, "top", "_top.png", "all", 1900, 1200),
             (doc, "axon", "_rail.png", "rail", 1900, 800),
             (doc, "axon", "_electronics.png", "electronics", 1400, 1400),
+            (doc, "axon", "_wiring.png", "wiring", 1600, 1400),
             (doc, "axon", "_propulsion.png", "propulsion", 1800, 1300),
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),
@@ -207,7 +208,7 @@ def render_previews(close_after=False):
                             o in doc.DesignRegistry.RailSegments
                             or o in doc.DesignRegistry.TapeReferences
                         )
-                    elif scope == "electronics":
+                    elif scope in ("electronics", "wiring"):
                         o.ViewObject.Visibility = (
                             o.getParentGeoFeatureGroup()
                             == doc.ElectronicsEquipmentModule
@@ -224,6 +225,12 @@ def render_previews(close_after=False):
                             anc.append(p)
                             p = p.getParentGeoFeatureGroup()
                         o.ViewObject.Visibility = doc.DesignRegistry.Modules[1] in anc
+                if scope == "wiring":
+                    for o in doc.DesignRegistry.ClearanceVolumes:
+                        if "WiringContract" in o.PropertiesList:
+                            o.ViewObject.Visibility = True
+                            o.ViewObject.ShapeColor = (0.95, 0.60, 0.16)
+                            o.ViewObject.Transparency = 75
             view = Gui.activeDocument().activeView()
             view.setCameraType("Orthographic")
             {

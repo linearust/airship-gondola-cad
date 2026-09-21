@@ -12,6 +12,8 @@ human assembly manual or a declaration of physical qualification.
   sources and explicit unknowns. Never infer PCB bearing planes from box heights.
 - `gondola/parts/equipment_mounts.py`: compact battery support and open electronics
   carrier. `equipment_envelopes.py`: purchased-device envelopes and reserves.
+- `gondola/parts/wiring_clearance.py`: connected FC routing reservation and
+  connector-access lanes; dimensions are design allowances, not installed ports.
 - `gondola/parts/propulsion.py`: frame, carriers, custom torque journals and the
   published servo/motor interface decisions. `rail.py`: shared rail/shoe/clamp.
 - `gondola/parts/fastener_spec.py`: common purchased M2 dimensions.
@@ -27,7 +29,7 @@ human assembly manual or a declaration of physical qualification.
   Older fixtures remain in Git history. Never regenerate a fixture merely to
   pass a failing comparison; audit deliberate shape, placement and scope changes.
 
-## Rev M decisions
+## Rev N decisions
 
 Scope remains one indoor LTA blimp gondola: two main propulsors, two tilt servos,
 FC, battery, LR900-A, LinkTrack P-AS and MTF-02P. Yaw propulsion, fins and fin
@@ -61,12 +63,40 @@ match both sources. RS1102 radial packaging includes the drawing's maximum
 diameter13.6 mm (nominal13.5 +0.10).
 
 The model allocates **8 mm below the full FC envelope** above the carrier face.
-A separate8x8 mm X-open wiring corridor is offset to Y=5..13 mm so it avoids
-all four FC attachment axes. This is a design space allowance, not a measured
-plug/bend-radius requirement or a completed mounting stack. Select purchased
+An8x8 mm X-open wiring corridor is offset to Y=5..13 mm so it avoids
+all four FC attachment axes. Rev N joins that corridor to a5 mm outward-normal
+peripheral band and two continuous diameter3 mm exit turns with5 mm centreline
+radius. These are planning envelopes, not selected wire diameters, manufacturer
+bend limits or a completed harness. The peripheral band covers the FC body
+height plus1 mm at both Z faces; it reserves connector/housing space, not a full
+FC unplug stroke. Select purchased
 spacers and fasteners after measuring the real PCB/damper stack; preserve the
 reserved lower-envelope clearance. P-AS has4 mm nominal service space below its
 conservative7 mm envelope. Its antenna is toward+Y and remains exposed.
+
+Move LR900-A from module Y36 to41 mm and MTF-02P from Y-39 to-46 mm. Only their
+existing support arms become longer; do not enlarge all supports or change the
+confirmed FC/P-AS mounting axes. The placement keeps at least1 mm nominal
+separation between the expanded FC reservation and neighboring devices/optics.
+The MTF displacement includes its conservative42-degree optical field, not
+merely the gap between bare boards.
+
+Reserve15 mm along both LR900-A long-axis ends,15 mm outward from the P-AS
+19 mm connector band at-Y, and12 mm outward from the MTF's full16 mm edge at+X.
+The MTF layout deliberately adopts its drawing's connector-edge orientation;
+match the actual board and firmware rotation. Exact port XYZ, latch positions,
+USB plugs and SMA/antenna geometry remain unverified. Use the P-AS side-entry
+port for this allowance; its parallel top-entry port is not an additional load.
+Disconnect leads before the validated bare-device lift or module slide paths.
+
+The XT30 allocation is10x42x15 mm, with mating axisY: a central10x22x15 body
+space and10 mm pull/lead space at each end. [AMASS XT30U drawings](https://www.china-amass.com/biao/268.html)
+give a maximum mated envelope of5.9x20.6x10.5 mm in this orientation. The extra
+travel is our allowance, not a published disengagement stroke; actual battery
+connector variant, heat-shrink, cable bend and mounting remain to check.
+Motor slack-loop reservations move to X=-38 mm, behind the neutral motor and
+outside the complete rotor bound. They remain isolated planning volumes, not
+connected moving-wire routes or proof of cable safety through+/-150 degrees.
 
 References: [FC manual](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual),
 [FC included parts](https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec6.webp),
@@ -134,9 +164,8 @@ mounting kits whose lengths/bearing planes remain unresolved:
 | `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, DIN913/ISO4026, hex key0.9 mm | 3 |
 | `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2 mm; accepted width3.6–4.0/height0.8–1.2 mm, verify corners | 3 |
 
-Rev M corrects an axial-retention defect: the previous diameter5 mm inner
-washers and M2 nuts could pass through the carrier D-bore together with the
-sleeve. Add one bought large washer per journal between sleeve and the original
+Diameter5 mm washers and M2 nuts can pass through the carrier D-bore together
+with the sleeve. Use one bought large washer per journal between sleeve and the
 small nut-side washer. Keep the small washer: M2 nut across-flats is not its
 bearing-face diameter; its chamfered bearing face may not span the large bore.
 The M3 washer designation is an unthreaded clearance size; all mechanism bolts
@@ -183,6 +212,31 @@ Keep optics, antenna regions and FC ESC cooling surfaces clear. Servo supply
 voltage3.7–4.2 V on the stored label versus3.7–5 V on the confirmed product page
 remains a source discrepancy; verify the actual supplied unit before powering it.
 
+`design_contract.WIRING_PURCHASE_PLAN`, also embedded in the hardware BOM's
+explicitly unmodeled requirements, records three UART harnesses:
+
+| Connection | Purchased connector ends | Quantity |
+|---|---|---:|
+| FC UART1 to LR900-A | SH1.0-6P to GH1.25-4P | 1 harness |
+| FC UART3 to P-AS | SH1.0-6P to GH1.25-4P | 1 harness |
+| FC UART4 to MTF-02P | SH1.0-4P to SH1.0-4P | 1 harness |
+
+Buy matching pre-crimped pigtails or housing/contact kits; subtract included
+cables. These are connector-end requirements, not verified ready-made cable
+pinouts. SH/GH families are not interchangeable and a matching pin count does
+not imply straight-through wiring. Use the official pinouts, TX/RX mapping and
+supply requirements; the FC's separate DJI six-pin port supplies12 V.
+[JST SH](https://www.jst-mfg.com/product/pdf/eng/eSH.pdf) and
+[JST GH](https://www.jst-mfg.com/product/pdf/eng/eGH.pdf) housing dimensions are
+retained as primary evidence, without claiming that a marketplace clone matches.
+
+Use bought nylon ties with strap width at most2.5 mm at existing frame windows
+and arms for fixed lead retention. Keep heads outside the moving mechanism and
+leave phase-loop slack; actual tie/head fit, quantity and wire retention remain
+to verify. No printed connector shells, cable clips, ordinary spacers or horns
+are added. The custom rail/shoe, lightweight ribs and D torque journals retain
+functions that an off-the-shelf bearing does not replace by itself.
+
 ## Execution
 
 Use Python 3.11+ for the CLI and offline checks. CAD commands require an installed
@@ -223,6 +277,8 @@ and the corresponding `format --check` before uploading source changes.
 `build/` is the only default generated directory and is ignored by Git. Its
 `gondola.FCStd`, `gondola_print_parts/print_manifest.json`, validation JSONs,
 previews and `gondola_print_parts.zip` are reproducible outputs, not source.
+`gondola_wiring.png` shows the electronic wiring reservations in translucent
+orange; those volumes must never become printable parts or verified cables.
 Use `--output-dir PATH` before the command consistently for a separate run.
 Do not commit build trees, duplicate archives, machine logs or temporary mounts.
 GUI entry points are `build_gondola.FCMacro` and `preview_gondola.FCMacro`.

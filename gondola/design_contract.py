@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "M"
+DESIGN_REVISION = "N"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -103,6 +103,45 @@ EXPECTED_INVENTORY = {
     "unique_print_files": 8,
 }
 
+# These are bought wiring requirements, not additional modeled hardware/mass.
+# Stock pre-crimped pigtails may be joined after checking the actual pinouts.
+WIRING_PURCHASE_PLAN = {
+    "scope": "Three onboard UART harnesses; subtract cables already supplied with devices. Lengths and finished mass remain unmeasured.",
+    "uart_harnesses": [
+        {
+            "connection": "FC UART1 to LR900-A UART",
+            "quantity": 1,
+            "fc_connector": "SH1.0-6P UART1/UART6 port",
+            "device_connector": "GH1.25-4P",
+        },
+        {
+            "connection": "FC UART3 to LinkTrack P-AS UART",
+            "quantity": 1,
+            "fc_connector": "SH1.0-6P UART3/I2C port",
+            "device_connector": "GH1.25-4P; use one of the two parallel ports",
+        },
+        {
+            "connection": "FC UART4 to MTF-02P UART",
+            "quantity": 1,
+            "fc_connector": "SH1.0-4P UART4 port",
+            "device_connector": "SH1.0-4P",
+        },
+    ],
+    "connector_ends_before_subtracting_included_cables": {
+        "SH1.0-6P": 2,
+        "SH1.0-4P": 2,
+        "GH1.25-4P": 2,
+    },
+    "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
+    "stock_consumables": [
+        "Small nylon cable ties, strap width at most2.5mm, through existing frame windows/arms; quantity after routing. Keep heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips.",
+        "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
+        "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
+    ],
+    "seller_or_completed_harness_verified": False,
+    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, horns and cable ties. Retain the custom rail/shoe and D journal torque interface; no verified stock drop-in removes their function or yields a supported mass saving.",
+}
+
 
 @dataclass(frozen=True)
 class ModuleStation:
@@ -167,6 +206,10 @@ UNRESOLVED_INTERFACES = (
         "Actual phase-lead slack/strain relief through bounded ±150deg motion; reserved loops are not routing proof.",
     ),
     UnresolvedInterface(
+        "connector_and_wire_fit",
+        "Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.",
+    ),
+    UnresolvedInterface(
         "optical_sensor_installation",
         "Confirm MTF-02P lens datums, mounting/adhesive retention, connector access and unobstructed downward field of view on the actual part.",
     ),
@@ -198,6 +241,7 @@ def hardware_bom_scope():
             "OEM motor/servo mounting fasteners, servo horns and unfinished drive couplings.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
         ],
+        "unmodeled_wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "release_status": release_status(),
     }
 
@@ -216,6 +260,7 @@ def project_status():
         "source_discrepancies": SOURCE_DISCREPANCIES,
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,
+        "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,

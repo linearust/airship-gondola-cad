@@ -22,6 +22,7 @@ from gondola.design_contract import (
     NOTION_URL,
     RAIL_LENGTH_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
+    WIRING_PURCHASE_PLAN,
     release_status,
 )
 from gondola.mass_budget import mass_budget
@@ -53,7 +54,7 @@ def add_assembly_notes(doc):
         ),
         (
             "Removal",
-            "Modules slide off a rail end. Remove the neighboring battery/electronics module before propulsion. Keep each 18mm shoe fully supported and clamp within 4mm of a full land centre.",
+            "Disconnect external leads before sliding modules off a rail end. Remove the neighboring battery/electronics module before propulsion. Keep each 18mm shoe fully supported and clamp within 4mm of a full land centre.",
         ),
         (
             "Mounts",
@@ -81,7 +82,7 @@ def add_assembly_notes(doc):
         ),
         (
             "Clearance",
-            "Optical field, FC wiring and electrical accessories are conservative reservations. Verify actual connectors, antenna, moving phase leads and adhesive retention.",
+            "FC has a connected underbody/perimeter wiring reservation and rounded exits. Connector service lanes are design allowances; unplug leads before device or module removal. Verify actual port locations, antenna, moving phase leads and adhesive retention.",
         ),
         (
             "PA12",
@@ -220,8 +221,8 @@ def build_assembly():
             pr["group"],
             suffix + "PhaseLeadLoopReserve",
             "phase-lead slack-loop space outside rotor sweep",
-            Part.makeTorus(8, 1.5, V(38, sign * 80, 48.2), V(1, 0, 0)),
-            "Illustrative reserve for flexible three-phase motor leads at bounded±150deg tilt. This is not a rigid cable route or a specified bend radius. Check actual silicone leads at every tilt angle, strain relief, current capacity and connector clearance. Do not pass leads through the occupied M2 journal bore.",
+            Part.makeTorus(8, 1.5, V(-38, sign * 80, 48.2), V(1, 0, 0)),
+            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±150deg tilt, strain relief and current capacity. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or pass wires through the occupied M2 journal bore.",
         )
         o.Role = "Clearance"
         o.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
@@ -272,6 +273,9 @@ def build_assembly():
         "Yaw motor, fins/fin servos, optional360deg servo conversion",
     )
     set_property(reg, "ReleaseStatus", json.dumps(release_status(), ensure_ascii=False))
+    set_property(
+        reg, "WiringPurchasePlan", json.dumps(WIRING_PURCHASE_PLAN, sort_keys=True)
+    )
     doc.recompute()
     for o in printed + hardware + refs + clearance + coupon["printed"] + ra["tapes"]:
         if not o.Shape.isValid() or o.Shape.isNull():

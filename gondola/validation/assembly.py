@@ -601,7 +601,7 @@ def module_service(registry, objects, shapes):
     return {
         "removal_order": [m.Name for m in sequence],
         "modules": result,
-        "scope": "Sampled positions along straight saved-rail removal paths, not a continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
+        "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
         "passed": len(result) == 3 and all(r["passed"] for r in result),
     }
 
@@ -889,6 +889,10 @@ def equipment_scope_check(doc, registry, objects, shapes):
         "PortPhaseLeadLoopReserve",
         "StarboardPhaseLeadLoopReserve",
         "FCWiringClearanceReserve",
+        "LR900NegativeXConnectorReserve",
+        "LR900PositiveXConnectorReserve",
+        "PASConnectorReserve",
+        "MTF02PConnectorReserve",
     )
     for name in expected:
         obj = doc.getObject(name)
