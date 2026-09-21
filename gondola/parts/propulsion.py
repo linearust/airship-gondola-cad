@@ -651,7 +651,6 @@ def build_propulsion_module(doc, parent=None):
             "metal_structural_journal_parts_required": True,
             "printed_part_count": len(printed),
             "purchased_journal_hardware_count": len(hardware),
-            "hardware_reference_count": len(hardware),
             "device_reference_count": len(refs),
             "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
             "frame_foot_thickness_mm": FOOT_THICKNESS,
@@ -809,8 +808,6 @@ def build_propulsion_module(doc, parent=None):
         "clearances": clear,
         "pods": pods,
         "hardware": hardware,
-        "purchased": hardware,
         "frame": frame,
-        "crossmember": frame,
         "metrics": metrics,
     }

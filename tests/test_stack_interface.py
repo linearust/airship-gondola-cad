@@ -91,6 +91,27 @@ class StackInterfaceTests(unittest.TestCase):
             self.assertGreater(sweep.distToShape(column)[0], 8)
             self.assertGreater(abs(false_box.common(column).Volume), 200)
 
+    def test_head_removal_keeps_columns_and_lower_screws_only(self):
+        from gondola.parts.stack_interface import is_removable_head_part
+
+        group = self.kit["group"]
+        retained = {
+            obj.Name for obj in self.moving if not is_removable_head_part(obj, group)
+        }
+        self.assertEqual(
+            retained,
+            {
+                "OpticalStackSpacer0",
+                "OpticalStackSpacer1",
+                "OpticalStackLowerBolt0",
+                "OpticalStackLowerBolt1",
+            },
+        )
+        self.assertTrue(is_removable_head_part(self.doc.OpticalPitchNut, group))
+        self.assertTrue(is_removable_head_part(self.doc.ModuleMTF02PEnvelope, group))
+        self.assertFalse(is_removable_head_part(self.doc.BatteryMount, group))
+        self.assertFalse(is_removable_head_part(self.doc.ModuleFCEnvelope, group))
+
     def test_stock_nylon_skus_reject_wrong_material(self):
         from gondola.parts import metric_hardware as metric
 

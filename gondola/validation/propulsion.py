@@ -21,6 +21,7 @@ from gondola.manufacturing import geometry_comparison, mesh_checks, print_shape
 from gondola.parts import fastener_spec as fastener
 from gondola.parts import propulsion, rail
 
+from .evidence import overlap_failures
 from .geometry import intersection_volume, local_shape, translation_sweep
 
 TOL = 1e-5
@@ -188,24 +189,6 @@ def journal_stack_check(sleeve, hardware, frame, carrier, side):
         and nut_low - bolt_low >= fastener.THREAD_PITCH - TOL
     )
     return report
-
-
-def _overlap_failures(value, location=""):
-    failures = []
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if (
-                "overlap" in key
-                and key.endswith("mm3")
-                and isinstance(child, (int, float))
-                and abs(child) > TOL
-            ):
-                failures.append({"field": location + "/" + key, "volume_mm3": child})
-            failures.extend(_overlap_failures(child, location + "/" + key))
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            failures.extend(_overlap_failures(child, location + "/" + str(index)))
-    return failures
 
 
 def validate(source=None):
@@ -619,7 +602,7 @@ def validate(source=None):
             for shape in sleeves
         ]
         report["metrics"] = module["metrics"]
-        failures = _overlap_failures(report)
+        failures = overlap_failures(report, TOL)
         report["overlap_failures"] = failures
         report["passed"] = (
             not failures

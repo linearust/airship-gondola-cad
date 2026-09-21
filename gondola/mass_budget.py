@@ -4,17 +4,10 @@ import math
 import re
 
 from .design_contract import SCOPED_LISTED_EQUIPMENT_MASS_G
+from .procurement import hardware_material_code
 
 DENSITIES_G_CM3 = {"PA12": 1.01, "A2": 7.9, "PA66": 1.14}
 PA12_DENSITY_SOURCE = "https://creallo.com/ko/capability/material/SLS/SLSPA12"
-
-# Archived Rev K BRep audit, before role-specific mounts and confirmed device mounting patterns.
-# These are CAD-derived estimates, never weighed parts or a flight-mass baseline.
-REV_K_SOURCE_COMMIT = "30476c7b639c0932fb8ee809a8567abc32a84063"
-REV_K_CAD_SHA256 = "3666f1ba89ae62fb571b94a47bd19d2e7fac66f6deea4f193bc3026048638290"
-REV_K_PRINTED_VOLUME_CM3 = 50.356026484365614
-REV_K_HARDWARE_MASS_G = 7.659729290165907
-REV_K_LISTED_EQUIPMENT_MASS_G = 57.432
 
 EXCLUDED_ITEMS = (
     "Fit coupons and spare parts; only supplied installed-part lists are counted.",
@@ -26,20 +19,6 @@ EXCLUDED_ITEMS = (
     "Antennas, capacitor, regulators and accessory parts not included in listed equipment masses.",
     "Finish, moisture, manufacturing variation and differences from actual purchased parts.",
 )
-
-
-def _hardware_material(obj):
-    description = str(getattr(obj, "MaterialSelection", ""))
-    matches = [
-        material
-        for material in ("A2", "PA66")
-        if re.search(rf"\b{material}\b", description, re.IGNORECASE)
-    ]
-    if len(matches) != 1:
-        raise ValueError(
-            f"Unknown or ambiguous hardware material for {obj.Name}: {description!r}"
-        )
-    return matches[0]
 
 
 def _grouped_masses(objects, *, hardware, seen_names):
@@ -55,7 +34,10 @@ def _grouped_masses(objects, *, hardware, seen_names):
         if not math.isfinite(volume_mm3) or volume_mm3 <= 0:
             raise ValueError(f"Invalid positive solid volume for {name}: {volume_mm3}")
         if hardware:
-            material = _hardware_material(obj)
+            try:
+                material = hardware_material_code(obj.MaterialSelection)
+            except (AttributeError, ValueError) as error:
+                raise ValueError(f"Invalid hardware material for {name}") from error
             sku = str(obj.HardwareSKU)
         else:
             if getattr(obj, "HardwareSKU", ""):
@@ -106,16 +88,12 @@ def mass_budget(printed, hardware):
     structure_g = printed_g + hardware_g
     equipment_g = SCOPED_LISTED_EQUIPMENT_MASS_G
     subtotal_g = structure_g + equipment_g
-    baseline_printed_g = REV_K_PRINTED_VOLUME_CM3 * DENSITIES_G_CM3["PA12"]
-    baseline_structure_g = baseline_printed_g + REV_K_HARDWARE_MASS_G
-    baseline_original_subtotal_g = baseline_structure_g + REV_K_LISTED_EQUIPMENT_MASS_G
-    saving_g = baseline_structure_g - structure_g
     return {
         "method": "BRep solid volume in mm3 / 1000 times density in g/cm3. Purchased hardware is a dimensional envelope with no helical threads; neither hardware mass nor density is verified on purchased samples.",
         "scope": "Modeled installed printed parts, modeled mechanism hardware and the design contract's scoped listed equipment masses. Equipment-envelope volumes are not weighed or converted to mass.",
         "is_all_up_flight_mass": False,
         "device_mounting_hardware_included": False,
-        "comparison_limit": "Savings concern the modeled structure and mechanism hardware only. New FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
+        "comparison_limit": "Compare modeled structure and mechanism hardware only. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
                 "density_g_cm3": DENSITIES_G_CM3["PA12"],
@@ -143,21 +121,4 @@ def mass_budget(printed, hardware):
         "scoped_listed_equipment_g": equipment_g,
         "accounted_subtotal_g": subtotal_g,
         "excluded_items": list(EXCLUDED_ITEMS),
-        "comparison_to_rev_k": {
-            "source_commit": REV_K_SOURCE_COMMIT,
-            "cad_sha256": REV_K_CAD_SHA256,
-            "basis": "Archived Rev K installed BRep volume audit using the same PA12/A2/PA66 density assumptions. CAD estimates, not measured masses. Same-equipment comparison adds the current equipment scope to both structures.",
-            "printed_volume_cm3": REV_K_PRINTED_VOLUME_CM3,
-            "printed_g": baseline_printed_g,
-            "hardware_g": REV_K_HARDWARE_MASS_G,
-            "structure_hardware_g": baseline_structure_g,
-            "original_scoped_listed_equipment_g": REV_K_LISTED_EQUIPMENT_MASS_G,
-            "original_accounted_subtotal_g": baseline_original_subtotal_g,
-            "new_equipment_increment_g": equipment_g - REV_K_LISTED_EQUIPMENT_MASS_G,
-            "same_equipment_scope_subtotal_g": baseline_structure_g + equipment_g,
-            "structure_hardware_saving_g": saving_g,
-            "structure_hardware_saving_percent": 100 * saving_g / baseline_structure_g,
-            "accounted_subtotal_change_from_original_scope_g": subtotal_g
-            - baseline_original_subtotal_g,
-        },
     }

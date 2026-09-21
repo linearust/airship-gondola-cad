@@ -17,7 +17,6 @@ from .design_contract import (
     MANUFACTURING_DECISION,
     PUBLISHED_PROCESS_SIZE_MM,
     RAIL_LENGTH_MM,
-    hardware_bom_scope,
     release_status,
 )
 from .provenance import file_sha256, source_fingerprint
@@ -313,91 +312,3 @@ def export_print_parts(assembly, installed, coupons, out, stem):
     (folder / "print_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     App.setActiveDocument(assembly.Name)
     return manifest
-
-
-# Mandatory procurement fields must be identical for every instance of a SKU.
-# Candidate URLs and evidence notes may be empty when no item is selected.
-PURCHASE_METADATA_FIELDS = {
-    "purchase_search_query": "PurchaseSearchQuery",
-    "purchase_search_url": "PurchaseSearchURL",
-    "purchase_requirements": "PurchaseRequirements",
-    "purchase_candidate_url": "PurchaseCandidateURL",
-    "purchase_evidence_notes": "PurchaseEvidenceNotes",
-    "purchasing_status": "PurchasingStatus",
-}
-REQUIRED_PURCHASE_FIELDS = frozenset(
-    (
-        "purchase_search_query",
-        "purchase_search_url",
-        "purchase_requirements",
-        "purchasing_status",
-    )
-)
-
-
-def purchase_metadata(instances):
-    """Reject a shared SKU whose instances disagree on what must be bought."""
-    fields = {}
-    for field, property_name in PURCHASE_METADATA_FIELDS.items():
-        values = {str(getattr(part, property_name, "")) for part in instances}
-        if len(values) != 1 or (
-            field in REQUIRED_PURCHASE_FIELDS and not next(iter(values), "")
-        ):
-            raise ValueError(
-                f"Missing or conflicting {property_name} for shared hardware SKU"
-            )
-        fields[field] = values.pop()
-    return fields
-
-
-def export_hardware_bom(objects, out, stem):
-    """Group bought instances by both metric specification and material."""
-    buckets = {}
-    for obj in objects:
-        material = str(getattr(obj, "MaterialSelection", "Unspecified"))
-        if "Nylon" in material or "nylon" in material:
-            material_code = "PA66"
-        elif "A2" in material:
-            material_code = "A2"
-        else:
-            material_code = material
-        buckets.setdefault((str(obj.HardwareSKU), material_code), []).append(obj)
-
-    rows = []
-    for (sku, material_code), instances in buckets.items():
-        obj = instances[0]
-        rows.append(
-            {
-                "sku": sku,
-                "purchase_code": sku + "_" + material_code,
-                "quantity": len(instances),
-                "label": obj.Label,
-                "thread_descriptions": sorted(
-                    {str(getattr(part, "ThreadStandard", "")) for part in instances}
-                ),
-                "material": str(
-                    getattr(obj, "MaterialSelection", "Stainless steel for rail clamp")
-                ),
-                "sources": sorted(
-                    {str(getattr(part, "SourceURL", "")) for part in instances}
-                ),
-                "notes": str(getattr(obj, "Notes", "")),
-                **purchase_metadata(instances),
-                "instances": [part.Name for part in instances],
-            }
-        )
-    result = {
-        "schema_version": ARTIFACT_SCHEMA_VERSION,
-        "source_fingerprint": source_fingerprint(),
-        "purchased_hardware_quantity": len(objects),
-        "unique_purchase_spec_count": len(rows),
-        "all_threads": "Modeled mechanism fasteners use M2 x0.4 ISO metric coarse threads. Unmodeled device/OEM fasteners are outside this list; consult their verified interfaces and unresolved mounting requirements.",
-        "purchase_scope": hardware_bom_scope(),
-        "color": "Gold = purchased hardware; not a material or finish specification.",
-        "purchasing_status": "Specifications and source drawings; no marketplace SKU or seller lot verified.",
-        "items": rows,
-    }
-    Path(out, stem + "_hardware_bom.json").write_text(
-        json.dumps(result, indent=2) + "\n"
-    )
-    return result

@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from gondola import procurement
+
 
 def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -29,6 +31,7 @@ class HardwareBomTests(unittest.TestCase):
             "MeshPart": Mock(),
             "gondola.parts.equipment_envelopes": Mock(),
             "gondola.parts.optical_sensor": Mock(),
+            "gondola.parts.stack_interface": Mock(),
             "gondola.validation.optical": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.parts.mounting_interfaces": Mock(),
@@ -49,6 +52,11 @@ class HardwareBomTests(unittest.TestCase):
                 root / "gondola/validation/equipment.py",
             )
         self.manufacturing.source_fingerprint = Mock(return_value="current source")
+        patcher = patch.object(
+            procurement, "source_fingerprint", return_value="current source"
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.equipment.source_fingerprint = Mock(return_value="current source")
         self.hardware = []
         for sku, quantity in self.equipment.EXPECTED_PURCHASE_QUANTITIES.items():
@@ -89,16 +97,14 @@ class HardwareBomTests(unittest.TestCase):
         self.bom_path = self.output / "gondola_hardware_bom.json"
 
     def export(self):
-        return self.manufacturing.export_hardware_bom(
-            self.hardware, self.output, "gondola"
-        )
+        return procurement.export_hardware_bom(self.hardware, self.output, "gondola")
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
         self.assertEqual(bom["purchased_hardware_quantity"], 24)
         self.assertEqual(bom["unique_purchase_spec_count"], 5)
         self.assertEqual(len(bom["items"]), 5)
-        self.assertEqual(bom["purchase_scope"], self.manufacturing.hardware_bom_scope())
+        self.assertEqual(bom["purchase_scope"], procurement.hardware_bom_scope())
         self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
         nuts = next(row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562")
         self.assertEqual(nuts["quantity"], 9)
@@ -118,6 +124,45 @@ class HardwareBomTests(unittest.TestCase):
         self.assertTrue(audit["bom_each_instance_exactly_once"])
         self.assertTrue(audit["not_printed"])
 
+    def test_shared_sku_keeps_all_role_notes_and_is_order_independent(self):
+        nuts = [
+            obj for obj in self.hardware if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562"
+        ]
+        for index, part in enumerate(nuts):
+            part.Label = "Rail nut" if index < 3 else "Journal / optical nut"
+            part.Notes = (
+                "Captive clamp pocket"
+                if index < 3
+                else "Hold exposed nut while tightening"
+            )
+        first = self.export()
+        row = next(
+            row for row in first["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562"
+        )
+        self.assertEqual(row["labels"], ["Journal / optical nut", "Rail nut"])
+        self.assertEqual(
+            row["notes"], ["Captive clamp pocket", "Hold exposed nut while tightening"]
+        )
+        self.assertNotIn("label", row)
+        self.assertTrue(
+            self.equipment.hardware_check(self.document, self.source)["passed"]
+        )
+        self.hardware.reverse()
+        self.assertEqual(first, self.export())
+
+    def test_bom_rejects_unverified_material_grades_and_duplicate_instances(self):
+        part = self.hardware[0]
+        original = part.MaterialSelection
+        for material in ("Nylon", "Nylon PA6", "A2 or PA66", "Unspecified"):
+            with self.subTest(material=material):
+                part.MaterialSelection = material
+                with self.assertRaisesRegex(ValueError, "hardware material"):
+                    self.export()
+        part.MaterialSelection = original
+        self.hardware.append(part)
+        with self.assertRaisesRegex(ValueError, "more than once"):
+            self.export()
+
     def test_audit_rejects_hex_nut_substitution_for_square_rail_nuts(self):
         for obj in self.hardware:
             if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562":
@@ -128,7 +173,7 @@ class HardwareBomTests(unittest.TestCase):
         self.assertTrue(audit["bom_each_instance_exactly_once"])
 
     def test_audit_rejects_missing_or_fabricated_group_evidence(self):
-        for key in ("sources", "thread_descriptions"):
+        for key in ("sources", "thread_descriptions", "labels", "notes"):
             for operation in ("remove", "add", "omit"):
                 with self.subTest(field=key, operation=operation):
                     bom = self.export()
@@ -164,8 +209,8 @@ class HardwareBomTests(unittest.TestCase):
 
     def test_audit_rejects_changed_or_omitted_procurement_fields(self):
         fields = (
-            *self.manufacturing.PURCHASE_METADATA_FIELDS,
-            "label",
+            *procurement.PURCHASE_METADATA_FIELDS,
+            "labels",
             "notes",
             "purchase_code",
         )

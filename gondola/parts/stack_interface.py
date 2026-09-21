@@ -10,7 +10,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import box, set_property, union
+from gondola.cad import belongs_to_group, box, set_property, union
 
 from . import metric_hardware as metric
 
@@ -100,6 +100,14 @@ def attach_to_host(group, host):
     set_property(group, "StackHostName", host.Name)
     annotate_interface(group)
     group.Document.recompute()
+
+
+def is_removable_head_part(obj, stack):
+    """Release the complete head while retaining both columns and lower screws."""
+    return belongs_to_group(obj, stack) and str(getattr(obj, "StackEnd", "")) not in (
+        "Lower",
+        "Spacer",
+    )
 
 
 def build_stack_hardware(doc, group):

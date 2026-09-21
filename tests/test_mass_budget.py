@@ -1,4 +1,4 @@
-"""Mass accounting must preserve installed quantities and comparison scope."""
+"""Mass accounting must preserve installed quantities and explicit exclusions."""
 
 import json
 import types
@@ -79,31 +79,16 @@ class MassBudgetTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "solid volume"):
                     mass_budget([part("Board", volume)], [])
 
-    def test_baseline_comparison_keeps_equipment_addition_separate_from_saving(self):
+    def test_current_mass_scope_does_not_embed_a_historical_design(self):
         report = mass_budget([part("Rail", 1000)], [])
         self.assertFalse(report["device_mounting_hardware_included"])
         self.assertIn("not yet dimensioned or counted", report["comparison_limit"])
-        baseline = report["comparison_to_rev_k"]
-        self.assertEqual(
-            baseline["source_commit"], "30476c7b639c0932fb8ee809a8567abc32a84063"
-        )
-        self.assertAlmostEqual(baseline["printed_g"], 50.85958674920927)
-        self.assertAlmostEqual(baseline["hardware_g"], 7.659729290165907)
-        self.assertAlmostEqual(baseline["structure_hardware_g"], 58.51931603937518)
+        self.assertAlmostEqual(report["current_printed_g"], 1.01)
+        self.assertEqual(report["current_hardware_g"], 0)
         self.assertAlmostEqual(
-            baseline["original_accounted_subtotal_g"], 115.95131603937517
+            report["accounted_subtotal_g"], 1.01 + SCOPED_LISTED_EQUIPMENT_MASS_G
         )
-        self.assertAlmostEqual(baseline["new_equipment_increment_g"], 0.0)
-        self.assertAlmostEqual(
-            baseline["same_equipment_scope_subtotal_g"]
-            - report["accounted_subtotal_g"],
-            baseline["structure_hardware_saving_g"],
-        )
-        self.assertAlmostEqual(
-            baseline["accounted_subtotal_change_from_original_scope_g"],
-            -baseline["structure_hardware_saving_g"]
-            + baseline["new_equipment_increment_g"],
-        )
+        self.assertFalse(any(key.startswith("comparison_to_") for key in report))
         self.assertIn("assumption", report["density_assumptions"]["A2"]["basis"])
         self.assertIn("assumption", report["density_assumptions"]["PA66"]["basis"])
 

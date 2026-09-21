@@ -110,6 +110,55 @@ class OpticalClearanceTests(unittest.TestCase):
                 original
             )
 
+    def test_invalid_host_fails_without_reparenting_or_changing_controls(self):
+        from gondola.parts import optical_mount, stack_interface
+        from gondola.validation.optical import mtf_sensor_check
+
+        group = self.doc.OpticalFlowModule
+        host = group.getParentGeoFeatureGroup()
+        unsupported = self.doc.addObject("App::Part", "UnsupportedOpticalHost")
+        optical_mount.set_angles(self.doc, 13, -9)
+        placement = group.Placement.copy()
+        for changed_parent in (None, unsupported):
+            with self.subTest(parent=changed_parent):
+                host.removeObject(group)
+                if changed_parent is not None:
+                    changed_parent.addObject(group)
+                try:
+                    result = mtf_sensor_check(self.doc)
+                    self.assertFalse(result["passed"])
+                    self.assertFalse(
+                        result["source_evidence"]["native_structure"]["passed"]
+                    )
+                    self.assertIs(group.getParentGeoFeatureGroup(), changed_parent)
+                    self.assertLess(
+                        (group.Placement.Base - placement.Base).Length, 1e-9
+                    )
+                    self.assertTrue(
+                        group.Placement.Rotation.isSame(placement.Rotation, 1e-9)
+                    )
+                    self.assertEqual(self.doc.OpticalRollStage.Roll.Value, 13)
+                    self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
+                finally:
+                    stack_interface.attach_to_host(group, host)
+
+    def test_missing_host_support_or_native_metadata_returns_a_failed_report(self):
+        from gondola.validation.optical import mtf_sensor_check
+
+        self.doc.removeObject("BatteryMount")
+        self.doc.OpticalFlowModule.removeProperty("StackInterfaceContract")
+        result = mtf_sensor_check(self.doc)
+        self.assertFalse(result["passed"])
+        errors = result["source_evidence"]["native_structure"]["errors"]
+        self.assertIn({"object": "BatteryMount", "error": "missing object"}, errors)
+        self.assertIn(
+            {
+                "object": "OpticalFlowModule",
+                "missing_properties": ["StackInterfaceContract"],
+            },
+            errors,
+        )
+
     def test_continuous_field_bound_detects_a_small_external_obstruction(self):
         from gondola.validation.optical import _external_field_bound, _hits
 

@@ -21,7 +21,14 @@ from .config import (
     ROOT,
     STEM,
 )
-from .design_contract import EXPECTED_INVENTORY, hardware_bom_scope, release_status
+from .design_contract import (
+    EXPECTED_INVENTORY,
+    HARDWARE_MATERIALS,
+    PURCHASED_HARDWARE_QUANTITIES,
+    hardware_bom_scope,
+    release_status,
+)
+from .procurement import purchase_code
 from .provenance import file_sha256, source_fingerprint
 
 
@@ -129,6 +136,17 @@ def _validate_bom(bom):
         if not isinstance(item, dict):
             raise RuntimeError("Malformed hardware BOM item.")
         code = item.get("purchase_code")
+        sku = item.get("sku")
+        if (
+            not isinstance(sku, str)
+            or sku not in PURCHASED_HARDWARE_QUANTITIES
+            or item.get("material") != HARDWARE_MATERIALS[sku]
+            or code != purchase_code(sku, HARDWARE_MATERIALS[sku])
+            or item.get("quantity") != PURCHASED_HARDWARE_QUANTITIES[sku]
+        ):
+            raise RuntimeError(
+                "Hardware BOM specifications disagree with the design contract."
+            )
         instances = item.get("instances")
         count = _quantity(item.get("quantity"))
         if (

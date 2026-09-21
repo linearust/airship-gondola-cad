@@ -19,19 +19,20 @@ from gondola.design_contract import (
     WIRING_PURCHASE_PLAN,
     hardware_bom_scope,
 )
-from gondola.manufacturing import (
-    PURCHASE_METADATA_FIELDS,
-    REQUIRED_PURCHASE_FIELDS,
-    geometry_comparison,
-)
+from gondola.manufacturing import geometry_comparison
 from gondola.parts import equipment_envelopes as devices
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import mounting_interfaces as interfaces
-from gondola.parts import optical_sensor
+from gondola.parts import optical_sensor, stack_interface
+from gondola.procurement import (
+    PURCHASE_METADATA_FIELDS,
+    REQUIRED_PURCHASE_FIELDS,
+    purchase_code,
+    purchase_evidence,
+)
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .geometry import (
-    belongs_to_group,
     intersection_volume,
     local_shape,
     translation_sweep,
@@ -555,8 +556,7 @@ def mounting_check(doc):
             obj.Name
             for obj in physical
             if release_head
-            and belongs_to_group(obj, optical_group)
-            and str(getattr(obj, "StackEnd", "")) not in ("Lower", "Spacer")
+            and stack_interface.is_removable_head_part(obj, optical_group)
         }
         hits = [
             obj.Name
@@ -679,29 +679,22 @@ def hardware_check(doc, source):
                 and (field not in REQUIRED_PURCHASE_FIELDS or bool(row[field]))
                 for field, property_name in PURCHASE_METADATA_FIELDS.items()
             )
+            expected_material = HARDWARE_MATERIALS.get(row["sku"])
             matched = (
                 procurement_matches
+                and expected_material is not None
                 and row.get("purchase_code")
-                == row["sku"]
-                + (
-                    "_PA66"
-                    if HARDWARE_MATERIALS.get(row["sku"]) == "Nylon PA66"
-                    else "_A2"
+                == purchase_code(row["sku"], expected_material)
+                and all(
+                    row.get(field) == values
+                    for field, values in purchase_evidence(instances).items()
                 )
-                and row.get("label") == str(instances[0].Label)
-                and row.get("notes") == str(getattr(instances[0], "Notes", ""))
                 and row["quantity"] == len(instances)
                 and all(
                     row["sku"] == str(obj.HardwareSKU)
                     and row["material"] == str(obj.MaterialSelection)
                     for obj in instances
                 )
-                and row.get("thread_descriptions")
-                == sorted(
-                    {str(getattr(obj, "ThreadStandard", "")) for obj in instances}
-                )
-                and row.get("sources")
-                == sorted({str(getattr(obj, "SourceURL", "")) for obj in instances})
             )
         bom_rows.append({"sku": row["sku"], "matches_native_instances": matched})
     fingerprint = source_fingerprint()

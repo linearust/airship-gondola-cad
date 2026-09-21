@@ -57,8 +57,75 @@ def _json_equal(first, second):
         return False
 
 
+def _native_structure_check(doc):
+    """Reject incomplete native assemblies before any geometry probe or mutation."""
+    required = {
+        "DesignRegistry": (
+            "PrintedParts",
+            "HardwareParts",
+            "ReferenceParts",
+            "ClearanceVolumes",
+            "FitCoupons",
+            "OpticalMountParts",
+            "TapeReferences",
+        ),
+        "OpticalFlowModule": (
+            "OpticalMountContract",
+            "StackInterfaceContract",
+            "StackHostName",
+            "HoldingTorqueVerified",
+            "SelfLevelling",
+            "StackFitVerified",
+        ),
+        "OpticalRollStage": ("Roll", "MinimumAngle", "MaximumAngle"),
+        "OpticalPitchStage": ("Pitch", "MinimumAngle", "MaximumAngle"),
+    }
+    required.update({name: () for name in stack_interface.SUPPORTED_HOSTS})
+    required.update(
+        {
+            name: ("Shape", "StackInterfaceContract", "StackFitVerified")
+            for name in stack_interface.SUPPORTED_HOSTS.values()
+        }
+    )
+    errors = []
+    for name, properties in required.items():
+        obj = doc.getObject(name)
+        if obj is None:
+            errors.append({"object": name, "error": "missing object"})
+        else:
+            missing = [key for key in properties if key not in obj.PropertiesList]
+            if missing:
+                errors.append({"object": name, "missing_properties": missing})
+    parents = {
+        "OpticalFlowModule": set(stack_interface.SUPPORTED_HOSTS),
+        "OpticalRollStage": {"OpticalFlowModule"},
+        "OpticalPitchStage": {"OpticalRollStage"},
+        **{
+            support: {host} for host, support in stack_interface.SUPPORTED_HOSTS.items()
+        },
+    }
+    for name, allowed in parents.items():
+        obj = doc.getObject(name)
+        if obj is None:
+            continue
+        parent = obj.getParentGeoFeatureGroup()
+        parent_name = parent.Name if parent is not None else None
+        if parent_name not in allowed:
+            errors.append(
+                {
+                    "object": name,
+                    "parent": parent_name,
+                    "expected_parents": sorted(allowed),
+                }
+            )
+    return {"errors": errors, "passed": not errors}
+
+
 def _source_evidence(doc):
     """Bind saved shapes, placements, metadata and registries to source factories."""
+    structure = _native_structure_check(doc)
+    if not structure["passed"]:
+        return {"native_structure": structure, "passed": False}
     expected_doc = App.newDocument("OpticalEvidenceReference")
     rows = []
     try:
@@ -222,6 +289,7 @@ def _source_evidence(doc):
                 }
             )
         return {
+            "native_structure": structure,
             "objects": rows,
             "registered_kit_inventory_matches_factory": inventory,
             "module_contract_and_registry": module_ok,
@@ -379,7 +447,7 @@ def _host_checks(doc, host, physical, kit):
     retained = [
         obj
         for obj in physical
-        if obj not in kit or str(getattr(obj, "StackEnd", "")) in ("Lower", "Spacer")
+        if not stack_interface.is_removable_head_part(obj, group)
     ]
     for name in (
         "ModuleBatteryEnvelope",
@@ -419,18 +487,14 @@ def _host_checks(doc, host, physical, kit):
 
 def mtf_sensor_check(doc):
     """Temporarily probe both hosts and restore all native changes; never save."""
-    required = (
-        "DesignRegistry",
-        "OpticalFlowModule",
-        "OpticalRollStage",
-        "OpticalPitchStage",
-        "ModuleMTF02PEnvelope",
-        "MTF02POpticalClearanceReserve",
-        "MTF02PConnectorReserve",
-    )
-    missing = [name for name in required if doc.getObject(name) is None]
-    if missing:
-        return {"passed": False, "missing": missing}
+    report = {
+        "scope": "Saved CAD geometry only. 25 sampled self-mechanism attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
+    }
+    evidence = _source_evidence(doc)
+    report["source_evidence"] = evidence
+    if not evidence["passed"]:
+        report["passed"] = False
+        return report
     group = doc.OpticalFlowModule
     old_host = group.getParentGeoFeatureGroup()
     old_placement = group.Placement.copy()
@@ -439,15 +503,7 @@ def mtf_sensor_check(doc):
         for name in ("StackHostName", "StackInterfaceContract", "StackFitVerified")
     }
     old_angles = (doc.OpticalRollStage.Roll.Value, doc.OpticalPitchStage.Pitch.Value)
-    report = {
-        "scope": "Saved CAD geometry only. 25 sampled self-mechanism attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
-    }
     try:
-        evidence = _source_evidence(doc)
-        report["source_evidence"] = evidence
-        if not evidence["passed"]:
-            report["passed"] = False
-            return report
         registry = doc.DesignRegistry
         physical = (
             list(registry.PrintedParts)

@@ -148,7 +148,7 @@ def style_assembly(doc):
 
 
 def build_assembly():
-    from gondola.manufacturing import export_hardware_bom, export_print_parts
+    from gondola.manufacturing import export_print_parts
     from gondola.parts import equipment_mounts as mounts
     from gondola.parts import metric_hardware as metric
     from gondola.parts import (
@@ -158,6 +158,7 @@ def build_assembly():
         rail,
         stack_interface,
     )
+    from gondola.procurement import export_hardware_bom
 
     fingerprint = source_fingerprint()
     OUT.mkdir(parents=True, exist_ok=True)

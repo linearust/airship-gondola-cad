@@ -75,11 +75,17 @@ class BundleIntegrityTests(unittest.TestCase):
             "purchase_scope": bundle.hardware_bom_scope(),
             "items": [
                 {
-                    "purchase_code": f"hardware_{index}",
+                    "sku": sku,
+                    "material": bundle.HARDWARE_MATERIALS[sku],
+                    "purchase_code": bundle.purchase_code(
+                        sku, bundle.HARDWARE_MATERIALS[sku]
+                    ),
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 6, 2, 3, 9))
+                for index, (sku, quantity) in enumerate(
+                    bundle.PURCHASED_HARDWARE_QUANTITIES.items()
+                )
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")
@@ -181,6 +187,23 @@ class BundleIntegrityTests(unittest.TestCase):
             self.assertEqual(set(hashes["files"]), names - {"package_hashes.json"})
             for name, expected in hashes["files"].items():
                 self.assertEqual(sha256_bytes(zipped.read(name)), expected)
+
+    def test_bom_cannot_substitute_specs_while_preserving_total_quantity(self):
+        for field, replacement in (
+            ("sku", "M2_HEX_NUT"),
+            ("material", "Nylon PA6"),
+            ("purchase_code", "unverified substitution"),
+        ):
+            with self.subTest(field=field):
+                changed = json.loads(json.dumps(self.bom))
+                changed["items"][0][field] = replacement
+                with self.assertRaisesRegex(RuntimeError, "specifications disagree"):
+                    bundle._validate_bom(changed)
+        changed = json.loads(json.dumps(self.bom))
+        changed["items"][0]["quantity"] += 1
+        changed["items"][1]["quantity"] -= 1
+        with self.assertRaisesRegex(RuntimeError, "specifications disagree"):
+            bundle._validate_bom(changed)
 
     def test_changed_cad_cannot_publish(self):
         self.cad_path.write_bytes(b"changed CAD")

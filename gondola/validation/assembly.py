@@ -45,10 +45,12 @@ from gondola.manufacturing import (
 from gondola.mass_budget import mass_budget
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail, stack_interface
+from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .baseline import module_control_bindings
 from .equipment import EXPECTED_PURCHASE_QUANTITIES, mounting_check
+from .evidence import overlap_failures
 from .geometry import (
     belongs_to_group,
     compare_mesh_surfaces,
@@ -417,7 +419,7 @@ def hardware_check(registry):
         and all(row["passed"] for row in material_rows)
     )
     expected_purchases = {
-        sku + ("_PA66" if HARDWARE_MATERIALS[sku] == "Nylon PA66" else "_A2"): quantity
+        purchase_code(sku, HARDWARE_MATERIALS[sku]): quantity
         for sku, quantity in EXPECTED_PURCHASE_QUANTITIES.items()
     }
     purchase_counts = {row["purchase_code"]: row["quantity"] for row in bom["items"]}
@@ -1417,26 +1419,10 @@ def detailed_propulsion_evidence(doc, source):
                 ),
             }
         )
-    volume_failures = []
-
-    def inspect(value, location=""):
-        if isinstance(value, dict):
-            for key, child in value.items():
-                if (
-                    "overlap" in key
-                    and key.endswith("mm3")
-                    and isinstance(child, (int, float))
-                    and abs(child) > TOL
-                ):
-                    volume_failures.append(
-                        {"field": location + "/" + key, "value": child}
-                    )
-                inspect(child, location + "/" + key)
-        elif isinstance(value, list):
-            for index, child in enumerate(value):
-                inspect(child, location + "/" + str(index))
-
-    inspect(evidence)
+    volume_failures = [
+        {"field": row["field"], "value": row["volume_mm3"]}
+        for row in overlap_failures(evidence, TOL)
+    ]
     meshes = evidence.get("geometry", [])
     evidence_ok = (
         evidence.get("passed", False)
