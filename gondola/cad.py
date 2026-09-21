@@ -24,6 +24,16 @@ def create_group(doc, name, label):
     return obj
 
 
+def belongs_to_group(obj, group):
+    """Test native assembly ancestry, including nested adjustable stages."""
+    parent = obj.getParentGeoFeatureGroup()
+    while parent is not None:
+        if parent == group:
+            return True
+        parent = parent.getParentGeoFeatureGroup()
+    return False
+
+
 def world_shape(obj):
     """Copy a feature with its complete parent-to-world placement applied once."""
     shape = obj.Shape.copy()

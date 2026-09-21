@@ -15,7 +15,9 @@ from gondola.cad import (
 )
 from gondola.config import BASELINE_FILE, BASELINE_SHA256, OUTPUT_DIR, ROOT, STEM
 from gondola.design_contract import (
+    EXPECTED_INVENTORY,
     MANUFACTURING_DECISION,
+    MODULE_STATIONS,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
@@ -33,6 +35,7 @@ REGISTRY_LISTS = (
     "FitCoupons",
     "Modules",
     "EquipmentMounts",
+    "OpticalMountParts",
     "RailSegments",
     "RailLocks",
     "HardwareParts",
@@ -65,18 +68,54 @@ def registry_contents(registry):
     }
 
 
+def module_control_bindings(doc):
+    """Bind controls by stable object identity, never registry list position."""
+    modules = list(doc.DesignRegistry.Modules)
+    names = [obj.Name for obj in modules]
+    expected = [station.object_name for station in MODULE_STATIONS]
+    controls = [station.clamp_control for station in MODULE_STATIONS]
+    if (
+        not expected
+        or len(set(expected)) != len(expected)
+        or len(set(controls)) != len(controls)
+        or len(set(names)) != len(names)
+        or set(names) != set(expected)
+    ):
+        raise ValueError("Registered modules do not match the unique station contract")
+    if any(name not in doc.AssemblySettings.PropertiesList for name in controls):
+        raise ValueError("A registered module has no native clamp approach control")
+    by_name = {obj.Name: obj for obj in modules}
+    return [(station, by_name[station.object_name]) for station in MODULE_STATIONS]
+
+
 def control_behavior(doc):
     """Exercise saved native expressions without relying on source proxies."""
-    clamp_names = (
-        "BatteryClampApproach",
-        "PropulsionClampApproach",
-        "ElectronicsClampApproach",
-    )
-    modules = list(doc.DesignRegistry.Modules)
+    try:
+        bindings = module_control_bindings(doc)
+    except (AttributeError, ValueError) as error:
+        return {
+            "cases": [],
+            "module_control_mapping_valid": False,
+            "error": str(error),
+            "passed": False,
+        }
+    modules = [module for _, module in bindings]
+    pods = list(doc.DesignRegistry.TiltingPods)
+    if len(pods) != EXPECTED_INVENTORY["tilting_propulsors"] or len(
+        {pod.Name for pod in pods}
+    ) != len(pods):
+        return {"cases": [], "error": "Tilting pod inventory mismatch", "passed": False}
+    clamp_names = [station.clamp_control for station, _ in bindings]
     originals = {name: str(getattr(doc.AssemblySettings, name)) for name in clamp_names}
     rows = []
     try:
-        for key, module in zip(clamp_names, modules):
+        for station, module in bindings:
+            key = station.clamp_control
+            other_modules = {
+                other.Name: other.Placement.copy()
+                for other in modules
+                if other != module
+            }
             for value, sign in (("PositiveY", 1), ("NegativeY", -1)):
                 setattr(doc.AssemblySettings, key, value)
                 doc.recompute()
@@ -86,19 +125,25 @@ def control_behavior(doc):
                         "property": key,
                         "input": value,
                         "result_y_mm": module.Placement.Base.y,
-                        "passed": abs(module.Placement.Base.y - sign * 0.45) < TOL,
+                        "other_modules_unchanged": all(
+                            doc.getObject(name).Placement.isSame(placement, 1e-7)
+                            for name, placement in other_modules.items()
+                        ),
+                        "passed": abs(module.Placement.Base.y - sign * 0.45) < TOL
+                        and all(
+                            doc.getObject(name).Placement.isSame(placement, 1e-7)
+                            for name, placement in other_modules.items()
+                        ),
                     }
                 )
     finally:
         for key, value in originals.items():
             setattr(doc.AssemblySettings, key, value)
         doc.recompute()
-    for pod in doc.DesignRegistry.TiltingPods:
+    for pod in pods:
         original = float(pod.Tilt)
         other_pods = {
-            other.Name: other.Placement.copy()
-            for other in doc.DesignRegistry.TiltingPods
-            if other != pod
+            other.Name: other.Placement.copy() for other in pods if other != pod
         }
         try:
             for requested, expected in (
@@ -131,6 +176,9 @@ def control_behavior(doc):
             doc.recompute()
     for module in modules:
         original = float(module.RailPositionX)
+        other_modules = {
+            other.Name: other.Placement.copy() for other in modules if other != module
+        }
         try:
             module.RailPositionX = original + 18
             doc.recompute()
@@ -140,13 +188,101 @@ def control_behavior(doc):
                     "property": "RailPositionX",
                     "input": original + 18,
                     "result_x_mm": module.Placement.Base.x,
-                    "passed": abs(module.Placement.Base.x - original - 18) < TOL,
+                    "other_modules_unchanged": all(
+                        doc.getObject(name).Placement.isSame(placement, 1e-7)
+                        for name, placement in other_modules.items()
+                    ),
+                    "passed": abs(module.Placement.Base.x - original - 18) < TOL
+                    and all(
+                        doc.getObject(name).Placement.isSame(placement, 1e-7)
+                        for name, placement in other_modules.items()
+                    ),
                 }
             )
         finally:
             module.RailPositionX = original
             doc.recompute()
-    return {"cases": rows, "passed": all(row["passed"] for row in rows)}
+    optical = doc.getObject("OpticalFlowModule")
+    roll = doc.getObject("OpticalRollStage")
+    pitch = doc.getObject("OpticalPitchStage")
+    if any(obj is None for obj in (optical, roll, pitch)):
+        return {
+            "cases": rows,
+            "module_control_mapping_valid": True,
+            "error": "Missing independent optical roll/pitch stages",
+            "passed": False,
+        }
+    for property_name, stage, axis, origin, other_stage, expected_parent in (
+        ("Roll", roll, App.Vector(1, 0, 0), App.Vector(0, 0, 8), pitch, optical),
+        ("Pitch", pitch, App.Vector(0, 1, 0), App.Vector(0, 0, 10), roll, roll),
+    ):
+        if not {property_name, "MinimumAngle", "MaximumAngle"}.issubset(
+            stage.PropertiesList
+        ):
+            return {
+                "cases": rows,
+                "error": "Missing optical angle control",
+                "passed": False,
+            }
+        original = float(getattr(stage, property_name))
+        other_placement = other_stage.Placement.copy()
+        module_placements = {module.Name: module.Placement.copy() for module in modules}
+        optical_placement = optical.getGlobalPlacement()
+        declared_limits_match = (
+            abs(float(stage.MinimumAngle) + 20) < TOL
+            and abs(float(stage.MaximumAngle) - 20) < TOL
+        )
+        try:
+            for requested, expected in (
+                (-999, -20),
+                (-10, -10),
+                (0, 0),
+                (10, 10),
+                (999, 20),
+            ):
+                setattr(stage, property_name, requested)
+                doc.recompute()
+                independent = (
+                    other_stage.Placement.isSame(other_placement, 1e-7)
+                    and optical.getGlobalPlacement().isSame(optical_placement, 1e-7)
+                    and all(
+                        doc.getObject(name).Placement.isSame(placement, 1e-7)
+                        for name, placement in module_placements.items()
+                    )
+                )
+                stage_pose_matches = stage.Placement.isSame(
+                    App.Placement(origin, App.Rotation(axis, expected)), 1e-7
+                )
+                parent_matches = stage.getParentGeoFeatureGroup() == expected_parent
+                rows.append(
+                    {
+                        "object": stage.Name,
+                        "property": property_name,
+                        "input": requested,
+                        "expected_bounded_angle_deg": expected,
+                        "stage": stage.Name,
+                        "stage_local_placement_matches": stage_pose_matches,
+                        "stage_parent_matches": parent_matches,
+                        "declared_limits_match": declared_limits_match,
+                        "other_axis_and_modules_unchanged": independent,
+                        "passed": stage_pose_matches
+                        and parent_matches
+                        and declared_limits_match
+                        and independent,
+                    }
+                )
+        finally:
+            setattr(stage, property_name, original)
+            doc.recompute()
+    expected_cases = (
+        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 10
+    )
+    return {
+        "cases": rows,
+        "module_control_mapping_valid": True,
+        "expected_case_count": expected_cases,
+        "passed": len(rows) == expected_cases and all(row["passed"] for row in rows),
+    }
 
 
 def unresolved_scope(doc):
@@ -222,6 +358,7 @@ def procurement_and_scope_metadata(obj):
         "ThreadStandard",
         "NominalThreadDiameter",
         "ThreadPitch",
+        "ShapeModelNotes",
         "SourceURL",
         "PurchaseSearchQuery",
         "PurchaseSearchURL",
@@ -236,6 +373,16 @@ def procurement_and_scope_metadata(obj):
         "InstalledConnectorFitVerified",
         "ConnectorEvidence",
         "WiringContract",
+        "OpticalMountContract",
+        "StackInterfaceContract",
+        "BatteryPlacementContract",
+        "StackHostName",
+        "StackFitVerified",
+        "HoldingTorqueVerified",
+        "SelfLevelling",
+        "MinimumAngle",
+        "MaximumAngle",
+        "StackEnd",
         "FDMPrintValidated",
     )
     values = {}
@@ -244,6 +391,16 @@ def procurement_and_scope_metadata(obj):
             value = getattr(obj, name)
             values[name] = float(value.Value) if hasattr(value, "Value") else value
     return values
+
+
+def native_interface_metadata(doc):
+    """Include non-solid containers that declare attachment and qualification."""
+    result = {}
+    for obj in doc.Objects:
+        metadata = procurement_and_scope_metadata(obj)
+        if metadata:
+            result[obj.Name] = metadata
+    return result
 
 
 def compare_shape_objects(actual, expected):
@@ -314,6 +471,8 @@ def validate(source=None, baseline=None):
             expressions(current),
             expressions(previous),
         )
+        current_metadata = native_interface_metadata(current)
+        previous_metadata = native_interface_metadata(previous)
         controls = control_behavior(current)
         scope = unresolved_scope(current)
         report = {
@@ -339,6 +498,17 @@ def validate(source=None, baseline=None):
             "native_expressions_unchanged": current_expressions == previous_expressions,
             "current_native_expressions": current_expressions,
             "baseline_native_expressions": previous_expressions,
+            "native_interface_metadata_unchanged": current_metadata
+            == previous_metadata,
+            "native_interface_metadata_changes": [
+                {
+                    "object": name,
+                    "current": current_metadata.get(name),
+                    "baseline": previous_metadata.get(name),
+                }
+                for name in sorted(set(current_metadata) | set(previous_metadata))
+                if current_metadata.get(name) != previous_metadata.get(name)
+            ],
             "native_control_behavior": controls,
             "unresolved_scope": scope,
         }
@@ -359,6 +529,7 @@ def validate(source=None, baseline=None):
         and all(row["passed"] for row in rows)
         and report["registry_membership_unchanged"]
         and report["native_expressions_unchanged"]
+        and report["native_interface_metadata_unchanged"]
         and controls["passed"]
         and scope["passed"]
     )

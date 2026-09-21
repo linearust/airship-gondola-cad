@@ -20,7 +20,6 @@ FC_PERIPHERAL_Z_MARGIN_MM = 1.0
 FC_EXIT_BUNDLE_DIAMETER_MM = 3.0
 FC_EXIT_BEND_RADIUS_MM = 5.0
 FC_MINIMUM_NEIGHBOUR_GAP_MM = 1.0
-MTF_CONNECTOR_TRAVEL_MM = 12.0
 PAS_CONNECTOR_TRAVEL_MM = 15.0
 LR_CONNECTOR_TRAVEL_MM = 15.0
 XT30_BODY_ALLOCATION_MM = (10.0, 22.0, 15.0)
@@ -85,15 +84,14 @@ def reserve_shapes():
     bottom = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
     lr_x, lr_y = mounts.LR_CENTRE_XY
     lr_length, lr_width, lr_height = interfaces.LR_SIZE_MM
-    mtf_x, mtf_y = mounts.MTF02P_CENTRE_XY
-    mtf_length, mtf_width, mtf_height = interfaces.MTF02P_SIZE_MM
     pas_x, pas_y = mounts.PAS_CENTRE_XY
     pas_width = interfaces.DEVICE_CONNECTOR_EVIDENCE["PAS"]["connector_band_width_mm"]
+    xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
     shapes = {
         "FCWiringClearanceReserve": fc,
         "XT30ServiceReserve": _box(
-            (10, 22 + 2 * XT30_WITHDRAWAL_ALLOWANCE_MM, 15),
-            (-44, -11 - XT30_WITHDRAWAL_ALLOWANCE_MM, bottom),
+            (xt30_x, xt30_y + 2 * XT30_WITHDRAWAL_ALLOWANCE_MM, xt30_z),
+            (-44, -xt30_y / 2 - XT30_WITHDRAWAL_ALLOWANCE_MM, bottom),
         ),
         "LR900NegativeXConnectorReserve": _box(
             (LR_CONNECTOR_TRAVEL_MM, lr_width, lr_height),
@@ -115,10 +113,6 @@ def reserve_shapes():
                 mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE,
             ),
         ),
-        "MTF02PConnectorReserve": _box(
-            (MTF_CONNECTOR_TRAVEL_MM, mtf_width, mtf_height),
-            (mtf_x + mtf_length / 2, mtf_y - mtf_width / 2, bottom),
-        ),
     }
     for name, shape in shapes.items():
         if not shape.isValid() or len(shape.Solids) != 1:
@@ -126,7 +120,7 @@ def reserve_shapes():
     return shapes
 
 
-def _device_contract(key):
+def device_connector_contract(key):
     evidence = interfaces.DEVICE_CONNECTOR_EVIDENCE[key]
     return {
         "device": key,
@@ -148,7 +142,7 @@ def _device_contract(key):
 def reserve_contracts():
     """Attach measured evidence and explicitly unverified design allowances."""
     fc = {
-        **_device_contract("FC"),
+        **device_connector_contract("FC"),
         "operating_scope": "Connected peripheral housing space, underbody corridor and two continuous exit turns. No individual port centre, exact plug or cable is modeled.",
         "peripheral_normal_depth_mm": FC_PERIPHERAL_DEPTH_MM,
         "peripheral_z_margin_mm": FC_PERIPHERAL_Z_MARGIN_MM,
@@ -178,7 +172,7 @@ def reserve_contracts():
         "complete_connected_harness_modeled": False,
     }
     lr = {
-        **_device_contract("LR"),
+        **device_connector_contract("LR"),
         "edge_width_mm": interfaces.LR_SIZE_MM[1],
         "edge_height_mm": interfaces.LR_SIZE_MM[2],
         "design_outward_travel_mm": LR_CONNECTOR_TRAVEL_MM,
@@ -191,7 +185,7 @@ def reserve_contracts():
         "LR900NegativeXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "-X"},
         "LR900PositiveXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "+X"},
         "PASConnectorReserve": {
-            **_device_contract("PAS"),
+            **device_connector_contract("PAS"),
             "outward_axis": "-Y",
             "edge_width_mm": interfaces.DEVICE_CONNECTOR_EVIDENCE["PAS"][
                 "connector_band_width_mm"
@@ -200,14 +194,5 @@ def reserve_contracts():
             "design_outward_travel_mm": PAS_CONNECTOR_TRAVEL_MM,
             "operating_scope": "Use the side-entry GH port at the documented connector end. Cover the entire 19mm central connector band because individual XYZ are unpublished.",
             "withdrawal_scope": "Continuous 15mm lane is a design allowance. The parallel top-entry alternative is not allocated here; use one port and verify latch access and the selected cable.",
-        },
-        "MTF02PConnectorReserve": {
-            **_device_contract("MTF02P"),
-            "outward_axis": "+X",
-            "edge_width_mm": interfaces.MTF02P_SIZE_MM[1],
-            "edge_height_mm": interfaces.MTF02P_SIZE_MM[2],
-            "design_outward_travel_mm": MTF_CONNECTOR_TRAVEL_MM,
-            "operating_scope": "Adopt the source drawing's connector edge as +X and reserve its complete 16mm width and full body height; connector Y/Z and installed yaw remain to verify.",
-            "withdrawal_scope": "Continuous 12mm lane is our plug/lead allowance, not a published stroke. Keep the plug and cable below/outside the optical front-face reserve.",
         },
     }

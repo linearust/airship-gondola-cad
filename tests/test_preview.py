@@ -29,8 +29,12 @@ class PreviewCallbacks(unittest.TestCase):
             "Part": Mock(),
             "PySide": types.SimpleNamespace(QtCore=qt),
             "gondola.assembly": types.SimpleNamespace(style_assembly=Mock()),
+            "gondola.parts.stack_interface": Mock(),
             "gondola.cad": types.SimpleNamespace(
-                create_group=Mock(), world_shape=Mock(), translated_shape=Mock()
+                create_group=Mock(),
+                world_shape=Mock(),
+                translated_shape=Mock(),
+                belongs_to_group=Mock(),
             ),
         }
         source = Path(__file__).resolve().parents[1] / "gondola" / "preview.py"
@@ -38,6 +42,8 @@ class PreviewCallbacks(unittest.TestCase):
         self.preview = importlib.util.module_from_spec(spec)
         with patch.dict(sys.modules, modules):
             spec.loader.exec_module(self.preview)
+        # A previously imported native submodule may remain on its package.
+        self.preview.stack_interface = modules["gondola.parts.stack_interface"]
         self.preview.OUT = self.output
         self.preview.source_fingerprint = Mock(return_value="current source")
 
@@ -53,7 +59,13 @@ class PreviewCallbacks(unittest.TestCase):
             ReferenceParts=[],
             TapeReferences=[],
         )
-        assembly = types.SimpleNamespace(Name="assembly", DesignRegistry=registry)
+        assembly = types.SimpleNamespace(
+            Name="assembly",
+            DesignRegistry=registry,
+            OpticalFlowModule=Mock(),
+            BatteryEquipmentModule=Mock(),
+            ElectronicsEquipmentModule=Mock(),
+        )
         layout = types.SimpleNamespace(Name="layout", Objects=[])
         self.app.openDocument.side_effect = [assembly, layout]
         self.app.listDocuments.return_value = {"assembly": assembly, "layout": layout}

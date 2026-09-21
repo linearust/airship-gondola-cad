@@ -8,12 +8,9 @@ TOL = 1e-5
 
 
 def belongs_to_group(obj, group):
-    parent = obj.getParentGeoFeatureGroup()
-    while parent is not None:
-        if parent == group:
-            return True
-        parent = parent.getParentGeoFeatureGroup()
-    return False
+    from gondola.cad import belongs_to_group as native_membership
+
+    return native_membership(obj, group)
 
 
 def local_shape(obj):

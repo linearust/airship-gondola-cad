@@ -20,6 +20,7 @@ from gondola.design_contract import (
     MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
+    OPTICAL_STACK_HOST,
     RAIL_LENGTH_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     WIRING_PURCHASE_PLAN,
@@ -58,7 +59,11 @@ def add_assembly_notes(doc):
         ),
         (
             "Mounts",
-            "Small battery adhesive deck and one open electronics carrier replace the three oversized identical boards and their 30mm stack. No unused upper rail shoe or expansion hardware.",
+            "Battery and electronics carriers share four M2 clearance axes on a 40x40mm square. Four purchased 25mm PA66 spacers support the interchangeable optical head independently of the FC dampers.",
+        ),
+        (
+            "Optical stack",
+            "Default host: battery carrier. Reparent the complete kit to the electronics carrier using stack_interface.attach_to_host. Manually align both axes within +/-20deg and clamp; added mass does not self-level a locked sensor. Remove the head before servicing equipment below it; columns remain installed.",
         ),
         (
             "Confirmed holes",
@@ -146,7 +151,13 @@ def build_assembly():
     from gondola.manufacturing import export_hardware_bom, export_print_parts
     from gondola.parts import equipment_mounts as mounts
     from gondola.parts import metric_hardware as metric
-    from gondola.parts import propulsion, rail
+    from gondola.parts import (
+        optical_mount,
+        optical_sensor,
+        propulsion,
+        rail,
+        stack_interface,
+    )
 
     fingerprint = source_fingerprint()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -204,6 +215,9 @@ def build_assembly():
         mounts.build_mount(doc, battery, "battery"),
         mounts.build_mount(doc, elec, "electronics"),
     ]
+    optical = optical_mount.build_optical_mount(doc, doc.getObject(OPTICAL_STACK_HOST))
+    stack_interface.attach_to_host(optical["group"], doc.getObject(OPTICAL_STACK_HOST))
+    optical["hardware"] += stack_interface.build_stack_hardware(doc, optical["group"])
     clamps = []
     for m, key in zip(modules, sidekeys):
         clamps += rail.build_clamp_hardware(doc, m, m.Name, "AssemblySettings." + key)
@@ -213,7 +227,11 @@ def build_assembly():
         elif o.Name == "PropulsionFixedFrame":
             set_print_sku(o, "PropulsionFixedFrame")
     refs, clearance = build_equipment(doc, battery, elec)
-    refs += pr["references"]
+    optical_refs, optical_reserves = optical_sensor.build_sensor(
+        doc, optical["pitch_stage"]
+    )
+    refs += optical_refs + pr["references"]
+    clearance += optical_reserves
     clearance += pr["clearances"]
     for sign, suffix in ((1, "Port"), (-1, "Starboard")):
         o = create_reference(
@@ -228,12 +246,13 @@ def build_assembly():
         o.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
         clearance.append(o)
     coupon = rail.build_coupons(doc)
-    printed = ra["printed"] + mounts_list + pr["printed"]
-    hardware = clamps + pr.get("hardware", [])
+    printed = ra["printed"] + mounts_list + pr["printed"] + optical["printed"]
+    hardware = clamps + pr.get("hardware", []) + optical["hardware"]
     for objects, cat in [
         (ra["printed"], "Rail"),
         (mounts_list, "Equipment mounts"),
         (pr["printed"], "Propulsion"),
+        (optical["printed"], "Adjustable optical stack"),
         (coupon["printed"], "Fit samples"),
     ]:
         set_print_category(objects, cat)
@@ -245,6 +264,7 @@ def build_assembly():
         ("FitCoupons", coupon["printed"]),
         ("Modules", modules),
         ("EquipmentMounts", mounts_list),
+        ("OpticalMountParts", optical["printed"]),
         ("RailSegments", ra["printed"]),
         ("RailLocks", clamps),
         ("HardwareParts", hardware),
@@ -308,6 +328,9 @@ def build_assembly():
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in ("battery", "electronics")
         },
+        "optical_mount": optical_mount.mount_contract(),
+        "optical_stack": stack_interface.interface_contract(),
+        "optical_stack_host": OPTICAL_STACK_HOST,
         "installed_printed_part_count": len(printed),
         "purchased_hardware_count": len(hardware),
         "unique_stl_count": manifest["unique_stl_count"],

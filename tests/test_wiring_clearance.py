@@ -19,6 +19,9 @@ class WiringClearanceTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
+            optical_mount,
+            optical_sensor,
+            stack_interface,
             wiring_clearance,
         )
         from gondola.validation import equipment
@@ -26,17 +29,27 @@ class WiringClearanceTests(unittest.TestCase):
         cls.wiring = wiring_clearance
         cls.audit = equipment
         cls.expected = wiring_clearance.reserve_shapes()
+        cls.expected["MTF02PConnectorReserve"] = (
+            optical_sensor.connector_reserve_shape()
+        )
         cls.doc = App.newDocument("WiringClearanceRegression")
-        battery = create_group(cls.doc, "BatteryModule", "Battery")
+        battery = create_group(cls.doc, "BatteryEquipmentModule", "Battery")
         battery.Placement.Base.x = -180
         electronics = create_group(cls.doc, "ElectronicsEquipmentModule", "Electronics")
         carrier = equipment_mounts.build_mount(cls.doc, electronics, "electronics")
         refs, reserves = equipment_envelopes.build_equipment(
             cls.doc, battery, electronics
         )
+        optical = optical_mount.build_optical_mount(cls.doc, battery)
+        stack_interface.attach_to_host(optical["group"], battery)
+        sensor_refs, sensor_reserves = optical_sensor.build_sensor(
+            cls.doc, optical["pitch_stage"]
+        )
+        refs += sensor_refs
+        reserves += sensor_reserves
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
-            "PrintedParts": [carrier],
+            "PrintedParts": [carrier] + optical["printed"],
             "HardwareParts": [],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
@@ -65,7 +78,9 @@ class WiringClearanceTests(unittest.TestCase):
         self.assertTrue(all(row["passed"] for row in checks), checks)
         self.assertTrue(all(row["passed"] for row in pairs), pairs)
         contracts = json.loads(json.dumps(self.wiring.reserve_contracts()))
-        self.assertEqual(set(contracts), set(self.expected))
+        self.assertEqual(
+            set(contracts), set(self.expected) - {"MTF02PConnectorReserve"}
+        )
         for contract in contracts.values():
             self.assertFalse(contract["installed_connector_fit_verified"])
             self.assertFalse(contract["wire_bend_radius_qualified"])
@@ -94,10 +109,15 @@ class WiringClearanceTests(unittest.TestCase):
         lane = self.expected["MTF02PConnectorReserve"]
         bounds = lane.BoundBox
         blocker = Part.makeBox(
-            0.4, 2, 2, App.Vector(bounds.Center.x - 0.2, bounds.Center.y - 1, 15)
+            0.4,
+            2,
+            2,
+            App.Vector(bounds.Center.x - 0.2, bounds.Center.y - 1, bounds.Center.z - 1),
         )
         for x in (bounds.XMin + 0.5, bounds.XMax - 0.5):
-            endpoint = Part.makeSphere(0.4, App.Vector(x, bounds.Center.y, 16))
+            endpoint = Part.makeSphere(
+                0.4, App.Vector(x, bounds.Center.y, bounds.Center.z)
+            )
             self.assertLess(endpoint.common(blocker).Volume, 1e-6)
         result = self.audit.connector_reserve_geometry_check(
             lane, lane, {"UnmodeledPlugAcrossMiddle": blocker}
@@ -115,8 +135,8 @@ class WiringClearanceTests(unittest.TestCase):
 
     def test_optical_gap_requires_margin_beyond_zero_interference(self):
         fc = self.expected["FCWiringClearanceReserve"]
-        optical = self.doc.MTF02POpticalClearanceReserve.Shape.copy()
-        optical.translate(App.Vector(0, 1, 0))
+        # A displaced obstruction may be clear yet closer than the design margin.
+        optical = Part.makeBox(1, 1, 1, App.Vector(fc.BoundBox.XMax + 0.5, -0.5, 21))
         self.assertLess(fc.common(optical).Volume, 1e-6)
         self.assertLess(fc.distToShape(optical)[0], 1)
         others = {

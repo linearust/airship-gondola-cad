@@ -1,6 +1,5 @@
 """Read-only audit of service reservations, bought hardware, and source metadata."""
 
-import itertools
 import json
 import os
 from collections import Counter
@@ -15,6 +14,8 @@ from gondola.cad import (
 from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
 from gondola.design_contract import (
     EXPECTED_INVENTORY,
+    HARDWARE_MATERIALS,
+    PURCHASED_HARDWARE_QUANTITIES,
     WIRING_PURCHASE_PLAN,
     hardware_bom_scope,
 )
@@ -26,9 +27,16 @@ from gondola.manufacturing import (
 from gondola.parts import equipment_envelopes as devices
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import mounting_interfaces as interfaces
+from gondola.parts import optical_sensor
 from gondola.provenance import file_sha256, source_fingerprint
 
-from .geometry import intersection_volume, local_shape
+from .geometry import (
+    belongs_to_group,
+    intersection_volume,
+    local_shape,
+    translation_sweep,
+)
+from .optical import mtf_sensor_check
 
 TOL = 1e-6
 RESERVES = (
@@ -43,14 +51,7 @@ RESERVES = (
     "PASConnectorReserve",
     "MTF02PConnectorReserve",
 )
-EXPECTED_PURCHASE_QUANTITIES = {
-    "M2X14_SOCKET_CAP": 4,
-    "M2x6_ISO4026_DIN913": 3,
-    "M2_HEX_NUT": 4,
-    "M2_SQUARE_NUT_DIN562": 3,
-    "M2_WASHER_2.2_5_0.3": 8,
-    "M3_WASHER_3.2_9_0.8": 4,
-}
+EXPECTED_PURCHASE_QUANTITIES = PURCHASED_HARDWARE_QUANTITIES
 
 
 def connector_reserve_geometry_check(actual, expected, obstacles):
@@ -112,7 +113,9 @@ def reserve_checks(doc):
     shapes = {obj.Name: world_shape(obj) for obj in physical}
     actual_reserves = {obj.Name: world_shape(obj) for obj in registry.ClearanceVolumes}
     expected_shapes = wiring.reserve_shapes()
+    expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape()
     expected_contracts = wiring.reserve_contracts()
+    expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract()
     checks = []
     for name in RESERVES:
         obj = doc.getObject(name)
@@ -127,7 +130,12 @@ def reserve_checks(doc):
         if name in expected_shapes:
             source_check = connector_reserve_geometry_check(
                 shape,
-                _in_parent_frame(expected_shapes[name], doc.ElectronicsEquipmentModule),
+                _in_parent_frame(
+                    expected_shapes[name],
+                    doc.OpticalPitchStage
+                    if name == "MTF02PConnectorReserve"
+                    else doc.ElectronicsEquipmentModule,
+                ),
                 shapes,
             )
             try:
@@ -403,12 +411,6 @@ def mounting_check(doc):
             mounts.LR_CENTRE_XY,
             mounts.LR_ADHESIVE_SIZE,
         ),
-        (
-            "ElectronicsMount",
-            "ModuleMTF02PEnvelope",
-            mounts.MTF02P_CENTRE_XY,
-            mounts.MTF02P_ADHESIVE_SIZE,
-        ),
     ):
         support = doc.getObject(mount_name)
         owner = support.getParentGeoFeatureGroup()
@@ -456,13 +458,26 @@ def mounting_check(doc):
             .z
         )
         gap = bounds.ZMin - support_top
-        # A complete envelope rectangle is conservative around the rotated FC.
-        space = Part.makeBox(
-            bounds.XLength,
-            bounds.YLength,
-            expected_gap,
-            App.Vector(bounds.XMin, bounds.YMin, support_top),
+        # Preserve the complete device rectangle in its actual rotated frame;
+        # a world bounding box would falsely occupy the FC's empty corners.
+        dimensions = (
+            interfaces.FC_SIZE_MM
+            if name == "ModuleFCEnvelope"
+            else interfaces.PAS_SIZE_MM
         )
+        centre = (
+            mounts.FC_CENTRE_XY if name == "ModuleFCEnvelope" else mounts.PAS_CENTRE_XY
+        )
+        space = Part.makeBox(
+            dimensions[0],
+            dimensions[1],
+            expected_gap,
+            App.Vector(-dimensions[0] / 2, -dimensions[1] / 2, mounts.SUPPORT_FACE_Z),
+        )
+        if name == "ModuleFCEnvelope":
+            space.rotate(App.Vector(), App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
+        space.translate(App.Vector(*centre, 0))
+        space = _in_parent_frame(space, parent)
         hits = [
             {
                 "object": other.Name,
@@ -528,26 +543,37 @@ def mounting_check(doc):
         "ModuleFCEnvelope",
         "ModulePASEnvelope",
         "ModuleLR900Envelope",
-        "ModuleMTF02PEnvelope",
     ):
-        bounds = shapes[name].optimalBoundingBox(False, False)
-        sweep = Part.makeBox(
-            bounds.XLength,
-            bounds.YLength,
-            bounds.ZLength + 32,
-            App.Vector(bounds.XMin, bounds.YMin, bounds.ZMin),
+        sweep, sweep_method = translation_sweep(shapes[name], (0, 0, 32))
+        optical_group = doc.getObject("OpticalFlowModule")
+        device_parent = doc.getObject(name).getParentGeoFeatureGroup()
+        release_head = (
+            optical_group is not None
+            and optical_group.getParentGeoFeatureGroup() == device_parent
         )
+        removed = {
+            obj.Name
+            for obj in physical
+            if release_head
+            and belongs_to_group(obj, optical_group)
+            and str(getattr(obj, "StackEnd", "")) not in ("Lower", "Spacer")
+        }
         hits = [
             obj.Name
             for obj in physical
-            if obj.Name != name and intersection_volume(sweep, shapes[obj.Name]) > TOL
+            if obj.Name != name
+            and obj.Name not in removed
+            and intersection_volume(sweep, shapes[obj.Name]) > TOL
         ]
         service_rows.append(
             {
                 "device": name,
                 "upward_travel_mm": 32,
-                "method": "Continuous conservative bounding-prism sweep",
-                "prerequisite": "Release mounting hardware/adhesive and disconnect all external leads; this is bare-device removal, not a connected-harness test.",
+                "optical_head_must_be_removed_first": release_head,
+                "remaining_columns_and_lower_fasteners_checked": True,
+                "temporarily_removed_head_parts": sorted(removed),
+                "method": sweep_method,
+                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack remove its four upper screws and complete optical head first. Stack columns/lower screws remain installed and are checked. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -620,152 +646,6 @@ def mounting_check(doc):
     }
 
 
-def mtf_sensor_check(doc):
-    """Check the included sensor and restore every temporary tilt probe."""
-    registry = doc.DesignRegistry
-    sensor = doc.getObject("ModuleMTF02PEnvelope")
-    reserve = doc.getObject("MTF02POpticalClearanceReserve")
-    if sensor is None or reserve is None:
-        return {
-            "passed": False,
-            "error": "MTF-02P sensor or optical reserve is missing.",
-        }
-    body = world_shape(sensor)
-    optical = world_shape(reserve)
-    body_bounds = body.optimalBoundingBox(False, False)
-    optical_bounds = optical.optimalBoundingBox(False, False)
-    direction = sensor.getGlobalPlacement().Rotation.multVec(sensor.OpticalDirection)
-    connector_direction = sensor.getGlobalPlacement().Rotation.multVec(
-        getattr(sensor, "PlannedConnectorDirection", App.Vector())
-    )
-    connector_direction_matches = (
-        connector_direction - App.Vector(1, 0, 0)
-    ).Length < TOL
-    body_comparison = geometry_comparison(
-        local_shape(sensor), devices.mtf02p_envelope_shape()
-    )
-    optical_comparison = geometry_comparison(
-        local_shape(reserve), devices.mtf02p_optical_reserve_shape()
-    )
-    upper = world_shape(doc.ElectronicsMount)
-    upper_bounds = upper.optimalBoundingBox(False, False)
-    support_probe = Part.makeBox(
-        body_bounds.XLength,
-        body_bounds.YLength,
-        mounts.DECK_THICKNESS,
-        App.Vector(
-            body_bounds.XMin,
-            body_bounds.YMin,
-            upper_bounds.ZMax - mounts.DECK_THICKNESS,
-        ),
-    )
-    support_area = intersection_volume(upper, support_probe) / mounts.DECK_THICKNESS
-    mounting_gap = body_bounds.ZMin - upper_bounds.ZMax
-    adjacent_optical_clearances = []
-    for name in ("ModuleLR900Envelope", "ModulePASEnvelope"):
-        neighbor = world_shape(doc.getObject(name))
-        distance = optical.distToShape(neighbor)[0]
-        adjacent_optical_clearances.append(
-            {
-                "object": name,
-                "nominal_minimum_distance_mm": distance,
-                "required_nominal_distance_mm": 1.0,
-                "passed": distance >= 1.0 - TOL,
-            }
-        )
-    physical = (
-        list(registry.PrintedParts)
-        + list(registry.HardwareParts)
-        + list(registry.ReferenceParts)
-        + list(registry.TapeReferences)
-    )
-    pods = list(registry.TiltingPods)
-    original_tilts = [float(pod.Tilt) for pod in pods]
-    tilt_rows = []
-    try:
-        for angles in itertools.product((-150.0, 0.0, 150.0), repeat=len(pods)):
-            for pod, angle in zip(pods, angles):
-                pod.Tilt = angle
-            doc.recompute()
-            body_hits, optical_hits = [], []
-            for obj in physical:
-                if obj == sensor:
-                    continue
-                other = world_shape(obj)
-                body_volume = intersection_volume(body, other)
-                optical_volume = intersection_volume(optical, other)
-                if body_volume > TOL:
-                    body_hits.append(
-                        {"object": obj.Name, "intersection_mm3": body_volume}
-                    )
-                if optical_volume > TOL:
-                    optical_hits.append(
-                        {"object": obj.Name, "intersection_mm3": optical_volume}
-                    )
-            tilt_rows.append(
-                {
-                    "tilt_degrees": dict(zip((pod.Name for pod in pods), angles)),
-                    "sensor_collisions": body_hits,
-                    "optical_reserve_obstructions": optical_hits,
-                    "passed": not body_hits and not optical_hits,
-                }
-            )
-    finally:
-        for pod, angle in zip(pods, original_tilts):
-            pod.Tilt = angle
-        doc.recompute()
-    registered = (
-        sensor in registry.ReferenceParts
-        and sensor not in registry.PrintedParts
-        and sensor not in registry.HardwareParts
-        and reserve in registry.ClearanceVolumes
-    )
-    direction_matches = (
-        abs(direction.x) < TOL and abs(direction.y) < TOL and abs(direction.z - 1) < TOL
-    )
-    report = {
-        "source": devices.MTF02P_SOURCE,
-        "published_size_mm": list(devices.MTF02P_SIZE_MM),
-        "published_module_mass_g": devices.MTF02P_MASS_G,
-        "body_source_comparison": body_comparison,
-        "optical_reserve_source_comparison": optical_comparison,
-        "optical_direction_world": [direction.x, direction.y, direction.z],
-        "planned_connector_direction_world": list(connector_direction),
-        "planned_connector_direction_matches_plus_x": connector_direction_matches,
-        "optical_face_world_z_mm": body_bounds.ZMax,
-        "optical_reserve_start_world_z_mm": optical_bounds.ZMin,
-        "optical_reserve_distance_mm": optical_bounds.ZLength,
-        "available_board_material_under_footprint_mm2": support_area,
-        "nominal_insulating_adhesive_allowance_mm": mounting_gap,
-        "adjacent_optical_clearances": adjacent_optical_clearances,
-        "tilt_checks": tilt_rows,
-        "no_new_printed_or_metric_fastener_parts": registered,
-        "installed_optical_field_verified": False,
-        "limits": "Whole-face42deg near-field reservation only. Actual lens origins, in-plane firmware orientation, backside adhesive contact, cable routing and usable ground field require the purchased module; no sensor mounting screws are specified.",
-    }
-    report["passed"] = (
-        registered
-        and direction_matches
-        and connector_direction_matches
-        and body.isValid()
-        and len(body.Solids) == 1
-        and optical.isValid()
-        and len(optical.Solids) == 1
-        and body_comparison["difference_mm3"] < TOL
-        and optical_comparison["difference_mm3"] < TOL
-        and abs(float(sensor.ListedMassGrams) - devices.MTF02P_MASS_G) < TOL
-        and abs(optical_bounds.ZMin - body_bounds.ZMax) < TOL
-        and abs(optical_bounds.ZLength - devices.MTF02P_OPTICAL_RESERVE_MM) < TOL
-        and abs(mounting_gap - 1.0) < TOL
-        and support_area > TOL
-        and all(row["passed"] for row in adjacent_optical_clearances)
-        and len(pods) == 2
-        and len(tilt_rows) == 9
-        and all(row["passed"] for row in tilt_rows)
-    )
-    return report
-
-
 def hardware_check(doc, source):
     registry = doc.DesignRegistry
     quantities = Counter(str(obj.HardwareSKU) for obj in registry.HardwareParts)
@@ -774,12 +654,12 @@ def hardware_check(doc, source):
         materials.setdefault(str(obj.HardwareSKU), set()).add(
             str(obj.MaterialSelection)
         )
-        expected = "A2 stainless steel"
+        expected = HARDWARE_MATERIALS.get(str(obj.HardwareSKU))
         checks.append(
             {
                 "object": obj.Name,
                 "material": str(obj.MaterialSelection),
-                "passed": expected in str(obj.MaterialSelection),
+                "passed": expected == str(obj.MaterialSelection),
             }
         )
     bom = json.loads((source.parent / (source.stem + "_hardware_bom.json")).read_text())
@@ -801,7 +681,13 @@ def hardware_check(doc, source):
             )
             matched = (
                 procurement_matches
-                and row.get("purchase_code") == row["sku"] + "_A2"
+                and row.get("purchase_code")
+                == row["sku"]
+                + (
+                    "_PA66"
+                    if HARDWARE_MATERIALS.get(row["sku"]) == "Nylon PA66"
+                    else "_A2"
+                )
                 and row.get("label") == str(instances[0].Label)
                 and row.get("notes") == str(getattr(instances[0], "Notes", ""))
                 and row["quantity"] == len(instances)
@@ -906,7 +792,7 @@ def validate(source=None):
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack through 300 degrees.",
-                "The MTF-02P optical reserve screens the first80mm from the entire front face; it is not a calibrated or physically verified field of view.",
+                "The optical stack can use either common host. Its400mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }

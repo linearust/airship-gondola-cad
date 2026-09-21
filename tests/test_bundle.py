@@ -35,14 +35,14 @@ class BundleIntegrityTests(unittest.TestCase):
         self.cad_path.write_bytes(b"saved CAD")
         self.cad_sha = bundle.file_sha256(self.cad_path)
         self.parts = []
-        for index, quantity in enumerate((1, 1, 1, 1, 2, 4, 1, 1)):
+        for index, quantity in enumerate((1, 1, 1, 1, 2, 4, 1, 1, 1, 1, 1)):
             stl = f"part_{index}.stl"
             step = f"part_{index}.step"
             stl_data = f"STL {index}".encode()
             step_data = f"STEP {index}".encode()
             (self.folder / stl).write_bytes(stl_data)
             (self.folder / step).write_bytes(step_data)
-            coupon = int(index >= 6)
+            coupon = int(index >= 9)
             self.parts.append(
                 {
                     "sku": f"part_{index}",
@@ -59,8 +59,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.manifest = {
             "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "unique_stl_count": 8,
-            "installed_printed_part_count": 10,
+            "unique_stl_count": 11,
+            "installed_printed_part_count": 13,
             "additional_coupon_printed_part_count": 2,
             "release_status": bundle.release_status(),
             "parts": self.parts,
@@ -70,8 +70,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.bom = {
             "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "purchased_hardware_quantity": 26,
-            "unique_purchase_spec_count": 6,
+            "purchased_hardware_quantity": 54,
+            "unique_purchase_spec_count": 9,
             "purchase_scope": bundle.hardware_bom_scope(),
             "items": [
                 {
@@ -79,7 +79,7 @@ class BundleIntegrityTests(unittest.TestCase):
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 4, 8, 3, 3, 4))
+                for index, quantity in enumerate((4, 6, 20, 3, 3, 4, 2, 8, 4))
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")
@@ -166,8 +166,8 @@ class BundleIntegrityTests(unittest.TestCase):
         archive = self.package()
         with zipfile.ZipFile(archive) as zipped:
             names = set(zipped.namelist())
-            self.assertEqual(sum(name.endswith(".stl") for name in names), 8)
-            self.assertEqual(sum(name.endswith(".step") for name in names), 8)
+            self.assertEqual(sum(name.endswith(".stl") for name in names), 11)
+            self.assertEqual(sum(name.endswith(".step") for name in names), 11)
             self.assertNotIn("obsolete.stl", names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(

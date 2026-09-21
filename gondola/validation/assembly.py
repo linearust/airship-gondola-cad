@@ -26,7 +26,9 @@ from gondola.design_contract import (
     DESIGN_REVISION,
     EXCLUDED_EQUIPMENT,
     EXPECTED_INVENTORY,
+    HARDWARE_MATERIALS,
     MANUFACTURING_DECISION,
+    MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
     PUBLISHED_PROCESS_SIZE_MM,
@@ -45,7 +47,8 @@ from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail
 from gondola.provenance import file_sha256, source_fingerprint
 
-from .equipment import mounting_check
+from .baseline import module_control_bindings
+from .equipment import EXPECTED_PURCHASE_QUANTITIES, mounting_check
 from .geometry import (
     belongs_to_group,
     compare_mesh_surfaces,
@@ -363,6 +366,10 @@ def hardware_check(registry):
             and abs(thread_pitch - 0.4) < TOL
         )
         is_metric = sku.startswith(("M2", "M3")) and thread_metadata_matches
+        material_matches = (
+            sku in HARDWARE_MATERIALS
+            and str(getattr(obj, "MaterialSelection", "")) == HARDWARE_MATERIALS[sku]
+        )
         excluded = obj.Name not in printed_names and not bool(
             getattr(obj, "PrintPart", False)
         )
@@ -372,8 +379,9 @@ def hardware_check(registry):
             "thread_standard": standard,
             "thread_metadata_matches_part": thread_metadata_matches,
             "metric_specification_present": is_metric,
+            "material_matches_purchase_specification": material_matches,
             "excluded_from_print_registry": excluded,
-            "passed": is_metric and excluded and bool(sku),
+            "passed": is_metric and excluded and bool(sku) and material_matches,
         }
         rows.append(row)
     for obj in printed:
@@ -414,12 +422,8 @@ def hardware_check(registry):
         and all(row["passed"] for row in material_rows)
     )
     expected_purchases = {
-        "M2_HEX_NUT_A2": 4,
-        "M2_SQUARE_NUT_DIN562_A2": 3,
-        "M2_WASHER_2.2_5_0.3_A2": 8,
-        "M3_WASHER_3.2_9_0.8_A2": 4,
-        "M2x6_ISO4026_DIN913_A2": 3,
-        "M2X14_SOCKET_CAP_A2": 4,
+        sku + ("_PA66" if HARDWARE_MATERIALS[sku] == "Nylon PA66" else "_A2"): quantity
+        for sku, quantity in EXPECTED_PURCHASE_QUANTITIES.items()
     }
     purchase_counts = {row["purchase_code"]: row["quantity"] for row in bom["items"]}
     return {
@@ -442,17 +446,37 @@ def hardware_check(registry):
     }
 
 
-def module_service(registry, objects, shapes):
-    modules = list(registry.Modules)
-    result, removed = [], set()
-    # Outside equipment first; the propulsion module can then reach an end.
-    sequence = sorted(
+def module_removal_plan(modules, exit_directions=None):
+    """Remove the outermost module toward each requested rail end first."""
+    modules = list(modules)
+    directions = {
+        module.Name: 1 if module.Placement.Base.x > 1 else -1 for module in modules
+    }
+    if exit_directions is not None:
+        if set(exit_directions) != set(directions) or any(
+            value not in (-1, 1) for value in exit_directions.values()
+        ):
+            raise ValueError("Provide exactly one -1/+1 rail exit for every module")
+        directions = dict(exit_directions)
+    ordered = sorted(
         modules,
         key=lambda m: (
-            0 if m.Placement.Base.x < -1 else 1 if m.Placement.Base.x > 1 else 2
+            directions[m.Name],
+            -directions[m.Name] * m.Placement.Base.x,
+            m.Name,
         ),
     )
-    for module in sequence:
+    return [(module, directions[module.Name]) for module in ordered]
+
+
+def module_service(registry, objects, shapes):
+    try:
+        bindings = module_control_bindings(registry.Document)
+    except (AttributeError, ValueError) as error:
+        return {"modules": [], "passed": False, "error": str(error)}
+    result, removed = [], set()
+    sequence = module_removal_plan(module for _, module in bindings)
+    for module, direction in sequence:
         members = [o for o in objects if belongs_to_group(o, module)]
         clamps = [o for o in registry.RailLocks if belongs_to_group(o, module)]
         screw = next(o for o in clamps if "Screw" in o.Name)
@@ -517,7 +541,6 @@ def module_service(registry, objects, shapes):
             (name, translated_shape(s, y=-side * rail.CLAMP_SHIFT_Y))
             for name, s in moving
         ]
-        direction = 1 if module.Placement.Base.x > 1 else -1
         target_x = direction * (rail.LENGTH / 2 + rail.SHOE_LENGTH / 2 + 2)
         travel = target_x - module.Placement.Base.x
         distances = sorted(
@@ -599,24 +622,27 @@ def module_service(registry, objects, shapes):
         )
         removed.update(o.Name for o in members)
     return {
-        "removal_order": [m.Name for m in sequence],
+        "removal_order": [m.Name for m, _ in sequence],
         "modules": result,
         "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
-        "passed": len(result) == 3 and all(r["passed"] for r in result),
+        "passed": len(result) == len(MODULE_STATIONS)
+        and all(r["passed"] for r in result),
     }
 
 
 def bidirectional_service(doc, registry, objects):
-    controls = (
-        "BatteryClampApproach",
-        "PropulsionClampApproach",
-        "ElectronicsClampApproach",
-    )
-    modules = list(registry.Modules)
+    try:
+        bindings = module_control_bindings(doc)
+    except (AttributeError, ValueError) as error:
+        return {"passed": False, "error": str(error)}
+    controls = [station.clamp_control for station, _ in bindings]
+    modules = [module for _, module in bindings]
     original = {name: str(getattr(doc.AssemblySettings, name)) for name in controls}
     combinations, services = [], []
     try:
-        for choices in itertools.product(("PositiveY", "NegativeY"), repeat=3):
+        for choices in itertools.product(
+            ("PositiveY", "NegativeY"), repeat=len(bindings)
+        ):
             for name, choice in zip(controls, choices):
                 setattr(doc.AssemblySettings, name, choice)
             doc.recompute()
@@ -687,19 +713,20 @@ def bidirectional_service(doc, registry, objects):
             "full_service_sequences": services,
             "common_shoe_half_turn_symmetry": symmetry,
             "saved_integral_shoes_match_source": captures,
-            "unused_port_has_no_extra_hardware": len(registry.RailLocks) == 6,
+            "unused_port_has_no_extra_hardware": len(registry.RailLocks)
+            == 2 * len(bindings),
             "scope": "Choice is made before clamp assembly. Changing the enum is not a physical screw-transfer path. Each port separately has a nut loading, tool approach, loosening and end-removal route.",
-            "passed": len(combinations) == 8
+            "passed": len(combinations) == 2 ** len(bindings)
             and len(services) == 2
             and all(row["passed"] for row in combinations + services)
-            and len(captures) == 3
+            and len(captures) == len(bindings)
             and all(
                 row["difference_mm3"] < TOL
                 and row["bounds_difference_mm"] < TOL
                 and row["volume_difference_mm3"] < TOL
                 for row in symmetry + captures
             )
-            and len(registry.RailLocks) == 6,
+            and len(registry.RailLocks) == 2 * len(bindings),
         }
     finally:
         for name, choice in original.items():
@@ -755,19 +782,19 @@ def line_wall(shape, a, b):
 
 
 def manufacturing_review(doc, registry):
+    from gondola.parts import optical_mount
+
     probes = []
-    for name in (
-        "BatteryMount",
-        "ElectronicsMount",
-        "PropulsionFixedFrame",
-        "PortMotorCarrier",
-        "PortJournalSleevePositive",
-    ):
-        shape = local_shape(doc.getObject(name))
+    seen_skus = set()
+    for obj in registry.PrintedParts:
+        if obj in registry.RailSegments or obj.PrintSKU in seen_skus:
+            continue
+        seen_skus.add(obj.PrintSKU)
+        shape = local_shape(obj)
         regions = planar_wall_regions(shape)
         probes.append(
             {
-                "part": name,
+                "part": obj.Name,
                 "planar_material_regions_up_to_1p51mm": regions,
                 "no_detected_planar_wall_under_1p5mm": all(
                     row["material_thickness_mm"] >= 1.5 - TOL for row in regions
@@ -818,6 +845,34 @@ def manufacturing_review(doc, registry):
             (4.5, 80, propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01),
             propulsion.FOOT_THICKNESS,
         ),
+        (
+            "optical_base_pivot_wall",
+            "OpticalMountBase",
+            (-2.01, 0, 4),
+            (0.01, 0, 4),
+            2.0,
+        ),
+        (
+            "optical_roll_bracket_wall",
+            "OpticalRollBracket",
+            (-0.01, -1, 5),
+            (2.01, -1, 5),
+            2.0,
+        ),
+        (
+            "optical_tray_neck_wall",
+            "OpticalSensorTray",
+            (0, -0.01, 3.8),
+            (0, 2.01, 3.8),
+            2.0,
+        ),
+        (
+            "optical_tray_deck_thickness",
+            "OpticalSensorTray",
+            (0, 4, optical_mount.TRAY_BOTTOM_Z - 0.01),
+            (0, 4, optical_mount.TRAY_TOP_Z + 0.01),
+            optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
+        ),
     ]
     measurements = []
     for feature, name, start, end, expected in analytic:
@@ -854,6 +909,7 @@ def manufacturing_review(doc, registry):
             "contracts": [
                 mounts.mount_contract(kind) for kind in ("battery", "electronics")
             ],
+            "independent_optical_mount_contract": optical_mount.mount_contract(),
         },
         "rail_functional_flexure_exception": exception,
         "supplier_acceptance_status": "Not yet confirmed: 1.2 mm narrow flexure, tape wings and one-piece manufacture require quote review.",
@@ -993,41 +1049,120 @@ def tilt_check(doc, registry, objects, shapes):
 
 
 def battery_check(doc, objects):
+    """Screen the declared pack translation range, including its continuous sweep."""
     battery = doc.ModuleBatteryEnvelope
-    original = (
-        battery.Length,
-        battery.Width,
-        battery.Height,
-        battery.CentreX,
-        battery.CentreY,
+    contract = mounts.BATTERY_PLACEMENT_CONTRACT
+    x_limit = contract["centre_x_limit_mm"]
+    y_limit = contract["centre_y_limit_mm"]
+    maximum_size = tuple(contract["maximum_size_mm"])
+    original = tuple(
+        float(getattr(battery, name).Value)
+        for name in ("Length", "Width", "Height", "CentreX", "CentreY")
     )
-    rows = []
     try:
-        for size in ((61, 16, 15), (66, 18, 17)):
+        native_contract = json.loads(str(battery.BatteryPlacementContract))
+    except (AttributeError, TypeError, ValueError):
+        native_contract = None
+    saved_placement = {
+        "size_mm": list(original[:3]),
+        "local_centre_xy_mm": list(original[3:]),
+        "within_declared_size": all(
+            0 < actual <= maximum + TOL
+            for actual, maximum in zip(original[:3], maximum_size)
+        ),
+        "within_declared_centre_limits": (
+            abs(original[3]) <= x_limit + TOL and abs(original[4]) <= y_limit + TOL
+        ),
+        "long_axis_along_y": abs(battery.InPlaneRotation.Value - 90) < TOL,
+        "bottom_matches_adhesive_allowance": abs(
+            battery.BottomZ.Value - mounts.SUPPORT_FACE_Z - mounts.ADHESIVE_ALLOWANCE
+        )
+        < TOL,
+        "native_contract_matches": native_contract == contract,
+    }
+    saved_placement["passed"] = all(
+        saved_placement[key]
+        for key in (
+            "within_declared_size",
+            "within_declared_centre_limits",
+            "long_axis_along_y",
+            "bottom_matches_adhesive_allowance",
+            "native_contract_matches",
+        )
+    )
+    obstacles = [(obj.Name, world_shape(obj)) for obj in objects if obj != battery]
+    parent = battery.getParentGeoFeatureGroup()
+    # The union of every axis-aligned maximum pack translated throughout the
+    # allowed XY rectangle is exactly this box, not merely sampled end poses.
+    length, width, height = maximum_size
+    swept = Part.makeBox(width + 2 * x_limit, length + 2 * y_limit, height)
+    swept.Placement = parent.getGlobalPlacement().multiply(
+        App.Placement(
+            V(
+                -width / 2 - x_limit,
+                -length / 2 - y_limit,
+                mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE,
+            ),
+            App.Rotation(),
+        )
+    )
+    swept_hits = [
+        name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
+    ]
+    column_names = {f"OpticalStackSpacer{index}" for index in range(4)}
+    column_gaps = [
+        {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
+        for name, shape in obstacles
+        if name in column_names
+    ]
+    continuous = {
+        "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
+        "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
+        "collisions": swept_hits,
+        "stack_column_gaps": column_gaps,
+        "required_stack_column_gap_mm": contract["minimum_stack_column_gap_mm"],
+        "passed": not swept_hits
+        and {row["object"] for row in column_gaps} == column_names
+        and all(
+            row["minimum_gap_mm"] >= contract["minimum_stack_column_gap_mm"] - TOL
+            for row in column_gaps
+        ),
+    }
+    rows, unsupported = [], []
+    try:
+        for size in ((61, 16, 15), maximum_size):
             battery.Length, battery.Width, battery.Height = size
-            for x in (-10, -5, 0, 5, 10):
-                for y in (-4, 0, 4):
+            for x in (-x_limit, 0, x_limit, -10, 10):
+                for y in (-y_limit, 0, y_limit):
                     battery.CentreX, battery.CentreY = x, y
                     doc.recompute()
-                    s = world_shape(battery)
+                    shape = world_shape(battery)
                     hits = [
-                        o.Name
-                        for o in objects
-                        if o != battery and intersection_volume(s, world_shape(o)) > TOL
+                        name
+                        for name, fixed in obstacles
+                        if intersection_volume(shape, fixed) > TOL
                     ]
-                    bb = s.optimalBoundingBox(False, False)
+                    row = {
+                        "size_mm": list(size),
+                        "local_centre_xy_mm": [x, y],
+                        "collisions": hits,
+                    }
+                    if abs(x) > x_limit:
+                        unsupported.append(dict(row, supported=False))
+                        continue
+                    bounds = shape.optimalBoundingBox(False, False)
                     orientation = (
-                        abs(bb.XLength - size[1]) < TOL
-                        and abs(bb.YLength - size[0]) < TOL
+                        abs(bounds.XLength - size[1]) < TOL
+                        and abs(bounds.YLength - size[0]) < TOL
                     )
+                    covered = abs(shape.cut(swept).Volume) < TOL
                     rows.append(
-                        {
-                            "size_mm": list(size),
-                            "local_centre_xy_mm": [x, y],
-                            "collisions": hits,
-                            "long_axis_along_y": orientation,
-                            "passed": not hits and orientation,
-                        }
+                        dict(
+                            row,
+                            long_axis_along_y=orientation,
+                            covered_by_continuous_envelope=covered,
+                            passed=not hits and orientation and covered,
+                        )
                     )
     finally:
         (
@@ -1038,7 +1173,18 @@ def battery_check(doc, objects):
             battery.CentreY,
         ) = original
         doc.recompute()
-    return {"cases": rows, "passed": len(rows) == 30 and all(r["passed"] for r in rows)}
+    return {
+        "contract": contract,
+        "saved_placement": saved_placement,
+        "cases": rows,
+        "continuous_translation": continuous,
+        "unsupported_legacy_offsets": unsupported,
+        "scope": "Pack geometry only. The old lateral +/-10mm offsets are explicitly unsupported; move the rail carrier for larger trim changes. Actual adhesive contact, selected pack and retention remain unqualified.",
+        "passed": saved_placement["passed"]
+        and continuous["passed"]
+        and len(rows) == 18
+        and all(row["passed"] for row in rows),
+    }
 
 
 def export_check(source, registry):

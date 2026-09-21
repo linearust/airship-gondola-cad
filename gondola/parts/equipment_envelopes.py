@@ -5,7 +5,6 @@ represented; unpublished PCB bearing planes and fastener stacks remain unknown.
 """
 
 import json
-import math
 
 import FreeCAD as App
 import Part
@@ -19,22 +18,13 @@ from gondola.design_contract import NOTION_URL
 from . import equipment_mounts as mounts
 from . import mounting_interfaces as interfaces
 from . import wiring_clearance
+from .equipment_metadata import add_interface_metadata, create_wiring_reserve
 
 V = App.Vector
 FC_SOURCE = interfaces.FC_SOURCE
 LR_SOURCE = interfaces.LR_SOURCE
 PAS_SOURCE = interfaces.PAS_SOURCE
 BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-pack-with-xt30-plug-long-size-for-h-frame.html"
-MTF02P_SOURCE = interfaces.MTF02P_SOURCE
-MTF02P_PRODUCT_SOURCE = interfaces.MTF02P_PRODUCT_SOURCE
-MTF02P_DIMENSION_IMAGE = interfaces.MTF02P_DIMENSION_IMAGE
-MTF02P_SIZE_MM = interfaces.MTF02P_SIZE_MM
-MTF02P_CENTRE_XY = mounts.MTF02P_CENTRE_XY
-MTF02P_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
-MTF02P_MASS_G = interfaces.MTF02P_MASS_G
-MTF02P_FLOW_FOV_DEG = interfaces.MTF02P_FLOW_FOV_DEG
-MTF02P_TOF_FOV_DEG = interfaces.MTF02P_TOF_FOV_DEG
-MTF02P_OPTICAL_RESERVE_MM = 80.0
 FC_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
 PAS_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE
 LR_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
@@ -80,68 +70,6 @@ def lr900_envelope_shape():
     )
 
 
-def _interface_metadata(obj, key, hole_centres=(), hole_diameter=None):
-    set_property(
-        obj,
-        "MountingEvidence",
-        json.dumps(interfaces.MOUNTING_EVIDENCE[key], sort_keys=True),
-    )
-    set_property(obj, "MountingStackVerified", False, "App::PropertyBool")
-    set_property(obj, "PCBHeightMeasured", False, "App::PropertyBool")
-    set_property(
-        obj,
-        "ConnectorEvidence",
-        json.dumps(interfaces.DEVICE_CONNECTOR_EVIDENCE[key], sort_keys=True),
-    )
-    set_property(obj, "InstalledConnectorFitVerified", False, "App::PropertyBool")
-    if hole_diameter is not None:
-        set_property(
-            obj, "PublishedMountHoleDiameter", hole_diameter, "App::PropertyLength"
-        )
-        set_property(
-            obj,
-            "VerifiedHoleAxesXY",
-            [V(x, y, 0) for x, y in hole_centres],
-            "App::PropertyVectorList",
-        )
-        set_property(
-            obj,
-            "HoleAxisScope",
-            "XY axes only. Cylindrical cuts pass through the reference envelope for registration; no real PCB thickness or bearing-plane Z is claimed.",
-        )
-
-
-def mtf02p_envelope_shape():
-    """Published overall size, with the component/optical face toward +Z."""
-    length, width, height = MTF02P_SIZE_MM
-    x, y = MTF02P_CENTRE_XY
-    return Part.makeBox(
-        length,
-        width,
-        height,
-        V(x - length / 2, y - width / 2, MTF02P_BOTTOM_Z),
-    )
-
-
-def mtf02p_optical_reserve_shape():
-    """Expand the entire front face; no unpublished lens origin is assumed."""
-    length, width, height = MTF02P_SIZE_MM
-    x, y = MTF02P_CENTRE_XY
-    sections = []
-    for distance in (0.0, MTF02P_OPTICAL_RESERVE_MM):
-        expansion = distance * math.tan(math.radians(MTF02P_FLOW_FOV_DEG / 2))
-        half_x, half_y = length / 2 + expansion, width / 2 + expansion
-        z = MTF02P_BOTTOM_Z + height + distance
-        points = [
-            V(x - half_x, y - half_y, z),
-            V(x + half_x, y - half_y, z),
-            V(x + half_x, y + half_y, z),
-            V(x - half_x, y + half_y, z),
-        ]
-        sections.append(Part.makePolygon(points + [points[0]]))
-    return Part.makeLoft(sections, True, True)
-
-
 def build_equipment(doc, battery_group, electronics_group):
     battery = doc.addObject("Part::Box", "ModuleBatteryEnvelope")
     battery_group.addObject(battery)
@@ -168,9 +96,14 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(
         battery,
         "Notes",
-        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
+        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the stock optical-stack columns clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
+    set_property(
+        battery,
+        "BatteryPlacementContract",
+        json.dumps(mounts.BATTERY_PLACEMENT_CONTRACT, sort_keys=True),
+    )
     max_pack = create_reference(
         doc,
         battery_group,
@@ -193,7 +126,7 @@ def build_equipment(doc, battery_group, electronics_group):
         "Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
         FC_SOURCE,
     )
-    _interface_metadata(
+    add_interface_metadata(
         fc_obj, "FC", mounts.FC_HOLE_CENTRES, interfaces.FC_HOLE_DIAMETER
     )
     set_property(
@@ -219,7 +152,7 @@ def build_equipment(doc, battery_group, electronics_group):
         "Published29.5x13x9mm body excludes SMA antenna socket. Provisional1mm insulating adhesive allowance above the continuous carrier pad. No verified mounting-hole pattern. Actual underside contact, antenna, connector insertion and cable bend clearance remain unmeasured.",
         LR_SOURCE,
     )
-    _interface_metadata(radio, "LR")
+    add_interface_metadata(radio, "LR")
     pas = create_reference(
         doc,
         electronics_group,
@@ -231,7 +164,7 @@ def build_equipment(doc, battery_group, electronics_group):
         "Our4mm underbody service allowance is not a measured PCB bearing-plane height. Buy the spacer/fastener stack after checking actual PCB, antenna and GH1.25 connector access; no unverified mounting hardware is generated.",
         PAS_SOURCE,
     )
-    _interface_metadata(
+    add_interface_metadata(
         pas, "PAS", mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_DIAMETER
     )
     set_property(
@@ -243,69 +176,12 @@ def build_equipment(doc, battery_group, electronics_group):
         mounts.PAS_SERVICE_CLEARANCE,
         "App::PropertyLength",
     )
-    mtf = create_reference(
-        doc,
-        electronics_group,
-        "ModuleMTF02PEnvelope",
-        "MicoAir MTF-02P | optical face away from balloon (+Z)",
-        mtf02p_envelope_shape(),
-        "Published21.6x16x6.5mm overall envelope and1.5g module mass. Provisional insulating adhesive on the continuous carrier pad leaves1mm mounting allowance. "
-        "The optical/component face points toward world+Z, away from balloon planeZ0. The connector-access plan adopts the source drawing's SH4 exit toward module+X; align the actual board and firmware rotation accordingly. Individual port coordinates remain unmeasured. "
-        "Backside components, adhesive contact/retention and cable routing require the actual sensor. No mounting-hole pattern or retaining screw is assumed.",
-        MTF02P_SOURCE,
-    )
-    _interface_metadata(mtf, "MTF02P")
-    set_property(mtf, "ProductSource", MTF02P_PRODUCT_SOURCE)
-    set_property(mtf, "DimensionDrawingSource", MTF02P_DIMENSION_IMAGE)
-    set_property(mtf, "ListedMassGrams", MTF02P_MASS_G, "App::PropertyFloat")
-    set_property(mtf, "OpticalDirection", V(0, 0, 1), "App::PropertyVector")
-    set_property(mtf, "PlannedConnectorDirection", V(1, 0, 0), "App::PropertyVector")
-    set_property(
-        mtf, "PublishedOpticalFlowFOV", MTF02P_FLOW_FOV_DEG, "App::PropertyAngle"
-    )
-    set_property(mtf, "PublishedToFFOV", MTF02P_TOF_FOV_DEG, "App::PropertyAngle")
-    set_property(mtf, "OpticalOriginsMeasured", False, "App::PropertyBool")
-    optical = create_reference(
-        doc,
-        electronics_group,
-        "MTF02POpticalClearanceReserve",
-        "MTF-02P whole-face optical clearance | +Z, first80mm",
-        mtf02p_optical_reserve_shape(),
-        "Conservative geometric reservation: the entire21.6x16mm front face expands21deg per side in both axes for80mm toward+Z. "
-        "The manufacturer publishes42deg optical-flow FOV and2deg ToF FOV, but exact lens origins, angular-axis definitions and installed usable field are unmeasured. "
-        "This near-field obstruction screen is not a calibrated camera model, full-range ground visibility proof or validated cable route. Keep adhesives and wires outside the optical face and reserve; verify the purchased sensor and firmware orientation.",
-        MTF02P_SOURCE,
-    )
-    optical.Role = "Clearance"
-    optical.Label = "RESERVE | MTF-02P optical field away from balloon"
-    set_property(
-        optical,
-        "ReservedOpticalDistance",
-        MTF02P_OPTICAL_RESERVE_MM,
-        "App::PropertyLength",
-    )
-    set_property(optical, "OpticalDirection", V(0, 0, 1), "App::PropertyVector")
-    set_property(optical, "InstalledOpticalFieldVerified", False, "App::PropertyBool")
-    refs = [battery, fc_obj, radio, pas, mtf]
-    clearance = [max_pack, optical]
+    refs = [battery, fc_obj, radio, pas]
+    clearance = [max_pack]
     contracts = wiring_clearance.reserve_contracts()
     for name, shape in wiring_clearance.reserve_shapes().items():
         contract = contracts[name]
-        reserve = create_reference(
-            doc,
-            electronics_group,
-            name,
-            name,
-            shape,
-            "Design allowance for connector access and wiring; not an exact installed connector or certified cable route. See the native WiringContract and retained primary connector evidence. Disconnect leads before removing devices or sliding modules.",
-            contract["source_url"],
-        )
-        reserve.Role = "Clearance"
-        reserve.Label = "RESERVE | " + name.removesuffix("Reserve")
-        set_property(reserve, "WiringContract", json.dumps(contract, sort_keys=True))
-        set_property(
-            reserve, "InstalledConnectorFitVerified", False, "App::PropertyBool"
-        )
+        reserve = create_wiring_reserve(doc, electronics_group, name, shape, contract)
         if name == "FCWiringClearanceReserve":
             set_property(
                 reserve,

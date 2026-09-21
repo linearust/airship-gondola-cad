@@ -10,11 +10,11 @@ import Part
 from gondola.cad import box, create_printed_part, set_property, union
 
 from . import mounting_interfaces as interfaces
-from . import rail
+from . import rail, stack_interface
 
 V = App.Vector
-DECK_BOTTOM_Z = 10.2
-DECK_THICKNESS = 2.0
+DECK_BOTTOM_Z = stack_interface.HOST_DECK_BOTTOM_Z
+DECK_THICKNESS = stack_interface.DECK_THICKNESS
 SUPPORT_FACE_Z = DECK_BOTTOM_Z + DECK_THICKNESS
 MOUNT_HOLE_DIAMETER = 2.6
 MOUNT_PAD_DIAMETER = 6.5
@@ -33,10 +33,16 @@ PAS_HOLE_CENTRES = tuple(
     (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
 LR_CENTRE_XY = (0.0, 41.0)
-MTF02P_CENTRE_XY = (0.0, -46.0)
 LR_ADHESIVE_SIZE = (26.0, 10.0)
-MTF02P_ADHESIVE_SIZE = (18.0, 12.0)
 BATTERY_DECK_SIZE = (16.0, 52.0)
+BATTERY_PLACEMENT_CONTRACT = {
+    "centre_x_limit_mm": 5.0,
+    "centre_y_limit_mm": 4.0,
+    "maximum_size_mm": [66, 18, 17],
+    "minimum_stack_column_gap_mm": 1.5,
+    "frame": "Battery carrier XY; pack long axis along Y, nominal 1mm adhesive allowance",
+    "qualification": "Geometric placement envelope only. Actual pack size, adhesive contact and retention remain unverified. For larger trim changes move the carrier along the rail and recheck module clearances; do not push the pack into the stack columns.",
+}
 FC_WIRING_CLEARANCE = 8.0
 FC_WIRING_CORRIDOR_WIDTH = 8.0
 FC_WIRING_CORRIDOR_CENTRE_Y = 9.0
@@ -99,11 +105,9 @@ def mount_shape(kind, include_shoe=True):
         pieces += [_arm((0.0, 0.0), centre) for centre in FC_HOLE_CENTRES]
         pieces += [
             _arm((0.0, FC_AXIS_OFFSET), LR_CENTRE_XY),
-            _arm((0.0, -FC_AXIS_OFFSET), MTF02P_CENTRE_XY),
             _arm((FC_AXIS_OFFSET, 0.0), PAS_HOLE_CENTRES[0]),
             _arm(PAS_HOLE_CENTRES[0], PAS_HOLE_CENTRES[1]),
             _deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY),
-            _deck(MTF02P_ADHESIVE_SIZE, MTF02P_CENTRE_XY),
         ]
         holes = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
         pieces += [
@@ -116,7 +120,7 @@ def mount_shape(kind, include_shoe=True):
         raise ValueError("Unknown equipment mount kind: " + str(kind))
     if include_shoe:
         pieces.append(rail.shoe_shape())
-    shape = union(pieces)
+    shape = stack_interface.add_host_interface(union(pieces))
     for x, y in holes:
         shape = shape.cut(
             Part.makeCylinder(
@@ -136,6 +140,7 @@ def mount_contract(kind):
         raise ValueError("Unknown equipment mount kind: " + str(kind))
     return {
         "kind": kind,
+        "stack_interface": stack_interface.interface_contract(),
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "deck_thickness_mm": DECK_THICKNESS,
         "support_face_z_mm": SUPPORT_FACE_Z,
@@ -152,11 +157,6 @@ def mount_contract(kind):
                     "device": "LR900-A",
                     "centre_xy_mm": LR_CENTRE_XY,
                     "size_mm": LR_ADHESIVE_SIZE,
-                },
-                {
-                    "device": "MTF-02P",
-                    "centre_xy_mm": MTF02P_CENTRE_XY,
-                    "size_mm": MTF02P_ADHESIVE_SIZE,
                 },
             ]
             if kind == "electronics"
@@ -181,9 +181,9 @@ def mount_contract(kind):
 def build_mount(doc, parent, kind):
     name = {"battery": "BatteryMount", "electronics": "ElectronicsMount"}[kind]
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
-        "Continuous 16 x 52 x 2 mm battery adhesive deck without holes or a stacking interface. Actual pack/adhesive retention remains to be checked."
+        "Continuous 16 x 52 x 2 mm battery adhesive deck with four separate structural stack pads on the common40mm square; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
-        else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. Separate continuous insulating-adhesive pads for LR900-A and MTF-02P. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+        else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )
     obj = create_printed_part(
         doc,
@@ -198,6 +198,7 @@ def build_mount(doc, parent, kind):
     set_property(obj, "PrintPart", True, "App::PropertyBool")
     set_property(obj, "PrintSKU", name)
     set_property(obj, "MountKind", kind)
+    stack_interface.annotate_interface(obj)
     set_property(obj, "MountContract", json.dumps(mount_contract(kind), sort_keys=True))
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
     set_property(obj, "HalfTurnSymmetric", kind == "battery", "App::PropertyBool")

@@ -3,12 +3,156 @@
 import json
 import unittest
 from collections import Counter
+from types import SimpleNamespace
+from unittest.mock import patch
 
 try:
     import FreeCAD as App
     import Part
 except ImportError:
     App = Part = None
+
+
+@unittest.skipIf(App is None, "Requires FreeCAD")
+class ModuleControlMappingTests(unittest.TestCase):
+    def setUp(self):
+        from gondola.design_contract import ModuleStation
+
+        self.stations = tuple(
+            ModuleStation(name, x, name + "Clamp", "PositiveY")
+            for name, x in (
+                ("Battery", -90),
+                ("Propulsion", 0),
+                ("Electronics", 90),
+                ("Optical", -144),
+            )
+        )
+        self.modules = [
+            SimpleNamespace(
+                Name=station.object_name,
+                Placement=App.Placement(App.Vector(station.x_mm, 0, 0), App.Rotation()),
+            )
+            for station in self.stations
+        ]
+        self.doc = SimpleNamespace(
+            DesignRegistry=SimpleNamespace(Modules=list(reversed(self.modules))),
+            AssemblySettings=SimpleNamespace(
+                PropertiesList=[station.clamp_control for station in self.stations]
+            ),
+        )
+
+    def test_fourth_control_is_bound_by_name_despite_reordered_registry(self):
+        from gondola.validation import baseline
+
+        with patch.object(baseline, "MODULE_STATIONS", self.stations):
+            bindings = baseline.module_control_bindings(self.doc)
+        self.assertEqual(
+            [(station.object_name, module.Name) for station, module in bindings],
+            [(station.object_name, station.object_name) for station in self.stations],
+        )
+
+    def test_missing_fourth_module_or_control_is_not_silently_zipped_away(self):
+        from gondola.validation import baseline
+
+        with patch.object(baseline, "MODULE_STATIONS", self.stations):
+            original = self.doc.DesignRegistry.Modules
+            self.doc.DesignRegistry.Modules = self.modules[:3]
+            self.assertFalse(baseline.control_behavior(self.doc)["passed"])
+            self.doc.DesignRegistry.Modules = original
+            self.doc.AssemblySettings.PropertiesList.pop()
+            self.assertFalse(baseline.control_behavior(self.doc)["passed"])
+
+    def test_outer_modules_exit_first_independently_of_registry_order(self):
+        from gondola.validation.assembly import module_removal_plan
+
+        outer_positive = SimpleNamespace(
+            Name="OuterPositive",
+            Placement=App.Placement(App.Vector(144, 0, 0), App.Rotation()),
+        )
+        modules = self.modules + [outer_positive]
+        for order in (modules, list(reversed(modules))):
+            actual = module_removal_plan(order)
+            self.assertEqual(
+                [(module.Name, direction) for module, direction in actual],
+                [
+                    ("Optical", -1),
+                    ("Battery", -1),
+                    ("Propulsion", -1),
+                    ("OuterPositive", 1),
+                    ("Electronics", 1),
+                ],
+            )
+        requested = {module.Name: 1 for module in modules}
+        actual = module_removal_plan(modules, requested)
+        self.assertEqual(
+            [module.Name for module, _ in actual],
+            ["OuterPositive", "Electronics", "Propulsion", "Battery", "Optical"],
+        )
+        requested.pop("Optical")
+        with self.assertRaises(ValueError):
+            module_removal_plan(modules, requested)
+
+    def test_actual_manual_stages_are_bounded_and_independent(self):
+        from gondola.cad import create_group, set_property
+        from gondola.design_contract import MODULE_STATIONS
+        from gondola.parts.optical_mount import build_optical_mount
+        from gondola.validation.baseline import control_behavior
+
+        doc = App.newDocument("ManualControlRegression")
+        self.addCleanup(App.closeDocument, doc.Name)
+        settings = doc.addObject("App::FeaturePython", "AssemblySettings")
+        modules = []
+        for station in MODULE_STATIONS:
+            set_property(
+                settings,
+                station.clamp_control,
+                ["PositiveY", "NegativeY"],
+                "App::PropertyEnumeration",
+            )
+            module = create_group(doc, station.object_name, station.object_name)
+            set_property(module, "RailPositionX", station.x_mm, "App::PropertyLength")
+            module.setExpression("Placement.Base.x", "RailPositionX")
+            module.setExpression(
+                "Placement.Base.y",
+                f"AssemblySettings.{station.clamp_control} == 0 ? 0.45mm : -0.45mm",
+            )
+            modules.append(module)
+        pods = []
+        for name in ("PortPod", "StarboardPod"):
+            pod = create_group(doc, name, name)
+            pod.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 1)
+            set_property(pod, "Tilt", 0, "App::PropertyAngle")
+            pod.setExpression(
+                "Placement.Rotation.Angle", "min(150deg; max(-150deg; Tilt))"
+            )
+            pods.append(pod)
+        registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
+        set_property(registry, "Modules", modules, "App::PropertyLinkListGlobal")
+        set_property(registry, "TiltingPods", pods, "App::PropertyLinkListGlobal")
+        build_optical_mount(doc, doc.BatteryEquipmentModule)
+        doc.recompute()
+        result = control_behavior(doc)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
+        doc.OpticalRollStage.MaximumAngle = 30
+        self.assertFalse(control_behavior(doc)["passed"])
+
+    def test_shapeless_stack_group_metadata_is_frozen_too(self):
+        from gondola.cad import create_group, set_property
+        from gondola.validation.baseline import native_interface_metadata
+
+        doc = App.newDocument("StackGroupMetadataRegression")
+        self.addCleanup(App.closeDocument, doc.Name)
+        group = create_group(doc, "OpticalFlowModule", "Optical head")
+        set_property(group, "StackHostName", "BatteryEquipmentModule")
+        set_property(group, "HoldingTorqueVerified", False, "App::PropertyBool")
+        original = native_interface_metadata(doc)
+        self.assertIn(group.Name, original)
+        group.HoldingTorqueVerified = True
+        self.assertNotEqual(original, native_interface_metadata(doc))
+        group.HoldingTorqueVerified = False
+        group.StackHostName = "ElectronicsEquipmentModule"
+        self.assertNotEqual(original, native_interface_metadata(doc))
 
 
 @unittest.skipIf(
@@ -37,6 +181,7 @@ class FrozenBaselineTests(unittest.TestCase):
     def test_fixture_inventory_and_unresolved_scope_match_approved_design(self):
         from gondola.design_contract import EXPECTED_INVENTORY
         from gondola.validation.baseline import unresolved_scope
+        from gondola.validation.equipment import EXPECTED_PURCHASE_QUANTITIES
 
         registry = self.reference.DesignRegistry
         self.assertEqual(
@@ -56,6 +201,10 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertEqual(
             len(registry.EquipmentMounts), EXPECTED_INVENTORY["equipment_mounts"]
         )
+        self.assertEqual(
+            {obj.Name for obj in getattr(registry, "OpticalMountParts", [])},
+            {"OpticalMountBase", "OpticalRollBracket", "OpticalSensorTray"},
+        )
         self.assertTrue(
             {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(
                 registry.PropertiesList
@@ -65,19 +214,17 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertEqual(
             len(hardware_skus), EXPECTED_INVENTORY["purchased_hardware_types"]
         )
-        self.assertEqual(hardware_skus["M2_HEX_NUT"], 4)
-        self.assertEqual(hardware_skus["M2_SQUARE_NUT_DIN562"], 3)
-        self.assertEqual(hardware_skus["M2_WASHER_2.2_5_0.3"], 8)
-        self.assertEqual(hardware_skus["M3_WASHER_3.2_9_0.8"], 4)
+        self.assertEqual(hardware_skus, EXPECTED_PURCHASE_QUANTITIES)
         result = unresolved_scope(self.reference)
         self.assertTrue(result["passed"], result)
 
     def test_fixture_native_controls_remain_independent_and_bounded(self):
+        from gondola.design_contract import MODULE_STATIONS
         from gondola.validation.baseline import control_behavior
 
         result = control_behavior(self.reference)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 19)
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
 
     def test_rail_has_no_comparison_exception(self):
         from gondola.validation.baseline import compare_shape_objects
@@ -144,6 +291,21 @@ class FrozenBaselineTests(unittest.TestCase):
             self.assertFalse(unresolved_scope(self.reference)["passed"])
         finally:
             registry.ReleaseStatus = original
+
+    def test_optical_contract_cannot_change_under_an_identical_solid(self):
+        from gondola.validation.baseline import compare_shape_objects
+
+        shape = Part.makeBox(2, 2, 2)
+        expected = self.feature("ExpectedOpticalBracket", shape)
+        actual = self.feature("ActualOpticalBracket", shape)
+        contract = {"angle_limit_deg": 20, "retention_physically_verified": False}
+        for obj in (expected, actual):
+            obj.addProperty("App::PropertyString", "OpticalMountContract")
+            obj.OpticalMountContract = json.dumps(contract)
+        self.assertTrue(compare_shape_objects(actual, expected)["passed"])
+        contract["retention_physically_verified"] = True
+        actual.OpticalMountContract = json.dumps(contract)
+        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
 
 
 if __name__ == "__main__":

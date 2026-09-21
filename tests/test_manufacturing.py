@@ -28,11 +28,16 @@ class HardwareBomTests(unittest.TestCase):
             "Part": Mock(),
             "MeshPart": Mock(),
             "gondola.parts.equipment_envelopes": Mock(),
+            "gondola.parts.optical_sensor": Mock(),
+            "gondola.validation.optical": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.parts.mounting_interfaces": Mock(),
             "gondola.cad": types.SimpleNamespace(world_shape=Mock()),
             "gondola.validation.geometry": types.SimpleNamespace(
-                intersection_volume=Mock(), local_shape=Mock()
+                intersection_volume=Mock(),
+                local_shape=Mock(),
+                belongs_to_group=Mock(),
+                translation_sweep=Mock(),
             ),
         }
         with patch.dict(sys.modules, modules):
@@ -53,7 +58,7 @@ class HardwareBomTests(unittest.TestCase):
                         Name=f"{sku}_{index}",
                         Label=sku,
                         HardwareSKU=sku,
-                        MaterialSelection="A2 stainless steel",
+                        MaterialSelection=self.equipment.HARDWARE_MATERIALS[sku],
                         ThreadStandard="M2 x 0.4; right-hand",
                         SourceURL="https://example.com/first-journal",
                         PurchaseSearchQuery=f"Buy {sku}",
@@ -89,13 +94,13 @@ class HardwareBomTests(unittest.TestCase):
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
-        self.assertEqual(bom["purchased_hardware_quantity"], 26)
-        self.assertEqual(bom["unique_purchase_spec_count"], 6)
-        self.assertEqual(len(bom["items"]), 6)
+        self.assertEqual(bom["purchased_hardware_quantity"], 54)
+        self.assertEqual(bom["unique_purchase_spec_count"], 9)
+        self.assertEqual(len(bom["items"]), 9)
         self.assertEqual(bom["purchase_scope"], self.manufacturing.hardware_bom_scope())
         self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
         nuts = next(row for row in bom["items"] if row["sku"] == "M2_HEX_NUT")
-        self.assertEqual(nuts["quantity"], 4)
+        self.assertEqual(nuts["quantity"], 6)
         square_nuts = next(
             row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562"
         )

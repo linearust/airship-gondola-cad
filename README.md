@@ -11,17 +11,23 @@ human assembly manual or a declaration of physical qualification.
 - `gondola/parts/mounting_interfaces.py`: published electronic mounting patterns,
   sources and explicit unknowns. Never infer PCB bearing planes from box heights.
 - `gondola/parts/equipment_mounts.py`: compact battery support and open electronics
-  carrier. `equipment_envelopes.py`: purchased-device envelopes and reserves.
+  carrier. `equipment_envelopes.py`: battery/FC/radio/UWB envelopes and reserves.
+- `gondola/parts/stack_interface.py`: common structural40mm M2 stack, purchased
+  columns/fasteners, supported hosts and whole-kit reattachment.
+- `gondola/parts/optical_mount.py`: manually locked two-axis head.
+  `optical_sensor.py`: MTF body/optics/connector in the moving tray frame.
+  `equipment_metadata.py`: shared native evidence and cable-reserve metadata.
 - `gondola/parts/wiring_clearance.py`: connected FC routing reservation and
   connector-access lanes; dimensions are design allowances, not installed ports.
 - `gondola/parts/propulsion.py`: frame, carriers, custom torque journals and the
   published servo/motor interface decisions. `rail.py`: shared rail/shoe/clamp.
 - `gondola/parts/fastener_spec.py`: common purchased M2 dimensions.
-  `metric_hardware.py`: the six modeled mechanism hardware purchase types.
+  `metric_hardware.py`: modeled metal fasteners and purchased PA66 stack parts.
 - `gondola/assembly.py`: assembly and native expression controls.
-  `cad.py`: metadata and local/world transforms.
+  `cad.py`: metadata, assembly ancestry and local/world transforms.
 - `gondola/manufacturing.py`: unique print exports and hardware BOM.
-  `validation/`: saved geometry, motion, mounting, service and export checks.
+  `validation/`: saved geometry, motion, mounting, service and export checks;
+  `validation/optical.py` checks both stack hosts and the adjustable optical field.
 - `gondola/config.py`: artifact schema and pinned regression identity.
   `provenance.py` and `bundle.py`: source/artifact hashes and package gates.
 - `references/`: retained primary evidence, including drawings used by agents.
@@ -29,7 +35,7 @@ human assembly manual or a declaration of physical qualification.
   Older fixtures remain in Git history. Never regenerate a fixture merely to
   pass a failing comparison; audit deliberate shape, placement and scope changes.
 
-## Rev N decisions
+## Rev O decisions
 
 Scope remains one indoor LTA blimp gondola: two main propulsors, two tilt servos,
 FC, battery, LR900-A, LinkTrack P-AS and MTF-02P. Yaw propulsion, fins and fin
@@ -38,10 +44,11 @@ servos are excluded. Preserve bounded independent tilt of +/-150 degrees.
 The user's latest instruction supersedes the previous identical-board and
 no-device-holes requirements. Remove the three 64x76 universal boards, unused
 upper rail shoe and tall four-post expansion stack. Keep two role-specific
-printed mounts: a 16x52x2 mm continuous battery adhesive deck and one open
-carrier connecting only the required electronic mounting pads and adhesive
-surfaces. Both integrate the shared rail shoe; do not add separate adapter
-fasteners without a demonstrated benefit.
+rail carriers: a16x52x2mm continuous battery adhesive deck and one open
+electronics carrier. Both integrate the shared rail shoe and the same four
+structural stack pads. MTF-02P uses a separate three-part adjustable optical
+head on purchased spacers. Remove its former arm/pad from the electronics
+carrier. Do not add a fourth rail shoe, duplicate optical head or solid top board.
 
 Confirmed interfaces and conservative design reservations are distinct:
 
@@ -52,7 +59,7 @@ Confirmed interfaces and conservative design reservations are distinct:
 | DS-M005 | Official ear axes: 19.50 mm pitch and -5.82/+13.68 mm relative to output axis; ear underside10.20 mm from case bottom. Open U-saddles use those axes and preserve material around them | Case-to-axis offset, ear thickness, bolt length and actual seating; supplied 28T horn geometry and retaining screw |
 | RS1102 10000KV | Official three M1.4 threads on PCD6.6 recorded as evidence; no newly generated motor fastening holes | Rear shaft/clip keepout and safe insertion depth. Adding closed clearance holes beside the existing diameter4.4 relief leaves only about0.2 mm ligament; do not manufacture this thin wall or guess a smaller rear keepout |
 | LR900-A | Small continuous insulating adhesive pad; no invented holes | No confirmed hole pattern; listed29.5x13x9 mm excludes SMA socket, antenna and plugged cables |
-| MTF-02P | Small continuous insulating adhesive pad; no invented holes; optical face points away from balloon (+Z) | Backside contact, connector access and lens datums |
+| MTF-02P | Independent18x12mm adhesive tray on two manually clamped axes; no invented device holes | Actual lens/connector datums, adhesive retention, gravity alignment, firmware yaw/offset and holding torque |
 
 The FC manufacturer supplies four **M2x7.5 mm silicone dampening sleeves**.
 Use those bought parts; do not print substitute dampers or an unverified spline.
@@ -64,7 +71,7 @@ diameter13.6 mm (nominal13.5 +0.10).
 
 The model allocates **8 mm below the full FC envelope** above the carrier face.
 An8x8 mm X-open wiring corridor is offset to Y=5..13 mm so it avoids
-all four FC attachment axes. Rev N joins that corridor to a5 mm outward-normal
+all four FC attachment axes. Join that corridor to a5 mm outward-normal
 peripheral band and two continuous diameter3 mm exit turns with5 mm centreline
 radius. These are planning envelopes, not selected wire diameters, manufacturer
 bend limits or a completed harness. The peripheral band covers the FC body
@@ -74,20 +81,24 @@ spacers and fasteners after measuring the real PCB/damper stack; preserve the
 reserved lower-envelope clearance. P-AS has4 mm nominal service space below its
 conservative7 mm envelope. Its antenna is toward+Y and remains exposed.
 
-Move LR900-A from module Y36 to41 mm and MTF-02P from Y-39 to-46 mm. Only their
-existing support arms become longer; do not enlarge all supports or change the
-confirmed FC/P-AS mounting axes. The placement keeps at least1 mm nominal
-separation between the expanded FC reservation and neighboring devices/optics.
-The MTF displacement includes its conservative42-degree optical field, not
-merely the gap between bare boards.
+Keep LR900-A at module Y41mm. MTF-02P is no longer on this carrier's lateral
+arm. Maintain at least1mm nominal clearance between the connected FC wiring
+reservation and neighboring equipment/reservations, including the relocated
+optical field. Stack posts must stay outside the complete FC envelope and
+connector band; a world-axis bounding rectangle must not falsely replace the
+rotated FC footprint in underbody clearance checks.
 
 Reserve15 mm along both LR900-A long-axis ends,15 mm outward from the P-AS
-19 mm connector band at-Y, and12 mm outward from the MTF's full16 mm edge at+X.
+19 mm connector band at-Y, and12mm outward from the MTF's full16mm tray-local+X edge.
 The MTF layout deliberately adopts its drawing's connector-edge orientation;
 match the actual board and firmware rotation. Exact port XYZ, latch positions,
 USB plugs and SMA/antenna geometry remain unverified. Use the P-AS side-entry
 port for this allowance; its parallel top-entry port is not an additional load.
-Disconnect leads before the validated bare-device lift or module slide paths.
+Disconnect leads before adjustment, bare-device lift or module slide paths.
+When a carrier hosts the stack, release its four upper screws and remove the
+complete optical head before lifting the underlying device; keep the columns
+and lower fasteners installed in that clearance check. Preassemble the lower
+stack screws with the carrier removed from the rail for underside access.
 
 The XT30 allocation is10x42x15 mm, with mating axisY: a central10x22x15 body
 space and10 mm pull/lead space at each end. [AMASS XT30U drawings](https://www.china-amass.com/biao/268.html)
@@ -113,6 +124,61 @@ bearing/shaft conversion merely to replace a custom part with more parts.
 The electronics carrier uses 5x2 mm cantilever arms. Its solid connectivity and
 clearance checks do not establish stiffness, vibration resistance or adhesive
 retention; verify those with the actual supported devices.
+
+## Interchangeable optical stack
+
+This is a **project standard**, not a claimed industry-standard hole pattern:
+fourM2 clearance holes, diameter2.6mm, on a40x40mm square at(±20,±20),
+with continuous diameter6.5mm pads and2mm deck thickness. The battery and
+electronics carriers use identical datums and clocking. This larger pattern
+places the stock columns outside the rotated FC and its5mm connector band;
+do not route the optical-stack load through FC mounting holes, PCB or dampers.
+
+Use four purchased M2 female/female PA66 spacers, AF4mm, length25mm.
+Carrier support faceZ12.2 plus25mm places the open upper platform atZ37.2.
+Its2mm diagonal ribs carry the first pivot8mm above the platform underside;
+the second pivot is another10mm away. Sensor front is nominallyZ69.2 at zero
+angles. Four upper and four lower M2x5 PA66 slotted pan screws each use a
+purchased2.2x5x0.3mm steel washer. Nylon screws reduce mass; keep both pivot
+M2x8 screw/nut stacks in A2 steel for the manually clamped joints.
+
+Default host is `design_contract.OPTICAL_STACK_HOST = "BatteryEquipmentModule"`.
+`stack_interface.attach_to_host(doc.OpticalFlowModule, host)` moves the **whole
+kit** to either supported native parent and resets the common datum. Both
+hosts must pass collision, connector, optical, fastening and device-removal
+checks. No new rail module is required. Unsupported mounting locations require
+the same interface and a fresh clearance/load-path review; merely matching
+holes does not establish compatibility.
+
+Battery centre adjustment on its carrier is limited to **±5mm X and±4mm Y**
+for the maximum66x18x17mm reference pack. This leaves more than the required
+1.5mm clearance to the stock columns throughout the allowed placement envelope.
+The former±10mm X probes intersect the new posts and are explicitly unsupported.
+For larger trim changes reposition the complete carrier along the rail, then
+recheck module/rotor/connector clearances. This geometry check does not qualify
+adhesive contact or retention. `equipment_mounts.BATTERY_PLACEMENT_CONTRACT`
+binds these limits to the native battery and its validation.
+
+Native controls are `OpticalRollStage.Roll` and `OpticalPitchStage.Pitch`, with
+bounded planning targets±20deg on each axis. `optical_mount.set_angles` updates
+them together. Loosen, align at the intended loaded flight trim, then snug the
+purchased fasteners. The CAD Z axis points away from the balloon; it represents
+downward gravity only in the chosen reference trim. Added mass can alter vehicle
+trim but does not ensure vertical sight. No active stabilization, physical angle
+stops, calibrated ground view or qualified friction retention is claimed.
+
+The whole optical face expands21deg on both axes over400mm. Validation must
+prove that depth covers all modeled gondola geometry, and check a conservative
+bound for the full angular range against external parts and rotor sweep bounds.
+Checks of the moving mechanism itself are sampled and must say so. Actual lens
+origins/FOV axis definitions, backside adhesive contact, cable slack and gravity
+alignment remain to verify. Keep the optic and its SH4 access lane attached to
+the pitch stage so neither remains behind when the head moves.
+
+[The manufacturer's firmware orientation drawing](https://micoair.cn/api/media/file/docs/2026/07/66f6639242746-8204f1d31b-afb417fc40.webp)
+uses opposite forward references for ArduPilot/PX4 versus INAV. Set the selected
+firmware's yaw and sensor-position offsets for the final installation; pointing
+the optic downward alone does not establish yaw alignment.
 
 ## Manufacturing and mass
 
@@ -152,17 +218,31 @@ examples are not verified seller options, stock, delivery or supplier-lot fit.
 Do not print bought fasteners, ordinary spacers, dampers, servo horns or devices.
 Actual selected seller options must match the dimensional specification.
 
-Modeled mechanism hardware: **six types,26 pieces**, excluding spares and device
+Modeled mechanism hardware: **nine types,54 pieces**, excluding spares and device
 mounting kits whose lengths/bearing planes remain unresolved:
 
 | CAD SKU | Required specification | Quantity |
 |---|---|---:|
 | `M2X14_SOCKET_CAP` | A2 stainless M2x14, DIN912/ISO4762, under-head length14, head diameter3.8/height2, hex key1.5 mm | 4 |
-| `M2_HEX_NUT` | A2 DIN934 M2x0.4, AF4/height1.6 mm; journal retention only | 4 |
-| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3 mm; four under heads and four under nuts | 8 |
+| `M2X8_SOCKET_CAP` | A2 M2x8 DIN912/ISO4762; two manual optical pivot clamps | 2 |
+| `M2X5_PA66_PAN_HEAD` | Nylon66 M2x5 slotted pan screw, nominal head diameter4/height1.3mm; drive dimensions unverified | 8 |
+| `M2_FF_PA66_AF4_L25` | Nylon66 M2 female/female spacer, AF4, length25mm | 4 |
+| `M2_HEX_NUT` | A2 DIN934 M2x0.4, AF4/height1.6 mm; journals and optical pivots | 6 |
+| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3mm;8 journal,4 pivot,8 stack | 20 |
 | `M3_WASHER_3.2_9_0.8` | A2/SUS304 DIN9021 / ISO7093-1 large washer ID3.2 x OD9 x thickness0.8 mm; added inner retainers on M2 bolts | 4 |
 | `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, DIN913/ISO4026, hex key0.9 mm | 3 |
 | `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2 mm; accepted width3.6–4.0/height0.8–1.2 mm, verify corners | 3 |
+
+[Kang Yang HPS2-H Rev B](https://www.kangyang-usa.com/wp-content/uploads/2026/09/HPS2-H-18-2.pdf)
+gives AF4±0.2mm and25±0.4mm for the spacer. Its4mm end taps are reference
+values, not guaranteed usable depth or full-length threading. The nominal stack
+screw entry is2.7mm; require actual usable female depth≥3.3mm and check engagement,
+printed thickness, screw length tolerance and bottoming before tightening.
+[RI-CO's PA66 M2x5 screw](https://www.ricoplastics.co.uk/shop-components/product/167-nylon-pan-head-screws-m2-x-5mm/)
+has a4x1.3mm head; its linked drawing identifies a slotted pan head. The CAD uses
+a conservative cylindrical head envelope, without an invented slot profile.
+Neither spacer nor screw evidence qualifies PA66 creep, thread strip load or
+assembly torque. Stock parts are purchased, not exported for printing.
 
 Diameter5 mm washers and M2 nuts can pass through the carrier D-bore together
 with the sleeve. Use one bought large washer per journal between sleeve and the
@@ -277,8 +357,10 @@ and the corresponding `format --check` before uploading source changes.
 `build/` is the only default generated directory and is ignored by Git. Its
 `gondola.FCStd`, `gondola_print_parts/print_manifest.json`, validation JSONs,
 previews and `gondola_print_parts.zip` are reproducible outputs, not source.
-`gondola_wiring.png` shows the electronic wiring reservations in translucent
-orange; those volumes must never become printable parts or verified cables.
+`gondola_wiring.png` shows wiring reservations in translucent orange; these
+volumes are neither print parts nor verified cables. `gondola_optical_stack.png`
+and `gondola_optical_fc_stack.png` show the same head on both compatible hosts.
+Preview must restore the configured host before saving the native assembly.
 Use `--output-dir PATH` before the command consistently for a separate run.
 Do not commit build trees, duplicate archives, machine logs or temporary mounts.
 GUI entry points are `build_gondola.FCMacro` and `preview_gondola.FCMacro`.

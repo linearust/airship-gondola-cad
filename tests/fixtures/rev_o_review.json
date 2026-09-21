@@ -1,0 +1,961 @@
+{
+  "schema_version": 1,
+  "design_revision": "O",
+  "reviewed_on": "2026-09-21",
+  "previous_source_commit": "ab301f6a235acecac7ba66e02626806fef39c641",
+  "previous_cad_sha256": "e9653e99b37f9383b878cb4261a024919a541c8fff62018a510ae37b38466728",
+  "previous_source_fingerprint": "37e75e5d5b6cdacc44be0524fc731efb4c9688cb8a8c579bc8984becd4c34ac5",
+  "previous_snapshot_matches_source_commit": true,
+  "fixture": "tests/fixtures/rev_o_geometry.FCStd",
+  "fixture_sha256": "91c0af1a15aa425f46120f9ab17fdce82d9d63a2613535ea06c304c499b69838",
+  "fixture_source_fingerprint": "718bbde5047115ec7bb0e53f1ff836b0d2c98dbc3d0e97d2db1e3869cd1f7ab5",
+  "retired_fixture": {
+    "fixture": {
+      "path": "tests/fixtures/rev_n_geometry.FCStd",
+      "sha256": "a99b5b73c4bc27507350073c8c823583f49c8b412a5faf6982ce629661e954b1"
+    },
+    "review": {
+      "path": "tests/fixtures/rev_n_review.json",
+      "sha256": "147ad115a376bd1998910ebda80ceda7f6f955ba2733c933caf9bdb1e4b699f3"
+    },
+    "available_at_commit": "ab301f6a235acecac7ba66e02626806fef39c641",
+    "working_files_match_committed_bytes": true
+  },
+  "scope": "Project-standard structural stack interchangeable between battery and electronics rail carriers, separate from the FC soft mounting. Three separately printed optical parts provide manually clamped roll/pitch; no fourth rail module, active leveling or flight qualification is introduced.",
+  "independent_audit": {
+    "passed": true,
+    "raw_report_sha256": "496f83c51a579f481e02594befab35d14216c19a519fea766b6687ee30c5654b",
+    "review_script_sha256": "3c4b63ad403540076d4d466dee08e3dd0c10f5a172776f791f60c7a0050ed2ce",
+    "scope": "Independent saved CAD transition; no project geometry builder or baseline exception imported. Carrier changes reconstructed from frozen old BReps and explicit40mm platform/removed branch; optical shapes reconstructed from declared dimensions."
+  },
+  "shape_counts": {
+    "old": 80,
+    "new": 111,
+    "added": 31,
+    "changed_existing": 5,
+    "unchanged": 75
+  },
+  "changed_existing_shapes": [
+    {
+      "object": "BatteryMount",
+      "local_difference_mm3": 786.1193597523675,
+      "world_difference_mm3": 786.1193597523678,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true,
+      "parent_unchanged": true,
+      "volume_before_mm3": 3877.743039360291,
+      "volume_after_mm3": 4663.8623991126615,
+      "valid_single_solid": true,
+      "passed": true,
+      "reason": "Add the project-standard 40x40mm four-M2 structural interface outside the continuous battery adhesive deck; preserve the existing rail shoe."
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_difference_mm3": 1361.74669637532,
+      "world_difference_mm3": 1361.74669637532,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true,
+      "parent_unchanged": true,
+      "volume_before_mm3": 5160.400836913255,
+      "volume_after_mm3": 5276.6186900629655,
+      "valid_single_solid": true,
+      "passed": true,
+      "reason": "Remove the old integrated MTF arm/pad, add the same structural stack interface, and preserve FC/P-AS mounting axes, LR pad, equipment clearances and rail shoe."
+    },
+    {
+      "object": "MTF02PConnectorReserve",
+      "local_difference_mm3": 2496.0,
+      "world_difference_mm3": 2496.0,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": false,
+      "parent_unchanged": false,
+      "volume_before_mm3": 1248.0,
+      "volume_after_mm3": 1248.0,
+      "valid_single_solid": true,
+      "passed": true,
+      "reason": "Move the unchanged12x16x6.5mm connector allowance with the pitch tray; keep exact connector fit and cable slack unverified."
+    },
+    {
+      "object": "MTF02POpticalClearanceReserve",
+      "local_difference_mm3": 15136535.512502966,
+      "world_difference_mm3": 15242182.077577984,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": false,
+      "parent_unchanged": false,
+      "volume_before_mm3": 220613.0652116685,
+      "volume_after_mm3": 15021569.012366313,
+      "valid_single_solid": true,
+      "passed": true,
+      "reason": "Move the whole-face optical reservation with the tray and extend its screening depth80→400mm. The21deg expansion per side remains a conservative uncalibrated assumption."
+    },
+    {
+      "object": "ModuleMTF02PEnvelope",
+      "local_difference_mm3": 4492.8,
+      "world_difference_mm3": 4492.8,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": false,
+      "parent_unchanged": false,
+      "volume_before_mm3": 2246.4,
+      "volume_after_mm3": 2246.4,
+      "valid_single_solid": true,
+      "passed": true,
+      "reason": "Move the unchanged21.6x16x6.5mm equipment envelope to the independent pitch tray with1mm adhesive allowance; it follows both manual axes."
+    }
+  ],
+  "added_shapes": [
+    "OpticalMountBase",
+    "OpticalPitchBolt",
+    "OpticalPitchInnerWasher",
+    "OpticalPitchNut",
+    "OpticalPitchOuterWasher",
+    "OpticalRollBolt",
+    "OpticalRollBracket",
+    "OpticalRollInnerWasher",
+    "OpticalRollNut",
+    "OpticalRollOuterWasher",
+    "OpticalSensorTray",
+    "OpticalStackLowerBolt0",
+    "OpticalStackLowerBolt1",
+    "OpticalStackLowerBolt2",
+    "OpticalStackLowerBolt3",
+    "OpticalStackLowerWasher0",
+    "OpticalStackLowerWasher1",
+    "OpticalStackLowerWasher2",
+    "OpticalStackLowerWasher3",
+    "OpticalStackSpacer0",
+    "OpticalStackSpacer1",
+    "OpticalStackSpacer2",
+    "OpticalStackSpacer3",
+    "OpticalStackUpperBolt0",
+    "OpticalStackUpperBolt1",
+    "OpticalStackUpperBolt2",
+    "OpticalStackUpperBolt3",
+    "OpticalStackUpperWasher0",
+    "OpticalStackUpperWasher1",
+    "OpticalStackUpperWasher2",
+    "OpticalStackUpperWasher3"
+  ],
+  "removed_shapes": [],
+  "unchanged_shapes": [
+    "BatteryEquipmentModuleRailClampNut",
+    "BatteryEquipmentModuleRailClampScrew",
+    "CapacitorServiceReserve",
+    "ContinuousRail",
+    "ElectronicsEquipmentModuleRailClampNut",
+    "ElectronicsEquipmentModuleRailClampScrew",
+    "FCWiringClearanceReserve",
+    "LR900NegativeXConnectorReserve",
+    "LR900PositiveXConnectorReserve",
+    "MainPropulsionModuleRailClampNut",
+    "MainPropulsionModuleRailClampScrew",
+    "MaximumBatteryEnvelope",
+    "ModuleBatteryEnvelope",
+    "ModuleFCEnvelope",
+    "ModuleLR900Envelope",
+    "ModulePASEnvelope",
+    "PASConnectorReserve",
+    "PortCoupling",
+    "PortJournalNegativeBolt",
+    "PortJournalNegativeInnerWasher",
+    "PortJournalNegativeNut",
+    "PortJournalNegativeOuterWasher",
+    "PortJournalNegativeRetainingWasher",
+    "PortJournalPositiveBolt",
+    "PortJournalPositiveInnerWasher",
+    "PortJournalPositiveNut",
+    "PortJournalPositiveOuterWasher",
+    "PortJournalPositiveRetainingWasher",
+    "PortJournalSleeveNegative",
+    "PortJournalSleevePositive",
+    "PortMotor",
+    "PortMotorCarrier",
+    "PortPhaseLeadLoopReserve",
+    "PortPropellerDisk",
+    "PortServo",
+    "PortShaft",
+    "PortSweepBound",
+    "PropulsionFixedFrame",
+    "RailFitSample",
+    "ShoeFitSample",
+    "StarboardCoupling",
+    "StarboardJournalNegativeBolt",
+    "StarboardJournalNegativeInnerWasher",
+    "StarboardJournalNegativeNut",
+    "StarboardJournalNegativeOuterWasher",
+    "StarboardJournalNegativeRetainingWasher",
+    "StarboardJournalPositiveBolt",
+    "StarboardJournalPositiveInnerWasher",
+    "StarboardJournalPositiveNut",
+    "StarboardJournalPositiveOuterWasher",
+    "StarboardJournalPositiveRetainingWasher",
+    "StarboardJournalSleeveNegative",
+    "StarboardJournalSleevePositive",
+    "StarboardMotor",
+    "StarboardMotorCarrier",
+    "StarboardPhaseLeadLoopReserve",
+    "StarboardPropellerDisk",
+    "StarboardServo",
+    "StarboardShaft",
+    "StarboardSweepBound",
+    "TapeWing0L",
+    "TapeWing0R",
+    "TapeWing1L",
+    "TapeWing1R",
+    "TapeWing2L",
+    "TapeWing2R",
+    "TapeWing3L",
+    "TapeWing3R",
+    "TapeWing4L",
+    "TapeWing4R",
+    "TapeWing5L",
+    "TapeWing5R",
+    "TapeWing6L",
+    "TapeWing6R",
+    "XT30ServiceReserve"
+  ],
+  "independent_delta_proofs": [
+    {
+      "object": "BatteryMount",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "OpticalMountBase",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "OpticalRollBracket",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "OpticalSensorTray",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "ModuleMTF02PEnvelope",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "MTF02PConnectorReserve",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    },
+    {
+      "object": "MTF02POpticalClearanceReserve",
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 0.0,
+      "valid_single_solid": true,
+      "parent_matches": true,
+      "passed": true
+    }
+  ],
+  "new_hardware_independent_geometry": {
+    "count": 28,
+    "all_local_and_world_shapes_and_placements_passed": true,
+    "maximum_local_difference_mm3": 0.0,
+    "maximum_world_difference_mm3": 0.0,
+    "dimensions": {
+      "pivot_screws": "Two A2 M2x8 socket-cap dimensional envelopes, head3.8x2mm and1.5mm A/F recess.",
+      "pivot_nuts_washers": "Two A2 AF4x1.6mm M2 nuts and four ID2.2/OD5x0.3mm washers.",
+      "stack_screws": "Eight PA66 M2x5 screws; conservative cylindrical headOD4x1.3mm, no invented slot/crown detail.",
+      "stack_spacers": "Four PA66 AF4x25mm M2 female/female spacers;4mm reference end bores do not guarantee usable thread depth.",
+      "stack_washers": "Eight A2 ID2.2/OD5x0.3mm washers."
+    }
+  },
+  "unchanged_prints_and_coupons": [
+    "ContinuousRail",
+    "PortMotorCarrier",
+    "StarboardMotorCarrier",
+    "PropulsionFixedFrame",
+    "PortJournalSleeveNegative",
+    "PortJournalSleevePositive",
+    "StarboardJournalSleeveNegative",
+    "StarboardJournalSleevePositive",
+    "RailFitSample",
+    "ShoeFitSample"
+  ],
+  "all_26_old_mechanical_hardware_shapes_unchanged": true,
+  "optical_parent_frames": [
+    {
+      "object": "OpticalFlowModule",
+      "parent": "BatteryEquipmentModule",
+      "local_origin_mm": [
+        0.0,
+        0.0,
+        37.2
+      ],
+      "passed": true
+    },
+    {
+      "object": "OpticalRollStage",
+      "parent": "OpticalFlowModule",
+      "local_origin_mm": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "passed": true
+    },
+    {
+      "object": "OpticalPitchStage",
+      "parent": "OpticalRollStage",
+      "local_origin_mm": [
+        0.0,
+        0.0,
+        10.0
+      ],
+      "passed": true
+    }
+  ],
+  "default_stack_host": "BatteryEquipmentModule",
+  "alternate_supported_host": "ElectronicsEquipmentModule",
+  "native_controls": {
+    "old19_preserved": true,
+    "new_manual_cases": [
+      {
+        "control": "OpticalRollStage.Roll",
+        "input": -999,
+        "bounded_angle_deg": -20,
+        "passed": true
+      },
+      {
+        "control": "OpticalRollStage.Roll",
+        "input": -10,
+        "bounded_angle_deg": -10,
+        "passed": true
+      },
+      {
+        "control": "OpticalRollStage.Roll",
+        "input": 0,
+        "bounded_angle_deg": 0,
+        "passed": true
+      },
+      {
+        "control": "OpticalRollStage.Roll",
+        "input": 10,
+        "bounded_angle_deg": 10,
+        "passed": true
+      },
+      {
+        "control": "OpticalRollStage.Roll",
+        "input": 999,
+        "bounded_angle_deg": 20,
+        "passed": true
+      },
+      {
+        "control": "OpticalPitchStage.Pitch",
+        "input": -999,
+        "bounded_angle_deg": -20,
+        "passed": true
+      },
+      {
+        "control": "OpticalPitchStage.Pitch",
+        "input": -10,
+        "bounded_angle_deg": -10,
+        "passed": true
+      },
+      {
+        "control": "OpticalPitchStage.Pitch",
+        "input": 0,
+        "bounded_angle_deg": 0,
+        "passed": true
+      },
+      {
+        "control": "OpticalPitchStage.Pitch",
+        "input": 10,
+        "bounded_angle_deg": 10,
+        "passed": true
+      },
+      {
+        "control": "OpticalPitchStage.Pitch",
+        "input": 999,
+        "bounded_angle_deg": 20,
+        "passed": true
+      }
+    ],
+    "total_case_count": 29,
+    "other_axes_and_rail_modules_independent": true,
+    "stage_control_reason": "Each stage stores its own angle; parent-control expressions caused a FreeCAD dependency cycle and are not used."
+  },
+  "existing_native_expressions_preserved": true,
+  "added_native_expression_objects": [
+    "OpticalPitchStage",
+    "OpticalRollStage"
+  ],
+  "registry_changes": [
+    {
+      "property": "PrintedParts",
+      "added": [
+        "OpticalMountBase",
+        "OpticalRollBracket",
+        "OpticalSensorTray"
+      ],
+      "membership_preserved": true,
+      "ordering_changed": false
+    },
+    {
+      "property": "ClearanceVolumes",
+      "added": [],
+      "membership_preserved": true,
+      "ordering_changed": true
+    },
+    {
+      "property": "HardwareParts",
+      "added": [
+        "OpticalRollBolt",
+        "OpticalRollOuterWasher",
+        "OpticalRollInnerWasher",
+        "OpticalRollNut",
+        "OpticalPitchBolt",
+        "OpticalPitchOuterWasher",
+        "OpticalPitchInnerWasher",
+        "OpticalPitchNut",
+        "OpticalStackSpacer0",
+        "OpticalStackLowerBolt0",
+        "OpticalStackLowerWasher0",
+        "OpticalStackUpperBolt0",
+        "OpticalStackUpperWasher0",
+        "OpticalStackSpacer1",
+        "OpticalStackLowerBolt1",
+        "OpticalStackLowerWasher1",
+        "OpticalStackUpperBolt1",
+        "OpticalStackUpperWasher1",
+        "OpticalStackSpacer2",
+        "OpticalStackLowerBolt2",
+        "OpticalStackLowerWasher2",
+        "OpticalStackUpperBolt2",
+        "OpticalStackUpperWasher2",
+        "OpticalStackSpacer3",
+        "OpticalStackLowerBolt3",
+        "OpticalStackLowerWasher3",
+        "OpticalStackUpperBolt3",
+        "OpticalStackUpperWasher3"
+      ],
+      "membership_preserved": true,
+      "ordering_changed": false
+    },
+    {
+      "property": "OpticalMountParts",
+      "added": [
+        "OpticalMountBase",
+        "OpticalRollBracket",
+        "OpticalSensorTray"
+      ],
+      "membership_preserved": true,
+      "ordering_changed": false
+    }
+  ],
+  "critical_metadata_changes": {
+    "BatteryEquipmentModule": [
+      "Group"
+    ],
+    "BatteryEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "BatteryEquipmentModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "BatteryMount": [
+      "MountContract",
+      "Notes",
+      "PrintNotes",
+      "PrintPlacement",
+      "StackFitVerified",
+      "StackInterfaceContract"
+    ],
+    "ContinuousRailFitCoupons": [
+      "Origin"
+    ],
+    "DesignRegistry": [
+      "ClearanceVolumes",
+      "HardwareParts",
+      "OpticalMountParts",
+      "PrintedParts",
+      "ReleaseStatus",
+      "SourceFingerprint"
+    ],
+    "ElectronicsEquipmentModule": [
+      "Group"
+    ],
+    "ElectronicsEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "ElectronicsEquipmentModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "ElectronicsMount": [
+      "MountContract",
+      "Notes",
+      "PrintNotes",
+      "PrintPlacement",
+      "StackFitVerified",
+      "StackInterfaceContract"
+    ],
+    "FCWiringClearanceReserve": [
+      "Notes"
+    ],
+    "LR900NegativeXConnectorReserve": [
+      "Notes"
+    ],
+    "LR900PositiveXConnectorReserve": [
+      "Notes"
+    ],
+    "MTF02PConnectorReserve": [
+      "Notes",
+      "WiringContract"
+    ],
+    "MTF02POpticalClearanceReserve": [
+      "Label",
+      "Notes",
+      "ReservedOpticalDistance"
+    ],
+    "MainPropulsionModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "MainPropulsionModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "ModuleBatteryEnvelope": [
+      "BatteryPlacementContract",
+      "Notes"
+    ],
+    "ModuleMTF02PEnvelope": [
+      "FirmwareOrientationSource",
+      "Label",
+      "Notes"
+    ],
+    "PASConnectorReserve": [
+      "Notes"
+    ],
+    "PortJournalNegativeBolt": [
+      "ShapeModelNotes"
+    ],
+    "PortJournalNegativeInnerWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalNegativeNut": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalNegativeOuterWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalNegativeRetainingWasher": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalPositiveBolt": [
+      "ShapeModelNotes"
+    ],
+    "PortJournalPositiveInnerWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalPositiveNut": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalPositiveOuterWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "PortJournalPositiveRetainingWasher": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalNegativeBolt": [
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalNegativeInnerWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalNegativeNut": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalNegativeOuterWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalNegativeRetainingWasher": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalPositiveBolt": [
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalPositiveInnerWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalPositiveNut": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalPositiveOuterWasher": [
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StarboardJournalPositiveRetainingWasher": [
+      "PurchaseRequirements",
+      "ShapeModelNotes"
+    ],
+    "StartHere": [
+      "A1",
+      "A10",
+      "A11",
+      "A12",
+      "A13",
+      "A14",
+      "A15",
+      "A7",
+      "A8",
+      "A9",
+      "B10",
+      "B11",
+      "B12",
+      "B13",
+      "B14",
+      "B15",
+      "B6",
+      "B7",
+      "B8",
+      "B9",
+      "Label"
+    ],
+    "XT30ServiceReserve": [
+      "Notes"
+    ]
+  },
+  "reviewed_metadata_only_changes": [
+    "Native StackInterfaceContract and false StackFitVerified on both rail carriers; MountContract and print placement updated for changed geometry.",
+    "MTF notes, source, connector contract and optical distance updated for the independently tilted stack and longer screening depth.",
+    "Existing bought-part requirements explain additional optical/stack uses; dimensions, materials and numeric thread metadata on the26 old bought parts are unchanged.",
+    "ShapeModelNotes explicitly distinguishes nominal bought envelopes from tested material, preload and retention.",
+    "Shared connector reservation notes were shortened without changing shapes, source URLs or contracts.",
+    "Battery metadata now declares maximum66x18x17mm pack, centreX±5mm/Y±4mm and1.5mm minimum stock-column gap; legacy±10mm lateral offsets intersect the new columns and are unsupported.",
+    "ContinuousRailFitCoupons Origin link was automatically renumbered after adding native groups; both coupon geometries and placements remain unchanged."
+  ],
+  "inventory": {
+    "rail_modules": 3,
+    "equipment_mounts": 2,
+    "optical_printed_parts": 3,
+    "installed_prints": 13,
+    "fit_coupons": 2,
+    "unique_print_files": 11,
+    "purchased_hardware": 54,
+    "purchased_hardware_types": 9
+  },
+  "purchased_hardware_quantities": {
+    "M2x6_ISO4026_DIN913": 3,
+    "M2_SQUARE_NUT_DIN562": 3,
+    "M2X14_SOCKET_CAP": 4,
+    "M2_WASHER_2.2_5_0.3": 20,
+    "M3_WASHER_3.2_9_0.8": 4,
+    "M2_HEX_NUT": 6,
+    "M2X8_SOCKET_CAP": 2,
+    "M2_FF_PA66_AF4_L25": 4,
+    "M2X5_PA66_PAN_HEAD": 8
+  },
+  "bom_purchase_codes_and_materials_match": true,
+  "reviewed_bom_sha256": "7238054fe29479460d56afdfcb774b0183a834fe3e82a03dd18df6542853cc61",
+  "mass": {
+    "method": "BRep solid volume in mm3 / 1000 times density in g/cm3. Purchased hardware is a dimensional envelope with no helical threads; neither hardware mass nor density is verified on purchased samples.",
+    "old_printed_g": 39.72879693143297,
+    "new_printed_g": 42.61450819612315,
+    "old_hardware_g": 5.07632441262225,
+    "new_hardware_g": 8.279462240172942,
+    "old_structure_hardware_g": 44.805121344055216,
+    "new_structure_hardware_g": 50.89397043629609,
+    "structure_delta_g": 6.088849092240871,
+    "accounted_subtotal_g": 108.32597043629609,
+    "is_all_up_flight_mass": false,
+    "excluded_items": [
+      "Fit coupons and spare parts; only supplied installed-part lists are counted.",
+      "Balloon, lifting gas and ground equipment.",
+      "Tape, adhesive, hook-and-loop, insulating pads and strain relief.",
+      "Wiring, connectors, pigtails and heat-shrink beyond any included equipment mass.",
+      "Unmodeled FC/P-AS mounting spacers, dampers and fastening stacks; their bearing planes and screw lengths are unverified.",
+      "OEM motor/servo mounting fasteners, servo horns and unfinished torque couplings.",
+      "Antennas, capacitor, regulators and accessory parts not included in listed equipment masses.",
+      "Finish, moisture, manufacturing variation and differences from actual purchased parts."
+    ]
+  },
+  "unresolved_interfaces": [
+    {
+      "key": "motion_endpoints",
+      "required_evidence": "Verify actual DS-M005 travel, mechanical stops and horn clocking through bounded ±150deg motion.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_supply_voltage",
+      "required_evidence": "Resolve manufacturer label 3.7–4.2V versus user-confirmed manufacturer product page and BOM 3.7–5V against the purchased servo before powering it.",
+      "status": "unverified"
+    },
+    {
+      "key": "rail_flexure",
+      "required_evidence": "Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.",
+      "status": "unverified"
+    },
+    {
+      "key": "motor_mount",
+      "required_evidence": "RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_drive",
+      "required_evidence": "Measured DS-M005 28T horn connection, torque transfer to D sleeve and horn retaining fastener.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_ear_retention",
+      "required_evidence": "DS-M005 ear hole axes and underside datum are published; verify actual case offset, ear thickness, bearing contact and M1.6 clearance-fastener length.",
+      "status": "unverified"
+    },
+    {
+      "key": "electronic_mounting_stack",
+      "required_evidence": "FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.",
+      "status": "unverified"
+    },
+    {
+      "key": "physical_retention",
+      "required_evidence": "Loaded tests of tape, friction clamps, PA12 flexure life and printed journals.",
+      "status": "unverified"
+    },
+    {
+      "key": "moving_wires",
+      "required_evidence": "Actual phase-lead slack/strain relief through bounded ±150deg motion; reserved loops are not routing proof.",
+      "status": "unverified"
+    },
+    {
+      "key": "connector_and_wire_fit",
+      "required_evidence": "Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.",
+      "status": "unverified"
+    },
+    {
+      "key": "optical_sensor_installation",
+      "required_evidence": "Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
+      "status": "unverified"
+    },
+    {
+      "key": "optical_stack_retention",
+      "required_evidence": "Verify purchased M2 PA66 spacers, both-end thread depths/engagement, printed pads, pivot friction, PA12/PA66 creep, vibration loosening and cable torque. Test both stack hosts and loaded rail/tape retention; no qualified tightening torque or stiffness is claimed.",
+      "status": "unverified"
+    },
+    {
+      "key": "finished_mass",
+      "required_evidence": "Weigh chosen battery, prints, hardware, wiring, connectors and adhesive.",
+      "status": "unverified"
+    }
+  ],
+  "old_pending_interfaces_preserved": true,
+  "battery_placement": {
+    "contract": {
+      "centre_x_limit_mm": 5.0,
+      "centre_y_limit_mm": 4.0,
+      "frame": "Battery carrier XY; pack long axis along Y, nominal 1mm adhesive allowance",
+      "maximum_size_mm": [
+        66,
+        18,
+        17
+      ],
+      "minimum_stack_column_gap_mm": 1.5,
+      "qualification": "Geometric placement envelope only. Actual pack size, adhesive contact and retention remain unverified. For larger trim changes move the carrier along the rail and recheck module clearances; do not push the pack into the stack columns."
+    },
+    "saved_centre_xy_mm": [
+      0.0,
+      0.0
+    ],
+    "passed": true
+  },
+  "unverified_scope": "Manual alignment to intended flight-trim vertical is required; mass alone does not align the sensor. No self-leveling, physical stops, holding torque, creep/vibration retention, actual wire slack, lens datum calibration or adhesive retention is qualified. The structural stack bypasses FC dampers; FC/P-AS final mounting hardware and other unmodeled accessories remain outside the mechanism BOM/mass.",
+  "all_native_qualification_flags_remain_false": true,
+  "production_released": false,
+  "artifact_schema_version": 2,
+  "validated_candidate": {
+    "cad_sha256": "91c0af1a15aa425f46120f9ab17fdce82d9d63a2613535ea06c304c499b69838",
+    "source_fingerprint": "718bbde5047115ec7bb0e53f1ff836b0d2c98dbc3d0e97d2db1e3869cd1f7ab5",
+    "all_four_reports_passed": true,
+    "reports": [
+      {
+        "file": "gondola_validation.json",
+        "sha256": "bbe3fe050fa150a983b3b2367a71f7a18467b4f2d58dc67dcab2f5f3ea3bce65",
+        "passed": true
+      },
+      {
+        "file": "gondola_equipment_validation.json",
+        "sha256": "6a84cc080555cd38a8ca6dc289227e32c2fa0d27ac945bceeb3c7bda06be513f",
+        "passed": true
+      },
+      {
+        "file": "gondola_propulsion_validation.json",
+        "sha256": "f440819e2a15203faf5a3622fa0c8eeb29e715386cc120db17c40df258d1aa34",
+        "passed": true
+      },
+      {
+        "file": "gondola_rail_validation.json",
+        "sha256": "e3691ade6a593a70122f203884eb5cf03d10b7ff70912b3739a738339a71456a",
+        "passed": true
+      }
+    ],
+    "saved_cad_and_exports_unchanged_during_validation": true,
+    "provenance_limit": "These reports validate the reviewed pre-pin source and candidate. Updating config to pin this fixture intentionally changes the source fingerprint. Rebuild, preview, validate, compare and bundle again before publishing."
+  },
+  "transition_passed": true,
+  "battery_placement_validation": {
+    "allowed_pose_count": 18,
+    "all_allowed_poses_passed": true,
+    "continuous_translation": {
+      "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
+      "local_size_mm": [
+        28.0,
+        74.0,
+        17
+      ],
+      "collisions": [],
+      "stack_column_gaps": [
+        {
+          "object": "OpticalStackSpacer0",
+          "minimum_gap_mm": 3.6905989232414953
+        },
+        {
+          "object": "OpticalStackSpacer1",
+          "minimum_gap_mm": 3.6905989232414953
+        },
+        {
+          "object": "OpticalStackSpacer2",
+          "minimum_gap_mm": 3.6905989232414953
+        },
+        {
+          "object": "OpticalStackSpacer3",
+          "minimum_gap_mm": 3.6905989232414953
+        }
+      ],
+      "required_stack_column_gap_mm": 1.5,
+      "passed": true
+    },
+    "legacy_lateral_offsets_mm": [
+      -10,
+      10
+    ],
+    "legacy_offset_probe_count": 12,
+    "legacy_offsets_remain_unsupported": true,
+    "legacy_offsets_intersect_columns": true
+  },
+  "optical_validation": {
+    "source_evidence_passed": true,
+    "hosts": [
+      {
+        "host": "BatteryEquipmentModule",
+        "sampled_attitudes": 25,
+        "all_sampled_attitudes_passed": true,
+        "continuous_external_optical_bound": {
+          "minimum_front_z_in_stack_frame_mm": 23.55202307077927,
+          "initial_radius_mm": 29.407215153133127,
+          "half_angle_deg": 56.48690910729309,
+          "height_mm": 400.0,
+          "external_obstructions": [],
+          "all_angles_body_depth_upper_bound_mm": 288.4534788956273,
+          "method": "Conservative full-angle circular cone against external parts and complete rotor bounds; norm upper bound covers full modeled-body depth",
+          "passed": true
+        },
+        "bare_device_removal_after_head_release": [
+          {
+            "device": "ModuleBatteryEnvelope",
+            "upward_travel_mm": 32,
+            "method": "continuous planar/coaxial-cylinder face-prism union",
+            "columns_and_lower_fasteners_retained": true,
+            "collisions": [],
+            "passed": true
+          }
+        ],
+        "all_checks_passed": true
+      },
+      {
+        "host": "ElectronicsEquipmentModule",
+        "sampled_attitudes": 25,
+        "all_sampled_attitudes_passed": true,
+        "continuous_external_optical_bound": {
+          "minimum_front_z_in_stack_frame_mm": 23.55202307077927,
+          "initial_radius_mm": 29.407215153133127,
+          "half_angle_deg": 56.48690910729309,
+          "height_mm": 400.0,
+          "external_obstructions": [],
+          "all_angles_body_depth_upper_bound_mm": 288.4534788956273,
+          "method": "Conservative full-angle circular cone against external parts and complete rotor bounds; norm upper bound covers full modeled-body depth",
+          "passed": true
+        },
+        "bare_device_removal_after_head_release": [
+          {
+            "device": "ModuleFCEnvelope",
+            "upward_travel_mm": 32,
+            "method": "continuous planar/coaxial-cylinder face-prism union",
+            "columns_and_lower_fasteners_retained": true,
+            "collisions": [],
+            "passed": true
+          },
+          {
+            "device": "ModulePASEnvelope",
+            "upward_travel_mm": 32,
+            "method": "continuous planar/coaxial-cylinder face-prism union",
+            "columns_and_lower_fasteners_retained": true,
+            "collisions": [],
+            "passed": true
+          },
+          {
+            "device": "ModuleLR900Envelope",
+            "upward_travel_mm": 32,
+            "method": "continuous planar/coaxial-cylinder face-prism union",
+            "columns_and_lower_fasteners_retained": true,
+            "collisions": [],
+            "passed": true
+          }
+        ],
+        "all_checks_passed": true
+      }
+    ],
+    "scope": "Saved CAD geometry only. 25 sampled self-mechanism attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification.",
+    "service_prerequisite": "Disconnect leads, remove four upper screws/washers and complete optical head before releasing/lifting the host device. Keep columns and lower fasteners; device mounting hardware and adhesive must be released. No connected-harness removal claim."
+  }
+}

@@ -1,0 +1,6 @@
+# Preserve reviewed CAD and manufacturer evidence bytes across platforms.
+*.FCStd binary
+*.pdf binary
+*.webp binary
+*.png binary
+*.jpg binary

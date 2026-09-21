@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "N"
+DESIGN_REVISION = "O"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -92,16 +92,37 @@ EXCLUDED_EQUIPMENT = (
     "fin_servos",
     "360_degree_servo_option",
 )
+PURCHASED_HARDWARE_QUANTITIES = {
+    "M2X14_SOCKET_CAP": 4,
+    "M2X8_SOCKET_CAP": 2,
+    "M2X5_PA66_PAN_HEAD": 8,
+    "M2_FF_PA66_AF4_L25": 4,
+    "M2x6_ISO4026_DIN913": 3,
+    "M2_HEX_NUT": 6,
+    "M2_SQUARE_NUT_DIN562": 3,
+    "M2_WASHER_2.2_5_0.3": 20,
+    "M3_WASHER_3.2_9_0.8": 4,
+}
+HARDWARE_MATERIALS = {
+    sku: "Nylon PA66"
+    if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD")
+    else "A2 stainless steel"
+    for sku in PURCHASED_HARDWARE_QUANTITIES
+}
+
 EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 10,
+    "installed_prints": 13,
+    "optical_mount_parts": 3,
     "fit_coupons": 2,
-    "purchased_hardware": 26,
-    "purchased_hardware_types": 6,
-    "unique_print_files": 8,
+    "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
+    "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
+    "unique_print_files": 11,
 }
+
+OPTICAL_STACK_HOST = "BatteryEquipmentModule"
 
 # These are bought wiring requirements, not additional modeled hardware/mass.
 # Stock pre-crimped pigtails may be joined after checking the actual pinouts.
@@ -211,7 +232,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_sensor_installation",
-        "Confirm MTF-02P lens datums, mounting/adhesive retention, connector access and unobstructed downward field of view on the actual part.",
+        "Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
+    ),
+    UnresolvedInterface(
+        "optical_stack_retention",
+        "Verify purchased M2 PA66 spacers, both-end thread depths/engagement, printed pads, pivot friction, PA12/PA66 creep, vibration loosening and cable torque. Test both stack hosts and loaded rail/tape retention; no qualified tightening torque or stiffness is claimed.",
     ),
     UnresolvedInterface(
         "finished_mass",
@@ -252,15 +277,17 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12 SLS/MJF",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two tilting main propulsors, a compact battery mount and one open electronics carrier with confirmed mounting-hole patterns.",
+        "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two tilting main propulsors, a compact battery mount and one open electronics carrier with confirmed mounting-hole patterns, sharing an interchangeable manually aligned optical stack.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
-        "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; no unnecessary stacking holes; 90deg in-plane orientation.",
+        "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],
         "scoped_listed_equipment_mass_g": SCOPED_LISTED_EQUIPMENT_MASS_G,
         "source_discrepancies": SOURCE_DISCREPANCIES,
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
+        "optical_stack_host": OPTICAL_STACK_HOST,
+        "optical_stack_scope": "Common structural 40x40mm M2 interface on battery and electronics carriers; four bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
