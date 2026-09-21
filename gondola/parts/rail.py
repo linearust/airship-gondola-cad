@@ -21,6 +21,7 @@ from gondola.cad import (
 )
 from gondola.contracts import fasteners
 from gondola.contracts.design import RAIL_LENGTH_MM
+from gondola.contracts.hardware import SQUARE_NUT_SOURCE
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
@@ -245,8 +246,6 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
         "Insert screw to retain nut. Square pocket is4.6mm wide; actual nut width/corners and coupon fit must be checked. Do not substitute a hex nut. "
         "Model seats the nut against the outside slot wall under clamp load; thin-nut torque and retention remain unqualified.",
     )
-    from gondola.parts.purchased_hardware import SQUARE_NUT_SOURCE
-
     nut.SourceURL = SQUARE_NUT_SOURCE
     for hardware in (screw, nut):
         set_property(

@@ -13,9 +13,10 @@ def file_sha256(path):
 
 
 def source_fingerprint():
-    paths = sorted((REPO_ROOT / "gondola").rglob("*.py")) + sorted(
-        REPO_ROOT.glob("*.FCMacro")
-    )
+    paths = [
+        *(REPO_ROOT / "gondola").rglob("*.py"),
+        *REPO_ROOT.glob("*.FCMacro"),
+    ]
     fingerprint = hashlib.sha256()
     for path in sorted(paths):
         name = path.relative_to(REPO_ROOT).as_posix().encode()

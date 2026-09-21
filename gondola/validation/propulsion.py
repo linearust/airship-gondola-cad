@@ -740,6 +740,439 @@ def fastener_service_check(
     }
 
 
+_REPORT_ROW_KEYS = (
+    "drive_motion",
+    "gear_mesh_alignment",
+    "gear_rotation",
+    "mesh_adjustment",
+    "bearing_stacks",
+    "output_stub_clearance",
+    "shaft_service",
+    "bearing_service",
+    "gear_service",
+    "motor_and_prop_insertion",
+    "tilt_clearance",
+    "input_cartridge_removal",
+    "horn_clamp_service",
+    "rail_key_access",
+    "fastener_stacks",
+    "fastener_service",
+    "functional_wall_probes",
+    "geometry",
+)
+
+
+def _service_obstacles(physical, excluded, *, members=None):
+    """Retain installed obstacles within the declared whole-module or bench scope."""
+    return {
+        name: shape
+        for name, shape in physical.items()
+        if name not in excluded and (members is None or name in members)
+    }
+
+
+def _record_rail_fit_checks(report, frame, physical):
+    """Audit both seated rail interfaces and continuous nut loading."""
+    for side, label in ((1, "positive"), (-1, "negative")):
+        transform = (lambda shape: shape) if side > 0 else rail.half_turn
+        report[label + "_seated_rail_overlap_mm3"] = intersection_volume(
+            translated_shape(frame, y=side * rail.CLAMP_SHIFT_Y), rail.rail_shape()
+        )
+        for name, shape in (
+            ("clamp_screw", rail.set_screw_shape()),
+            ("clamp_nut", rail.nut_shape()),
+        ):
+            report[label + "_" + name + "_frame_overlap_mm3"] = intersection_volume(
+                frame, transform(shape)
+            )
+        key = Part.makeCylinder(
+            0.9,
+            110,
+            App.Vector(0, rail.SHOE_WIDTH / 2 + 0.7, rail.CLAMP_Z),
+            App.Vector(0, 1, 0),
+        )
+        report[label + "_clamp_driver_frame_overlap_mm3"] = intersection_volume(
+            frame, transform(key)
+        )
+    report["continuous_nut_loading"] = [
+        continuous_path(rail.nut_shape(), [(0, 0, 0), (20, 0, 0)], physical),
+        continuous_path(
+            rail.half_turn(rail.nut_shape()), [(0, 0, 0), (-20, 0, 0)], physical
+        ),
+    ]
+
+
+def _record_drive_motion_checks(report, doc, module, physical, prefix):
+    """Keep native motion, meshing and coupled service evidence together."""
+    report["drive_motion"].append(drive_motion_check(doc, prefix))
+    report["mesh_adjustment"].append(mesh_adjustment_check(doc, prefix))
+    report["gear_rotation"].append(gear_rotation_check(doc, prefix))
+    report["gear_mesh_alignment"].append(
+        {
+            "pod": prefix,
+            **gear_mesh_check(
+                physical[prefix + "DriverGear60T"],
+                physical[prefix + "OutputGear20T"],
+                module=0.5,
+                driver_teeth=60,
+                output_teeth=20,
+                minimum_face_overlap=3,
+            ),
+        }
+    )
+    report["tilt_clearance"].append(tilt_clearance_check(doc, module, prefix))
+    report["input_cartridge_removal"].append(
+        input_cartridge_service_check(doc, module, prefix)
+    )
+    report["horn_clamp_service"].extend(horn_clamp_service_check(doc, module, prefix))
+
+
+def _record_output_stub_checks(report, prefix, pod, physical, frame):
+    """Check the two separate output stubs and describe their bearing stacks."""
+    bearing_specs = []
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        shaft_name = prefix + "OutputShaft" + suffix
+        report["output_stub_clearance"].append(
+            {
+                "shaft": shaft_name,
+                **output_stub_check(
+                    physical[shaft_name],
+                    physical[prefix + "Motor"],
+                    pod.getGlobalPlacement().Base.y,
+                ),
+            }
+        )
+        excluded = {shaft_name, prefix + "OutputGear20T"}
+        report["shaft_service"].append(
+            {
+                "shaft": shaft_name,
+                "excluded_physical_parts": sorted(excluded),
+                "scope": "Remove the output gear and release its supplied set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
+                **continuous_path(
+                    physical[shaft_name],
+                    [(0, 0, 0), (0, side * 45, 0)],
+                    _service_obstacles(physical, excluded),
+                ),
+            }
+        )
+        bearing_specs.append(
+            (
+                prefix + "OutputBearing" + suffix,
+                shaft_name,
+                frame,
+                prefix + "OutputBearingCap" + suffix,
+                side,
+                False,
+            )
+        )
+    return bearing_specs
+
+
+def _record_bearing_checks(
+    report, prefix, physical, bearing_specs, cartridge_names, drive_names
+):
+    """Check captured bearings and their ordered local extraction paths."""
+    for (
+        bearing_name,
+        shaft_name,
+        seat,
+        cap_name,
+        direction,
+        bench,
+    ) in bearing_specs:
+        report["bearing_stacks"].append(
+            {
+                "bearing": bearing_name,
+                **bearing_stack_check(
+                    physical[bearing_name],
+                    physical[shaft_name],
+                    seat,
+                    physical[cap_name],
+                ),
+            }
+        )
+        excluded = {
+            bearing_name,
+            shaft_name,
+            cap_name,
+            cap_name + "Bolt",
+            cap_name + "Nut",
+        }
+        if bench:
+            excluded |= drive_names | {prefix + "Servo"}
+        else:
+            excluded.add(prefix + "OutputGear20T")
+        obstacles = _service_obstacles(
+            physical, excluded, members=cartridge_names if bench else None
+        )
+        report["bearing_service"].append(
+            {
+                "bearing": bearing_name,
+                "excluded_physical_parts": sorted(excluded),
+                "scope": "Shaft and this outer-race cap/fasteners removed first. Remove the output gear before extracting an output bearing. Input-bearing operations occur on the detached cartridge after removing servo/horn and input drive attachments. All remaining local bench parts are obstacles; no bearing press-fit force is modeled.",
+                **continuous_path(
+                    physical[bearing_name],
+                    [(0, 0, 0), (0, direction * 35, 0)],
+                    obstacles,
+                ),
+            }
+        )
+
+
+def _record_drive_service_checks(report, prefix, sign, physical, cartridge_names):
+    """Audit input-shaft, gear, motor and propeller removal paths."""
+    excluded = {prefix + "InputShaft", prefix + "DriverGear60T"}
+    report["shaft_service"].append(
+        {
+            "shaft": prefix + "InputShaft",
+            "excluded_physical_parts": sorted(excluded),
+            "scope": "Detached input cartridge on bench; remove the driver gear and loosen the horn coupling's shaft clamp, then withdraw the shaft toward the former gear. Both bearing seats/caps, horn-clamp halves and servo remain installed; clamp opening and physical fit require a prototype.",
+            **continuous_path(
+                physical[prefix + "InputShaft"],
+                [(0, 0, 0), (0, sign * 40, 0)],
+                _service_obstacles(physical, excluded, members=cartridge_names),
+            ),
+        }
+    )
+    for suffix, direction, bench in (
+        ("OutputGear20T", -sign, False),
+        ("DriverGear60T", sign, True),
+    ):
+        name = prefix + suffix
+        excluded = {name}
+        report["gear_service"].append(
+            {
+                "gear": name,
+                "scope": "Release the included radial set screw before axial withdrawal. Driver gear is serviced on the detached input cartridge; all remaining local parts stay installed. Set-screw tip/length and driver access are unmodeled release gates.",
+                **continuous_path(
+                    physical[name],
+                    [(0, 0, 0), (0, direction * 35, 0)],
+                    _service_obstacles(
+                        physical, excluded, members=cartridge_names if bench else None
+                    ),
+                ),
+            }
+        )
+    for suffix in ("Motor", "PropellerDisk"):
+        name = prefix + suffix
+        excluded = {name, prefix + "Shaft"}
+        moving = physical[name]
+        if suffix == "Motor":
+            moving = Part.makeCompound([moving, physical[prefix + "Shaft"]])
+            excluded.add(prefix + "PropellerDisk")
+        report["motor_and_prop_insertion"].append(
+            {
+                "part": name,
+                "excluded_physical_parts": sorted(excluded),
+                "scope": "Bare motor/shaft withdraw together with propeller removed; propeller disk proxy excludes its shaft because its hub bore is unmodeled. OEM motor fastening remains unresolved.",
+                **continuous_path(
+                    moving,
+                    [(0, 0, 0), (30, 0, 0)],
+                    _service_obstacles(physical, excluded),
+                ),
+            }
+        )
+
+
+def _record_drive_checks(report, doc, module, objects, physical, frame, prefix, sign):
+    """Collect one drive's coupled motion, fit and ordered service evidence."""
+    pod = doc.getObject(prefix + "Pod")
+    cartridge = doc.getObject(prefix + "InputCartridge")
+    drive = doc.getObject(prefix + "InputDrive")
+    _record_drive_motion_checks(report, doc, module, physical, prefix)
+    cartridge_names = {obj.Name for obj in objects if belongs_to_group(obj, cartridge)}
+    drive_names = {obj.Name for obj in objects if belongs_to_group(obj, drive)}
+    bearing_specs = _record_output_stub_checks(report, prefix, pod, physical, frame)
+    for suffix, direction in (("Inner", -sign), ("Outer", sign)):
+        bearing_specs.append(
+            (
+                prefix + "InputBearing" + suffix,
+                prefix + "InputShaft",
+                physical[prefix + "InputSupport"],
+                prefix + "InputBearingCap" + suffix,
+                direction,
+                True,
+            )
+        )
+    _record_bearing_checks(
+        report, prefix, physical, bearing_specs, cartridge_names, drive_names
+    )
+    _record_drive_service_checks(report, prefix, sign, physical, cartridge_names)
+
+
+def _record_fastener_checks(report, doc, module, objects, physical):
+    """Verify installed fastener seats, engagement and ordered access routes."""
+    clamp_parts = Part.makeCompound(
+        [world_shape(obj) for obj in module["printed"]]
+        + [physical[prefix + "Servo"] for prefix in ("Port", "Starboard")]
+    )
+    bolts = [
+        obj
+        for obj in module["hardware"]
+        if obj.HardwareSKU in ("M2X8_SOCKET_CAP", "M1_6X8_CHEESE_HEAD")
+    ]
+    for bolt in bolts:
+        nut_name = bolt.Name.removesuffix("Bolt") + "Nut"
+        nut = physical[nut_name]
+        thread_diameter = float(bolt.NominalThreadDiameter.Value)
+        nut_height = 1.2 if thread_diameter == 2 else 1.3
+        report["fastener_stacks"].append(
+            {
+                "bolt": bolt.Name,
+                "nut": nut_name,
+                **clamp_fastener_check(
+                    clamp_parts,
+                    physical[bolt.Name],
+                    nut,
+                    thread_diameter=thread_diameter,
+                    nut_height=nut_height,
+                ),
+            }
+        )
+        service_excluded = {bolt.Name, nut_name}
+        service_parts = set(physical)
+        prerequisites = "Other local propulsion parts stay installed at neutral tilt."
+        if "ServoEar" in bolt.Name:
+            prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
+            cartridge = doc.getObject(prefix + "InputCartridge")
+            service_parts = {
+                obj.Name for obj in objects if belongs_to_group(obj, cartridge)
+            }
+            service_excluded |= {
+                prefix + "HornClamp" + suffix
+                for suffix in (
+                    "Lower",
+                    "Upper",
+                    "BladeBolt",
+                    "BladeNut",
+                    "ShaftBolt",
+                    "ShaftNut",
+                )
+            }
+            prerequisites = "Detach the input cartridge using its checked gear-first sequence. Remove both horn-clamp pairs and both halves using their separately checked service paths before releasing an OEM servo ear."
+        report["fastener_service"].append(
+            {
+                "bolt": bolt.Name,
+                "nut": nut_name,
+                "assembly_prerequisites": prerequisites,
+                "removed_local_parts": sorted(service_excluded),
+                **fastener_service_check(
+                    physical[bolt.Name],
+                    nut,
+                    _service_obstacles(
+                        physical, service_excluded, members=service_parts
+                    ),
+                    thread_diameter=thread_diameter,
+                    nut_lateral_direction=(
+                        (1 if nut.BoundBox.Center.x > 0 else -1, 0, 0)
+                        if "InputMount" in bolt.Name
+                        else None
+                    ),
+                ),
+            }
+        )
+    return bolts
+
+
+def _record_print_checks(report, module, physical):
+    """Measure functional walls and check every printable solid and mesh."""
+    wall_probes = propulsion.manufacturing_wall_probes() + [
+        (
+            "guard_radial",
+            "PortMotorCarrier",
+            (12, 80, propulsion.PIVOT_Z + 22.79),
+            (12, 80, propulsion.PIVOT_Z + 24.31),
+            1.5,
+        ),
+    ]
+    for feature, name, start, end, expected in wall_probes:
+        section = physical[name].common(
+            Part.makeLine(App.Vector(*start), App.Vector(*end))
+        )
+        thickness = sum(edge.Length for edge in section.Edges)
+        report["functional_wall_probes"].append(
+            {
+                "feature": feature,
+                "part": name,
+                "measured_wall_mm": thickness,
+                "expected_wall_mm": expected,
+                "passed": abs(thickness - expected) < TOL and thickness >= 1.5 - TOL,
+            }
+        )
+    for obj in module["printed"]:
+        shape = print_shape(obj)
+        mesh = MeshPart.meshFromShape(
+            Shape=shape,
+            LinearDeflection=0.03,
+            AngularDeflection=0.08,
+            Relative=False,
+        )
+        check = mesh_checks(shape, mesh)
+        report["geometry"].append(
+            {
+                "name": obj.Name,
+                **check,
+                "passed": check["valid_brep"]
+                and check["solid_count"] == 1
+                and check["watertight_mesh"]
+                and check["mesh_components"] == 1,
+            }
+        )
+
+
+def _complete_report(report, module, bolts):
+    """Require every evidence row and its independently declared count."""
+    report["all_bought_parts_excluded_from_prints"] = all(
+        obj not in module["printed"] and not bool(getattr(obj, "PrintPart", False))
+        for obj in module["hardware"]
+    )
+    expected_counts = {
+        "drive_motion": 2,
+        "gear_mesh_alignment": 2,
+        "gear_rotation": 2,
+        "mesh_adjustment": 2,
+        "bearing_stacks": 8,
+        "output_stub_clearance": 4,
+        "shaft_service": 6,
+        "bearing_service": 8,
+        "gear_service": 4,
+        "motor_and_prop_insertion": 4,
+        "tilt_clearance": 2,
+        "input_cartridge_removal": 2,
+        "horn_clamp_service": 4,
+        "rail_key_access": 4,
+        "fastener_stacks": len(bolts),
+        "fastener_service": len(bolts),
+        "geometry": len(module["printed"]),
+    }
+    report["expected_evidence_counts"] = expected_counts
+    report["overlap_failures"] = overlap_failures(report, TOL)
+    report["passed"] = (
+        not report["overlap_failures"]
+        and report["all_bought_parts_excluded_from_prints"]
+        and bool(bolts)
+        and all(len(report[key]) == count for key, count in expected_counts.items())
+        and all(
+            row["passed"]
+            for key in (*_REPORT_ROW_KEYS, "continuous_nut_loading")
+            for row in report[key]
+        )
+    )
+
+
+def _write_report(report, source):
+    """Persist the validation JSON and emit its completion message."""
+    target = source.parent / (source.stem + "_propulsion_validation.json")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(report, indent=2) + "\n")
+    print(
+        json.dumps(
+            {"local_propulsion_report": str(target), "passed": report["passed"]}
+        ),
+        flush=True,
+    )
+
+
 def validate(source=None):
     """Build the source mechanism and audit its actual mating and service shapes."""
     source = (
@@ -757,407 +1190,17 @@ def validate(source=None):
             "purchased_hardware": len(module["hardware"]),
             "metrics": module["metrics"],
         }
-        for side, label in ((1, "positive"), (-1, "negative")):
-            transform = (lambda shape: shape) if side > 0 else rail.half_turn
-            report[label + "_seated_rail_overlap_mm3"] = intersection_volume(
-                translated_shape(frame, y=side * rail.CLAMP_SHIFT_Y), rail.rail_shape()
-            )
-            for name, shape in (
-                ("clamp_screw", rail.set_screw_shape()),
-                ("clamp_nut", rail.nut_shape()),
-            ):
-                report[label + "_" + name + "_frame_overlap_mm3"] = intersection_volume(
-                    frame, transform(shape)
-                )
-            key = Part.makeCylinder(
-                0.9,
-                110,
-                App.Vector(0, rail.SHOE_WIDTH / 2 + 0.7, rail.CLAMP_Z),
-                App.Vector(0, 1, 0),
-            )
-            report[label + "_clamp_driver_frame_overlap_mm3"] = intersection_volume(
-                frame, transform(key)
-            )
-        report["continuous_nut_loading"] = [
-            continuous_path(rail.nut_shape(), [(0, 0, 0), (20, 0, 0)], physical),
-            continuous_path(
-                rail.half_turn(rail.nut_shape()), [(0, 0, 0), (-20, 0, 0)], physical
-            ),
-        ]
-        row_keys = (
-            "drive_motion",
-            "gear_mesh_alignment",
-            "gear_rotation",
-            "mesh_adjustment",
-            "bearing_stacks",
-            "output_stub_clearance",
-            "shaft_service",
-            "bearing_service",
-            "gear_service",
-            "motor_and_prop_insertion",
-            "tilt_clearance",
-            "input_cartridge_removal",
-            "horn_clamp_service",
-            "rail_key_access",
-            "fastener_stacks",
-            "fastener_service",
-            "functional_wall_probes",
-            "geometry",
-        )
-        report.update({key: [] for key in row_keys})
+        _record_rail_fit_checks(report, frame, physical)
+        report.update({key: [] for key in _REPORT_ROW_KEYS})
         report["rail_key_access"] = rail_key_access_check(doc, module)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
-            pod = doc.getObject(prefix + "Pod")
-            cartridge = doc.getObject(prefix + "InputCartridge")
-            drive = doc.getObject(prefix + "InputDrive")
-            report["drive_motion"].append(drive_motion_check(doc, prefix))
-            report["mesh_adjustment"].append(mesh_adjustment_check(doc, prefix))
-            report["gear_rotation"].append(gear_rotation_check(doc, prefix))
-            report["gear_mesh_alignment"].append(
-                {
-                    "pod": prefix,
-                    **gear_mesh_check(
-                        physical[prefix + "DriverGear60T"],
-                        physical[prefix + "OutputGear20T"],
-                        module=0.5,
-                        driver_teeth=60,
-                        output_teeth=20,
-                        minimum_face_overlap=3,
-                    ),
-                }
+            _record_drive_checks(
+                report, doc, module, objects, physical, frame, prefix, sign
             )
-            report["tilt_clearance"].append(tilt_clearance_check(doc, module, prefix))
-            report["input_cartridge_removal"].append(
-                input_cartridge_service_check(doc, module, prefix)
-            )
-            report["horn_clamp_service"].extend(
-                horn_clamp_service_check(doc, module, prefix)
-            )
-            cartridge_names = {
-                obj.Name for obj in objects if belongs_to_group(obj, cartridge)
-            }
-            drive_names = {obj.Name for obj in objects if belongs_to_group(obj, drive)}
-            bearing_specs = []
-            for side, suffix in ((-1, "Negative"), (1, "Positive")):
-                shaft_name = prefix + "OutputShaft" + suffix
-                report["output_stub_clearance"].append(
-                    {
-                        "shaft": shaft_name,
-                        **output_stub_check(
-                            physical[shaft_name],
-                            physical[prefix + "Motor"],
-                            pod.getGlobalPlacement().Base.y,
-                        ),
-                    }
-                )
-                excluded = {shaft_name, prefix + "OutputGear20T"}
-                report["shaft_service"].append(
-                    {
-                        "shaft": shaft_name,
-                        "excluded_physical_parts": sorted(excluded),
-                        "scope": "Remove the output gear and release its supplied set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
-                        **continuous_path(
-                            physical[shaft_name],
-                            [(0, 0, 0), (0, side * 45, 0)],
-                            {
-                                name: shape
-                                for name, shape in physical.items()
-                                if name not in excluded
-                            },
-                        ),
-                    }
-                )
-                bearing_specs.append(
-                    (
-                        prefix + "OutputBearing" + suffix,
-                        shaft_name,
-                        frame,
-                        prefix + "OutputBearingCap" + suffix,
-                        side,
-                        False,
-                    )
-                )
-            for suffix, direction in (("Inner", -sign), ("Outer", sign)):
-                bearing_specs.append(
-                    (
-                        prefix + "InputBearing" + suffix,
-                        prefix + "InputShaft",
-                        physical[prefix + "InputSupport"],
-                        prefix + "InputBearingCap" + suffix,
-                        direction,
-                        True,
-                    )
-                )
-            for (
-                bearing_name,
-                shaft_name,
-                seat,
-                cap_name,
-                direction,
-                bench,
-            ) in bearing_specs:
-                report["bearing_stacks"].append(
-                    {
-                        "bearing": bearing_name,
-                        **bearing_stack_check(
-                            physical[bearing_name],
-                            physical[shaft_name],
-                            seat,
-                            physical[cap_name],
-                        ),
-                    }
-                )
-                excluded = {
-                    bearing_name,
-                    shaft_name,
-                    cap_name,
-                    cap_name + "Bolt",
-                    cap_name + "Nut",
-                }
-                if bench:
-                    excluded |= drive_names | {prefix + "Servo"}
-                else:
-                    excluded.add(prefix + "OutputGear20T")
-                obstacles = {
-                    name: shape
-                    for name, shape in physical.items()
-                    if name not in excluded and (not bench or name in cartridge_names)
-                }
-                report["bearing_service"].append(
-                    {
-                        "bearing": bearing_name,
-                        "excluded_physical_parts": sorted(excluded),
-                        "scope": "Shaft and this outer-race cap/fasteners removed first. Remove the output gear before extracting an output bearing. Input-bearing operations occur on the detached cartridge after removing servo/horn and input drive attachments. All remaining local bench parts are obstacles; no bearing press-fit force is modeled.",
-                        **continuous_path(
-                            physical[bearing_name],
-                            [(0, 0, 0), (0, direction * 35, 0)],
-                            obstacles,
-                        ),
-                    }
-                )
-            excluded = {prefix + "InputShaft", prefix + "DriverGear60T"}
-            report["shaft_service"].append(
-                {
-                    "shaft": prefix + "InputShaft",
-                    "excluded_physical_parts": sorted(excluded),
-                    "scope": "Detached input cartridge on bench; remove the driver gear and loosen the horn coupling's shaft clamp, then withdraw the shaft toward the former gear. Both bearing seats/caps, horn-clamp halves and servo remain installed; clamp opening and physical fit require a prototype.",
-                    **continuous_path(
-                        physical[prefix + "InputShaft"],
-                        [(0, 0, 0), (0, sign * 40, 0)],
-                        {
-                            name: shape
-                            for name, shape in physical.items()
-                            if name in cartridge_names and name not in excluded
-                        },
-                    ),
-                }
-            )
-            for suffix, direction, bench in (
-                ("OutputGear20T", -sign, False),
-                ("DriverGear60T", sign, True),
-            ):
-                name = prefix + suffix
-                excluded = {name}
-                report["gear_service"].append(
-                    {
-                        "gear": name,
-                        "scope": "Release the included radial set screw before axial withdrawal. Driver gear is serviced on the detached input cartridge; all remaining local parts stay installed. Set-screw tip/length and driver access are unmodeled release gates.",
-                        **continuous_path(
-                            physical[name],
-                            [(0, 0, 0), (0, direction * 35, 0)],
-                            {
-                                key: shape
-                                for key, shape in physical.items()
-                                if key not in excluded
-                                and (not bench or key in cartridge_names)
-                            },
-                        ),
-                    }
-                )
-            for suffix in ("Motor", "PropellerDisk"):
-                name = prefix + suffix
-                excluded = {name, prefix + "Shaft"}
-                moving = physical[name]
-                if suffix == "Motor":
-                    moving = Part.makeCompound([moving, physical[prefix + "Shaft"]])
-                    excluded.add(prefix + "PropellerDisk")
-                report["motor_and_prop_insertion"].append(
-                    {
-                        "part": name,
-                        "excluded_physical_parts": sorted(excluded),
-                        "scope": "Bare motor/shaft withdraw together with propeller removed; propeller disk proxy excludes its shaft because its hub bore is unmodeled. OEM motor fastening remains unresolved.",
-                        **continuous_path(
-                            moving,
-                            [(0, 0, 0), (30, 0, 0)],
-                            {
-                                key: shape
-                                for key, shape in physical.items()
-                                if key not in excluded
-                            },
-                        ),
-                    }
-                )
-        clamp_parts = Part.makeCompound(
-            [world_shape(obj) for obj in module["printed"]]
-            + [physical[prefix + "Servo"] for prefix in ("Port", "Starboard")]
-        )
-        bolts = [
-            obj
-            for obj in module["hardware"]
-            if obj.HardwareSKU in ("M2X8_SOCKET_CAP", "M1_6X8_CHEESE_HEAD")
-        ]
-        for bolt in bolts:
-            nut_name = bolt.Name.removesuffix("Bolt") + "Nut"
-            nut = physical[nut_name]
-            thread_diameter = float(bolt.NominalThreadDiameter.Value)
-            nut_height = 1.2 if thread_diameter == 2 else 1.3
-            report["fastener_stacks"].append(
-                {
-                    "bolt": bolt.Name,
-                    "nut": nut_name,
-                    **clamp_fastener_check(
-                        clamp_parts,
-                        physical[bolt.Name],
-                        nut,
-                        thread_diameter=thread_diameter,
-                        nut_height=nut_height,
-                    ),
-                }
-            )
-            service_excluded = {bolt.Name, nut_name}
-            service_parts = set(physical)
-            prerequisites = (
-                "Other local propulsion parts stay installed at neutral tilt."
-            )
-            if "ServoEar" in bolt.Name:
-                prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
-                cartridge = doc.getObject(prefix + "InputCartridge")
-                service_parts = {
-                    obj.Name for obj in objects if belongs_to_group(obj, cartridge)
-                }
-                service_excluded |= {
-                    prefix + "HornClamp" + suffix
-                    for suffix in (
-                        "Lower",
-                        "Upper",
-                        "BladeBolt",
-                        "BladeNut",
-                        "ShaftBolt",
-                        "ShaftNut",
-                    )
-                }
-                prerequisites = "Detach the input cartridge using its checked gear-first sequence. Remove both horn-clamp pairs and both halves using their separately checked service paths before releasing an OEM servo ear."
-            report["fastener_service"].append(
-                {
-                    "bolt": bolt.Name,
-                    "nut": nut_name,
-                    "assembly_prerequisites": prerequisites,
-                    "removed_local_parts": sorted(service_excluded),
-                    **fastener_service_check(
-                        physical[bolt.Name],
-                        nut,
-                        {
-                            name: shape
-                            for name, shape in physical.items()
-                            if name in service_parts and name not in service_excluded
-                        },
-                        thread_diameter=thread_diameter,
-                        nut_lateral_direction=(
-                            (1 if nut.BoundBox.Center.x > 0 else -1, 0, 0)
-                            if "InputMount" in bolt.Name
-                            else None
-                        ),
-                    ),
-                }
-            )
-        wall_probes = propulsion.manufacturing_wall_probes() + [
-            (
-                "guard_radial",
-                "PortMotorCarrier",
-                (12, 80, propulsion.PIVOT_Z + 22.79),
-                (12, 80, propulsion.PIVOT_Z + 24.31),
-                1.5,
-            ),
-        ]
-        for feature, name, start, end, expected in wall_probes:
-            section = physical[name].common(
-                Part.makeLine(App.Vector(*start), App.Vector(*end))
-            )
-            thickness = sum(edge.Length for edge in section.Edges)
-            report["functional_wall_probes"].append(
-                {
-                    "feature": feature,
-                    "part": name,
-                    "measured_wall_mm": thickness,
-                    "expected_wall_mm": expected,
-                    "passed": abs(thickness - expected) < TOL
-                    and thickness >= 1.5 - TOL,
-                }
-            )
-        for obj in module["printed"]:
-            shape = print_shape(obj)
-            mesh = MeshPart.meshFromShape(
-                Shape=shape,
-                LinearDeflection=0.03,
-                AngularDeflection=0.08,
-                Relative=False,
-            )
-            check = mesh_checks(shape, mesh)
-            report["geometry"].append(
-                {
-                    "name": obj.Name,
-                    **check,
-                    "passed": check["valid_brep"]
-                    and check["solid_count"] == 1
-                    and check["watertight_mesh"]
-                    and check["mesh_components"] == 1,
-                }
-            )
-        report["all_bought_parts_excluded_from_prints"] = all(
-            obj not in module["printed"] and not bool(getattr(obj, "PrintPart", False))
-            for obj in module["hardware"]
-        )
-        expected_counts = {
-            "drive_motion": 2,
-            "gear_mesh_alignment": 2,
-            "gear_rotation": 2,
-            "mesh_adjustment": 2,
-            "bearing_stacks": 8,
-            "output_stub_clearance": 4,
-            "shaft_service": 6,
-            "bearing_service": 8,
-            "gear_service": 4,
-            "motor_and_prop_insertion": 4,
-            "tilt_clearance": 2,
-            "input_cartridge_removal": 2,
-            "horn_clamp_service": 4,
-            "rail_key_access": 4,
-            "fastener_stacks": len(bolts),
-            "fastener_service": len(bolts),
-            "geometry": len(module["printed"]),
-        }
-        report["expected_evidence_counts"] = expected_counts
-        report["overlap_failures"] = overlap_failures(report, TOL)
-        report["passed"] = (
-            not report["overlap_failures"]
-            and report["all_bought_parts_excluded_from_prints"]
-            and bool(bolts)
-            and all(len(report[key]) == count for key, count in expected_counts.items())
-            and all(
-                row["passed"]
-                for key in (*row_keys, "continuous_nut_loading")
-                for row in report[key]
-            )
-        )
-        target = source.parent / (source.stem + "_propulsion_validation.json")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(report, indent=2) + "\n")
-        print(
-            json.dumps(
-                {"local_propulsion_report": str(target), "passed": report["passed"]}
-            ),
-            flush=True,
-        )
+        bolts = _record_fastener_checks(report, doc, module, objects, physical)
+        _record_print_checks(report, module, physical)
+        _complete_report(report, module, bolts)
+        _write_report(report, source)
         return report
     finally:
         App.closeDocument(doc.Name)

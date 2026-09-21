@@ -11,6 +11,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import box, create_group, create_printed_part, set_property, union
+from gondola.contracts.hardware import SQUARE_NUT_SOURCE, STACK_SCREW_SOURCE
 
 from . import purchased_hardware, stack_interface
 
@@ -149,7 +150,7 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             purchased_hardware.stack_screw_shape(),
             SCREW_BEARING_START,
             "M2X5_PA66_PAN_HEAD",
-            purchased_hardware.STACK_SCREW_SOURCE,
+            STACK_SCREW_SOURCE,
             "Nylon PA66",
         ),
         (
@@ -157,7 +158,7 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             purchased_hardware.square_nut_shape(),
             NUT_START,
             "M2_SQUARE_NUT_DIN562",
-            purchased_hardware.SQUARE_NUT_SOURCE,
+            SQUARE_NUT_SOURCE,
             "A2 stainless steel",
         ),
     ]

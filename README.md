@@ -7,13 +7,15 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 - `gondola/contracts/` holds data independent of FreeCAD: `design.py` for scope,
   decisions, inventory and unresolved interfaces; `equipment_interfaces.py` for
-  published device evidence; `fasteners.py` for shared nominal dimensions.
+  published device evidence; `hardware.py` for purchase specifications and shaft
+  order validation; `fasteners.py` for shared nominal dimensions.
   Inspect project status with `python3 -m gondola status`.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
   `print_export.py`, `procurement.py` and `mass_budget.py` define export accounting.
 - `gondola/validation/` and `tests/fixtures/` define regression checks;
+  `validation/manufacturing.py` owns wall measurements and process allowances.
   `config.py`, `provenance.py` and `bundle.py` enforce artifact identity.
 - `cli.py` dispatches commands; `freecad_runtime.py` manages the AppImage process.
 

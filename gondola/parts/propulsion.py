@@ -26,6 +26,12 @@ from gondola.contracts.equipment_interfaces import (
     SHAFT_SOURCE,
     X06_DATASHEET_SOURCE,
 )
+from gondola.contracts.hardware import (
+    CLAMP_SCREW_SOURCE,
+    SERVO_NUT_SOURCE,
+    SERVO_SCREW_SOURCE,
+    SQUARE_NUT_SOURCE,
+)
 
 from . import purchased_hardware, rail
 
@@ -365,6 +371,22 @@ def _buy(doc, parent, name, shape, sku, notes, source, material, *, threaded=Fal
     )
 
 
+def _buy_bearing(doc, parent, name, shape, notes):
+    bearing = _buy(
+        doc,
+        parent,
+        name,
+        shape,
+        BEARING_SKU,
+        notes,
+        BEARING_SOURCE,
+        "Bearing steel",
+    )
+    set_property(bearing, "ReferenceMassGrams", 0.27, "App::PropertyFloat")
+    set_property(bearing, "ReferenceMassSource", BEARING_SOURCE)
+    return bearing
+
+
 def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
     """Seat a bought bolt and nut on the specified grip planes."""
     rotation = App.Rotation(V(0, 0, 1), V(*direction))
@@ -396,9 +418,7 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
             bolt,
             "M1_6X8_CHEESE_HEAD" if servo_ear else CLAMP_SCREW_SKU,
             notes,
-            purchased_hardware.SERVO_SCREW_SOURCE
-            if servo_ear
-            else purchased_hardware.CLAMP_SCREW_SOURCE,
+            SERVO_SCREW_SOURCE if servo_ear else CLAMP_SCREW_SOURCE,
             "A2 stainless steel",
             threaded=True,
         ),
@@ -409,9 +429,7 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
             nut,
             "M1_6_HEX_NUT_DIN934" if servo_ear else NUT_SKU,
             notes,
-            purchased_hardware.SERVO_NUT_SOURCE
-            if servo_ear
-            else purchased_hardware.SQUARE_NUT_SOURCE,
+            SERVO_NUT_SOURCE if servo_ear else SQUARE_NUT_SOURCE,
             "A2 stainless steel",
             threaded=True,
         ),
@@ -513,11 +531,7 @@ def _build_coupling(doc, parent, prefix, sign):
             )
             shape.Placement = App.Placement(V(*anchor), rotation)
             sku = CLAMP_SCREW_SKU if kind == "screw" else NUT_SKU
-            source = (
-                purchased_hardware.CLAMP_SCREW_SOURCE
-                if kind == "screw"
-                else purchased_hardware.SQUARE_NUT_SOURCE
-            )
+            source = CLAMP_SCREW_SOURCE if kind == "screw" else SQUARE_NUT_SOURCE
             hardware.append(
                 _buy(
                     doc,
@@ -561,14 +575,8 @@ def manufacturing_wall_probes():
     ]
 
 
-def build_propulsion_module(doc):
-    from .servo_coupling import metrics as coupling_metrics
-
-    module = create_group(
-        doc,
-        "MainPropulsionModule",
-        "Independent KST X06 60:20 gear drives | four output stubs",
-    )
+def _build_frame(doc, module):
+    """Create the shared printed rail shoe and output-bearing structure."""
     frame = _print(
         doc,
         module,
@@ -581,356 +589,418 @@ def build_propulsion_module(doc):
     set_property(frame, "CarriageContactZ", BASE_Z, "App::PropertyLength")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
-    printed, hardware, references, clearances, pods = [frame], [], [], [], []
-    for prefix, sign in (("Port", 1), ("Starboard", -1)):
-        assembly = create_group(
-            doc, prefix + "Assembly", prefix + " independent geared propulsion"
-        )
-        module.addObject(assembly)
-        pod = create_group(doc, prefix + "Pod", prefix + " motor/guard and output gear")
-        assembly.addObject(pod)
-        pod.Placement.Base = V(0, sign * PIVOT_HALF_SPAN, PIVOT_Z)
-        pod.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
-        for key, value in (("Tilt", 0), ("MinimumTilt", -180), ("MaximumTilt", 180)):
-            set_property(pod, key, value, "App::PropertyAngle", "Motion")
-        pod.setExpression(
-            "Placement.Rotation.Angle", "min(MaximumTilt; max(MinimumTilt; Tilt))"
-        )
-        set_property(
-            pod,
-            "Notes",
-            "Bounded output -180..180 degrees, no endpoint wrap. Input servo moves oppositely by one third. Verify actual servo travel, wire loops, backlash and endpoint margins before operation.",
-        )
-        pods.append(pod)
-        carrier = _print(
-            doc,
-            pod,
-            prefix + "MotorCarrier",
-            moving_carrier_shape(),
-            "Integral guard, motor plate and two splitØ3.2 shaft clamps. Two separateØ3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal0.5mm carrier/frame end clearance provides low-load axial travel stops; these are rubbing stops, not bearing inner-ring retention. Three1.8mm open radial mounting slots followM1.4/PCD6.6 and merge into the rear relief, avoiding a0.2mm ligament. Actual OEM screw length, usable depth, head bearing footprint and rearclipclearance remain unverified.",
-            App.Rotation(V(0, 1, 0), -90),
-            sku="GearedMotorCarrier",
-        )
-        printed.append(carrier)
-        for side, suffix in ((-1, "Negative"), (1, "Positive")):
-            driven = side == -sign
-            low, high = (20, 44) if driven else (20, 34)
-            shaft = cylinder(1.5, high - low, (0, low, 0))
-            if driven:
-                shaft = shaft.cut(box(2, 5, 4, (1, 36, -2)))
-            shaft = mirrored_y(shaft, side)
-            sku = "PSFU3-24-FC5-A3" if driven else "PSFU3-14"
-            hardware.append(
-                _buy(
-                    doc,
-                    pod,
-                    prefix + "OutputShaft" + suffix,
-                    shaft,
-                    sku,
-                    "Ø3 h5 separate output stub, never a through-shaft. Driven shaft usesfactoryFC5-A3 flat,depth0.5, outsidebearing; idle shaft remainsround. Clockactualflat towardincludedgearsetscrewaftertoothphasing. Final length/edge treatment and clamp grip require purchased-part fit confirmation.",
-                    SHAFT_SOURCE,
-                    "SUJ2-equivalent hard-chrome steel",
-                )
-            )
-            hardware.extend(
-                _bolt_pair(
-                    doc,
-                    pod,
-                    prefix + "OutputClamp" + suffix,
-                    (4.2, side * 23.25, -3),
-                    (0, 0, 1),
-                )
-            )
-            # All bearing geometry is fixed; each shaft rotates with the pod.
-            bearing_start = sign * PIVOT_HALF_SPAN + min(side * 28, side * 30.5)
-            bearing = _buy(
-                doc,
-                assembly,
-                prefix + "OutputBearing" + suffix,
-                _shifted(bearing_shape(), y=bearing_start, z=PIVOT_Z),
-                BEARING_SKU,
-                "MR63ZZ3×6×2.5, annular clearance envelope. Fixed outer ring captured by frame shoulder/cap; finish the printed seat. No shield/inner-ring axial preload.",
-                BEARING_SOURCE,
-                "Bearing steel",
-            )
-            set_property(bearing, "ReferenceMassGrams", 0.27, "App::PropertyFloat")
-            set_property(bearing, "ReferenceMassSource", BEARING_SOURCE)
-            hardware.append(bearing)
-            cap = bearing_cap_shape()
-            if side < 0:
-                cap = mirrored_y(cap, -1)
-            if sign < 0:
-                cap = cap.mirror(V(), V(1, 0, 0))
-            cap = _shifted(cap, y=sign * 80 + side * 30.5, z=PIVOT_Z)
-            printed.append(
-                _print(
-                    doc,
-                    assembly,
-                    prefix + "OutputBearingCap" + suffix,
-                    cap,
-                    "Outer-race-only positive cap;Ø5.6 opening exceeds bearing maker5.4 minimum. Finish mating faces; do not preload shields. Ø2 locating peg and bolt constrain cap rotation; finish and measure concentricity. NominalØ2.3 pocket fit does not guarantee shield clearance with raw printing tolerances.",
-                    rotation=_reflection_print_rotation(sign < 0, side < 0),
-                    sku="MR63ZZ_OuterRaceCap",
-                )
-            )
-            # The cap bolt seats through1.5mm cap and4mm cup; bearing fit is separate.
-            origin = (sign * BEARING_CAP_BOLT_X, sign * 80 + side * 32, PIVOT_Z)
-            hardware.extend(
-                _bolt_pair(
-                    doc,
-                    assembly,
-                    prefix + "OutputBearingCap" + suffix,
-                    origin,
-                    (0, -side, 0),
-                    grip=5.5,
-                )
-            )
-        driver_angle = math.degrees(
-            math.atan2(PIVOT_Z - INPUT_AXIS_Z, -sign * INPUT_AXIS_X)
-        )
-        output_angle = driver_angle + 180 + 180 / OUTPUT_TEETH
-        output_gear = gear_shape(OUTPUT_TEETH, output_angle)
-        output_gear = mirrored_y(output_gear, sign)
-        output_gear = _shifted(output_gear, y=-sign * 80)
+    return frame
+
+
+def _build_output_pod(doc, assembly, prefix, sign):
+    """Build one rotating carrier and its fixed bearings in native object order."""
+    printed, hardware = [], []
+    pod = create_group(doc, prefix + "Pod", prefix + " motor/guard and output gear")
+    assembly.addObject(pod)
+    pod.Placement.Base = V(0, sign * PIVOT_HALF_SPAN, PIVOT_Z)
+    pod.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
+    for key, value in (("Tilt", 0), ("MinimumTilt", -180), ("MaximumTilt", 180)):
+        set_property(pod, key, value, "App::PropertyAngle", "Motion")
+    pod.setExpression(
+        "Placement.Rotation.Angle", "min(MaximumTilt; max(MinimumTilt; Tilt))"
+    )
+    set_property(
+        pod,
+        "Notes",
+        "Bounded output -180..180 degrees, no endpoint wrap. Input servo moves oppositely by one third. Verify actual servo travel, wire loops, backlash and endpoint margins before operation.",
+    )
+    carrier = _print(
+        doc,
+        pod,
+        prefix + "MotorCarrier",
+        moving_carrier_shape(),
+        "Integral guard, motor plate and two splitØ3.2 shaft clamps. Two separateØ3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal0.5mm carrier/frame end clearance provides low-load axial travel stops; these are rubbing stops, not bearing inner-ring retention. Three1.8mm open radial mounting slots followM1.4/PCD6.6 and merge into the rear relief, avoiding a0.2mm ligament. Actual OEM screw length, usable depth, head bearing footprint and rearclipclearance remain unverified.",
+        App.Rotation(V(0, 1, 0), -90),
+        sku="GearedMotorCarrier",
+    )
+    printed.append(carrier)
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        driven = side == -sign
+        low, high = (20, 44) if driven else (20, 34)
+        shaft = cylinder(1.5, high - low, (0, low, 0))
+        if driven:
+            shaft = shaft.cut(box(2, 5, 4, (1, 36, -2)))
+        shaft = mirrored_y(shaft, side)
+        sku = "PSFU3-24-FC5-A3" if driven else "PSFU3-14"
         hardware.append(
             _buy(
                 doc,
                 pod,
-                prefix + "OutputGear20T",
-                output_gear,
-                "GEABP0.5-20-3-B-3",
-                "Bought POM20T module0.5 bore3H7,face3,overall8,hubØ8.5; included radialM3 set screw provides shaft grip. Set-screw length/tip and allowable torque unverified. CAD tooth profile is nominal visualization only.",
-                GEAR_SOURCE,
-                "POM",
-            )
-        )
-        cartridge = create_group(
-            doc,
-            prefix + "InputCartridge",
-            prefix + " adjustable supported servo/gear cartridge",
-        )
-        assembly.addObject(cartridge)
-        set_property(
-            cartridge, "MeshClearance", 0.0, "App::PropertyLength", "Adjustment"
-        )
-        cartridge.Placement.Base = V(sign * INPUT_AXIS_X, 0, INPUT_AXIS_Z)
-        cartridge.setExpression(
-            "Placement.Base.x",
-            f"{sign * INPUT_AXIS_X:g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
-        )
-        cartridge.setExpression(
-            "Placement.Base.z",
-            f"{PIVOT_Z:g} mm - {PIVOT_Z - INPUT_AXIS_Z:.14g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
-        )
-        cartridge_shape = input_cartridge_shape()
-        if sign < 0:
-            cartridge_shape = cartridge_shape.mirror(V(), V(1, 0, 0))
-            cartridge_shape = mirrored_y(cartridge_shape, -1)
-        printed.append(
-            _print(
-                doc,
-                cartridge,
-                prefix + "InputSupport",
-                cartridge_shape,
-                "Two supported input bearings isolate gear radial loads from the servo coupling. Mounting slots permit0..0.19mm radial increase of center distance while preserving gear phase. Set measured mesh and backlash; the adjustment is not a measured gear-fit guarantee. KST case rests on an open cradle; published ear axes use open mounting saddles andM1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
-                rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
-                sku="GearedInputSupport",
-            )
-        )
-        # Heads face outboard for driver access; remove each bolt first while
-        # holding its back nut, then move the free nut sideways away from the shoe.
-        for x in (-12, 12):
-            hardware.extend(
-                _bolt_pair(
-                    doc,
-                    assembly,
-                    prefix + ("InputMountNegative" if x < 0 else "InputMountPositive"),
-                    (sign * INPUT_AXIS_X + x, sign * 21, 8.5),
-                    (0, -sign, 0),
-                    grip=4,
-                )
-            )
-        drive = create_group(
-            doc, prefix + "InputDrive", prefix + " input axle rotates at -output/3"
-        )
-        cartridge.addObject(drive)
-        drive.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
-        drive.setExpression(
-            "Placement.Rotation.Angle", f"-{prefix}Pod.Placement.Rotation.Angle / 3"
-        )
-        hardware.append(
-            _buy(
-                doc,
-                drive,
-                prefix + "InputShaft",
-                mirrored_y(
-                    cylinder(1.5, 26, (0, 20.5, 0)).cut(box(2, 5, 4, (1, 38.5, -2))),
-                    sign,
-                ),
-                "PSFU3-26-FC5-A18",
-                "SupportedØ3 input shaft with factoryFC5-A18 flat (depth0.5) confined to gearhub; two MR63ZZ bearings carry gear forces. Actual shaft fit, gear clamp torque and horn coupling endplay require assembly checks.",
+                prefix + "OutputShaft" + suffix,
+                shaft,
+                sku,
+                "Ø3 h5 separate output stub, never a through-shaft. Driven shaft usesfactoryFC5-A3 flat,depth0.5, outsidebearing; idle shaft remainsround. Clockactualflat towardincludedgearsetscrewaftertoothphasing. Final length/edge treatment and clamp grip require purchased-part fit confirmation.",
                 SHAFT_SOURCE,
                 "SUJ2-equivalent hard-chrome steel",
             )
         )
-        hardware.append(
-            _buy(
-                doc,
-                drive,
-                prefix + "DriverGear60T",
-                mirrored_y(gear_shape(DRIVER_TEETH, driver_angle), sign),
-                "GEABP0.5-60-3-B-3",
-                "Bought POM60T module0.5 bore3H7,face3,overall8,hubØ10; supplied radialM3 set screw. Input drives20T at threefold opposite rotation; output torque is reduced, not multiplied. Tooth outline is nominal display geometry.",
-                GEAR_SOURCE,
-                "POM",
-            )
-        )
-        for suffix, start, opens_positive in (
-            ("Inner", 30, False),
-            ("Outer", 34, True),
-        ):
-            bearing = _buy(
-                doc,
-                cartridge,
-                prefix + "InputBearing" + suffix,
-                mirrored_y(_shifted(bearing_shape(), y=start), sign),
-                BEARING_SKU,
-                "Fixed MR63ZZ input-bearing outer ring. Outer-race shoulders and removable caps provide axial capture without loading shields.",
-                BEARING_SOURCE,
-                "Bearing steel",
-            )
-            set_property(bearing, "ReferenceMassGrams", 0.27, "App::PropertyFloat")
-            set_property(bearing, "ReferenceMassSource", BEARING_SOURCE)
-            hardware.append(bearing)
-            cap = bearing_cap_shape()
-            cap_y = start + 2.5 if opens_positive else start
-            cap_side = 1 if opens_positive else -1
-            if suffix == "Inner":
-                cap = cap.mirror(V(), V(1, 0, 0))
-            cap = _shifted(mirrored_y(cap, cap_side), y=cap_y)
-            cap = mirrored_y(cap, sign)
-            if sign < 0:
-                cap = cap.mirror(V(), V(1, 0, 0))
-            printed.append(
-                _print(
-                    doc,
-                    cartridge,
-                    prefix + "InputBearingCap" + suffix,
-                    cap,
-                    "Common MR63ZZ outer-race cap. 0.5mm running clearance separates rotating adapter/gear hubs from the cap; no inner-ring spacer is printed.",
-                    rotation=_reflection_print_rotation(
-                        (suffix == "Inner") != (sign < 0), (cap_side < 0) != (sign < 0)
-                    ),
-                    sku="MR63ZZ_OuterRaceCap",
-                )
-            )
-            origin = (
-                sign * cap_side * BEARING_CAP_BOLT_X,
-                sign * (cap_y + cap_side * 1.5),
-                0,
-            )
-            hardware.extend(
-                _bolt_pair(
-                    doc,
-                    cartridge,
-                    prefix + "InputBearingCap" + suffix,
-                    origin,
-                    (0, -sign * cap_side, 0),
-                    grip=5.5,
-                )
-            )
-        servo = box(20, 16.6, 7, (-5 if sign > 0 else -15, -3.6, -3.5))
-        for hole_x in (-7, 17) if sign > 0 else (-17, 7):
-            ear = box(4, 1, 7, (hole_x - 2, 8.3, -3.5)).cut(
-                cylinder(1, 1.2, (hole_x, 8.2, 0))
-            )
-            servo = servo.fuse(ear)
-        servo = servo.fuse(cylinder(1.95, 2.7, (0, 13, 0)))
-        servo = mirrored_y(servo, sign)
-        for hole_x in (-7, 17) if sign > 0 else (-17, 7):
-            hardware.extend(
-                _bolt_pair(
-                    doc,
-                    cartridge,
-                    prefix + ("ServoEarNegative" if hole_x < 0 else "ServoEarPositive"),
-                    (hole_x, sign * 9.3, 0),
-                    (0, -sign, 0),
-                    grip=6,
-                    servo_ear=True,
-                )
-            )
-        references.append(
-            _reference(
-                doc,
-                cartridge,
-                prefix + "Servo",
-                "KST X06 V6.0 case20×7×16.6;6g",
-                servo,
-                "Official case envelope with output axis5mm from case end. Case front|Y|13; exposed spline reaches15.7. Published ear axes use M1.6x8 DIN84 through-bolts and open printed saddles. NominalØ2 OEMholes provide0.2mm radial clearance;Ø3 screwhead has0.5mm case/end-edge margin; M1.6 nut flats face the case for0.4mm nominal clearance. SmoothØ3.90×2.7 spline envelope shows the published interface without inventing15T tooth geometry. Ear transverse outline is a conservative7mm envelope; verify actual bearing footprint and fit. Ear holesØ2/pitch24 are verified but no unverified OEM horn screw is invented. Actual loaded±60 travel and PWM calibration remain unqualified.",
-                X06_DATASHEET_SOURCE,
-            )
-        )
-        # Coupling builder supplied by the independently reviewed source-evidence module.
-        coupling = _build_coupling(doc, drive, prefix, sign)
-        printed.extend(coupling["printed"])
-        hardware.extend(coupling["hardware"])
-        clearances.extend(coupling.get("clearances", []))
-        references.extend(coupling.get("references", []))
-        motor = _reference(
-            doc,
-            pod,
-            prefix + "Motor",
-            "RS1102 conservative maximum body envelope",
-            cylinder(MOTOR_DIAMETER / 2, MOTOR_LENGTH, (-7, 0, 0), (1, 0, 0)),
-            "Published threeM1.4 axes onPCD6.6 are represented by open1.8mm radial slots; mounting depth, rear clip and head seating remain unfinished. Never run a tilt through-shaft through this motor envelope.",
-            MOTOR_SOURCE,
-        )
-        set_property(motor, "Diameter", MOTOR_DIAMETER, "App::PropertyLength")
-        set_property(
-            motor, "NominalDiameter", MOTOR_NOMINAL_DIAMETER, "App::PropertyLength"
-        )
-        set_property(motor, "EnvelopeLength", MOTOR_LENGTH, "App::PropertyLength")
-        set_property(motor, "CatalogMassGrams", 2.8, "App::PropertyFloat")
-        references.append(motor)
-        references.append(
-            _reference(
+        hardware.extend(
+            _bolt_pair(
                 doc,
                 pod,
-                prefix + "Shaft",
-                "RS1102 shaft envelope",
-                cylinder(0.75, 5, (7, 0, 0), (1, 0, 0)),
-                "PublishedØ1.5;5mm projection provisional.",
-                MOTOR_SOURCE,
+                prefix + "OutputClamp" + suffix,
+                (4.2, side * 23.25, -3),
+                (0, 0, 1),
             )
         )
-        propeller = _reference(
+        # All bearing geometry is fixed; each shaft rotates with the pod.
+        bearing_start = sign * PIVOT_HALF_SPAN + min(side * 28, side * 30.5)
+        bearing = _buy_bearing(
             doc,
-            pod,
-            prefix + "PropellerDisk",
-            "Gemfan1610 spinning envelope",
-            cylinder(20, 5, (9.5, 0, 0), (1, 0, 0)),
-            "Published40mm diameter,5mm hub thickness applied to full disk; not blade geometry.",
-            PROP_SOURCE,
+            assembly,
+            prefix + "OutputBearing" + suffix,
+            _shifted(bearing_shape(), y=bearing_start, z=PIVOT_Z),
+            "MR63ZZ3×6×2.5, annular clearance envelope. Fixed outer ring captured by frame shoulder/cap; finish the printed seat. No shield/inner-ring axial preload.",
         )
-        set_property(propeller, "PropDiameter", 40, "App::PropertyLength")
-        set_property(propeller, "HubThickness", 5, "App::PropertyLength")
-        set_property(propeller, "Variant", "CW" if sign > 0 else "CCW")
-        references.append(propeller)
-        bound = union([cylinder(30, 52, (0, -26, 0)), cylinder(10, 88, (0, -44, 0))])
-        bound = _shifted(bound, y=sign * 80, z=PIVOT_Z)
-        clearances.append(
-            _reference(
+        hardware.append(bearing)
+        cap = bearing_cap_shape()
+        if side < 0:
+            cap = mirrored_y(cap, -1)
+        if sign < 0:
+            cap = cap.mirror(V(), V(1, 0, 0))
+        cap = _shifted(cap, y=sign * 80 + side * 30.5, z=PIVOT_Z)
+        printed.append(
+            _print(
                 doc,
                 assembly,
-                prefix + "SweepBound",
-                "Conservative complete output rotation reserve",
-                bound,
-                "Main motor/guard radius30 overY±26, output clamps/bolts/shafts/gears radius10 overY±44. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
-                clearance=True,
+                prefix + "OutputBearingCap" + suffix,
+                cap,
+                "Outer-race-only positive cap;Ø5.6 opening exceeds bearing maker5.4 minimum. Finish mating faces; do not preload shields. Ø2 locating peg and bolt constrain cap rotation; finish and measure concentricity. NominalØ2.3 pocket fit does not guarantee shield clearance with raw printing tolerances.",
+                rotation=_reflection_print_rotation(sign < 0, side < 0),
+                sku="MR63ZZ_OuterRaceCap",
             )
         )
-    doc.recompute()
-    metrics = {
+        # The cap bolt seats through1.5mm cap and4mm cup; bearing fit is separate.
+        origin = (sign * BEARING_CAP_BOLT_X, sign * 80 + side * 32, PIVOT_Z)
+        hardware.extend(
+            _bolt_pair(
+                doc,
+                assembly,
+                prefix + "OutputBearingCap" + suffix,
+                origin,
+                (0, -side, 0),
+                grip=5.5,
+            )
+        )
+    driver_angle = math.degrees(
+        math.atan2(PIVOT_Z - INPUT_AXIS_Z, -sign * INPUT_AXIS_X)
+    )
+    output_angle = driver_angle + 180 + 180 / OUTPUT_TEETH
+    output_gear = gear_shape(OUTPUT_TEETH, output_angle)
+    output_gear = mirrored_y(output_gear, sign)
+    output_gear = _shifted(output_gear, y=-sign * 80)
+    hardware.append(
+        _buy(
+            doc,
+            pod,
+            prefix + "OutputGear20T",
+            output_gear,
+            "GEABP0.5-20-3-B-3",
+            "Bought POM20T module0.5 bore3H7,face3,overall8,hubØ8.5; included radialM3 set screw provides shaft grip. Set-screw length/tip and allowable torque unverified. CAD tooth profile is nominal visualization only.",
+            GEAR_SOURCE,
+            "POM",
+        )
+    )
+    return pod, printed, hardware, driver_angle
+
+
+def _build_input_drive(doc, cartridge, prefix, sign, driver_angle):
+    """Create the coupled rotating input axle and purchased driver gear."""
+    hardware = []
+    drive = create_group(
+        doc, prefix + "InputDrive", prefix + " input axle rotates at -output/3"
+    )
+    cartridge.addObject(drive)
+    drive.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
+    drive.setExpression(
+        "Placement.Rotation.Angle", f"-{prefix}Pod.Placement.Rotation.Angle / 3"
+    )
+    hardware.append(
+        _buy(
+            doc,
+            drive,
+            prefix + "InputShaft",
+            mirrored_y(
+                cylinder(1.5, 26, (0, 20.5, 0)).cut(box(2, 5, 4, (1, 38.5, -2))),
+                sign,
+            ),
+            "PSFU3-26-FC5-A18",
+            "SupportedØ3 input shaft with factoryFC5-A18 flat (depth0.5) confined to gearhub; two MR63ZZ bearings carry gear forces. Actual shaft fit, gear clamp torque and horn coupling endplay require assembly checks.",
+            SHAFT_SOURCE,
+            "SUJ2-equivalent hard-chrome steel",
+        )
+    )
+    hardware.append(
+        _buy(
+            doc,
+            drive,
+            prefix + "DriverGear60T",
+            mirrored_y(gear_shape(DRIVER_TEETH, driver_angle), sign),
+            "GEABP0.5-60-3-B-3",
+            "Bought POM60T module0.5 bore3H7,face3,overall8,hubØ10; supplied radialM3 set screw. Input drives20T at threefold opposite rotation; output torque is reduced, not multiplied. Tooth outline is nominal display geometry.",
+            GEAR_SOURCE,
+            "POM",
+        )
+    )
+    return drive, hardware
+
+
+def _build_input_bearings(doc, cartridge, prefix, sign):
+    """Capture both fixed input bearings with the common removable caps."""
+    printed, hardware = [], []
+    for suffix, start, opens_positive in (
+        ("Inner", 30, False),
+        ("Outer", 34, True),
+    ):
+        bearing = _buy_bearing(
+            doc,
+            cartridge,
+            prefix + "InputBearing" + suffix,
+            mirrored_y(_shifted(bearing_shape(), y=start), sign),
+            "Fixed MR63ZZ input-bearing outer ring. Outer-race shoulders and removable caps provide axial capture without loading shields.",
+        )
+        hardware.append(bearing)
+        cap = bearing_cap_shape()
+        cap_y = start + 2.5 if opens_positive else start
+        cap_side = 1 if opens_positive else -1
+        if suffix == "Inner":
+            cap = cap.mirror(V(), V(1, 0, 0))
+        cap = _shifted(mirrored_y(cap, cap_side), y=cap_y)
+        cap = mirrored_y(cap, sign)
+        if sign < 0:
+            cap = cap.mirror(V(), V(1, 0, 0))
+        printed.append(
+            _print(
+                doc,
+                cartridge,
+                prefix + "InputBearingCap" + suffix,
+                cap,
+                "Common MR63ZZ outer-race cap. 0.5mm running clearance separates rotating adapter/gear hubs from the cap; no inner-ring spacer is printed.",
+                rotation=_reflection_print_rotation(
+                    (suffix == "Inner") != (sign < 0), (cap_side < 0) != (sign < 0)
+                ),
+                sku="MR63ZZ_OuterRaceCap",
+            )
+        )
+        origin = (
+            sign * cap_side * BEARING_CAP_BOLT_X,
+            sign * (cap_y + cap_side * 1.5),
+            0,
+        )
+        hardware.extend(
+            _bolt_pair(
+                doc,
+                cartridge,
+                prefix + "InputBearingCap" + suffix,
+                origin,
+                (0, -sign * cap_side, 0),
+                grip=5.5,
+            )
+        )
+    return printed, hardware
+
+
+def _build_servo(doc, cartridge, prefix, sign):
+    """Create the sourced servo envelope and its through-bolt mounting pairs."""
+    hardware, references = [], []
+    servo = box(20, 16.6, 7, (-5 if sign > 0 else -15, -3.6, -3.5))
+    for hole_x in (-7, 17) if sign > 0 else (-17, 7):
+        ear = box(4, 1, 7, (hole_x - 2, 8.3, -3.5)).cut(
+            cylinder(1, 1.2, (hole_x, 8.2, 0))
+        )
+        servo = servo.fuse(ear)
+    servo = servo.fuse(cylinder(1.95, 2.7, (0, 13, 0)))
+    servo = mirrored_y(servo, sign)
+    for hole_x in (-7, 17) if sign > 0 else (-17, 7):
+        hardware.extend(
+            _bolt_pair(
+                doc,
+                cartridge,
+                prefix + ("ServoEarNegative" if hole_x < 0 else "ServoEarPositive"),
+                (hole_x, sign * 9.3, 0),
+                (0, -sign, 0),
+                grip=6,
+                servo_ear=True,
+            )
+        )
+    references.append(
+        _reference(
+            doc,
+            cartridge,
+            prefix + "Servo",
+            "KST X06 V6.0 case20×7×16.6;6g",
+            servo,
+            "Official case envelope with output axis5mm from case end. Case front|Y|13; exposed spline reaches15.7. Published ear axes use M1.6x8 DIN84 through-bolts and open printed saddles. NominalØ2 OEMholes provide0.2mm radial clearance;Ø3 screwhead has0.5mm case/end-edge margin; M1.6 nut flats face the case for0.4mm nominal clearance. SmoothØ3.90×2.7 spline envelope shows the published interface without inventing15T tooth geometry. Ear transverse outline is a conservative7mm envelope; verify actual bearing footprint and fit. Ear holesØ2/pitch24 are verified but no unverified OEM horn screw is invented. Actual loaded±60 travel and PWM calibration remain unqualified.",
+            X06_DATASHEET_SOURCE,
+        )
+    )
+    return references, hardware
+
+
+def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle):
+    """Build the adjustable input support, drive, servo and horn coupling."""
+    printed, hardware, references, clearances = [], [], [], []
+    cartridge = create_group(
+        doc,
+        prefix + "InputCartridge",
+        prefix + " adjustable supported servo/gear cartridge",
+    )
+    assembly.addObject(cartridge)
+    set_property(cartridge, "MeshClearance", 0.0, "App::PropertyLength", "Adjustment")
+    cartridge.Placement.Base = V(sign * INPUT_AXIS_X, 0, INPUT_AXIS_Z)
+    cartridge.setExpression(
+        "Placement.Base.x",
+        f"{sign * INPUT_AXIS_X:g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
+    )
+    cartridge.setExpression(
+        "Placement.Base.z",
+        f"{PIVOT_Z:g} mm - {PIVOT_Z - INPUT_AXIS_Z:.14g} mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)",
+    )
+    cartridge_shape = input_cartridge_shape()
+    if sign < 0:
+        cartridge_shape = cartridge_shape.mirror(V(), V(1, 0, 0))
+        cartridge_shape = mirrored_y(cartridge_shape, -1)
+    printed.append(
+        _print(
+            doc,
+            cartridge,
+            prefix + "InputSupport",
+            cartridge_shape,
+            "Two supported input bearings isolate gear radial loads from the servo coupling. Mounting slots permit0..0.19mm radial increase of center distance while preserving gear phase. Set measured mesh and backlash; the adjustment is not a measured gear-fit guarantee. KST case rests on an open cradle; published ear axes use open mounting saddles andM1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
+            rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
+            sku="GearedInputSupport",
+        )
+    )
+    # Heads face outboard for driver access; remove each bolt first while
+    # holding its back nut, then move the free nut sideways away from the shoe.
+    for x in (-12, 12):
+        hardware.extend(
+            _bolt_pair(
+                doc,
+                assembly,
+                prefix + ("InputMountNegative" if x < 0 else "InputMountPositive"),
+                (sign * INPUT_AXIS_X + x, sign * 21, 8.5),
+                (0, -sign, 0),
+                grip=4,
+            )
+        )
+    drive, drive_hardware = _build_input_drive(
+        doc, cartridge, prefix, sign, driver_angle
+    )
+    hardware.extend(drive_hardware)
+    bearing_prints, bearing_hardware = _build_input_bearings(
+        doc, cartridge, prefix, sign
+    )
+    printed.extend(bearing_prints)
+    hardware.extend(bearing_hardware)
+    servo_references, servo_hardware = _build_servo(doc, cartridge, prefix, sign)
+    hardware.extend(servo_hardware)
+    references.extend(servo_references)
+    # Coupling builder supplied by the independently reviewed source-evidence module.
+    coupling = _build_coupling(doc, drive, prefix, sign)
+    printed.extend(coupling["printed"])
+    hardware.extend(coupling["hardware"])
+    clearances.extend(coupling.get("clearances", []))
+    references.extend(coupling.get("references", []))
+    return {
+        "printed": printed,
+        "hardware": hardware,
+        "references": references,
+        "clearances": clearances,
+    }
+
+
+def _build_motor_references(doc, pod, prefix, sign):
+    """Place the motor, shaft and propeller envelopes on the rotating carrier."""
+    references = []
+    motor = _reference(
+        doc,
+        pod,
+        prefix + "Motor",
+        "RS1102 conservative maximum body envelope",
+        cylinder(MOTOR_DIAMETER / 2, MOTOR_LENGTH, (-7, 0, 0), (1, 0, 0)),
+        "Published threeM1.4 axes onPCD6.6 are represented by open1.8mm radial slots; mounting depth, rear clip and head seating remain unfinished. Never run a tilt through-shaft through this motor envelope.",
+        MOTOR_SOURCE,
+    )
+    set_property(motor, "Diameter", MOTOR_DIAMETER, "App::PropertyLength")
+    set_property(
+        motor, "NominalDiameter", MOTOR_NOMINAL_DIAMETER, "App::PropertyLength"
+    )
+    set_property(motor, "EnvelopeLength", MOTOR_LENGTH, "App::PropertyLength")
+    set_property(motor, "CatalogMassGrams", 2.8, "App::PropertyFloat")
+    references.append(motor)
+    references.append(
+        _reference(
+            doc,
+            pod,
+            prefix + "Shaft",
+            "RS1102 shaft envelope",
+            cylinder(0.75, 5, (7, 0, 0), (1, 0, 0)),
+            "PublishedØ1.5;5mm projection provisional.",
+            MOTOR_SOURCE,
+        )
+    )
+    propeller = _reference(
+        doc,
+        pod,
+        prefix + "PropellerDisk",
+        "Gemfan1610 spinning envelope",
+        cylinder(20, 5, (9.5, 0, 0), (1, 0, 0)),
+        "Published40mm diameter,5mm hub thickness applied to full disk; not blade geometry.",
+        PROP_SOURCE,
+    )
+    set_property(propeller, "PropDiameter", 40, "App::PropertyLength")
+    set_property(propeller, "HubThickness", 5, "App::PropertyLength")
+    set_property(propeller, "Variant", "CW" if sign > 0 else "CCW")
+    references.append(propeller)
+    return references
+
+
+def _build_sweep_reserve(doc, assembly, prefix, sign):
+    """Create the separate clearance reference for external vehicle equipment."""
+    bound = union([cylinder(30, 52, (0, -26, 0)), cylinder(10, 88, (0, -44, 0))])
+    bound = _shifted(bound, y=sign * 80, z=PIVOT_Z)
+    return _reference(
+        doc,
+        assembly,
+        prefix + "SweepBound",
+        "Conservative complete output rotation reserve",
+        bound,
+        "Main motor/guard radius30 overY±26, output clamps/bolts/shafts/gears radius10 overY±44. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
+        clearance=True,
+    )
+
+
+def _build_propulsion_side(doc, module, prefix, sign):
+    """Assemble one independent gear drive without changing native object order."""
+    assembly = create_group(
+        doc, prefix + "Assembly", prefix + " independent geared propulsion"
+    )
+    module.addObject(assembly)
+    pod, printed, hardware, driver_angle = _build_output_pod(
+        doc, assembly, prefix, sign
+    )
+    input_parts = _build_input_cartridge(doc, assembly, prefix, sign, driver_angle)
+    motor_references = _build_motor_references(doc, pod, prefix, sign)
+    sweep_reserve = _build_sweep_reserve(doc, assembly, prefix, sign)
+    return {
+        "printed": printed + input_parts["printed"],
+        "hardware": hardware + input_parts["hardware"],
+        "references": input_parts["references"] + motor_references,
+        "clearances": input_parts["clearances"] + [sweep_reserve],
+        "pods": [pod],
+    }
+
+
+def _module_metrics(printed, hardware, references):
+    from .servo_coupling import metrics as coupling_metrics
+
+    return {
         "revision": DESIGN_REVISION,
         "module_count": 1,
         "main_pod_count": 2,
@@ -943,16 +1013,16 @@ def build_propulsion_module(doc):
         "device_reference_count": len(references),
         "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
         "gear_drive": {
-            "driver_teeth": 60,
-            "output_teeth": 20,
-            "module_mm": 0.5,
+            "driver_teeth": DRIVER_TEETH,
+            "output_teeth": OUTPUT_TEETH,
+            "module_mm": GEAR_MODULE,
             "nominal_center_mm": 20,
             "face_width_mm": 3,
-            "gear_axial_span_mm": [38.5, 46.5],
+            "gear_axial_span_mm": [GEAR_HUB_START_Y, GEAR_END_Y],
             "input_axis_abs_x_mm": INPUT_AXIS_X,
             "input_axis_z_mm": INPUT_AXIS_Z,
             "output_to_input_angle_ratio": -3,
-            "mesh_center_distance_increase_mm": [0, 0.19],
+            "mesh_center_distance_increase_mm": [0, MESH_ADJUSTMENT_MAX],
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
         "shaft_topology": {
@@ -968,9 +1038,9 @@ def build_propulsion_module(doc):
             "count": 8,
             "dimensions_mm": [3, 6, 2.5],
             "nominal_bore_mm": 6,
-            "cap_opening_mm": 5.6,
+            "cap_opening_mm": BEARING_WINDOW_DIAMETER,
             "seat_shoulder_mm": 1.5,
-            "cap_thickness_mm": 1.5,
+            "cap_thickness_mm": BEARING_CAP_THICKNESS,
             "finishing": "Nominal fit prototype. Print matching coupon, finish and measure bearing seats; Creallo tolerances do not prove bearing fit. Do not force bearings into undersized seats or preload shields.",
             "running_axial_clearance_mm": 0.5,
         },
@@ -1002,13 +1072,36 @@ def build_propulsion_module(doc):
         ],
         "printed_volume_mm3": sum(o.Shape.Volume for o in printed),
     }
+
+
+def build_propulsion_module(doc):
+    module = create_group(
+        doc,
+        "MainPropulsionModule",
+        "Independent KST X06 60:20 gear drives | four output stubs",
+    )
+    frame = _build_frame(doc, module)
+    parts = {
+        "printed": [frame],
+        "hardware": [],
+        "references": [],
+        "clearances": [],
+        "pods": [],
+    }
+    for prefix, sign in (("Port", 1), ("Starboard", -1)):
+        side = _build_propulsion_side(doc, module, prefix, sign)
+        for kind, objects in parts.items():
+            objects.extend(side[kind])
+    doc.recompute()
     return {
         "group": module,
-        "printed": printed,
-        "references": references,
-        "clearances": clearances,
-        "pods": pods,
-        "hardware": hardware,
+        "printed": parts["printed"],
+        "references": parts["references"],
+        "clearances": parts["clearances"],
+        "pods": parts["pods"],
+        "hardware": parts["hardware"],
         "frame": frame,
-        "metrics": metrics,
+        "metrics": _module_metrics(
+            parts["printed"], parts["hardware"], parts["references"]
+        ),
     }

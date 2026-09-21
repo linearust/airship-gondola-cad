@@ -11,6 +11,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, box, set_property, union
+from gondola.contracts.hardware import STACK_SCREW_SOURCE, STACK_SPACER_SOURCE
 
 from . import purchased_hardware
 
@@ -123,7 +124,7 @@ def build_stack_hardware(doc, group):
             purchased_hardware.spacer_shape(),
             "M2_FF_PA66_AF4_L25",
             common,
-            purchased_hardware.STACK_SPACER_SOURCE,
+            STACK_SPACER_SOURCE,
             "Nylon PA66",
         )
         set_property(spacer, "StackEnd", "Spacer")
@@ -143,7 +144,7 @@ def build_stack_hardware(doc, group):
                 "M2X5_PA66_PAN_HEAD",
                 common
                 + " Nominal thread entry3.0mm through printed2mm plate without washers; actual printed thickness, screw tolerance and blind depth must be checked.",
-                purchased_hardware.STACK_SCREW_SOURCE,
+                STACK_SCREW_SOURCE,
                 "Nylon PA66",
             )
             bolt.Placement = App.Placement(V(x, y, bearing_z), rotation)

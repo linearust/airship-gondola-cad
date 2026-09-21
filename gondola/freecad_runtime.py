@@ -196,6 +196,4 @@ def run_with_freecad(command, output_dir, appimage=None, source=None):
             if source:
                 args.extend(["--source", str(source)])
         completed = subprocess.run(args, cwd=REPO_ROOT, env=env)
-        if completed.returncode:
-            return completed.returncode
-        return 0
+        return completed.returncode

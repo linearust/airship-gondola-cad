@@ -53,7 +53,7 @@ class ServoCouplingTests(unittest.TestCase):
 
     def test_opposed_planar_faces_have_no_wall_below_1p5mm(self):
         from gondola.parts import servo_coupling as coupling
-        from gondola.validation.assembly import planar_wall_regions
+        from gondola.validation.manufacturing import planar_wall_regions
 
         for half in coupling.adapter_half_shapes():
             thin = [
