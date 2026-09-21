@@ -56,6 +56,12 @@ class HardwareBomTests(unittest.TestCase):
                         MaterialSelection="A2 stainless steel",
                         ThreadStandard="M2 x 0.4; right-hand",
                         SourceURL="https://example.com/first-journal",
+                        PurchaseSearchQuery=f"Buy {sku}",
+                        PurchaseSearchURL=f"https://example.com/search/{sku}",
+                        PurchaseRequirements=f"Verified dimensions for {sku}",
+                        PurchaseCandidateURL="",
+                        PurchaseEvidenceNotes="Specification only; no purchased lot verified.",
+                        PurchasingStatus="Specification only",
                         PrintPart=False,
                     )
                 )
@@ -83,9 +89,11 @@ class HardwareBomTests(unittest.TestCase):
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
-        self.assertEqual(bom["purchased_hardware_quantity"], 22)
-        self.assertEqual(bom["unique_purchase_spec_count"], 5)
-        self.assertEqual(len(bom["items"]), 5)
+        self.assertEqual(bom["purchased_hardware_quantity"], 26)
+        self.assertEqual(bom["unique_purchase_spec_count"], 6)
+        self.assertEqual(len(bom["items"]), 6)
+        self.assertEqual(bom["purchase_scope"], self.manufacturing.hardware_bom_scope())
+        self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
         nuts = next(row for row in bom["items"] if row["sku"] == "M2_HEX_NUT")
         self.assertEqual(nuts["quantity"], 4)
         square_nuts = next(
@@ -109,9 +117,12 @@ class HardwareBomTests(unittest.TestCase):
         self.assertTrue(audit["not_printed"])
 
     def test_audit_rejects_hex_nut_substitution_for_square_rail_nuts(self):
+        hex_nut = next(obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT")
         for obj in self.hardware:
             if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562":
                 obj.HardwareSKU = "M2_HEX_NUT"
+                for attribute in self.manufacturing.PURCHASE_METADATA_FIELDS.values():
+                    setattr(obj, attribute, getattr(hex_nut, attribute))
         self.export()
         audit = self.equipment.hardware_check(self.document, self.source)
         self.assertFalse(audit["passed"])
@@ -142,6 +153,138 @@ class HardwareBomTests(unittest.TestCase):
                         )["matches_native_instances"]
                     )
 
+    def test_export_rejects_conflicting_or_missing_purchase_requirements(self):
+        part = self.hardware[0]
+        for replacement in ("", "different nominal length"):
+            with self.subTest(requirements=replacement):
+                part.PurchaseRequirements = replacement
+                with self.assertRaisesRegex(ValueError, "PurchaseRequirements"):
+                    self.export()
+
+    def test_audit_rejects_changed_or_omitted_procurement_fields(self):
+        fields = (
+            *self.manufacturing.PURCHASE_METADATA_FIELDS,
+            "label",
+            "notes",
+            "purchase_code",
+        )
+        for field in fields:
+            for operation in ("alter", "omit"):
+                with self.subTest(field=field, operation=operation):
+                    bom = self.export()
+                    row = bom["items"][0]
+                    if operation == "alter":
+                        row[field] = "unsupported replacement"
+                    else:
+                        del row[field]
+                    self.bom_path.write_text(json.dumps(bom))
+                    audit = self.equipment.hardware_check(self.document, self.source)
+                    self.assertFalse(audit["passed"])
+                    self.assertFalse(audit["bom_rows"][0]["matches_native_instances"])
+
+    def test_audit_rejects_incorrect_purchase_scope(self):
+        for scope in (None, {"complete_gondola_purchase_list": True}):
+            with self.subTest(scope=scope):
+                bom = self.export()
+                bom["purchase_scope"] = scope
+                self.bom_path.write_text(json.dumps(bom))
+                audit = self.equipment.hardware_check(self.document, self.source)
+                self.assertFalse(audit["passed"])
+                self.assertFalse(audit["bom_purchase_scope_matches_contract"])
+
+    def test_equipment_report_rejects_bom_changes_during_validation(self):
+        self.export()
+        self.source.write_bytes(b"native CAD")
+        self.document.Name = "TestDocument"
+        self.document.DesignRegistry.ReferenceParts = []
+        self.document.DesignRegistry.TapeReferences = []
+        self.document.getObject = Mock(
+            return_value=types.SimpleNamespace(PropertiesList=[])
+        )
+        self.equipment.App.openDocument.return_value = self.document
+        original_check = self.equipment.hardware_check
+
+        def audit_then_change_bom(*args):
+            result = original_check(*args)
+            self.bom_path.write_text(self.bom_path.read_text() + "\n")
+            return result
+
+        with (
+            patch.object(self.equipment, "reserve_checks", return_value=([], [])),
+            patch.object(
+                self.equipment, "mtf_sensor_check", return_value={"passed": True}
+            ),
+            patch.object(
+                self.equipment, "mounting_check", return_value={"passed": True}
+            ),
+            patch.object(
+                self.equipment, "hardware_check", side_effect=audit_then_change_bom
+            ),
+            patch("builtins.print"),
+        ):
+            report = self.equipment.validate(self.source)
+        self.assertTrue(report["hardware"]["passed"])
+        self.assertTrue(report["source_unchanged"])
+        self.assertFalse(report["hardware_bom_unchanged"])
+        self.assertNotEqual(
+            report["hardware_bom_sha256_before"], report["hardware_bom_sha256_after"]
+        )
+        self.assertFalse(report["passed"])
+
+    def test_print_roles_cannot_be_exchanged_while_preserving_totals(self):
+        installed = types.SimpleNamespace(
+            Name="BatteryMount", PrintSKU="BatteryMount", PrintPart=True
+        )
+        coupon = types.SimpleNamespace(
+            Name="RailFitSample", PrintSKU="RailFitSample", PrintPart=True
+        )
+        for part, installed_count in ((installed, 1), (coupon, 0)):
+            entry = {
+                "sku": part.PrintSKU,
+                "instances": [part.Name],
+                "quantity": 1,
+                "installed_quantity": installed_count,
+                "coupon_quantity": 1 - installed_count,
+            }
+            check = self.manufacturing.print_entry_inventory_check(
+                entry, [installed], [coupon]
+            )
+            self.assertTrue(check["passed"])
+            entry["installed_quantity"], entry["coupon_quantity"] = (
+                entry["coupon_quantity"],
+                entry["installed_quantity"],
+            )
+            check = self.manufacturing.print_entry_inventory_check(
+                entry, [installed], [coupon]
+            )
+            self.assertFalse(check["passed"])
+            self.assertFalse(check["quantities_match_native_roles"])
+
+    def test_print_manifest_is_bound_to_native_sku_and_print_flag(self):
+        part = types.SimpleNamespace(
+            Name="BatteryMount", PrintSKU="BatteryMount", PrintPart=True
+        )
+        entry = {
+            "sku": "BatteryMount",
+            "instances": [part.Name],
+            "quantity": 1,
+            "installed_quantity": 1,
+            "coupon_quantity": 0,
+        }
+        for attribute, replacement in (
+            ("PrintSKU", "RailFitSample"),
+            ("PrintPart", False),
+            ("Name", "UnregisteredPrint"),
+        ):
+            with self.subTest(attribute=attribute):
+                original = getattr(part, attribute)
+                setattr(part, attribute, replacement)
+                result = self.manufacturing.print_entry_inventory_check(
+                    entry, [part], []
+                )
+                self.assertFalse(result["passed"])
+                setattr(part, attribute, original)
+
 
 try:
     import FreeCAD as App
@@ -152,6 +295,62 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class MountingPadGeometryTests(unittest.TestCase):
+    def test_native_rail_clamps_declare_m2_thread_dimensions(self):
+        from gondola.cad import create_group
+        from gondola.parts import rail
+
+        document = App.newDocument("RailThreadRegressionTest")
+        self.addCleanup(App.closeDocument, document.Name)
+        parent = create_group(document, "ClampGroup", "Clamp hardware")
+        hardware = rail.build_clamp_hardware(document, parent, "Test", "0")
+        self.assertEqual(len(hardware), 2)
+        for part in hardware:
+            self.assertEqual(part.NominalThreadDiameter.Value, 2)
+            self.assertEqual(part.ThreadPitch.Value, 0.4)
+            self.assertIn("M2", part.ThreadStandard)
+            self.assertNotIn("unthreaded", part.ThreadStandard.lower())
+
+    def test_native_hardware_distinguishes_unthreaded_washers(self):
+        from gondola.parts import metric_hardware as metric
+
+        document = App.newDocument("HardwareThreadRegressionTest")
+        self.addCleanup(App.closeDocument, document.Name)
+        parts = (
+            ("M2_WASHER_2.2_5_0.3", metric.washer_shape(), True),
+            ("M3_WASHER_3.2_9_0.8", metric.journal_retaining_washer_shape(), True),
+            ("M2_HEX_NUT", metric.nut_shape(), False),
+            ("M2X14_SOCKET_CAP", metric.screw_shape(14), False),
+        )
+        for index, (sku, shape, is_washer) in enumerate(parts):
+            with self.subTest(sku=sku):
+                obj = metric.add_hardware(
+                    document, None, f"Hardware{index}", sku, shape, sku, "Test only"
+                )
+                self.assertEqual(obj.NominalThreadDiameter.Value, 0 if is_washer else 2)
+                self.assertEqual(obj.ThreadPitch.Value, 0 if is_washer else 0.4)
+                self.assertEqual("unthreaded" in obj.ThreadStandard.lower(), is_washer)
+                if not is_washer:
+                    self.assertNotIn("washer", obj.ThreadStandard.lower())
+
+    def test_native_print_factory_sets_explicit_print_flag(self):
+        from gondola.cad import create_group, create_printed_part
+
+        document = App.newDocument("PrintFactoryRegressionTest")
+        self.addCleanup(App.closeDocument, document.Name)
+        parent = create_group(document, "PrintGroup", "Printed test parts")
+        part = create_printed_part(
+            document,
+            parent,
+            "PrintedPart",
+            "Printed factory test",
+            Part.makeBox(2, 3, 4),
+            App.Rotation(),
+            "Test only",
+        )
+        self.assertIn("PrintPart", part.PropertiesList)
+        self.assertTrue(part.PrintPart)
+        self.assertEqual(part.getTypeIdOfProperty("PrintPart"), "App::PropertyBool")
+
     def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import mounting_pad_check

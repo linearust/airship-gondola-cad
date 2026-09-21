@@ -57,27 +57,29 @@ class BundleIntegrityTests(unittest.TestCase):
                 }
             )
         self.manifest = {
-            "schema_version": 1,
+            "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
             "unique_stl_count": 8,
             "installed_printed_part_count": 10,
             "additional_coupon_printed_part_count": 2,
+            "release_status": bundle.release_status(),
             "parts": self.parts,
         }
         self.manifest_path = self.folder / "print_manifest.json"
         write_json(self.manifest_path, self.manifest)
         self.bom = {
-            "schema_version": 1,
+            "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "purchased_hardware_quantity": 22,
-            "unique_purchase_spec_count": 5,
+            "purchased_hardware_quantity": 26,
+            "unique_purchase_spec_count": 6,
+            "purchase_scope": bundle.hardware_bom_scope(),
             "items": [
                 {
                     "purchase_code": f"hardware_{index}",
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 4, 8, 3, 3))
+                for index, quantity in enumerate((4, 4, 8, 3, 3, 4))
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")
@@ -104,6 +106,8 @@ class BundleIntegrityTests(unittest.TestCase):
                 "source_fingerprint": self.fingerprint,
                 "source_sha256": self.cad_sha,
                 "source_sha256_after": self.cad_sha,
+                "hardware_bom_sha256_before": bundle.file_sha256(self.bom_path),
+                "hardware_bom_sha256_after": bundle.file_sha256(self.bom_path),
             },
         )
         self.baseline_file = self.output / "frozen_baseline.FCStd"
@@ -213,6 +217,18 @@ class BundleIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Stale or altered"):
             self.package()
 
+    def test_equipment_report_must_validate_the_packaged_bom(self):
+        report_path = self.output / (self.stem + "_equipment_validation.json")
+        report = json.loads(report_path.read_text())
+        for field in ("hardware_bom_sha256_before", "hardware_bom_sha256_after"):
+            for value in (None, sha256_bytes(b"previous BOM")):
+                with self.subTest(field=field, value=value):
+                    write_json(report_path, {**report, field: value})
+                    with self.assertRaisesRegex(
+                        RuntimeError, "equipment BOM validation"
+                    ):
+                        self.package()
+
     def test_manifest_checksum_is_required_even_when_report_hashes_match(self):
         self.parts[0]["file_sha256"] = sha256_bytes(b"wrong")
         write_json(self.manifest_path, self.manifest)
@@ -223,6 +239,30 @@ class BundleIntegrityTests(unittest.TestCase):
         write_json(self.audit_path, self.audit)
         with self.assertRaisesRegex(RuntimeError, "checksum disagrees"):
             self.package()
+
+    def test_release_and_purchase_scope_must_match_current_contract(self):
+        for path, document, field, message in (
+            (self.manifest_path, self.manifest, "release_status", "release status"),
+            (self.bom_path, self.bom, "purchase_scope", "purchase scope"),
+        ):
+            for replacement in (None, {"production_released": True}):
+                with self.subTest(field=field, replacement=replacement):
+                    original = document[field]
+                    document[field] = replacement
+                    write_json(path, document)
+                    name = str(path.relative_to(self.output))
+                    for snapshot in ("artifact_hashes_before", "artifact_hashes"):
+                        self.audit[snapshot][name] = bundle.file_sha256(path)
+                    write_json(self.audit_path, self.audit)
+                    try:
+                        with self.assertRaisesRegex(RuntimeError, message):
+                            self.package()
+                    finally:
+                        document[field] = original
+                        write_json(path, document)
+                        for snapshot in ("artifact_hashes_before", "artifact_hashes"):
+                            self.audit[snapshot][name] = bundle.file_sha256(path)
+                        write_json(self.audit_path, self.audit)
 
     def test_malformed_manifests_are_rejected(self):
         for value in (

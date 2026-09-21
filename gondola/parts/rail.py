@@ -199,6 +199,10 @@ def _hardware(doc, parent, name, label, shape, sku, notes):
         ),
     ]:
         set_property(obj, key, value)
+    set_property(
+        obj, "NominalThreadDiameter", fastener.THREAD_DIAMETER, "App::PropertyLength"
+    )
+    set_property(obj, "ThreadPitch", fastener.THREAD_PITCH, "App::PropertyLength")
     set_property(obj, "PrintPart", False, "App::PropertyBool")
     set_property(obj, "MaterialSelection", "A2 stainless steel")
     if App.GuiUp:

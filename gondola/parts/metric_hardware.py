@@ -15,6 +15,23 @@ import Part
 
 from gondola.cad import set_property as _set_property
 
+from .fastener_spec import JOURNAL_RETAINING_WASHER_ID as JOURNAL_RETAINING_WASHER_ID
+from .fastener_spec import (
+    JOURNAL_RETAINING_WASHER_MAX_ID as JOURNAL_RETAINING_WASHER_MAX_ID,
+)
+from .fastener_spec import (
+    JOURNAL_RETAINING_WASHER_MAX_THICKNESS as JOURNAL_RETAINING_WASHER_MAX_THICKNESS,
+)
+from .fastener_spec import (
+    JOURNAL_RETAINING_WASHER_MIN_OD as JOURNAL_RETAINING_WASHER_MIN_OD,
+)
+from .fastener_spec import (
+    JOURNAL_RETAINING_WASHER_MIN_THICKNESS as JOURNAL_RETAINING_WASHER_MIN_THICKNESS,
+)
+from .fastener_spec import JOURNAL_RETAINING_WASHER_OD as JOURNAL_RETAINING_WASHER_OD
+from .fastener_spec import (
+    JOURNAL_RETAINING_WASHER_THICKNESS as JOURNAL_RETAINING_WASHER_THICKNESS,
+)
 from .fastener_spec import JOURNAL_SCREW_LENGTH as JOURNAL_SCREW_LENGTH
 from .fastener_spec import NUT_AF as NUT_AF
 from .fastener_spec import NUT_HEIGHT as NUT_HEIGHT
@@ -42,10 +59,15 @@ WASHER_SOURCE = (
     "https://www.orbitalfasteners.co.uk/products/"
     "m2-form-a-flat-washer-stainless-steel-a2-304-din-125-2-2x5-0x0-3mm-"
 )
+JOURNAL_RETAINING_WASHER_SOURCE = "https://www.jcfasteners.com/wp-content/uploads/DIN-9021-Large-Washer-B4D03-SS304.pdf"
 JOURNAL_SCREW_SOURCE = (
     "https://www.accu.co.uk/metric-cap-head-screws/3796-SSCF-M2-14-A2"
 )
 NUT_SOURCE = "https://www.accu.co.uk/hexagon-nuts/7884-HPN-M2-A2"
+NUT_BEARING_SOURCE = (
+    "https://eshop.boellhoff.de/out/media/pdf/DIN_934_Edelstahl_A2___en.pdf"
+)
+WASHER_DIMENSION_SOURCE = "https://www.jcfasteners.com/wp-content/uploads/DIN-125-Plain-Washer-B4D02-SS304.pdf"
 SQUARE_NUT_SOURCE = "https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2"
 SQUARE_NUT_PTS_SOURCE = (
     "https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202"
@@ -60,6 +82,27 @@ PURCHASING_STATUS = (
 # Keep these requirements with the native bought-part objects so a generated BOM
 # contains the purchase conditions without relying on a separate guide.
 PROCUREMENT_SPECS = {
+    "M3_WASHER_3.2_9_0.8": {
+        "search_query": "M3 DIN9021 ISO7093 stainless large washer 3.2 9 0.8",
+        "requirements": (
+            "A2/SUS304 large-series plain washer, DIN 9021 / ISO 7093-1, "
+            "nominal ID 3.2 x OD 9 x thickness 0.8 mm. Accepted ID 3.20-3.38 mm, "
+            "OD 8.64-9.00 mm, thickness 0.70-0.90 mm. Four additional INNER journal "
+            "retainers on M2 bolts; the M3 designation describes clearance size, "
+            "not a threaded part or a change to M3 bolts. Do not substitute the "
+            "small OD 5 mm washer alone: it can pass through the carrier D-bore. "
+            "Keep a separate 2.2 x 5 x 0.3 mm washer between each M2 nut and "
+            "large retainer; the nut's chamfered bearing face is not guaranteed "
+            "to span the retainer's 3.38 mm maximum bore."
+        ),
+        "candidate_url": JOURNAL_RETAINING_WASHER_SOURCE,
+        "evidence_notes": (
+            "JC Fasteners B4D0303009 SUS304 manufacturer drawing confirms dimensions "
+            "and limits. Geometric capture relies on the carrier D-flat. Actual "
+            "washer corners, eccentric seating, bearing pressure and vibration "
+            "retention remain to test; no marketplace listing or lot is verified."
+        ),
+    },
     "M2X14_SOCKET_CAP": {
         "search_query": "M2x14 DIN912 A2 socket cap screw",
         "requirements": (
@@ -109,7 +152,17 @@ PROCUREMENT_SPECS = {
         "search_query": "M2 stainless washer 2.2 5 0.3",
         "requirements": (
             "A2 stainless steel flat washer, unthreaded; nominal bore 2.2 mm, "
-            "outside diameter 5 mm and thickness 0.3 mm. Used for journal retention."
+            "outside diameter 5 mm and thickness 0.3 mm. Accepted ID 2.20-2.34 mm, "
+            "OD 4.70-5.00 mm, thickness 0.25-0.35 mm. Eight journal "
+            "washers: four under bolt heads and four between M2 nuts and large inner retainers. Do not omit the nut-side small washer or substitute it for a large retainer."
+        ),
+        "candidate_url": WASHER_DIMENSION_SOURCE,
+        "evidence_notes": (
+            "JC Fasteners B4D0202000 SUS304 dimensional limits. Böllhoff DIN934 A2 "
+            "M2 lists minimum nut bearing diameter dw3.2 mm; across-flats is not "
+            "the chamfered bearing diameter: " + NUT_BEARING_SOURCE + ". "
+            "Keep this small washer under the nut before the larger journal retainer. "
+            "Coaxial contact dimensions do not qualify eccentric seating, preload or strength."
         ),
     },
 }
@@ -196,6 +249,23 @@ def washer_shape():
     )
 
 
+@functools.lru_cache(None)
+def journal_retaining_washer_shape():
+    return (
+        Part.makeCylinder(
+            JOURNAL_RETAINING_WASHER_OD / 2, JOURNAL_RETAINING_WASHER_THICKNESS
+        )
+        .cut(
+            Part.makeCylinder(
+                JOURNAL_RETAINING_WASHER_ID / 2,
+                JOURNAL_RETAINING_WASHER_THICKNESS + 0.2,
+                V(0, 0, -0.1),
+            )
+        )
+        .removeSplitter()
+    )
+
+
 def add_hardware(
     doc,
     parent,
@@ -220,13 +290,23 @@ def add_hardware(
         obj, "ManufacturingRoute", "Purchase separately; never export as a print part"
     )
     set_property(obj, "HardwareSKU", sku)
+    is_washer = "_WASHER_" in sku
     set_property(
         obj,
         "ThreadStandard",
-        "ISO metric coarse M2 x 0.4; right-hand. Washer is unthreaded.",
+        "Unthreaded plain washer; no thread."
+        if is_washer
+        else "ISO metric coarse M2 x 0.4; right-hand.",
     )
-    set_property(obj, "NominalThreadDiameter", THREAD_DIAMETER, "App::PropertyLength")
-    set_property(obj, "ThreadPitch", THREAD_PITCH, "App::PropertyLength")
+    set_property(
+        obj,
+        "NominalThreadDiameter",
+        0.0 if is_washer else THREAD_DIAMETER,
+        "App::PropertyLength",
+    )
+    set_property(
+        obj, "ThreadPitch", 0.0 if is_washer else THREAD_PITCH, "App::PropertyLength"
+    )
     set_property(
         obj,
         "ThreadGeometry",

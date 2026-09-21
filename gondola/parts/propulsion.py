@@ -45,7 +45,8 @@ SLEEVE_FLANGE_Y = 29.45
 SLEEVE_END_Y = 30.95
 JOURNAL_SCREW_LENGTH = metric.JOURNAL_SCREW_LENGTH
 SCREW_UNDERHEAD_Y = SLEEVE_END_Y + metric.WASHER_THICKNESS
-INNER_WASHER_Y = SLEEVE_INNER_Y - metric.WASHER_THICKNESS
+RETAINING_WASHER_Y = SLEEVE_INNER_Y - metric.JOURNAL_RETAINING_WASHER_THICKNESS
+INNER_WASHER_Y = RETAINING_WASHER_Y - metric.WASHER_THICKNESS
 JOURNAL_NUT_Y = INNER_WASHER_Y - metric.NUT_HEIGHT
 JOURNAL_SCREW_SKU = f"M{metric.THREAD_DIAMETER:g}X{JOURNAL_SCREW_LENGTH:g}_SOCKET_CAP"
 JOURNAL_NUT_SKU = f"M{metric.THREAD_DIAMETER:g}_HEX_NUT"
@@ -53,6 +54,7 @@ JOURNAL_WASHER_SKU = (
     f"M{metric.THREAD_DIAMETER:g}_WASHER_"
     f"{metric.WASHER_ID:g}_{metric.WASHER_OD:g}_{metric.WASHER_THICKNESS:g}"
 )
+JOURNAL_RETAINING_WASHER_SKU = "M3_WASHER_3.2_9_0.8"
 SERVO_SOURCE = "https://www.dspowerservo.com/ds-m005-mini-servo-product/"
 SERVO_DRAWING = "https://cdn.globalso.com/dspowerservo/m0055.jpg"
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
@@ -72,7 +74,8 @@ BEARING_SOURCE = "https://www.nsk.com/engineering/products/bearings/ball-bearing
 PIVOT_HALF_SPAN = 80.0
 MINIMUM_TILT_DEG = -150.0
 MAXIMUM_TILT_DEG = 150.0
-MOTOR_DIAMETER = 13.5
+MOTOR_NOMINAL_DIAMETER = 13.5
+MOTOR_DIAMETER = 13.6  # Manufacturer drawing: 13.5 +0.10/-0 mm.
 MOTOR_LENGTH = 14.0
 PROPELLER_DIAMETER = 40.0
 PROPELLER_HUB_THICKNESS = 5.0
@@ -297,12 +300,21 @@ def _journal_hardware(doc, moving, prefix, side):
             JOURNAL_WASHER_SOURCE,
         ),
         (
+            "RetainingWasher",
+            metric.journal_retaining_washer_shape(),
+            RETAINING_WASHER_Y,
+            1,
+            JOURNAL_RETAINING_WASHER_SKU,
+            "Purchased M3 DIN9021 large washer3.2x9x0.8mm intentionally clears the M2 bolt. Its outside diameter cannot pass the carrier D-hole and retains the sleeve axially. The existing M2 small washer stays between this washer and the nut: M2 nut bearing-face dimensions do not guarantee direct support over the M3 clearance hole. Nominal endplay to the carrier inner face is0.45mm; coupon/loaded retention remains unqualified.",
+            metric.JOURNAL_RETAINING_WASHER_SOURCE,
+        ),
+        (
             "InnerWasher",
             metric.washer_shape(),
             INNER_WASHER_Y,
             1,
             JOURNAL_WASHER_SKU,
-            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm washer bears on the sleeve end, with0.45mm nominal clearance to the carrier inner face.",
+            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm small washer distributes M2 nut load onto the larger retaining washer. Do not omit it: the M3 washer clearance bore can exceed the M2 nut's minimum bearing-face diameter.",
             JOURNAL_WASHER_SOURCE,
         ),
         (
@@ -393,12 +405,15 @@ def _create_pod(doc, module, prefix, sign):
         doc,
         moving,
         prefix + "Motor",
-        "RS1102 · motor envelope Ø13.5 × 14 mm",
+        "RS1102 · motor envelope Ø13.6 maximum × 14 mm",
         cylinder(MOTOR_DIAMETER / 2, MOTOR_LENGTH, (-7, 0, 0), (1, 0, 0)),
         "Conservative packaging cylinder, not exact bell/base geometry. Official drawing specifies overall length14, body datum8.8 and shaft projection4; this cylinder must not be used to derive a mounting depth. Three M1.4 mounting axes on PCD6.6 are published, but usable screw depth and rear clip clearance remain unverified.",
         MOTOR_SOURCE,
     )
     set_property(motor, "Diameter", MOTOR_DIAMETER, "App::PropertyLength")
+    set_property(
+        motor, "NominalDiameter", MOTOR_NOMINAL_DIAMETER, "App::PropertyLength"
+    )
     set_property(motor, "EnvelopeLength", MOTOR_LENGTH, "App::PropertyLength")
     set_property(motor, "CatalogMassGrams", 2.8, "App::PropertyFloat")
     shaft = _reference(
@@ -548,7 +563,7 @@ def build_propulsion_module(doc, parent=None):
         carrier.Label = "PRINT | integral motor carrier and propeller guard"
         carrier.Notes = (
             "One PA12 SLS/MJF part combines rear motor plate, journal struts and propeller guard. "
-            "Front guard ID45.6mm admits the40mm propeller and13.5mm motor axially. "
+            "Front guard ID45.6mm admits the40mm propeller and13.6mm maximum motor envelope axially. "
             "D bores use nominal radius4.45 and flatZ3.45; hollow sleeve radius4/flatZ3.0 preserves a positive torque path. "
             "Boss endsY+/-26.55 give0.9mm total width clearance between stationary cheek inner facesY+/-27. "
             "Official RS1102 drawing gives3 M1.4 axes on PCD6.6. Holes remain uncut: a1.8mm clearance hole would leave only0.2mm between it and the existing4.4mm rear-shaft relief, and the rear clip diameter/head seating/depth are unverified. No false mounting approval."
@@ -569,7 +584,7 @@ def build_propulsion_module(doc, parent=None):
                         App.Rotation(V(1, 0, 0), 90)
                     )
                 ),
-                "PA12 SLS/MJF hollow journal: OD8, through bore3, D flatZ3.0 leaves1.5mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M2 hardware clamps sleeve ends only. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
+                "PA12 SLS/MJF hollow journal: OD8, through bore3, D flatZ3.0 leaves1.5mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M2 bolt/nut, two small washers and a large inner retaining washer clamp the sleeve ends. The large washer cannot pass the carrier D-hole; the outer sleeve flange blocks opposite travel. Remove this hardware before extracting the sleeve. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
             )
             sleeve.PrintNotes = (
                 sleeve.Notes
@@ -680,6 +695,7 @@ def build_propulsion_module(doc, parent=None):
                 f"M2x{JOURNAL_SCREW_LENGTH:g}_socket_cap": 4,
                 "M2_hex_nut": 4,
                 f"M2_flat_washer_{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}": 8,
+                "M3_large_retaining_washer_3.2x9x0.8": 4,
             },
         }
     )
@@ -703,7 +719,7 @@ def build_propulsion_module(doc, parent=None):
         "nominal_radial_and_flat_clearance_mm": 0.45,
         "nominal_total_carrier_width_clearance_mm": 0.9,
         "worst_case_width_clearance_two_0_3mm_size_errors_mm": 0.3,
-        "retention": f"M2x{JOURNAL_SCREW_LENGTH:g} bolt, two {metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g} washers and M2 nut per sleeve; sleeve ends carry clamp load, cheeks remain free",
+        "retention": f"M2x{JOURNAL_SCREW_LENGTH:g} bolt, two {metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g} small washers, one M3 3.2x9x0.8 large retaining washer and M2 nut per sleeve; sleeve ends carry clamp load, cheeks remain free. Large inner washer blocks withdrawal through the carrier D-hole; outer flange blocks opposite motion.",
         "thread_engagement_mm": metric.NUT_HEIGHT,
         "bolt_tip_projection_beyond_nut_mm": JOURNAL_NUT_Y
         - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH),
@@ -728,9 +744,9 @@ def build_propulsion_module(doc, parent=None):
     )
     metrics["journal_assembly_order"] = [
         "Leave servos off the cradle while fitting the rotating carriers.",
-        f"Insert hollow D sleeves from outside, fit washers and M2x{JOURNAL_SCREW_LENGTH:g} bolts/nuts without pinching stationary cheeks.",
+        f"Insert hollow D sleeves from outside. Fit an outer small washer, M2x{JOURNAL_SCREW_LENGTH:g} bolt, inner large retaining washer, inner small washer and nut without pinching stationary cheeks.",
         "Resolve motor mount seating/engagement and servo saddle fastening before fitting vendor motor fasteners, servos and measured horn coupling.",
-        f"For driven-side journal service, remove servo first; withdraw sleeve8mm, lift{SLEEVE_SERVICE_LIFT:g}mm, then move away.",
+        f"For journal service release both servos and unmodeled horn couplings. Remove the nut, then the bolt/outer washer, then the inner small and large washers. Withdraw the bare driven-side sleeve8mm, lift{SLEEVE_SERVICE_LIFT:g}mm, then move away; the idle sleeve can withdraw directly.",
     ]
     metrics["OEM_interfaces"] = {
         "DS_M005": {
@@ -757,6 +773,8 @@ def build_propulsion_module(doc, parent=None):
             "drawing": MOTOR_DRAWING,
             "retained_drawing": "references/rs1102_dimensions.jpg",
             "mount_thread_designation": MOTOR_MOUNT_THREAD,
+            "nominal_diameter_mm": MOTOR_NOMINAL_DIAMETER,
+            "maximum_diameter_mm": MOTOR_DIAMETER,
             "mount_hole_count": MOTOR_MOUNT_COUNT,
             "mount_pitch_circle_diameter_mm": MOTOR_MOUNT_PCD,
             "mount_angular_spacing_deg": 120,

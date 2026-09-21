@@ -17,6 +17,8 @@ from .design_contract import (
     MANUFACTURING_DECISION,
     PUBLISHED_PROCESS_SIZE_MM,
     RAIL_LENGTH_MM,
+    hardware_bom_scope,
+    release_status,
 )
 from .provenance import file_sha256, source_fingerprint
 
@@ -143,6 +145,48 @@ def mesh_checks(shape, mesh):
     }
 
 
+def print_entry_inventory_check(entry, installed, coupons):
+    """Bind each manifest quantity and SKU to the saved native registry roles."""
+    installed_by_name = {obj.Name: obj for obj in installed}
+    coupons_by_name = {obj.Name: obj for obj in coupons}
+    native = {**installed_by_name, **coupons_by_name}
+    names = entry["instances"]
+    expected_installed = sum(name in installed_by_name for name in names)
+    expected_coupons = sum(name in coupons_by_name for name in names)
+    known = all(name in native for name in names)
+    skus_match = known and all(
+        str(getattr(native[name], "PrintSKU", native[name].Name)) == entry["sku"]
+        for name in names
+    )
+    print_flags_match = known and all(
+        bool(getattr(native[name], "PrintPart", False)) for name in names
+    )
+    quantities_match = (
+        type(entry["quantity"]) is int
+        and type(entry["installed_quantity"]) is int
+        and type(entry["coupon_quantity"]) is int
+        and entry["quantity"] == len(names)
+        and entry["installed_quantity"] == expected_installed
+        and entry["coupon_quantity"] == expected_coupons
+    )
+    disjoint_roles = not (set(installed_by_name) & set(coupons_by_name))
+    return {
+        "native_installed_quantity": expected_installed,
+        "native_coupon_quantity": expected_coupons,
+        "known_native_instances": known,
+        "native_print_skus_match": skus_match,
+        "native_print_flags_match": print_flags_match,
+        "quantities_match_native_roles": quantities_match,
+        "passed": bool(names)
+        and len(set(names)) == len(names)
+        and disjoint_roles
+        and known
+        and skus_match
+        and print_flags_match
+        and quantities_match,
+    }
+
+
 def export_print_parts(assembly, installed, coupons, out, stem):
     """Export one STL/STEP per verified print SKU and record all quantities."""
     out = Path(out)
@@ -254,7 +298,8 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "units": "mm",
         "process": "PA12 SLS preferred; MJF alternative; agree the process with Creallo",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "manufacturing_release_status": "FIT PROTOTYPE ONLY: narrow rail flexures need supplier acceptance; actual RS1102 mounting and DS-M005 horn torque connection remain unfinished.",
+        "manufacturing_release_status": "CAD checks do not qualify manufacture or physical interfaces; see release_status for every unresolved interface.",
+        "release_status": release_status(),
         "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
         "size_screen_is_one_piece_acceptance": False,
         "thin_flexure_exception": "The1.2mm continuous narrow rail base needs supplier review; nominal0.8mm minimum is not blanket compliance with3mm long/broad PA12 guidance for SLS/MJF.",
@@ -268,6 +313,41 @@ def export_print_parts(assembly, installed, coupons, out, stem):
     (folder / "print_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     App.setActiveDocument(assembly.Name)
     return manifest
+
+
+# Mandatory procurement fields must be identical for every instance of a SKU.
+# Candidate URLs and evidence notes may be empty when no item is selected.
+PURCHASE_METADATA_FIELDS = {
+    "purchase_search_query": "PurchaseSearchQuery",
+    "purchase_search_url": "PurchaseSearchURL",
+    "purchase_requirements": "PurchaseRequirements",
+    "purchase_candidate_url": "PurchaseCandidateURL",
+    "purchase_evidence_notes": "PurchaseEvidenceNotes",
+    "purchasing_status": "PurchasingStatus",
+}
+REQUIRED_PURCHASE_FIELDS = frozenset(
+    (
+        "purchase_search_query",
+        "purchase_search_url",
+        "purchase_requirements",
+        "purchasing_status",
+    )
+)
+
+
+def purchase_metadata(instances):
+    """Reject a shared SKU whose instances disagree on what must be bought."""
+    fields = {}
+    for field, property_name in PURCHASE_METADATA_FIELDS.items():
+        values = {str(getattr(part, property_name, "")) for part in instances}
+        if len(values) != 1 or (
+            field in REQUIRED_PURCHASE_FIELDS and not next(iter(values), "")
+        ):
+            raise ValueError(
+                f"Missing or conflicting {property_name} for shared hardware SKU"
+            )
+        fields[field] = values.pop()
+    return fields
 
 
 def export_hardware_bom(objects, out, stem):
@@ -302,14 +382,7 @@ def export_hardware_bom(objects, out, stem):
                     {str(getattr(part, "SourceURL", "")) for part in instances}
                 ),
                 "notes": str(getattr(obj, "Notes", "")),
-                "purchase_search_query": str(getattr(obj, "PurchaseSearchQuery", "")),
-                "purchase_search_url": str(getattr(obj, "PurchaseSearchURL", "")),
-                "purchase_requirements": str(getattr(obj, "PurchaseRequirements", "")),
-                "purchase_candidate_url": str(getattr(obj, "PurchaseCandidateURL", "")),
-                "purchase_evidence_notes": str(
-                    getattr(obj, "PurchaseEvidenceNotes", "")
-                ),
-                "purchasing_status": str(getattr(obj, "PurchasingStatus", "")),
+                **purchase_metadata(instances),
                 "instances": [part.Name for part in instances],
             }
         )
@@ -318,7 +391,8 @@ def export_hardware_bom(objects, out, stem):
         "source_fingerprint": source_fingerprint(),
         "purchased_hardware_quantity": len(objects),
         "unique_purchase_spec_count": len(rows),
-        "all_threads": "M2 x0.4 ISO metric coarse for the new mechanical hardware. OEM motor/horn screws remain unverified.",
+        "all_threads": "Modeled mechanism fasteners use M2 x0.4 ISO metric coarse threads. Unmodeled device/OEM fasteners are outside this list; consult their verified interfaces and unresolved mounting requirements.",
+        "purchase_scope": hardware_bom_scope(),
         "color": "Gold = purchased hardware; not a material or finish specification.",
         "purchasing_status": "Specifications and source drawings; no marketplace SKU or seller lot verified.",
         "items": rows,

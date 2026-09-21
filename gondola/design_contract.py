@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "L"
+DESIGN_REVISION = "M"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -62,6 +62,13 @@ SCOPED_LISTED_EQUIPMENT_MASS_G = round(
 )
 # Preserve conflicting primary evidence instead of selecting an electrical rating.
 SOURCE_DISCREPANCIES = {
+    "servo_case_dimensions": {
+        "manufacturer_drawing_mm": [16.05, 8.3, 17.2],
+        "manufacturer_product_page_mm": [16.2, 8.3, 17.4],
+        "drawing_evidence": "references/ds_m005_dimensions.jpg",
+        "product_url": "https://www.dspowerservo.com/ds-m005-mini-servo-product/",
+        "status": "Retain the larger published case envelope. Published ear axes and underside datum are separate drawing evidence; verify dimensions on the supplied servo.",
+    },
     "servo_supply_voltage": {
         "manufacturer_label_v": [3.7, 4.2],
         "manufacturer_product_page_v": [3.7, 5.0],
@@ -91,8 +98,8 @@ EXPECTED_INVENTORY = {
     "tilting_propulsors": 2,
     "installed_prints": 10,
     "fit_coupons": 2,
-    "purchased_hardware": 22,
-    "purchased_hardware_types": 5,
+    "purchased_hardware": 26,
+    "purchased_hardware_types": 6,
     "unique_print_files": 8,
 }
 
@@ -178,6 +185,20 @@ def release_status():
         "stage": "fit_prototype" if pending else "interfaces_verified",
         "production_released": not pending,
         "unresolved_interfaces": pending,
+    }
+
+
+def hardware_bom_scope():
+    """Distinguish modeled mechanism quantities from a complete purchase list."""
+    return {
+        "scope": "modeled_mechanism_hardware_only",
+        "complete_gondola_purchase_list": False,
+        "excluded_unmodeled_requirements": [
+            "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
+            "OEM motor/servo mounting fasteners, servo horns and unfinished drive couplings.",
+            "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
+        ],
+        "release_status": release_status(),
     }
 
 

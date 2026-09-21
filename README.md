@@ -15,7 +15,7 @@ human assembly manual or a declaration of physical qualification.
 - `gondola/parts/propulsion.py`: frame, carriers, custom torque journals and the
   published servo/motor interface decisions. `rail.py`: shared rail/shoe/clamp.
 - `gondola/parts/fastener_spec.py`: common purchased M2 dimensions.
-  `metric_hardware.py`: the five modeled mechanism hardware purchase types.
+  `metric_hardware.py`: the six modeled mechanism hardware purchase types.
 - `gondola/assembly.py`: assembly and native expression controls.
   `cad.py`: metadata and local/world transforms.
 - `gondola/manufacturing.py`: unique print exports and hardware BOM.
@@ -27,7 +27,7 @@ human assembly manual or a declaration of physical qualification.
   Older fixtures remain in Git history. Never regenerate a fixture merely to
   pass a failing comparison; audit deliberate shape, placement and scope changes.
 
-## Rev L decisions
+## Rev M decisions
 
 Scope remains one indoor LTA blimp gondola: two main propulsors, two tilt servos,
 FC, battery, LR900-A, LinkTrack P-AS and MTF-02P. Yaw propulsion, fins and fin
@@ -54,6 +54,12 @@ Confirmed interfaces and conservative design reservations are distinct:
 
 The FC manufacturer supplies four **M2x7.5 mm silicone dampening sleeves**.
 Use those bought parts; do not print substitute dampers or an unverified spline.
+DS-M005's drawing lists16.05x8.30x17.20 mm while the current product table lists
+16.2x8.3x17.4 mm. Retain the larger case reservation; the published ear axes and
+10.2 mm underside datum are separate evidence, not proof that all supplied units
+match both sources. RS1102 radial packaging includes the drawing's maximum
+diameter13.6 mm (nominal13.5 +0.10).
+
 The model allocates **8 mm below the full FC envelope** above the carrier face.
 A separate8x8 mm X-open wiring corridor is offset to Y=5..13 mm so it avoids
 all four FC attachment axes. This is a design space allowance, not a measured
@@ -116,16 +122,38 @@ examples are not verified seller options, stock, delivery or supplier-lot fit.
 Do not print bought fasteners, ordinary spacers, dampers, servo horns or devices.
 Actual selected seller options must match the dimensional specification.
 
-Modeled mechanism hardware: **five types,22 pieces**, excluding spares and device
+Modeled mechanism hardware: **six types,26 pieces**, excluding spares and device
 mounting kits whose lengths/bearing planes remain unresolved:
 
 | CAD SKU | Required specification | Quantity |
 |---|---|---:|
 | `M2X14_SOCKET_CAP` | A2 stainless M2x14, DIN912/ISO4762, under-head length14, head diameter3.8/height2, hex key1.5 mm | 4 |
 | `M2_HEX_NUT` | A2 DIN934 M2x0.4, AF4/height1.6 mm; journal retention only | 4 |
-| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3 mm | 8 |
+| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3 mm; four under heads and four under nuts | 8 |
+| `M3_WASHER_3.2_9_0.8` | A2/SUS304 DIN9021 / ISO7093-1 large washer ID3.2 x OD9 x thickness0.8 mm; added inner retainers on M2 bolts | 4 |
 | `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, DIN913/ISO4026, hex key0.9 mm | 3 |
 | `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2 mm; accepted width3.6–4.0/height0.8–1.2 mm, verify corners | 3 |
+
+Rev M corrects an axial-retention defect: the previous diameter5 mm inner
+washers and M2 nuts could pass through the carrier D-bore together with the
+sleeve. Add one bought large washer per journal between sleeve and the original
+small nut-side washer. Keep the small washer: M2 nut across-flats is not its
+bearing-face diameter; its chamfered bearing face may not span the large bore.
+The M3 washer designation is an unthreaded clearance size; all mechanism bolts
+remain M2. Do not replace the large retainer with another small washer.
+
+[JC Fasteners B4D0303009](https://www.jcfasteners.com/wp-content/uploads/DIN-9021-Large-Washer-B4D03-SS304.pdf)
+specifies ID3.20–3.38, OD8.64–9.00 and thickness0.70–0.90 mm. Nominal CAD checks
+must include the entire fastened stack resisting axial escape, washer-to-sleeve
+and nut-side contact, free rotation and removal after disassembling fasteners.
+The D-flat is essential for capture; a round bore is not an equivalent geometry.
+Dimensional screens do not qualify tilted/eccentric bearing, deformation,
+preload, friction, wear or vibration loosening.
+[JC's small M2 washer](https://www.jcfasteners.com/wp-content/uploads/DIN-125-Plain-Washer-B4D02-SS304.pdf)
+has ID2.20–2.34, OD4.70–5.00 and thickness0.25–0.35 mm.
+[Böllhoff DIN934 A2](https://eshop.boellhoff.de/out/media/pdf/DIN_934_Edelstahl_A2___en.pdf)
+gives M2 minimum bearing-face diameter3.2 mm. The small washer bridges that
+face to the larger washer; across-flats alone would miss the nut chamfer.
 
 The rail clamps require square nuts; do not substitute small hex nuts.
 [Accu](https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2) permits minimum
@@ -182,6 +210,12 @@ changes the CAD file hash. Source changes require rebuilding before preview and
 validation. Any failed command stops the sequence. Both validation and baseline
 comparison must pass for the exact current source/CAD/exports before bundling.
 The offline tests and GitHub CI do not perform CAD geometry validation.
+Artifact schema2 requires explicit release/procurement scope and BOM hash binding;
+regenerate older exports instead of reusing their reports.
+Export checks bind each part's installed/coupon quantity to the native registry.
+BOM purchase fields must match every native instance; its explicit scope excludes
+unmodeled device mounting kits. Native release status and frozen part purchase/print
+roles are checked independently of geometry.
 CI also checks imports and formatting with Ruff 0.16.8 and `ruff.toml`; run
 `uvx ruff==0.16.8 check gondola tests build_gondola.FCMacro preview_gondola.FCMacro`
 and the corresponding `format --check` before uploading source changes.

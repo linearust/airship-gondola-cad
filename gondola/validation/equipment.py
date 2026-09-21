@@ -13,8 +13,12 @@ from gondola.cad import (
     world_shape,
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, OUTPUT_DIR, ROOT, STEM
-from gondola.design_contract import EXPECTED_INVENTORY
-from gondola.manufacturing import geometry_comparison
+from gondola.design_contract import EXPECTED_INVENTORY, hardware_bom_scope
+from gondola.manufacturing import (
+    PURCHASE_METADATA_FIELDS,
+    REQUIRED_PURCHASE_FIELDS,
+    geometry_comparison,
+)
 from gondola.parts import equipment_envelopes as devices
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import mounting_interfaces as interfaces
@@ -37,6 +41,7 @@ EXPECTED_PURCHASE_QUANTITIES = {
     "M2_HEX_NUT": 4,
     "M2_SQUARE_NUT_DIN562": 3,
     "M2_WASHER_2.2_5_0.3": 8,
+    "M3_WASHER_3.2_9_0.8": 4,
 }
 
 
@@ -649,8 +654,21 @@ def hardware_check(doc, source):
         instances = [model_hardware.get(name) for name in row["instances"]]
         matched = bool(instances) and all(obj is not None for obj in instances)
         if matched:
+            procurement_matches = all(
+                field in row
+                and all(
+                    row[field] == str(getattr(obj, property_name, ""))
+                    for obj in instances
+                )
+                and (field not in REQUIRED_PURCHASE_FIELDS or bool(row[field]))
+                for field, property_name in PURCHASE_METADATA_FIELDS.items()
+            )
             matched = (
-                row["quantity"] == len(instances)
+                procurement_matches
+                and row.get("purchase_code") == row["sku"] + "_A2"
+                and row.get("label") == str(instances[0].Label)
+                and row.get("notes") == str(getattr(instances[0], "Notes", ""))
+                and row["quantity"] == len(instances)
                 and all(
                     row["sku"] == str(obj.HardwareSKU)
                     and row["material"] == str(obj.MaterialSelection)
@@ -677,6 +695,8 @@ def hardware_check(doc, source):
         "materials_by_sku": {sku: sorted(values) for sku, values in materials.items()},
         "material_checks": checks,
         "bom_source_identity_matches": identity_matches,
+        "bom_purchase_scope_matches_contract": bom.get("purchase_scope")
+        == hardware_bom_scope(),
         "bom_rows": bom_rows,
         "not_printed": all(
             obj not in registry.PrintedParts
@@ -690,6 +710,7 @@ def hardware_check(doc, source):
         "bom_stated_quantity": bom["purchased_hardware_quantity"],
         "bom_stated_unique_specs": bom["unique_purchase_spec_count"],
         "passed": dict(quantities) == EXPECTED_PURCHASE_QUANTITIES
+        and bom.get("purchase_scope") == hardware_bom_scope()
         and all(row["passed"] for row in checks)
         and identity_matches
         and all(row["matches_native_instances"] for row in bom_rows),
@@ -700,6 +721,8 @@ def validate(source=None):
     fingerprint_before = source_fingerprint()
     source = Path(source).resolve() if source else OUTPUT_DIR / (STEM + ".FCStd")
     before = file_sha256(source)
+    bom_path = source.parent / (source.stem + "_hardware_bom.json")
+    bom_before = file_sha256(bom_path)
     doc = App.openDocument(str(source), hidden=True)
     try:
         registry = doc.DesignRegistry
@@ -722,6 +745,7 @@ def validate(source=None):
         report = {
             "source_file": os.path.relpath(source, ROOT),
             "source_sha256": before,
+            "hardware_bom_sha256_before": bom_before,
             "source_fingerprint": fingerprint_before,
             "scope": "Read-only saved-file clearance and purchased-hardware audit. Temporary in-memory MTF optical-obstruction tilt probes are restored; the native file is never saved.",
             "actual_object_counts": {
@@ -748,10 +772,13 @@ def validate(source=None):
     after = file_sha256(source)
     report["source_sha256_after"] = after
     report["source_unchanged"] = before == after
+    report["hardware_bom_sha256_after"] = file_sha256(bom_path)
+    report["hardware_bom_unchanged"] = bom_before == report["hardware_bom_sha256_after"]
     report["source_code_unchanged"] = fingerprint_before == source_fingerprint()
     report["passed"] = (
         before == after
         and report["source_code_unchanged"]
+        and report["hardware_bom_unchanged"]
         and mtf["passed"]
         and mounting["passed"]
         and all(row["passed"] for row in checks)

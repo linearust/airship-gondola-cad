@@ -31,6 +31,73 @@ def intersection_volume(first, second):
     return abs(first.common(second).Volume)
 
 
+def translation_sweep(shape, displacement):
+    """Return a continuous translational envelope and its construction method.
+
+    Sweeping the boundary faces together with the starting solid gives the exact
+    swept volume for planar faces and cylinders parallel to the displacement.
+    A periodic curved face extruded across its axis may fold onto itself, so it
+    is deliberately not accepted by that construction. Other surfaces use the
+    union bounding box of both endpoints: conservative, never an endpoint-only
+    collision test. A collision with this fallback may need a better envelope.
+    """
+    import FreeCAD as App
+    import Part
+
+    coordinates = tuple(float(value) for value in displacement)
+    if len(coordinates) != 3 or not all(math.isfinite(x) for x in coordinates):
+        raise ValueError("Translation must contain three finite coordinates.")
+    if shape.isNull() or not shape.isValid() or not shape.Solids:
+        raise ValueError("Translation sweep requires valid solid geometry.")
+    vector = App.Vector(*coordinates)
+    if vector.Length == 0:
+        return shape.copy(), "stationary solid"
+    exact = True
+    for face in shape.Faces:
+        surface = face.Surface
+        name = type(surface).__name__
+        if name == "Plane":
+            continue
+        if (
+            name == "Cylinder"
+            and surface.Axis.cross(vector).Length <= 1e-12 * vector.Length
+        ):
+            continue
+        exact = False
+        break
+    if not exact:
+        bounds = shape.BoundBox
+        minimum = [bounds.XMin, bounds.YMin, bounds.ZMin]
+        size = [bounds.XLength, bounds.YLength, bounds.ZLength]
+        return (
+            Part.makeBox(
+                *(size[i] + abs(coordinates[i]) for i in range(3)),
+                App.Vector(*(minimum[i] + min(0, coordinates[i]) for i in range(3))),
+            ),
+            "continuous conservative bounding prism",
+        )
+    pieces = [shape.copy()]
+    for face in shape.Faces:
+        prism = face.extrude(vector)
+        if abs(prism.Volume) <= 1e-12:
+            continue
+        if not prism.isValid() or not prism.Solids:
+            raise ValueError("Invalid face prism in continuous translation sweep.")
+        pieces.append(prism)
+    swept = (
+        pieces[0].multiFuse(pieces[1:]).removeSplitter()
+        if len(pieces) > 1
+        else pieces[0]
+    )
+    if swept.isNull() or not swept.isValid() or not swept.Solids:
+        raise ValueError("Invalid continuous translation sweep.")
+    end = shape.copy()
+    end.translate(vector)
+    if abs(shape.cut(swept).Volume) > TOL or abs(end.cut(swept).Volume) > TOL:
+        raise ValueError("Continuous sweep does not contain both endpoint solids.")
+    return swept, "continuous planar/coaxial-cylinder face-prism union"
+
+
 def _stl_triangle(points):
     """Normalize coordinates to the precision actually serialized in STL."""
     return tuple(

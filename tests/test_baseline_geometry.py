@@ -1,5 +1,6 @@
 """Frozen-design regression gates; execute inside the FreeCAD Python runtime."""
 
+import json
 import unittest
 from collections import Counter
 
@@ -42,6 +43,9 @@ class FrozenBaselineTests(unittest.TestCase):
             len(registry.PrintedParts), EXPECTED_INVENTORY["installed_prints"]
         )
         self.assertEqual(len(registry.FitCoupons), EXPECTED_INVENTORY["fit_coupons"])
+        for obj in list(registry.PrintedParts) + list(registry.FitCoupons):
+            self.assertIn("PrintPart", obj.PropertiesList, obj.Name)
+            self.assertTrue(obj.PrintPart, obj.Name)
         self.assertEqual(
             len(registry.HardwareParts), EXPECTED_INVENTORY["purchased_hardware"]
         )
@@ -63,6 +67,8 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(hardware_skus["M2_HEX_NUT"], 4)
         self.assertEqual(hardware_skus["M2_SQUARE_NUT_DIN562"], 3)
+        self.assertEqual(hardware_skus["M2_WASHER_2.2_5_0.3"], 8)
+        self.assertEqual(hardware_skus["M3_WASHER_3.2_9_0.8"], 4)
         result = unresolved_scope(self.reference)
         self.assertTrue(result["passed"], result)
 
@@ -98,6 +104,46 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertLess(result["world_shape"]["difference_mm3"], 1e-5)
         self.assertFalse(result["world_placement_unchanged"])
         self.assertFalse(result["passed"])
+
+    def test_unchanged_solid_cannot_hide_a_wrong_purchase_or_print_role(self):
+        from gondola.validation.baseline import compare_shape_objects
+
+        shape = Part.makeBox(2, 2, 2)
+        expected = self.feature("ExpectedHardware", shape)
+        actual = self.feature("ActualHardware", shape)
+        for obj in (expected, actual):
+            obj.addProperty("App::PropertyString", "HardwareSKU")
+            obj.HardwareSKU = "M2X14_SOCKET_CAP"
+            obj.addProperty("App::PropertyBool", "PrintPart")
+            obj.PrintPart = False
+            obj.addProperty("App::PropertyString", "PurchaseRequirements")
+            obj.PurchaseRequirements = "A2 stainless steel, M2x14, DIN912"
+        self.assertTrue(compare_shape_objects(actual, expected)["passed"])
+        actual.HardwareSKU = "M2_HEX_NUT"
+        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+        actual.HardwareSKU = expected.HardwareSKU
+        actual.PrintPart = True
+        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+        actual.PrintPart = False
+        actual.PurchaseRequirements = "M2x10 substituted without geometric changes"
+        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+
+    def test_geometry_cannot_promote_an_unverified_assembly_to_production(self):
+        from gondola.validation.baseline import unresolved_scope
+
+        registry = self.reference.DesignRegistry
+        original = registry.ReleaseStatus
+        try:
+            changed = json.loads(original)
+            changed["production_released"] = True
+            registry.ReleaseStatus = json.dumps(changed)
+            result = unresolved_scope(self.reference)
+            self.assertFalse(result["native_release_status_matches_contract"])
+            self.assertFalse(result["passed"])
+            registry.ReleaseStatus = "not valid JSON"
+            self.assertFalse(unresolved_scope(self.reference)["passed"])
+        finally:
+            registry.ReleaseStatus = original
 
 
 if __name__ == "__main__":

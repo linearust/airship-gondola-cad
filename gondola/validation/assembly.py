@@ -31,11 +31,13 @@ from gondola.design_contract import (
     NOTION_URL,
     PUBLISHED_PROCESS_SIZE_MM,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
+    release_status,
 )
 from gondola.manufacturing import (
     MESH_PARAMETERS,
     geometry_comparison,
     mesh_from_shape,
+    print_entry_inventory_check,
     print_shape,
 )
 from gondola.mass_budget import mass_budget
@@ -348,7 +350,19 @@ def hardware_check(registry):
     for obj in bought:
         standard = str(getattr(obj, "ThreadStandard", ""))
         sku = str(getattr(obj, "HardwareSKU", ""))
-        is_metric = "M2" in standard or "M2" in sku
+        is_washer = "_WASHER_" in sku
+        thread_diameter = float(obj.NominalThreadDiameter.Value)
+        thread_pitch = float(obj.ThreadPitch.Value)
+        thread_metadata_matches = (
+            "unthreaded" in standard.lower()
+            and thread_diameter == 0
+            and thread_pitch == 0
+            if is_washer
+            else "M2" in standard
+            and abs(thread_diameter - 2.0) < TOL
+            and abs(thread_pitch - 0.4) < TOL
+        )
+        is_metric = sku.startswith(("M2", "M3")) and thread_metadata_matches
         excluded = obj.Name not in printed_names and not bool(
             getattr(obj, "PrintPart", False)
         )
@@ -356,6 +370,7 @@ def hardware_check(registry):
             "part": obj.Name,
             "sku": sku,
             "thread_standard": standard,
+            "thread_metadata_matches_part": thread_metadata_matches,
             "metric_specification_present": is_metric,
             "excluded_from_print_registry": excluded,
             "passed": is_metric and excluded and bool(sku),
@@ -402,6 +417,7 @@ def hardware_check(registry):
         "M2_HEX_NUT_A2": 4,
         "M2_SQUARE_NUT_DIN562_A2": 3,
         "M2_WASHER_2.2_5_0.3_A2": 8,
+        "M3_WASHER_3.2_9_0.8_A2": 4,
         "M2x6_ISO4026_DIN913_A2": 3,
         "M2X14_SOCKET_CAP_A2": 4,
     }
@@ -585,7 +601,7 @@ def module_service(registry, objects, shapes):
     return {
         "removal_order": [m.Name for m in sequence],
         "modules": result,
-        "scope": "Straight saved-rail envelopes. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
+        "scope": "Sampled positions along straight saved-rail removal paths, not a continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
         "passed": len(result) == 3 and all(r["passed"] for r in result),
     }
 
@@ -1034,18 +1050,24 @@ def export_check(source, registry):
         "native_source_fingerprint": str(getattr(registry, "SourceFingerprint", "")),
         "current_source_fingerprint": fingerprint,
         "mesh_parameters": manifest.get("mesh_parameters"),
+        "release_status_matches_contract": manifest.get("release_status")
+        == release_status(),
     }
     identity["passed"] = (
         identity["schema_version"] == ARTIFACT_SCHEMA_VERSION
         and identity["manifest_source_fingerprint"] == fingerprint
         and identity["native_source_fingerprint"] == fingerprint
         and identity["mesh_parameters"] == MESH_PARAMETERS
+        and identity["release_status_matches_contract"]
     )
     printed = list(registry.PrintedParts) + list(registry.FitCoupons)
     names = {o.Name for o in printed}
     bought_names = {o.Name for o in registry.HardwareParts}
     rows, exported_names = [], []
     for entry in manifest["parts"]:
+        native_inventory = print_entry_inventory_check(
+            entry, registry.PrintedParts, registry.FitCoupons
+        )
         instances = [registry.Document.getObject(name) for name in entry["instances"]]
         exported_names.extend(entry["instances"])
         if not instances or any(obj is None for obj in instances):
@@ -1105,6 +1127,7 @@ def export_check(source, registry):
             and step_matches
             and all(published_size_checks.values())
             and entry["quantity"] == len(instances)
+            and native_inventory["passed"]
             and all(r["difference_mm3"] < TOL for r in equivalence)
             and not (set(entry["instances"]) & bought_names)
         )
@@ -1122,6 +1145,7 @@ def export_check(source, registry):
                 "mesh_components": mesh.countComponents(),
                 "within_published_fabrication_size": published_size_checks,
                 "quantity": entry["quantity"],
+                "native_inventory": native_inventory,
                 "deduplicated_geometry": equivalence,
                 "passed": good,
             }
@@ -1197,21 +1221,47 @@ def detailed_propulsion_evidence(doc, source):
         }
     evidence = json.loads(path.read_text())
     comparisons = []
-    pairs = [(doc.PropulsionFixedFrame, propulsion.integral_frame_shape())]
-    for prefix in ("Port", "Starboard"):
-        pairs.append(
-            (doc.getObject(prefix + "MotorCarrier"), propulsion.moving_carrier_shape())
+    # The local audit builds fresh source geometry. Bind its hardware and device
+    # envelopes to the saved assembly too, so a passing new-source retention test
+    # cannot endorse an old/smaller washer or a changed motor in the native file.
+    reference_doc = App.newDocument("SavedPropulsionComparison")
+    try:
+        reference = propulsion.build_propulsion_module(reference_doc)
+        reference_doc.recompute()
+        expected_parts = (
+            reference["printed"]
+            + reference["hardware"]
+            + reference["references"]
+            + reference["clearances"]
         )
-        for side, suffix in ((-1, "Negative"), (1, "Positive")):
-            pairs.append(
-                (
-                    doc.getObject(prefix + "JournalSleeve" + suffix),
-                    propulsion.journal_sleeve_shape(side),
-                )
-            )
+        pairs = [(doc.getObject(obj.Name), local_shape(obj)) for obj in expected_parts]
+    finally:
+        App.closeDocument(reference_doc.Name)
     for obj, expected in pairs:
+        if obj is None:
+            comparisons.append(
+                {
+                    "object": "missing propulsion part",
+                    "difference_mm3": None,
+                    "passed": False,
+                }
+            )
+            continue
         comparison = geometry_comparison(local_shape(obj), expected)
-        comparisons.append({"object": obj.Name, **comparison})
+        comparisons.append(
+            {
+                "object": obj.Name,
+                **comparison,
+                "passed": all(
+                    comparison[key] < TOL
+                    for key in (
+                        "difference_mm3",
+                        "volume_difference_mm3",
+                        "bounds_difference_mm",
+                    )
+                ),
+            }
+        )
     volume_failures = []
 
     def inspect(value, location=""):
@@ -1257,7 +1307,7 @@ def detailed_propulsion_evidence(doc, source):
         "scope": "Fine local sleeve service requires prior servo removal on the driven sides. Actual servo horn coupling and motor fasteners remain unfinished. MJF uses powder support; FDM facet counters are informational.",
         "passed": evidence_ok
         and not volume_failures
-        and all(row["difference_mm3"] < TOL for row in comparisons),
+        and all(row["passed"] for row in comparisons),
     }
 
 

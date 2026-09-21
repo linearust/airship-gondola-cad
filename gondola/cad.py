@@ -68,6 +68,7 @@ def create_printed_part(doc, parent, name, label, shape, rotation, notes):
     obj.Label, obj.Shape = label, shape
     parent.addObject(obj)
     set_property(obj, "Role", "Printed fit prototype")
+    set_property(obj, "PrintPart", True, "App::PropertyBool")
     set_property(obj, "Notes", notes)
     set_property(obj, "PrintNotes", notes, group="Printing")
     set_property(obj, "PrintRotation", rotation, "App::PropertyRotation", "Printing")

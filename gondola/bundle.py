@@ -21,7 +21,7 @@ from .config import (
     ROOT,
     STEM,
 )
-from .design_contract import EXPECTED_INVENTORY, release_status
+from .design_contract import EXPECTED_INVENTORY, hardware_bom_scope, release_status
 from .provenance import file_sha256, source_fingerprint
 
 
@@ -218,6 +218,14 @@ def build_bundle():
             if artifact.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
                 raise RuntimeError(f"Unsupported {label} schema.")
             _same_source(artifact, fingerprint, label)
+        if manifest.get("release_status") != release_status():
+            raise RuntimeError(
+                "Print manifest release status disagrees with the current design contract."
+            )
+        if bom.get("purchase_scope") != hardware_bom_scope():
+            raise RuntimeError(
+                "Hardware BOM purchase scope disagrees with the current design contract."
+            )
         _validate_bom(bom)
         paths = print_artifact_paths(output, STEM, manifest)
         # Snapshot bytes once. The published files are exactly those hashed here,
@@ -232,6 +240,14 @@ def build_bundle():
         ):
             raise RuntimeError(
                 "Stale or altered print files, manifest or BOM; run validate again."
+            )
+        bom_sha = hashes[STEM + "_hardware_bom.json"]
+        if (
+            equipment.get("hardware_bom_sha256_before") != bom_sha
+            or equipment.get("hardware_bom_sha256_after") != bom_sha
+        ):
+            raise RuntimeError(
+                "Stale equipment BOM validation; run validate against the current BOM."
             )
         for part in manifest["parts"]:
             for name_key, hash_key in (

@@ -17,6 +17,7 @@ from gondola.config import BASELINE_FILE, BASELINE_SHA256, OUTPUT_DIR, ROOT, STE
 from gondola.design_contract import (
     MANUFACTURING_DECISION,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
+    release_status,
 )
 from gondola.manufacturing import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
@@ -179,6 +180,11 @@ def unresolved_scope(doc):
     rail_exception = str(doc.ContinuousRail.ManufacturingException)
     flexure_description = f"{MANUFACTURING_DECISION['nominal_rail_flexure_mm']:g}mm"
     status = str(registry.Status)
+    try:
+        native_release = json.loads(str(registry.ReleaseStatus))
+    except (AttributeError, TypeError, ValueError):
+        native_release = None
+    release_matches = native_release == release_status()
     return {
         "scope_exclusions": str(registry.ScopeExclusions),
         "forbidden_device_references": forbidden,
@@ -186,7 +192,9 @@ def unresolved_scope(doc):
         "mtf02p_device_and_optical_reserve_are_reference_only": optical_scope_ok,
         "rail_flexure_exception": rail_exception,
         "qualification_status": status,
+        "native_release_status_matches_contract": release_matches,
         "passed": not forbidden
+        and release_matches
         and coupling_ok
         and optical_scope_ok
         and flexure_description in rail_exception.replace(" ", "")
@@ -199,6 +207,42 @@ def unresolved_scope(doc):
     }
 
 
+def procurement_and_scope_metadata(obj):
+    """Keep shape identity tied to its purchase/print role and qualification.
+
+    Notes, labels and display settings may change without changing a part.
+    These interface-bearing fields must not silently change under identical BReps.
+    """
+    fields = (
+        "HardwareSKU",
+        "PrintSKU",
+        "Role",
+        "PrintPart",
+        "MaterialSelection",
+        "ThreadStandard",
+        "NominalThreadDiameter",
+        "ThreadPitch",
+        "SourceURL",
+        "PurchaseSearchQuery",
+        "PurchaseSearchURL",
+        "PurchaseRequirements",
+        "PurchaseCandidateURL",
+        "PurchaseEvidenceNotes",
+        "PurchasingStatus",
+        "ManufacturingRoute",
+        "MountingStackVerified",
+        "PCBHeightMeasured",
+        "InstalledOpticalFieldVerified",
+        "FDMPrintValidated",
+    )
+    values = {}
+    for name in fields:
+        if name in obj.PropertiesList:
+            value = getattr(obj, name)
+            values[name] = float(value.Value) if hasattr(value, "Value") else value
+    return values
+
+
 def compare_shape_objects(actual, expected):
     """Compare complete local/world BReps and placement, including symmetry cases."""
     local = geometry_comparison(local_shape(actual), local_shape(expected))
@@ -208,6 +252,9 @@ def compare_shape_objects(actual, expected):
         expected.getGlobalPlacement(), 1e-7
     )
     same_solids = len(actual.Shape.Solids) == len(expected.Shape.Solids)
+    actual_metadata = procurement_and_scope_metadata(actual)
+    expected_metadata = procurement_and_scope_metadata(expected)
+    same_metadata = actual_metadata == expected_metadata
     return {
         "object": actual.Name,
         "local_shape": local,
@@ -215,9 +262,13 @@ def compare_shape_objects(actual, expected):
         "object_type_unchanged": same_type,
         "world_placement_unchanged": same_placement,
         "solid_count_unchanged": same_solids,
+        "procurement_and_scope_metadata_unchanged": same_metadata,
+        "current_procurement_and_scope_metadata": actual_metadata,
+        "baseline_procurement_and_scope_metadata": expected_metadata,
         "passed": same_type
         and same_placement
         and same_solids
+        and same_metadata
         and all(
             comparison["difference_mm3"] < TOL
             and comparison["bounds_difference_mm"] < TOL

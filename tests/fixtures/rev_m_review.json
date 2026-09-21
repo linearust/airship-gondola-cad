@@ -1,0 +1,688 @@
+{
+  "schema_version": 1,
+  "design_revision": "M",
+  "reviewed_on": "2026-09-21",
+  "previous_source_commit": "ac36d3689930b35c54049a9963d87dc4114ae22b",
+  "previous_cad_sha256": "a074f4fee8bee53b935b87824fb4be23cdcd3eb32ab5eab6714897fbaa476c70",
+  "previous_source_fingerprint": "7ad2517e0ca25159dd7b40144fa312d1e9f8a85c442c1eb76b6a9f0a350b17f8",
+  "previous_snapshot_matches_source_commit": true,
+  "fixture": "tests/fixtures/rev_m_geometry.FCStd",
+  "fixture_sha256": "e29b6eb7e1f11d7fa7f345144f459ea23e6d4630534ec5be61a4ded0a34bc907",
+  "fixture_source_fingerprint": "43b33aeeab20ead53e220cf7cc17033d4841f41f1d1844d38a6005bfebeba79b",
+  "retired_fixture": {
+    "path": "tests/fixtures/rev_l_geometry.FCStd",
+    "sha256": "a1e5b81c66bc4f65a6cbaf27fcb52e1b6e6862519e9b9d6a2d6a44a279fdac67",
+    "review": "tests/fixtures/rev_l_review.json",
+    "review_sha256": "0aff4bffc0f7a9a4a182a27366dbd4f47e7589ba20e36b200dc888a00b0abf6b",
+    "available_at_commit": "ac36d3689930b35c54049a9963d87dc4114ae22b"
+  },
+  "scope": "Repair purchased-hardware axial retention without changing any printed part. Add four large stock M3 clearance washers to the existing M2 journal stacks, retain all eight small M2 washers, move the inner small washers/nuts inward by 0.8 mm, and use the motor drawing maximum diameter of 13.6 mm instead of nominal 13.5 mm.",
+  "mechanical_basis": {
+    "defect": "The old OD5 mm inner washer and M2 nut could pass through the carrier D-hole; sleeve retention was not established by an overlap with a corner of the hex nut.",
+    "correction": "Four DIN9021/ISO7093-1 SUS304 3.2x9x0.8 mm unthreaded retainers engage the carrier D-flat. Keep the 2.2x5x0.3 mm small washer between each retainer and M2 nut: the M3 bore maximum3.38 mm exceeds the M2 minimum chamfered bearing diameter3.2 mm.",
+    "drawing_sources": {
+      "large_washer": "https://www.jcfasteners.com/wp-content/uploads/DIN-9021-Large-Washer-B4D03-SS304.pdf",
+      "small_washer": "https://www.jcfasteners.com/wp-content/uploads/DIN-125-Plain-Washer-B4D02-SS304.pdf",
+      "nut_bearing_diameter": "https://eshop.boellhoff.de/out/media/pdf/DIN_934_Edelstahl_A2___en.pdf",
+      "motor": "https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg"
+    },
+    "qualification_limit": "Nominal and tolerance geometry are screening only. Selected supplier lots, eccentric seating, clamp preload, PA12 creep, bearing strength and vibration retention remain unqualified."
+  },
+  "comparison": "All common saved local/world BReps, exact bounds, volumes, solid counts, types, global placements and critical procurement/scope metadata were compared. Each changed physical shape also has an independent dimensional or frozen-shape translation proof. No geometry comparison exception is introduced.",
+  "shape_counts": {
+    "previous": 72,
+    "current": 76,
+    "changed_existing": 10,
+    "unchanged": 62,
+    "removed": 0,
+    "added": 4
+  },
+  "changed_existing_shapes": [
+    {
+      "object": "PortJournalNegativeInnerWasher",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 4.7500880922277515,
+      "volume_after_mm3": 4.7500880922277515,
+      "local_difference_mm3": 9.500176184455505,
+      "world_difference_mm3": 9.500176184455505,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "PortJournalNegativeNut",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 17.143702091137975,
+      "volume_after_mm3": 17.143702091137975,
+      "local_difference_mm3": 34.28740418227595,
+      "world_difference_mm3": 17.143702091138096,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "PortJournalPositiveInnerWasher",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 4.750088092227771,
+      "volume_after_mm3": 4.750088092227771,
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 9.500176184455503,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "PortJournalPositiveNut",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 17.143702091137975,
+      "volume_after_mm3": 17.143702091137975,
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 17.143702091137847,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "PortMotor",
+      "reason": "Maximum motor diameter13.6 mm from manufacturer drawing.",
+      "volume_before_mm3": 2003.9434139085893,
+      "volume_after_mm3": 2033.7414202278883,
+      "local_difference_mm3": 29.798006319298793,
+      "world_difference_mm3": 29.798006319299247,
+      "global_placement_unchanged": true,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "StarboardJournalNegativeInnerWasher",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 4.7500880922277515,
+      "volume_after_mm3": 4.7500880922277515,
+      "local_difference_mm3": 9.500176184455505,
+      "world_difference_mm3": 9.50017618445543,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "StarboardJournalNegativeNut",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 17.143702091137975,
+      "volume_after_mm3": 17.143702091137975,
+      "local_difference_mm3": 34.28740418227595,
+      "world_difference_mm3": 17.14370209113766,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "StarboardJournalPositiveInnerWasher",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 4.750088092227771,
+      "volume_after_mm3": 4.750088092227771,
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 9.500176184455505,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "StarboardJournalPositiveNut",
+      "reason": "Translate unchanged hardware0.8 mm toward the pod centre to accommodate the additional retaining washer.",
+      "volume_before_mm3": 17.143702091137975,
+      "volume_after_mm3": 17.143702091137975,
+      "local_difference_mm3": 0.0,
+      "world_difference_mm3": 17.143702091137996,
+      "global_placement_unchanged": false,
+      "type_and_solid_count_unchanged": true
+    },
+    {
+      "object": "StarboardMotor",
+      "reason": "Maximum motor diameter13.6 mm from manufacturer drawing.",
+      "volume_before_mm3": 2003.9434139085893,
+      "volume_after_mm3": 2033.7414202278883,
+      "local_difference_mm3": 29.798006319298793,
+      "world_difference_mm3": 29.798006319299247,
+      "global_placement_unchanged": true,
+      "type_and_solid_count_unchanged": true
+    }
+  ],
+  "added_shapes": [
+    "PortJournalNegativeRetainingWasher",
+    "PortJournalPositiveRetainingWasher",
+    "StarboardJournalNegativeRetainingWasher",
+    "StarboardJournalPositiveRetainingWasher"
+  ],
+  "removed_shapes": [],
+  "unchanged_shapes": [
+    "BatteryEquipmentModuleRailClampNut",
+    "BatteryEquipmentModuleRailClampScrew",
+    "BatteryMount",
+    "CapacitorServiceReserve",
+    "ContinuousRail",
+    "ElectronicsEquipmentModuleRailClampNut",
+    "ElectronicsEquipmentModuleRailClampScrew",
+    "ElectronicsMount",
+    "FCWiringClearanceReserve",
+    "MTF02POpticalClearanceReserve",
+    "MainPropulsionModuleRailClampNut",
+    "MainPropulsionModuleRailClampScrew",
+    "MaximumBatteryEnvelope",
+    "ModuleBatteryEnvelope",
+    "ModuleFCEnvelope",
+    "ModuleLR900Envelope",
+    "ModuleMTF02PEnvelope",
+    "ModulePASEnvelope",
+    "PortCoupling",
+    "PortJournalNegativeBolt",
+    "PortJournalNegativeOuterWasher",
+    "PortJournalPositiveBolt",
+    "PortJournalPositiveOuterWasher",
+    "PortJournalSleeveNegative",
+    "PortJournalSleevePositive",
+    "PortMotorCarrier",
+    "PortPhaseLeadLoopReserve",
+    "PortPropellerDisk",
+    "PortServo",
+    "PortShaft",
+    "PortSweepBound",
+    "PropulsionFixedFrame",
+    "RailFitSample",
+    "ShoeFitSample",
+    "StarboardCoupling",
+    "StarboardJournalNegativeBolt",
+    "StarboardJournalNegativeOuterWasher",
+    "StarboardJournalPositiveBolt",
+    "StarboardJournalPositiveOuterWasher",
+    "StarboardJournalSleeveNegative",
+    "StarboardJournalSleevePositive",
+    "StarboardMotorCarrier",
+    "StarboardPhaseLeadLoopReserve",
+    "StarboardPropellerDisk",
+    "StarboardServo",
+    "StarboardShaft",
+    "StarboardSweepBound",
+    "TapeWing0L",
+    "TapeWing0R",
+    "TapeWing1L",
+    "TapeWing1R",
+    "TapeWing2L",
+    "TapeWing2R",
+    "TapeWing3L",
+    "TapeWing3R",
+    "TapeWing4L",
+    "TapeWing4R",
+    "TapeWing5L",
+    "TapeWing5R",
+    "TapeWing6L",
+    "TapeWing6R",
+    "XT30ServiceReserve"
+  ],
+  "all_10_installed_and_2_coupon_print_shapes_and_placements_unchanged": true,
+  "independent_delta_proofs": [
+    {
+      "object": "PortJournalPositiveInnerWasher",
+      "world_translation_mm": [
+        0,
+        -0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "PortJournalPositiveNut",
+      "world_translation_mm": [
+        0,
+        -0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "PortJournalPositiveRetainingWasher",
+      "independent_nominal_geometry_mm": {
+        "id": 3.2,
+        "od": 9.0,
+        "thickness": 0.8,
+        "positive_side_y": [
+          20.75,
+          21.55
+        ]
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 1.4210854715202004e-14,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "PortJournalNegativeInnerWasher",
+      "world_translation_mm": [
+        0,
+        0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 7.105427357601002e-15,
+      "volume_difference_mm3": 8.881784197001252e-16,
+      "passed": true
+    },
+    {
+      "object": "PortJournalNegativeNut",
+      "world_translation_mm": [
+        0,
+        0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 7.105427357601002e-15,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "PortJournalNegativeRetainingWasher",
+      "independent_nominal_geometry_mm": {
+        "id": 3.2,
+        "od": 9.0,
+        "thickness": 0.8,
+        "positive_side_y": [
+          20.75,
+          21.55
+        ]
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 7.105427357601002e-15,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "PortMotor",
+      "independent_maximum_envelope_mm": {
+        "diameter": 13.6,
+        "length": 14
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalPositiveInnerWasher",
+      "world_translation_mm": [
+        0,
+        -0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalPositiveNut",
+      "world_translation_mm": [
+        0,
+        -0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 7.105427357601002e-15,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalPositiveRetainingWasher",
+      "independent_nominal_geometry_mm": {
+        "id": 3.2,
+        "od": 9.0,
+        "thickness": 0.8,
+        "positive_side_y": [
+          20.75,
+          21.55
+        ]
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 1.4210854715202004e-14,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalNegativeInnerWasher",
+      "world_translation_mm": [
+        0,
+        0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 1.4210854715202004e-14,
+      "volume_difference_mm3": 7.549516567451064e-14,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalNegativeNut",
+      "world_translation_mm": [
+        0,
+        0.8,
+        0
+      ],
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "StarboardJournalNegativeRetainingWasher",
+      "independent_nominal_geometry_mm": {
+        "id": 3.2,
+        "od": 9.0,
+        "thickness": 0.8,
+        "positive_side_y": [
+          20.75,
+          21.55
+        ]
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 7.105427357601002e-15,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    },
+    {
+      "object": "StarboardMotor",
+      "independent_maximum_envelope_mm": {
+        "diameter": 13.6,
+        "length": 14
+      },
+      "difference_mm3": 0.0,
+      "bounds_difference_mm": 0.0,
+      "volume_difference_mm3": 0.0,
+      "passed": true
+    }
+  ],
+  "global_placement_review": {
+    "common_placement_object_count": 162,
+    "changes": [
+      {
+        "object": "PortJournalNegativeInnerWasher",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortJournalNegativeNut",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortJournalPositiveInnerWasher",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortJournalPositiveNut",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardJournalNegativeInnerWasher",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardJournalNegativeNut",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.8000000000000043,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardJournalPositiveInnerWasher",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.7999999999999972,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardJournalPositiveNut",
+        "placement_translation_delta_mm": [
+          0.0,
+          -0.8000000000000043,
+          0.0
+        ],
+        "rotation_unchanged": true,
+        "passed": true
+      }
+    ],
+    "note": "The negative journal features store a reflected BRep under the same placement convention as their positive counterparts. Both stored placement deltas are -0.8 Y; the independent world-shape proofs establish the intended physical +/-0.8 Y motion. All other common object placements are unchanged.",
+    "passed": true
+  },
+  "explicit_native_print_flags": {
+    "objects": [
+      "ContinuousRail",
+      "PortJournalSleeveNegative",
+      "PortJournalSleevePositive",
+      "PortMotorCarrier",
+      "PropulsionFixedFrame",
+      "RailFitSample",
+      "ShoeFitSample",
+      "StarboardJournalSleeveNegative",
+      "StarboardJournalSleevePositive",
+      "StarboardMotorCarrier"
+    ],
+    "before": "PrintPart property absent",
+    "after": true,
+    "reason": "The shared printed-part factory now declares PrintPart=True consistently; the two equipment mounts already had this field. Geometry, roles and print SKUs are unchanged.",
+    "passed": true
+  },
+  "rail_numeric_thread_initialization": {
+    "objects": [
+      "BatteryEquipmentModuleRailClampNut",
+      "BatteryEquipmentModuleRailClampScrew",
+      "ElectronicsEquipmentModuleRailClampNut",
+      "ElectronicsEquipmentModuleRailClampScrew",
+      "MainPropulsionModuleRailClampNut",
+      "MainPropulsionModuleRailClampScrew"
+    ],
+    "before": "NominalThreadDiameter and ThreadPitch properties absent",
+    "after_mm": {
+      "NominalThreadDiameter": 2,
+      "ThreadPitch": 0.4
+    },
+    "reason": "Declare numeric M2 coarse dimensions consistently on all six existing rail screws/square nuts; their existing thread wording and geometry are unchanged."
+  },
+  "threaded_journal_description_correction": {
+    "objects": [
+      "PortJournalNegativeBolt",
+      "PortJournalNegativeNut",
+      "PortJournalPositiveBolt",
+      "PortJournalPositiveNut",
+      "StarboardJournalNegativeBolt",
+      "StarboardJournalNegativeNut",
+      "StarboardJournalPositiveBolt",
+      "StarboardJournalPositiveNut"
+    ],
+    "before": "ISO metric coarse M2 x 0.4; right-hand. Washer is unthreaded.",
+    "after": "ISO metric coarse M2 x 0.4; right-hand.",
+    "numeric_thread_dimensions_unchanged_mm": [
+      2,
+      0.4
+    ]
+  },
+  "critical_metadata_changes": {
+    "sku": "M2_WASHER_2.2_5_0.3",
+    "objects": [
+      "PortJournalNegativeInnerWasher",
+      "PortJournalNegativeOuterWasher",
+      "PortJournalPositiveInnerWasher",
+      "PortJournalPositiveOuterWasher",
+      "StarboardJournalNegativeInnerWasher",
+      "StarboardJournalNegativeOuterWasher",
+      "StarboardJournalPositiveInnerWasher",
+      "StarboardJournalPositiveOuterWasher"
+    ],
+    "changed_fields": {
+      "NominalThreadDiameter": {
+        "before": 2.0,
+        "after": 0.0
+      },
+      "PurchaseCandidateURL": {
+        "before": "",
+        "after": "https://www.jcfasteners.com/wp-content/uploads/DIN-125-Plain-Washer-B4D02-SS304.pdf"
+      },
+      "PurchaseRequirements": {
+        "before": "A2 stainless steel flat washer, unthreaded; nominal bore 2.2 mm, outside diameter 5 mm and thickness 0.3 mm. Used for journal retention.",
+        "after": "A2 stainless steel flat washer, unthreaded; nominal bore 2.2 mm, outside diameter 5 mm and thickness 0.3 mm. Accepted ID 2.20-2.34 mm, OD 4.70-5.00 mm, thickness 0.25-0.35 mm. Eight journal washers: four under bolt heads and four between M2 nuts and large inner retainers. Do not omit the nut-side small washer or substitute it for a large retainer."
+      },
+      "ThreadPitch": {
+        "before": 0.4,
+        "after": 0.0
+      },
+      "PurchaseEvidenceNotes": {
+        "before": "SourceURL supports the nominal dimensions. Verify selected seller options, material and actual dimensions before purchasing; the AliExpress URL is a search link, not a verified listing.",
+        "after": "JC Fasteners B4D0202000 SUS304 dimensional limits. B\u00f6llhoff DIN934 A2 M2 lists minimum nut bearing diameter dw3.2 mm; across-flats is not the chamfered bearing diameter: https://eshop.boellhoff.de/out/media/pdf/DIN_934_Edelstahl_A2___en.pdf. Keep this small washer under the nut before the larger journal retainer. Coaxial contact dimensions do not qualify eccentric seating, preload or strength."
+      },
+      "ThreadStandard": {
+        "before": "ISO metric coarse M2 x 0.4; right-hand. Washer is unthreaded.",
+        "after": "Unthreaded plain washer; no thread."
+      }
+    },
+    "all_other_critical_metadata_unchanged": true,
+    "passed": true
+  },
+  "registry_changes": {
+    "HardwareParts": {
+      "added": [
+        "PortJournalNegativeRetainingWasher",
+        "PortJournalPositiveRetainingWasher",
+        "StarboardJournalNegativeRetainingWasher",
+        "StarboardJournalPositiveRetainingWasher"
+      ],
+      "removed": [],
+      "common_order_preserved": true,
+      "passed": true
+    }
+  },
+  "registry_transition_matches_plan": true,
+  "native_expressions_unchanged": true,
+  "native_controls_equal_and_passed": true,
+  "native_control_cases": 19,
+  "modeled_hardware": {
+    "pieces": 26,
+    "purchase_specs": 6,
+    "m2_small_washers": 8,
+    "m3_unthreaded_retaining_washers": 4
+  },
+  "artifact_schema_version": 2,
+  "integrity_improvements": [
+    "Every manifest SKU and installed/coupon quantity matches saved native registry roles.",
+    "BOM purchase fields match every saved instance and shared-SKU requirements cannot conflict.",
+    "BOM explicitly excludes unresolved equipment/OEM mounting hardware and accessories.",
+    "Equipment validation binds the exact BOM bytes before and after its audit; packaging requires the same hashes.",
+    "Frozen regression rejects changed SKU/print flags, purchased specifications or qualification fields under unchanged BReps.",
+    "Native, manifest and package release status agree with the unresolved-interface contract."
+  ],
+  "unresolved_interfaces": [
+    {
+      "key": "motion_endpoints",
+      "required_evidence": "Verify actual DS-M005 travel, mechanical stops and horn clocking through bounded \u00b1150deg motion.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_supply_voltage",
+      "required_evidence": "Resolve manufacturer label 3.7\u20134.2V versus user-confirmed manufacturer product page and BOM 3.7\u20135V against the purchased servo before powering it.",
+      "status": "unverified"
+    },
+    {
+      "key": "rail_flexure",
+      "required_evidence": "Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.",
+      "status": "unverified"
+    },
+    {
+      "key": "motor_mount",
+      "required_evidence": "RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_drive",
+      "required_evidence": "Measured DS-M005 28T horn connection, torque transfer to D sleeve and horn retaining fastener.",
+      "status": "unverified"
+    },
+    {
+      "key": "servo_ear_retention",
+      "required_evidence": "DS-M005 ear hole axes and underside datum are published; verify actual case offset, ear thickness, bearing contact and M1.6 clearance-fastener length.",
+      "status": "unverified"
+    },
+    {
+      "key": "electronic_mounting_stack",
+      "required_evidence": "FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.",
+      "status": "unverified"
+    },
+    {
+      "key": "physical_retention",
+      "required_evidence": "Loaded tests of tape, friction clamps, PA12 flexure life and printed journals.",
+      "status": "unverified"
+    },
+    {
+      "key": "moving_wires",
+      "required_evidence": "Actual phase-lead slack/strain relief through bounded \u00b1150deg motion; reserved loops are not routing proof.",
+      "status": "unverified"
+    },
+    {
+      "key": "optical_sensor_installation",
+      "required_evidence": "Confirm MTF-02P lens datums, mounting/adhesive retention, connector access and unobstructed downward field of view on the actual part.",
+      "status": "unverified"
+    },
+    {
+      "key": "finished_mass",
+      "required_evidence": "Weigh chosen battery, prints, hardware, wiring, connectors and adhesive.",
+      "status": "unverified"
+    }
+  ],
+  "procurement_scope": {
+    "scope": "modeled_mechanism_hardware_only",
+    "complete_gondola_purchase_list": false,
+    "excluded_unmodeled_requirements": [
+      "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
+      "OEM motor/servo mounting fasteners, servo horns and unfinished drive couplings.",
+      "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories."
+    ]
+  },
+  "production_released": false,
+  "saved_input_files_unchanged": true,
+  "transition_passed": true,
+  "validated_candidate": {
+    "cad_sha256": "e29b6eb7e1f11d7fa7f345144f459ea23e6d4630534ec5be61a4ded0a34bc907",
+    "source_fingerprint": "43b33aeeab20ead53e220cf7cc17033d4841f41f1d1844d38a6005bfebeba79b",
+    "assembly_validation_sha256": "0e3c8468b14caf192dcbf2bbee24dc8a3ccd37edf6b268ddc449ecbd8d5dc299",
+    "equipment_validation_sha256": "faf009543134dbb43a852abec0028c8174725c8fbbd90ae56e097aec76384488",
+    "full_assembly_and_equipment_validation_passed": true,
+    "source_was_current_before_pin": true,
+    "note": "The exact reviewed saved CAD passed all assembly, propulsion, equipment and export gates. Pinning this fixture and upgrading the required artifact contract to schema2 changes config.py; regenerate and repeat build, preview, validate, compare and bundle against the new source identity before publishing."
+  }
+}
