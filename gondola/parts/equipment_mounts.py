@@ -181,7 +181,7 @@ def mount_contract(kind):
 def build_mount(doc, parent, kind):
     name = {"battery": "BatteryMount", "electronics": "ElectronicsMount"}[kind]
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
-        "Continuous 16 x 52 x 2 mm battery adhesive deck with four separate structural stack pads on the common40mm square; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
+        "Continuous 16 x 52 x 2 mm battery adhesive deck with two separate structural stack pads at(-20,-20)/(20,20)mm; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
         else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )

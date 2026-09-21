@@ -31,20 +31,27 @@ class OpticalMountTests(unittest.TestCase):
         self.parent.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_three_separate_solids_and_eight_purchased_fasteners(self):
+    def test_three_separate_solids_and_four_purchased_fasteners(self):
         self.assertEqual(len(self.module["printed"]), 3)
-        self.assertEqual(len(self.module["hardware"]), 8)
+        self.assertEqual(len(self.module["hardware"]), 4)
         for obj in self.module["printed"] + self.module["hardware"]:
             self.assertTrue(obj.Shape.isValid(), obj.Name)
             self.assertEqual(len(obj.Shape.Solids), 1, obj.Name)
         for obj in self.module["hardware"]:
             self.assertFalse(obj.PrintPart, obj.Name)
+            self.assertNotIn("WASHER", obj.HardwareSKU)
+            if obj.Name.endswith("Bolt"):
+                self.assertEqual(obj.HardwareSKU, "M2X5_PA66_PAN_HEAD")
+                self.assertEqual(obj.MaterialSelection, "Nylon PA66")
+            else:
+                self.assertEqual(obj.HardwareSKU, "M2_SQUARE_NUT_DIN562")
+                self.assertEqual(obj.MaterialSelection, "A2 stainless steel")
         contract = json.loads(self.module["group"].OpticalMountContract)
         self.assertFalse(contract["holding_torque_verified"])
         self.assertFalse(contract["self_levelling"])
         self.assertFalse(contract["physical_angle_stops_modeled"])
 
-    def test_shared_stack_platform_and_four_holes_are_not_refilled(self):
+    def test_shared_stack_bar_and_both_holes_are_not_refilled(self):
         from gondola.parts import optical_mount, stack_interface
 
         base = optical_mount.base_shape()
@@ -53,9 +60,13 @@ class OpticalMountTests(unittest.TestCase):
         measured = base.common(slab)
         self.assertLess(abs(platform.cut(measured).Volume), 1e-5)
         self.assertLess(abs(measured.cut(platform).Volume), 1e-5)
-        for x, y in itertools.product((-20, 20), repeat=2):
+        self.assertEqual(set(stack_interface.HOLE_CENTRES), {(-20, -20), (20, 20)})
+        for x, y in stack_interface.HOLE_CENTRES:
             bore = Part.makeCylinder(1.3, 2, App.Vector(x, y, 0))
             self.assertLess(abs(base.common(bore).Volume), 1e-5)
+        for x, y in ((-20, 20), (20, -20)):
+            removed_pad = Part.makeCylinder(3.25, 2, App.Vector(x, y, 0))
+            self.assertLess(abs(base.common(removed_pad).Volume), 1e-5)
 
     def test_native_angles_clamp_independently_and_follow_the_host(self):
         from gondola.cad import world_shape
@@ -141,16 +152,26 @@ class OpticalMountTests(unittest.TestCase):
             direction = App.Vector(1, 0, 0) if axis == 0 else App.Vector(0, 1, 0)
             core = Part.makeCylinder(0.8, high - low, origin, direction)
             self.assertLess(abs(core.cut(bolt).Volume), 1e-5, prefix)
-            self.assertAlmostEqual(tip - high, 1.8, places=7)
+            self.assertAlmostEqual(high - low, 1.2, places=7)
+            self.assertAlmostEqual(tip - high, 0.8, places=7)
 
-    def test_backset_post_regression_would_obstruct_the_pitch_washer(self):
+    def test_backset_post_regression_would_obstruct_the_pitch_screw(self):
         from gondola.cad import world_shape
         from gondola.validation.geometry import intersection_volume
 
         bad_post = Part.makeBox(2, 2, 12, App.Vector(0, -3.5, -2))
         bad_post.Placement = self.module["roll_stage"].getGlobalPlacement()
-        washer = world_shape(self.doc.getObject("OpticalPitchOuterWasher"))
-        self.assertGreater(intersection_volume(bad_post, washer), 0.1)
+        bolt = world_shape(self.doc.getObject("OpticalPitchBolt"))
+        self.assertGreater(intersection_volume(bad_post, bolt), 0.1)
+
+    def test_narrow_post_retains_the_full_one_point_five_mm_section(self):
+        from gondola.parts import optical_mount
+
+        shape = optical_mount.roll_bracket_shape()
+        section = Part.makeBox(1.5, 1.5, 1, App.Vector(0, -1.5, 4.5))
+        self.assertLess(abs(section.cut(shape).Volume), 1e-5)
+        broad_section = Part.makeBox(4, 4, 1, App.Vector(-1, -3, 4.5))
+        self.assertAlmostEqual(shape.common(broad_section).Volume, 2.25, places=7)
 
 
 if __name__ == "__main__":

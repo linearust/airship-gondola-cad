@@ -80,7 +80,7 @@ class JournalRetentionTests(unittest.TestCase):
         sleeve = world_shape(self.doc.getObject(prefix + "JournalSleeve" + suffix))
         hardware = {
             kind: world_shape(self.doc.getObject(prefix + "Journal" + suffix + kind))
-            for kind in ("Bolt", "OuterWasher", "RetainingWasher", "InnerWasher", "Nut")
+            for kind in ("Bolt", "Nut")
         }
         carrier = world_shape(self.doc.getObject(prefix + "MotorCarrier"))
         return sleeve, hardware, carrier
@@ -96,23 +96,37 @@ class JournalRetentionTests(unittest.TestCase):
                         sleeve, hardware, self.frame, carrier, side
                     )
                     self.assertTrue(result["passed"], result)
-                    self.assertAlmostEqual(result["bolt_tip_beyond_nut_mm"], 1.6)
+                    self.assertAlmostEqual(result["bolt_tip_beyond_nut_mm"], 2.35)
+                    self.assertAlmostEqual(result["nut_engagement_length_mm"], 1.2)
 
-    def test_original_small_washer_stack_is_rejected(self):
-        from gondola.cad import translated_shape
-        from gondola.parts import fastener_spec
+    def test_missing_integral_cap_cannot_retain_the_journal(self):
+        from gondola.parts import propulsion
         from gondola.validation.propulsion import journal_stack_check
 
         sleeve, hardware, carrier = self.stack()
-        del hardware["RetainingWasher"]
-        for name in ("InnerWasher", "Nut"):
-            hardware[name] = translated_shape(
-                hardware[name], y=fastener_spec.JOURNAL_RETAINING_WASHER_THICKNESS
+        carrier = carrier.cut(
+            Part.makeCylinder(
+                6.01,
+                propulsion.CARRIER_CAP_THICKNESS,
+                App.Vector(0, 80 + propulsion.CARRIER_CAP_INNER_Y, propulsion.PIVOT_Z),
+                App.Vector(0, 1, 0),
             )
+        )
         result = journal_stack_check(sleeve, hardware, self.frame, carrier, 1)
         self.assertFalse(result["passed"])
         self.assertFalse(result["axial_capture"])
         self.assertEqual(result["outward_1mm_blocking_intersection_mm3"], 0)
+
+    def test_no_loose_retainer_and_common_square_nut(self):
+        self.assertEqual(len(self.module["printed"]), 7)
+        self.assertEqual(len(self.module["hardware"]), 8)
+        self.assertEqual(
+            {obj.HardwareSKU for obj in self.module["hardware"]},
+            {"M2X14_SOCKET_CAP", "M2_SQUARE_NUT_DIN562"},
+        )
+        self.assertTrue(
+            all(len(obj.Shape.Solids) == 1 for obj in self.module["printed"])
+        )
 
     def test_unseated_nut_does_not_pass_on_clearance_alone(self):
         from gondola.cad import translated_shape
@@ -129,7 +143,7 @@ class JournalRetentionTests(unittest.TestCase):
         from gondola.validation.propulsion import journal_stack_check
 
         sleeve, hardware, carrier = self.stack()
-        hardware["Bolt"] = translated_shape(hardware["Bolt"], y=1.8)
+        hardware["Bolt"] = translated_shape(hardware["Bolt"], y=2.55)
         result = journal_stack_check(sleeve, hardware, self.frame, carrier, 1)
         self.assertFalse(result["passed"])
         self.assertGreater(result["missing_bolt_thread_core_mm3"], 0)

@@ -44,7 +44,7 @@ from gondola.manufacturing import (
 )
 from gondola.mass_budget import mass_budget
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail
+from gondola.parts import propulsion, rail, stack_interface
 from gondola.provenance import file_sha256, source_fingerprint
 
 from .baseline import module_control_bindings
@@ -353,19 +353,14 @@ def hardware_check(registry):
     for obj in bought:
         standard = str(getattr(obj, "ThreadStandard", ""))
         sku = str(getattr(obj, "HardwareSKU", ""))
-        is_washer = "_WASHER_" in sku
         thread_diameter = float(obj.NominalThreadDiameter.Value)
         thread_pitch = float(obj.ThreadPitch.Value)
         thread_metadata_matches = (
-            "unthreaded" in standard.lower()
-            and thread_diameter == 0
-            and thread_pitch == 0
-            if is_washer
-            else "M2" in standard
+            "M2" in standard
             and abs(thread_diameter - 2.0) < TOL
             and abs(thread_pitch - 0.4) < TOL
         )
-        is_metric = sku.startswith(("M2", "M3")) and thread_metadata_matches
+        is_metric = sku.startswith("M2") and thread_metadata_matches
         material_matches = (
             sku in HARDWARE_MATERIALS
             and str(getattr(obj, "MaterialSelection", "")) == HARDWARE_MATERIALS[sku]
@@ -819,8 +814,15 @@ def manufacturing_review(doc, registry):
         (
             "journal_D_flat_wall",
             "PortJournalSleevePositive",
-            (0, 24, 1.49),
+            (0, 24, 1.19),
             (0, 24, 3.01),
+            1.8,
+        ),
+        (
+            "integral_journal_retaining_cap",
+            "PortMotorCarrier",
+            (2, 20.49, 0),
+            (2, 22.01, 0),
             1.5,
         ),
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
@@ -848,23 +850,23 @@ def manufacturing_review(doc, registry):
         (
             "optical_base_pivot_wall",
             "OpticalMountBase",
-            (-2.01, 0, 4),
+            (-1.51, 0, 4),
             (0.01, 0, 4),
-            2.0,
+            1.5,
         ),
         (
             "optical_roll_bracket_wall",
             "OpticalRollBracket",
             (-0.01, -1, 5),
-            (2.01, -1, 5),
-            2.0,
+            (1.51, -1, 5),
+            1.5,
         ),
         (
             "optical_tray_neck_wall",
             "OpticalSensorTray",
             (0, -0.01, 3.8),
-            (0, 2.01, 3.8),
-            2.0,
+            (0, 1.51, 3.8),
+            1.5,
         ),
         (
             "optical_tray_deck_thickness",
@@ -1109,7 +1111,10 @@ def battery_check(doc, objects):
     swept_hits = [
         name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
     ]
-    column_names = {f"OpticalStackSpacer{index}" for index in range(4)}
+    column_names = {
+        f"OpticalStackSpacer{index}"
+        for index in range(len(stack_interface.HOLE_CENTRES))
+    }
     column_gaps = [
         {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
         for name, shape in obstacles
@@ -1373,7 +1378,7 @@ def detailed_propulsion_evidence(doc, source):
     comparisons = []
     # The local audit builds fresh source geometry. Bind its hardware and device
     # envelopes to the saved assembly too, so a passing new-source retention test
-    # cannot endorse an old/smaller washer or a changed motor in the native file.
+    # cannot endorse missing retaining material or a changed motor in the native file.
     reference_doc = App.newDocument("SavedPropulsionComparison")
     try:
         reference = propulsion.build_propulsion_module(reference_doc)

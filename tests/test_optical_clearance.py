@@ -21,7 +21,7 @@ class OpticalClearanceTests(unittest.TestCase):
         self.addCleanup(self.close_without_changing_baseline)
         self.assertIsNotNone(
             self.doc.getObject("OpticalFlowModule"),
-            "The pinned reference must include the reviewed Rev O optical stack.",
+            "The pinned reference must include the reviewed adjustable optical stack.",
         )
 
     def close_without_changing_baseline(self):
@@ -36,6 +36,7 @@ class OpticalClearanceTests(unittest.TestCase):
         self.assertTrue(_source_evidence(self.doc)["passed"])
         sensor = self.doc.ModuleMTF02PEnvelope
         screw = self.doc.OpticalStackUpperBolt0
+        pivot = self.doc.OpticalRollBolt
         mutations = (
             (sensor, "ListedMassGrams", 99.0),
             (sensor, "OpticalDirection", App.Vector(1, 0, 0)),
@@ -45,6 +46,8 @@ class OpticalClearanceTests(unittest.TestCase):
             (self.doc.OpticalFlowModule, "SelfLevelling", True),
             (screw, "MaterialSelection", "A2 stainless steel"),
             (screw, "SourceURL", "https://example.invalid/unverified-screw"),
+            (pivot, "HardwareSKU", "M2X8_SOCKET_CAP"),
+            (self.doc.OpticalRollNut, "HardwareSKU", "M2_HEX_NUT"),
         )
         for obj, name, changed in mutations:
             with self.subTest(object=obj.Name, property=name):
@@ -55,6 +58,24 @@ class OpticalClearanceTests(unittest.TestCase):
                 finally:
                     setattr(obj, name, original)
         self.assertTrue(_source_evidence(self.doc)["passed"])
+
+    def test_obsolete_optical_washer_cannot_remain_in_the_purchase_registry(self):
+        from gondola.validation.optical import _source_evidence
+
+        old = list(self.doc.DesignRegistry.HardwareParts)
+        obsolete = self.doc.addObject("Part::Feature", "ObsoleteOpticalWasher")
+        obsolete.Shape = Part.makeCylinder(2.5, 0.3)
+        self.doc.OpticalFlowModule.addObject(obsolete)
+        try:
+            self.doc.DesignRegistry.HardwareParts = old + [obsolete]
+            result = _source_evidence(self.doc)
+            self.assertFalse(result["passed"])
+            self.assertFalse(
+                result["registered_kit_inventory_matches_factory"]["HardwareParts"]
+            )
+        finally:
+            self.doc.DesignRegistry.HardwareParts = old
+            self.doc.removeObject(obsolete.Name)
 
     def test_early_failure_restores_fc_host_angles_and_saved_file(self):
         from gondola.parts import optical_mount, stack_interface

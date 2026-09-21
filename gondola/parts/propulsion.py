@@ -27,34 +27,27 @@ from . import rail
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 2.0
-FOOT_RIB_HEIGHT = 1.5
-FOOT_RIB_WIDTH = 1.5
 SERVICE_CEILING_Z = 8.0
 GUARD_OUTER_RADIUS = 24.3
 GUARD_INNER_RADIUS = 22.8
 PIVOT_Z = 48.2
 SLEEVE_RADIUS = 4.0
-SLEEVE_BORE_RADIUS = 1.5
+SLEEVE_BORE_RADIUS = 1.2
 SLEEVE_D_FLAT = 3.0
 JOURNAL_RADIUS = 4.45
 CARRIER_D_FLAT = 3.45
 CARRIER_OUTER_Y = 26.55
-SLEEVE_INNER_Y = 21.55
+SLEEVE_INNER_Y = 22.0
+CARRIER_CAP_THICKNESS = 1.5
+CARRIER_CAP_INNER_Y = SLEEVE_INNER_Y - CARRIER_CAP_THICKNESS
 SLEEVE_ROUND_START = 26.8
 SLEEVE_FLANGE_Y = 29.45
 SLEEVE_END_Y = 30.95
 JOURNAL_SCREW_LENGTH = metric.JOURNAL_SCREW_LENGTH
-SCREW_UNDERHEAD_Y = SLEEVE_END_Y + metric.WASHER_THICKNESS
-RETAINING_WASHER_Y = SLEEVE_INNER_Y - metric.JOURNAL_RETAINING_WASHER_THICKNESS
-INNER_WASHER_Y = RETAINING_WASHER_Y - metric.WASHER_THICKNESS
-JOURNAL_NUT_Y = INNER_WASHER_Y - metric.NUT_HEIGHT
+SCREW_UNDERHEAD_Y = SLEEVE_END_Y
+JOURNAL_NUT_Y = CARRIER_CAP_INNER_Y - metric.SQUARE_NUT_HEIGHT
 JOURNAL_SCREW_SKU = f"M{metric.THREAD_DIAMETER:g}X{JOURNAL_SCREW_LENGTH:g}_SOCKET_CAP"
-JOURNAL_NUT_SKU = f"M{metric.THREAD_DIAMETER:g}_HEX_NUT"
-JOURNAL_WASHER_SKU = (
-    f"M{metric.THREAD_DIAMETER:g}_WASHER_"
-    f"{metric.WASHER_ID:g}_{metric.WASHER_OD:g}_{metric.WASHER_THICKNESS:g}"
-)
-JOURNAL_RETAINING_WASHER_SKU = "M3_WASHER_3.2_9_0.8"
+JOURNAL_NUT_SKU = "M2_SQUARE_NUT_DIN562"
 SERVO_SOURCE = "https://www.dspowerservo.com/ds-m005-mini-servo-product/"
 SERVO_DRAWING = "https://cdn.globalso.com/dspowerservo/m0055.jpg"
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
@@ -62,8 +55,7 @@ MOTOR_DRAWING = (
     "https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg"
 )
 JOURNAL_SCREW_SOURCE = metric.JOURNAL_SCREW_SOURCE
-JOURNAL_NUT_SOURCE = metric.NUT_SOURCE
-JOURNAL_WASHER_SOURCE = metric.WASHER_SOURCE
+JOURNAL_NUT_SOURCE = metric.SQUARE_NUT_SOURCE
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 BEARING_SOURCE = "https://www.nsk.com/engineering/products/bearings/ball-bearings/deep-groove-ball-bearings/extra-small-ball-bearings-and-miniature-ball-bearings-metric-series-with-flamge/mf63zz-esm-md-wf.html"
@@ -124,12 +116,8 @@ def _fixed_side(sign):
     )
     foot = foot.fuse(servo_foot)
     parts = [foot]
-    # Two-millimetre open feet retain 1.5 mm-wide raised edge ribs; this removes
-    # broad redundant plate material without making a long flat 2 mm sheet.
-    for x in (-6.4, 4.9):
-        parts.append(box(FOOT_RIB_WIDTH, 73, FOOT_RIB_HEIGHT, (x, -42, top)))
-    for x in (-9.32, 15.68):
-        parts.append(box(FOOT_RIB_WIDTH, 25, FOOT_RIB_HEIGHT, (x, -58, top)))
+    # Open two-millimetre feet deliberately omit raised perimeter ribs. The
+    # lower stiffness is accepted for the indoor LTA fit prototype, not qualified.
     for y in (-28, 28):
         # Constant-width posts and ordinary circular bores: no FDM roof relief.
         cheek = union(
@@ -235,6 +223,15 @@ def moving_carrier_shape():
             box(20, 10, 12, (-10, y - 2, CARRIER_D_FLAT))
         )
         parts.append(strut.cut(bore))
+        cap = cylinder(6, CARRIER_CAP_THICKNESS, (0, CARRIER_CAP_INNER_Y, 0))
+        cap = cap.cut(
+            cylinder(
+                SLEEVE_BORE_RADIUS,
+                CARRIER_CAP_THICKNESS + 2,
+                (0, CARRIER_CAP_INNER_Y - 1, 0),
+            )
+        )
+        parts.append(mirrored_y(cap, side))
     guard = cylinder(GUARD_OUTER_RADIUS, 2, (11, 0, 0), (1, 0, 0)).cut(
         cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
     )
@@ -287,43 +284,16 @@ def _journal_hardware(doc, moving, prefix, side):
             SCREW_UNDERHEAD_Y,
             -1,
             JOURNAL_SCREW_SKU,
-            f"M2x{JOURNAL_SCREW_LENGTH:g} socket cap bolt, M2x{metric.THREAD_PITCH:g}. Clamps only the hollow sleeve between washers; it must not pinch the stationary frame. Nominal{JOURNAL_NUT_Y - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH):g}mm projects beyond the{metric.NUT_HEIGHT:g}mm nut. The thread does not rub the journal.",
+            f"M2x{JOURNAL_SCREW_LENGTH:g} socket cap bolt, M2x{metric.THREAD_PITCH:g}. Head bears directly on the hollow sleeve; the square nut bears on the integral carrier cap. Stationary cheeks remain free. Nominal{JOURNAL_NUT_Y - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH):g}mm projects beyond the{metric.SQUARE_NUT_HEIGHT:g}mm nut. PA12 bearing pressure, creep and loosening remain unqualified.",
             JOURNAL_SCREW_SOURCE,
         ),
         (
-            "OuterWasher",
-            metric.washer_shape(),
-            SLEEVE_END_Y,
-            1,
-            JOURNAL_WASHER_SKU,
-            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm washer under the M2 bolt head; bears on sleeve flange.",
-            JOURNAL_WASHER_SOURCE,
-        ),
-        (
-            "RetainingWasher",
-            metric.journal_retaining_washer_shape(),
-            RETAINING_WASHER_Y,
-            1,
-            JOURNAL_RETAINING_WASHER_SKU,
-            "Purchased M3 DIN9021 large washer3.2x9x0.8mm intentionally clears the M2 bolt. Its outside diameter cannot pass the carrier D-hole and retains the sleeve axially. The existing M2 small washer stays between this washer and the nut: M2 nut bearing-face dimensions do not guarantee direct support over the M3 clearance hole. Nominal endplay to the carrier inner face is0.45mm; coupon/loaded retention remains unqualified.",
-            metric.JOURNAL_RETAINING_WASHER_SOURCE,
-        ),
-        (
-            "InnerWasher",
-            metric.washer_shape(),
-            INNER_WASHER_Y,
-            1,
-            JOURNAL_WASHER_SKU,
-            f"Purchased{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}mm small washer distributes M2 nut load onto the larger retaining washer. Do not omit it: the M3 washer clearance bore can exceed the M2 nut's minimum bearing-face diameter.",
-            JOURNAL_WASHER_SOURCE,
-        ),
-        (
             "Nut",
-            metric.nut_shape(),
+            metric.square_nut_shape(),
             JOURNAL_NUT_Y,
             1,
             JOURNAL_NUT_SKU,
-            f"Purchased M2x{metric.THREAD_PITCH:g} regular nut, AF{metric.NUT_AF:g} height{metric.NUT_HEIGHT:g}. Full nut engagement retains the removable sleeve. No printed thread or clip. Nut retention under vibration remains a physical assembly check.",
+            f"Purchased M2x{metric.THREAD_PITCH:g} DIN562 square nut, AF{metric.SQUARE_NUT_AF:g} height{metric.SQUARE_NUT_HEIGHT:g}, shared with the rail clamp. Bears directly on the integral1.5mm carrier cap and retains the sleeve with full nominal nut engagement. No printed thread or clip. Actual bearing face, PA12 indentation and vibration retention require physical checks.",
             JOURNAL_NUT_SOURCE,
         ),
     ]
@@ -521,8 +491,8 @@ def build_propulsion_module(doc, parent=None):
         "PRINT | PA12 integral paired propulsion frame and M2-clamped rail shoe"
     )
     frame.Notes = (
-        "Continuous T-rail shoe, both ribbed outrigger feet and open servo-ear supports are one PA12 SLS/MJF part. "
-        f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet are{FOOT_THICKNESS:g}mm thick with{FOOT_RIB_HEIGHT:g}mm-high edge ribs. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
+        "Continuous T-rail shoe, both open outrigger feet and open servo-ear supports are one PA12 SLS/MJF part. "
+        f"Common foot bottomZ{BASE_Z:g} clears nominal{rail.PAD_THICKNESS:g}mm rail pads and{rail.TAPE_THICKNESS:g}mm tape; feet are{FOOT_THICKNESS:g}mm thick without raised edge ribs; stiffness remains unqualified. Pivots are at(0,+/-80,{PIVOT_Z:g}). "
         "The exact common shoe includes the M2 captive nut pocket and screw bore; choose one of the rotationally symmetric clamp ports; each has side-loaded nut access. "
         "Hollow printed D sleeves are retained by purchased M2 hardware; no printed pin or retaining clip. "
         "Official servo-ear centres locate two2mm open saddles for a prospective M1.6 through-fastener. Slots open toward the case to remove otherwise sub-millimetre walls; ear thickness, bolt length and retention are not yet approved. "
@@ -562,7 +532,7 @@ def build_propulsion_module(doc, parent=None):
         printed.append(carrier)
         carrier.Label = "PRINT | integral motor carrier and propeller guard"
         carrier.Notes = (
-            "One PA12 SLS/MJF part combines rear motor plate, journal struts and propeller guard. "
+            "One PA12 SLS/MJF part combines rear motor plate, journal struts, integral1.5mm retention caps and propeller guard. "
             "Front guard ID45.6mm admits the40mm propeller and13.6mm maximum motor envelope axially. "
             "D bores use nominal radius4.45 and flatZ3.45; hollow sleeve radius4/flatZ3.0 preserves a positive torque path. "
             "Boss endsY+/-26.55 give0.9mm total width clearance between stationary cheek inner facesY+/-27. "
@@ -584,7 +554,7 @@ def build_propulsion_module(doc, parent=None):
                         App.Rotation(V(1, 0, 0), 90)
                     )
                 ),
-                "PA12 SLS/MJF hollow journal: OD8, through bore3, D flatZ3.0 leaves1.5mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M2 bolt/nut, two small washers and a large inner retaining washer clamp the sleeve ends. The large washer cannot pass the carrier D-hole; the outer sleeve flange blocks opposite travel. Remove this hardware before extracting the sleeve. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
+                "PA12 SLS/MJF hollow journal: OD8, through bore2.4, D flatZ3.0 leaves1.8mm minimum wall. Smooth round neck rotates inØ8.9 cheek; D stem turns the carrier. M2x14 bolt and DIN562 square nut clamp sleeve to the integral1.5mm carrier cap with no washers. Bolt head and nut bear directly on PA12. The carrier cap captures the inner end; the outer sleeve flange blocks opposite travel. Remove bolt and nut before extracting the sleeve. Bearing pressure, creep and loosening require physical checks. Flange faceY29.45 clears fixed outer cheekY29 by0.45mm. No thread or snap clip is printed. Actual servo horn attachment remains unfinished.",
             )
             sleeve.PrintNotes = (
                 sleeve.Notes
@@ -628,7 +598,7 @@ def build_propulsion_module(doc, parent=None):
         bound.LateralHalfWidth = CARRIER_OUTER_Y
         bound.JournalHeadHalfSpan = 35
     group = module
-    group.Notes = "One detachable two-propulsor module. Seven printed parts; common M2 purchased bolts/nuts/washers retain hollow torque sleeves. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
+    group.Notes = "One detachable two-propulsor module. Seven printed parts; common M2 purchased bolts and square nuts retain hollow torque sleeves against integral carrier caps; no washers. Continuous-rail captive-nut screw clamp replaces loose keys. Vendor motor/horn interfaces remain unfinished."
     group.SupportPlaneZ = BASE_Z
     group.RailCenters = (
         "One continuous T rail atY0; commonM2 captive-nut friction clamp"
@@ -685,7 +655,7 @@ def build_propulsion_module(doc, parent=None):
             "device_reference_count": len(refs),
             "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
             "frame_foot_thickness_mm": FOOT_THICKNESS,
-            "frame_foot_edge_rib_height_mm": FOOT_RIB_HEIGHT,
+            "frame_foot_edge_ribs": False,
             "symmetric_clamp_service": True,
             "integrated_guard_carriers": True,
             "printed_retaining_clips": 0,
@@ -693,9 +663,7 @@ def build_propulsion_module(doc, parent=None):
             "printed_hollow_unthreaded_sleeves": 4,
             "purchased_journal_quantities": {
                 f"M2x{JOURNAL_SCREW_LENGTH:g}_socket_cap": 4,
-                "M2_hex_nut": 4,
-                f"M2_flat_washer_{metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g}": 8,
-                "M3_large_retaining_washer_3.2x9x0.8": 4,
+                "M2_square_nut_DIN562": 4,
             },
         }
     )
@@ -719,8 +687,10 @@ def build_propulsion_module(doc, parent=None):
         "nominal_radial_and_flat_clearance_mm": 0.45,
         "nominal_total_carrier_width_clearance_mm": 0.9,
         "worst_case_width_clearance_two_0_3mm_size_errors_mm": 0.3,
-        "retention": f"M2x{JOURNAL_SCREW_LENGTH:g} bolt, two {metric.WASHER_ID:g}x{metric.WASHER_OD:g}x{metric.WASHER_THICKNESS:g} small washers, one M3 3.2x9x0.8 large retaining washer and M2 nut per sleeve; sleeve ends carry clamp load, cheeks remain free. Large inner washer blocks withdrawal through the carrier D-hole; outer flange blocks opposite motion.",
-        "thread_engagement_mm": metric.NUT_HEIGHT,
+        "retention": f"M2x{JOURNAL_SCREW_LENGTH:g} bolt and M2 DIN562 square nut per sleeve, without washers. Direct load path: bolt head -> sleeve -> integral carrier cap -> nut. Stationary cheeks remain free; the cap retains outward travel and the sleeve flange limits inward travel.",
+        "integral_cap_thickness_mm": CARRIER_CAP_THICKNESS,
+        "integral_cap_clearance_diameter_mm": 2 * SLEEVE_BORE_RADIUS,
+        "thread_engagement_mm": metric.SQUARE_NUT_HEIGHT,
         "bolt_tip_projection_beyond_nut_mm": JOURNAL_NUT_Y
         - (SCREW_UNDERHEAD_Y - JOURNAL_SCREW_LENGTH),
         "torque_path": "Unfinished OEM horn coupling -> keyed hollow sleeve -> D bore carrier. Metric retention bolt alone is not the drive coupling.",
@@ -744,9 +714,9 @@ def build_propulsion_module(doc, parent=None):
     )
     metrics["journal_assembly_order"] = [
         "Leave servos off the cradle while fitting the rotating carriers.",
-        f"Insert hollow D sleeves from outside. Fit an outer small washer, M2x{JOURNAL_SCREW_LENGTH:g} bolt, inner large retaining washer, inner small washer and nut without pinching stationary cheeks.",
+        f"Insert hollow D sleeves from outside. Fit one M2x{JOURNAL_SCREW_LENGTH:g} bolt and DIN562 square nut, bearing directly on the sleeve flange and integral carrier cap. Tighten cautiously without pinching stationary cheeks; PA12 preload and creep are not qualified.",
         "Resolve motor mount seating/engagement and servo saddle fastening before fitting vendor motor fasteners, servos and measured horn coupling.",
-        f"For journal service release both servos and unmodeled horn couplings. Remove the nut, then the bolt/outer washer, then the inner small and large washers. Withdraw the bare driven-side sleeve8mm, lift{SLEEVE_SERVICE_LIFT:g}mm, then move away; the idle sleeve can withdraw directly.",
+        f"For journal service release both servos and unmodeled horn couplings. Remove the square nut, then the bolt. Withdraw the bare driven-side sleeve8mm, lift{SLEEVE_SERVICE_LIFT:g}mm, then move away; the idle sleeve can withdraw directly.",
     ]
     metrics["OEM_interfaces"] = {
         "DS_M005": {
@@ -818,10 +788,10 @@ def build_propulsion_module(doc, parent=None):
         "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
         "servo_support_web_width_mm": 2.0,
         "servo_support_web_depth_mm": 2.4,
-        "foot_edge_rib_width_mm": FOOT_RIB_WIDTH,
-        "foot_edge_rib_height_mm": FOOT_RIB_HEIGHT,
+        "raised_foot_ribs": False,
+        "integral_carrier_cap_thickness_mm": CARRIER_CAP_THICKNESS,
         "long_frame_base_thickness_mm": FOOT_THICKNESS,
-        "supplier_review_required": "Two-millimetre open feet use raised1.5mm edge ribs and A-frame ear supports instead of broad plate/cradle material. General local wall target remains1.5mm. The long integrated frame still needs supplier stiffness/warp review and physical load checks; ribs do not establish qualification.",
+        "supplier_review_required": "Two-millimetre open feet omit raised perimeter ribs and retain the connected A-frame ear supports. General local wall target remains1.5mm, including integral carrier retention caps. The long integrated frame and direct PA12 fastener seats require supplier warp review and physical stiffness, creep and load checks.",
     }
     metrics["unfinished_interfaces"] = [
         "RS1102 rear clearance, screw head seating and safe engagement; known3-M1.4/PCD6.6 pattern not yet cut",

@@ -179,9 +179,11 @@ class FrozenBaselineTests(unittest.TestCase):
         return obj
 
     def test_fixture_inventory_and_unresolved_scope_match_approved_design(self):
-        from gondola.design_contract import EXPECTED_INVENTORY
+        from gondola.design_contract import (
+            EXPECTED_INVENTORY,
+            PURCHASED_HARDWARE_QUANTITIES,
+        )
         from gondola.validation.baseline import unresolved_scope
-        from gondola.validation.equipment import EXPECTED_PURCHASE_QUANTITIES
 
         registry = self.reference.DesignRegistry
         self.assertEqual(
@@ -214,7 +216,7 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertEqual(
             len(hardware_skus), EXPECTED_INVENTORY["purchased_hardware_types"]
         )
-        self.assertEqual(hardware_skus, EXPECTED_PURCHASE_QUANTITIES)
+        self.assertEqual(hardware_skus, PURCHASED_HARDWARE_QUANTITIES)
         result = unresolved_scope(self.reference)
         self.assertTrue(result["passed"], result)
 

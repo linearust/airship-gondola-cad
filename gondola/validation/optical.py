@@ -71,12 +71,21 @@ def _source_evidence(doc):
         refs, reserves = optical_sensor.build_sensor(expected_doc, kit["pitch_stage"])
         expected_doc.recompute()
         registry = doc.DesignRegistry
+        inventory = {}
         for category, objects in (
             ("PrintedParts", kit["printed"]),
             ("HardwareParts", kit["hardware"]),
             ("ReferenceParts", refs),
             ("ClearanceVolumes", reserves),
         ):
+            actual_names = [
+                obj.Name
+                for obj in getattr(registry, category)
+                if belongs_to_group(obj, doc.OpticalFlowModule)
+            ]
+            inventory[category] = sorted(actual_names) == sorted(
+                obj.Name for obj in objects
+            )
             for expected in objects:
                 actual = doc.getObject(expected.Name)
                 if actual is None:
@@ -214,10 +223,12 @@ def _source_evidence(doc):
             )
         return {
             "objects": rows,
+            "registered_kit_inventory_matches_factory": inventory,
             "module_contract_and_registry": module_ok,
             "native_controls": controls,
             "both_host_interfaces": host_rows,
             "passed": module_ok
+            and all(inventory.values())
             and all(row["passed"] for row in rows + controls + host_rows),
         }
     finally:
@@ -451,7 +462,7 @@ def mtf_sensor_check(doc):
         ]
         report["hosts"] = hosts
         report["service_prerequisite"] = (
-            "Disconnect leads, remove four upper screws/washers and complete optical head before releasing/lifting the host device. Keep columns and lower fasteners; device mounting hardware and adhesive must be released. No connected-harness removal claim."
+            "Disconnect leads, remove the two upper screws and complete optical head before releasing/lifting the host device. Keep both columns and lower screws; device mounting hardware and adhesive must be released. No connected-harness removal claim."
         )
         report["passed"] = all(row["passed"] for row in hosts)
         return report

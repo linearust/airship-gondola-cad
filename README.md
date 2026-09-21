@@ -12,7 +12,7 @@ human assembly manual or a declaration of physical qualification.
   sources and explicit unknowns. Never infer PCB bearing planes from box heights.
 - `gondola/parts/equipment_mounts.py`: compact battery support and open electronics
   carrier. `equipment_envelopes.py`: battery/FC/radio/UWB envelopes and reserves.
-- `gondola/parts/stack_interface.py`: common structural40mm M2 stack, purchased
+- `gondola/parts/stack_interface.py`: common diagonal two-point M2 stack, purchased
   columns/fasteners, supported hosts and whole-kit reattachment.
 - `gondola/parts/optical_mount.py`: manually locked two-axis head.
   `optical_sensor.py`: MTF body/optics/connector in the moving tray frame.
@@ -22,7 +22,7 @@ human assembly manual or a declaration of physical qualification.
 - `gondola/parts/propulsion.py`: frame, carriers, custom torque journals and the
   published servo/motor interface decisions. `rail.py`: shared rail/shoe/clamp.
 - `gondola/parts/fastener_spec.py`: common purchased M2 dimensions.
-  `metric_hardware.py`: modeled metal fasteners and purchased PA66 stack parts.
+  `metric_hardware.py`: modeled steel fasteners and purchased PA66 screws/spacers.
 - `gondola/assembly.py`: assembly and native expression controls.
   `cad.py`: metadata, assembly ancestry and local/world transforms.
 - `gondola/manufacturing.py`: unique print exports and hardware BOM.
@@ -35,20 +35,21 @@ human assembly manual or a declaration of physical qualification.
   Older fixtures remain in Git history. Never regenerate a fixture merely to
   pass a failing comparison; audit deliberate shape, placement and scope changes.
 
-## Rev O decisions
+## Rev P decisions
 
 Scope remains one indoor LTA blimp gondola: two main propulsors, two tilt servos,
 FC, battery, LR900-A, LinkTrack P-AS and MTF-02P. Yaw propulsion, fins and fin
 servos are excluded. Preserve bounded independent tilt of +/-150 degrees.
 
-The user's latest instruction supersedes the previous identical-board and
-no-device-holes requirements. Remove the three 64x76 universal boards, unused
-upper rail shoe and tall four-post expansion stack. Keep two role-specific
-rail carriers: a16x52x2mm continuous battery adhesive deck and one open
-electronics carrier. Both integrate the shared rail shoe and the same four
-structural stack pads. MTF-02P uses a separate three-part adjustable optical
-head on purchased spacers. Remove its former arm/pad from the electronics
-carrier. Do not add a fourth rail shoe, duplicate optical head or solid top board.
+Prioritize low mass and simple assembly for an indoor LTA platform. The user
+accepts lower stiffness than a sub-250g multirotor; this is not a demonstrated
+load rating. Keep two role-specific rail carriers: a16x52x2mm battery adhesive
+deck and one open electronics carrier, each integrating the rail shoe and two
+diagonal structural stack pads. The MTF-02P head has three printed parts on two
+purchased spacers. Remove redundant frame-foot edge ribs, auxiliary washers,
+unused stack arms and duplicate fastener types. Keep nominal functional walls
+at least1.5mm except the documented1.2mm rail flexures. Do not add another rail
+shoe, duplicate optical head, printed stock spacer or solid top board.
 
 Confirmed interfaces and conservative design reservations are distinct:
 
@@ -95,7 +96,7 @@ match the actual board and firmware rotation. Exact port XYZ, latch positions,
 USB plugs and SMA/antenna geometry remain unverified. Use the P-AS side-entry
 port for this allowance; its parallel top-entry port is not an additional load.
 Disconnect leads before adjustment, bare-device lift or module slide paths.
-When a carrier hosts the stack, release its four upper screws and remove the
+When a carrier hosts the stack, release its two upper screws and remove the
 complete optical head before lifting the underlying device; keep the columns
 and lower fasteners installed in that clearance check. Preassemble the lower
 stack screws with the carrier removed from the rail for underside access.
@@ -128,19 +129,23 @@ retention; verify those with the actual supported devices.
 ## Interchangeable optical stack
 
 This is a **project standard**, not a claimed industry-standard hole pattern:
-fourM2 clearance holes, diameter2.6mm, on a40x40mm square at(±20,±20),
-with continuous diameter6.5mm pads and2mm deck thickness. The battery and
-electronics carriers use identical datums and clocking. This larger pattern
-places the stock columns outside the rotated FC and its5mm connector band;
-do not route the optical-stack load through FC mounting holes, PCB or dampers.
+two M2 clearance axes, diameter2.6mm, at(-20,-20) and(20,20)mm: opposite
+corners of a40x40mm square, spacing56.57mm. Each has a diameter6.5mm pad on a
+2mm deck. Battery and electronics carriers use identical datums and clocking.
+Columns stay outside the rotated FC and its5mm connector band; stack loads
+bypass the FC PCB and dampers. The single diagonal bar and two columns trade
+lateral/torsional stiffness for lower mass; validate with the actual payload.
 
-Use four purchased M2 female/female PA66 spacers, AF4mm, length25mm.
-Carrier support faceZ12.2 plus25mm places the open upper platform atZ37.2.
-Its2mm diagonal ribs carry the first pivot8mm above the platform underside;
-the second pivot is another10mm away. Sensor front is nominallyZ69.2 at zero
-angles. Four upper and four lower M2x5 PA66 slotted pan screws each use a
-purchased2.2x5x0.3mm steel washer. Nylon screws reduce mass; keep both pivot
-M2x8 screw/nut stacks in A2 steel for the manually clamped joints.
+Use two purchased M2 female/female PA66 spacers, AF4mm, length25mm.
+Carrier support faceZ12.2 plus25mm places the upper platform underside atZ37.2.
+The first pivot is8mm above that face and the second another10mm away.
+Sensor front remains nominallyZ69.2 at zero angles. Two upper and two lower
+M2x5 PA66 pan screws bear directly on the printed decks. The same M2x5 screws
+clamp both manual pivots through two1.5mm ears and one DIN562 M2 square nut.
+No washers; no separate M2x8 screws or hex nuts. Pivot nominal grip4.2mm gives
+0.8mm tip projection, or0.2mm with both ears0.3mm oversize, excluding screw
+length tolerance. Use minimal preload; actual cable torque, angle retention,
+printed bearing indentation and PA66/PA12 creep remain unqualified.
 
 Default host is `design_contract.OPTICAL_STACK_HOST = "BatteryEquipmentModule"`.
 `stack_interface.attach_to_host(doc.OpticalFlowModule, host)` moves the **whole
@@ -218,25 +223,21 @@ examples are not verified seller options, stock, delivery or supplier-lot fit.
 Do not print bought fasteners, ordinary spacers, dampers, servo horns or devices.
 Actual selected seller options must match the dimensional specification.
 
-Modeled mechanism hardware: **nine types,54 pieces**, excluding spares and device
+Modeled mechanism hardware: **five types,24 pieces**, excluding spares and device
 mounting kits whose lengths/bearing planes remain unresolved:
 
 | CAD SKU | Required specification | Quantity |
 |---|---|---:|
-| `M2X14_SOCKET_CAP` | A2 stainless M2x14, DIN912/ISO4762, under-head length14, head diameter3.8/height2, hex key1.5 mm | 4 |
-| `M2X8_SOCKET_CAP` | A2 M2x8 DIN912/ISO4762; two manual optical pivot clamps | 2 |
-| `M2X5_PA66_PAN_HEAD` | Nylon66 M2x5 slotted pan screw, nominal head diameter4/height1.3mm; drive dimensions unverified | 8 |
-| `M2_FF_PA66_AF4_L25` | Nylon66 M2 female/female spacer, AF4, length25mm | 4 |
-| `M2_HEX_NUT` | A2 DIN934 M2x0.4, AF4/height1.6 mm; journals and optical pivots | 6 |
-| `M2_WASHER_2.2_5_0.3` | A2 washer ID2.2 x OD5 x thickness0.3mm;8 journal,4 pivot,8 stack | 20 |
-| `M3_WASHER_3.2_9_0.8` | A2/SUS304 DIN9021 / ISO7093-1 large washer ID3.2 x OD9 x thickness0.8 mm; added inner retainers on M2 bolts | 4 |
-| `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, DIN913/ISO4026, hex key0.9 mm | 3 |
-| `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2 mm; accepted width3.6–4.0/height0.8–1.2 mm, verify corners | 3 |
+| `M2X14_SOCKET_CAP` | A2 stainless M2x14, DIN912/ISO4762; journal retention, hex key1.5mm | 4 |
+| `M2X5_PA66_PAN_HEAD` | Nylon66 M2x5 slotted pan screw, head diameter4/height1.3mm;4 stack attachments and2 manual pivots | 6 |
+| `M2_FF_PA66_AF4_L25` | Nylon66 M2 female/female spacer, AF4, length25mm | 2 |
+| `M2x6_ISO4026_DIN913` | A2 M2x6 flat-point set screw, hex key0.9mm; rail clamps | 3 |
+| `M2_SQUARE_NUT_DIN562` | A2 M2 square nut, nominal width4/height1.2mm;3 rail,4 journal,2 pivot | 9 |
 
 [Kang Yang HPS2-H Rev B](https://www.kangyang-usa.com/wp-content/uploads/2026/09/HPS2-H-18-2.pdf)
 gives AF4±0.2mm and25±0.4mm for the spacer. Its4mm end taps are reference
 values, not guaranteed usable depth or full-length threading. The nominal stack
-screw entry is2.7mm; require actual usable female depth≥3.3mm and check engagement,
+screw entry is3.0mm; require actual usable female depth≥3.6mm and check engagement,
 printed thickness, screw length tolerance and bottoming before tightening.
 [RI-CO's PA66 M2x5 screw](https://www.ricoplastics.co.uk/shop-components/product/167-nylon-pan-head-screws-m2-x-5mm/)
 has a4x1.3mm head; its linked drawing identifies a slotted pan head. The CAD uses
@@ -244,25 +245,15 @@ a conservative cylindrical head envelope, without an invented slot profile.
 Neither spacer nor screw evidence qualifies PA66 creep, thread strip load or
 assembly torque. Stock parts are purchased, not exported for printing.
 
-Diameter5 mm washers and M2 nuts can pass through the carrier D-bore together
-with the sleeve. Use one bought large washer per journal between sleeve and the
-small nut-side washer. Keep the small washer: M2 nut across-flats is not its
-bearing-face diameter; its chamfered bearing face may not span the large bore.
-The M3 washer designation is an unthreaded clearance size; all mechanism bolts
-remain M2. Do not replace the large retainer with another small washer.
-
-[JC Fasteners B4D0303009](https://www.jcfasteners.com/wp-content/uploads/DIN-9021-Large-Washer-B4D03-SS304.pdf)
-specifies ID3.20–3.38, OD8.64–9.00 and thickness0.70–0.90 mm. Nominal CAD checks
-must include the entire fastened stack resisting axial escape, washer-to-sleeve
-and nut-side contact, free rotation and removal after disassembling fasteners.
-The D-flat is essential for capture; a round bore is not an equivalent geometry.
-Dimensional screens do not qualify tilted/eccentric bearing, deformation,
-preload, friction, wear or vibration loosening.
-[JC's small M2 washer](https://www.jcfasteners.com/wp-content/uploads/DIN-125-Plain-Washer-B4D02-SS304.pdf)
-has ID2.20–2.34, OD4.70–5.00 and thickness0.25–0.35 mm.
-[Böllhoff DIN934 A2](https://eshop.boellhoff.de/out/media/pdf/DIN_934_Edelstahl_A2___en.pdf)
-gives M2 minimum bearing-face diameter3.2 mm. The small washer bridges that
-face to the larger washer; across-flats alone would miss the nut chamfer.
+All24 former washers are omitted. Journal axial capture comes from an integral
+1.5mm PA12 cap closing each moving carrier's D-bore at its inner end, with a
+diameter2.4mm bolt hole. The nut bears directly on this cap; the bolt head bears
+on the existing sleeve flange. The sleeve bore is also diameter2.4mm. Nominal
+nut tip projection is2.35mm. Validate the whole load chain and removal paths;
+a D-bore left open without this cap is not an equivalent washerless design.
+The fixed cheeks must remain free of clamp preload. Geometry does not qualify
+bearing indentation, friction, creep, wear or loosening. Stock square nuts
+also serve both optical pivots; exposed nuts need a holding tool during assembly.
 
 The rail clamps require square nuts; do not substitute small hex nuts.
 [Accu](https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2) permits minimum
@@ -281,7 +272,8 @@ Additional purchased attachment parts are required, **not completed BOM rows**:
 FC has four M2 attachment locations with its included dampers; P-AS has two M2
 locations; each servo has two diameter1.8 mm ear holes suitable for a designed
 M1.6 clearance fastening, not an identified OEM screw. Select actual spacer,
-washer, nut and screw lengths only after their bearing planes are known. Motor
+nut and screw lengths only after their bearing planes are known; add washers
+only if actual bearing geometry requires them. Motor
 mounting is still unresolved despite its confirmed M1.4 pattern. No generated
 part substitutes for the supplied28T horn or its retaining screw.
 

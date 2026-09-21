@@ -70,8 +70,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.bom = {
             "schema_version": bundle.ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": self.fingerprint,
-            "purchased_hardware_quantity": 54,
-            "unique_purchase_spec_count": 9,
+            "purchased_hardware_quantity": 24,
+            "unique_purchase_spec_count": 5,
             "purchase_scope": bundle.hardware_bom_scope(),
             "items": [
                 {
@@ -79,7 +79,7 @@ class BundleIntegrityTests(unittest.TestCase):
                     "quantity": quantity,
                     "instances": [f"hardware_{index}_{i}" for i in range(quantity)],
                 }
-                for index, quantity in enumerate((4, 6, 20, 3, 3, 4, 2, 8, 4))
+                for index, quantity in enumerate((4, 6, 2, 3, 9))
             ],
         }
         self.bom_path = self.output / (self.stem + "_hardware_bom.json")

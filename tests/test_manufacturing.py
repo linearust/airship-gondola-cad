@@ -70,10 +70,11 @@ class HardwareBomTests(unittest.TestCase):
                         PrintPart=False,
                     )
                 )
-        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT"]
+        nuts = [
+            obj for obj in self.hardware if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562"
+        ]
         # One purchase specification has different native evidence and wording
-        # at different journal instances. It must remain one BOM row, separate
-        # from the rail's DIN 562 square nuts.
+        # across rail, journal and optical instances. It must remain one BOM row.
         for obj in nuts[2:]:
             obj.ThreadStandard = "ISO metric coarse M2 x 0.4, right hand"
             obj.SourceURL = "https://example.com/journal-nuts"
@@ -94,17 +95,13 @@ class HardwareBomTests(unittest.TestCase):
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()
-        self.assertEqual(bom["purchased_hardware_quantity"], 54)
-        self.assertEqual(bom["unique_purchase_spec_count"], 9)
-        self.assertEqual(len(bom["items"]), 9)
+        self.assertEqual(bom["purchased_hardware_quantity"], 24)
+        self.assertEqual(bom["unique_purchase_spec_count"], 5)
+        self.assertEqual(len(bom["items"]), 5)
         self.assertEqual(bom["purchase_scope"], self.manufacturing.hardware_bom_scope())
         self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
-        nuts = next(row for row in bom["items"] if row["sku"] == "M2_HEX_NUT")
-        self.assertEqual(nuts["quantity"], 6)
-        square_nuts = next(
-            row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562"
-        )
-        self.assertEqual(square_nuts["quantity"], 3)
+        nuts = next(row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562")
+        self.assertEqual(nuts["quantity"], 9)
         self.assertEqual(
             nuts["sources"],
             ["https://example.com/first-journal", "https://example.com/journal-nuts"],
@@ -122,12 +119,9 @@ class HardwareBomTests(unittest.TestCase):
         self.assertTrue(audit["not_printed"])
 
     def test_audit_rejects_hex_nut_substitution_for_square_rail_nuts(self):
-        hex_nut = next(obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT")
         for obj in self.hardware:
             if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562":
                 obj.HardwareSKU = "M2_HEX_NUT"
-                for attribute in self.manufacturing.PURCHASE_METADATA_FIELDS.values():
-                    setattr(obj, attribute, getattr(hex_nut, attribute))
         self.export()
         audit = self.equipment.hardware_check(self.document, self.source)
         self.assertFalse(audit["passed"])
@@ -139,7 +133,9 @@ class HardwareBomTests(unittest.TestCase):
                 with self.subTest(field=key, operation=operation):
                     bom = self.export()
                     nuts = next(
-                        row for row in bom["items"] if row["sku"] == "M2_HEX_NUT"
+                        row
+                        for row in bom["items"]
+                        if row["sku"] == "M2_SQUARE_NUT_DIN562"
                     )
                     if operation == "remove":
                         nuts[key].pop()
@@ -154,7 +150,7 @@ class HardwareBomTests(unittest.TestCase):
                         next(
                             row
                             for row in audit["bom_rows"]
-                            if row["sku"] == "M2_HEX_NUT"
+                            if row["sku"] == "M2_SQUARE_NUT_DIN562"
                         )["matches_native_instances"]
                     )
 
@@ -315,27 +311,23 @@ class MountingPadGeometryTests(unittest.TestCase):
             self.assertIn("M2", part.ThreadStandard)
             self.assertNotIn("unthreaded", part.ThreadStandard.lower())
 
-    def test_native_hardware_distinguishes_unthreaded_washers(self):
+    def test_shared_nut_and_journal_screw_declare_m2_threads(self):
         from gondola.parts import metric_hardware as metric
 
         document = App.newDocument("HardwareThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parts = (
-            ("M2_WASHER_2.2_5_0.3", metric.washer_shape(), True),
-            ("M3_WASHER_3.2_9_0.8", metric.journal_retaining_washer_shape(), True),
-            ("M2_HEX_NUT", metric.nut_shape(), False),
-            ("M2X14_SOCKET_CAP", metric.screw_shape(14), False),
+            ("M2_SQUARE_NUT_DIN562", metric.square_nut_shape()),
+            ("M2X14_SOCKET_CAP", metric.screw_shape(14)),
         )
-        for index, (sku, shape, is_washer) in enumerate(parts):
+        for index, (sku, shape) in enumerate(parts):
             with self.subTest(sku=sku):
                 obj = metric.add_hardware(
                     document, None, f"Hardware{index}", sku, shape, sku, "Test only"
                 )
-                self.assertEqual(obj.NominalThreadDiameter.Value, 0 if is_washer else 2)
-                self.assertEqual(obj.ThreadPitch.Value, 0 if is_washer else 0.4)
-                self.assertEqual("unthreaded" in obj.ThreadStandard.lower(), is_washer)
-                if not is_washer:
-                    self.assertNotIn("washer", obj.ThreadStandard.lower())
+                self.assertEqual(obj.NominalThreadDiameter.Value, 2)
+                self.assertEqual(obj.ThreadPitch.Value, 0.4)
+                self.assertNotIn("unthreaded", obj.ThreadStandard.lower())
 
     def test_native_print_factory_sets_explicit_print_flag(self):
         from gondola.cad import create_group, create_printed_part

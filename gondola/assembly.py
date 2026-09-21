@@ -59,7 +59,7 @@ def add_assembly_notes(doc):
         ),
         (
             "Mounts",
-            "Battery and electronics carriers share four M2 clearance axes on a 40x40mm square. Four purchased 25mm PA66 spacers support the interchangeable optical head independently of the FC dampers.",
+            "Battery and electronics carriers share two diagonal M2 clearance axes at (-20,-20)/(20,20)mm. Two purchased 25mm PA66 spacers support the interchangeable optical head independently of the FC dampers.",
         ),
         (
             "Optical stack",

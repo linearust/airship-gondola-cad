@@ -1,6 +1,6 @@
 """Project-standard structural stack, separate from FC holes and soft dampers.
 
-Both rail equipment carriers use the same 40 mm square M2 interface. Purchased
+Both rail equipment carriers use the same two diagonal M2 axes of a 40 mm square. Purchased
 25 mm nylon spacers support one interchangeable optical head; no printed posts.
 """
 
@@ -16,9 +16,7 @@ from . import metric_hardware as metric
 
 V = App.Vector
 PITCH_MM = 40.0
-HOLE_CENTRES = tuple(
-    (x, y) for x in (-PITCH_MM / 2, PITCH_MM / 2) for y in (-PITCH_MM / 2, PITCH_MM / 2)
-)
+HOLE_CENTRES = tuple((sign * PITCH_MM / 2, sign * PITCH_MM / 2) for sign in (-1, 1))
 HOLE_DIAMETER = 2.6
 PAD_DIAMETER = 6.5
 ARM_WIDTH = 5.0
@@ -35,8 +33,9 @@ SUPPORTED_HOSTS = {
 
 def interface_contract():
     return {
-        "standard": "Project structural stack: 40x40mm square, four M2 clearance axes",
+        "standard": "Project structural stack: two M2 clearance axes at (-20,-20) and (20,20) mm",
         "industry_standard_claimed": False,
+        "axis_spacing_mm": math.sqrt(2) * PITCH_MM,
         "hole_centres_xy_mm": HOLE_CENTRES,
         "hole_diameter_mm": HOLE_DIAMETER,
         "pad_diameter_mm": PAD_DIAMETER,
@@ -45,13 +44,13 @@ def interface_contract():
         "purchased_spacer_length_mm": SPACER_LENGTH,
         "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
-        "load_path": "Carrier pads -> four bought M2 female/female PA66 spacers -> optical platform. No stack load is routed through FC silicone dampers, PCB or battery.",
-        "qualification": "Verify purchased spacer dimensions, usable thread depth>=3.3mm, thread engagement, PA66 clamp/creep strength and retention with actual cables. 4mm REF drawing depth is not a guaranteed minimum. No load/torque qualification is claimed.",
+        "load_path": "Carrier pads -> two bought M2 female/female PA66 spacers -> optical platform. No stack load is routed through FC silicone dampers, PCB or battery.",
+        "qualification": "Verify purchased spacer dimensions, usable thread depth>=3.6mm, thread engagement, PA66 clamp/creep strength and retention with actual cables. 4mm REF drawing depth is not a guaranteed minimum. No load/torque qualification is claimed.",
     }
 
 
 def platform_shape():
-    """Open diagonal ribs connect four pads to the head without a solid board."""
+    """One diagonal bar connects two pads to the head without a solid board."""
     pieces = []
     for x, y in HOLE_CENTRES:
         arm = box(math.hypot(x, y), ARM_WIDTH, DECK_THICKNESS, (0, -ARM_WIDTH / 2, 0))
@@ -123,8 +122,8 @@ def build_stack_hardware(doc, group):
         spacer.Placement.Base = V(x, y, -SPACER_LENGTH)
         hardware.append(spacer)
         for end, bearing_z, direction in (
-            ("Lower", -SPACER_LENGTH - DECK_THICKNESS - metric.WASHER_THICKNESS, 1),
-            ("Upper", DECK_THICKNESS + metric.WASHER_THICKNESS, -1),
+            ("Lower", -SPACER_LENGTH - DECK_THICKNESS, 1),
+            ("Upper", DECK_THICKNESS, -1),
         ):
             rotation = App.Rotation(V(0, 0, 1), V(0, 0, direction))
             bolt = metric.add_hardware(
@@ -135,23 +134,11 @@ def build_stack_hardware(doc, group):
                 metric.stack_screw_shape(),
                 "M2X5_PA66_PAN_HEAD",
                 common
-                + " Nominal thread entry2.7mm through printed2mm plate and0.3mm washer; actual printed thickness, screw tolerance and blind depth must be checked.",
+                + " Nominal thread entry3.0mm through printed2mm plate without washers; actual printed thickness, screw tolerance and blind depth must be checked.",
                 metric.STACK_SCREW_SOURCE,
                 "Nylon PA66",
             )
             bolt.Placement = App.Placement(V(x, y, bearing_z), rotation)
-            washer = metric.add_hardware(
-                doc,
-                group,
-                f"OpticalStack{end}Washer{index}",
-                "BUY | M2 plain washer2.2x5x0.3",
-                metric.washer_shape(),
-                "M2_WASHER_2.2_5_0.3",
-                common,
-                metric.WASHER_SOURCE,
-            )
-            washer.Placement = App.Placement(V(x, y, bearing_z), rotation)
-            for item in (bolt, washer):
-                set_property(item, "StackEnd", end)
-            hardware.extend([bolt, washer])
+            set_property(bolt, "StackEnd", end)
+            hardware.append(bolt)
     return hardware

@@ -20,17 +20,16 @@ ROLL_PIVOT_Z = 8.0
 PITCH_PIVOT_OFFSET_Z = 10.0
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 3.5
-EAR_THICKNESS = 2.0
+EAR_THICKNESS = 1.5
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
 TRAY_TOP_Z = 6.5
 ADHESIVE_ALLOWANCE = 1.0
-SCREW_LENGTH = 8.0
-OUTER_WASHER_START = -EAR_THICKNESS - metric.WASHER_THICKNESS
-INNER_WASHER_START = EAR_THICKNESS
-NUT_START = INNER_WASHER_START + metric.WASHER_THICKNESS
-BOLT_TIP = OUTER_WASHER_START + SCREW_LENGTH
+SCREW_LENGTH = metric.STACK_SCREW_LENGTH
+SCREW_BEARING_START = -EAR_THICKNESS
+NUT_START = EAR_THICKNESS
+BOLT_TIP = SCREW_BEARING_START + SCREW_LENGTH
 
 
 def _cylinder(radius, length, origin, axis):
@@ -45,7 +44,7 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Common open stack platform and a 2 mm negative-X roll ear."""
+    """Common diagonal stack bar and a 1.5 mm negative-X roll ear."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
@@ -67,10 +66,10 @@ def base_shape():
 
 
 def roll_bracket_shape():
-    """Orthogonal ears joined by a straight 2 x 2 mm post, in the roll frame."""
+    """Orthogonal ears joined by a 1.5 mm square post, in the roll frame."""
     first = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (1, 0, 0))
-    # Keep this post in the second ear's Y=-2..0 plane. Extending it behind
-    # that plane would obstruct the purchased second-axis washer and screw head.
+    # Keep the post in the second ear's plane. Extending it behind that plane
+    # would obstruct the purchased second-axis screw head.
     post = box(
         EAR_THICKNESS,
         EAR_THICKNESS,
@@ -96,7 +95,7 @@ def roll_bracket_shape():
 
 
 def sensor_tray_shape():
-    """Continuous adhesive pad and one 2 mm pitch ear, in the pitch frame."""
+    """Continuous adhesive pad and one 1.5 mm pitch ear, in the pitch frame."""
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (0, 1, 0))
     neck = box(4, EAR_THICKNESS, TRAY_BOTTOM_Z, (-2, 0, 0))
     pad = box(
@@ -118,7 +117,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": "40x40mm square four M2 clearance axes, shared open platform; supported by purchased columns independently of the FC dampers",
+        "standard_stack_interface": "Two diagonal M2 clearance axes at (-20,-20)/(20,20), shared open bar; supported by two purchased columns independently of the FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -129,11 +128,13 @@ def mount_contract():
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware_per_axis": "M2x8 socket screw, M2 nut, two 2.2x5x0.3 washers",
-        "full_nut_engagement_mm": metric.NUT_HEIGHT,
-        "bolt_tip_beyond_nut_mm": BOLT_TIP - NUT_START - metric.NUT_HEIGHT,
+        "hardware_per_axis": "PA66 M2x5 slotted pan screw and A2 DIN562 M2 square nut; no washers",
+        "full_nut_engagement_mm": metric.SQUARE_NUT_HEIGHT,
+        "bolt_tip_beyond_nut_mm": BOLT_TIP - NUT_START - metric.SQUARE_NUT_HEIGHT,
+        "minimum_nominal_wall_mm": EAR_THICKNESS,
+        "fastener_fit_scope": "Nominal screw projection is 0.8mm beyond a 1.2mm nut. Two ears each 0.3mm thicker leave only 0.2mm, before screw-length tolerance. Measure printed thickness and bought screw/nut before use; full physical engagement is unverified.",
         "assembly": "Print all three parts separately; plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
-        "adjustment": "Support the sensor, loosen the selected M2 nut/screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
+        "adjustment": "Support the sensor, hold the square nut with small pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12/PA66 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
     }
 
@@ -144,29 +145,23 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
     specs = [
         (
             "Bolt",
-            metric.screw_shape(SCREW_LENGTH),
-            OUTER_WASHER_START,
-            "M2X8_SOCKET_CAP",
-            metric.OPTICAL_SCREW_SOURCE,
+            metric.stack_screw_shape(),
+            SCREW_BEARING_START,
+            "M2X5_PA66_PAN_HEAD",
+            metric.STACK_SCREW_SOURCE,
+            "Nylon PA66",
         ),
         (
-            "OuterWasher",
-            metric.washer_shape(),
-            OUTER_WASHER_START,
-            "M2_WASHER_2.2_5_0.3",
-            metric.WASHER_SOURCE,
+            "Nut",
+            metric.square_nut_shape(),
+            NUT_START,
+            "M2_SQUARE_NUT_DIN562",
+            metric.SQUARE_NUT_SOURCE,
+            "A2 stainless steel",
         ),
-        (
-            "InnerWasher",
-            metric.washer_shape(),
-            INNER_WASHER_START,
-            "M2_WASHER_2.2_5_0.3",
-            metric.WASHER_SOURCE,
-        ),
-        ("Nut", metric.nut_shape(), NUT_START, "M2_HEX_NUT", metric.NUT_SOURCE),
     ]
     objects = []
-    for kind, original, axial, sku, source in specs:
+    for kind, original, axial, sku, source, material in specs:
         shape = original.copy()
         shape.rotate(V(), rotation_axis, rotation_degrees)
         shape.translate(V(axial, 0, centre_z) if axis == "X" else V(0, axial, centre_z))
@@ -180,8 +175,9 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             + kind,
             shape,
             sku,
-            "One purchased M2x8 bolt, two small washers and M2 nut clamp two separately printed 2mm ears. Nominal full1.6mm nut engagement and1.8mm tip projection. This is manual friction adjustment, not a qualified locking torque or holding-load claim.",
+            "One bought PA66 M2x5 pan screw and A2 DIN562 square nut directly clamp two separately printed1.5mm ears, without washers. Nominal full1.2mm nut engagement and0.8mm tip projection; actual screw length and both printed thicknesses must be checked. Manual friction adjustment, not a qualified torque, creep life or holding-load claim.",
             source,
+            material,
         )
         objects.append(obj)
     return objects
@@ -247,7 +243,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF, printed separately. Plain2mm friction ears with bought M2 hardware; no printed threads or physical stops. Verify actual fit, stiffness, adhesive contact and holding torque before use.",
+            "PA12 SLS/MJF, printed separately. Plain1.5mm friction ears and post with bought PA66 M2x5 screws and A2 square nuts, no washers, printed threads or physical stops. Verify printed thickness, screw engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

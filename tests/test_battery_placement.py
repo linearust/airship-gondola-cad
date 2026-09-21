@@ -27,6 +27,7 @@ class BatteryPlacementTests(unittest.TestCase):
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
         stack_interface.attach_to_host(stack, cls.host)
         hardware = stack_interface.build_stack_hardware(cls.doc, stack)
+        cls.column_centres = stack_interface.HOLE_CENTRES
         cls.battery = cls.doc.ModuleBatteryEnvelope
         cls.objects = [mount, *references, *hardware]
         cls.doc.recompute()
@@ -52,11 +53,20 @@ class BatteryPlacementTests(unittest.TestCase):
             result["continuous_translation"]["local_size_mm"], [28, 74, 17]
         )
         self.assertEqual(len(result["unsupported_legacy_offsets"]), 12)
-        self.assertTrue(
-            all(
-                not row["supported"] and len(row["collisions"]) == 2
-                for row in result["unsupported_legacy_offsets"]
-            )
+        for row in result["unsupported_legacy_offsets"]:
+            expected_collisions = {
+                f"OpticalStackSpacer{index}"
+                for index, (x, _) in enumerate(self.column_centres)
+                if x * row["local_centre_xy_mm"][0] > 0
+            }
+            self.assertFalse(row["supported"])
+            self.assertEqual(set(row["collisions"]), expected_collisions)
+        self.assertEqual(
+            {
+                row["object"]
+                for row in result["continuous_translation"]["stack_column_gaps"]
+            },
+            {f"OpticalStackSpacer{index}" for index in range(len(self.column_centres))},
         )
         self.assertGreater(
             min(

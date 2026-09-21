@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "O"
+DESIGN_REVISION = "P"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
@@ -94,15 +94,12 @@ EXCLUDED_EQUIPMENT = (
 )
 PURCHASED_HARDWARE_QUANTITIES = {
     "M2X14_SOCKET_CAP": 4,
-    "M2X8_SOCKET_CAP": 2,
-    "M2X5_PA66_PAN_HEAD": 8,
-    "M2_FF_PA66_AF4_L25": 4,
+    "M2X5_PA66_PAN_HEAD": 6,
+    "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_HEX_NUT": 6,
-    "M2_SQUARE_NUT_DIN562": 3,
-    "M2_WASHER_2.2_5_0.3": 20,
-    "M3_WASHER_3.2_9_0.8": 4,
+    "M2_SQUARE_NUT_DIN562": 9,
 }
+
 HARDWARE_MATERIALS = {
     sku: "Nylon PA66"
     if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD")
@@ -277,6 +274,7 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12 SLS/MJF",
         "manufacturing_decision": MANUFACTURING_DECISION,
+        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
         "scope": "Indoor LTA blimp gondola including MTF-02P: one flexible rail, two tilting main propulsors, a compact battery mount and one open electronics carrier with confirmed mounting-hole patterns, sharing an interchangeable manually aligned optical stack.",
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
@@ -287,7 +285,7 @@ def project_status():
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "optical_stack_host": OPTICAL_STACK_HOST,
-        "optical_stack_scope": "Common structural 40x40mm M2 interface on battery and electronics carriers; four bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
+        "optical_stack_scope": "Common structural two-axis diagonal M2 interface at (-20,-20)/(20,20)mm on battery and electronics carriers; two bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,

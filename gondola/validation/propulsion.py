@@ -72,7 +72,7 @@ def _axial_contact_area(first, second):
 def _journal_rotation_envelope(shape):
     """Continuous full-turn envelope, with original-solid coverage verified.
 
-    Axial vertex levels split the flange, neck, washers and head. Each slab is
+    Axial vertex levels split the flange, neck, square nut and head. Each slab is
     bounded by a coaxial cylinder. Coverage is checked against the actual BRep,
     so an unrepresented curved extremum fails instead of understating the sweep.
     """
@@ -129,12 +129,10 @@ def journal_stack_check(sleeve, hardware, frame, carrier, side):
     outward_block = intersection_volume(outward, carrier)
     inward_block = intersection_volume(inward, frame)
     contacts = []
-    chain = ["Bolt", "OuterWasher", "Sleeve"]
-    if "RetainingWasher" in hardware:
-        chain.append("RetainingWasher")
-    chain += ["InnerWasher", "Nut"]
+    contact_parts = {**parts, "CarrierCap": carrier}
+    chain = ["Bolt", "Sleeve", "CarrierCap", "Nut"]
     for first, second in zip(chain, chain[1:]):
-        area = _axial_contact_area(parts[first], parts[second])
+        area = _axial_contact_area(contact_parts[first], contact_parts[second])
         contacts.append(
             {
                 "parts": [first, second],
@@ -181,7 +179,7 @@ def journal_stack_check(sleeve, hardware, frame, carrier, side):
         "nut_engagement_length_mm": nut.YLength,
         "missing_bolt_thread_core_mm3": missing_core,
         "bolt_tip_beyond_nut_mm": nut_low - bolt_low,
-        "scope": "Simplified nominal BRep contact/capture and a continuous full-turn clearance envelope; no thread strength, tightening torque, wear or loaded retention qualification.",
+        "scope": "Simplified nominal BRep contact/capture and a continuous full-turn clearance envelope; direct-bearing bolt/sleeve/carrier-cap/square-nut stack. No thread strength, PA12 bearing pressure, creep, tightening torque, wear or loaded retention qualification.",
     }
     report["passed"] = (
         report["axial_capture"]
@@ -290,16 +288,7 @@ def validate(source=None):
                     prefix == "Starboard" and sign == 1
                 )
                 journal_name = prefix + "Journal" + suffix
-                hardware_names = {
-                    journal_name + kind
-                    for kind in (
-                        "Bolt",
-                        "OuterWasher",
-                        "RetainingWasher",
-                        "InnerWasher",
-                        "Nut",
-                    )
-                }
+                hardware_names = {journal_name + kind for kind in ("Bolt", "Nut")}
                 sleeve_name = prefix + "JournalSleeve" + suffix
                 sleeve_removed = {sleeve_name} | hardware_names
                 if driven:
@@ -353,13 +342,7 @@ def validate(source=None):
                 )
                 hardware = {
                     kind: world_shape(doc.getObject(prefix + "Journal" + suffix + kind))
-                    for kind in (
-                        "Bolt",
-                        "OuterWasher",
-                        "RetainingWasher",
-                        "InnerWasher",
-                        "Nut",
-                    )
+                    for kind in ("Bolt", "Nut")
                 }
                 report["assembled_journal_stacks"].append(
                     {
@@ -367,8 +350,8 @@ def validate(source=None):
                         **journal_stack_check(sleeve, hardware, frame, carrier, sign),
                     }
                 )
-                # Remove nut first, then bolt/outer washer, then both inner
-                # washers. The nut is rotated off the real thread; CAD only
+                # Remove the square nut first, then the bare bolt. The nut
+                # is rotated off the real thread; CAD only
                 # screens its axial envelope. Servo/horn removal is prerequisite.
                 remaining = {
                     name: shape
@@ -388,29 +371,9 @@ def validate(source=None):
                         ],
                     ),
                     (
-                        "BoltAndOuterWasher",
-                        ["Bolt", "OuterWasher"],
+                        "Bolt",
+                        ["Bolt"],
                         [(0, 0, 0), (0, sign * 20, 0)],
-                    ),
-                    (
-                        "InnerWasher",
-                        ["InnerWasher"],
-                        [
-                            (0, 0, 0),
-                            (0, -sign * 5, 0),
-                            (0, -sign * 5, 12),
-                            (0, -sign * 20, 12),
-                        ],
-                    ),
-                    (
-                        "RetainingWasher",
-                        ["RetainingWasher"],
-                        [
-                            (0, 0, 0),
-                            (0, -sign * 5, 0),
-                            (0, -sign * 5, 12),
-                            (0, -sign * 20, 12),
-                        ],
                     ),
                 ]
                 for label, names, path in operations:
@@ -468,27 +431,50 @@ def validate(source=None):
                 )
         report["printed_parts"] = len(module["printed"])
         report["purchased_hardware"] = len(module["hardware"])
-        maximum_d_inscribed_diameter = (
-            propulsion.JOURNAL_RADIUS + 0.15 + propulsion.CARRIER_D_FLAT + 0.3
-        )
-        retaining_margin = (
-            fastener.JOURNAL_RETAINING_WASHER_MIN_OD - maximum_d_inscribed_diameter
-        )
-        small_over_large = (
-            fastener.WASHER_MIN_OD - fastener.JOURNAL_RETAINING_WASHER_MAX_ID
-        )
-        nut_over_small = fastener.NUT_MIN_BEARING_DIAMETER - fastener.WASHER_MAX_ID
-        report["retaining_washer_tolerance_screen"] = {
-            "minimum_large_washer_od_mm": fastener.JOURNAL_RETAINING_WASHER_MIN_OD,
-            "maximum_D_hole_inscribed_circle_diameter_mm": maximum_d_inscribed_diameter,
-            "diameter_blocking_margin_mm": retaining_margin,
-            "small_washer_min_od_minus_large_max_id_mm": small_over_large,
-            "nut_min_bearing_diameter_minus_small_max_id_mm": nut_over_small,
-            "scope": "Parallel, rigid cross-section screen with carrier bore diameter+0.3mm and D-flat+0.3mm assumptions. A circle inside a circle/flat intersection has maximum diameter R+flat. Positive concentric bearing differences are not a full-annulus guarantee under eccentricity. Washer tilt, printed endplay, deformation and tightening require physical checks.",
-            "passed": retaining_margin > 0
-            and small_over_large > 0
-            and nut_over_small > 0,
-        }
+        # Verify the complete integral cap annulus in each actual carrier,
+        # including the small through hole. The whole carrier must remain one
+        # solid; a detached printed washer must never satisfy this check.
+        cap_rows = []
+        for prefix in ("Port", "Starboard"):
+            shape = local_shape(doc.getObject(prefix + "MotorCarrier"))
+            for side in (-1, 1):
+                low = side * propulsion.CARRIER_CAP_INNER_Y
+                cap = Part.makeCylinder(
+                    6,
+                    propulsion.CARRIER_CAP_THICKNESS,
+                    App.Vector(0, low, 0),
+                    App.Vector(0, side, 0),
+                ).cut(
+                    Part.makeCylinder(
+                        propulsion.SLEEVE_BORE_RADIUS,
+                        propulsion.CARRIER_CAP_THICKNESS,
+                        App.Vector(0, low, 0),
+                        App.Vector(0, side, 0),
+                    )
+                )
+                missing = abs(cap.cut(shape).Volume)
+                bore = Part.makeCylinder(
+                    propulsion.SLEEVE_BORE_RADIUS - 1e-4,
+                    propulsion.CARRIER_CAP_THICKNESS,
+                    App.Vector(0, low, 0),
+                    App.Vector(0, side, 0),
+                )
+                hole_hit = intersection_volume(bore, shape)
+                cap_rows.append(
+                    {
+                        "carrier": prefix,
+                        "side": side,
+                        "missing_integral_cap_mm3": missing,
+                        "through_hole_intersection_mm3": hole_hit,
+                        "one_connected_carrier_solid": shape.isValid()
+                        and len(shape.Solids) == 1,
+                        "passed": missing < TOL
+                        and hole_hit < TOL
+                        and shape.isValid()
+                        and len(shape.Solids) == 1,
+                    }
+                )
+        report["integral_retention_caps"] = cap_rows
         report["minimum_sleeve_flat_wall_mm"] = (
             propulsion.SLEEVE_D_FLAT - propulsion.SLEEVE_BORE_RADIUS
         )
@@ -497,7 +483,7 @@ def validate(source=None):
             (
                 "sleeve_D_flat",
                 "PortJournalSleevePositive",
-                (0, 24, 1.49),
+                (0, 24, 1.19),
                 (0, 24, 3.01),
             ),
             ("guard_radial", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31)),
@@ -513,20 +499,6 @@ def validate(source=None):
                             4.5,
                             side * 80,
                             propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01,
-                        ),
-                    ),
-                    (
-                        f"foot_edge_rib_{side}",
-                        "PropulsionFixedFrame",
-                        (
-                            4.89,
-                            side * 80,
-                            propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.75,
-                        ),
-                        (
-                            6.41,
-                            side * 80,
-                            propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.75,
                         ),
                     ),
                 ]
@@ -556,6 +528,15 @@ def validate(source=None):
                         (x, side * 40.5, 24.8203703704),
                     )
                 )
+        for side in (-1, 1):
+            wall_probes.append(
+                (
+                    f"integral_carrier_cap_{side}",
+                    "PortMotorCarrier",
+                    (2, side * (propulsion.CARRIER_CAP_INNER_Y - 0.01), 0),
+                    (2, side * (propulsion.SLEEVE_INNER_Y + 0.01), 0),
+                )
+            )
         wall_rows = []
         for label, name, start, end in wall_probes:
             section = local_shape(doc.getObject(name)).common(
@@ -646,10 +627,10 @@ def validate(source=None):
             and len(report["motor_and_prop_insertion"]) == 4
             and len(report["geometry"]) == 7
             and len(report["servo_mount_axes"]) == 4
-            and report["purchased_hardware"] == 20
+            and report["purchased_hardware"] == 8
             and len(report["assembled_journal_stacks"]) == 4
             and all(row["passed"] for row in report["assembled_journal_stacks"])
-            and len(report["journal_hardware_removal"]) == 16
+            and len(report["journal_hardware_removal"]) == 8
             and all(row["passed"] for row in report["journal_hardware_removal"])
             and all(row["passed"] for row in report["continuous_nut_loading"])
             and all(
@@ -657,7 +638,8 @@ def validate(source=None):
                 for row in report["sleeve_service_servo_removed"]
                 + report["motor_and_prop_insertion"]
             )
-            and report["retaining_washer_tolerance_screen"]["passed"]
+            and len(report["integral_retention_caps"]) == 4
+            and all(row["passed"] for row in report["integral_retention_caps"])
             and report["all_hardware_A2"]
             and report["no_rail_key_metadata"]
             and report["minimum_sleeve_flat_wall_mm"] >= 1.5 - TOL

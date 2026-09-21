@@ -59,8 +59,8 @@ class WorkspacePortability(unittest.TestCase):
             )
             state = json.loads(result.stdout)
             self.assertEqual(state["scoped_listed_equipment_mass_g"], 57.432)
-            self.assertEqual(state["inventory"]["purchased_hardware"], 54)
-            self.assertEqual(state["inventory"]["purchased_hardware_types"], 9)
+            self.assertEqual(state["inventory"]["purchased_hardware"], 24)
+            self.assertEqual(state["inventory"]["purchased_hardware_types"], 5)
             self.assertIn("yaw_motor", state["excluded_equipment"])
             self.assertFalse(state["production_released"])
             self.assertIn(
