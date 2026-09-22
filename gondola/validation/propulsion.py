@@ -36,6 +36,7 @@ from .geometry import (
 from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 from .relative_motion import relative_motion_check
+from .servo_module import bridge_joint_check, servo_module_service_check
 
 TOL = 1e-5
 
@@ -272,35 +273,44 @@ def gear_rotation_check(doc, prefix):
 
 
 def fixed_servo_datum_check(doc, prefix):
-    """Require the fixed servo axis and selected integral frame identity."""
+    """Check the actual module-relative axis, including every parent placement."""
     mount = doc.getObject(prefix + "ServoMount")
     if mount is None:
         return {"passed": False, "error": "Missing fixed servo mount datum"}
     configuration = drive_for_document(doc)
     sign = 1 if prefix == "Port" else -1
     expected = App.Vector(sign * configuration.input_x_mm, 0, configuration.input_z_mm)
-    error = (mount.Placement.Base - expected).Length
+    actual = (
+        doc.MainPropulsionModule.getGlobalPlacement()
+        .inverse()
+        .multiply(mount.getGlobalPlacement())
+    )
+    error = (actual.Base - expected).Length
     expressions = [
         str(path)
         for path, _ in mount.ExpressionEngine
         if str(path).lstrip(".").startswith("Placement")
     ]
     frame_sku = getattr(doc.PropulsionFixedFrame, "PrintSKU", None)
+    bridge_sku = getattr(doc.ServoDriveBridge, "PrintSKU", None)
     return {
         "pod": prefix,
         "gear_configuration": configuration.key,
         "expected_input_axis_mm": list(expected),
-        "actual_input_axis_mm": list(mount.Placement.Base),
+        "actual_input_axis_mm": list(actual.Base),
         "datum_position_error_mm": error,
         "placement_expressions": expressions,
         "expected_frame_sku": configuration.frame_sku,
         "actual_frame_sku": frame_sku,
-        "scope": "Fixed servo datum on the gear-specific integral paired frame; no separate holder joint or adjustable mount. Physical printed fit and mesh remain unqualified.",
+        "expected_bridge_sku": configuration.bridge_sku,
+        "actual_bridge_sku": bridge_sku,
+        "scope": "Actual servo axis relative to the complete propulsion module, including the removable bridge's parent placement. A ratio-specific bridge seats on the common output frame; no adjustment slots. Physical printed seating and mesh remain unqualified.",
         "passed": error < TOL
-        and mount.Placement.Rotation.isSame(App.Rotation(), 1e-7)
+        and actual.Rotation.isSame(App.Rotation(), 1e-7)
         and not expressions
         and "MeshClearance" not in mount.PropertiesList
-        and frame_sku == configuration.frame_sku,
+        and frame_sku == configuration.frame_sku
+        and bridge_sku == configuration.bridge_sku,
     }
 
 
@@ -510,8 +520,8 @@ def direct_adapter_fit_check(doc, prefix):
 
 
 def servo_mount_check(doc, prefix):
-    """Require both stock ears to seat on the integral frame without collision."""
-    frame = world_shape(doc.PropulsionFixedFrame)
+    """Require both stock ears to seat on the removable bridge without collision."""
+    frame = world_shape(doc.ServoDriveBridge)
     servo = world_shape(doc.getObject(prefix + "Servo"))
     frame_overlap = intersection_volume(frame, servo)
     clamps = Part.makeCompound([frame, servo])
@@ -534,7 +544,7 @@ def servo_mount_check(doc, prefix):
         "pod": prefix,
         "servo_frame_intersection_mm3": frame_overlap,
         "cases": rows,
-        "scope": "The two published X06 ears bear directly on the integral frame using M1.6 fasteners. Nominal rigid contact is not proof of clamp torque, stiffness or actual case fit.",
+        "scope": "The two published X06 ears bear directly on the removable bridge using M1.6 fasteners. Nominal rigid contact is not proof of clamp torque, stiffness or actual case fit.",
         "passed": frame_overlap < TOL and all(row["passed"] for row in rows),
     }
 
@@ -885,7 +895,7 @@ def servo_case_service_check(doc, module, prefix):
         "coordinate_frame": "propulsion module",
         "waypoints_mm": points,
         "part_paths": rows,
-        "scope": "After the checked small-gear, rear-strap and adapter/driver removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained original horn 12.5 mm gearward, then 40 mm sideways. The integral frame and every output shaft, bearing and cap remain installed. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
+        "scope": "After the checked small-gear, rear-strap and adapter/driver removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained original horn 12.5 mm gearward, then 40 mm sideways. The bridge, common frame and every output shaft, bearing and cap remain installed. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
         "passed": all(row["passed"] for row in fasteners + rows),
     }
 
@@ -1285,6 +1295,9 @@ def _record_fastener_checks(report, module, physical):
             nut,
             _service_obstacles(physical, service_excluded, members=service_parts),
             thread_diameter=thread_diameter,
+            nut_lateral_direction=(1 if "Port" in bolt.Name else -1, 0, 0)
+            if bolt.Name.startswith("ServoBridge")
+            else None,
         )
         report["fastener_service"].append(
             {
@@ -1430,6 +1443,8 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
             "metrics": module["metrics"],
         }
         report.update({key: [] for key in PROPULSION_EVIDENCE_COUNTS})
+        report["bridge_joint"].append(bridge_joint_check(doc, module))
+        report["servo_module_service"].append(servo_module_service_check(doc, module))
         _record_rail_fit_checks(report, frame, physical)
         report["rail_key_access"] = rail_key_access_check(doc, module)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):

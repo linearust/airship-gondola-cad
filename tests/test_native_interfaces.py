@@ -11,7 +11,9 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeInterfaceTests(unittest.TestCase):
-    def test_complete_assembly_preserves_gear_specific_integral_frame(self):
+    def test_complete_assembly_preserves_a_common_frame_and_removable_servo_module(
+        self,
+    ):
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
@@ -31,8 +33,43 @@ class NativeInterfaceTests(unittest.TestCase):
                 self.assertEqual(
                     doc.PropulsionFixedFrame.PrintSKU, SELECTED_DRIVE.frame_sku
                 )
+                self.assertEqual(
+                    doc.ServoDriveBridge.PrintSKU, SELECTED_DRIVE.bridge_sku
+                )
+                self.assertEqual(
+                    doc.ServoDriveModule.getParentGeoFeatureGroup(),
+                    doc.MainPropulsionModule,
+                )
+                self.assertEqual(
+                    doc.ServoDriveBridge.getParentGeoFeatureGroup(),
+                    doc.ServoDriveModule,
+                )
+                self.assertFalse(
+                    belongs_to_group(doc.PropulsionFixedFrame, doc.ServoDriveModule)
+                )
+                self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
+                self.assertEqual(len(doc.DesignRegistry.Modules), 3)
+                self.assertEqual(len(doc.DesignRegistry.PrintedParts), 18)
+                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 62)
+                self.assertEqual(
+                    list(doc.DesignRegistry.PrintedParts).count(doc.ServoDriveBridge), 1
+                )
                 for prefix in ("Port", "Starboard"):
+                    self.assertEqual(
+                        doc.getObject(prefix + "ServoMount").getParentGeoFeatureGroup(),
+                        doc.ServoDriveModule,
+                    )
+                    self.assertFalse(
+                        belongs_to_group(
+                            doc.getObject(prefix + "Pod"), doc.ServoDriveModule
+                        )
+                    )
                     self.assertIsNone(doc.getObject(prefix + "ServoHolder"))
+                    for kind in ("Bolt", "Nut"):
+                        self.assertIn(
+                            doc.getObject("ServoBridge" + prefix + kind),
+                            doc.DesignRegistry.HardwareParts,
+                        )
                     for side in ("Negative", "Positive"):
                         for kind in ("Bolt", "Nut"):
                             self.assertIsNone(

@@ -103,7 +103,7 @@ class StepIdentityTests(unittest.TestCase):
         self.assertFalse(result["closed_solid_identity_by_empty_cuts"])
 
     def test_fixed_frame_step_round_trip_preserves_closed_solid(self):
-        from gondola.parts.propulsion import integral_frame_shape
+        from gondola.parts.propulsion import fixed_frame_shape
         from gondola.print_export import (
             _topologically_empty,
             print_shape,
@@ -112,7 +112,7 @@ class StepIdentityTests(unittest.TestCase):
 
         original = print_shape(
             SimpleNamespace(
-                Shape=integral_frame_shape(),
+                Shape=fixed_frame_shape(),
                 PrintRotation=App.Rotation(App.Vector(0, 0, 1), 45),
             )
         )

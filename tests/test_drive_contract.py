@@ -13,7 +13,7 @@ from gondola.contracts.drive import (
 
 
 class DriveContractTests(unittest.TestCase):
-    def test_catalog_alternative_replaces_driver_and_integral_frame(self):
+    def test_catalog_alternative_replaces_drivers_and_bridge_on_a_common_frame(self):
         baseline = DRIVE_CONFIGURATIONS["60_20"]
         alternative = DRIVE_CONFIGURATIONS["64_20"]
         self.assertEqual(baseline.center_distance_mm, 20)
@@ -31,13 +31,17 @@ class DriveContractTests(unittest.TestCase):
             1,
         )
         self.assertNotIn("mesh_clearance_max_mm", baseline.contract())
-        self.assertEqual(
-            baseline.contract()["fixed_frame_print_sku"], "PropulsionFrame60T"
-        )
-        self.assertEqual(
-            alternative.contract()["fixed_frame_print_sku"], "PropulsionFrame64T"
-        )
         for configuration in (baseline, alternative):
+            self.assertEqual(configuration.frame_sku, "PropulsionFixedFrame")
+            self.assertEqual(
+                configuration.contract()["fixed_frame_print_sku"],
+                "PropulsionFixedFrame",
+            )
+            expected = f"ServoDriveBridge{configuration.driver.teeth}T"
+            self.assertEqual(configuration.bridge_sku, expected)
+            self.assertEqual(
+                configuration.contract()["servo_bridge_print_sku"], expected
+            )
             self.assertNotIn("servo_holder_print_sku", configuration.contract())
         self.assertEqual(baseline.contract()["servo_endpoint_for_180_deg"], 60)
         self.assertEqual(alternative.contract()["servo_endpoint_for_180_deg"], 56.25)

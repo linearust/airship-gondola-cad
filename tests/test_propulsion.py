@@ -401,7 +401,7 @@ class NativeGearedDriveTests(unittest.TestCase):
 
     def test_servo_removal_keeps_the_thin_ear_in_the_continuous_sweep(self):
         from gondola.cad import translated_shape, world_shape
-        from gondola.parts import propulsion
+        from gondola.parts import servo_bridge
         from gondola.validation.geometry import intersection_volume
         from gondola.validation.propulsion import servo_lateral_service_check
 
@@ -415,8 +415,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                     0.2,
                     App.Vector(
                         sign * (SELECTED_DRIVE.input_x_mm + 20) - 0.1,
-                        sign * (propulsion.servo_case_front_y() - 4.7 + 12.5 + 0.5)
-                        - 0.1,
+                        sign * (servo_bridge.case_front_y() - 4.7 + 12.5 + 0.5) - 0.1,
                         SELECTED_DRIVE.input_z_mm + 8.3,
                     ),
                 )
@@ -541,7 +540,7 @@ class NativeGearedDriveTests(unittest.TestCase):
             clamp = Part.makeCompound(
                 [
                     world_shape(self.doc.getObject(prefix + "Servo")),
-                    world_shape(self.doc.PropulsionFixedFrame),
+                    world_shape(self.doc.ServoDriveBridge),
                 ]
             )
             for suffix in ("Lower", "Upper"):
@@ -613,7 +612,7 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         for doc, _ in cls.configurations.values():
             App.closeDocument(doc.Name)
 
-    def test_gear_substitution_replaces_drivers_and_integral_frame_only(self):
+    def test_gear_substitution_replaces_drivers_and_bridge_only(self):
         from gondola.print_export import geometry_comparison
 
         _, first = self.configurations["60_20"]
@@ -629,9 +628,9 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     self.assertEqual(replacement.HardwareSKU, "GEABP0.5-64-3-B-7")
                     self.assertGreater(replacement.Shape.Volume, original.Shape.Volume)
                     continue
-                if name == "PropulsionFixedFrame":
-                    self.assertEqual(original.PrintSKU, "PropulsionFrame60T")
-                    self.assertEqual(replacement.PrintSKU, "PropulsionFrame64T")
+                if name == "ServoDriveBridge":
+                    self.assertEqual(original.PrintSKU, "ServoDriveBridge60T")
+                    self.assertEqual(replacement.PrintSKU, "ServoDriveBridge64T")
                     result = geometry_comparison(original.Shape, replacement.Shape)
                     self.assertGreater(result["difference_mm3"], 1)
                     continue
@@ -656,8 +655,167 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                         getattr(original, "PrintSKU", None),
                         getattr(replacement, "PrintSKU", None),
                     )
-        self.assertEqual(first["frame"].PrintSKU, "PropulsionFrame60T")
-        self.assertEqual(second["frame"].PrintSKU, "PropulsionFrame64T")
+        self.assertEqual(first["frame"].PrintSKU, "PropulsionFixedFrame")
+        self.assertEqual(second["frame"].PrintSKU, "PropulsionFixedFrame")
+
+    def test_common_servo_module_has_seated_joint_and_checked_service_for_each_ratio(
+        self,
+    ):
+        from gondola.validation.propulsion import (
+            bridge_joint_check,
+            servo_module_service_check,
+        )
+
+        for key, (doc, module) in self.configurations.items():
+            for check in (bridge_joint_check, servo_module_service_check):
+                with self.subTest(configuration=key, check=check.__name__):
+                    result = check(doc, module)
+                    self.assertTrue(result["passed"], result)
+                    if check is servo_module_service_check:
+                        self.assertEqual(
+                            set(result["moving_parts"]), self.servo_package_names()
+                        )
+                        self.assertEqual(
+                            result["removed_output_gears"],
+                            ["PortOutputGear", "StarboardOutputGear"],
+                        )
+                        self.assertEqual(
+                            set(result["released_fasteners"]),
+                            {
+                                "ServoBridge" + side + kind
+                                for side in ("Port", "Starboard")
+                                for kind in ("Bolt", "Nut")
+                            },
+                        )
+                        retained = {"PropulsionFixedFrame"} | {
+                            prefix + "Output" + part + side
+                            for prefix in ("Port", "Starboard")
+                            for part in ("Shaft", "Bearing", "BearingCap")
+                            for side in ("Negative", "Positive")
+                        }
+                        self.assertTrue(retained.issubset(result["retained_parts"]))
+                        self.assertEqual(
+                            {row["part"] for row in result["part_paths"]},
+                            self.servo_package_names(),
+                        )
+                        for category in (
+                            "output_gear_removal",
+                            "mount_fastener_release",
+                            "part_paths",
+                        ):
+                            self.assertTrue(
+                                all(row["passed"] for row in result[category])
+                            )
+
+    @staticmethod
+    def servo_package_names():
+        return {"ServoDriveBridge"} | {
+            prefix + suffix
+            for prefix in ("Port", "Starboard")
+            for suffix in (
+                "Servo",
+                "ServoHorn",
+                "DriverGear",
+                "HornGearAdapter",
+                "HornGearRetainer",
+                "HornGearClampBolt",
+                "HornGearClampNut",
+                "ServoEarLowerBolt",
+                "ServoEarLowerNut",
+                "ServoEarUpperBolt",
+                "ServoEarUpperNut",
+            )
+        }
+
+    def test_servo_module_service_rejects_a_midpath_obstacle_with_clear_endpoints(self):
+        from gondola.cad import translated_shape, world_shape
+        from gondola.parts import servo_bridge
+        from gondola.validation.geometry import intersection_volume
+        from gondola.validation.propulsion import servo_module_service_check
+
+        doc, module = self.configurations["60_20"]
+        spec = DRIVE_CONFIGURATIONS["60_20"]
+        witness = doc.addObject("Part::Feature", "ServiceMidpathWitness")
+        module["group"].addObject(witness)
+        try:
+            witness.Shape = Part.makeBox(
+                0.2,
+                0.2,
+                0.2,
+                App.Vector(
+                    spec.input_x_mm + 40 - 0.1,
+                    servo_bridge.case_front_y() - 10,
+                    spec.input_z_mm - 5 + 0.5,
+                ),
+            )
+            doc.recompute()
+            obstacle = world_shape(witness)
+            for name in self.servo_package_names():
+                shape = world_shape(doc.getObject(name))
+                for endpoint in (shape, translated_shape(shape, x=80, z=0.5)):
+                    self.assertLess(intersection_volume(endpoint, obstacle), 1e-5, name)
+            middle = translated_shape(world_shape(doc.PortServo), x=40, z=0.5)
+            self.assertGreater(intersection_volume(middle, obstacle), 0)
+            with_obstacle = {**module, "references": [*module["references"], witness]}
+            result = servo_module_service_check(doc, with_obstacle)
+            self.assertFalse(result["passed"], result)
+            servo_path = next(
+                row for row in result["part_paths"] if row["part"] == "PortServo"
+            )
+            self.assertFalse(servo_path["passed"], servo_path)
+        finally:
+            doc.removeObject(witness.Name)
+            doc.recompute()
+
+    def test_servo_parent_displacement_cannot_hide_behind_correct_local_datums(self):
+        from gondola.validation.propulsion import fixed_servo_datum_check
+
+        for key, (doc, _) in self.configurations.items():
+            group = doc.ServoDriveModule
+            original = App.Placement(group.Placement)
+            local_datums = {
+                prefix: App.Placement(doc.getObject(prefix + "ServoMount").Placement)
+                for prefix in ("Port", "Starboard")
+            }
+            changes = (
+                App.Placement(original.Base + App.Vector(0.2, 0, 0), original.Rotation),
+                App.Placement(original.Base + App.Vector(0, 0, 0.2), original.Rotation),
+                App.Placement(original.Base, App.Rotation(App.Vector(0, 1, 0), 0.1)),
+            )
+            try:
+                for placement in changes:
+                    group.Placement = placement
+                    doc.recompute()
+                    for prefix in ("Port", "Starboard"):
+                        with self.subTest(
+                            configuration=key, pod=prefix, placement=str(placement)
+                        ):
+                            self.assertTrue(
+                                doc.getObject(prefix + "ServoMount").Placement.isSame(
+                                    local_datums[prefix], 1e-7
+                                )
+                            )
+                            result = fixed_servo_datum_check(doc, prefix)
+                            self.assertFalse(result["passed"], result)
+            finally:
+                group.Placement = original
+                doc.recompute()
+
+    def test_bridge_joint_rejects_an_unseated_bridge_with_unchanged_metadata(self):
+        from gondola.validation.propulsion import bridge_joint_check
+
+        for key, (doc, module) in self.configurations.items():
+            bridge = doc.ServoDriveBridge
+            original = App.Placement(bridge.Placement)
+            try:
+                bridge.Placement.Base = original.Base + App.Vector(0, 0, 0.2)
+                doc.recompute()
+                self.assertEqual(bridge.PrintSKU, DRIVE_CONFIGURATIONS[key].bridge_sku)
+                result = bridge_joint_check(doc, module)
+                self.assertFalse(result["passed"], result)
+            finally:
+                bridge.Placement = original
+                doc.recompute()
 
     def test_native_motion_teeth_and_mounts_follow_each_complete_configuration(self):
         from gondola.validation.propulsion import (
@@ -742,11 +900,19 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     self.assertEqual(
                         case_service["required_prior_check"], "input_drive_service"
                     )
-                    retained = {
-                        prefix + "Output" + part + side
-                        for part in ("Shaft", "Bearing", "BearingCap")
-                        for side in ("Negative", "Positive")
-                    } | {"PropulsionFixedFrame"}
+                    retained = (
+                        {
+                            prefix + "Output" + part + side
+                            for part in ("Shaft", "Bearing", "BearingCap")
+                            for side in ("Negative", "Positive")
+                        }
+                        | {"PropulsionFixedFrame", "ServoDriveBridge"}
+                        | {
+                            "ServoBridge" + side + kind
+                            for side in ("Port", "Starboard")
+                            for kind in ("Bolt", "Nut")
+                        }
+                    )
                     for service in (result, case_service):
                         self.assertTrue(retained.issubset(service["retained_parts"]))
                         for row in service["part_paths"]:
@@ -759,20 +925,20 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         from gondola.validation.propulsion import servo_case_service_check
 
         doc, module = self.configurations["60_20"]
-        frame = doc.PropulsionFixedFrame
-        original = frame.Shape.copy()
+        bridge = doc.ServoDriveBridge
+        original = bridge.Shape.copy()
         try:
             # A lip ahead of the case leaves both endpoints clear but blocks
-            # its first withdrawal segment. The stem joins the integral wall.
+            # its first withdrawal segment. The stem joins the bridge cradle.
             drive = DRIVE_CONFIGURATIONS["60_20"]
             origin = App.Vector(drive.input_x_mm - 4.2, 25, drive.input_z_mm - 10)
             stem = Part.makeBox(0.6, 7.2, 2, origin)
             lip = Part.makeBox(1.1, 0.2, 2, origin + App.Vector(0, 7, 0))
-            frame.Shape = original.fuse(stem).fuse(lip).removeSplitter()
+            bridge.Shape = original.fuse(stem).fuse(lip).removeSplitter()
             doc.recompute()
-            self.assertEqual(len(frame.Shape.Solids), 1)
+            self.assertEqual(len(bridge.Shape.Solids), 1)
             case = world_shape(doc.PortServo)
-            obstacle = world_shape(frame)
+            obstacle = world_shape(bridge)
             for endpoint in (case, translated_shape(case, x=40, y=12.5)):
                 self.assertLess(intersection_volume(endpoint, obstacle), 1e-5)
             self.assertGreater(
@@ -785,13 +951,14 @@ class InterchangeableGearDriveTests(unittest.TestCase):
             )
             self.assertFalse(case_row["passed"], case_row)
         finally:
-            frame.Shape = original
+            bridge.Shape = original
             doc.recompute()
 
     def test_service_cannot_omit_retained_or_removed_physical_parts(self):
         from gondola.validation.propulsion import (
             input_drive_service_check,
             servo_case_service_check,
+            servo_module_service_check,
         )
 
         doc, module = self.configurations["60_20"]
@@ -802,6 +969,8 @@ class InterchangeableGearDriveTests(unittest.TestCase):
             "PortOutputShaftPositive",
             "PortOutputBearingCapPositive",
             "PropulsionFixedFrame",
+            "ServoDriveBridge",
+            "ServoBridgePortNut",
         ):
             incomplete = {
                 **module,
@@ -815,6 +984,10 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     result = check(doc, incomplete, "Port")
                     self.assertFalse(result["passed"], result)
                     self.assertEqual(result["missing_parts"], [name])
+            with self.subTest(part=name, check="servo_module_service_check"):
+                result = servo_module_service_check(doc, incomplete)
+                self.assertFalse(result["passed"], result)
+                self.assertEqual(result["missing_parts"], [name])
 
     def test_correct_direction_with_stale_ratio_is_rejected_for_alternate_gears(self):
         from gondola.validation.propulsion import drive_motion_check
@@ -899,34 +1072,34 @@ class InterchangeableGearDriveTests(unittest.TestCase):
             mount.setExpression("Placement.Base.x", None)
             doc.recompute()
 
-    def test_wrong_frame_identity_is_rejected(self):
+    def test_wrong_bridge_identity_is_rejected(self):
         from gondola.validation.propulsion import fixed_servo_datum_check
 
         doc, _ = self.configurations["64_20"]
-        support = doc.PropulsionFixedFrame
+        support = doc.ServoDriveBridge
         original = support.PrintSKU
         try:
-            support.PrintSKU = "PropulsionFrame60T"
+            support.PrintSKU = "ServoDriveBridge60T"
             result = fixed_servo_datum_check(doc, "Port")
             self.assertFalse(result["passed"], result)
         finally:
             support.PrintSKU = original
 
-    def test_wrong_ratio_frame_geometry_is_rejected_with_correct_metadata(self):
+    def test_wrong_ratio_bridge_geometry_is_rejected_with_correct_metadata(self):
         from gondola.validation.propulsion import servo_mount_check
 
         baseline, _ = self.configurations["60_20"]
         doc, _ = self.configurations["64_20"]
-        frame = doc.PropulsionFixedFrame
-        original = frame.Shape.copy()
+        bridge = doc.ServoDriveBridge
+        original = bridge.Shape.copy()
         try:
-            frame.Shape = baseline.PropulsionFixedFrame.Shape.copy()
+            bridge.Shape = baseline.ServoDriveBridge.Shape.copy()
             doc.recompute()
-            self.assertEqual(frame.PrintSKU, "PropulsionFrame64T")
+            self.assertEqual(bridge.PrintSKU, "ServoDriveBridge64T")
             result = servo_mount_check(doc, "Port")
             self.assertFalse(result["passed"], result)
         finally:
-            frame.Shape = original
+            bridge.Shape = original
             doc.recompute()
 
     def test_servo_ear_seat_gap_is_rejected_without_changing_mount_datum(self):
@@ -953,9 +1126,11 @@ class InterchangeableGearDriveTests(unittest.TestCase):
 
     def test_fixed_mount_checks_follow_the_whole_module_placement(self):
         from gondola.validation.propulsion import (
+            bridge_joint_check,
             fixed_servo_datum_check,
             input_drive_service_check,
             servo_case_service_check,
+            servo_module_service_check,
             servo_mount_check,
         )
 
@@ -967,6 +1142,9 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                 App.Vector(36, 0.45, 2), App.Rotation(App.Vector(1, 2, 3), 13)
             )
             doc.recompute()
+            for check in (bridge_joint_check, servo_module_service_check):
+                result = check(doc, module_parts)
+                self.assertTrue(result["passed"], result)
             for prefix in ("Port", "Starboard"):
                 for check in (
                     fixed_servo_datum_check,
@@ -983,21 +1161,21 @@ class InterchangeableGearDriveTests(unittest.TestCase):
             module.Placement = original
             doc.recompute()
 
-    def test_servo_frame_collision_is_rejected_even_with_seated_bolts(self):
+    def test_servo_bridge_collision_is_rejected_even_with_seated_bolts(self):
         from gondola.cad import world_shape
         from gondola.validation.propulsion import servo_mount_check
 
         doc, _ = self.configurations["64_20"]
-        frame = doc.PropulsionFixedFrame
-        original = frame.Shape.copy()
+        bridge = doc.ServoDriveBridge
+        original = bridge.Shape.copy()
         try:
-            frame.Shape = original.fuse(world_shape(doc.PortServo))
+            bridge.Shape = original.fuse(world_shape(doc.PortServo))
             doc.recompute()
             result = servo_mount_check(doc, "Port")
             self.assertFalse(result["passed"], result)
             self.assertGreater(result["servo_frame_intersection_mm3"], 1)
         finally:
-            frame.Shape = original
+            bridge.Shape = original
             doc.recompute()
 
 
@@ -1031,7 +1209,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
             try:
                 saved.recompute()
                 registry = SimpleNamespace(
-                    PrintedParts=[saved.PropulsionFixedFrame],
+                    PrintedParts=[saved.PropulsionFixedFrame, saved.ServoDriveBridge],
                     RailSegments=[saved.ContinuousRail],
                 )
                 result = review(saved, registry)

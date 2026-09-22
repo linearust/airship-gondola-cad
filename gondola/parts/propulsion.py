@@ -42,7 +42,7 @@ from gondola.contracts.hardware import (
     SQUARE_NUT_SOURCE,
 )
 
-from . import purchased_hardware, rail
+from . import purchased_hardware, rail, servo_bridge
 
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
@@ -62,11 +62,6 @@ GEAR_FACE_WIDTH = FACE_WIDTH_MM
 GEAR_HUB_START_Y = 38.0
 GEAR_FACE_START_Y = 43.0
 GEAR_END_Y = 46.0
-SERVO_MOUNT_DEPTH = 5.0
-SERVO_CASE_WINDOW_WIDTH = 8.0
-SERVO_CASE_WINDOW_HEIGHT = 21.0
-SERVO_CRADLE_SIDE_WALL = 2.0
-SERVO_CRADLE_WIDTH = SERVO_CASE_WINDOW_WIDTH + 2 * SERVO_CRADLE_SIDE_WALL
 BEARING_WINDOW_DIAMETER = 5.6
 BEARING_CAP_THICKNESS = 1.5
 BEARING_CAP_BOLT_Z = 18.5
@@ -220,75 +215,21 @@ def _output_support(sign):
     return result
 
 
-def servo_case_front_y():
-    from .servo_coupling import HORN_BOTTOM_Y
-
-    return HORN_BOTTOM_Y - 0.2
-
-
-def servo_cradle_shape(drive=SELECTED_DRIVE):
-    """Two straight side walls join the sourced servo ears directly to the foot.
-
-    This is an integral region of the paired frame, not a separate print or
-    locating joint. Keep the broad root and axial case opening simple.
-    """
-    x, z = drive.input_x_mm, drive.input_z_mm
-    y = servo_case_front_y() - 4.7 - SERVO_MOUNT_DEPTH
-    mount = box(
-        SERVO_CRADLE_WIDTH,
-        SERVO_MOUNT_DEPTH,
-        z + 10.1 - BASE_Z,
-        (x - SERVO_CRADLE_WIDTH / 2, y, BASE_Z),
-    )
-    # The 7 x 20 mm case enters axially, with 0.5 mm nominal clearance per
-    # side. Actual print/case tolerances and the wire exit still need checking.
-    mount = mount.cut(
-        box(
-            SERVO_CASE_WINDOW_WIDTH,
-            SERVO_MOUNT_DEPTH + 2,
-            SERVO_CASE_WINDOW_HEIGHT,
-            (
-                x - SERVO_CASE_WINDOW_WIDTH / 2,
-                y - 1,
-                z - 5 - SERVO_CASE_WINDOW_HEIGHT / 2,
-            ),
-        )
-    )
-    for hole_z, opening in ((z - 17, 1), (z + 7, -1)):
-        mount = mount.cut(cylinder(1.1, SERVO_MOUNT_DEPTH + 2, (x, y - 1, hole_z)))
-        # The sourced ear hole is only 2 mm from the case end. Open this neck
-        # into the case window instead of retaining an unprintable 0.6 mm web.
-        mount = mount.cut(
-            box(
-                2.2,
-                SERVO_MOUNT_DEPTH + 2,
-                2.2,
-                (x - 1.1, y - 1, hole_z if opening > 0 else hole_z - 2.2),
-            )
-        )
-    return _checked(mount, f"Integral {drive.driver.teeth}T servo cradle")
-
-
-def integral_frame_shape(drive=SELECTED_DRIVE):
+def fixed_frame_shape():
+    """Common rail shoe, output supports and fixed servo-bridge seats."""
     wings = box(18, 70, FOOT_THICKNESS, (-9, -35, BASE_Z)).cut(
         box(20, rail.SHOE_WIDTH, 20, (-10, -rail.SHOE_WIDTH / 2, 0))
     )
-    cradle = servo_cradle_shape(drive)
-    opposite_cradle = mirrored_y(cradle.mirror(V(), V(1, 0, 0)), -1)
     frame = union(
         [
             rail.shoe_shape(),
             wings,
             _output_support(1),
             _output_support(-1),
-            cradle,
-            opposite_cradle,
+            servo_bridge.frame_seats(),
         ]
     )
-    for side in (-1, 1):
-        corridor = mirrored_y(box(6.4, 104, 4, (-3.2, rail.SHOE_WIDTH / 2, 4)), side)
-        frame = frame.cut(corridor)
-    return _checked(frame, "Integral paired servo and output-bearing frame")
+    return _checked(servo_bridge.finish_frame(frame), "Common output-bearing frame")
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -550,7 +491,7 @@ def _build_coupling(doc, parent, prefix, sign):
 
 def manufacturing_wall_probes(drive=SELECTED_DRIVE):
     x, z = drive.input_x_mm, drive.input_z_mm
-    y = servo_case_front_y() - 4.7 - SERVO_MOUNT_DEPTH / 2
+    y = servo_bridge.case_front_y() - 4.7 - servo_bridge.MOUNT_DEPTH / 2
     return [
         (
             "output_bearing_outer_wall",
@@ -568,36 +509,64 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         ),
         (
             "servo_cradle_left_wall",
-            "PropulsionFixedFrame",
-            (x - SERVO_CRADLE_WIDTH / 2 - 0.01, y, z - 5),
-            (x - SERVO_CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
-            SERVO_CRADLE_SIDE_WALL,
+            "ServoDriveBridge",
+            (x - servo_bridge.CRADLE_WIDTH / 2 - 0.01, y, z - 5),
+            (x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
+            servo_bridge.SIDE_WALL,
         ),
         (
             "servo_cradle_right_wall",
-            "PropulsionFixedFrame",
-            (x + SERVO_CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
-            (x + SERVO_CRADLE_WIDTH / 2 + 0.01, y, z - 5),
-            SERVO_CRADLE_SIDE_WALL,
+            "ServoDriveBridge",
+            (x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
+            (x + servo_bridge.CRADLE_WIDTH / 2 + 0.01, y, z - 5),
+            servo_bridge.SIDE_WALL,
         ),
         (
             "servo_cradle_upper_wall",
-            "PropulsionFixedFrame",
+            "ServoDriveBridge",
             (x, y, z + 8.09),
             (x, y, z + 10.11),
             2.0,
+        ),
+        (
+            "servo_bridge_pad",
+            "ServoDriveBridge",
+            (15.5, 15, 8.69),
+            (15.5, 15, 10.71),
+            2.0,
+        ),
+        (
+            "servo_bridge_ring",
+            "ServoDriveBridge",
+            (18.5, 0, 10.39),
+            (18.5, 0, 12.41),
+            2.0,
+        ),
+        (
+            "servo_bridge_frame_seat",
+            "PropulsionFixedFrame",
+            (12, 18, 5.69),
+            (12, 18, 8.71),
+            3.0,
+        ),
+        (
+            "servo_bridge_y_datum",
+            "PropulsionFixedFrame",
+            (-15, -13.51, 9.5),
+            (-15, -11.99, 9.5),
+            1.5,
         ),
     ]
 
 
 def _build_frame(doc, module, spec):
-    """Create the rail shoe, both servo cradles and output supports as one print."""
+    """Keep the supported output mechanism independent of the servo selection."""
     frame = _print(
         doc,
         module,
         "PropulsionFixedFrame",
-        integral_frame_shape(spec),
-        "One integral rail shoe, paired servo cradles and output-bearing frame. Two straight 2 mm side walls carry each servo's ears into a broad root; no separate holder flanges, locating stops or M2 holder joints. The supported gear ratio determines the whole frame geometry. Replace this frame and both driver gears for a ratio change, then rebuild and validate. Actual printed case fit, gear centre distance and creep remain unqualified. Finish nominal Ø6 bearing seats using a matching coupon; removable caps capture outer races without designed shield or inner-race preload.",
+        fixed_frame_shape(),
+        "Common integral rail shoe and output-bearing frame, with two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. Both supported gear ratios use this same frame. Actual printed seating, gear centre distance and creep remain unqualified. Finish nominal Ø6 bearing seats using a matching coupon; removable caps capture outer races without designed shield or inner-race preload.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -754,9 +723,9 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
 
 
 def _build_servo(doc, mount, prefix, sign):
-    """Mount the sourced vertical X06 case on the integral frame cradle."""
+    """Mount the sourced vertical X06 case on its replaceable bridge cradle."""
     hardware = []
-    front = servo_case_front_y()
+    front = servo_bridge.case_front_y()
     servo = box(7, 16.6, 20, (-3.5, front - 16.6, -15))
     for hole_z in (-17, 7):
         ear = box(7, 1, 4, (-3.5, front - 4.7, hole_z - 2)).cut(
@@ -792,7 +761,9 @@ def _build_servo(doc, mount, prefix, sign):
 def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
     """Keep each independent servo/input drive on its fixed native axis."""
     mount = create_group(
-        doc, prefix + "ServoMount", prefix + " servo and direct drive on integral frame"
+        doc,
+        prefix + "ServoMount",
+        prefix + " servo and direct drive on removable bridge",
     )
     assembly.addObject(mount)
     mount.Placement.Base = V(sign * spec.input_x_mm, 0, spec.input_z_mm)
@@ -800,9 +771,9 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
         mount,
         "ServiceSequence",
         "At neutral, disconnect power and free the leads. Service the removable "
-        "gear/horn coupling before withdrawing the servo from the integral "
-        "cradle. Follow the checked ordered assembly paths in the validation "
-        "report; the frame remains one part. Printed fit and physical handling "
+        "gear/horn coupling before withdrawing one servo from its cradle, or "
+        "remove both small output gears and two bridge mount pairs to exchange "
+        "the complete paired module. Follow the checked ordered paths. Printed fit and handling "
         "require a prototype check.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
@@ -877,7 +848,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
     )
 
 
-def _build_propulsion_side(doc, module, prefix, sign, spec):
+def _build_propulsion_side(doc, module, drive_module, prefix, sign, spec):
     """Assemble one independent gear drive without changing native object order."""
     assembly = create_group(
         doc, prefix + "Assembly", prefix + " independent geared propulsion"
@@ -886,7 +857,9 @@ def _build_propulsion_side(doc, module, prefix, sign, spec):
     pod, printed, hardware, driver_angle = _build_output_pod(
         doc, assembly, prefix, sign, spec
     )
-    input_parts = _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec)
+    input_parts = _build_servo_drive(
+        doc, drive_module, prefix, sign, driver_angle, spec
+    )
     motor_references = _build_motor_references(doc, pod, prefix, sign)
     sweep_reserve = _build_sweep_reserve(doc, assembly, prefix, sign)
     return {
@@ -928,7 +901,8 @@ def _module_metrics(printed, hardware, references, spec):
             "input_axis_z_mm": spec.input_z_mm,
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
-            "input_mount": "Direct stock-horn drives on two integral frame cradles. Straight side walls join the servo ears to the shared foot; no separate holder fasteners or locating joints. A supported ratio change replaces the paired frame and both driver gears.",
+            "servo_bridge_print_sku": spec.bridge_sku,
+            "input_mount": "Direct stock-horn drives on one removable paired bridge. Two broad seats under the cradles and unilateral locating datums establish the fixed position; two M2 mount pairs clamp it. A supported ratio change replaces the bridge and both driver gears while retaining the common output frame.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -963,7 +937,7 @@ def _module_metrics(printed, hardware, references, spec):
             "Measured OEM horn seating and retaining screw",
             "Actual direct horn-to-gear adapter clearance and grip",
             "Servo output-bearing deflection under direct gear mesh load",
-            "Printed integral cradle fit and retained gear center distance",
+            "Printed bridge seating, cradle fit and retained gear center distance",
             "Motor rear clip, seat and M1.4 usable depth",
             "Printed bearing fits and outer-race capture",
             "Shaft/gear/clamp torque and axial grip",
@@ -1002,15 +976,43 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
     module.setEditorMode("GearConfiguration", 1)
     module.setEditorMode("DriveContract", 1)
     frame = _build_frame(doc, module, drive)
+    drive_module = create_group(
+        doc, "ServoDriveModule", "Replaceable paired servo and input-gear module"
+    )
+    module.addObject(drive_module)
+    bridge = _print(
+        doc,
+        drive_module,
+        "ServoDriveBridge",
+        servo_bridge.bridge_shape(drive),
+        "One paired bridge with straight 2 mm servo walls and an open connecting ring. Each cradle sits on its own broad frame seat; the ring joins them for handling. Two M2 mount pairs retain it against fixed X/Y datums. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, caps and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
+        sku=drive.bridge_sku,
+    )
+    mount_hardware = []
+    for prefix, sign in (("Port", 1), ("Starboard", -1)):
+        mount_hardware.extend(
+            _bolt_pair(
+                doc,
+                module,
+                "ServoBridge" + prefix,
+                (
+                    sign * servo_bridge.BOLT_X,
+                    sign * servo_bridge.BOLT_Y,
+                    servo_bridge.PAD_TOP_Z,
+                ),
+                (0, 0, -1),
+                grip=servo_bridge.MOUNT_GRIP,
+            )
+        )
     parts = {
-        "printed": [frame],
-        "hardware": [],
+        "printed": [frame, bridge],
+        "hardware": mount_hardware,
         "references": [],
         "clearances": [],
         "pods": [],
     }
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
-        side = _build_propulsion_side(doc, module, prefix, sign, drive)
+        side = _build_propulsion_side(doc, module, drive_module, prefix, sign, drive)
         for kind, objects in parts.items():
             objects.extend(side[kind])
     doc.recompute()

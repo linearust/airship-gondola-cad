@@ -1,0 +1,418 @@
+{
+  "revision": "AA",
+  "reviewed_on": "2026-09-22T09:53:55.829635+00:00",
+  "intent": "Replace the two integral servo cradles with one fixed, ratio-specific paired bridge on a common output-bearing frame. Add only two existing M2 bolt/nut pairs. Preserve output shafts, bearings, motor carriers, servo/gear datums and native motion. No physical qualification is promoted.",
+  "previous_saved_cad_sha256": "3f614cd72c517ad556f94cbf880824ea5a5cda7f8eb26ebf91b05efde806b458",
+  "previous_pinned_cad_sha256": "4489ecc80bde62fcb34211a63b55a3c820bc7b17eac0218091ae8d2d4fdde78a",
+  "candidate_saved_cad_sha256": "5924ef328526cabe9d3917a8c5771f5183091c9d9564da11723baddfd24785e9",
+  "candidate_source_fingerprint": "7e61039a18c3765abc60554348825fe15fc1159c66e22ce703c2ed03ec4804df",
+  "independent_prototype_sha256": "aec72d74c90eb6bd1f0355cabec8ac1c4700de0ef605281d019a007b4f8d3706",
+  "manually_reviewed_metadata_snapshot_sha256": "892be36b88199d3dfda4184f1805513a98d28519d0ea3a82e964db26daaa1be9",
+  "added_shapes": [
+    "ServoBridgePortBolt",
+    "ServoBridgePortNut",
+    "ServoBridgeStarboardBolt",
+    "ServoBridgeStarboardNut",
+    "ServoDriveBridge"
+  ],
+  "added_group": "ServoDriveModule",
+  "added_auto_origin_helpers": [
+    "Origin036",
+    "Origin037",
+    "XY_Plane018",
+    "XZ_Plane018",
+    "X_Axis018",
+    "YZ_Plane018",
+    "Y_Axis018",
+    "Z_Axis018"
+  ],
+  "shape_counts": {
+    "before": 119,
+    "after": 124,
+    "retained_changed_local": 1,
+    "retained_changed_world": 1
+  },
+  "independent_geometry_comparisons": [
+    {
+      "candidate_object": "PropulsionFixedFrame",
+      "independent_prototype_object": "PropulsionFixedFrame",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 7.275957614183426e-12,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "passed": true
+    },
+    {
+      "candidate_object": "ServoDriveBridge",
+      "independent_prototype_object": "PairedServoBridge",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 7.73070496506989e-12,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "candidate_object": "ServoBridgePortBolt",
+      "independent_prototype_object": "PortBridgeMountBolt",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "passed": true
+    },
+    {
+      "candidate_object": "ServoBridgePortNut",
+      "independent_prototype_object": "PortBridgeMountNut",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 8.881784197001252e-16,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "passed": true
+    },
+    {
+      "candidate_object": "ServoBridgeStarboardBolt",
+      "independent_prototype_object": "StarboardBridgeMountBolt",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "passed": true
+    },
+    {
+      "candidate_object": "ServoBridgeStarboardNut",
+      "independent_prototype_object": "StarboardBridgeMountNut",
+      "comparison": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 8.881784197001252e-16,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "passed": true
+    }
+  ],
+  "inventory_before": {
+    "all_objects": 283,
+    "shapes": 119,
+    "registry_counts": {
+      "PrintedParts": 17,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 58,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 10,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 15,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFrame60T": 1
+    }
+  },
+  "inventory_after": {
+    "all_objects": 297,
+    "shapes": 124,
+    "registry_counts": {
+      "PrintedParts": 18,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 62,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 12,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 17,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFixedFrame": 1,
+      "ServoDriveBridge60T": 1
+    }
+  },
+  "unique_print_skus_before": [
+    "BatteryMount",
+    "BearingSeatFitSample",
+    "ContinuousRail",
+    "ElectronicsMount",
+    "KST0415_GearAdapter",
+    "KST0415_GearRetainer",
+    "MR63ZZ_OuterRaceCap",
+    "MotorCarrier",
+    "OpticalMountBase",
+    "OpticalRollBracket",
+    "OpticalSensorTray",
+    "PropulsionFrame60T",
+    "RailFitSample",
+    "ShoeFitSample"
+  ],
+  "unique_print_skus_after": [
+    "BatteryMount",
+    "BearingSeatFitSample",
+    "ContinuousRail",
+    "ElectronicsMount",
+    "KST0415_GearAdapter",
+    "KST0415_GearRetainer",
+    "MR63ZZ_OuterRaceCap",
+    "MotorCarrier",
+    "OpticalMountBase",
+    "OpticalRollBracket",
+    "OpticalSensorTray",
+    "PropulsionFixedFrame",
+    "RailFitSample",
+    "ServoDriveBridge60T",
+    "ShoeFitSample"
+  ],
+  "mass_delta_g": {
+    "printed": 2.4878034461804646,
+    "hardware": 0.9684858351480585,
+    "structure_and_hardware": 3.456289281328523
+  },
+  "independent_mass_delta_g": {
+    "printed": 2.4878034461804637,
+    "hardware": 0.9684858351480596
+  },
+  "independent_dual_ratio_supplement": {
+    "file": "/tmp/gondola-module-bridge-review/integrated-audit.json",
+    "sha256": "e14c4fa7c736fd3c54e92b80d564b81811408640d31c9319ae1a214eb5b785a3",
+    "passed": true,
+    "cases": [
+      {
+        "drive": "60_20",
+        "geometry_passed": true,
+        "joint_passed": true,
+        "service_passed": true,
+        "moving_count": 23,
+        "retained_count": 37
+      },
+      {
+        "drive": "64_20",
+        "geometry_passed": true,
+        "joint_passed": true,
+        "service_passed": true,
+        "moving_count": 23,
+        "retained_count": 37
+      }
+    ]
+  },
+  "reviewed_note_changes": "Frame notes describe the common frame and fixed datums. Servo-mount labels/service notes now allow paired bridge replacement. DriveContract changes only frame SKU plus the bridge SKU. Two unresolved-interface descriptions address the new seating, warp, clamping and creep risks. New bridge notes require removing both small gears, lifting0.5mm and sliding80mm; new fastener notes correctly state5mm grip,1.2mm nut and1.8mm nominal tip. Every existing equipment, rail, optical and procurement note remains unchanged.",
+  "hierarchy_exception": "The two servo mount groups alone acquire a new semantic parent. FreeCAD automatically allocates a new App::Part origin and renumbers later Origin references by two; helper types/coordinates remain unchanged. BatteryEquipmentModule Group has only the previously observed OpticalFlowModule display-order permutation (last to second); its parent, local/world placement and actual shapes are unchanged.",
+  "seat_corridor_refinement": {
+    "file": "/tmp/gondola-module-bridge-review/seat-corridor-refinement.json",
+    "sha256": "8214cc35a781693a96afe3e98968776691eefbd46b8eb22688a862e6987d7a7f",
+    "scope": "Both final frames remove exactly29.75mm3 total: the unsupported0.7mm roof left over the old motor-wire corridor. No other prototype geometry changes. Broad actual seat contact remains137.448673mm2 per side; print strength is unqualified."
+  },
+  "tradeoff": "Calculated structure/hardware mass increases3.456289281g. Broad local seats carry each cradle, while the surrounding ring connects them for handling. Printed datum accuracy, seating, clamp friction, servo side loading, creep and loaded gear mesh require physical qualification. Two small output gears must be removed before exchanging the assembled bridge; output shafts/bearings remain installed.",
+  "scope": "Transition proof covers every saved local/world shape, every retained schema/control/expression/placement and reviewed native metadata. Independent60/64 native geometry/joint/continuous service checks are linked. Full installed cross-motion validation remains a separate final release gate.",
+  "gates": {
+    "immutable_saved_and_pinned_baselines_match_declared_hashes": true,
+    "saved_baseline_preserves_pinned_shape_controls_and_expressions": true,
+    "exactly_five_shapes_one_group_and_auto_origin_helpers_added": true,
+    "only_existing_fixed_frame_changes_local_and_world_geometry": true,
+    "frame_bridge_and_four_added_hardware_match_independent_prototype": true,
+    "all_existing_types_schemas_numeric_controls_coordinates_and_expressions_unchanged": true,
+    "all_physical_assembly_and_owner_matched_origin_placements_preserved": true,
+    "only_both_servo_mount_groups_are_reparented": true,
+    "link_changes_only_exact_reviewed_reparent_additions_origin_allocation_and_optical_order": true,
+    "registry_membership_and_order_preserved_with_exact_additions": true,
+    "all_native_note_changes_match_individually_reviewed_strings": true,
+    "retained_interface_changes_only_common_frame_SKU_and_drive_contract": true,
+    "print_and_hardware_inventory_deltas_exact": true,
+    "mass_delta_matches_independent_volume_calculation": true,
+    "every_candidate_shape_valid_single_closed_solid": true,
+    "release_only_rewords_two_unverified_interfaces_without_promotion": true,
+    "Notion_source_timestamp_manufacturing_and_other_equipment_contracts_unchanged": true,
+    "native_controls_and_coupled_motion_pass_both_documents": true,
+    "continuous_guard_cap_metal_clearance_and_axial_stop_bounds_unchanged": true,
+    "both_ratio_independent_geometry_joint_and_continuous_service_supplement_passed": true,
+    "candidate_source_fingerprint_matches_frozen_AA_source": true,
+    "all_input_documents_and_review_snapshots_unchanged_by_audit": true
+  },
+  "passed": true,
+  "full_transition_audit_sha256": "c1828267c86004bdfc02f56a05bd281af18f5d045f02404c0e76b543df7ec7ad",
+  "owner_matched_origin_role_check": {
+    "passed": true,
+    "roles_checked": 144,
+    "unexpected_external_references": []
+  },
+  "native_note_properties_changed": {
+    "DesignRegistry": [
+      "ReleaseStatus",
+      "SourceFingerprint"
+    ],
+    "MainPropulsionModule": [
+      "DriveContract"
+    ],
+    "PortServoMount": [
+      "Label",
+      "ServiceSequence"
+    ],
+    "PropulsionFixedFrame": [
+      "Notes",
+      "PrintNotes",
+      "PrintSKU"
+    ],
+    "StarboardServoMount": [
+      "Label",
+      "ServiceSequence"
+    ]
+  },
+  "guard_cap_clearance_lower_bounds_mm": {
+    "Port": 1.6438473508670102,
+    "Starboard": 1.6438473508670102
+  },
+  "supplemental_final_release_axial_float_review": {
+    "report": "build/gondola_axial_float_review.json",
+    "report_sha256": "b72dca851937989f9e9725b0548cf7b5d6e85b948f30b251fd70234b9cdbf45c",
+    "provenance": {
+      "source_cad_path": "/home/h/cad/airship-gondola-cad/build/gondola.FCStd",
+      "source_cad_sha256": "a25468882f93d6eada0c6b25b04edd7ccb9c214243733e50133b92b84f6ecb86",
+      "source_cad_embedded_source_fingerprint": "3218fb6cb99d3468e475758e3f7f279ff57f15548c40022e8c02ac74c7b4001e",
+      "validator_source_fingerprint_at_run_start": "3218fb6cb99d3468e475758e3f7f279ff57f15548c40022e8c02ac74c7b4001e",
+      "validator_source_fingerprint_at_run_end": "3218fb6cb99d3468e475758e3f7f279ff57f15548c40022e8c02ac74c7b4001e",
+      "cad_bytes_unchanged_during_audit": true,
+      "validator_source_unchanged_during_audit": true,
+      "cad_source_and_validator_source_fingerprints_match": true,
+      "audit_script_path": "/tmp/gondola-motion-review/axial_float_cross_motion.py",
+      "audit_script_sha256": "e72eb24b8520d8af0c9597eb84fc21e526de55d876bf05e57c05fce0760e504b",
+      "started_at_utc": "2026-09-22T10:10:06.587117+00:00",
+      "completed_at_utc": "2026-09-22T10:10:30.609357+00:00"
+    },
+    "angle_domain_deg": [
+      -180,
+      180
+    ],
+    "installed_solid_count": 107,
+    "clearance_pair_count": 2895,
+    "certified_pair_count": 2895,
+    "separately_classified_functional_interface_count": 8,
+    "verified_intentional_axial_stop_count": 2,
+    "maximum_nominal_axial_travel_mm_per_direction": {
+      "Port": 0.5,
+      "Starboard": 0.5
+    },
+    "minimum_residual_free_clearance_mm": 0.1,
+    "scope": "Continuous separation of the audited installed solids across independently moving groups over the recorded angular domain, with each output Pod allowed the measured annular-stop axial travel. The free-clearance certificates subtract the sum of participating output travel magnitudes from the nominal distance lower bound. Two carrier/frame pairs retain their whole-pair nominal clearance certificates and require that bound to cover the full measured travel; zero residual clearance is allowed only at intentional annular-stop contact. The eight original functional interfaces remain separately classified, without a free-clearance or axial-float certificate. Same-group assembly contacts, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, and deformation are not certified.",
+    "passed": true
+  },
+  "final_release_checks": {
+    "source_fingerprint": "3218fb6cb99d3468e475758e3f7f279ff57f15548c40022e8c02ac74c7b4001e",
+    "saved_cad_sha256": "a25468882f93d6eada0c6b25b04edd7ccb9c214243733e50133b92b84f6ecb86",
+    "stages": {
+      "lint": true,
+      "format": true,
+      "compile": true,
+      "offline": true,
+      "native": true,
+      "build": true,
+      "preview": true,
+      "validate": true,
+      "compare": true,
+      "bundle": true
+    },
+    "native_tests": {
+      "run": 232,
+      "skipped": 0,
+      "passed": true,
+      "log_sha256": "80f6a32f4515465b16d588617b5e277c7d810a863cd031a8d0414c1c08da8db5"
+    },
+    "saved_cad_reports": {
+      "gondola_validation.json": {
+        "sha256": "6af327f7e144472f90ffbaaba79855f8c494bbfbd2ec01bce7b6332f5440031a",
+        "passed": true
+      },
+      "gondola_equipment_validation.json": {
+        "sha256": "e09c852ae9a2cbd8aab0b84cfa0a817e016acd3c4e1d913eb572458d416badfb",
+        "passed": true
+      },
+      "gondola_baseline_validation.json": {
+        "sha256": "e9d84282e636f874083c2fc02468b857f01234f62c914c693b96dd55b6b828be",
+        "passed": true
+      }
+    },
+    "independent_inventory_audit": {
+      "passed": true,
+      "check_count": 31,
+      "sha256": "afb11e557f2ce7ae2aaaa28e19ba5fbe39831f0605f298d81043e917bf51a21e"
+    },
+    "print_bundle_sha256": "e3e75b6665ea60ea041418bb8da8355985728beba9244dd7feb8accc180e507e",
+    "visually_reviewed": [
+      "assembly",
+      "propulsion",
+      "print layout",
+      "battery-host optical stack",
+      "FC-host optical stack"
+    ],
+    "physical_qualification_promoted": false,
+    "passed": true
+  }
+}

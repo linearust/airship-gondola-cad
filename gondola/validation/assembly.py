@@ -1157,8 +1157,10 @@ def export_check(source, registry):
 def detailed_propulsion_evidence(doc, source):
     from .motion_clearance import carrier_metal_clearance_check
     from .propulsion import (
+        bridge_joint_check,
         fixed_servo_datum_check,
         gear_engagement_check,
+        servo_module_service_check,
         servo_mount_check,
     )
     from .relative_motion import relative_motion_check
@@ -1228,6 +1230,14 @@ def detailed_propulsion_evidence(doc, source):
     saved_servo_mounts = [
         servo_mount_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
+    saved_module = {
+        "group": doc.MainPropulsionModule,
+        "printed": list(doc.DesignRegistry.PrintedParts),
+        "hardware": list(doc.DesignRegistry.HardwareParts),
+        "references": list(doc.DesignRegistry.ReferenceParts),
+    }
+    saved_bridge_joint = bridge_joint_check(doc, saved_module)
+    saved_servo_service = servo_module_service_check(doc, saved_module)
     saved_carrier_clearances = [
         carrier_metal_clearance_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
@@ -1257,6 +1267,8 @@ def detailed_propulsion_evidence(doc, source):
         "source_sha256": file_sha256(path),
         "saved_servo_datums": saved_datums,
         "saved_servo_mounts": saved_servo_mounts,
+        "saved_bridge_joint": saved_bridge_joint,
+        "saved_servo_module_service": saved_servo_service,
         "saved_carrier_metal_clearances": saved_carrier_clearances,
         "saved_gear_engagement": saved_gear_engagement,
         "saved_relative_motion": saved_relative_motion,
@@ -1270,6 +1282,8 @@ def detailed_propulsion_evidence(doc, source):
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_servo_mounts)
+        and saved_bridge_joint["passed"]
+        and saved_servo_service["passed"]
         and all(row["passed"] for row in saved_carrier_clearances)
         and all(row["passed"] for row in saved_gear_engagement)
         and saved_relative_motion["passed"]
