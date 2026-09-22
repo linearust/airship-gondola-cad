@@ -1131,7 +1131,13 @@ def export_check(source, registry):
 
 
 def detailed_propulsion_evidence(doc, source):
-    from .propulsion import fixed_servo_datum_check, holder_mount_check
+    from .motion_clearance import carrier_metal_clearance_check
+    from .propulsion import (
+        fixed_servo_datum_check,
+        gear_engagement_check,
+        holder_mount_check,
+    )
+    from .relative_motion import relative_motion_check
 
     configuration = drive_for_document(doc)
     path = source.parent / (source.stem + "_propulsion_validation.json")
@@ -1198,6 +1204,20 @@ def detailed_propulsion_evidence(doc, source):
     saved_holder_mounts = [
         holder_mount_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
+    saved_carrier_clearances = [
+        carrier_metal_clearance_check(doc, prefix) for prefix in ("Port", "Starboard")
+    ]
+    saved_gear_engagement = [
+        gear_engagement_check(doc, prefix) for prefix in ("Port", "Starboard")
+    ]
+    saved_relative_motion = relative_motion_check(
+        doc,
+        {
+            "printed": list(doc.DesignRegistry.PrintedParts),
+            "hardware": list(doc.DesignRegistry.HardwareParts),
+            "references": list(doc.DesignRegistry.ReferenceParts),
+        },
+    )
     evidence_ok = (
         evidence.get("passed") is True
         and evidence.get("gear_configuration") == configuration.key
@@ -1213,16 +1233,22 @@ def detailed_propulsion_evidence(doc, source):
         "source_sha256": file_sha256(path),
         "saved_servo_datums": saved_datums,
         "saved_holder_mounts": saved_holder_mounts,
+        "saved_carrier_metal_clearances": saved_carrier_clearances,
+        "saved_gear_engagement": saved_gear_engagement,
+        "saved_relative_motion": saved_relative_motion,
         "saved_shape_source_comparisons": comparisons,
         "source_reference_print_count": reference_print_count,
         "local_overlap_failures": volume_failures,
         "local_checks": evidence,
         "required_evidence_inventory": evidence_check["inventory"],
         "local_evidence_row_failures": evidence_check["row_failures"],
-        "scope": "Recomputed geared-drive mesh, bearings, split output shafts, bounded motion and ordered service paths. Sample fits, loaded retention, cable travel and OEM fastening remain physical qualification requirements.",
+        "scope": "Recomputed geared-drive mesh including axial travel, bearings, split output shafts, continuous nominal cross-motion separation, carrier/metal reserves and ordered service paths. Functional contacts are classified separately. Sample fits, loaded retention, unmodeled set-screw/OEM hardware and cable travel remain physical qualification requirements.",
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_holder_mounts)
+        and all(row["passed"] for row in saved_carrier_clearances)
+        and all(row["passed"] for row in saved_gear_engagement)
+        and saved_relative_motion["passed"]
         and not volume_failures
         and all(row["passed"] for row in comparisons),
     }

@@ -1,0 +1,455 @@
+{
+  "revision": "W",
+  "reviewed_on": "2026-09-22T05:39:50.937051+00:00",
+  "intent": "Move each bearing-cap bolt/nut axis 1mm outward (absolute X17.5 to18.5mm), extend the matching cap/cup arms1mm, and update identical fit coupons. Preserve moving geometry, bearing/gear/servo datums, hardware selection, hierarchy and controls. Increase full-rotation/axial-play carrier clearance without additional parts.",
+  "previous_saved_cad_sha256": "24c51604ae507d4122302346512fa055d41f5bf47825f37835b1a12ea23bf5ac",
+  "candidate_saved_cad_sha256": "d34879acea374abfd8b7ef95112279c7d22db79f15ac753e5a15d9bb1e46fd4f",
+  "candidate_source_fingerprint": "cce418eba2268885d0fb2bf2773a993f5ecbf7cd42ba984485c096a8fa35ff99",
+  "shape_counts": {
+    "before": 129,
+    "after": 129,
+    "added": 0,
+    "removed": 0,
+    "changed_local": 7,
+    "changed_world": 15
+  },
+  "changed_local_shape_names": [
+    "BearingCapFitSample",
+    "BearingSeatFitSample",
+    "PortOutputBearingCapNegative",
+    "PortOutputBearingCapPositive",
+    "PropulsionFixedFrame",
+    "StarboardOutputBearingCapNegative",
+    "StarboardOutputBearingCapPositive"
+  ],
+  "changed_world_shape_names": [
+    "BearingCapFitSample",
+    "BearingSeatFitSample",
+    "PortOutputBearingCapNegative",
+    "PortOutputBearingCapNegativeBolt",
+    "PortOutputBearingCapNegativeNut",
+    "PortOutputBearingCapPositive",
+    "PortOutputBearingCapPositiveBolt",
+    "PortOutputBearingCapPositiveNut",
+    "PropulsionFixedFrame",
+    "StarboardOutputBearingCapNegative",
+    "StarboardOutputBearingCapNegativeBolt",
+    "StarboardOutputBearingCapNegativeNut",
+    "StarboardOutputBearingCapPositive",
+    "StarboardOutputBearingCapPositiveBolt",
+    "StarboardOutputBearingCapPositiveNut"
+  ],
+  "reviewed_native_tree_order_change": {
+    "object": "BatteryEquipmentModule",
+    "before": [
+      "BatteryMount",
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "ModuleBatteryEnvelope",
+      "MaximumBatteryEnvelope",
+      "OpticalFlowModule"
+    ],
+    "after": [
+      "BatteryMount",
+      "OpticalFlowModule",
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "ModuleBatteryEnvelope",
+      "MaximumBatteryEnvelope"
+    ],
+    "reason": "The verified previous document lists the optical stack last after host-switch/restore verification; a fresh source build lists it second. Parent, membership, local/world placement, controls and geometry are unchanged. Only this exact display-order permutation is accepted."
+  },
+  "analytic_geometry_transition": [
+    {
+      "object": "BearingCapFitSample",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 8.526512829121202e-14,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "BearingSeatFitSample",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1.1368683772161603e-13,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "PortOutputBearingCapNegative",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1.1368683772161603e-13,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "PortOutputBearingCapPositive",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1.7337242752546445e-12,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2.7284841053187847e-11,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "StarboardOutputBearingCapNegative",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1.6768808563938364e-12,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    },
+    {
+      "object": "StarboardOutputBearingCapPositive",
+      "comparison_to_old_plus_exact_extension_and_hole_move": {
+        "difference_mm3": 0.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1.4210854715202004e-13,
+        "closed_solid_identity_by_empty_cuts": true
+      },
+      "passed": true
+    }
+  ],
+  "native_interface_metadata_changes": {},
+  "property_schema_changes": {},
+  "numeric_control_changes": {},
+  "inventory_before": {
+    "all_objects": 293,
+    "shapes": 129,
+    "registry_counts": {
+      "PrintedParts": 19,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 66,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 14,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 19,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFixedFrame": 1,
+      "ServoGearHolder60T": 2
+    }
+  },
+  "inventory_after": {
+    "all_objects": 293,
+    "shapes": 129,
+    "registry_counts": {
+      "PrintedParts": 19,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 66,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 14,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 19,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFixedFrame": 1,
+      "ServoGearHolder60T": 2
+    }
+  },
+  "mass_delta_g": {
+    "printed": 0.11998800000002063,
+    "hardware": 0.0,
+    "structure_and_hardware": 0.11998800000002063
+  },
+  "notes_and_labels_changed": {},
+  "physical_fit_limitation": "Nominal CAD envelope reserves include the measured0.5mm output axial travel. This does not qualify PA12 printing variation, finishing, deflection, clamp grip, bearing preload, gear backlash, undocumented stock set/OEM screws or connected motor-wire motion.",
+  "gates": {
+    "immutable_before_hash": true,
+    "shape_count_129_preserved": true,
+    "all_shape_and_native_object_identities_preserved": true,
+    "only_seven_intended_local_geometries_changed": true,
+    "only_fifteen_intended_world_geometries_changed": true,
+    "exact_analytic_one_mm_arm_and_hole_transition": true,
+    "only_eight_fastener_placements_move_signed_x_one_mm": true,
+    "all_other_local_world_breps_and_placements_unchanged": true,
+    "all_candidate_shapes_valid_single_closed_solids": true,
+    "all_native_types_preserved": true,
+    "all_native_parent_membership_preserved": true,
+    "native_tree_order_preserved_except_exact_reviewed_display_permutation": true,
+    "all_registry_order_preserved": true,
+    "all_native_expressions_unchanged": true,
+    "property_schemas_and_numeric_controls_unchanged": true,
+    "all_interface_and_procurement_metadata_unchanged": true,
+    "all_inventory_and_sku_quantities_unchanged": true,
+    "printed_mass_delta_exactly_point119988_g": true,
+    "hardware_mass_unchanged": true,
+    "native_control_behavior_passes_both": true,
+    "independent_three_to_one_motion_preserved": true,
+    "all_nonfunctional_nominal_motion_pairs_pass_both": true,
+    "same_nominal_motion_inventory_and_pairs": true,
+    "both_improved_carrier_metal_reserves_meet_one_point_five": true,
+    "both_carrier_metal_reserves_increase": true,
+    "production_release_stays_fit_prototype": true,
+    "candidate_source_fingerprint_matches_and_stays_fixed": true,
+    "saved_documents_unchanged": true
+  },
+  "passed": true,
+  "relative_motion_before": {
+    "passed": true,
+    "installed_solid_count": 112,
+    "clearance_pair_count": 3065,
+    "certified_pair_count": 3065,
+    "minimum_nominal_gap_mm": 0.1,
+    "angle_domain_deg": [
+      -180,
+      180
+    ],
+    "classified_functional_interface_count": 8,
+    "all_functional_interfaces_classified": true,
+    "static_expression_contract": {
+      "checked_expression_count": 22,
+      "scope": "Closed source expression allowlist across every native object. Additional expressions on manual controls, child features, intervening groups or indirect helper properties are rejected; static placements are allowed.",
+      "passed": true
+    }
+  },
+  "carrier_metal_clearance_before": [
+    {
+      "pod": "Port",
+      "passed": false,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.0658856287301173,
+      "maximum_output_axial_travel_mm": 0.5,
+      "fixed_hardware_bounds": [
+        {
+          "fixed": "PortOutputBearingCapNegativeBolt",
+          "continuous_clearance_lower_bound_mm": 1.0658856287301173
+        },
+        {
+          "fixed": "PortOutputBearingCapNegativeNut",
+          "continuous_clearance_lower_bound_mm": 1.6116779640958079
+        },
+        {
+          "fixed": "PortOutputBearingCapPositiveBolt",
+          "continuous_clearance_lower_bound_mm": 1.0658856287301182
+        },
+        {
+          "fixed": "PortOutputBearingCapPositiveNut",
+          "continuous_clearance_lower_bound_mm": 1.6116779640958079
+        }
+      ]
+    },
+    {
+      "pod": "Starboard",
+      "passed": false,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.065885628730118,
+      "maximum_output_axial_travel_mm": 0.5,
+      "fixed_hardware_bounds": [
+        {
+          "fixed": "StarboardOutputBearingCapNegativeBolt",
+          "continuous_clearance_lower_bound_mm": 1.065885628730118
+        },
+        {
+          "fixed": "StarboardOutputBearingCapNegativeNut",
+          "continuous_clearance_lower_bound_mm": 1.6116779640958097
+        },
+        {
+          "fixed": "StarboardOutputBearingCapPositiveBolt",
+          "continuous_clearance_lower_bound_mm": 1.065885628730119
+        },
+        {
+          "fixed": "StarboardOutputBearingCapPositiveNut",
+          "continuous_clearance_lower_bound_mm": 1.6116779640958092
+        }
+      ]
+    }
+  ],
+  "native_control_behavior_before": {
+    "passed": true,
+    "case_count": 29
+  },
+  "coupled_drive_motion_before": {
+    "passed": true,
+    "case_count": 10
+  },
+  "relative_motion_after": {
+    "passed": true,
+    "installed_solid_count": 112,
+    "clearance_pair_count": 3065,
+    "certified_pair_count": 3065,
+    "minimum_nominal_gap_mm": 0.1,
+    "angle_domain_deg": [
+      -180,
+      180
+    ],
+    "classified_functional_interface_count": 8,
+    "all_functional_interfaces_classified": true,
+    "static_expression_contract": {
+      "checked_expression_count": 22,
+      "scope": "Closed source expression allowlist across every native object. Additional expressions on manual controls, child features, intervening groups or indirect helper properties are rejected; static placements are allowed.",
+      "passed": true
+    }
+  },
+  "carrier_metal_clearance_after": [
+    {
+      "pod": "Port",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670093,
+      "maximum_output_axial_travel_mm": 0.5,
+      "fixed_hardware_bounds": [
+        {
+          "fixed": "PortOutputBearingCapNegativeBolt",
+          "continuous_clearance_lower_bound_mm": 1.6438473508670093
+        },
+        {
+          "fixed": "PortOutputBearingCapNegativeNut",
+          "continuous_clearance_lower_bound_mm": 2.1461203493498786
+        },
+        {
+          "fixed": "PortOutputBearingCapPositiveBolt",
+          "continuous_clearance_lower_bound_mm": 1.6438473508670128
+        },
+        {
+          "fixed": "PortOutputBearingCapPositiveNut",
+          "continuous_clearance_lower_bound_mm": 2.1461203493498795
+        }
+      ]
+    },
+    {
+      "pod": "Starboard",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670106,
+      "maximum_output_axial_travel_mm": 0.5,
+      "fixed_hardware_bounds": [
+        {
+          "fixed": "StarboardOutputBearingCapNegativeBolt",
+          "continuous_clearance_lower_bound_mm": 1.6438473508670106
+        },
+        {
+          "fixed": "StarboardOutputBearingCapNegativeNut",
+          "continuous_clearance_lower_bound_mm": 2.1461203493498795
+        },
+        {
+          "fixed": "StarboardOutputBearingCapPositiveBolt",
+          "continuous_clearance_lower_bound_mm": 1.6438473508670124
+        },
+        {
+          "fixed": "StarboardOutputBearingCapPositiveNut",
+          "continuous_clearance_lower_bound_mm": 2.146120349349881
+        }
+      ]
+    }
+  ],
+  "native_control_behavior_after": {
+    "passed": true,
+    "case_count": 29
+  },
+  "coupled_drive_motion_after": {
+    "passed": true,
+    "case_count": 10
+  },
+  "full_transition_audit_sha256": "36b05be2fd1ca5ed0b3d18a4cede53f1ea4dea9e4331d73296b4da4ff8a17f87",
+  "supplemental_axial_float_review": {
+    "passed": true,
+    "reviewed_cad_sha256": "d34879acea374abfd8b7ef95112279c7d22db79f15ac753e5a15d9bb1e46fd4f",
+    "validator_source_fingerprint": "f7cd17a77c7254bbab49955b5f9066ebde73a923bb8fc6448e3d127e513af71e",
+    "full_report_sha256": "b85445add9140a4d1b255efc364e04791bbb775e802c4d83c739b94b07e25519",
+    "free_clearance_pair_count": 3063,
+    "intentional_stop_contact_pair_count": 2,
+    "separately_classified_functional_interface_count": 8,
+    "output_axial_travel_mm": [
+      -0.5,
+      0.5
+    ],
+    "minimum_residual_free_clearance_mm": 0.1,
+    "method": "Set distance is 1-Lipschitz under rigid translation of either set; summing the absolute travel limits covers independent worst-case output translations throughout the certified rotation domain.",
+    "nominal_clearance_requirement_mm_by_floating_output_count": {
+      "0": 0.1,
+      "1": 0.6,
+      "2": 1.1
+    },
+    "intentional_contact_proof": "Each carrier/frame whole-pair full-orbit cylinder certificate gives 0.5 mm nominal clearance. Subtracting its measured 0.5 mm maximum translation permits zero clearance only at the independently verified annular stops, without exempting other frame geometry.",
+    "scope": "Continuous separation of the audited installed solids across independently moving groups over the recorded angular domain, with each output Pod allowed the measured annular-stop axial travel. The free-clearance certificates subtract the sum of participating output travel magnitudes from the nominal distance lower bound. Two carrier/frame pairs retain their whole-pair nominal clearance certificates and require that bound to cover the full measured travel; zero residual clearance is allowed only at intentional annular-stop contact. The eight original functional interfaces remain separately classified, without a free-clearance or axial-float certificate. Same-group assembly contacts, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, and deformation are not certified."
+  }
+}

@@ -20,6 +20,8 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "gear_service": 4,
         "motor_and_prop_insertion": 4,
         "tilt_clearance": 2,
+        "carrier_metal_clearance": 2,
+        "relative_motion": 1,
         "servo_assembly_removal": 2,
         "horn_adapter_service": 4,
         "rail_key_access": 2,

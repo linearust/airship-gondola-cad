@@ -33,7 +33,9 @@ from .geometry import (
     intersection_volume,
     translation_sweep,
 )
+from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
+from .relative_motion import relative_motion_check
 
 TOL = 1e-5
 
@@ -47,6 +49,8 @@ def gear_mesh_check(
     output_teeth,
     minimum_face_overlap,
     minimum_contact_ratio=1.3,
+    output_axial_travel=(0.0, 0.0),
+    minimum_face_overlap_under_travel=None,
 ):
     """Measure tooth-face engagement independently of the protruding gear hubs.
 
@@ -56,6 +60,15 @@ def gear_mesh_check(
     strength, backlash or loaded mesh qualification. The independent contact
     ratio screen uses the standard unshifted 20-degree involute dimensions.
     """
+    travel = tuple(float(value) for value in output_axial_travel)
+    if (
+        len(travel) != 2
+        or not all(math.isfinite(value) for value in travel)
+        or not travel[0] <= 0 <= travel[1]
+    ):
+        raise ValueError("Axial travel must be finite negative/positive bounds.")
+    if minimum_face_overlap_under_travel is None:
+        minimum_face_overlap_under_travel = minimum_face_overlap
     sections = []
     for shape, teeth in ((driver, driver_teeth), (output, output_teeth)):
         if shape.isNull() or not shape.isValid() or not shape.Solids:
@@ -95,6 +108,14 @@ def gear_mesh_check(
     face_overlap = min(first["tooth_face_y_mm"][1], second["tooth_face_y_mm"][1]) - max(
         first["tooth_face_y_mm"][0], second["tooth_face_y_mm"][0]
     )
+    # Interval overlap is concave in axial translation. Its minimum over the
+    # complete permitted travel therefore occurs at one of the two endpoints.
+    travel_overlaps = [
+        min(first["tooth_face_y_mm"][1], second["tooth_face_y_mm"][1] + shift)
+        - max(first["tooth_face_y_mm"][0], second["tooth_face_y_mm"][0] + shift)
+        for shift in travel
+    ]
+    minimum_travel_overlap = min(travel_overlaps)
     pressure_angle = math.radians(20)
     pitch_radii = [module * teeth / 2 for teeth in (driver_teeth, output_teeth)]
     base_radii = [radius * math.cos(pressure_angle) for radius in pitch_radii]
@@ -114,12 +135,52 @@ def gear_mesh_check(
         "axis_position_tolerance_mm": TOL,
         "tooth_face_overlap_mm": face_overlap,
         "minimum_face_overlap_mm": minimum_face_overlap,
+        "output_axial_travel_mm": list(travel),
+        "tooth_face_overlap_at_travel_limits_mm": travel_overlaps,
+        "minimum_tooth_face_overlap_under_travel_mm": minimum_travel_overlap,
+        "required_face_overlap_under_travel_mm": minimum_face_overlap_under_travel,
         "standard_involute_contact_ratio": contact_ratio,
         "minimum_contact_ratio": minimum_contact_ratio,
-        "scope": "Saved gear position, actual tooth-band axial overlap and theoretical unshifted 20-degree involute contact ratio. Tooth approximation, backlash, tooth strength and operational servo fit remain unqualified.",
+        "scope": "Saved gear position, actual tooth-band axial overlap throughout the declared output axial travel, and theoretical unshifted 20-degree involute contact ratio. The overlap requirement is a geometric design reserve, not a tooth-strength rating. Tooth approximation, backlash, tooth strength and operational servo fit remain unqualified.",
         "passed": abs(distance - expected_distance) <= TOL
         and face_overlap >= minimum_face_overlap - TOL
+        and minimum_travel_overlap >= minimum_face_overlap_under_travel - TOL
         and contact_ratio >= minimum_contact_ratio - TOL,
+    }
+
+
+def gear_engagement_check(doc, prefix, axial_stops=None):
+    """Bind actual installed gear faces to the actual output travel stops."""
+    configuration = drive_for_document(doc)
+    stops = (
+        axial_stops if axial_stops is not None else carrier_axial_travel(doc, prefix)
+    )
+    row = {"pod": prefix, "axial_stops": stops}
+    gears = [doc.getObject(prefix + suffix) for suffix in ("DriverGear", "OutputGear")]
+    if not stops["passed"] or any(obj is None for obj in gears):
+        return {
+            **row,
+            "passed": False,
+            "error": "Missing gears or unproven axial stops",
+        }
+    inverse = doc.MainPropulsionModule.getGlobalPlacement().inverse()
+    shapes = []
+    for obj in gears:
+        shape = world_shape(obj)
+        shape.Placement = inverse.multiply(shape.Placement)
+        shapes.append(shape)
+    return {
+        **row,
+        **gear_mesh_check(
+            *shapes,
+            module=MODULE_MM,
+            driver_teeth=configuration.driver.teeth,
+            output_teeth=configuration.output.teeth,
+            minimum_face_overlap=FACE_WIDTH_MM,
+            output_axial_travel=(-stops["negative_mm"], stops["positive_mm"]),
+            # A geometric reserve, not a tooth-strength rating.
+            minimum_face_overlap_under_travel=0.8 * FACE_WIDTH_MM,
+        ),
     }
 
 
@@ -999,27 +1060,19 @@ def _record_rail_fit_checks(report, frame, physical):
     ]
 
 
-def _record_drive_motion_checks(report, doc, module, physical, prefix):
+def _record_drive_motion_checks(report, doc, module, prefix):
     """Keep native motion, meshing and coupled service evidence together."""
-    configuration = drive_for_document(doc)
     report["drive_motion"].append(drive_motion_check(doc, prefix))
     report["fixed_servo_datum"].append(fixed_servo_datum_check(doc, prefix))
     report["servo_mounts"].append(servo_mount_check(doc, prefix))
     report["holder_mounts"].append(holder_mount_check(doc, prefix))
     report["direct_adapter_fit"].append(direct_adapter_fit_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
+    carrier_clearance = carrier_metal_clearance_check(doc, prefix)
+    report["carrier_metal_clearance"].append(carrier_clearance)
+    axial_stops = carrier_clearance.get("axial_travel", {"passed": False})
     report["gear_mesh_alignment"].append(
-        {
-            "pod": prefix,
-            **gear_mesh_check(
-                physical[prefix + "DriverGear"],
-                physical[prefix + "OutputGear"],
-                module=MODULE_MM,
-                driver_teeth=configuration.driver.teeth,
-                output_teeth=configuration.output.teeth,
-                minimum_face_overlap=FACE_WIDTH_MM,
-            ),
-        }
+        gear_engagement_check(doc, prefix, axial_stops)
     )
     report["tilt_clearance"].append(tilt_clearance_check(doc, module, prefix))
     report["servo_assembly_removal"].append(
@@ -1152,7 +1205,7 @@ def _record_drive_checks(report, doc, module, objects, physical, frame, prefix, 
     """Collect direct input-drive and separately supported output evidence."""
     pod = doc.getObject(prefix + "Pod")
     mount = doc.getObject(prefix + "ServoMount")
-    _record_drive_motion_checks(report, doc, module, physical, prefix)
+    _record_drive_motion_checks(report, doc, module, prefix)
     servo_names = {
         obj.Name for obj in objects if belongs_to_group(obj, mount)
     } - holder_mount_fastener_names(prefix)
@@ -1374,6 +1427,7 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
             )
         _record_fastener_checks(report, doc, module, objects, physical)
         _record_print_checks(report, module, physical)
+        report["relative_motion"].append(relative_motion_check(doc, module))
         _complete_report(report, module)
         _write_report(report, source)
         return report

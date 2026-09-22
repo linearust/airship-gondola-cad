@@ -121,6 +121,43 @@ class GearEngagementTests(unittest.TestCase):
         self.assertLess(result["standard_involute_contact_ratio"], 1.3)
         self.assertFalse(result["passed"], result)
 
+    def test_axial_float_reduces_real_tooth_face_engagement(self):
+        from gondola.validation.propulsion import gear_mesh_check
+
+        for travel, expected, passed in (
+            ((-0.5, 0.5), 2.5, True),
+            ((-0.2, 0.8), 2.2, False),
+        ):
+            with self.subTest(travel=travel):
+                result = gear_mesh_check(
+                    *self.gears(),
+                    module=0.5,
+                    driver_teeth=60,
+                    output_teeth=20,
+                    minimum_face_overlap=3,
+                    output_axial_travel=travel,
+                    minimum_face_overlap_under_travel=2.4,
+                )
+                self.assertAlmostEqual(result["tooth_face_overlap_mm"], 3)
+                self.assertAlmostEqual(
+                    result["minimum_tooth_face_overlap_under_travel_mm"], expected
+                )
+                self.assertEqual(result["passed"], passed, result)
+
+    def test_invalid_axial_travel_cannot_claim_engagement(self):
+        from gondola.validation.propulsion import gear_mesh_check
+
+        for travel in ((float("nan"), 0.5), (0.5, -0.5), (0.2, 0.5)):
+            with self.subTest(travel=travel), self.assertRaises(ValueError):
+                gear_mesh_check(
+                    *self.gears(),
+                    module=0.5,
+                    driver_teeth=60,
+                    output_teeth=20,
+                    minimum_face_overlap=3,
+                    output_axial_travel=travel,
+                )
+
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class BearingCaptureTests(unittest.TestCase):
@@ -229,6 +266,48 @@ class NativeGearedDriveTests(unittest.TestCase):
                 self.assertTrue(result["passed"], result)
                 result = fixed_servo_datum_check(self.doc, prefix)
                 self.assertTrue(result["passed"], result)
+
+    def test_saved_gear_axial_offset_cannot_reuse_source_engagement(self):
+        from gondola.validation.propulsion import gear_engagement_check
+
+        gear = self.doc.PortOutputGear
+        original = App.Placement(gear.Placement)
+        try:
+            result = gear_engagement_check(self.doc, "Port")
+            self.assertTrue(result["passed"], result)
+            gear.Placement.Base.y += 0.6
+            self.doc.recompute()
+            result = gear_engagement_check(self.doc, "Port")
+            self.assertFalse(result["passed"], result)
+            self.assertAlmostEqual(result["tooth_face_overlap_mm"], 2.4)
+            self.assertAlmostEqual(
+                result["minimum_tooth_face_overlap_under_travel_mm"], 1.9
+            )
+        finally:
+            gear.Placement = original
+            self.doc.recompute()
+
+    def test_saved_engagement_follows_root_placement_and_live_tilt(self):
+        from gondola.validation.propulsion import gear_engagement_check
+
+        root = self.module["group"]
+        original = App.Placement(root.Placement)
+        angle = float(self.doc.StarboardPod.Tilt)
+        try:
+            root.Placement = App.Placement(
+                App.Vector(12, 27, -34), App.Rotation(App.Vector(1, 3, -2), 57)
+            )
+            self.doc.StarboardPod.Tilt = 123.4
+            self.doc.recompute()
+            result = gear_engagement_check(self.doc, "Starboard")
+            self.assertTrue(result["passed"], result)
+            self.assertAlmostEqual(
+                result["minimum_tooth_face_overlap_under_travel_mm"], 2.5
+            )
+        finally:
+            root.Placement = original
+            self.doc.StarboardPod.Tilt = angle
+            self.doc.recompute()
 
     def test_direct_adapter_rejects_wrong_bought_gear_bore(self):
         from gondola.parts import propulsion

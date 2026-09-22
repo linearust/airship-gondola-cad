@@ -12,7 +12,7 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "V"
+DESIGN_REVISION = "W"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -305,7 +305,7 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12; SLS preferred for fit trial, supplier process agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Prefer integral printable carriers and fixed replacement parts over tolerance-adjustment mechanisms. Retain separable parts for assembly/service and purposeful rail/optical alignment. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
+        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Prefer integral printable carriers and fixed replacement parts over tolerance-adjustment mechanisms. Retain separable parts for assembly/service and purposeful rail/optical alignment. Compare complete torque/retention paths; minimize hardware and unsupported strength claims. Physical retention remains unverified.",
         "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
@@ -322,6 +322,6 @@ def project_status():
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
-        "notion_source_scope": "Retained timestamp identifies the earlier source snapshot. Rev V also considers the user-supplied vehicle-document attachment; mechanical replacement text is proposed separately. The live Notion page was not re-read or updated for this revision.",
+        "notion_source_scope": "Retained timestamp identifies the earlier source snapshot. The current revision also considers the user-supplied vehicle-document attachment; mechanical replacement text is proposed separately. The live Notion page was not re-read or updated for this revision.",
         **release_status(),
     }

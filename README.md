@@ -29,6 +29,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   integral printable carriers. Use a detachable fixed-datum servo/driver holder
   where replacement avoids rebuilding the output-bearing frame; retain only
   separable parts needed for assembly or service.
+- Existing geometry, shaft diameters and purchased-part selections are not
+  constraints. Redesign them when the complete assembly improves in mass,
+  simplicity, fit or serviceability. Compare complete torque/retention paths;
+  a lighter shaft or gear alone does not establish a better assembly.
 - Model only supported interfaces. Do not invent device holes, bearing planes,
   thread depths, mounting kits, cable datums or electrical compatibility.
   Preserve source discrepancies and explicit design allowances.
@@ -39,6 +43,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   tilt controls. Validate gear contact, coupled motion and bearing/fastener
   retention together. Purchased gear profiles are reference geometry, never
   printable replacements; shaft and bearing fits require physical trials.
+  Check continuous rotation envelopes near fasteners as well as sampled poses.
+  Include permitted axial travel in clearance and gear-face engagement budgets;
+  distinguish deliberate bearing, gear and axial-stop contact from collisions.
 - The selected driver gears mount on bought KST horns through compact printed
   adapters. Only output axes use external shafts/bearings. The gear-specific
   holder fixes the servo position against the common propulsion frame. Replace

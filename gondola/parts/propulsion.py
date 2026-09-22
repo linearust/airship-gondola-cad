@@ -77,7 +77,7 @@ HOLDER_RELEASE_INBOARD = 4.0
 HOLDER_RELEASE_OUTWARD = 40.0
 BEARING_WINDOW_DIAMETER = 5.6
 BEARING_CAP_THICKNESS = 1.5
-BEARING_CAP_BOLT_X = 17.5
+BEARING_CAP_BOLT_X = 18.5
 CLAMP_SCREW_SKU = "M2X8_SOCKET_CAP"
 NUT_SKU = "M2_SQUARE_NUT_DIN562"
 BEARING_SKU = "MR63ZZ"
@@ -106,8 +106,26 @@ def bearing_shape():
     return cylinder(3, 2.5, (0, 0, 0)).cut(cylinder(1.5, 2.5, (0, 0, 0)))
 
 
+def _bearing_retainer_blank(depth, start_y):
+    # Keep the cap and cup outlines matched, with 1.6 mm material beyond the
+    # Ø2.2 bolt hole. Moving the bolt outward adds guard clearance, not parts.
+    arm_start_x = 3.5
+    arm_half_width = 2.7
+    return union(
+        [
+            cylinder(4.8, depth, (0, start_y, 0)),
+            box(
+                BEARING_CAP_BOLT_X + arm_half_width - arm_start_x,
+                depth,
+                2 * arm_half_width,
+                (arm_start_x, start_y, -arm_half_width),
+            ),
+        ]
+    )
+
+
 def bearing_cap_shape():
-    cap = union([cylinder(4.8, 1.5, (0, 0, 0)), box(16.7, 1.5, 5.4, (3.5, 0, -2.7))])
+    cap = _bearing_retainer_blank(1.5, 0)
     cap = cap.cut(cylinder(2.8, 2, (0, -0.25, 0)))
     cap = cap.cut(cylinder(1.1, 2, (BEARING_CAP_BOLT_X, -0.25, 0)))
     cap = cap.fuse(cylinder(1, 1.5, (6.2, -1.5, 0)))
@@ -116,7 +134,7 @@ def bearing_cap_shape():
 
 def _bearing_cup(start_y, *, opens_positive=True):
     # Canonical bearing is Y0..2.5, with a 1.5mm inner shoulder before Y0.
-    body = union([cylinder(4.8, 4, (0, -1.5, 0)), box(16.7, 4, 5.4, (3.5, -1.5, -2.7))])
+    body = _bearing_retainer_blank(4, -1.5)
     body = body.cut(cylinder(3, 2.6, (0, 0, 0)))
     body = body.cut(cylinder(2.8, 4.2, (0, -1.6, 0)))
     body = body.cut(cylinder(1.1, 4.2, (BEARING_CAP_BOLT_X, -1.6, 0)))
