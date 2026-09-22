@@ -691,6 +691,7 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         from gondola.validation.propulsion import (
             horn_adapter_service_check,
             servo_assembly_service_check,
+            servo_case_service_check,
         )
 
         for key, (doc, module) in self.configurations.items():
@@ -725,6 +726,70 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     )
                     for row in rows:
                         self.assertTrue(row["passed"], row)
+                    case_service = servo_case_service_check(doc, module, prefix)
+                    self.assertTrue(case_service["passed"], case_service)
+                    self.assertEqual(
+                        set(case_service["moving_parts"]),
+                        {
+                            prefix + suffix
+                            for suffix in (
+                                "Servo",
+                                "DriverGear",
+                                "ServoHorn",
+                                "HornGearAdapter",
+                                "HornGearRetainer",
+                                "HornGearClampBolt",
+                                "HornGearClampNut",
+                            )
+                        },
+                    )
+                    for row in case_service["part_paths"]:
+                        self.assertGreater(row["final_axial_separation_mm"], 0)
+
+    def test_servo_case_service_rejects_a_midpath_cradle_obstruction(self):
+        from gondola.cad import translated_shape, world_shape
+        from gondola.validation.geometry import intersection_volume
+        from gondola.validation.propulsion import servo_case_service_check
+
+        doc, module = self.configurations["60_20"]
+        holder = doc.PortServoHolder
+        original = holder.Shape.copy()
+        try:
+            # A lip ahead of the case leaves both endpoints clear but blocks
+            # its withdrawal. A narrow stem joins the lip to the left wall.
+            stem = Part.makeBox(0.6, 7.2, 2, App.Vector(-4.2, 25, -10))
+            lip = Part.makeBox(1.1, 0.2, 2, App.Vector(-4.2, 32, -10))
+            holder.Shape = original.fuse(stem).fuse(lip).removeSplitter()
+            doc.recompute()
+            self.assertEqual(len(holder.Shape.Solids), 1)
+            case = world_shape(doc.PortServo)
+            obstacle = world_shape(holder)
+            for endpoint in (case, translated_shape(case, y=30)):
+                self.assertLess(intersection_volume(endpoint, obstacle), 1e-5)
+            result = servo_case_service_check(doc, module, "Port")
+            self.assertFalse(result["passed"], result)
+            case_row = next(
+                row for row in result["part_paths"] if row["part"] == "PortServo"
+            )
+            self.assertFalse(case_row["passed"], case_row)
+            self.assertGreater(case_row["final_axial_separation_mm"], 0)
+        finally:
+            holder.Shape = original
+            doc.recompute()
+
+    def test_servo_case_service_cannot_omit_installed_input_hardware(self):
+        from gondola.validation.propulsion import servo_case_service_check
+
+        doc, module = self.configurations["60_20"]
+        incomplete = {
+            **module,
+            "hardware": [
+                obj for obj in module["hardware"] if obj.Name != "PortHornGearClampNut"
+            ],
+        }
+        result = servo_case_service_check(doc, incomplete, "Port")
+        self.assertFalse(result["passed"], result)
+        self.assertEqual(result["missing_parts"], ["PortHornGearClampNut"])
 
     def test_correct_direction_with_stale_ratio_is_rejected_for_alternate_gears(self):
         from gondola.validation.propulsion import drive_motion_check
@@ -879,6 +944,7 @@ class InterchangeableGearDriveTests(unittest.TestCase):
             fixed_servo_datum_check,
             holder_mount_check,
             servo_assembly_service_check,
+            servo_case_service_check,
             servo_mount_check,
         )
 
@@ -899,6 +965,8 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     with self.subTest(pod=prefix, check=check.__name__):
                         result = check(doc, prefix)
                         self.assertTrue(result["passed"], result)
+                case_service = servo_case_service_check(doc, module_parts, prefix)
+                self.assertTrue(case_service["passed"], case_service)
             service = servo_assembly_service_check(doc, module_parts, "Port")
             self.assertTrue(service["passed"], service)
         finally:

@@ -858,6 +858,75 @@ def servo_assembly_service_check(doc, module, prefix):
     }
 
 
+def servo_case_service_check(doc, module, prefix):
+    """Extract the complete servo/driver axially from its removed closed cradle."""
+    holder = doc.getObject(prefix + "ServoHolder")
+    servo = doc.getObject(prefix + "Servo")
+    drive = doc.getObject(prefix + "InputDrive")
+    gear = doc.getObject(prefix + "DriverGear")
+    if any(obj is None for obj in (holder, servo, drive, gear)):
+        return {"pod": prefix, "passed": False, "error": "Missing servo assembly"}
+    expected = {
+        obj.Name
+        for obj in doc.Objects
+        if hasattr(obj, "Shape")
+        and obj.Shape.Solids
+        and getattr(obj, "Role", "") != "Clearance"
+        and (obj.Name == servo.Name or belongs_to_group(obj, drive))
+    }
+    objects = module["printed"] + module["hardware"] + module["references"]
+    moving = {obj.Name: world_shape(obj) for obj in objects if obj.Name in expected}
+    missing = sorted(expected - moving.keys())
+    if missing or not {servo.Name, gear.Name} <= moving.keys():
+        return {
+            "pod": prefix,
+            "passed": False,
+            "error": "Incomplete servo/input-drive inventory",
+            "missing_parts": missing,
+        }
+    # Work in the module frame so arbitrary placement cannot enlarge the
+    # conservative envelopes used for curved surfaces.
+    inverse = module["group"].getGlobalPlacement().inverse()
+    obstacle = world_shape(holder)
+    for shape in (*moving.values(), obstacle):
+        shape.Placement = inverse.multiply(shape.Placement)
+    sign = 1 if prefix == "Port" else -1
+    travel = sign * 30.0
+    waypoints = [(0, 0, 0), (0, travel, 0)]
+    rows = []
+    for name, shape in moving.items():
+        endpoint = translated_shape(shape, y=travel).BoundBox
+        separation = (
+            endpoint.YMin - obstacle.BoundBox.YMax
+            if sign > 0
+            else obstacle.BoundBox.YMin - endpoint.YMax
+        )
+        path = continuous_path(shape, waypoints, {holder.Name: obstacle})
+        rows.append(
+            {
+                "part": name,
+                **path,
+                "final_axial_separation_mm": separation,
+                "passed": path["passed"] and separation > TOL,
+            }
+        )
+    return {
+        "pod": prefix,
+        "holder": holder.Name,
+        "released_fasteners": [
+            prefix + "ServoEar" + side + kind
+            for side in ("Lower", "Upper")
+            for kind in ("Bolt", "Nut")
+        ],
+        "moving_parts": sorted(moving),
+        "coordinate_frame": "propulsion module",
+        "waypoints_mm": [list(point) for point in waypoints],
+        "part_paths": rows,
+        "scope": "After the separately checked whole-holder removal, release both servo-ear bolt/nut pairs and free the leads. Pull the servo, retained horn, adapter and driver together 30 mm axially toward the gear side, clear of the cradle. Reversing this path provides case insertion. All input-drive solids remain together; actual wiring, nut handling and printed fit remain unqualified.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def continuous_path(shape, waypoints, obstacles):
     """Check every point of a piecewise translation, not just its waypoints."""
     rows = []
@@ -1078,6 +1147,7 @@ def _record_drive_motion_checks(report, doc, module, prefix):
     report["servo_assembly_removal"].append(
         servo_assembly_service_check(doc, module, prefix)
     )
+    report["servo_case_service"].append(servo_case_service_check(doc, module, prefix))
     report["horn_adapter_service"].extend(
         horn_adapter_service_check(doc, module, prefix)
     )

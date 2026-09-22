@@ -1,0 +1,377 @@
+{
+  "revision": "X",
+  "reviewed_on": "2026-09-22T06:21:56.588383+00:00",
+  "intent": "Replace the one-sided open servo upright with a closed8\u00d721mm case window, paired2mm side webs and unchanged5mm depth. Retain the original flange, shaft/servo/gear datums, ear and holder fasteners, complete-holder service interface and all other geometry. Strength/stiffness and real wiring remain unqualified.",
+  "previous_saved_cad_sha256": "d34879acea374abfd8b7ef95112279c7d22db79f15ac753e5a15d9bb1e46fd4f",
+  "candidate_saved_cad_sha256": "0d780e251e971a40338d6154a611ea7087ca1ebcdb606d4693a67e7f94ae32e8",
+  "candidate_source_fingerprint": "87c7e195f9f1075e9f7eea79a8a74e12aa5b8c36f4c998845f1416590269d54c",
+  "shape_counts": {
+    "before": 129,
+    "after": 129,
+    "added": 0,
+    "removed": 0,
+    "changed_local": 2,
+    "changed_world": 2
+  },
+  "changed_shape_names": [
+    "PortServoHolder",
+    "StarboardServoHolder"
+  ],
+  "analytic_geometry_transition": [
+    {
+      "object": "PortServoHolder",
+      "saved_input_axis_mm": [
+        8.0,
+        29.869697220176644
+      ],
+      "outer_width_mm": 12,
+      "window_mm": [
+        8,
+        21
+      ],
+      "side_webs_mm": [
+        2,
+        2
+      ],
+      "depth_mm": 5,
+      "comparison_to_preserved_W_flange_plus_primitives": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 3.552713678800501e-15,
+        "volume_difference_mm3": 6.821210263296962e-13,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "predicted_added_volume_mm3": 318.4878805412365,
+      "measured_added_volume_mm3": 318.4878805412368,
+      "passed": true
+    },
+    {
+      "object": "StarboardServoHolder",
+      "saved_input_axis_mm": [
+        8.0,
+        29.869697220176644
+      ],
+      "outer_width_mm": 12,
+      "window_mm": [
+        8,
+        21
+      ],
+      "side_webs_mm": [
+        2,
+        2
+      ],
+      "depth_mm": 5,
+      "comparison_to_preserved_W_flange_plus_primitives": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 3.552713678800501e-15,
+        "volume_difference_mm3": 2.2737367544323206e-13,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "predicted_added_volume_mm3": 318.4878805412365,
+      "measured_added_volume_mm3": 318.487880541237,
+      "passed": true
+    }
+  ],
+  "all_pose_property_changes": {},
+  "native_interface_metadata_changes": {
+    "CapacitorServiceReserve": {
+      "SourceURL": {
+        "before": "https://app.notion.com/p/3de264c511c680d193fcd373405765c7",
+        "after": "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
+      }
+    }
+  },
+  "native_property_schema_changes": {},
+  "native_numeric_control_changes": {},
+  "native_note_changes": {
+    "PortServo": {
+      "Notes": {
+        "before": "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are \u00d82 on 24 mm pitch. Open integral saddles use M1.6\u00d78 DIN84 through-bolts, with 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth \u00d83.90\u00d72.7 spline envelope does not claim tooth detail. Actual horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "after": "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are \u00d82 on 24 mm pitch. The closed cradle has two 2 mm side walls and an 8\u00d721 mm axial case opening. M1.6\u00d78 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth \u00d83.90\u00d72.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished."
+      }
+    },
+    "PortServoHolder": {
+      "Notes": {
+        "before": "Replaceable fixed servo and direct-driver cradle. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces.",
+        "after": "Replaceable fixed servo and direct-driver cradle with two symmetric 2 mm side walls and an 8\u00d721 mm axial case opening. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces."
+      },
+      "PrintNotes": {
+        "before": "Replaceable fixed servo and direct-driver cradle. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces.",
+        "after": "Replaceable fixed servo and direct-driver cradle with two symmetric 2 mm side walls and an 8\u00d721 mm axial case opening. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces."
+      }
+    },
+    "PortServoMount": {
+      "ServiceSequence": {
+        "before": "At neutral with power disconnected and the harness freed, remove both holder-mount M2 bolts and nuts; leave servo-ear bolts and the small output gear installed. Withdraw the complete holder, servo, horn, adapter and driver 4 mm inboard along -Y to disengage the gear faces, then 40 mm outward along +X. Service the driver and horn adapter on the bench. Seat the holder fully against all three fixed datums before tightening; bolt clearance does not establish gear spacing.",
+        "after": "At neutral with power disconnected and the harness freed, remove both holder-mount M2 bolts and nuts; leave servo-ear bolts and the small output gear installed. Withdraw the complete holder, servo, horn, adapter and driver 4 mm inboard along -Y to disengage the gear faces, then 40 mm outward along +X. Service the driver and horn adapter on the bench. To remove the servo from the holder, release its two ear bolt/nut pairs and pull the servo, horn and driver together axially toward the gear side. Seat the holder fully against all three fixed datums before tightening; bolt clearance does not establish gear spacing."
+      }
+    },
+    "StarboardServo": {
+      "Notes": {
+        "before": "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are \u00d82 on 24 mm pitch. Open integral saddles use M1.6\u00d78 DIN84 through-bolts, with 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth \u00d83.90\u00d72.7 spline envelope does not claim tooth detail. Actual horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "after": "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are \u00d82 on 24 mm pitch. The closed cradle has two 2 mm side walls and an 8\u00d721 mm axial case opening. M1.6\u00d78 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth \u00d83.90\u00d72.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished."
+      }
+    },
+    "StarboardServoHolder": {
+      "Notes": {
+        "before": "Replaceable fixed servo and direct-driver cradle. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces.",
+        "after": "Replaceable fixed servo and direct-driver cradle with two symmetric 2 mm side walls and an 8\u00d721 mm axial case opening. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces."
+      },
+      "PrintNotes": {
+        "before": "Replaceable fixed servo and direct-driver cradle. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces.",
+        "after": "Replaceable fixed servo and direct-driver cradle with two symmetric 2 mm side walls and an 8\u00d721 mm axial case opening. Broad mating face, bottom ledge and one end stop locate it on the common frame. Two M2x8 bolts and square nuts clamp the 5.5 mm combined flange stack. No slots or adjustable input bearing cartridge. Check actual seating, mesh and retention after printing; revise this holder if a measured fit is unsuitable rather than forcing gears or enlarging locating surfaces."
+      }
+    },
+    "StarboardServoMount": {
+      "ServiceSequence": {
+        "before": "At neutral with power disconnected and the harness freed, remove both holder-mount M2 bolts and nuts; leave servo-ear bolts and the small output gear installed. Withdraw the complete holder, servo, horn, adapter and driver 4 mm inboard along +Y to disengage the gear faces, then 40 mm outward along -X. Service the driver and horn adapter on the bench. Seat the holder fully against all three fixed datums before tightening; bolt clearance does not establish gear spacing.",
+        "after": "At neutral with power disconnected and the harness freed, remove both holder-mount M2 bolts and nuts; leave servo-ear bolts and the small output gear installed. Withdraw the complete holder, servo, horn, adapter and driver 4 mm inboard along +Y to disengage the gear faces, then 40 mm outward along -X. Service the driver and horn adapter on the bench. To remove the servo from the holder, release its two ear bolt/nut pairs and pull the servo, horn and driver together axially toward the gear side. Seat the holder fully against all three fixed datums before tightening; bolt clearance does not establish gear spacing."
+      }
+    }
+  },
+  "inventory_before": {
+    "all_objects": 293,
+    "shapes": 129,
+    "registry_counts": {
+      "PrintedParts": 19,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 66,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 14,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 19,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFixedFrame": 1,
+      "ServoGearHolder60T": 2
+    }
+  },
+  "inventory_after": {
+    "all_objects": 293,
+    "shapes": 129,
+    "registry_counts": {
+      "PrintedParts": 19,
+      "ReferenceParts": 13,
+      "ClearanceVolumes": 13,
+      "FitCoupons": 4,
+      "Modules": 3,
+      "EquipmentMounts": 2,
+      "OpticalMountParts": 3,
+      "RailSegments": 1,
+      "RailLocks": 6,
+      "HardwareParts": 66,
+      "TapeReferences": 14,
+      "TiltingPods": 2
+    },
+    "hardware_sku_quantities": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 14,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 19,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "installed_print_sku_quantities": {
+      "BatteryMount": 1,
+      "ContinuousRail": 1,
+      "ElectronicsMount": 1,
+      "KST0415_GearAdapter": 2,
+      "KST0415_GearRetainer": 2,
+      "MR63ZZ_OuterRaceCap": 4,
+      "MotorCarrier": 2,
+      "OpticalMountBase": 1,
+      "OpticalRollBracket": 1,
+      "OpticalSensorTray": 1,
+      "PropulsionFixedFrame": 1,
+      "ServoGearHolder60T": 2
+    }
+  },
+  "mass_delta_g": {
+    "printed": 0.6433455186933017,
+    "hardware": 0.0,
+    "structure_and_hardware": 0.6433455186933088
+  },
+  "notion_reference": {
+    "before": {
+      "NotionSource": "https://app.notion.com/p/3de264c511c680d193fcd373405765c7",
+      "NotionLastEdited": "2026-09-20T07:25:14.031Z"
+    },
+    "after": {
+      "NotionSource": "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad",
+      "NotionLastEdited": "2026-09-22T05:48:39.341Z"
+    }
+  },
+  "release_evidence_text_changes": {
+    "servo_ear_retention": {
+      "required_evidence": {
+        "before": "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening.",
+        "after": "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening. The closed holder shares the upper-ear load through two side webs; nominal collision-free geometry does not establish installed stiffness. Check fore-aft bending, retained gear spacing and PA12 creep under operating load. After removing the complete holder and ear fasteners, withdraw the servo and input drive axially toward the gear side; verify the actual cable exit and disconnect leads first."
+      }
+    }
+  },
+  "physical_fit_limitation": "The paired webs improve nominal load-path symmetry; CAD clearance is not a stiffness or strength qualification. Check actual case/window fit, axial servo removal and wire exit, retained gear spacing under fore-aft load, clamp retention and PA12 creep. No new device mass, operating torque, or total vehicle mass claim follows from this geometry.",
+  "gates": {
+    "immutable_W_fixture_hash": true,
+    "all_129_shapes_and_native_object_identities_preserved": true,
+    "only_two_holder_local_and_world_shapes_change": true,
+    "exact_independent_closed_window_reconstruction": true,
+    "all_other_geometry_unchanged": true,
+    "all_local_world_and_print_placements_unchanged": true,
+    "all_native_types_hierarchy_and_registry_order_preserved": true,
+    "all_native_expressions_unchanged": true,
+    "all_property_schemas_numeric_controls_unchanged": true,
+    "only_declared_holder_servo_service_notes_change": true,
+    "all_inventory_and_sku_quantities_unchanged": true,
+    "all_candidate_shapes_valid_single_closed_solids": true,
+    "exact_expected_pair_mass_increase": true,
+    "hardware_mass_unchanged": true,
+    "only_servo_ear_release_evidence_text_expands": true,
+    "notion_reference_matches_user_designated_page": true,
+    "production_release_not_promoted": true,
+    "native_control_behavior_passes_both": true,
+    "independent_three_to_one_motion_preserved": true,
+    "all_nominal_nonfunctional_motion_pairs_pass_both": true,
+    "same_nominal_motion_inventory_and_pairs": true,
+    "both_guard_axial_float_reserves_pass_and_stay_unchanged": true,
+    "candidate_source_fingerprint_matches_and_stays_fixed": true,
+    "saved_documents_unchanged": true,
+    "only_exact_capacitor_Notion_source_metadata_changes": true
+  },
+  "passed": true,
+  "relative_motion_before": {
+    "passed": true,
+    "installed_solid_count": 112,
+    "clearance_pair_count": 3065,
+    "certified_pair_count": 3065,
+    "minimum_nominal_gap_mm": 0.1,
+    "angle_domain_deg": [
+      -180,
+      180
+    ],
+    "classified_functional_interface_count": 8,
+    "all_interfaces_classified": true,
+    "static_expression_contract": {
+      "checked_expression_count": 22,
+      "scope": "Closed source expression allowlist across every native object. Additional expressions on manual controls, child features, intervening groups or indirect helper properties are rejected; static placements are allowed.",
+      "passed": true
+    }
+  },
+  "carrier_metal_clearance_before": [
+    {
+      "pod": "Port",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670093,
+      "maximum_axial_travel_mm": 0.5
+    },
+    {
+      "pod": "Starboard",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670106,
+      "maximum_axial_travel_mm": 0.5
+    }
+  ],
+  "native_control_behavior_before": {
+    "passed": true,
+    "case_count": 29
+  },
+  "coupled_drive_motion_before": {
+    "passed": true,
+    "case_count": 10
+  },
+  "relative_motion_after": {
+    "passed": true,
+    "installed_solid_count": 112,
+    "clearance_pair_count": 3065,
+    "certified_pair_count": 3065,
+    "minimum_nominal_gap_mm": 0.1,
+    "angle_domain_deg": [
+      -180,
+      180
+    ],
+    "classified_functional_interface_count": 8,
+    "all_interfaces_classified": true,
+    "static_expression_contract": {
+      "checked_expression_count": 22,
+      "scope": "Closed source expression allowlist across every native object. Additional expressions on manual controls, child features, intervening groups or indirect helper properties are rejected; static placements are allowed.",
+      "passed": true
+    }
+  },
+  "carrier_metal_clearance_after": [
+    {
+      "pod": "Port",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670093,
+      "maximum_axial_travel_mm": 0.5
+    },
+    {
+      "pod": "Starboard",
+      "passed": true,
+      "minimum_required_reserve_mm": 1.5,
+      "minimum_clearance_lower_bound_mm": 1.6438473508670106,
+      "maximum_axial_travel_mm": 0.5
+    }
+  ],
+  "native_control_behavior_after": {
+    "passed": true,
+    "case_count": 29
+  },
+  "coupled_drive_motion_after": {
+    "passed": true,
+    "case_count": 10
+  },
+  "full_transition_audit_sha256": "8a8416da9e3178b8bdb389b58d443103f4376581498a759c92f38656cfb83b44",
+  "reviewed_metadata_change": "Only CapacitorServiceReserve.SourceURL follows the exact old-to-new user-designated Notion page change. Its geometry, placement, Clearance role, notes and qualification are unchanged; all other interface/procurement metadata is identical.",
+  "supplemental_final_release_axial_float_review": {
+    "report": "build/gondola_axial_float_review.json",
+    "report_sha256": "315db064a411b093c6dddae06580d6703411416b11591bef963d7d8c7eb743e5",
+    "source_cad_sha256": "ba58df74897b63336952519f9d300b8ce6d901e5334d64e66d2d262d1da1dbd9",
+    "source_fingerprint": "ce0aa951d8dfc4aac45896e8d3771bcb4b14b55cf84b72522e9be2178ba7ffe9",
+    "passed": true,
+    "certified_pair_count": 3065,
+    "intentional_stop_pair_count": 2,
+    "separately_classified_functional_interface_count": 8,
+    "maximum_axial_travel_each_direction_mm": 0.5,
+    "scope": "Continuous separation of the audited installed solids across independently moving groups over the recorded angular domain, with each output Pod allowed the measured annular-stop axial travel. The free-clearance certificates subtract the sum of participating output travel magnitudes from the nominal distance lower bound. Two carrier/frame pairs retain their whole-pair nominal clearance certificates and require that bound to cover the full measured travel; zero residual clearance is allowed only at intentional annular-stop contact. The eight original functional interfaces remain separately classified, without a free-clearance or axial-float certificate. Same-group assembly contacts, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, and deformation are not certified."
+  }
+}

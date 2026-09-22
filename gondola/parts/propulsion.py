@@ -63,7 +63,10 @@ GEAR_HUB_START_Y = 38.5
 GEAR_FACE_START_Y = 43.5
 GEAR_END_Y = 46.5
 SERVO_MOUNT_DEPTH = 5.0
-SERVO_FRAME_WIDTH = 10.6
+SERVO_CASE_WINDOW_WIDTH = 8.0
+SERVO_CASE_WINDOW_HEIGHT = 21.0
+SERVO_HOLDER_SIDE_WALL = 2.0
+SERVO_HOLDER_WIDTH = SERVO_CASE_WINDOW_WIDTH + 2 * SERVO_HOLDER_SIDE_WALL
 HOLDER_MOUNT_X = (-6.0, 18.0)
 HOLDER_MOUNT_Z = 7.0
 HOLDER_SEAT_Y = 26.0
@@ -232,11 +235,12 @@ def servo_case_front_y():
 
 
 def servo_holder_shape(drive=SELECTED_DRIVE):
-    """Fixed replaceable C cradle and simple flange, in module coordinates.
+    """Fixed replaceable closed cradle and flange, in module coordinates.
 
     Two horizontal bolts clamp the flange to a common frame face. Its bottom
     and one end seat on broad datums; no bolt clearance hole locates the gear.
-    The servo, horn and driver remain on this print during module removal.
+    Two symmetric webs join both servo ears to the base. The servo, horn and
+    driver remain together during module removal and axial case extraction.
     """
     x, z = drive.input_x_mm, drive.input_z_mm
     y = servo_case_front_y() - 4.7 - SERVO_MOUNT_DEPTH
@@ -244,12 +248,25 @@ def servo_holder_shape(drive=SELECTED_DRIVE):
     # outline and ear geometry remain tied to the actual servo axis.
     bottom = HOLDER_TOP_Z - 1.5
     mount = box(
-        SERVO_FRAME_WIDTH,
+        SERVO_HOLDER_WIDTH,
         SERVO_MOUNT_DEPTH,
         z + 10.1 - bottom,
-        (x - 5.3, y, bottom),
+        (x - SERVO_HOLDER_WIDTH / 2, y, bottom),
     )
-    mount = mount.cut(box(20, SERVO_MOUNT_DEPTH + 2, 20.6, (x - 3.8, y - 1, z - 15.3)))
+    # The 7 x 20 mm case enters axially, with 0.5 mm nominal clearance per
+    # side. Actual print/case tolerances and the wire exit still need checking.
+    mount = mount.cut(
+        box(
+            SERVO_CASE_WINDOW_WIDTH,
+            SERVO_MOUNT_DEPTH + 2,
+            SERVO_CASE_WINDOW_HEIGHT,
+            (
+                x - SERVO_CASE_WINDOW_WIDTH / 2,
+                y - 1,
+                z - 5 - SERVO_CASE_WINDOW_HEIGHT / 2,
+            ),
+        )
+    )
     for hole_z, opening in ((z - 17, 1), (z + 7, -1)):
         mount = mount.cut(cylinder(1.1, SERVO_MOUNT_DEPTH + 2, (x, y - 1, hole_z)))
         # The sourced ear hole is only 2 mm from the case end. Open this neck
@@ -623,11 +640,18 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             1.5,
         ),
         (
-            "servo_holder_side_wall",
+            "servo_holder_left_wall",
             "PortServoHolder",
-            (x - 5.31, y, z - 5),
-            (x - 3.79, y, z - 5),
-            1.5,
+            (x - SERVO_HOLDER_WIDTH / 2 - 0.01, y, z - 5),
+            (x - SERVO_CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
+            SERVO_HOLDER_SIDE_WALL,
+        ),
+        (
+            "servo_holder_right_wall",
+            "PortServoHolder",
+            (x + SERVO_CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
+            (x + SERVO_HOLDER_WIDTH / 2 + 0.01, y, z - 5),
+            SERVO_HOLDER_SIDE_WALL,
         ),
         (
             "servo_holder_upper_wall",
@@ -848,7 +872,7 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Open integral saddles use M1.6×8 DIN84 through-bolts, with 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. The closed cradle has two 2 mm side walls and an 8×21 mm axial case opening. M1.6×8 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware
@@ -870,7 +894,9 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
         f"driver {HOLDER_RELEASE_INBOARD:g} mm inboard along {'-Y' if sign > 0 else '+Y'} "
         f"to disengage the gear faces, then {HOLDER_RELEASE_OUTWARD:g} mm outward "
         f"along {'+X' if sign > 0 else '-X'}. Service the driver and horn adapter "
-        "on the bench. Seat the holder fully against all three fixed datums "
+        "on the bench. To remove the servo from the holder, release its two ear "
+        "bolt/nut pairs and pull the servo, horn and driver together axially "
+        "toward the gear side. Seat the holder fully against all three fixed datums "
         "before tightening; bolt clearance does not establish gear spacing.",
     )
     holder = servo_holder_shape(spec)
@@ -882,7 +908,8 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
         mount,
         prefix + "ServoHolder",
         holder,
-        "Replaceable fixed servo and direct-driver cradle. Broad mating face, "
+        "Replaceable fixed servo and direct-driver cradle with two symmetric "
+        "2 mm side walls and an 8×21 mm axial case opening. Broad mating face, "
         "bottom ledge and one end stop locate it on the common frame. Two M2x8 "
         "bolts and square nuts clamp the 5.5 mm combined flange stack. No slots "
         "or adjustable input bearing cartridge. Check actual seating, mesh and "

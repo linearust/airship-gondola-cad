@@ -23,13 +23,14 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "carrier_metal_clearance": 2,
         "relative_motion": 1,
         "servo_assembly_removal": 2,
+        "servo_case_service": 2,
         "horn_adapter_service": 4,
         "rail_key_access": 2,
         "fastener_stacks": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
         + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
         "fastener_service": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
         + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "functional_wall_probes": 9,
+        "functional_wall_probes": 10,
         "continuous_nut_loading": 2,
         "geometry": 13,  # Common frame plus six prints per independent drive.
     }

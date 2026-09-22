@@ -9,10 +9,10 @@ from dataclasses import asdict, dataclass
 from .drive import SELECTED_DRIVE
 from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 
-NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
-NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
+NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
+NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "W"
+DESIGN_REVISION = "X"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -232,7 +232,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_ear_retention",
-        "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening.",
+        "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening. The closed holder shares the upper-ear load through two side webs; nominal collision-free geometry does not establish installed stiffness. Check fore-aft bending, retained gear spacing and PA12 creep under operating load. After removing the complete holder and ear fasteners, withdraw the servo and input drive axially toward the gear side; verify the actual cable exit and disconnect leads first.",
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
@@ -322,6 +322,6 @@ def project_status():
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
-        "notion_source_scope": "Retained timestamp identifies the earlier source snapshot. The current revision also considers the user-supplied vehicle-document attachment; mechanical replacement text is proposed separately. The live Notion page was not re-read or updated for this revision.",
+        "notion_source_scope": "The user-designated live page was read for this revision. Its mechanical BOM, adjustable gear-spacing description and PETG fabrication baseline differ from the CAD. Proposed changes require user agreement before updating the page; the retained timestamp identifies the reviewed page version, not confirmation that the live document matches this CAD.",
         **release_status(),
     }
