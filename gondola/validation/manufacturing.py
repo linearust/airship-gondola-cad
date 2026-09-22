@@ -184,14 +184,16 @@ def review(doc, registry):
     exception = str(getattr(registry.RailSegments[0], "ManufacturingException", ""))
     return {
         "source": CREALLO_GUIDE_URL,
-        "published_sls_mjf_pa12_thin_broad_guidance_mm": [
+        "published_sls_pa12_thin_broad_guidance_mm": [
             [50, 1.0],
             [100, 1.5],
             [150, 2.0],
             ["200+", 3.0],
         ],
-        "wall_guidance_source": MANUFACTURING_DECISION["sources"]["wall_thickness"],
-        "guide_scope": f"Thin and broad plate-like parts in SLS/MJF. This is not a blanket 3 mm wall requirement for every small feature, nor permission to claim the {rail.LENGTH:g} mm flexure automatically compliant.",
+        "wall_guidance_source": MANUFACTURING_DECISION["sources"][
+            "dimensions_and_tolerances"
+        ],
+        "guide_scope": f"Creallo's table covers thin and broad SLS PA12 plates; use it as a conservative review reference while SLS/MJF selection is pending. This is not a blanket 3 mm wall requirement for every small feature, nor permission to claim the {rail.LENGTH:g} mm flexure automatically compliant.",
         "generic_nylon_minimum_mm": 0.8,
         "general_functional_wall_target_mm": 1.5,
         "rail_flexure_target_mm": rail.PAD_THICKNESS,

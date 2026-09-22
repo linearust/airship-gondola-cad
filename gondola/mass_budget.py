@@ -133,7 +133,7 @@ def mass_budget(printed, hardware):
         "density_assumptions": {
             "PA12": {
                 "density_g_cm3": DENSITIES_G_CM3["PA12"],
-                "basis": "Creallo published SLS PA12 density; actual printed and finished parts remain unweighed.",
+                "basis": "Provisional reference from Creallo's published SLS PA12 data, not a verified density for the eventual SLS/MJF grade or lot. Actual printed and finished parts remain unweighed.",
                 "source": PA12_DENSITY_SOURCE,
             },
             "A2": {

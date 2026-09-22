@@ -291,7 +291,7 @@ def build_rail(doc):
         f"PRINT | PA12 continuous T rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        f"PA12 SLS preferred, MJF alternative; one-piece target {LENGTH:g}x32x7mm; export oriented45deg inXY for size screening. Confirm process and one-piece acceptance with supplier before ordering. "
+        f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x7mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
         "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
         "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. "
         f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "

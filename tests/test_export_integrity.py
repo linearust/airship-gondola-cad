@@ -11,6 +11,12 @@ from unittest.mock import Mock, patch
 
 from gondola import procurement
 
+try:
+    import FreeCAD as NativeApp
+    import Part as NativePart
+except ImportError:
+    NativeApp = NativePart = None
+
 
 def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -336,6 +342,111 @@ class ExportIntegrityTests(unittest.TestCase):
                 )
                 self.assertFalse(result["passed"])
                 setattr(part, attribute, original)
+
+    def test_diagonal_print_rotation_cannot_hide_an_overlong_member(self):
+        check = self.print_export.print_size_check([400, 1, 1], [284, 284, 1])
+        self.assertFalse(check["local_part_within_limit"])
+        self.assertTrue(check["oriented_part_within_limit"])
+        self.assertTrue(all(check["within_published_fabrication_size"].values()))
+        self.assertFalse(check["passed"])
+        self.assertTrue(
+            self.print_export.print_size_check([340, 32, 7], [264, 264, 7])["passed"]
+        )
+
+    def test_export_limit_and_supplier_envelopes_are_independent(self):
+        too_wide = self.print_export.print_size_check([300, 300, 7], [350, 350, 7])
+        self.assertFalse(too_wide["oriented_part_within_limit"])
+        too_tall = self.print_export.print_size_check([281, 2, 2], [2, 2, 281])
+        self.assertTrue(too_tall["oriented_part_within_limit"])
+        self.assertTrue(too_tall["within_published_fabrication_size"]["SLS"])
+        self.assertFalse(too_tall["within_published_fabrication_size"]["MJF"])
+        self.assertFalse(too_tall["passed"])
+
+    def test_invalid_dimension_axes_fail_closed(self):
+        for axes in (
+            None,
+            [],
+            [1, 2],
+            [1, 2, 3, 4],
+            [0, 1, 1],
+            [-1, 1, 1],
+            [float("nan"), 1, 1],
+            [1, float("inf"), 1],
+            [True, 1, 1],
+            ["3", 1, 1],
+        ):
+            for local, exported in ((axes, [2, 2, 2]), ([2, 2, 2], axes)):
+                with self.subTest(local=local, exported=exported):
+                    check = self.print_export.print_size_check(local, exported)
+                    self.assertFalse(check["dimensions_valid"])
+                    self.assertFalse(check["passed"])
+
+    def test_size_declaration_cannot_hide_an_instance_or_actual_stl_violation(self):
+        local = {"First": [340, 32, 7], "Second": [32, 340, 7]}
+        exported = {name: [264, 264, 7] for name in local}
+        entry = {
+            "local_sizes_mm": {name: list(size) for name, size in local.items()},
+            "size_mm": [264, 264, 7],
+            "size_checks": {
+                "all_native_instances_within_limit": True,
+                "all_oriented_instances_within_limit": True,
+                "within_published_fabrication_size": {"SLS": True, "MJF": True},
+                "passed": True,
+            },
+        }
+        check = self.print_export.print_size_declaration_check
+        self.assertTrue(check(entry, local, exported, [264, 264, 7])["passed"])
+        for field in ("local_sizes_mm", "size_mm", "size_checks"):
+            stale = {key: value for key, value in entry.items() if key != field}
+            self.assertFalse(check(stale, local, exported, [264, 264, 7])["passed"])
+        actual_local = {**local, "Second": [32, 400, 7]}
+        result = check(entry, actual_local, exported, [264, 264, 7])
+        self.assertFalse(result["local_sizes_match_manifest"])
+        self.assertFalse(result["native_size_checks"]["passed"])
+        self.assertFalse(result["passed"])
+        result = check(entry, local, exported, [341, 264, 7])
+        self.assertTrue(result["size_checks_match_manifest"])
+        self.assertFalse(result["actual_stl_size_checks"]["passed"])
+        self.assertFalse(result["passed"])
+
+
+@unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
+class NativePrintSizeTests(unittest.TestCase):
+    def test_overlong_installed_part_and_coupon_are_rejected_before_export(self):
+        from gondola.print_export import (
+            export_print_parts,
+            local_part_dimensions,
+            print_shape,
+        )
+
+        for coupon in (False, True):
+            with (
+                self.subTest(coupon=coupon),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                existing = set(NativeApp.listDocuments())
+                try:
+                    doc = NativeApp.newDocument("OverlongPrintRegression")
+                    obj = doc.addObject("Part::Feature", "LongMember")
+                    obj.Shape = NativePart.makeBox(400, 1, 1)
+                    obj.addProperty("App::PropertyRotation", "PrintRotation")
+                    obj.PrintRotation = NativeApp.Rotation(
+                        NativeApp.Vector(0, 0, 1), 45
+                    )
+                    self.assertAlmostEqual(local_part_dimensions(obj)[0], 400)
+                    bb = print_shape(obj).optimalBoundingBox(False, False)
+                    self.assertLess(max(bb.XLength, bb.YLength, bb.ZLength), 340)
+                    with self.assertRaisesRegex(RuntimeError, "dimension limits"):
+                        export_print_parts(
+                            doc,
+                            [] if coupon else [obj],
+                            [obj] if coupon else [],
+                            directory,
+                            "overlong",
+                        )
+                finally:
+                    for name in set(NativeApp.listDocuments()) - existing:
+                        NativeApp.closeDocument(name)
 
 
 if __name__ == "__main__":

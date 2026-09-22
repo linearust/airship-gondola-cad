@@ -27,6 +27,7 @@ from gondola.contracts.design import (
     EXPECTED_INVENTORY,
     HARDWARE_MATERIALS,
     MANUFACTURING_DECISION,
+    MAX_PRINT_PART_DIMENSION_MM,
     MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
@@ -41,10 +42,14 @@ from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail, stack_interface
 from gondola.print_export import (
     MESH_PARAMETERS,
+    PRINT_PROCESS_DESCRIPTION,
+    SIZE_NUMERICAL_TOLERANCE_MM,
     geometry_comparison,
+    local_part_dimensions,
     mesh_from_shape,
     print_entry_inventory_check,
     print_shape,
+    print_size_declaration_check,
     print_solid_comparison,
 )
 from gondola.procurement import purchase_code
@@ -1018,6 +1023,13 @@ def export_check(source, registry):
         "mesh_parameters": manifest.get("mesh_parameters"),
         "release_status_matches_contract": manifest.get("release_status")
         == release_status(),
+        "size_policy_matches_contract": manifest.get("maximum_print_part_dimension_mm")
+        == MAX_PRINT_PART_DIMENSION_MM
+        and manifest.get("size_numerical_tolerance_mm") == SIZE_NUMERICAL_TOLERANCE_MM
+        and manifest.get("published_fabrication_size_mm") == PUBLISHED_PROCESS_SIZE_MM,
+        "process_decision_matches_contract": manifest.get("manufacturing_decision")
+        == MANUFACTURING_DECISION
+        and manifest.get("process") == PRINT_PROCESS_DESCRIPTION,
     }
     identity["passed"] = (
         identity["schema_version"] == ARTIFACT_SCHEMA_VERSION
@@ -1025,6 +1037,8 @@ def export_check(source, registry):
         and identity["native_source_fingerprint"] == fingerprint
         and identity["mesh_parameters"] == MESH_PARAMETERS
         and identity["release_status_matches_contract"]
+        and identity["size_policy_matches_contract"]
+        and identity["process_decision_matches_contract"]
     )
     printed = list(registry.PrintedParts) + list(registry.FitCoupons)
     names = {o.Name for o in printed}
@@ -1045,10 +1059,16 @@ def export_check(source, registry):
                 }
             )
             continue
-        master = print_shape(instances[0])
+        oriented_shapes = {obj.Name: print_shape(obj) for obj in instances}
+        master = oriented_shapes[instances[0].Name]
+        local_sizes = {obj.Name: local_part_dimensions(obj) for obj in instances}
+        export_sizes = {}
+        for name, shape in oriented_shapes.items():
+            bounds = shape.optimalBoundingBox(False, False)
+            export_sizes[name] = [bounds.XLength, bounds.YLength, bounds.ZLength]
         equivalence = []
         for obj in instances[1:]:
-            comparison = print_solid_comparison(master, print_shape(obj), TOL)
+            comparison = print_solid_comparison(master, oriented_shapes[obj.Name], TOL)
             equivalence.append({"part": obj.Name, **comparison})
         mesh_path, step_path = folder / entry["file"], folder / entry["step_file"]
         actual_hashes = {
@@ -1068,10 +1088,12 @@ def export_check(source, registry):
         step_matches = step_comparison["passed"]
         bb = mesh.BoundBox
         sizes = [bb.XLength, bb.YLength, bb.ZLength]
-        published_size_checks = {
-            process: all(d <= limit + TOL for d, limit in zip(sizes, limits))
-            for process, limits in PUBLISHED_PROCESS_SIZE_MM.items()
-        }
+        size_evidence = print_size_declaration_check(
+            entry, local_sizes, export_sizes, sizes
+        )
+        published_size_checks = size_evidence["actual_stl_size_checks"][
+            "within_published_fabrication_size"
+        ]
         good = (
             master.isValid()
             and len(master.Solids) == 1
@@ -1080,7 +1102,7 @@ def export_check(source, registry):
             and hashes_match
             and mesh_matches
             and step_matches
-            and all(published_size_checks.values())
+            and size_evidence["passed"]
             and entry["quantity"] == len(instances)
             and native_inventory["passed"]
             and all(r["passed"] for r in equivalence)
@@ -1099,6 +1121,7 @@ def export_check(source, registry):
                 "watertight_mesh": mesh.isSolid(),
                 "mesh_components": mesh.countComponents(),
                 "within_published_fabrication_size": published_size_checks,
+                "size_evidence": size_evidence,
                 "quantity": entry["quantity"],
                 "native_inventory": native_inventory,
                 "deduplicated_geometry": equivalence,
@@ -1111,6 +1134,7 @@ def export_check(source, registry):
         "process": "SLS/MJF powder-bed PA12",
         "supplier_single_piece_acceptance_still_required": True,
         "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
+        "maximum_print_part_dimension_mm": MAX_PRINT_PART_DIMENSION_MM,
         "published_size_guide_scope": MANUFACTURING_DECISION["size_guide_scope"],
         "one_piece_machine_fit_proven": False,
         "source_identity": identity,

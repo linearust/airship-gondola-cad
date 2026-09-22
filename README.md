@@ -25,10 +25,14 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 - Prioritize low mass, simple geometry and few purchased part types for this
   indoor LTA gondola. Lower stiffness than a sub-250 g multirotor is accepted;
-  this is not a strength qualification. Prefer verified stock components and
-  integral printable carriers. Use a detachable fixed-datum servo/driver holder
-  where replacement avoids rebuilding the output-bearing frame; retain only
-  separable parts needed for assembly or service.
+  this is not a strength qualification. First integrate parts without a necessary
+  separation, make them printable, then optimize shape. Prefer verified stock
+  components with few fastener variants and no unnecessary washers. Retained
+  assembly, motion and replacement interfaces are explained in `design.py`;
+  reassess those reasons rather than preserving the part count by default.
+  Apply its part-size ceiling before and after export rotation. Follow the
+  supplier's powder-bed guidance and agreed PA12 process/finish; do not assume
+  FDM support rules or an SLS/MJF process preference.
 - Existing geometry, shaft diameters and purchased-part selections are not
   constraints. Redesign them when the complete assembly improves in mass,
   simplicity, fit or serviceability. Compare complete torque/retention paths;

@@ -15,6 +15,7 @@ import MeshPart
 from .config import ARTIFACT_SCHEMA_VERSION
 from .contracts.design import (
     MANUFACTURING_DECISION,
+    MAX_PRINT_PART_DIMENSION_MM,
     PUBLISHED_PROCESS_SIZE_MM,
     RAIL_LENGTH_MM,
     release_status,
@@ -26,6 +27,126 @@ MESH_PARAMETERS = {
     "angular_deflection_rad": 0.12,
     "relative": False,
 }
+SIZE_NUMERICAL_TOLERANCE_MM = 1e-5
+PRINT_PROCESS_DESCRIPTION = "PA12 SLS/MJF; process agreement pending"
+
+
+def _valid_dimensions(dimensions):
+    return (
+        isinstance(dimensions, (list, tuple))
+        and len(dimensions) == 3
+        and all(
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            and value > 0
+            for value in dimensions
+        )
+    )
+
+
+def print_size_check(local_dimensions_mm, export_dimensions_mm):
+    """Screen numeric XYZ bounds before and after print rotation independently.
+
+    The small tolerance covers numeric bounds arithmetic, not fabrication.
+    Published envelopes do not establish one-piece supplier acceptance.
+    """
+    local_valid = _valid_dimensions(local_dimensions_mm)
+    export_valid = _valid_dimensions(export_dimensions_mm)
+    local_passed = local_valid and max(local_dimensions_mm) <= (
+        MAX_PRINT_PART_DIMENSION_MM + SIZE_NUMERICAL_TOLERANCE_MM
+    )
+    export_passed = export_valid and max(export_dimensions_mm) <= (
+        MAX_PRINT_PART_DIMENSION_MM + SIZE_NUMERICAL_TOLERANCE_MM
+    )
+    published = {
+        process: export_valid
+        and all(
+            size <= limit + SIZE_NUMERICAL_TOLERANCE_MM
+            for size, limit in zip(export_dimensions_mm, limits)
+        )
+        for process, limits in PUBLISHED_PROCESS_SIZE_MM.items()
+    }
+    return {
+        "dimensions_valid": local_valid and export_valid,
+        "local_part_within_limit": local_passed,
+        "oriented_part_within_limit": export_passed,
+        "within_published_fabrication_size": published,
+        "passed": local_passed and export_passed and all(published.values()),
+    }
+
+
+def _size_summary(local_sizes_mm, export_sizes_mm):
+    checks = [
+        print_size_check(size, export_sizes_mm.get(name))
+        for name, size in local_sizes_mm.items()
+    ]
+    return {
+        "all_native_instances_within_limit": bool(checks)
+        and all(row["local_part_within_limit"] for row in checks),
+        "all_oriented_instances_within_limit": bool(checks)
+        and all(row["oriented_part_within_limit"] for row in checks),
+        "within_published_fabrication_size": {
+            process: bool(checks)
+            and all(row["within_published_fabrication_size"][process] for row in checks)
+            for process in PUBLISHED_PROCESS_SIZE_MM
+        },
+        "passed": bool(checks) and all(row["passed"] for row in checks),
+    }
+
+
+def _dimensions_match(first, second):
+    return (
+        _valid_dimensions(first)
+        and _valid_dimensions(second)
+        and all(
+            abs(a - b) <= SIZE_NUMERICAL_TOLERANCE_MM for a, b in zip(first, second)
+        )
+    )
+
+
+def print_size_declaration_check(entry, local_sizes_mm, export_sizes_mm, stl_size_mm):
+    """Compare manifest claims with recomputed native bounds and real STL bounds."""
+    declared = entry.get("local_sizes_mm")
+    local_match = (
+        isinstance(declared, dict)
+        and declared.keys() == local_sizes_mm.keys()
+        and all(
+            _dimensions_match(declared[name], size)
+            for name, size in local_sizes_mm.items()
+        )
+    )
+    native_checks = _size_summary(local_sizes_mm, export_sizes_mm)
+    stl_checks = _size_summary(
+        local_sizes_mm, {name: stl_size_mm for name in local_sizes_mm}
+    )
+    export_match = all(
+        _dimensions_match(entry.get("size_mm"), size)
+        for size in export_sizes_mm.values()
+    ) and bool(export_sizes_mm)
+    checks_match = entry.get("size_checks") == native_checks
+    return {
+        "actual_local_sizes_mm": local_sizes_mm,
+        "actual_native_export_sizes_mm": export_sizes_mm,
+        "local_sizes_match_manifest": local_match,
+        "export_size_matches_manifest": export_match,
+        "size_checks_match_manifest": checks_match,
+        "native_size_checks": native_checks,
+        "actual_stl_size_checks": stl_checks,
+        "passed": local_match
+        and export_match
+        and checks_match
+        and native_checks["passed"]
+        and stl_checks["passed"],
+    }
+
+
+def local_part_dimensions(obj):
+    """Measure native local axes with neither placement nor PrintRotation applied."""
+    shape = obj.Shape.copy()
+    shape.Placement = App.Placement()
+    bounds = shape.optimalBoundingBox(False, False)
+    return [bounds.XLength, bounds.YLength, bounds.ZLength]
 
 
 def mesh_from_shape(shape):
@@ -250,11 +371,22 @@ def export_print_parts(assembly, installed, coupons, out, stem):
     x = y = row_depth = 0
     for sku, instances in buckets.items():
         obj = instances[0]
-        shape = print_shape(obj)
+        oriented_shapes = {part.Name: print_shape(part) for part in instances}
+        local_sizes = {part.Name: local_part_dimensions(part) for part in instances}
+        export_sizes = {}
+        for name, oriented in oriented_shapes.items():
+            oriented_bounds = oriented.optimalBoundingBox(False, False)
+            export_sizes[name] = [
+                oriented_bounds.XLength,
+                oriented_bounds.YLength,
+                oriented_bounds.ZLength,
+            ]
+        size_checks = _size_summary(local_sizes, export_sizes)
+        shape = oriented_shapes[obj.Name]
         bounds = shape.optimalBoundingBox(False, False)
         duplicate_checks = []
         for other in instances[1:]:
-            check = print_solid_comparison(shape, print_shape(other), 1e-6)
+            check = print_solid_comparison(shape, oriented_shapes[other.Name], 1e-6)
             duplicate_checks.append({"instance": other.Name, **check})
             if not check["passed"]:
                 raise RuntimeError("Different parts share SKU " + sku)
@@ -267,18 +399,12 @@ def export_print_parts(assembly, installed, coupons, out, stem):
             and checks["solid_count"] == 1
             and checks["watertight_mesh"]
             and checks["mesh_components"] == 1
-            and all(
-                size
-                <= min(limits[axis] for limits in PUBLISHED_PROCESS_SIZE_MM.values())
-                for axis, size in enumerate(
-                    (bounds.XLength, bounds.YLength, bounds.ZLength)
-                )
-            )
+            and size_checks["passed"]
         ):
             raise RuntimeError(
-                "Invalid PA12 print part or outside shared SLS/MJF size screen "
+                "Invalid PA12 print part or outside native/export dimension limits "
                 + sku
-                + str(checks)
+                + str({"geometry": checks, "size": size_checks})
             )
 
         file_stem = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", sku).lower()
@@ -320,6 +446,8 @@ def export_print_parts(assembly, installed, coupons, out, stem):
                 "coupon_quantity": coupon_quantity,
                 "instances": [part.Name for part in instances],
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
+                "local_sizes_mm": local_sizes,
+                "size_checks": size_checks,
                 "single_part_volume_cm3": shape.Volume / 1000,
                 "duplicate_geometry_verification": duplicate_checks,
                 "print_notes": str(getattr(obj, "PrintNotes", "")),
@@ -336,13 +464,15 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "source_fingerprint": source_fingerprint(),
         "mesh_parameters": MESH_PARAMETERS,
         "units": "mm",
-        "process": "PA12 SLS preferred; MJF alternative; agree the process with Creallo",
+        "process": PRINT_PROCESS_DESCRIPTION,
         "manufacturing_decision": MANUFACTURING_DECISION,
         "manufacturing_release_status": "CAD checks do not qualify manufacture or physical interfaces; see release_status for every unresolved interface.",
         "release_status": release_status(),
         "published_fabrication_size_mm": PUBLISHED_PROCESS_SIZE_MM,
+        "maximum_print_part_dimension_mm": MAX_PRINT_PART_DIMENSION_MM,
+        "size_numerical_tolerance_mm": SIZE_NUMERICAL_TOLERANCE_MM,
         "size_screen_is_one_piece_acceptance": False,
-        "thin_flexure_exception": "The1.2mm continuous narrow rail base needs supplier review; nominal0.8mm minimum is not blanket compliance with3mm long/broad PA12 guidance for SLS/MJF.",
+        "thin_flexure_exception": "The 1.2 mm continuous narrow rail base needs supplier review; the nominal 0.8 mm minimum is not blanket compliance with Creallo's 3 mm long/broad SLS PA12 recommendation.",
         "one_piece_acceptance": f"Supplier must confirm the {RAIL_LENGTH_MM:g}mm rail as one piece; published guide includes split-and-join fabrication and is not a manufacturing acceptance.",
         "unique_stl_count": len(entries),
         "installed_printed_part_count": len(installed),

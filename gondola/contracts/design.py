@@ -12,9 +12,10 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "X"
-# User's nominal CAD length ceiling; part geometry consumes this requirement.
-RAIL_LENGTH_MM = 340.0
+DESIGN_REVISION = "Y"
+# Nominal local part dimensions, before print rotation; not delivered-size tolerance.
+MAX_PRINT_PART_DIMENSION_MM = 340.0
+RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
 # Project structural interface, independent of the FC mounting-hole pattern.
 STACK_PITCH_MM = 44.0
 STACK_HOLE_CENTRES = tuple(
@@ -25,25 +26,42 @@ STACK_AXIS_LOCATIONS = (
 )
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
-    "reviewed_on": "2026-09-20",
+    "reviewed_on": "2026-09-22",
     "supplier": "Creallo",
-    "material": "PA12; final process/material agreement pending",
-    "preferred_process": "SLS",
-    "alternative_process": "MJF subject to supplier agreement and fit trials",
+    "material": "PA12 design basis; supplier grade/process/finish agreement pending",
+    "preferred_process": None,
+    "candidate_processes": ["SLS", "MJF"],
+    "maximum_nominal_part_dimension_mm": MAX_PRINT_PART_DIMENSION_MM,
+    "part_size_rule": f"Each local part bounding-box dimension before print rotation and each oriented export dimension must be at most {MAX_PRINT_PART_DIMENSION_MM:g} mm. Apply to every installed print and coupon; additionally screen oriented exports against both published process envelopes. This nominal CAD limit is not a guarantee of delivered dimensions.",
     "nominal_rail_length_mm": RAIL_LENGTH_MM,
-    "rationale": "SLS is a suitable prototype candidate; published supplier evidence does not require MJF for this design. Adopt the user's 340 mm length ceiling.",
-    "supplier_process_policy": "SLS/MJF quotations are integrated; Creallo selects the process unless a specific process is separately agreed. Request SLS for the initial fit trial.",
+    "rationale": "PA12 is Creallo's documented functional powder-bed nylon and suits open integral supports and the rail flexure trial. Neither SLS nor MJF is established as superior for this assembly; choose with the supplier using fit, stiffness, straightness and mass requirements. A material/process change requires renewed fit and flexure qualification.",
+    "supplier_process_policy": "Creallo integrates SLS/MJF quotations and selects the process unless separately agreed. No process is preselected here. Confirm the actual PA12 grade, process and finish before printing matched coupons and full parts.",
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
     "qualification": "Not qualified: obtain one-piece acceptance and review 1.2 mm functional flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed process/material/finish for coupons and full parts.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": 1.2,
     "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
+    "dfam_basis": "Prefer integral open ribs, windows and accessible through-features. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions to these already open thin members; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
         "process_policy": "https://creallo.com/ko/blog/posts/sls-mjf-integration-update",
         "process_capability": "https://creallo.com/ko/capability/process/3DP/SLS",
-        "wall_thickness": "https://creallo.com/ko/blog/posts/importance-of-thickness-in-3d-printing-processes",
+        "pa12_material": "https://creallo.com/ko/capability/material/SLS/SLSPA12",
+        "design_guide": "https://creallo.com/ko/guide/3d-printing-design-guide",
+        "lattice_and_powder_removal": "https://creallo.com/ko/guide/lattice-structure-3d-printing-dfam",
     },
+}
+
+# Retained splits have assembly, motion or requested replacement functions.
+# Reconsider these reasons when redesigning; this is not a fixed part-count target.
+PART_SEPARATION_REASONS = {
+    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame.",
+    "servo_holders_and_frame": "Replace the servo/driver assembly without reprinting the paired output-bearing frame; two fixed fasteners per holder, no adjustment slots.",
+    "bearing_caps_and_frame": "Insert/remove stock bearings and retain their outer rings without relying on printed snap retention.",
+    "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
+    "horn_adapter_and_retainer": "Capture a stock horn after its OEM retaining screw is installed; separate backstrap preserves the assembly path without inventing spline teeth or screw-tool clearance.",
+    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. Each part integrates its own ears, supports and mounting surfaces.",
+    "optical_columns": "Two stock PA66 spacers are light, threaded and replaceable. Integral printed columns would need new through-bolt feet or unqualified printed threads, without removing either alignment joint.",
 }
 
 
@@ -303,9 +321,10 @@ def project_status():
     return {
         "design_revision": DESIGN_REVISION,
         "units": "mm",
-        "printed_material": "PA12; SLS preferred for fit trial, supplier process agreement pending",
+        "printed_material": "PA12 design basis; SLS or MJF, supplier grade/process/finish agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Prefer integral printable carriers and fixed replacement parts over tolerance-adjustment mechanisms. Retain separable parts for assembly/service and purposeful rail/optical alignment. Compare complete torque/retention paths; minimize hardware and unsupported strength claims. Physical retention remains unverified.",
+        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Prefer fixed replacement parts over tolerance-adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
+        "part_separation_reasons": PART_SEPARATION_REASONS,
         "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
@@ -322,6 +341,6 @@ def project_status():
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
-        "notion_source_scope": "The user-designated live page was read for this revision. Its mechanical BOM, adjustable gear-spacing description and PETG fabrication baseline differ from the CAD. Proposed changes require user agreement before updating the page; the retained timestamp identifies the reviewed page version, not confirmation that the live document matches this CAD.",
+        "notion_source_scope": "The retained timestamp identifies the last reviewed live page. Its mechanical BOM, adjustable gear-spacing description and PETG fabrication baseline differ from the CAD. The user deferred document discussion until design review is complete; agree proposed changes before editing Notion. No document alignment is claimed.",
         **release_status(),
     }
