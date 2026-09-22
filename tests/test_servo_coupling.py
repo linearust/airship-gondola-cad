@@ -49,10 +49,13 @@ class ServoCouplingTests(unittest.TestCase):
         # This full tip-diameter cylinder conservatively contains the bought
         # driver's teeth; its hub and 7 mm bore are the catalog dimensions.
         axis = App.Vector(0, 1, 0)
-        gear = Part.makeCylinder(5, 5, App.Vector(0, 7.6, 0), axis).fuse(
-            Part.makeCylinder(15.5, 3, App.Vector(0, 12.6, 0), axis)
+        start = coupling.SPIGOT_START_Y
+        gear = Part.makeCylinder(5, 5, App.Vector(0, start, 0), axis).fuse(
+            Part.makeCylinder(15.5, 3, App.Vector(0, start + 5, 0), axis)
         )
-        gear = gear.cut(Part.makeCylinder(3.5, 8.2, App.Vector(0, 7.5, 0), axis))
+        gear = gear.cut(
+            Part.makeCylinder(3.5, 8.2, App.Vector(0, start - 0.1, 0), axis)
+        )
         screw, nut = self._clamp_hardware()
         shapes = [main, retainer, horn, gear, screw, nut]
         for shape in shapes:
@@ -62,10 +65,38 @@ class ServoCouplingTests(unittest.TestCase):
             for second in shapes[index + 1 :]:
                 self.assertLess(first.common(second).Volume, 1e-7)
         self.assertAlmostEqual(main.distToShape(gear)[0], 0, places=6)
-        spigot = main.common(Part.makeCylinder(3.46, 7.9, App.Vector(0, 7.65, 0), axis))
+        journal = Part.makeCylinder(3.45, 8, App.Vector(0, start, 0), axis).cut(
+            Part.makeCylinder(1.5, 8, App.Vector(0, start, 0), axis)
+        )
+        self.assertLess(journal.cut(main).Volume, 1e-7)
+        spigot = main.common(
+            Part.makeCylinder(3.46, 7.9, App.Vector(0, start + 0.05, 0), axis)
+        )
         self.assertAlmostEqual(spigot.distToShape(gear)[0], 0.05, places=6)
         self.assertAlmostEqual(main.distToShape(horn)[0], 0, places=6)
         self.assertAlmostEqual(retainer.distToShape(horn)[0], 0, places=6)
+
+    def test_shallow_socket_centres_the_horn_and_clamps_before_the_parts_bottom(self):
+        from gondola.parts import servo_coupling as coupling
+
+        main = coupling.adapter_shape()
+        retainer = coupling.retainer_shape()
+        horn = coupling.horn_shape()
+        registers = [
+            face
+            for face in main.Faces
+            if type(face.Surface).__name__ == "Cylinder"
+            and abs(face.Surface.Radius - 3.05) < 1e-7
+        ]
+        self.assertTrue(registers)
+        for face in registers:
+            self.assertAlmostEqual(face.BoundBox.YLength, 1.3, places=6)
+            self.assertAlmostEqual(face.BoundBox.YMax, 3.5, places=6)
+        self.assertAlmostEqual(main.distToShape(retainer)[0], 0.3, places=6)
+        for direction, obstacle in ((1, main), (-1, retainer)):
+            displaced = horn.copy()
+            displaced.translate(App.Vector(0, direction * 0.01, 0))
+            self.assertGreater(displaced.common(obstacle).Volume, 1e-5)
 
     def test_parts_install_around_an_already_retained_horn_at_neutral(self):
         from gondola.parts import servo_coupling as coupling
@@ -117,6 +148,13 @@ class ServoCouplingTests(unittest.TestCase):
         )
         escape = Part.makeCylinder(1.5, 16, App.Vector(0, -0.1, 0), App.Vector(0, 1, 0))
         self.assertLess(main.common(escape).Volume, 1e-7)
+        # Sample between the through-bore and OEM head cavity. The shortened
+        # body must retain its 1.9 mm roof before the gear journal starts.
+        for x, z in ((2, 0), (-2, 0), (0, 2), (0, -2)):
+            section = Part.makeLine(
+                App.Vector(x, -0.1, z), App.Vector(x, coupling.SPIGOT_START_Y, z)
+            )
+            self.assertAlmostEqual(main.common(section).Length, 1.9, places=6)
 
 
 if __name__ == "__main__":

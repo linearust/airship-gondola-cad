@@ -272,7 +272,7 @@ def gear_rotation_check(doc, prefix):
 
 
 def fixed_servo_datum_check(doc, prefix):
-    """Require the fixed servo axis, common frame and selected holder identities."""
+    """Require the fixed servo axis and selected integral frame identity."""
     mount = doc.getObject(prefix + "ServoMount")
     if mount is None:
         return {"passed": False, "error": "Missing fixed servo mount datum"}
@@ -286,7 +286,6 @@ def fixed_servo_datum_check(doc, prefix):
         if str(path).lstrip(".").startswith("Placement")
     ]
     frame_sku = getattr(doc.PropulsionFixedFrame, "PrintSKU", None)
-    holder_sku = getattr(doc.getObject(prefix + "ServoHolder"), "PrintSKU", None)
     return {
         "pod": prefix,
         "gear_configuration": configuration.key,
@@ -296,15 +295,12 @@ def fixed_servo_datum_check(doc, prefix):
         "placement_expressions": expressions,
         "expected_frame_sku": configuration.frame_sku,
         "actual_frame_sku": frame_sku,
-        "expected_holder_sku": configuration.servo_holder_sku,
-        "actual_holder_sku": holder_sku,
-        "scope": "Fixed servo datum on a replaceable holder against the common output-bearing frame; no adjustable mount. Physical printed fit and mesh remain unqualified.",
+        "scope": "Fixed servo datum on the gear-specific integral paired frame; no separate holder joint or adjustable mount. Physical printed fit and mesh remain unqualified.",
         "passed": error < TOL
         and mount.Placement.Rotation.isSame(App.Rotation(), 1e-7)
         and not expressions
         and "MeshClearance" not in mount.PropertiesList
-        and frame_sku == configuration.frame_sku
-        and holder_sku == configuration.servo_holder_sku,
+        and frame_sku == configuration.frame_sku,
     }
 
 
@@ -514,13 +510,11 @@ def direct_adapter_fit_check(doc, prefix):
 
 
 def servo_mount_check(doc, prefix):
-    """Require seated stock ear fasteners and a collision-free removable holder."""
+    """Require both stock ears to seat on the integral frame without collision."""
     frame = world_shape(doc.PropulsionFixedFrame)
-    holder = world_shape(doc.getObject(prefix + "ServoHolder"))
     servo = world_shape(doc.getObject(prefix + "Servo"))
     frame_overlap = intersection_volume(frame, servo)
-    holder_overlap = intersection_volume(holder, servo)
-    clamps = Part.makeCompound([holder, servo])
+    clamps = Part.makeCompound([frame, servo])
     rows = []
     for suffix in ("Lower", "Upper"):
         name = prefix + "ServoEar" + suffix
@@ -539,66 +533,9 @@ def servo_mount_check(doc, prefix):
     return {
         "pod": prefix,
         "servo_frame_intersection_mm3": frame_overlap,
-        "servo_holder_intersection_mm3": holder_overlap,
         "cases": rows,
-        "scope": "The two published X06 ears bear on the removable holder using M1.6 fasteners. The separate M2 holder joint retains this complete assembly. Nominal rigid contact is not proof of clamp torque or actual case fit.",
-        "passed": frame_overlap < TOL
-        and holder_overlap < TOL
-        and all(row["passed"] for row in rows),
-    }
-
-
-def holder_mount_check(doc, prefix):
-    """Check a fixed face/ledge/end-stop joint and both seated M2 fasteners."""
-    holder_object = doc.getObject(prefix + "ServoHolder")
-    if holder_object is None:
-        return {"pod": prefix, "passed": False, "error": "Missing servo holder"}
-    frame = world_shape(doc.PropulsionFixedFrame)
-    holder = world_shape(holder_object)
-    overlap = intersection_volume(frame, holder)
-    contact_area = _planar_contact_area(frame, holder)
-    sign = 1 if prefix == "Port" else -1
-    rotation = doc.MainPropulsionModule.getGlobalPlacement().Rotation
-    registers = []
-    for feature, local_delta in (
-        ("mating_face", (0, sign * 0.05, 0)),
-        ("support_ledge", (0, 0, -0.05)),
-        ("end_stop", (-sign * 0.05, 0, 0)),
-    ):
-        delta = rotation.multVec(App.Vector(*local_delta))
-        blocking = intersection_volume(translated_shape(holder, *delta), frame)
-        registers.append(
-            {
-                "feature": feature,
-                "blocking_intersection_mm3": blocking,
-                "passed": blocking > TOL,
-            }
-        )
-    clamps = Part.makeCompound([frame, holder])
-    cases = []
-    for suffix in ("Negative", "Positive"):
-        name = prefix + "HolderMount" + suffix
-        cases.append(
-            {
-                "bolt": name + "Bolt",
-                **clamp_fastener_check(
-                    clamps,
-                    world_shape(doc.getObject(name + "Bolt")),
-                    world_shape(doc.getObject(name + "Nut")),
-                ),
-            }
-        )
-    return {
-        "pod": prefix,
-        "holder": holder_object.Name,
-        "holder_frame_intersection_mm3": overlap,
-        "nominal_mating_contact_area_mm2": contact_area,
-        "registration_faces": registers,
-        "cases": cases,
-        "scope": "Nominal broad mating face, support ledge and one lateral stop with two seated M2 fasteners. Open opposite sides avoid a closed precision pocket. Contact and directional blocking do not establish printed tolerance, clamp stiffness or repeatability.",
-        "passed": overlap < TOL
-        and contact_area > 1
-        and all(row["passed"] for row in registers + cases),
+        "scope": "The two published X06 ears bear directly on the integral frame using M1.6 fasteners. Nominal rigid contact is not proof of clamp torque, stiffness or actual case fit.",
+        "passed": frame_overlap < TOL and all(row["passed"] for row in rows),
     }
 
 
@@ -673,14 +610,6 @@ def tilt_clearance_check(doc, module, prefix):
         "poses": rows,
         "scope": "49 sampled coupled-output/input positions at the fixed nominal center distance, including both bounded rotation endpoints. Checks live fixed obstacles and every output-pod/input-drive pair, including gear teeth; no gear-pair exclusion. Not a continuous rigid-body or connected-wire sweep proof.",
         "passed": bool(moving) and all(row["passed"] for row in rows),
-    }
-
-
-def holder_mount_fastener_names(prefix):
-    return {
-        prefix + "HolderMount" + side + kind
-        for side in ("Negative", "Positive")
-        for kind in ("Bolt", "Nut")
     }
 
 
@@ -783,147 +712,181 @@ def servo_lateral_service_check(shape, start, end, obstacles):
     }
 
 
-def servo_assembly_service_check(doc, module, prefix):
-    """Remove the whole servo/driver holder while retaining the output assembly."""
-    mount = doc.getObject(prefix + "ServoMount")
-    sign = 1 if prefix == "Port" else -1
+def _service_shapes(doc, module):
+    """Require every retained physical obstacle, in the local propulsion frame."""
+    group = module["group"]
+    expected = {
+        obj.Name
+        for obj in doc.Objects
+        if belongs_to_group(obj, group)
+        and obj.isDerivedFrom("Part::Feature")
+        and obj.Shape.Solids
+        and getattr(obj, "Role", "") != "Clearance"
+    }
     objects = module["printed"] + module["hardware"] + module["references"]
-    released = holder_mount_fastener_names(prefix)
-    moving = {
-        obj.Name: world_shape(obj)
-        for obj in objects
-        if belongs_to_group(obj, mount) and obj.Name not in released
-    }
-    fixed = {
-        obj.Name: world_shape(obj)
-        for obj in objects
-        if not belongs_to_group(obj, mount) and obj.Name not in released
-    }
-    # Sweep in the module frame: the conservative fallback uses axis-aligned
-    # bounds and must not grow merely because the whole gondola is rotated.
-    placement = module["group"].getGlobalPlacement()
-    inverse = placement.inverse()
-    for shape in (*moving.values(), *fixed.values()):
+    shapes = {obj.Name: world_shape(obj) for obj in objects if obj.Name in expected}
+    inverse = group.getGlobalPlacement().inverse()
+    for shape in shapes.values():
         shape.Placement = inverse.multiply(shape.Placement)
-    inward = -sign * propulsion.HOLDER_RELEASE_INBOARD
-    outward = sign * propulsion.HOLDER_RELEASE_OUTWARD
-    waypoints = [(0, 0, 0), (0, inward, 0), (outward, inward, 0)]
-    rows = []
-    for name, shape in moving.items():
-        if name == prefix + "DriverGear":
-            axial = continuous_path(shape, waypoints[:2], fixed)
-            lateral = driver_lateral_service_check(
-                shape,
-                waypoints[1],
-                waypoints[2],
-                fixed,
-                drive_for_document(doc),
-                sign,
-            )
-            result = {
-                "obstacles": axial["obstacles"],
-                "segments": axial["segments"] + lateral["segments"],
-                "gear_outside_reference_envelope_mm3": lateral[
-                    "gear_outside_reference_envelope_mm3"
-                ],
-                "passed": axial["passed"] and lateral["passed"],
-            }
-        elif name == prefix + "Servo":
-            axial = continuous_path(shape, waypoints[:2], fixed)
-            lateral = servo_lateral_service_check(
-                shape, waypoints[1], waypoints[2], fixed
-            )
-            result = {
-                "obstacles": axial["obstacles"],
-                "segments": axial["segments"] + lateral["segments"],
-                "uncovered_servo_volume_mm3": lateral["uncovered_servo_volume_mm3"],
-                "passed": axial["passed"] and lateral["passed"],
-            }
-        else:
-            result = continuous_path(shape, waypoints, fixed)
-        rows.append({"part": name, **result})
+    return shapes, sorted(expected - shapes.keys())
+
+
+def _input_service_removed(prefix):
     return {
-        "servo_mount": mount.Name,
+        prefix + suffix
+        for suffix in (
+            "OutputGear",
+            "DriverGear",
+            "HornGearAdapter",
+            "HornGearRetainer",
+            "HornGearClampBolt",
+            "HornGearClampNut",
+        )
+    }
+
+
+def _ear_fastener_names(prefix):
+    return {
+        prefix + "ServoEar" + side + kind
+        for side in ("Lower", "Upper")
+        for kind in ("Bolt", "Nut")
+    }
+
+
+def _axial_then_lateral_path(shape, waypoints, obstacles, *, kind, spec, sign):
+    axial = continuous_path(shape, waypoints[:2], obstacles)
+    lateral = (
+        driver_lateral_service_check(
+            shape, waypoints[1], waypoints[2], obstacles, spec, sign
+        )
+        if kind == "gear"
+        else servo_lateral_service_check(shape, waypoints[1], waypoints[2], obstacles)
+    )
+    return {
+        **lateral,
+        "segments": axial["segments"] + lateral["segments"],
+        "passed": axial["passed"] and lateral["passed"],
+    }
+
+
+def input_drive_service_check(doc, module, prefix):
+    """Release the shallow coupling while retaining the output shafts and caps."""
+    shapes, missing = _service_shapes(doc, module)
+    if missing:
+        return {"pod": prefix, "missing_parts": missing, "passed": False}
+    sign = 1 if prefix == "Port" else -1
+    gear = prefix + "OutputGear"
+    released = {prefix + "HornGearClamp" + kind for kind in ("Bolt", "Nut")}
+    output_path = continuous_path(
+        shapes[gear],
+        [(0, 0, 0), (0, -sign * 35, 0)],
+        _service_obstacles(shapes, {gear}),
+    )
+    clamp_path = fastener_service_check(
+        shapes[prefix + "HornGearClampBolt"],
+        shapes[prefix + "HornGearClampNut"],
+        _service_obstacles(shapes, {gear} | released),
+    )
+    removed = {gear} | released
+    retainer = prefix + "HornGearRetainer"
+    retainer_points = [(0, 0, 0), (sign * 35, 0, 0)]
+    retainer_path = continuous_path(
+        shapes[retainer],
+        retainer_points,
+        _service_obstacles(shapes, removed | {retainer}),
+    )
+    rows = [{"part": retainer, "waypoints_mm": retainer_points, **retainer_path}]
+    removed.add(retainer)
+    moving = {prefix + "HornGearAdapter", prefix + "DriverGear"}
+    fixed = _service_obstacles(shapes, removed | moving)
+    points = [(0, 0, 0), (0, sign * 1.5, 0), (sign * 40, sign * 1.5, 0)]
+    for name in sorted(moving):
+        path = (
+            _axial_then_lateral_path(
+                shapes[name],
+                points,
+                fixed,
+                kind="gear",
+                spec=drive_for_document(doc),
+                sign=sign,
+            )
+            if name.endswith("DriverGear")
+            else continuous_path(shapes[name], points, fixed)
+        )
+        rows.append({"part": name, "waypoints_mm": points, **path})
+    return {
+        "pod": prefix,
+        "moving_parts": sorted(moving | {retainer}),
+        "removed_output_gear": gear,
         "released_fasteners": sorted(released),
-        "retained_output_gear": prefix + "OutputGear",
-        "moving_parts": sorted(moving),
-        "coordinate_frame": "propulsion module",
-        "waypoints_mm": [list(point) for point in waypoints],
-        "world_displacements_mm": [
-            list(placement.Rotation.multVec(App.Vector(*point))) for point in waypoints
-        ],
+        "output_gear_removal": output_path,
+        "adapter_clamp_release": clamp_path,
         "part_paths": rows,
-        "scope": "Disconnect leads at neutral and remove the two holder M2 bolt/nut pairs. Move the complete holder/servo/horn/driver assembly 4mm axially inward to disengage the 3mm gear faces, then 40mm sideways outward. Servo-ear fasteners, output gear, shafts, bearings and motor remain assembled. Continuous translation envelopes include all retained local obstacles; flexible leads and handling tools are unmodeled.",
-        "passed": bool(moving) and all(row["passed"] for row in rows),
+        "coordinate_frame": "propulsion module",
+        "retained_parts": sorted(fixed),
+        "scope": "At neutral, free the leads and release the small gear's supplied set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter and driver together 1.5 mm gearward, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
+        "passed": output_path["passed"]
+        and clamp_path["passed"]
+        and all(row["passed"] for row in rows),
     }
 
 
 def servo_case_service_check(doc, module, prefix):
-    """Extract the complete servo/driver axially from its removed closed cradle."""
-    holder = doc.getObject(prefix + "ServoHolder")
-    servo = doc.getObject(prefix + "Servo")
-    drive = doc.getObject(prefix + "InputDrive")
-    gear = doc.getObject(prefix + "DriverGear")
-    if any(obj is None for obj in (holder, servo, drive, gear)):
-        return {"pod": prefix, "passed": False, "error": "Missing servo assembly"}
-    expected = {
-        obj.Name
-        for obj in doc.Objects
-        if hasattr(obj, "Shape")
-        and obj.Shape.Solids
-        and getattr(obj, "Role", "") != "Clearance"
-        and (obj.Name == servo.Name or belongs_to_group(obj, drive))
-    }
-    objects = module["printed"] + module["hardware"] + module["references"]
-    moving = {obj.Name: world_shape(obj) for obj in objects if obj.Name in expected}
-    missing = sorted(expected - moving.keys())
-    if missing or not {servo.Name, gear.Name} <= moving.keys():
-        return {
-            "pod": prefix,
-            "passed": False,
-            "error": "Incomplete servo/input-drive inventory",
-            "missing_parts": missing,
-        }
-    # Work in the module frame so arbitrary placement cannot enlarge the
-    # conservative envelopes used for curved surfaces.
-    inverse = module["group"].getGlobalPlacement().inverse()
-    obstacle = world_shape(holder)
-    for shape in (*moving.values(), obstacle):
-        shape.Placement = inverse.multiply(shape.Placement)
+    """Extract the servo and stock horn after the separately checked drive release."""
+    shapes, missing = _service_shapes(doc, module)
+    if missing:
+        return {"pod": prefix, "missing_parts": missing, "passed": False}
     sign = 1 if prefix == "Port" else -1
-    travel = sign * 30.0
-    waypoints = [(0, 0, 0), (0, travel, 0)]
-    rows = []
-    for name, shape in moving.items():
-        endpoint = translated_shape(shape, y=travel).BoundBox
-        separation = (
-            endpoint.YMin - obstacle.BoundBox.YMax
-            if sign > 0
-            else obstacle.BoundBox.YMin - endpoint.YMax
-        )
-        path = continuous_path(shape, waypoints, {holder.Name: obstacle})
-        rows.append(
+    released = _ear_fastener_names(prefix)
+    removed = _input_service_removed(prefix)
+    fasteners = []
+    for side in ("Lower", "Upper"):
+        name = prefix + "ServoEar" + side
+        pair = {name + "Bolt", name + "Nut"}
+        fasteners.append(
             {
-                "part": name,
-                **path,
-                "final_axial_separation_mm": separation,
-                "passed": path["passed"] and separation > TOL,
+                "bolt": name + "Bolt",
+                **fastener_service_check(
+                    shapes[name + "Bolt"],
+                    shapes[name + "Nut"],
+                    _service_obstacles(shapes, removed | pair),
+                    thread_diameter=1.6,
+                ),
             }
         )
+        removed.update(pair)
+    moving = {prefix + "Servo", prefix + "ServoHorn"}
+    fixed = _service_obstacles(shapes, removed | moving)
+    points = [(0, 0, 0), (0, sign * 12.5, 0), (sign * 40, sign * 12.5, 0)]
+    rows = []
+    for name in sorted(moving):
+        path = (
+            _axial_then_lateral_path(
+                shapes[name],
+                points,
+                fixed,
+                kind="servo",
+                spec=drive_for_document(doc),
+                sign=sign,
+            )
+            if name.endswith("Servo")
+            else continuous_path(shapes[name], points, fixed)
+        )
+        rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
-        "holder": holder.Name,
-        "released_fasteners": [
-            prefix + "ServoEar" + side + kind
-            for side in ("Lower", "Upper")
-            for kind in ("Bolt", "Nut")
-        ],
+        "frame": "PropulsionFixedFrame",
         "moving_parts": sorted(moving),
+        "released_fasteners": sorted(released),
+        "ear_fastener_release": fasteners,
+        "required_prior_check": "input_drive_service",
+        "removed_local_parts": sorted(removed),
+        "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",
-        "waypoints_mm": [list(point) for point in waypoints],
+        "waypoints_mm": points,
         "part_paths": rows,
-        "scope": "After the separately checked whole-holder removal, release both servo-ear bolt/nut pairs and free the leads. Pull the servo, retained horn, adapter and driver together 30 mm axially toward the gear side, clear of the cradle. Reversing this path provides case insertion. All input-drive solids remain together; actual wiring, nut handling and printed fit remain unqualified.",
-        "passed": all(row["passed"] for row in rows),
+        "scope": "After the checked small-gear, rear-strap and adapter/driver removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained original horn 12.5 mm gearward, then 40 mm sideways. The integral frame and every output shaft, bearing and cap remain installed. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
+        "passed": all(row["passed"] for row in fasteners + rows),
     }
 
 
@@ -953,44 +916,6 @@ def continuous_path(shape, waypoints, obstacles):
         "segments": rows,
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }
-
-
-def horn_adapter_service_check(doc, module, prefix):
-    """Separate the adapter on the removed servo/holder assembly, in declared order."""
-    mount = doc.getObject(prefix + "ServoMount")
-    shapes = {
-        obj.Name: world_shape(obj)
-        for obj in module["printed"] + module["hardware"] + module["references"]
-        if belongs_to_group(obj, mount)
-        and obj.Name not in holder_mount_fastener_names(prefix)
-    }
-    sign = 1 if prefix == "Port" else -1
-    removed = {
-        prefix + "DriverGear",
-        prefix + "HornGearClampBolt",
-        prefix + "HornGearClampNut",
-    }
-    rows = []
-    for suffix, delta in (
-        ("HornGearAdapter", (0, sign * 25, 0)),
-        ("HornGearRetainer", (sign * 30, 0, 0)),
-    ):
-        name = prefix + suffix
-        obstacles = {
-            key: shape for key, shape in shapes.items() if key not in removed | {name}
-        }
-        result = continuous_path(shapes[name], [(0, 0, 0), delta], obstacles)
-        rows.append(
-            {
-                "part": name,
-                "removed_local_parts": sorted(removed),
-                "translation_mm": list(delta),
-                **result,
-                "scope": "After checked whole-holder removal, remove the driver gear axially and release the single adapter fastener. Pull the front adapter forward off the installed horn, then slide its rear retainer sideways. The stock horn and servo stay together; remove the adapter before servicing the unmodeled OEM retaining screw.",
-            }
-        )
-        removed.add(name)
-    return rows
 
 
 def rail_key_access_check(doc, module):
@@ -1134,7 +1059,6 @@ def _record_drive_motion_checks(report, doc, module, prefix):
     report["drive_motion"].append(drive_motion_check(doc, prefix))
     report["fixed_servo_datum"].append(fixed_servo_datum_check(doc, prefix))
     report["servo_mounts"].append(servo_mount_check(doc, prefix))
-    report["holder_mounts"].append(holder_mount_check(doc, prefix))
     report["direct_adapter_fit"].append(direct_adapter_fit_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
     carrier_clearance = carrier_metal_clearance_check(doc, prefix)
@@ -1144,13 +1068,8 @@ def _record_drive_motion_checks(report, doc, module, prefix):
         gear_engagement_check(doc, prefix, axial_stops)
     )
     report["tilt_clearance"].append(tilt_clearance_check(doc, module, prefix))
-    report["servo_assembly_removal"].append(
-        servo_assembly_service_check(doc, module, prefix)
-    )
+    report["input_drive_service"].append(input_drive_service_check(doc, module, prefix))
     report["servo_case_service"].append(servo_case_service_check(doc, module, prefix))
-    report["horn_adapter_service"].extend(
-        horn_adapter_service_check(doc, module, prefix)
-    )
 
 
 def _record_output_stub_checks(report, prefix, pod, physical, frame):
@@ -1227,10 +1146,23 @@ def _record_bearing_checks(report, prefix, physical, bearing_specs):
                 ),
             }
         )
+        cap_excluded = excluded - {bearing_name}
+        report["cap_service"].append(
+            {
+                "cap": cap_name,
+                "excluded_physical_parts": sorted(cap_excluded),
+                "scope": "Remove the small output gear when fitted, release and withdraw this stub shaft, and remove the cap bolt/nut. Move the cap 1.2 mm axially away from the cup to clear its 1 mm peg, then 35 mm upward. Bearing and all other local parts remain installed; actual fit and handling are unqualified.",
+                **continuous_path(
+                    physical[cap_name],
+                    [(0, 0, 0), (0, direction * 1.2, 0), (0, direction * 1.2, 35)],
+                    _service_obstacles(physical, cap_excluded),
+                ),
+            }
+        )
 
 
-def _record_drive_service_checks(report, prefix, sign, physical, servo_names):
-    """Audit gears on their declared installed or removed-servo assembly."""
+def _record_drive_service_checks(report, prefix, sign, physical):
+    """Audit the installed output gear and the removed driver/adapter pair."""
     for suffix, direction, bench in (
         ("OutputGear", -sign, False),
         ("DriverGear", sign, True),
@@ -1240,12 +1172,16 @@ def _record_drive_service_checks(report, prefix, sign, physical, servo_names):
         report["gear_service"].append(
             {
                 "gear": name,
-                "scope": "Release the included radial set screw before axial withdrawal. Driver gear is serviced on the removed servo/holder assembly; all remaining local parts stay installed. Set-screw tip/length and driver access are unmodeled release gates.",
+                "scope": "Release the included radial set screw before axial withdrawal. The output gear is removed in place. After the checked input-drive release, separate the driver from its adapter on the bench. Set-screw tip/length and actual driver access remain physical release gates.",
                 **continuous_path(
                     physical[name],
                     [(0, 0, 0), (0, direction * 35, 0)],
                     _service_obstacles(
-                        physical, excluded, members=servo_names if bench else None
+                        physical,
+                        excluded,
+                        members={prefix + "DriverGear", prefix + "HornGearAdapter"}
+                        if bench
+                        else None,
                     ),
                 ),
             }
@@ -1271,20 +1207,16 @@ def _record_drive_service_checks(report, prefix, sign, physical, servo_names):
         )
 
 
-def _record_drive_checks(report, doc, module, objects, physical, frame, prefix, sign):
+def _record_drive_checks(report, doc, module, physical, frame, prefix, sign):
     """Collect direct input-drive and separately supported output evidence."""
     pod = doc.getObject(prefix + "Pod")
-    mount = doc.getObject(prefix + "ServoMount")
     _record_drive_motion_checks(report, doc, module, prefix)
-    servo_names = {
-        obj.Name for obj in objects if belongs_to_group(obj, mount)
-    } - holder_mount_fastener_names(prefix)
     bearing_specs = _record_output_stub_checks(report, prefix, pod, physical, frame)
     _record_bearing_checks(report, prefix, physical, bearing_specs)
-    _record_drive_service_checks(report, prefix, sign, physical, servo_names)
+    _record_drive_service_checks(report, prefix, sign, physical)
 
 
-def _record_fastener_checks(report, doc, module, objects, physical):
+def _record_fastener_checks(report, module, physical):
     """Verify installed fastener seats, engagement and ordered access routes."""
     clamp_parts = Part.makeCompound(
         [world_shape(obj) for obj in module["printed"]]
@@ -1320,25 +1252,34 @@ def _record_fastener_checks(report, doc, module, objects, physical):
         prerequisites = "Other local propulsion parts stay installed at neutral tilt."
         if "HornGearClamp" in bolt.Name:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
-            mount = doc.getObject(prefix + "ServoMount")
-            service_parts = {
-                obj.Name for obj in objects if belongs_to_group(obj, mount)
-            }
-            service_group = mount.Name
-            service_excluded.add(prefix + "DriverGear")
-            prerequisites = "Remove the complete servo assembly via its checked side path, then remove the driver gear axially before releasing the adapter bolt/nut."
-            for key, field, name in (
-                ("servo_assembly_removal", "servo_mount", mount.Name),
-                ("gear_service", "gear", prefix + "DriverGear"),
-            ):
-                matches = [row for row in report[key] if row.get(field) == name]
-                dependencies.append(
-                    {
-                        "check": key,
-                        "object": name,
-                        "passed": len(matches) == 1 and matches[0]["passed"],
-                    }
-                )
+            service_excluded.add(prefix + "OutputGear")
+            prerequisites = "Withdraw the small output gear first; the driver and complete remaining mechanism stay installed."
+            matches = [
+                row
+                for row in report["gear_service"]
+                if row["gear"] == prefix + "OutputGear"
+            ]
+            dependencies.append(
+                {
+                    "check": "gear_service",
+                    "object": prefix + "OutputGear",
+                    "passed": len(matches) == 1 and matches[0]["passed"],
+                }
+            )
+        elif "ServoEar" in bolt.Name:
+            prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
+            service_excluded.update(_input_service_removed(prefix))
+            prerequisites = "Complete the checked small-gear and adapter/driver removal, then release the servo ear fasteners."
+            matches = [
+                row for row in report["input_drive_service"] if row["pod"] == prefix
+            ]
+            dependencies.append(
+                {
+                    "check": "input_drive_service",
+                    "object": prefix,
+                    "passed": len(matches) == 1 and matches[0]["passed"],
+                }
+            )
         service = fastener_service_check(
             physical[bolt.Name],
             nut,
@@ -1492,10 +1433,8 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
         _record_rail_fit_checks(report, frame, physical)
         report["rail_key_access"] = rail_key_access_check(doc, module)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
-            _record_drive_checks(
-                report, doc, module, objects, physical, frame, prefix, sign
-            )
-        _record_fastener_checks(report, doc, module, objects, physical)
+            _record_drive_checks(report, doc, module, physical, frame, prefix, sign)
+        _record_fastener_checks(report, module, physical)
         _record_print_checks(report, module, physical)
         report["relative_motion"].append(relative_motion_check(doc, module))
         _complete_report(report, module)

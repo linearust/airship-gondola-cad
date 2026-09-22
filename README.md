@@ -51,9 +51,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   Include permitted axial travel in clearance and gear-face engagement budgets;
   distinguish deliberate bearing, gear and axial-stop contact from collisions.
 - The selected driver gears mount on bought KST horns through compact printed
-  adapters. Only output axes use external shafts/bearings. The gear-specific
-  holder fixes the servo position against the common propulsion frame. Replace
-  the holder and driver for a supported ratio change; a different servo still
+  adapters. Only output axes use external shafts/bearings. One gear-specific
+  frame integrates both servo cradles and the output-bearing supports. Replace
+  the paired frame and drivers for a supported ratio change; a different servo still
   requires its own verified interface. Rebuild geometry, controls and BOM together.
   No sliding slots or GUI ratio-only property is needed.
   Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh, adapter

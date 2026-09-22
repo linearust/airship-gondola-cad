@@ -11,16 +11,17 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeInterfaceTests(unittest.TestCase):
-    def test_complete_assembly_preserves_common_frame_and_gear_specific_holders(self):
+    def test_complete_assembly_preserves_gear_specific_integral_frame(self):
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
 
         from gondola import assembly
+        from gondola.cad import belongs_to_group
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.validation.propulsion import (
             fixed_servo_datum_check,
-            holder_mount_check,
+            servo_mount_check,
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -28,12 +29,22 @@ class NativeInterfaceTests(unittest.TestCase):
                 doc = assembly.build_assembly()
             try:
                 self.assertEqual(
-                    doc.PropulsionFixedFrame.PrintSKU, "PropulsionFixedFrame"
+                    doc.PropulsionFixedFrame.PrintSKU, SELECTED_DRIVE.frame_sku
                 )
                 for prefix in ("Port", "Starboard"):
-                    holder = doc.getObject(prefix + "ServoHolder")
-                    self.assertEqual(holder.PrintSKU, SELECTED_DRIVE.servo_holder_sku)
-                    for check in (fixed_servo_datum_check, holder_mount_check):
+                    self.assertIsNone(doc.getObject(prefix + "ServoHolder"))
+                    for side in ("Negative", "Positive"):
+                        for kind in ("Bolt", "Nut"):
+                            self.assertIsNone(
+                                doc.getObject(prefix + "HolderMount" + side + kind)
+                            )
+                    self.assertFalse(
+                        belongs_to_group(
+                            doc.PropulsionFixedFrame,
+                            doc.getObject(prefix + "ServoMount"),
+                        )
+                    )
+                    for check in (fixed_servo_datum_check, servo_mount_check):
                         result = check(doc, prefix)
                         self.assertTrue(result["passed"], result)
             finally:

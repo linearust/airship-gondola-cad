@@ -12,7 +12,7 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "Y"
+DESIGN_REVISION = "Z"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -56,7 +56,6 @@ MANUFACTURING_DECISION = {
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame.",
-    "servo_holders_and_frame": "Replace the servo/driver assembly without reprinting the paired output-bearing frame; two fixed fasteners per holder, no adjustment slots.",
     "bearing_caps_and_frame": "Insert/remove stock bearings and retain their outer rings without relying on printed snap retention.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
     "horn_adapter_and_retainer": "Capture a stock horn after its OEM retaining screw is installed; separate backstrap preserves the assembly path without inventing spline teeth or screw-tool clearance.",
@@ -116,13 +115,13 @@ EXCLUDED_EQUIPMENT = (
     "fin_servos",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_SOCKET_CAP": 14,
+    "M2X8_SOCKET_CAP": 10,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     "M2X5_PA66_PAN_HEAD": 6,
     "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_SQUARE_NUT_DIN562": 19,
+    "M2_SQUARE_NUT_DIN562": 15,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "MR63ZZ": 4,
@@ -152,12 +151,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 19,
+    "installed_prints": 17,
     "optical_mount_parts": 3,
     "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 15,
+    "unique_print_files": 14,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -250,11 +249,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_ear_retention",
-        "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement before fastening. The closed holder shares the upper-ear load through two side webs; nominal collision-free geometry does not establish installed stiffness. Check fore-aft bending, retained gear spacing and PA12 creep under operating load. After removing the complete holder and ear fasteners, withdraw the servo and input drive axially toward the gear side; verify the actual cable exit and disconnect leads first.",
+        "X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement. Two straight 2 mm cradle walls join both ears directly to the integral frame root. Check fore-aft bending, retained gear spacing and PA12 creep under load. Follow the checked ordered gear, coupling and servo extraction paths; free the leads and confirm the actual wire exit and handling access. Rigid CAD clearance does not establish installed stiffness or a physical assembly fit.",
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching fixed-datum servo holder for the selected gear pair. The common frame retains the output bearings; changing between supported ratios requires replacement driver gears and holders, followed by a complete rebuild and validation. Each holder carries the servo, stock horn and large driver gear and uses two M2 fasteners against fixed registration faces. No mesh-adjustment slots are provided; servo ear clearance, printed-position error and PA12 creep still affect the mesh. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the affected holder; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles and output-bearing supports are one gear-specific frame. Changing between supported ratios replaces this frame and both driver gears, followed by a complete rebuild and validation. There are no holder joints or adjustment slots. Servo ear clearance, printed-position error and creep still affect the mesh: measure the actual assembly before operation and correct/reprint the frame if required rather than elongating holes or forcing gears. Qualify MR63ZZ shaft/housing fits, outer-race cap capture, shield clearance and axial stops. PSFU3 h5 is not guaranteed to slip into every bearing; shaft friction retention and preload remain unqualified.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",

@@ -29,13 +29,13 @@ HORN_REGISTER_CLEARANCE = 0.05
 GEAR_BORE_DIAMETER = 7.0
 SPIGOT_DIAMETER = 6.9
 SPIGOT_BORE_DIAMETER = 3.0
-SPIGOT_START_Y = 7.6
+SPIGOT_START_Y = 7.1
 SPIGOT_LENGTH = 8.0
 RETAINER_BACK_Y = 0.4
 RETAINER_THICKNESS = 1.5
 BODY_BACK_Y = 2.2
 BOLT_X = 18.0
-NUT_SEAT_Y = 6.6
+NUT_SEAT_Y = 6.1
 BOLT_DIRECTION = (0, 1, 0)
 
 
@@ -96,15 +96,14 @@ def horn_shape():
 def adapter_shape():
     """Open horn socket, front plate and integral gear spigot as one solid.
 
-    The open socket can approach an already retained horn axially. Its root
-    register and blade pocket share the same small nominal finishing allowance;
+    The shallow socket can approach an already retained horn axially. Its hub
+    and blade pocket share the same small nominal finishing allowance;
     neither the spline nor new holes in the bought horn are fabricated. The
     bore supplies powder escape, not a claimed OEM screw/tool interface.
     """
     shape = union(
         [
             _tangent_hull(BODY_BACK_Y, SPIGOT_START_Y - BODY_BACK_Y, 4.7, 4.0, BOLT_X),
-            _cylinder(4.7, BODY_BACK_Y - RETAINER_BACK_Y, (0, RETAINER_BACK_Y, 0)),
             _cylinder(SPIGOT_DIAMETER / 2, SPIGOT_LENGTH, (0, SPIGOT_START_Y, 0)),
         ]
     )
@@ -154,9 +153,10 @@ def metrics():
         "integral_spigot_bore_diameter_mm": SPIGOT_BORE_DIAMETER,
         "integral_spigot_length_mm": SPIGOT_LENGTH,
         "horn_register_clearance_each_side_mm": HORN_REGISTER_CLEARANCE,
+        "horn_socket_engagement_mm": HORN_HEIGHT - BODY_BACK_Y,
         "retainer_thickness_mm": RETAINER_THICKNESS,
         "retainer_closure_gap_mm": BODY_BACK_Y - HORN_BLADE_BOTTOM,
         "common_clamp_fasteners_per_side": 1,
-        "assembly": "At neutral, retain the bought horn with its original servo screw. Offer the main adapter from the gear side and the flat retainer from the servo side; their broad faces sandwich the existing blade. Fit one M2x8 screw beyond the horn tip and one square nut. Seat the gear on the integral spigot and secure its included set screw with minimal force. For service at neutral, disconnect leads and remove the two holder M2 fasteners. Withdraw the complete holder/servo/driver group 4mm axially inward, then sideways outward; the output gear and servo-ear fasteners stay installed. Separate the driver gear and adapter on the bench for original horn-screw service.",
-        "qualification": "The 0.05 mm radial register and gear fit are nominal finish-fit targets, not as-printed tolerance claims. Verify measured horn and original screw-head fit, concentricity, retainer closure, PA12 spigot retention/creep and loaded bidirectional motion. The direct gear adds unqualified radial load to the servo output; no external radial-load rating is published.",
+        "assembly": "At neutral with power disconnected and leads freed, release the output gear's supplied set screw and withdraw the small gear inboard. Remove the adapter clamp screw/nut and slide the rear retainer outward. Move the adapter and large gear together 1.5 mm toward the gear side, then 40 mm sideways outward. Both output shafts, bearings and caps remain installed. Remove the servo ear fasteners, then move the servo with its retained stock horn 12.5 mm toward the gear side and 40 mm outward. Service the large gear and adapter on the bench. Reverse this order for assembly; the OEM horn retaining screw must be installed before the adapter. Re-establish neutral and tooth phasing, and clock the output shaft flat toward the gear set screw before tightening. Final set-screw access, wire handling and fits require actual parts.",
+        "qualification": "The 0.05 mm radial pocket and gear fit are nominal finish-fit targets, not as-printed tolerance claims. The 1.3 mm shallow hub/blade engagement preserves the blade torque interface but shortens the former hub register: verify concentricity, rocking, clamp closure and loaded alignment. The annular material ahead of the provisional OEM screw-head cavity is 1.9 mm; measure the actual head and check stiffness, PA12 spigot retention/creep and bidirectional motion. The direct gear adds unqualified radial load to the servo output; no external radial-load rating is published.",
     }

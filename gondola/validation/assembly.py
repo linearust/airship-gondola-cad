@@ -1159,7 +1159,7 @@ def detailed_propulsion_evidence(doc, source):
     from .propulsion import (
         fixed_servo_datum_check,
         gear_engagement_check,
-        holder_mount_check,
+        servo_mount_check,
     )
     from .relative_motion import relative_motion_check
 
@@ -1225,8 +1225,8 @@ def detailed_propulsion_evidence(doc, source):
     saved_datums = [
         fixed_servo_datum_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
-    saved_holder_mounts = [
-        holder_mount_check(doc, prefix) for prefix in ("Port", "Starboard")
+    saved_servo_mounts = [
+        servo_mount_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
     saved_carrier_clearances = [
         carrier_metal_clearance_check(doc, prefix) for prefix in ("Port", "Starboard")
@@ -1256,7 +1256,7 @@ def detailed_propulsion_evidence(doc, source):
         "source_file": os.path.relpath(path, REPO_ROOT),
         "source_sha256": file_sha256(path),
         "saved_servo_datums": saved_datums,
-        "saved_holder_mounts": saved_holder_mounts,
+        "saved_servo_mounts": saved_servo_mounts,
         "saved_carrier_metal_clearances": saved_carrier_clearances,
         "saved_gear_engagement": saved_gear_engagement,
         "saved_relative_motion": saved_relative_motion,
@@ -1269,7 +1269,7 @@ def detailed_propulsion_evidence(doc, source):
         "scope": "Recomputed geared-drive mesh including axial travel, bearings, split output shafts, continuous nominal cross-motion separation, carrier/metal reserves and ordered service paths. Functional contacts are classified separately. Sample fits, loaded retention, unmodeled set-screw/OEM hardware and cable travel remain physical qualification requirements.",
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
-        and all(row["passed"] for row in saved_holder_mounts)
+        and all(row["passed"] for row in saved_servo_mounts)
         and all(row["passed"] for row in saved_carrier_clearances)
         and all(row["passed"] for row in saved_gear_engagement)
         and saved_relative_motion["passed"]

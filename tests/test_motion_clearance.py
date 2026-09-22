@@ -92,7 +92,11 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         doc, _ = self.module()
         nut = doc.PortOutputBearingCapPositiveNut
         position = nut.Placement
-        position.Base.x -= 2
+        pivot = doc.PortPod.Placement.Base
+        # Move toward the actual rotation axis, independent of whether the cap
+        # is beside or above it. A lateral shift no longer reduces this gap.
+        inward = App.Vector(pivot.x - position.Base.x, 0, pivot.z - position.Base.z)
+        position.Base += inward.normalize() * 2
         nut.Placement = position
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")

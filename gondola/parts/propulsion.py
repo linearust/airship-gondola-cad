@@ -59,28 +59,18 @@ PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 GEAR_MODULE = MODULE_MM
 GEAR_FACE_WIDTH = FACE_WIDTH_MM
-GEAR_HUB_START_Y = 38.5
-GEAR_FACE_START_Y = 43.5
-GEAR_END_Y = 46.5
+GEAR_HUB_START_Y = 38.0
+GEAR_FACE_START_Y = 43.0
+GEAR_END_Y = 46.0
 SERVO_MOUNT_DEPTH = 5.0
 SERVO_CASE_WINDOW_WIDTH = 8.0
 SERVO_CASE_WINDOW_HEIGHT = 21.0
-SERVO_HOLDER_SIDE_WALL = 2.0
-SERVO_HOLDER_WIDTH = SERVO_CASE_WINDOW_WIDTH + 2 * SERVO_HOLDER_SIDE_WALL
-HOLDER_MOUNT_X = (-6.0, 18.0)
-HOLDER_MOUNT_Z = 7.0
-HOLDER_SEAT_Y = 26.0
-HOLDER_BOTTOM_Z = 4.4
-HOLDER_TOP_Z = 9.6
-HOLDER_FLANGE_DEPTH = 3.0
-FRAME_MOUNT_DEPTH = 2.5
-HOLDER_END_STOP_X = -9.0
-HOLDER_MOUNT_GRIP = HOLDER_FLANGE_DEPTH + FRAME_MOUNT_DEPTH
-HOLDER_RELEASE_INBOARD = 4.0
-HOLDER_RELEASE_OUTWARD = 40.0
+SERVO_CRADLE_SIDE_WALL = 2.0
+SERVO_CRADLE_WIDTH = SERVO_CASE_WINDOW_WIDTH + 2 * SERVO_CRADLE_SIDE_WALL
 BEARING_WINDOW_DIAMETER = 5.6
 BEARING_CAP_THICKNESS = 1.5
-BEARING_CAP_BOLT_X = 18.5
+BEARING_CAP_BOLT_Z = 18.5
+BEARING_CAP_PEG_LENGTH = 1.0
 CLAMP_SCREW_SKU = "M2X8_SOCKET_CAP"
 NUT_SKU = "M2_SQUARE_NUT_DIN562"
 BEARING_SKU = "MR63ZZ"
@@ -110,18 +100,18 @@ def bearing_shape():
 
 
 def _bearing_retainer_blank(depth, start_y):
-    # Keep the cap and cup outlines matched, with 1.6 mm material beyond the
-    # Ø2.2 bolt hole. Moving the bolt outward adds guard clearance, not parts.
-    arm_start_x = 3.5
+    # Align the cap and cup extension with the vertical post, eliminating the
+    # sideways elbow. Keep the radial bolt offset for full-rotation clearance.
+    arm_start_z = 3.5
     arm_half_width = 2.7
     return union(
         [
             cylinder(4.8, depth, (0, start_y, 0)),
             box(
-                BEARING_CAP_BOLT_X + arm_half_width - arm_start_x,
-                depth,
                 2 * arm_half_width,
-                (arm_start_x, start_y, -arm_half_width),
+                depth,
+                BEARING_CAP_BOLT_Z + arm_half_width - arm_start_z,
+                (-arm_half_width, start_y, arm_start_z),
             ),
         ]
     )
@@ -130,8 +120,10 @@ def _bearing_retainer_blank(depth, start_y):
 def bearing_cap_shape():
     cap = _bearing_retainer_blank(1.5, 0)
     cap = cap.cut(cylinder(2.8, 2, (0, -0.25, 0)))
-    cap = cap.cut(cylinder(1.1, 2, (BEARING_CAP_BOLT_X, -0.25, 0)))
-    cap = cap.fuse(cylinder(1, 1.5, (6.2, -1.5, 0)))
+    cap = cap.cut(cylinder(1.1, 2, (0, -0.25, BEARING_CAP_BOLT_Z)))
+    cap = cap.fuse(
+        cylinder(1, BEARING_CAP_PEG_LENGTH, (0, -BEARING_CAP_PEG_LENGTH, 6.2))
+    )
     return _checked(cap, "Bearing outer-race cap")
 
 
@@ -140,8 +132,8 @@ def _bearing_cup(start_y, *, opens_positive=True):
     body = _bearing_retainer_blank(4, -1.5)
     body = body.cut(cylinder(3, 2.6, (0, 0, 0)))
     body = body.cut(cylinder(2.8, 4.2, (0, -1.6, 0)))
-    body = body.cut(cylinder(1.1, 4.2, (BEARING_CAP_BOLT_X, -1.6, 0)))
-    body = body.cut(cylinder(1.15, 1.7, (6.2, 0.9, 0)))
+    body = body.cut(cylinder(1.1, 4.2, (0, -1.6, BEARING_CAP_BOLT_Z)))
+    body = body.cut(cylinder(1.15, 1.7, (0, 0.9, 6.2)))
     if not opens_positive:
         body = mirrored_y(body, -1)
     return _shifted(body, y=start_y)
@@ -234,24 +226,19 @@ def servo_case_front_y():
     return HORN_BOTTOM_Y - 0.2
 
 
-def servo_holder_shape(drive=SELECTED_DRIVE):
-    """Fixed replaceable closed cradle and flange, in module coordinates.
+def servo_cradle_shape(drive=SELECTED_DRIVE):
+    """Two straight side walls join the sourced servo ears directly to the foot.
 
-    Two horizontal bolts clamp the flange to a common frame face. Its bottom
-    and one end seat on broad datums; no bolt clearance hole locates the gear.
-    Two symmetric webs join both servo ears to the base. The servo, horn and
-    driver remain together during module removal and axial case extraction.
+    This is an integral region of the paired frame, not a separate print or
+    locating joint. Keep the broad root and axial case opening simple.
     """
     x, z = drive.input_x_mm, drive.input_z_mm
     y = servo_case_front_y() - 4.7 - SERVO_MOUNT_DEPTH
-    # The common bottom joins both sourced ratios to the low flange; the upper
-    # outline and ear geometry remain tied to the actual servo axis.
-    bottom = HOLDER_TOP_Z - 1.5
     mount = box(
-        SERVO_HOLDER_WIDTH,
+        SERVO_CRADLE_WIDTH,
         SERVO_MOUNT_DEPTH,
-        z + 10.1 - bottom,
-        (x - SERVO_HOLDER_WIDTH / 2, y, bottom),
+        z + 10.1 - BASE_Z,
+        (x - SERVO_CRADLE_WIDTH / 2, y, BASE_Z),
     )
     # The 7 x 20 mm case enters axially, with 0.5 mm nominal clearance per
     # side. Actual print/case tolerances and the wire exit still need checking.
@@ -279,79 +266,29 @@ def servo_holder_shape(drive=SELECTED_DRIVE):
                 (x - 1.1, y - 1, hole_z if opening > 0 else hole_z - 2.2),
             )
         )
-    flange = box(
-        30,
-        HOLDER_FLANGE_DEPTH,
-        HOLDER_TOP_Z - HOLDER_BOTTOM_Z,
-        (HOLDER_END_STOP_X, HOLDER_SEAT_Y - HOLDER_FLANGE_DEPTH, HOLDER_BOTTOM_Z),
-    )
-    holder = union([mount, flange])
-    for hole_x in HOLDER_MOUNT_X:
-        holder = holder.cut(
-            cylinder(
-                1.1,
-                HOLDER_FLANGE_DEPTH + 1,
-                (hole_x, HOLDER_SEAT_Y - HOLDER_FLANGE_DEPTH - 0.5, HOLDER_MOUNT_Z),
-            )
-        )
-    holder = holder.cut(box(6.4, 10, 4, (-3.2, HOLDER_SEAT_Y - 6, 4)))
-    return _checked(holder, f"Fixed {drive.driver.teeth}T servo and driver holder")
+    return _checked(mount, f"Integral {drive.driver.teeth}T servo cradle")
 
 
-def holder_mount_shape():
-    """Common flat seat, supporting ledge and one end stop; no tight pocket."""
-    wall = box(
-        30,
-        FRAME_MOUNT_DEPTH,
-        HOLDER_TOP_Z - HOLDER_BOTTOM_Z,
-        (HOLDER_END_STOP_X, HOLDER_SEAT_Y, HOLDER_BOTTOM_Z),
-    )
-    ledge = box(
-        32,
-        6,
-        HOLDER_BOTTOM_Z - BASE_Z,
-        (HOLDER_END_STOP_X - 2, HOLDER_SEAT_Y - 3.5, BASE_Z),
-    )
-    stop = box(
-        2,
-        2.5,
-        4,
-        (HOLDER_END_STOP_X - 2, HOLDER_SEAT_Y - 3, HOLDER_BOTTOM_Z),
-    )
-    # Relieve the corner by 0.5 mm: an end stop touching the mating wall only
-    # along its vertical edge creates a non-manifold mesh despite valid BRep.
-    shape = union([wall, ledge, stop])
-    for hole_x in HOLDER_MOUNT_X:
-        shape = shape.cut(
-            cylinder(
-                1.1,
-                FRAME_MOUNT_DEPTH + 1,
-                (hole_x, HOLDER_SEAT_Y - 0.5, HOLDER_MOUNT_Z),
-            )
-        )
-    return _checked(shape, "Fixed holder face with ledge and end stop")
-
-
-def integral_frame_shape():
+def integral_frame_shape(drive=SELECTED_DRIVE):
     wings = box(18, 70, FOOT_THICKNESS, (-9, -35, BASE_Z)).cut(
         box(20, rail.SHOE_WIDTH, 20, (-10, -rail.SHOE_WIDTH / 2, 0))
     )
-    holder_mount = holder_mount_shape()
-    opposite_mount = mirrored_y(holder_mount.mirror(V(), V(1, 0, 0)), -1)
+    cradle = servo_cradle_shape(drive)
+    opposite_cradle = mirrored_y(cradle.mirror(V(), V(1, 0, 0)), -1)
     frame = union(
         [
             rail.shoe_shape(),
             wings,
             _output_support(1),
             _output_support(-1),
-            holder_mount,
-            opposite_mount,
+            cradle,
+            opposite_cradle,
         ]
     )
     for side in (-1, 1):
         corridor = mirrored_y(box(6.4, 104, 4, (-3.2, rail.SHOE_WIDTH / 2, 4)), side)
         frame = frame.cut(corridor)
-    return _checked(frame, "Common paired output-bearing and holder frame")
+    return _checked(frame, "Integral paired servo and output-bearing frame")
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -502,16 +439,6 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
     ]
 
 
-def _reflection_print_rotation(mirrored_x, mirrored_y_axis):
-    if mirrored_x and mirrored_y_axis:
-        return App.Rotation(V(0, 0, 1), 180)
-    if mirrored_x:
-        return App.Rotation(V(0, 1, 0), 180)
-    if mirrored_y_axis:
-        return App.Rotation(V(1, 0, 0), 180)
-    return App.Rotation()
-
-
 def _print(doc, parent, name, shape, notes, rotation=None, sku=None):
     obj = create_printed_part(
         doc, parent, name, "PRINT | " + name, shape, rotation or App.Rotation(), notes
@@ -607,7 +534,7 @@ def _build_coupling(doc, parent, prefix, sign):
                     prefix + "HornGearClamp" + ("Bolt" if kind == "screw" else "Nut"),
                     positioned(shape),
                     CLAMP_SCREW_SKU if kind == "screw" else NUT_SKU,
-                    "M2x8 axial clamp through the horn adapter and rear retainer; nominal 6.2 mm grip plus 1.2 mm nut leaves 0.6 mm tip. Install around the retained stock horn and check full bidirectional capture before loading.",
+                    "M2x8 axial clamp through the horn adapter and rear retainer; nominal 5.7 mm grip plus 1.2 mm nut leaves 1.1 mm tip. Install around the retained stock horn and check full bidirectional capture before loading.",
                     CLAMP_SCREW_SOURCE if kind == "screw" else SQUARE_NUT_SOURCE,
                     "A2 stainless steel",
                     threaded=True,
@@ -640,51 +567,37 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             1.5,
         ),
         (
-            "servo_holder_left_wall",
-            "PortServoHolder",
-            (x - SERVO_HOLDER_WIDTH / 2 - 0.01, y, z - 5),
+            "servo_cradle_left_wall",
+            "PropulsionFixedFrame",
+            (x - SERVO_CRADLE_WIDTH / 2 - 0.01, y, z - 5),
             (x - SERVO_CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
-            SERVO_HOLDER_SIDE_WALL,
+            SERVO_CRADLE_SIDE_WALL,
         ),
         (
-            "servo_holder_right_wall",
-            "PortServoHolder",
+            "servo_cradle_right_wall",
+            "PropulsionFixedFrame",
             (x + SERVO_CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
-            (x + SERVO_HOLDER_WIDTH / 2 + 0.01, y, z - 5),
-            SERVO_HOLDER_SIDE_WALL,
+            (x + SERVO_CRADLE_WIDTH / 2 + 0.01, y, z - 5),
+            SERVO_CRADLE_SIDE_WALL,
         ),
         (
-            "servo_holder_upper_wall",
-            "PortServoHolder",
+            "servo_cradle_upper_wall",
+            "PropulsionFixedFrame",
             (x, y, z + 8.09),
             (x, y, z + 10.11),
             2.0,
-        ),
-        (
-            "holder_mount_hole_to_key_web",
-            "PortServoHolder",
-            (HOLDER_MOUNT_X[0] + 1.09, HOLDER_SEAT_Y - 1.5, HOLDER_MOUNT_Z),
-            (-3.19, HOLDER_SEAT_Y - 1.5, HOLDER_MOUNT_Z),
-            1.7,
-        ),
-        (
-            "frame_mount_hole_to_key_web",
-            "PropulsionFixedFrame",
-            (HOLDER_MOUNT_X[0] + 1.09, HOLDER_SEAT_Y + 1.25, HOLDER_MOUNT_Z),
-            (-3.19, HOLDER_SEAT_Y + 1.25, HOLDER_MOUNT_Z),
-            1.7,
         ),
     ]
 
 
 def _build_frame(doc, module, spec):
-    """Create a common rail shoe, holder datums and both output supports."""
+    """Create the rail shoe, both servo cradles and output supports as one print."""
     frame = _print(
         doc,
         module,
         "PropulsionFixedFrame",
-        integral_frame_shape(),
-        "Common integral rail shoe and output-bearing frame. Each removable servo/driver holder seats against a broad face, a supporting ledge and one end stop; two horizontal M2 clamps retain it. The opposite sides remain open, without adjustment slots or paired tight locating pins. Replace the holder for a sourced gear-ratio or servo interface change. Actual printed datum seating and retained gear spacing require inspection. Finish nominalØ6 bearing seats using a matching coupon; outer-race caps capture bearings without designed shield or inner-race preload.",
+        integral_frame_shape(spec),
+        "One integral rail shoe, paired servo cradles and output-bearing frame. Two straight 2 mm side walls carry each servo's ears into a broad root; no separate holder flanges, locating stops or M2 holder joints. The supported gear ratio determines the whole frame geometry. Replace this frame and both driver gears for a ratio change, then rebuild and validate. Actual printed case fit, gear centre distance and creep remain unqualified. Finish nominal Ø6 bearing seats using a matching coupon; removable caps capture outer races without designed shield or inner-race preload.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -764,8 +677,6 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         cap = bearing_cap_shape()
         if side < 0:
             cap = mirrored_y(cap, -1)
-        if sign < 0:
-            cap = cap.mirror(V(), V(1, 0, 0))
         cap = _shifted(cap, y=sign * PIVOT_HALF_SPAN + side * 30.5, z=PIVOT_Z)
         printed.append(
             _print(
@@ -774,15 +685,15 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 prefix + "OutputBearingCap" + suffix,
                 cap,
                 "Outer-race-only positive cap;Ø5.6 opening exceeds bearing maker5.4 minimum. Finish mating faces; do not preload shields. Ø2 locating peg and bolt constrain cap rotation; finish and measure concentricity. NominalØ2.3 pocket fit does not guarantee shield clearance with raw printing tolerances.",
-                rotation=_reflection_print_rotation(sign < 0, side < 0),
+                rotation=App.Rotation(V(0, 0, 1), 180) if side < 0 else App.Rotation(),
                 sku="MR63ZZ_OuterRaceCap",
             )
         )
         # The cap bolt seats through1.5mm cap and4mm cup; bearing fit is separate.
         origin = (
-            sign * BEARING_CAP_BOLT_X,
+            0,
             sign * PIVOT_HALF_SPAN + side * 32,
-            PIVOT_Z,
+            PIVOT_Z + BEARING_CAP_BOLT_Z,
         )
         hardware.extend(
             _bolt_pair(
@@ -843,7 +754,7 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
 
 
 def _build_servo(doc, mount, prefix, sign):
-    """Mount the sourced vertical X06 case on its replaceable fixed holder."""
+    """Mount the sourced vertical X06 case on the integral frame cradle."""
     hardware = []
     front = servo_case_front_y()
     servo = box(7, 16.6, 20, (-3.5, front - 16.6, -15))
@@ -879,65 +790,26 @@ def _build_servo(doc, mount, prefix, sign):
 
 
 def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
-    """Build one removable fixed holder and its complete servo/driver package."""
+    """Keep each independent servo/input drive on its fixed native axis."""
     mount = create_group(
-        doc, prefix + "ServoMount", prefix + " replaceable fixed servo and direct drive"
+        doc, prefix + "ServoMount", prefix + " servo and direct drive on integral frame"
     )
     assembly.addObject(mount)
     mount.Placement.Base = V(sign * spec.input_x_mm, 0, spec.input_z_mm)
     set_property(
         mount,
         "ServiceSequence",
-        "At neutral with power disconnected and the harness freed, remove both "
-        "holder-mount M2 bolts and nuts; leave servo-ear bolts and the small output "
-        "gear installed. Withdraw the complete holder, servo, horn, adapter and "
-        f"driver {HOLDER_RELEASE_INBOARD:g} mm inboard along {'-Y' if sign > 0 else '+Y'} "
-        f"to disengage the gear faces, then {HOLDER_RELEASE_OUTWARD:g} mm outward "
-        f"along {'+X' if sign > 0 else '-X'}. Service the driver and horn adapter "
-        "on the bench. To remove the servo from the holder, release its two ear "
-        "bolt/nut pairs and pull the servo, horn and driver together axially "
-        "toward the gear side. Seat the holder fully against all three fixed datums "
-        "before tightening; bolt clearance does not establish gear spacing.",
-    )
-    holder = servo_holder_shape(spec)
-    holder.translate(V(-spec.input_x_mm, 0, -spec.input_z_mm))
-    if sign < 0:
-        holder.rotate(V(), V(0, 0, 1), 180)
-    printed_holder = _print(
-        doc,
-        mount,
-        prefix + "ServoHolder",
-        holder,
-        "Replaceable fixed servo and direct-driver cradle with two symmetric "
-        "2 mm side walls and an 8×21 mm axial case opening. Broad mating face, "
-        "bottom ledge and one end stop locate it on the common frame. Two M2x8 "
-        "bolts and square nuts clamp the 5.5 mm combined flange stack. No slots "
-        "or adjustable input bearing cartridge. Check actual seating, mesh and "
-        "retention after printing; revise this holder if a measured fit is "
-        "unsuitable rather than forcing gears or enlarging locating surfaces.",
-        rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
-        sku=spec.servo_holder_sku,
+        "At neutral, disconnect power and free the leads. Service the removable "
+        "gear/horn coupling before withdrawing the servo from the integral "
+        "cradle. Follow the checked ordered assembly paths in the validation "
+        "report; the frame remains one part. Printed fit and physical handling "
+        "require a prototype check.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
-    for x, suffix in zip(HOLDER_MOUNT_X, ("Negative", "Positive")):
-        hardware.extend(
-            _bolt_pair(
-                doc,
-                assembly,
-                prefix + "HolderMount" + suffix,
-                (
-                    sign * x,
-                    sign * (HOLDER_SEAT_Y + FRAME_MOUNT_DEPTH),
-                    HOLDER_MOUNT_Z,
-                ),
-                (0, -sign, 0),
-                grip=HOLDER_MOUNT_GRIP,
-            )
-        )
     references, servo_hardware = _build_servo(doc, mount, prefix, sign)
     coupling = _build_coupling(doc, drive, prefix, sign)
     return {
-        "printed": [printed_holder] + coupling["printed"],
+        "printed": coupling["printed"],
         "hardware": hardware + servo_hardware + coupling["hardware"],
         "references": references + coupling["references"],
         "clearances": coupling["clearances"],
@@ -1056,8 +928,7 @@ def _module_metrics(printed, hardware, references, spec):
             "input_axis_z_mm": spec.input_z_mm,
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
-            "servo_holder_print_sku": spec.servo_holder_sku,
-            "input_mount": "Direct stock-horn drive on replaceable fixed holders; the output-bearing frame is common to supported ratios. Broad face, ledge and end stop locate each holder; two M2 clamps retain it.",
+            "input_mount": "Direct stock-horn drives on two integral frame cradles. Straight side walls join the servo ears to the shared foot; no separate holder fasteners or locating joints. A supported ratio change replaces the paired frame and both driver gears.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -1092,7 +963,7 @@ def _module_metrics(printed, hardware, references, spec):
             "Measured OEM horn seating and retaining screw",
             "Actual direct horn-to-gear adapter clearance and grip",
             "Servo output-bearing deflection under direct gear mesh load",
-            "Printed holder datum seating and retained gear center distance",
+            "Printed integral cradle fit and retained gear center distance",
             "Motor rear clip, seat and M1.4 usable depth",
             "Printed bearing fits and outer-race capture",
             "Shaft/gear/clamp torque and axial grip",
