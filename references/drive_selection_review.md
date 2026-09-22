@@ -20,9 +20,12 @@ automatically adopted by this ratio decision.
   actual manufacturer's mounting distance before fixing the bridge geometry.
 - Nominal servo travel of ±60° gives ±180° output. This does not compensate for
   a servo travel shortfall; ±59° would still give ±177° output.
-- Gear manufacturer/SKU, bores, face widths, hubs and fixation remain unselected.
-  The tooth-count decision does not select a Ø2 mm shaft or the rest of the
-  Notion mechanical BOM. Select shafts, bearings and couplings together.
+- Both purchased gears must have **nominal Ø3 mm bores**. This user requirement
+  supersedes the nominal Ø2 mm bores in the reviewed Notion gear rows; it is not
+  permission to resize a different catalog bore in CAD or machine a bought gear.
+- Gear manufacturer/SKU, face widths, hubs and fixation remain unselected.
+  Select shafts, bearing fits and couplings together; a nominal Ø3 mm bore alone
+  does not establish fit tolerance or retention.
 - Source the selected metric gears through MISUMI. Confirm complete order codes
   and Korean order availability before purchase; marketplace titles are not
   dimensional evidence. MISUMI as the purchasing channel does not by itself
@@ -39,6 +42,9 @@ assembly still implement the previous MISUMI 60T/20T pair, Ø3 shafts and MR63ZZ
 bearings. The optional 64T/20T configuration is also previous implementation,
 not the newly selected requirement. Existing gear purchase codes, print files,
 clearance results and mass estimates do not represent a completed 48T/16T design.
+The previous driver gear and its printed coupling use a Ø7 mm bore. The selected
+Ø3 mm driver requires a new verified horn-to-gear connection; do not simply
+shrink that coupling's hollow post or assume the plain bore fits the X06 spline.
 
 Before converting CAD, obtain the actual gear drawings and establish the horn
 connection, output-shaft torque transfer and axial retention. Do not extend the
@@ -55,17 +61,12 @@ The [MISUMI GEABP catalog](https://jp.misumi-ec.com/vona2/detail/110302194440/)
 includes both tooth counts in white POM with a 20° pressure angle and supplied
 set screws. Its module-0.5 16T option has a K-type hub, 8 mm face width and
 18 mm overall length. The 48T B-type option with 3 mm face width is 8 mm long.
+Both tooth counts offer a nominal Ø3 mm bore in the catalog.
 This pair requires a different axial stack and clearance review; it is not a
 pair of the existing thin B-type gears. Configured Korean order acceptance,
-complete order codes, bores and assembled mass remain to be established.
+complete order codes, the final axial dimensions and assembled mass remain to
+be established.
 
-The [KHK DS catalog](https://khkgears.net/pdf/ds.pdf) includes DS0.5-48 and
-DS0.5-16 with nominal Ø5 and Ø3 bores. These differ from the previous MISUMI
-interfaces. The DS bores have −0.05 to −0.30 mm deviation; no supplied set screw
-is specified. KHK advises avoiding secondary machining because molded voids
-may occur. A nominal bore is not proof of reliable press-fit torque or axial
-retention. Both codes are listed by
-[MISUMI Japan](https://jp.misumi-ec.com/vona2/detail/221004936939/); confirm a
-complete simple connection and Korean purchase availability before selection.
-Earlier DS0.5-48/15 and Ø2-shaft mass comparisons apply to a different mechanism
-and must not be reused as a claimed saving for the selected 48T/16T requirement.
+The previously reviewed [KHK DS pair](https://khkgears.net/pdf/ds.pdf) is excluded
+from this target: DS0.5-48 has a nominal Ø5 mm bore, so pairing it with the Ø3 mm
+DS0.5-16 does not meet the requirement for two Ø3 mm bores.
