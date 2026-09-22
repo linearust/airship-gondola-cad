@@ -1,51 +1,49 @@
-# Drivetrain selection review — 2026-09-22
+# Drivetrain requirement and implementation status — 2026-09-22
 
 Existing dimensions are not design constraints. Compare complete mechanisms for
 this indoor LTA gondola, including couplings, retention, printability and mass.
 
-## Selected prototype
+## Selected design requirement
 
-The current MISUMI gears, Ø3 shafts and MR63ZZ bearings retain a documented
-round-bore/set-screw torque path. Their fits, clamping and loaded operation are
-still unqualified. They are retained for that simpler specified connection,
-not because a smaller redesign would be inconvenient or Ø2 steel is inherently
-too weak. Current purchase specifications remain in `gondola/contracts/hardware.py`.
+The user selected **48T driver / 16T output, module 0.5 spur gears**, consistent
+with the gear-count requirement in the Notion plan. This supersedes the earlier
+recommendation to retain the existing gear pair for procurement convenience.
 
-## Credible smaller candidate, not an order substitution
+- Angle ratio: 3:1, with direction reversed by the external mesh.
+- Reference centre distance: 16 mm for standard unshifted gears. Confirm the
+  actual manufacturer's mounting distance before fixing the bridge geometry.
+- Nominal servo travel of ±60° gives ±180° output. This does not compensate for
+  a servo travel shortfall; ±59° would still give ±177° output.
+- Gear manufacturer/SKU, bores, face widths, hubs and fixation remain unselected.
+  The tooth-count decision does not select a Ø2 mm shaft or the rest of the
+  Notion mechanical BOM. Select shafts, bearings and couplings together.
+- Prefer readily purchased lightweight parts and simple, replaceable connections.
+  Existing CAD dimensions and purchased-part choices are not constraints.
 
-- [KHK DS catalog](https://khkgears.net/pdf/ds.pdf): DS0.5-48 driver and DS0.5-15
-  output give ratio 3.2 and nominal centre distance 15.75 mm. Nominal bores are
-  Ø5 and Ø2; published reference masses are 1.91 and 0.23 g. The 48T gear has
-  a different axial stack from the selected MISUMI gear. The DS bores have
-  −0.05 to −0.30 mm deviation; no supplied set screw is specified. KHK advises
-  avoiding secondary machining because molded voids may occur. A nominal bore
-  is not proof of a safe retaining press fit. The 16T alternative has a Ø3 bore.
-- [KSSC Super Shaft](https://www.kssc.co.jp/catalog/SHAFT_pack.html): 2025 h7 and
-  2014 h7, two each, are Ø2 SUS304 shaft candidates. The 25 mm part cannot replace
-  the existing 24 mm driven stub without checking the whole axial stack. No
-  factory flat is specified; h7 is not a guaranteed bearing slip fit.
-- [EZO MR52ZZ](https://www.ezo-brg.co.jp/english/product/spec.php?eid=00077):
-  2 × 5 × 2.5 mm, 0.19 g reference mass; four required. Housing shoulders and caps
-  must suit its own race/shield geometry.
+## Previous CAD implementation; target conversion pending
 
-These gears, shafts and bearings total approximately 6.98 g, versus 12.71 g in
-the present CAD/catalog estimate: about 5.74 g gross opportunity. This mixes
-reference masses and calculated steel/gear volumes; new couplings, retention,
-supports and actual specimens determine the net result. It is not a promised
-whole-gondola saving. Four separate stubs still avoid the motor bay.
+`gondola/contracts/drive.py::SELECTED_DRIVE` and the reviewed revision AA native
+assembly still implement the previous MISUMI 60T/20T pair, Ø3 shafts and MR63ZZ
+bearings. The optional 64T/20T configuration is also previous implementation,
+not the newly selected requirement. Existing gear purchase codes, print files,
+clearance results and mass estimates do not represent a completed 48T/16T design.
 
-Ø2 steel is plausible under the intended light loads; stiffness ratios alone
-do not reject it. Adoption requires a simple concentric horn connection and
-verified output torque/axial retention using the actual molded gears. Do not
-add sleeves, custom tiny screws or unapproved gear machining merely to claim
-the gross saving. Qualify one complete interface chain before changing the
-selected CAD, BOM and fixture together. No directly splined X06-compatible
-spur gear has been verified by this review.
+Before converting CAD, obtain the actual gear drawings and establish the horn
+connection, output-shaft torque transfer and axial retention. Do not extend the
+existing MISUMI SKU generator to 16T while assuming its current 3 mm face,
+B-type hub, bore and included set screw remain valid. Rebuild the complete axial
+stack, bridge location, coupling and BOM using sourced dimensions; then audit
+coupled motion, continuous clearances, assembly/service paths and the fixture
+transition. The current physical fits and servo output-load capacity remain
+unqualified. No directly splined X06-compatible spur gear has been verified.
 
-A further stock route exists: [Robinson Racing 1820](https://robinsonracingproducts.com/rrp-hi-performance-parts-2mm-bore-motor-pinions/)
-is a hardened-steel 20T module-0.5 pinion with Ø2 bore and a supplied 5-40 set
-screw (1/16-inch Allen key). The manufacturer's page does not specify pressure
-angle, face/hub/overall dimensions, bore tolerance or mass. It is a drawing/sample
-candidate, not a verified MISUMI-compatible or lighter replacement. No suitable
-manufacturer-specified split Ø3-OD/Ø2-ID reducer was verified; do not assume a
-plain tube transmits torque reliably when crushed by the existing set screw.
+## Candidate evidence, not a purchase selection
+
+The [KHK DS catalog](https://khkgears.net/pdf/ds.pdf) includes DS0.5-48 and
+DS0.5-16 with nominal Ø5 and Ø3 bores. These differ from the previous MISUMI
+interfaces. The DS bores have −0.05 to −0.30 mm deviation; no supplied set screw
+is specified. KHK advises avoiding secondary machining because molded voids
+may occur. A nominal bore is not proof of reliable press-fit torque or axial
+retention. Confirm a complete simple connection before selecting this pair.
+Earlier DS0.5-48/15 and Ø2-shaft mass comparisons apply to a different mechanism
+and must not be reused as a claimed saving for the selected 48T/16T requirement.

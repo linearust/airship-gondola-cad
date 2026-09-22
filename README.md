@@ -11,6 +11,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   order validation; `fasteners.py` for shared nominal dimensions; `drive.py` for
   the finite gear configurations and source-authoritative `SELECTED_DRIVE`.
   Inspect project status with `python3 -m gondola status`.
+- Read `references/drive_selection_review.md` before drivetrain changes or
+  purchasing. It records the user's revised gear requirement and its pending
+  implementation; `SELECTED_DRIVE` currently identifies the previous CAD
+  configuration, not the newly selected target.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
