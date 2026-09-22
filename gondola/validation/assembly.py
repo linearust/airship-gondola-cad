@@ -45,6 +45,7 @@ from gondola.print_export import (
     mesh_from_shape,
     print_entry_inventory_check,
     print_shape,
+    print_solid_comparison,
 )
 from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
@@ -59,6 +60,7 @@ from .geometry import (
     intersection_volume,
     local_shape,
 )
+from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 
 TOL = 1e-5
 V = App.Vector
@@ -1046,7 +1048,7 @@ def export_check(source, registry):
         master = print_shape(instances[0])
         equivalence = []
         for obj in instances[1:]:
-            comparison = geometry_comparison(master, print_shape(obj))
+            comparison = print_solid_comparison(master, print_shape(obj), TOL)
             equivalence.append({"part": obj.Name, **comparison})
         mesh_path, step_path = folder / entry["file"], folder / entry["step_file"]
         actual_hashes = {
@@ -1062,21 +1064,8 @@ def export_check(source, registry):
         mesh_matches = mesh_comparison["passed"]
         step = Part.Shape()
         step.read(str(step_path))
-        step_comparison = geometry_comparison(master, step)
-        step_matches = (
-            step.isValid()
-            and len(step.Solids) == 1
-            and step_comparison["difference_mm3"] < TOL
-            and step_comparison["bounds_difference_mm"] < TOL
-            # STEP can reparameterize the same curved boundary and change OCC's
-            # nonadaptive scalar volume integral. Retain its raw discrepancy;
-            # bypass only that scalar gate when both closed-solid directional
-            # differences are topologically empty, not merely zero-volume.
-            and (
-                step_comparison["volume_difference_mm3"] < TOL
-                or step_comparison.get("closed_solid_identity_by_empty_cuts") is True
-            )
-        )
+        step_comparison = print_solid_comparison(master, step, TOL)
+        step_matches = step_comparison["passed"]
         bb = mesh.BoundBox
         sizes = [bb.XLength, bb.YLength, bb.ZLength]
         published_size_checks = {
@@ -1094,7 +1083,7 @@ def export_check(source, registry):
             and all(published_size_checks.values())
             and entry["quantity"] == len(instances)
             and native_inventory["passed"]
-            and all(r["difference_mm3"] < TOL for r in equivalence)
+            and all(r["passed"] for r in equivalence)
             and not (set(entry["instances"]) & bought_names)
         )
         rows.append(
@@ -1161,7 +1150,7 @@ def detailed_propulsion_evidence(doc, source):
             reference_doc, drive=configuration
         )
         reference_doc.recompute()
-        expected_print_count = len(reference["printed"])
+        reference_print_count = len(reference["printed"])
         expected_parts = (
             reference["printed"]
             + reference["hardware"]
@@ -1200,47 +1189,13 @@ def detailed_propulsion_evidence(doc, source):
         {"field": row["field"], "value": row["volume_mm3"]}
         for row in overlap_failures(evidence, TOL)
     ]
-    meshes = evidence.get("geometry", [])
-    required_cases = {
-        "drive_motion": 2,
-        "mesh_adjustment": 2,
-        "input_mount_adjustment": 2,
-        "gear_mesh_alignment": 2,
-        "gear_rotation": 2,
-        "bearing_stacks": 8,
-        "output_stub_clearance": 4,
-        "shaft_service": 6,
-        "bearing_service": 8,
-        "gear_service": 4,
-        "input_cartridge_removal": 2,
-        "horn_clamp_service": 4,
-        "rail_key_access": 4,
-        "fastener_stacks": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
-        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "fastener_service": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
-        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "motor_and_prop_insertion": 4,
-        "continuous_nut_loading": 2,
-        "tilt_clearance": 2,
-        "functional_wall_probes": 6,
-    }
-    evidence_inventory = {
-        key: {"expected": count, "actual": len(evidence.get(key, []))}
-        for key, count in required_cases.items()
-    }
+    evidence_check = propulsion_evidence_check(evidence)
     evidence_ok = (
-        evidence.get("passed", False)
+        evidence.get("passed") is True
         and evidence.get("gear_configuration") == configuration.key
-        and all(row["expected"] == row["actual"] for row in evidence_inventory.values())
-        and len(meshes) == expected_print_count
-        and all(
-            row["valid_brep"]
-            and row["solid_count"] == 1
-            and row["watertight_mesh"]
-            and row["mesh_components"] == 1
-            for row in meshes
-        )
-        and evidence.get("all_bought_parts_excluded_from_prints", False)
+        and evidence_check["passed"]
+        and reference_print_count == PROPULSION_EVIDENCE_COUNTS["geometry"]
+        and evidence.get("all_bought_parts_excluded_from_prints") is True
     )
     return {
         "gear_configuration": configuration.key,
@@ -1249,9 +1204,11 @@ def detailed_propulsion_evidence(doc, source):
         "source_file": os.path.relpath(path, REPO_ROOT),
         "source_sha256": file_sha256(path),
         "saved_shape_source_comparisons": comparisons,
+        "source_reference_print_count": reference_print_count,
         "local_overlap_failures": volume_failures,
         "local_checks": evidence,
-        "required_evidence_inventory": evidence_inventory,
+        "required_evidence_inventory": evidence_check["inventory"],
+        "local_evidence_row_failures": evidence_check["row_failures"],
         "scope": "Recomputed geared-drive mesh, bearings, split output shafts, bounded motion and ordered service paths. Sample fits, loaded retention, cable travel and OEM fastening remain physical qualification requirements.",
         "passed": evidence_ok
         and not volume_failures

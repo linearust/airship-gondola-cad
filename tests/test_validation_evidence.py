@@ -3,6 +3,10 @@
 import unittest
 
 from gondola.validation.evidence import overlap_failures
+from gondola.validation.propulsion_evidence import (
+    PROPULSION_EVIDENCE_COUNTS,
+    propulsion_evidence_check,
+)
 
 
 class OverlapEvidenceTests(unittest.TestCase):
@@ -48,6 +52,87 @@ class OverlapEvidenceTests(unittest.TestCase):
             ),
             [],
         )
+
+
+class PropulsionEvidenceTests(unittest.TestCase):
+    def complete_report(self):
+        report = {
+            key: [{"passed": True} for _ in range(count)]
+            for key, count in PROPULSION_EVIDENCE_COUNTS.items()
+        }
+        for row in report["geometry"]:
+            row.update(
+                valid_brep=True,
+                solid_count=1,
+                single_closed_solid=True,
+                watertight_mesh=True,
+                mesh_components=1,
+            )
+        report["passed"] = True
+        report["expected_evidence_counts"] = dict(PROPULSION_EVIDENCE_COUNTS)
+        return report
+
+    def test_complete_evidence_passes_with_contract_counts(self):
+        result = propulsion_evidence_check(self.complete_report())
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["inventory"]["continuous_nut_loading"]["expected"], 2)
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 24)
+        self.assertEqual(result["inventory"]["geometry"]["expected"], 17)
+
+    def test_missing_row_cannot_reduce_its_own_required_count(self):
+        for key, count in PROPULSION_EVIDENCE_COUNTS.items():
+            with self.subTest(key=key):
+                report = self.complete_report()
+                report[key].pop()
+                report["expected_evidence_counts"][key] = count - 1
+                result = propulsion_evidence_check(report)
+                self.assertFalse(result["passed"], result)
+                self.assertEqual(
+                    result["inventory"][key],
+                    {"expected": count, "actual": count - 1},
+                )
+
+    def test_extra_rows_are_rejected(self):
+        report = self.complete_report()
+        report["fastener_service"].append({"passed": True})
+        self.assertFalse(propulsion_evidence_check(report)["passed"])
+
+    def test_successful_parent_does_not_hide_failed_or_nonboolean_row(self):
+        for flag in (False, None, 1, "true"):
+            with self.subTest(flag=flag):
+                report = self.complete_report()
+                report["input_cartridge_removal"][0]["passed"] = flag
+                result = propulsion_evidence_check(report)
+                self.assertFalse(result["passed"], result)
+                self.assertEqual(
+                    result["row_failures"][0]["field"], "/input_cartridge_removal/0"
+                )
+
+    def test_absent_or_malformed_row_collection_fails_closed(self):
+        for rows in (None, {}, "two rows", [{"passed": True}, None]):
+            with self.subTest(rows=rows):
+                report = self.complete_report()
+                report["continuous_nut_loading"] = rows
+                self.assertFalse(propulsion_evidence_check(report)["passed"])
+        report = self.complete_report()
+        del report["continuous_nut_loading"]
+        self.assertFalse(propulsion_evidence_check(report)["passed"])
+
+    def test_successful_geometry_row_does_not_hide_invalid_solid_or_mesh(self):
+        for field, invalid in (
+            ("valid_brep", False),
+            ("solid_count", 0),
+            ("solid_count", 2),
+            ("single_closed_solid", False),
+            ("watertight_mesh", False),
+            ("mesh_components", 2),
+        ):
+            with self.subTest(field=field, invalid=invalid):
+                report = self.complete_report()
+                report["geometry"][0][field] = invalid
+                result = propulsion_evidence_check(report)
+                self.assertFalse(result["passed"], result)
+                self.assertEqual(result["row_failures"][0]["field"], "/geometry/0")
 
 
 if __name__ == "__main__":

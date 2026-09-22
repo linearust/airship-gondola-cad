@@ -1,7 +1,10 @@
 """Native CAD regressions; run with the installed FreeCAD Python runtime."""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 
 from gondola.contracts.drive import DRIVE_CONFIGURATIONS, SELECTED_DRIVE
 
@@ -660,6 +663,55 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         finally:
             frame.Shape = original
             doc.recompute()
+
+
+@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
+class SavedDriveManufacturingTests(unittest.TestCase):
+    def test_wall_probes_follow_saved_alternative_not_source_default(self):
+        from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
+        from gondola.validation.manufacturing import review
+
+        alternative = next(
+            drive for drive in DRIVE_CONFIGURATIONS.values() if drive != SELECTED_DRIVE
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "alternative_drive.FCStd"
+            doc = App.newDocument("SavedAlternativeDriveWalls")
+            try:
+                propulsion.build_propulsion_module(doc, drive=alternative)
+                # A nonzero module placement also exercises the measurement's
+                # conversion from global coordinates back to the module frame.
+                doc.MainPropulsionModule.Placement.Base = App.Vector(36, 0.45, 0)
+                rail.build_rail(doc)
+                host = doc.addObject("App::Part", "BatteryEquipmentModule")
+                equipment_mounts.build_mount(doc, host, "battery")
+                optical_mount.build_optical_mount(doc, host)
+                doc.recompute()
+                doc.saveAs(str(path))
+            finally:
+                App.closeDocument(doc.Name)
+
+            saved = App.openDocument(str(path), hidden=True)
+            try:
+                saved.recompute()
+                registry = SimpleNamespace(
+                    PrintedParts=[saved.PortInputSupport],
+                    RailSegments=[saved.ContinuousRail],
+                )
+                result = review(saved, registry)
+                measurements = {
+                    row["feature"]: row for row in result["actual_feature_measurements"]
+                }
+                for feature, _, start, end, _ in propulsion.manufacturing_wall_probes(
+                    drive=alternative
+                ):
+                    with self.subTest(feature=feature):
+                        row = measurements[feature]
+                        self.assertEqual(row["sample_line_mm"], [start, end])
+                        self.assertTrue(row["passed"], row)
+                self.assertTrue(result["passed"], result)
+            finally:
+                App.closeDocument(saved.Name)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ from .geometry import (
     intersection_volume,
     translation_sweep,
 )
+from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 
 TOL = 1e-5
 
@@ -803,29 +804,6 @@ def fastener_service_check(
     }
 
 
-_REPORT_ROW_KEYS = (
-    "drive_motion",
-    "gear_mesh_alignment",
-    "gear_rotation",
-    "mesh_adjustment",
-    "input_mount_adjustment",
-    "bearing_stacks",
-    "output_stub_clearance",
-    "shaft_service",
-    "bearing_service",
-    "gear_service",
-    "motor_and_prop_insertion",
-    "tilt_clearance",
-    "input_cartridge_removal",
-    "horn_clamp_service",
-    "rail_key_access",
-    "fastener_stacks",
-    "fastener_service",
-    "functional_wall_probes",
-    "geometry",
-)
-
-
 def _service_obstacles(physical, excluded, *, members=None):
     """Retain installed obstacles within the declared whole-module or bench scope."""
     return {
@@ -1173,7 +1151,6 @@ def _record_fastener_checks(report, doc, module, objects, physical):
                 and all(row["passed"] for row in dependencies),
             }
         )
-    return bolts
 
 
 def _record_print_checks(report, module, physical):
@@ -1218,51 +1195,28 @@ def _record_print_checks(report, module, physical):
                 **check,
                 "passed": check["valid_brep"]
                 and check["solid_count"] == 1
+                and check["single_closed_solid"]
                 and check["watertight_mesh"]
                 and check["mesh_components"] == 1,
             }
         )
 
 
-def _complete_report(report, module, bolts):
+def _complete_report(report, module):
     """Require every evidence row and its independently declared count."""
     report["all_bought_parts_excluded_from_prints"] = all(
         obj not in module["printed"] and not bool(getattr(obj, "PrintPart", False))
         for obj in module["hardware"]
     )
-    expected_counts = {
-        "drive_motion": 2,
-        "gear_mesh_alignment": 2,
-        "gear_rotation": 2,
-        "mesh_adjustment": 2,
-        "input_mount_adjustment": 2,
-        "bearing_stacks": 8,
-        "output_stub_clearance": 4,
-        "shaft_service": 6,
-        "bearing_service": 8,
-        "gear_service": 4,
-        "motor_and_prop_insertion": 4,
-        "tilt_clearance": 2,
-        "input_cartridge_removal": 2,
-        "horn_clamp_service": 4,
-        "rail_key_access": 4,
-        "fastener_stacks": len(bolts),
-        "fastener_service": len(bolts),
-        "functional_wall_probes": 6,
-        "geometry": len(module["printed"]),
-    }
-    report["expected_evidence_counts"] = expected_counts
+    evidence = propulsion_evidence_check(report)
+    report["expected_evidence_counts"] = dict(PROPULSION_EVIDENCE_COUNTS)
+    report["required_evidence_inventory"] = evidence["inventory"]
+    report["evidence_row_failures"] = evidence["row_failures"]
     report["overlap_failures"] = overlap_failures(report, TOL)
     report["passed"] = (
         not report["overlap_failures"]
         and report["all_bought_parts_excluded_from_prints"]
-        and bool(bolts)
-        and all(len(report[key]) == count for key, count in expected_counts.items())
-        and all(
-            row["passed"]
-            for key in (*_REPORT_ROW_KEYS, "continuous_nut_loading")
-            for row in report[key]
-        )
+        and evidence["passed"]
     )
 
 
@@ -1297,16 +1251,16 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
             "purchased_hardware": len(module["hardware"]),
             "metrics": module["metrics"],
         }
+        report.update({key: [] for key in PROPULSION_EVIDENCE_COUNTS})
         _record_rail_fit_checks(report, frame, physical)
-        report.update({key: [] for key in _REPORT_ROW_KEYS})
         report["rail_key_access"] = rail_key_access_check(doc, module)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             _record_drive_checks(
                 report, doc, module, objects, physical, frame, prefix, sign
             )
-        bolts = _record_fastener_checks(report, doc, module, objects, physical)
+        _record_fastener_checks(report, doc, module, objects, physical)
         _record_print_checks(report, module, physical)
-        _complete_report(report, module, bolts)
+        _complete_report(report, module)
         _write_report(report, source)
         return report
     finally:

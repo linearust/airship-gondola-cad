@@ -133,10 +133,54 @@ def geometry_comparison(first, second):
     }
 
 
+def is_single_closed_solid(shape):
+    """Accept one closed solid, allowing container wrappers but no loose topology.
+
+    A valid compound with one solid can still contain extra edges or vertices;
+    neither its volume nor its solid count reveals those non-printable extras.
+    """
+    if shape.isNull() or not shape.isValid():
+        return False
+    while shape.ShapeType in ("Compound", "CompSolid"):
+        children = shape.childShapes()
+        if len(children) != 1:
+            return False
+        shape = children[0]
+    return shape.ShapeType == "Solid" and shape.isClosed()
+
+
+def print_solid_comparison(first, second, tolerance):
+    """Apply one identity gate to repeated print instances and STEP round trips."""
+    result = {
+        "first_single_closed_solid": is_single_closed_solid(first),
+        "second_single_closed_solid": is_single_closed_solid(second),
+        "passed": False,
+    }
+    if not all(
+        result[key]
+        for key in ("first_single_closed_solid", "second_single_closed_solid")
+    ):
+        return result
+    result.update(geometry_comparison(first, second))
+    # STEP may reparameterize an identical curved boundary and change OCC's
+    # scalar volume integral. The empty-cut proof bypasses only that scalar
+    # discrepancy; geometric difference and bounds retain their strict limits.
+    result["passed"] = (
+        result["difference_mm3"] < tolerance
+        and result["bounds_difference_mm"] < tolerance
+        and (
+            result["volume_difference_mm3"] < tolerance
+            or result["closed_solid_identity_by_empty_cuts"]
+        )
+    )
+    return result
+
+
 def mesh_checks(shape, mesh):
     """Check solid validity, watertightness and connectivity for PA12 exports."""
     return {
         "valid_brep": shape.isValid(),
+        "single_closed_solid": is_single_closed_solid(shape),
         "solid_count": len(shape.Solids),
         "watertight_mesh": mesh.isSolid(),
         "mesh_components": mesh.countComponents(),
@@ -210,15 +254,16 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         bounds = shape.optimalBoundingBox(False, False)
         duplicate_checks = []
         for other in instances[1:]:
-            check = geometry_comparison(shape, print_shape(other))
+            check = print_solid_comparison(shape, print_shape(other), 1e-6)
             duplicate_checks.append({"instance": other.Name, **check})
-            if check["difference_mm3"] > 1e-6:
+            if not check["passed"]:
                 raise RuntimeError("Different parts share SKU " + sku)
 
         mesh = mesh_from_shape(shape)
         checks = mesh_checks(shape, mesh)
         if not (
             checks["valid_brep"]
+            and checks["single_closed_solid"]
             and checks["solid_count"] == 1
             and checks["watertight_mesh"]
             and checks["mesh_components"] == 1

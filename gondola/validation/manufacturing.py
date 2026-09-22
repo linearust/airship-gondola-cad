@@ -9,6 +9,7 @@ import Part
 
 from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
+from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail
 
@@ -153,7 +154,8 @@ def review(doc, registry):
     ]
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
-        (probe, True) for probe in propulsion.manufacturing_wall_probes()
+        (probe, True)
+        for probe in propulsion.manufacturing_wall_probes(drive=drive_for_document(doc))
     ]
     for (feature, name, start, end, expected), module_coordinates in probes_with_frames:
         obj = doc.getObject(name)

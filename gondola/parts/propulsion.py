@@ -55,28 +55,16 @@ BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 2.0
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = 80.0
-MINIMUM_TILT_DEG = -180.0
-MAXIMUM_TILT_DEG = 180.0
 GUARD_OUTER_RADIUS = 24.3
 GUARD_INNER_RADIUS = 22.8
-CARRIER_OUTER_Y = 26.0
 MOTOR_NOMINAL_DIAMETER = 13.5
 MOTOR_DIAMETER = 13.6
 MOTOR_LENGTH = 14.0
-PROPELLER_DIAMETER = 40.0
-PROPELLER_HUB_THICKNESS = 5.0
-MOTOR_MOUNT_THREAD = "M1.4"
-MOTOR_MOUNT_PCD = 6.6
-MOTOR_MOUNT_COUNT = 3
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
-MOTOR_DRAWING = (
-    "https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg"
-)
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 GEAR_MODULE = MODULE_MM
 GEAR_FACE_WIDTH = FACE_WIDTH_MM
-GEAR_TOTAL_WIDTH = 8.0
 GEAR_HUB_START_Y = 38.5
 GEAR_FACE_START_Y = 43.5
 GEAR_END_Y = 46.5
@@ -84,25 +72,9 @@ GEAR_END_Y = 46.5
 INPUT_AXIS_X = DRIVE_CONFIGURATIONS["60_20"].input_x_mm
 INPUT_AXIS_Z = DRIVE_CONFIGURATIONS["60_20"].input_z_mm
 MESH_ADJUSTMENT_MAX = MESH_CLEARANCE_MAX_MM
-BEARING_INNER_DIAMETER = 3.0
-BEARING_OUTER_DIAMETER = 6.0
-BEARING_WIDTH = 2.5
-BEARING_SEAT_DIAMETER = 6.0
 BEARING_WINDOW_DIAMETER = 5.6
 BEARING_CAP_THICKNESS = 1.5
 BEARING_CAP_BOLT_X = 17.5
-OUTPUT_BEARING_START_Y = 28.0
-OUTPUT_BEARING_END_Y = 30.5
-INPUT_BEARING_INNER_Y = 30.0
-INPUT_BEARING_OUTER_Y = 34.0
-SHAFT_DIAMETER = 3.0
-OUTPUT_DRIVEN_SHAFT_LENGTH = 24.0
-OUTPUT_IDLE_SHAFT_LENGTH = 14.0
-INPUT_SHAFT_LENGTH = 26.0
-SHAFT_CLAMP_START_Y = 20.5
-SHAFT_CLAMP_END_Y = 26.0
-SHAFT_CLAMP_BORE_DIAMETER = 3.2
-CLAMP_SCREW_LENGTH = 8.0
 CLAMP_SCREW_SKU = "M2X8_SOCKET_CAP"
 NUT_SKU = "M2_SQUARE_NUT_DIN562"
 BEARING_SKU = "MR63ZZ"
@@ -212,17 +184,23 @@ def _output_support(sign):
             9.6,
             4,
             PIVOT_Z - BASE_Z - FOOT_THICKNESS,
-            (-4.8, y_start + 80, BASE_Z + FOOT_THICKNESS),
+            (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
         )
-        post = post.cut(box(6.4, 5, 29.2, (-3.2, y_start + 79.5, 9.8)))
+        post = post.cut(box(6.4, 5, 29.2, (-3.2, y_start + PIVOT_HALF_SPAN - 0.5, 9.8)))
         cup = _bearing_cup(28 if side > 0 else -28, opens_positive=side > 0)
-        cup = _shifted(cup, y=80, z=PIVOT_Z)
+        cup = _shifted(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
         post = post.cut(
-            cylinder(3, 2.5, (0, 80 + min(side * 28, side * 30.5), PIVOT_Z))
+            cylinder(
+                3, 2.5, (0, PIVOT_HALF_SPAN + min(side * 28, side * 30.5), PIVOT_Z)
+            )
         )
-        post = post.cut(cylinder(2.8, 5, (0, 80 + y_start - 0.5, PIVOT_Z)))
+        post = post.cut(cylinder(2.8, 5, (0, PIVOT_HALF_SPAN + y_start - 0.5, PIVOT_Z)))
         parts.extend(
-            [post, cup, box(18, 4, FOOT_THICKNESS, (-9, y_start + 80, BASE_Z))]
+            [
+                post,
+                cup,
+                box(18, 4, FOOT_THICKNESS, (-9, y_start + PIVOT_HALF_SPAN, BASE_Z)),
+            ]
         )
     # Low fixed face lies below the bought horn's complete radial envelope.
     mount_face = union(
@@ -601,15 +579,15 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "output_bearing_outer_wall",
             "PropulsionFixedFrame",
-            (-4.81, 109, PIVOT_Z),
-            (-2.99, 109, PIVOT_Z),
+            (-4.81, PIVOT_HALF_SPAN + 29, PIVOT_Z),
+            (-2.99, PIVOT_HALF_SPAN + 29, PIVOT_Z),
             1.8,
         ),
         (
             "bearing_cap_plate",
             "PortOutputBearingCapPositive",
-            (-3.5, 110.49, PIVOT_Z),
-            (-3.5, 112.01, PIVOT_Z),
+            (-3.5, PIVOT_HALF_SPAN + 30.49, PIVOT_Z),
+            (-3.5, PIVOT_HALF_SPAN + 32.01, PIVOT_Z),
             1.5,
         ),
         (
@@ -724,7 +702,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             cap = mirrored_y(cap, -1)
         if sign < 0:
             cap = cap.mirror(V(), V(1, 0, 0))
-        cap = _shifted(cap, y=sign * 80 + side * 30.5, z=PIVOT_Z)
+        cap = _shifted(cap, y=sign * PIVOT_HALF_SPAN + side * 30.5, z=PIVOT_Z)
         printed.append(
             _print(
                 doc,
@@ -737,7 +715,11 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             )
         )
         # The cap bolt seats through1.5mm cap and4mm cup; bearing fit is separate.
-        origin = (sign * BEARING_CAP_BOLT_X, sign * 80 + side * 32, PIVOT_Z)
+        origin = (
+            sign * BEARING_CAP_BOLT_X,
+            sign * PIVOT_HALF_SPAN + side * 32,
+            PIVOT_Z,
+        )
         hardware.extend(
             _bolt_pair(
                 doc,
@@ -754,7 +736,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
     output_angle = driver_angle + 180 + 180 / spec.output.teeth
     output_gear = gear_shape(spec.output.teeth, output_angle)
     output_gear = mirrored_y(output_gear, sign)
-    output_gear = _shifted(output_gear, y=-sign * 80)
+    output_gear = _shifted(output_gear, y=-sign * PIVOT_HALF_SPAN)
     hardware.append(
         _buy(
             doc,
@@ -1033,7 +1015,7 @@ def _build_motor_references(doc, pod, prefix, sign):
 def _build_sweep_reserve(doc, assembly, prefix, sign):
     """Create the separate clearance reference for external vehicle equipment."""
     bound = union([cylinder(30, 52, (0, -26, 0)), cylinder(10, 88, (0, -44, 0))])
-    bound = _shifted(bound, y=sign * 80, z=PIVOT_Z)
+    bound = _shifted(bound, y=sign * PIVOT_HALF_SPAN, z=PIVOT_Z)
     return _reference(
         doc,
         assembly,
@@ -1082,7 +1064,10 @@ def _module_metrics(printed, hardware, references, spec):
         "printed_part_count": len(printed),
         "purchased_mechanism_hardware_count": len(hardware),
         "device_reference_count": len(references),
-        "main_pivot_centers_mm": [[0, 80, PIVOT_Z], [0, -80, PIVOT_Z]],
+        "main_pivot_centers_mm": [
+            [0, PIVOT_HALF_SPAN, PIVOT_Z],
+            [0, -PIVOT_HALF_SPAN, PIVOT_Z],
+        ],
         "gear_drive": {
             "configuration": spec.key,
             "driver_teeth": spec.driver.teeth,
