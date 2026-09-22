@@ -1,4 +1,4 @@
-"""Finite, sourced gear choices using replaceable fixed input supports.
+"""Finite, sourced gear choices using a fixed integral servo/bearing frame.
 
 Select a complete configuration before building. A saved CAD property is an
 identity record, not a live gear-ratio knob: changing it cannot change teeth.
@@ -14,23 +14,25 @@ FACE_WIDTH_MM = 3.0
 PIVOT_Z_MM = 48.2
 RADIAL_X = 0.4
 RADIAL_Z = -math.sqrt(1 - RADIAL_X**2)
-INPUT_MOUNT_X_MM = 8.0
-INPUT_MOUNT_HALF_SPAN = 12.5
-INPUT_MOUNT_Z_MM = 8.3
 
 
 @dataclass(frozen=True)
 class GearSpec:
     teeth: int
     hub_diameter_mm: float
+    bore_mm: float
 
     @property
     def sku(self):
-        return f"GEABP0.5-{self.teeth}-3-B-3"
+        return f"GEABP0.5-{self.teeth}-3-B-{self.bore_mm:g}"
 
 
 GEARS = MappingProxyType(
-    {20: GearSpec(20, 8.5), 60: GearSpec(60, 10.0), 64: GearSpec(64, 10.0)}
+    {
+        20: GearSpec(20, 8.5, 3.0),
+        60: GearSpec(60, 10.0, 7.0),
+        64: GearSpec(64, 10.0, 7.0),
+    }
 )
 
 
@@ -57,8 +59,8 @@ class DriveSpec:
         return PIVOT_Z_MM + RADIAL_Z * self.center_distance_mm
 
     @property
-    def input_support_sku(self):
-        return f"GearedInputSupport{self.driver.teeth}T"
+    def frame_sku(self):
+        return f"GearedPropulsionFrame{self.driver.teeth}T"
 
     def contract(self):
         return {
@@ -68,7 +70,7 @@ class DriveSpec:
             "angle_ratio": -self.ratio,
             "nominal_center_mm": self.center_distance_mm,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
-            "input_support_print_sku": self.input_support_sku,
+            "fixed_frame_print_sku": self.frame_sku,
         }
 
 

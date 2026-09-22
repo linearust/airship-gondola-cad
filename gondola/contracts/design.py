@@ -12,7 +12,7 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "T"
+DESIGN_REVISION = "U"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -98,17 +98,16 @@ EXCLUDED_EQUIPMENT = (
     "fin_servos",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_SOCKET_CAP": 20,
+    "M2X8_SOCKET_CAP": 10,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     "M2X5_PA66_PAN_HEAD": 6,
     "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_SQUARE_NUT_DIN562": 25,
+    "M2_SQUARE_NUT_DIN562": 15,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
-    "MR63ZZ": 8,
-    "PSFU3-26-FC5-A18": 2,
+    "MR63ZZ": 4,
     "PSFU3-24-FC5-A3": 2,
     "PSFU3-14": 2,
     "KST_0415_13": 2,
@@ -135,12 +134,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 23,
+    "installed_prints": 17,
     "optical_mount_parts": 3,
     "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 15,
+    "unique_print_files": 14,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -181,7 +180,7 @@ WIRING_PURCHASE_PLAN = {
         "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
     ],
     "seller_or_completed_harness_verified": False,
-    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and split blade-to-shaft adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.",
+    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and direct horn-to-gear adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.",
 }
 
 
@@ -217,7 +216,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_power_and_load",
-        f"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The {SELECTED_DRIVE.ratio:g}:1 angle increase divides ideal output torque by {SELECTED_DRIVE.ratio:g} before losses; two 6g servos and extra drive hardware are not a weight-saving claim.",
+        f"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The {SELECTED_DRIVE.ratio:g}:1 angle increase divides ideal output torque by {SELECTED_DRIVE.ratio:g} before losses; the direct gear transmits its mesh force to the servo output support, whose external radial-load capacity is unpublished.",
     ),
     UnresolvedInterface(
         "rail_flexure",
@@ -229,7 +228,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed blade-capture clamp closure, 3mm axle grip and independently supported input-axis alignment. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. Do not axially preload the servo spline while clamping its axle.",
+        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed horn-adapter fit, concentric 7mm gear-bore seating and gear retention on the printed spigot. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -237,7 +236,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching fixed input support for the selected gear pair; changing ratio requires replacement gears and supports, followed by a complete rebuild and validation. Circular mounting holes remove the designed sliding travel but do not eliminate bolt clearance, printed-position error or PA12 creep. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the matched support; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching integral propulsion frame for the selected gear pair; changing ratio requires replacement driver gears and the complete frame, followed by a complete rebuild and validation. No cartridge mount or mesh-adjustment slot remains; servo ear clearance, printed-position error and PA12 creep still affect the mesh. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the frame; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",

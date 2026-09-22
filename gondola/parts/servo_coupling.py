@@ -1,9 +1,9 @@
-"""Purchased KST horn and two printed clamp halves for its 3 mm input axle.
+"""Direct stock-horn adapter for a purchased 7 mm-bore driver gear.
 
-Local rotation axis is +Y; horn bottom is Y=0 and its blade points +X. The
-published horn profile is conservatively reconstructed from its two end circles
-and straight tangents. It is not a precision manufacturer CAD model. Assembly
-seating, closure and torque retention remain fit-prototype qualification gates.
+The gear runs on the servo output through its bought KST horn. Two simple PA12
+parts sandwich that horn without drilling it; a single M2 screw sits beyond the
+horn tip. The main part carries an integral hollow spigot, with no extra axle or
+input bearing. Local rotation axis is +Y and the horn blade points +X.
 """
 
 import math
@@ -24,38 +24,50 @@ HORN_TIP_RADIUS = 2.0
 HORN_TIP_CENTRE = 13.2
 HORN_SPLINE_RECESS_DEPTH = 2.5
 HORN_BLADE_BOTTOM = HORN_HEIGHT - HORN_BLADE_THICKNESS
-FIT_CLEARANCE = 0.2
-SPLIT_GAP = 0.6
-SHAFT_RADIUS = 1.5
-SHAFT_START_Y = 7.3
-CLAMP_END_Y = 14.8
-BOLT_POSITIONS = ((10.4, 7.4), (4.5, 11.1))
-SCREW_SEAT_Z = 3.1
-NUT_SEAT_Z = -3.1
-OUTER_HALF_WIDTH = 4.5
+HORN_BOTTOM_Y = 30.9
+HORN_REGISTER_CLEARANCE = 0.05
+GEAR_BORE_DIAMETER = 7.0
+SPIGOT_DIAMETER = 6.9
+SPIGOT_BORE_DIAMETER = 3.0
+SPIGOT_START_Y = 7.6
+SPIGOT_LENGTH = 8.0
+RETAINER_BACK_Y = 0.4
+RETAINER_THICKNESS = 1.5
+BODY_BACK_Y = 2.2
+BOLT_X = 18.0
+NUT_SEAT_Y = 6.6
+BOLT_DIRECTION = (0, 1, 0)
 
 
 def _cylinder(radius, length, origin, direction=(0, 1, 0)):
     return Part.makeCylinder(radius, length, V(*origin), V(*direction))
 
 
-def _blade_hull(y, depth, clearance=0.0):
-    """Convex envelope of dimensioned root/tip circles; clearance is our choice."""
-    root = HORN_HUB_RADIUS + clearance
-    tip = HORN_TIP_RADIUS + clearance
-    cosine = (root - tip) / HORN_TIP_CENTRE
+def _tangent_hull(y, depth, root, tip, tip_centre):
+    """Extrude two circular ends and their common external tangents."""
+    cosine = (root - tip) / tip_centre
     sine = math.sqrt(1 - cosine**2)
     a = V(root * cosine, y, root * sine)
-    b = V(HORN_TIP_CENTRE + tip * cosine, y, tip * sine)
+    b = V(tip_centre + tip * cosine, y, tip * sine)
     c = V(b.x, y, -b.z)
     d = V(a.x, y, -a.z)
     edges = [
         Part.makeLine(a, b),
-        Part.Arc(b, V(HORN_TIP_CENTRE + tip, y, 0), c).toShape(),
+        Part.Arc(b, V(tip_centre + tip, y, 0), c).toShape(),
         Part.makeLine(c, d),
         Part.Arc(d, V(-root, y, 0), a).toShape(),
     ]
     return Part.Face(Part.Wire(edges)).extrude(V(0, depth, 0))
+
+
+def _blade_hull(y, depth, clearance=0.0):
+    return _tangent_hull(
+        y,
+        depth,
+        HORN_HUB_RADIUS + clearance,
+        HORN_TIP_RADIUS + clearance,
+        HORN_TIP_CENTRE,
+    )
 
 
 def horn_shape():
@@ -81,54 +93,54 @@ def horn_shape():
     return shape.removeSplitter()
 
 
-def adapter_half_shapes():
-    """Return lower nut half and upper screw half, in the unclosed assembly pose.
+def adapter_shape():
+    """Open horn socket, front plate and integral gear spigot as one solid.
 
-    Both halves can be fitted around an already screwed-down horn. Two common
-    M2 clamps close the side clearance around its blade and the independent
-    steel shaft. Axial assembly clearance avoids preloading the servo spline.
+    The open socket can approach an already retained horn axially. Its root
+    register and blade pocket share the same small nominal finishing allowance;
+    neither the spline nor new holes in the bought horn are fabricated. The
+    bore supplies powder escape, not a claimed OEM screw/tool interface.
     """
     shape = union(
         [
-            box(13.3, 9.45, 9.0, (3.7, 1.65, -OUTER_HALF_WIDTH)),
-            box(20.2, 3.5, 6.4, (-3.2, 5.5, -3.2)),
-            _cylinder(3.2, CLAMP_END_Y - SHAFT_START_Y, (0, SHAFT_START_Y, 0)),
-            box(7.4, 7.4, 9.0, (0.8, 7.4, -OUTER_HALF_WIDTH)),
+            _tangent_hull(BODY_BACK_Y, SPIGOT_START_Y - BODY_BACK_Y, 4.7, 4.0, BOLT_X),
+            _cylinder(4.7, BODY_BACK_Y - RETAINER_BACK_Y, (0, RETAINER_BACK_Y, 0)),
+            _cylinder(SPIGOT_DIAMETER / 2, SPIGOT_LENGTH, (0, SPIGOT_START_Y, 0)),
         ]
     )
-    shape = shape.cut(
-        _blade_hull(
-            -0.1,
-            HORN_HEIGHT + FIT_CLEARANCE + 0.1,
-            FIT_CLEARANCE,
-        )
+    shape = shape.cut(_blade_hull(0.3, HORN_HEIGHT - 0.3, HORN_REGISTER_CLEARANCE))
+    # Clearance around an installed original screw head is deliberately a
+    # prototype envelope. Remove the adapter for service; its small through-bore
+    # is not assumed to pass that unmeasured head or a particular driver bit.
+    shape = shape.cut(_cylinder(2.5, 5.3, (0, -0.1, 0)))
+    shape = shape.cut(_cylinder(SPIGOT_BORE_DIAMETER / 2, 16.0, (0, -0.1, 0)))
+    shape = shape.cut(_cylinder(1.1, 10.0, (BOLT_X, -0.1, 0)))
+    shape = shape.cut(box(4.3, 3.0, 4.3, (BOLT_X - 2.15, NUT_SEAT_Y, -2.15)))
+    return _one_solid(shape, "Direct horn gear adapter")
+
+
+def retainer_shape():
+    """Flat rear strap retained by one screw beyond the existing horn tip."""
+    shape = union(
+        [
+            box(BOLT_X - 5.0, RETAINER_THICKNESS, 8.0, (5.0, RETAINER_BACK_Y, -4.0)),
+            _cylinder(4.0, RETAINER_THICKNESS, (BOLT_X, RETAINER_BACK_Y, 0)),
+        ]
     )
-    # Open centre lets the two halves surround a previously retained horn.
-    # The original horn screw is serviced after removing this separable clamp;
-    # no invented screw, centre thread or tool path through the solid shaft.
-    shape = shape.cut(_cylinder(2.5, SHAFT_START_Y + 0.1, (0, -0.1, 0)))
-    shape = shape.cut(
-        _cylinder(SHAFT_RADIUS + FIT_CLEARANCE, 9.0, (0, SHAFT_START_Y - 0.1, 0))
-    )
-    for x, y in BOLT_POSITIONS:
-        shape = shape.cut(_cylinder(1.15, 12, (x, y, -6), (0, 0, 1)))
-        shape = shape.cut(_cylinder(2.05, 3.0, (x, y, SCREW_SEAT_Z), (0, 0, 1)))
-        shape = shape.cut(box(4.3, 4.3, 3, (x - 2.15, y - 2.15, NUT_SEAT_Z - 3)))
-    lower = shape.common(box(50, 30, 10, (-10, -1, -10 - SPLIT_GAP / 2)))
-    upper = shape.common(box(50, 30, 10, (-10, -1, SPLIT_GAP / 2)))
-    halves = tuple(part.removeSplitter() for part in (lower, upper))
-    for half in halves:
-        if not half.isValid() or len(half.Solids) != 1:
-            raise RuntimeError("Horn/shaft clamp half must be one valid solid")
-    return halves
+    shape = shape.cut(_cylinder(1.1, 2.0, (BOLT_X, 0.3, 0)))
+    return _one_solid(shape, "Direct horn rear retainer")
+
+
+def _one_solid(shape, name):
+    shape = shape.removeSplitter()
+    if not shape.isValid() or len(shape.Solids) != 1:
+        raise RuntimeError(name + " must be one valid solid")
+    return shape
 
 
 def fastener_positions():
-    """Under-head and inner nut bearing positions; both fasteners point -Z."""
-    return tuple(
-        {"screw": (x, y, SCREW_SEAT_Z), "nut": (x, y, NUT_SEAT_Z)}
-        for x, y in BOLT_POSITIONS
-    )
+    """Under-head and inner nut bearing positions; the stock M2 screw faces +Y."""
+    return ({"screw": (BOLT_X, RETAINER_BACK_Y, 0), "nut": (BOLT_X, NUT_SEAT_Y, 0)},)
 
 
 def metrics():
@@ -137,10 +149,14 @@ def metrics():
         "sources": [HORN_SOURCE, HORN_DRAWING_SOURCE],
         "retained_evidence": "references/kst_0415_13_horn_dimensions.png",
         "horn_shape_scope": "KST-authored drawing via distributor. Conservative tangent hull, smooth spline bore and nominal holes; exact fillets, spline teeth, material grade and measured mass are not claimed.",
-        "shaft_grip_length_mm": CLAMP_END_Y - SHAFT_START_Y,
-        "fit_clearance_each_side_mm": FIT_CLEARANCE,
-        "unclosed_split_gap_mm": SPLIT_GAP,
-        "common_clamp_fasteners_per_side": 2,
-        "assembly": "Install and retain the stock horn using its original servo screw first. Assemble the two printed halves around the horn blade and the separately supported 3mm axle. Slide the axle to avoid axial preload, tighten the two M2 clamps minimally and verify engagement before locking the remaining shaft retention. Remove the separable coupling to service the OEM horn screw.",
-        "qualification": "Measured horn seating, screw head, purchased shaft fit, clamp closure, torsional play, creep and loaded bidirectional torque remain required. The printed shape supplies a complete nominal torque path, not qualified transmission performance.",
+        "gear_bore_diameter_mm": GEAR_BORE_DIAMETER,
+        "integral_spigot_diameter_mm": SPIGOT_DIAMETER,
+        "integral_spigot_bore_diameter_mm": SPIGOT_BORE_DIAMETER,
+        "integral_spigot_length_mm": SPIGOT_LENGTH,
+        "horn_register_clearance_each_side_mm": HORN_REGISTER_CLEARANCE,
+        "retainer_thickness_mm": RETAINER_THICKNESS,
+        "retainer_closure_gap_mm": BODY_BACK_Y - HORN_BLADE_BOTTOM,
+        "common_clamp_fasteners_per_side": 1,
+        "assembly": "At neutral, retain the bought horn with its original servo screw. Offer the main adapter from the gear side and the flat retainer from the servo side; their broad faces sandwich the existing blade. Fit one M2x8 screw beyond the horn tip and one square nut. Seat the gear on the integral spigot and secure its included set screw with minimal force. For service at neutral, loosen and remove the small output gear first, then release the two servo ear fasteners and withdraw the servo/driver group through the open side. Separate the driver gear and adapter on the bench for original horn-screw service.",
+        "qualification": "The 0.05 mm radial register and gear fit are nominal finish-fit targets, not as-printed tolerance claims. Verify measured horn and original screw-head fit, concentricity, retainer closure, PA12 spigot retention/creep and loaded bidirectional motion. The direct gear adds unqualified radial load to the servo output; no external radial-load rating is published.",
     }

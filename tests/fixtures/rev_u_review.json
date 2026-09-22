@@ -1,0 +1,321 @@
+{
+  "revision": "U",
+  "reviewed_on": "2026-09-22T03:51:42.100562+00:00",
+  "intent": "Replace supported input axles and detachable gear cartridges with bought-horn direct gears and simple integral open-sided servo uprights; retain independent bounded 360-degree output motion, output bearings/stubs and all non-propulsion geometry.",
+  "previous_source_commit": "672522c42dd4154fe8c4940c6ab9759c7434a2fd",
+  "previous_saved_cad_sha256": "0ebd1a2d21cd920f9dfc5c7a54905a2b70e980c5daf7c74a7f6f68d2c92abcc1",
+  "previous_fixture_sha256": "3fb28659cbe747b923534060caa1ae48a17bdae34abbe629378441e06b4f99b0",
+  "candidate_saved_cad_sha256": "22418af02f770b1dd877f55f72d38c07b62db1d0374e707f667126d64f321199",
+  "candidate_source_fingerprint": "5188680dae5f833878298a6b638707f77923eacd4203c6aff3cdf0e61080288f",
+  "shape_counts": {
+    "before": 151,
+    "after": 119,
+    "removed": 48,
+    "added": 16,
+    "changed_existing": 7
+  },
+  "removed_shape_names": [
+    "PortHornClampBladeBolt",
+    "PortHornClampBladeNut",
+    "PortHornClampLower",
+    "PortHornClampShaftBolt",
+    "PortHornClampShaftNut",
+    "PortHornClampUpper",
+    "PortInputBearingCapInner",
+    "PortInputBearingCapInnerBolt",
+    "PortInputBearingCapInnerNut",
+    "PortInputBearingCapOuter",
+    "PortInputBearingCapOuterBolt",
+    "PortInputBearingCapOuterNut",
+    "PortInputBearingInner",
+    "PortInputBearingOuter",
+    "PortInputMountNegativeBolt",
+    "PortInputMountNegativeNut",
+    "PortInputMountPositiveBolt",
+    "PortInputMountPositiveNut",
+    "PortInputShaft",
+    "PortInputSupport",
+    "PortServoEarNegativeBolt",
+    "PortServoEarNegativeNut",
+    "PortServoEarPositiveBolt",
+    "PortServoEarPositiveNut",
+    "StarboardHornClampBladeBolt",
+    "StarboardHornClampBladeNut",
+    "StarboardHornClampLower",
+    "StarboardHornClampShaftBolt",
+    "StarboardHornClampShaftNut",
+    "StarboardHornClampUpper",
+    "StarboardInputBearingCapInner",
+    "StarboardInputBearingCapInnerBolt",
+    "StarboardInputBearingCapInnerNut",
+    "StarboardInputBearingCapOuter",
+    "StarboardInputBearingCapOuterBolt",
+    "StarboardInputBearingCapOuterNut",
+    "StarboardInputBearingInner",
+    "StarboardInputBearingOuter",
+    "StarboardInputMountNegativeBolt",
+    "StarboardInputMountNegativeNut",
+    "StarboardInputMountPositiveBolt",
+    "StarboardInputMountPositiveNut",
+    "StarboardInputShaft",
+    "StarboardInputSupport",
+    "StarboardServoEarNegativeBolt",
+    "StarboardServoEarNegativeNut",
+    "StarboardServoEarPositiveBolt",
+    "StarboardServoEarPositiveNut"
+  ],
+  "added_shape_names": [
+    "PortHornGearAdapter",
+    "PortHornGearClampBolt",
+    "PortHornGearClampNut",
+    "PortHornGearRetainer",
+    "PortServoEarLowerBolt",
+    "PortServoEarLowerNut",
+    "PortServoEarUpperBolt",
+    "PortServoEarUpperNut",
+    "StarboardHornGearAdapter",
+    "StarboardHornGearClampBolt",
+    "StarboardHornGearClampNut",
+    "StarboardHornGearRetainer",
+    "StarboardServoEarLowerBolt",
+    "StarboardServoEarLowerNut",
+    "StarboardServoEarUpperBolt",
+    "StarboardServoEarUpperNut"
+  ],
+  "changed_shape_names": [
+    "PortDriverGear",
+    "PortServo",
+    "PortServoHorn",
+    "PropulsionFixedFrame",
+    "StarboardDriverGear",
+    "StarboardServo",
+    "StarboardServoHorn"
+  ],
+  "mass_delta_g": {
+    "printed": -4.390568703823156,
+    "hardware": -9.45578016525755,
+    "structure_and_hardware": -13.8463488690807
+  },
+  "physical_fit_limitation": "Direct gearing transfers mesh loads to the servo output bearings; allowable radial load, adapter/journal fits, set-screw grip, horn seating, creep and loaded deflection remain unverified. This is a fit prototype. Remove the small output gear at neutral before lateral withdrawal of the complete servo/driver package; direct sideways tooth disengagement is not claimed.",
+  "gates": {
+    "shape_counts_151_to_119": true,
+    "exact_removed_and_added_shape_names": true,
+    "only_seven_intended_existing_shapes_change": true,
+    "every_shape_outside_propulsion_unchanged": true,
+    "every_new_shape_is_one_valid_closed_solid": true,
+    "all_common_object_types_preserved": true,
+    "native_placements_outside_propulsion_unchanged": true,
+    "native_expressions_identical": true,
+    "common_native_numeric_controls_unchanged": true,
+    "common_metadata_changes_only_declared": true,
+    "frame_saved_sku_matches_drive_contract": true,
+    "common_property_schema_changes_only_frame_print_sku": true,
+    "new_drive_contract_matches_direct_servo_build": true,
+    "only_print_and_hardware_registry_lists_change": true,
+    "installed_prints_23_to_17_and_hardware_84_to_58": true,
+    "hardware_changes_exactly_declared": true,
+    "retained_native_controls_pass_both_documents": true,
+    "coupled_three_to_one_motion_pass_both_documents": true,
+    "production_release_not_promoted": true,
+    "source_fingerprint_matches_candidate_and_stays_unchanged": true,
+    "saved_documents_unchanged": true
+  },
+  "passed": true,
+  "audit_scope": "Read-only comparison of every retained local/world BRep, shape/object identity, local/global placement, native property schema, numeric control, expression, procurement/print interface, registry, dynamic native control, inventory and mass. Exactly 48 obsolete propulsion shapes disappear, 16 replacements appear and seven retained propulsion shapes change. Every non-propulsion shape and placement remains identical. The input copies and all sources remained unchanged during the audit.",
+  "geometry_changes": [
+    {
+      "object": "PortDriverGear",
+      "local_shape_changed": true,
+      "world_shape_changed": true,
+      "volume_before_mm3": 2445.650204321022,
+      "volume_after_mm3": 2194.322792033823,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "PortServo",
+      "local_shape_changed": true,
+      "world_shape_changed": true,
+      "volume_before_mm3": 2405.970761069063,
+      "volume_after_mm3": 2405.9707610690634,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "PortServoHorn",
+      "local_shape_changed": false,
+      "world_shape_changed": true,
+      "volume_before_mm3": 146.74623617391615,
+      "volume_after_mm3": 146.7462361739162,
+      "local_placement_unchanged": false,
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape_changed": true,
+      "world_shape_changed": true,
+      "volume_before_mm3": 11663.08006788018,
+      "volume_after_mm3": 12316.284207064213,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "StarboardDriverGear",
+      "local_shape_changed": true,
+      "world_shape_changed": true,
+      "volume_before_mm3": 2445.6502043210216,
+      "volume_after_mm3": 2194.322792033823,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "StarboardServo",
+      "local_shape_changed": true,
+      "world_shape_changed": true,
+      "volume_before_mm3": 2405.970761069063,
+      "volume_after_mm3": 2405.9707610690634,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "StarboardServoHorn",
+      "local_shape_changed": false,
+      "world_shape_changed": true,
+      "volume_before_mm3": 146.74623617391615,
+      "volume_after_mm3": 146.74623617391617,
+      "local_placement_unchanged": false,
+      "world_placement_unchanged": false
+    }
+  ],
+  "native_metadata_changes": {
+    "fixed_frame_print_sku": {
+      "before": "PropulsionFixedFrame",
+      "after": "GearedPropulsionFrame60T"
+    },
+    "driver_gears": {
+      "instances": [
+        "PortDriverGear",
+        "StarboardDriverGear"
+      ],
+      "before": "GEABP0.5-60-3-B-3",
+      "after": "GEABP0.5-60-3-B-7",
+      "fields": [
+        "HardwareSKU",
+        "PurchaseRequirements",
+        "PurchaseSearchQuery",
+        "PurchaseSearchURL"
+      ]
+    },
+    "drive_contract": "Add explicit 7 mm driver and 3 mm output bores; use the 7 mm driver SKU and replace input_support_print_sku with fixed_frame_print_sku. Center distance, 3:1 ratio and servo endpoints are unchanged.",
+    "retained_bearings": {
+      "count": 4,
+      "field": "PurchaseRequirements",
+      "before": "Eight installed: four output-axis bearings and four separate input-axis bearings.",
+      "after": "Four installed, on the two output axes. The servo directly supports each driver gear."
+    },
+    "retained_square_nuts": {
+      "count": 13,
+      "field": "PurchaseRequirements",
+      "before": "bearing caps, input mounts and optical pivots.",
+      "after": "bearing caps and optical pivots."
+    }
+  },
+  "common_native_property_schema_changes": {
+    "PropulsionFixedFrame": {
+      "PrintSKU": {
+        "before": {
+          "type": "App::PropertyString",
+          "group": "Printing"
+        },
+        "after": {
+          "type": "App::PropertyString",
+          "group": "Design"
+        }
+      }
+    }
+  },
+  "inventory_changes": {
+    "native_objects": {
+      "before": 315,
+      "after": 283
+    },
+    "installed_prints": {
+      "before": 23,
+      "after": 17
+    },
+    "installed_hardware": {
+      "before": 84,
+      "after": 58
+    },
+    "hardware_sku_quantities_before": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-3": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 20,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 25,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 8,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2,
+      "PSFU3-26-FC5-A18": 2
+    },
+    "hardware_sku_quantities_after": {
+      "GEABP0.5-20-3-B-3": 2,
+      "GEABP0.5-60-3-B-7": 2,
+      "KST_0415_13": 2,
+      "M1_6X8_CHEESE_HEAD": 4,
+      "M1_6_HEX_NUT_DIN934": 4,
+      "M2X5_PA66_PAN_HEAD": 6,
+      "M2X8_SOCKET_CAP": 10,
+      "M2_FF_PA66_AF4_L25": 2,
+      "M2_SQUARE_NUT_DIN562": 15,
+      "M2x6_ISO4026_DIN913": 3,
+      "MR63ZZ": 4,
+      "PSFU3-14": 2,
+      "PSFU3-24-FC5-A3": 2
+    },
+    "unchanged_registry_lists": [
+      "ReferenceParts",
+      "ClearanceVolumes",
+      "FitCoupons",
+      "Modules",
+      "EquipmentMounts",
+      "OpticalMountParts",
+      "RailSegments",
+      "RailLocks",
+      "TapeReferences",
+      "TiltingPods"
+    ]
+  },
+  "preserved_control_checks_per_document": {
+    "native_cases": 29,
+    "coupled_gear_cases": 10,
+    "all_native_expressions_identical": true,
+    "all_common_numeric_controls_identical": true
+  },
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 48.77772956603454,
+      "after": 44.38716086221138
+    },
+    "current_hardware_g": {
+      "before": 30.779309037101545,
+      "after": 21.323528871843994
+    },
+    "structure_hardware_g": {
+      "before": 79.55703860313608,
+      "after": 65.71068973405538
+    }
+  },
+  "direct_drive_review": {
+    "servo_mount": "One integral fixed frame includes open-sided vertical servo uprights and both output-bearing supports. A ratio/model change replaces the complete frame.",
+    "coupling": "Bought KST0415.13 horn, two-piece printed adapter/retainer and one M2x8 clamp per servo; no printed spline, auxiliary input axle or input bearing.",
+    "retained_output": "Two output bearings per side and separate output stub shafts leave the motor bay unobstructed.",
+    "service": "At neutral and unpowered, remove the small output gear inboard first, remove both servo ear bolts, then withdraw the entire servo/horn/driver package laterally outboard. Service its large driver and horn adapter on the bench.",
+    "service_limit": "Straight lateral withdrawal with the output gear still installed intersects the meshing teeth; axial large-driver removal is obstructed by the output support. Neither path is claimed as an assembly route."
+  }
+}

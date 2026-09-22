@@ -296,7 +296,7 @@ def unresolved_scope(doc):
     couplings = [
         doc.getObject(prefix + suffix)
         for prefix in ("Port", "Starboard")
-        for suffix in ("HornClampLower", "HornClampUpper")
+        for suffix in ("HornGearAdapter", "HornGearRetainer")
     ]
     horns = [doc.getObject(prefix + "ServoHorn") for prefix in ("Port", "Starboard")]
     forbidden = [
@@ -341,7 +341,7 @@ def unresolved_scope(doc):
     return {
         "scope_exclusions": str(registry.ScopeExclusions),
         "forbidden_device_references": forbidden,
-        "horn_couplings_use_bought_splines_and_unqualified_printed_clamps": coupling_ok,
+        "horn_adapters_use_bought_splines_and_unqualified_printed_parts": coupling_ok,
         "mtf02p_device_and_optical_reserve_are_reference_only": optical_scope_ok,
         "rail_flexure_exception": rail_exception,
         "qualification_status": status,

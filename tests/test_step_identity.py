@@ -104,7 +104,11 @@ class StepIdentityTests(unittest.TestCase):
 
     def test_fixed_frame_step_round_trip_preserves_closed_solid(self):
         from gondola.parts.propulsion import integral_frame_shape
-        from gondola.print_export import print_shape, print_solid_comparison
+        from gondola.print_export import (
+            _topologically_empty,
+            print_shape,
+            print_solid_comparison,
+        )
 
         original = print_shape(
             SimpleNamespace(
@@ -123,7 +127,10 @@ class StepIdentityTests(unittest.TestCase):
         self.assertEqual(len(restored.Solids), 1)
         self.assertLess(result["difference_mm3"], 1e-5)
         self.assertLess(result["bounds_difference_mm"], 1e-5)
-        self.assertTrue(result["closed_solid_identity_by_empty_cuts"])
+        # A simpler frame may pass the boundary-signature fast path. Prove the
+        # round trip independently instead of requiring one comparison branch.
+        for difference in (original.cut(restored), restored.cut(original)):
+            self.assertTrue(_topologically_empty(difference))
         self.assertEqual(
             result["volume_difference_mm3"], abs(original.Volume - restored.Volume)
         )

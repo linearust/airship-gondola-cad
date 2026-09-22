@@ -76,8 +76,8 @@ class PropulsionEvidenceTests(unittest.TestCase):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["inventory"]["continuous_nut_loading"]["expected"], 2)
-        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 24)
-        self.assertEqual(result["inventory"]["geometry"]["expected"], 17)
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 14)
+        self.assertEqual(result["inventory"]["geometry"]["expected"], 11)
 
     def test_missing_row_cannot_reduce_its_own_required_count(self):
         for key, count in PROPULSION_EVIDENCE_COUNTS.items():
@@ -101,11 +101,11 @@ class PropulsionEvidenceTests(unittest.TestCase):
         for flag in (False, None, 1, "true"):
             with self.subTest(flag=flag):
                 report = self.complete_report()
-                report["input_cartridge_removal"][0]["passed"] = flag
+                report["servo_assembly_removal"][0]["passed"] = flag
                 result = propulsion_evidence_check(report)
                 self.assertFalse(result["passed"], result)
                 self.assertEqual(
-                    result["row_failures"][0]["field"], "/input_cartridge_removal/0"
+                    result["row_failures"][0]["field"], "/servo_assembly_removal/0"
                 )
 
     def test_absent_or_malformed_row_collection_fails_closed(self):

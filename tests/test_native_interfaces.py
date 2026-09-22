@@ -11,6 +11,27 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeInterfaceTests(unittest.TestCase):
+    def test_complete_assembly_preserves_gear_specific_frame_identity(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from gondola import assembly
+        from gondola.contracts.drive import SELECTED_DRIVE
+        from gondola.validation.propulsion import fixed_servo_datum_check
+
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(assembly, "OUTPUT_DIR", Path(directory)):
+                doc = assembly.build_assembly()
+            try:
+                self.assertEqual(
+                    doc.PropulsionFixedFrame.PrintSKU, SELECTED_DRIVE.frame_sku
+                )
+                for prefix in ("Port", "Starboard"):
+                    self.assertTrue(fixed_servo_datum_check(doc, prefix)["passed"])
+            finally:
+                App.closeDocument(doc.Name)
+
     def test_native_rail_clamps_declare_m2_thread_dimensions(self):
         from gondola.cad import create_group
         from gondola.parts import rail

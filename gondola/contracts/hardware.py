@@ -66,7 +66,7 @@ PROCUREMENT_SPECS = {
     "MR63ZZ": {
         "search_query": "NSK Micro Precision ISC MR63ZZ 3x6x2.5 bearing",
         "candidate_url": BEARING_SOURCE,
-        "requirements": "NSK Micro Precision (ISC) MR63ZZ, 3 x 6 x 2.5 mm, double shielded. Eight installed: four output-axis bearings and four separate input-axis bearings. Do not substitute an open MR63 or a different brand under the same generic size without rechecking fits. Published reference mass 0.27 g each. Do not load the shields; inner-ring abutment OD at most 3.7 mm, housing shoulder opening at least 5.4 mm. Fits and endplay require trials.",
+        "requirements": "NSK Micro Precision (ISC) MR63ZZ, 3 x 6 x 2.5 mm, double shielded. Four installed, on the two output axes. The servo directly supports each driver gear. Do not substitute an open MR63 or a different brand under the same generic size without rechecking fits. Published reference mass 0.27 g each. Do not load the shields; inner-ring abutment OD at most 3.7 mm, housing shoulder opening at least 5.4 mm. Fits and endplay require trials.",
     },
     "KST_0415_13": {
         "search_query": "KST 0415.13 aluminium servo arm 15T 4mm",
@@ -165,7 +165,7 @@ PROCUREMENT_SPECS = {
             "A2 stainless steel, DIN 562 M2 x 0.4 right-hand flat square nut. "
             "Nominal width 4 mm and height 1.2 mm; accepted width 3.6-4.0 mm "
             "and height 0.8-1.2 mm. Shared by the rail clamps, propulsion clamps, "
-            "bearing caps, input mounts and optical pivots. No washers. Preserve square "
+            "bearing caps and optical pivots. No washers. Preserve square "
             "corners for rail anti-rotation; verify actual corner form and captive "
             "fit with the printed coupon. Exposed propulsion and pivot nuts require "
             "a holding tool. Do not substitute a hex nut."
@@ -189,7 +189,7 @@ for _gear in GEARS.values():
         "candidate_url": GEAR_SOURCE,
         "requirements": (
             f"MISUMI {_sku}: white POM, module 0.5, pressure angle 20 degrees, "
-            f"{_gear.teeth} teeth, 3 mm H7 bore, 3 mm face, 8 mm total length, "
+            f"{_gear.teeth} teeth, {_gear.bore_mm:g} mm H7 bore, 3 mm face, 8 mm total length, "
             f"{_gear.hub_diameter_mm:g} mm hub diameter. "
             "B-type hub with one included M3 SCM435 black-oxide set screw; "
             "do not order a second screw for the same gear. No metal hub insert. "

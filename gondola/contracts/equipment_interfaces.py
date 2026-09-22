@@ -124,7 +124,7 @@ PROPULSION_EVIDENCE = {
         "supported_parts": [gear.sku for gear in GEARS.values()],
         "module_mm": 0.5,
         "pressure_angle_deg": 20.0,
-        "bore_mm": 3.0,
+        "bore_mm_by_teeth": {str(gear.teeth): gear.bore_mm for gear in GEARS.values()},
         "bore_tolerance": "H7",
         "face_width_mm": 3.0,
         "total_axial_length_mm": 8.0,
@@ -137,7 +137,7 @@ PROPULSION_EVIDENCE = {
         "driven_pitch_outside_root_hub_diameters_mm": [10.0, 11.0, 8.75, 8.5],
         "material": "White POM; no metal hub insert for this module",
         "included_fastener": "One M3 radial set screw per standard gear, SCM435 with black oxide finish; length, tip style and tightening torque are not established here.",
-        "scope": "Catalog gear dimensions support simplified purchased envelopes. Tooth contact, backlash, hub strength and printed shaft-centre tolerances require physical qualification; nominal centre distance is not proof of mesh. The supported drivers share their bore, hub diameter, axial stack and set-screw axial location, allowing the same input shaft and factory flat. Tooth-to-set-screw azimuth is not fixed: clock the actual gear and shaft flat before securing the horn coupling.",
+        "scope": "Catalog gear dimensions support simplified purchased envelopes. Tooth contact, backlash, hub strength and printed shaft-centre tolerances require physical qualification; nominal centre distance is not proof of mesh. The supported drivers share their bore, hub diameter, axial stack and set-screw axial location, allowing a common direct horn adapter with a printed 7mm-class spigot. The 20T output gear retains its 3mm bore and steel shaft. Tooth-to-set-screw azimuth is not fixed; clock each gear on its actual mating part.",
     },
     "PSFU3": {
         "sources": [SHAFT_SOURCE, SHAFT_CATALOG_SOURCE],
@@ -148,7 +148,6 @@ PROPULSION_EVIDENCE = {
         "standard_length_increment_mm": 1,
         "end_chamfer_max_mm": 0.2,
         "selected_order_codes": [
-            "PSFU3-26-FC5-A18",
             "PSFU3-24-FC5-A3",
             "PSFU3-14",
         ],
@@ -156,7 +155,6 @@ PROPULSION_EVIDENCE = {
             "alteration": "FC: one set-screw flat",
             "depth_for_diameter3_mm": 0.5,
             "length_mm": 5.0,
-            "input_offset_from_reference_end_mm": 18.0,
             "driven_offset_from_reference_end_mm": 3.0,
             "fc_and_a_increment_mm": 1,
             "fc_max_for_diameter3_mm": 15.0,
@@ -165,7 +163,7 @@ PROPULSION_EVIDENCE = {
             "installation": "Clock each factory flat under the actual gear's radial M3 set screw after meshing its teeth. The drawing does not specify set-screw azimuth relative to tooth phase. Keep flats outside bearing journals. Factory machining only; no manual grinding of hardened plated shafts.",
         },
         "material": "SUJ2 / EN 1.3505 equivalent hardened steel with hard chrome plating",
-        "scope": "The 26mm input and24mm driven shafts use specified factory flats; the14mm idle shafts remain round. None has a shoulder, thread or inherent axial retention. Diameter tolerance does not specify length tolerance or guarantee a bearing slip fit. Supplier confirmation of the complete configured order code remains necessary.",
+        "scope": "The 24mm driven shafts use specified factory flats; the14mm idle shafts remain round. None has a shoulder, thread or inherent axial retention. Diameter tolerance does not specify length tolerance or guarantee a bearing slip fit. Supplier confirmation of the complete configured order code remains necessary.",
     },
     "MR63ZZ": {
         "sources": [BEARING_SOURCE, BEARING_FIT_SOURCE],

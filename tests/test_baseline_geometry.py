@@ -231,7 +231,7 @@ class FrozenBaselineTests(unittest.TestCase):
     def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):
         from gondola.validation.baseline import unresolved_scope
 
-        clamp = self.reference.PortHornClampLower
+        clamp = self.reference.PortHornGearRetainer
         original = clamp.ManufacturingStatus
         try:
             clamp.ManufacturingStatus = "Production qualified"
