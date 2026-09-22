@@ -1,4 +1,4 @@
-"""Finite, sourced gear choices using a fixed integral servo/bearing frame.
+"""Finite, sourced gear choices using fixed replaceable servo/driver holders.
 
 Select a complete configuration before building. A saved CAD property is an
 identity record, not a live gear-ratio knob: changing it cannot change teeth.
@@ -60,7 +60,11 @@ class DriveSpec:
 
     @property
     def frame_sku(self):
-        return f"GearedPropulsionFrame{self.driver.teeth}T"
+        return "PropulsionFixedFrame"
+
+    @property
+    def servo_holder_sku(self):
+        return f"ServoGearHolder{self.driver.teeth}T"
 
     def contract(self):
         return {
@@ -71,6 +75,7 @@ class DriveSpec:
             "nominal_center_mm": self.center_distance_mm,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
             "fixed_frame_print_sku": self.frame_sku,
+            "servo_holder_print_sku": self.servo_holder_sku,
         }
 
 

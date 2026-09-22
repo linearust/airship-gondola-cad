@@ -1131,7 +1131,7 @@ def export_check(source, registry):
 
 
 def detailed_propulsion_evidence(doc, source):
-    from .propulsion import fixed_servo_datum_check
+    from .propulsion import fixed_servo_datum_check, holder_mount_check
 
     configuration = drive_for_document(doc)
     path = source.parent / (source.stem + "_propulsion_validation.json")
@@ -1195,6 +1195,9 @@ def detailed_propulsion_evidence(doc, source):
     saved_datums = [
         fixed_servo_datum_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
+    saved_holder_mounts = [
+        holder_mount_check(doc, prefix) for prefix in ("Port", "Starboard")
+    ]
     evidence_ok = (
         evidence.get("passed") is True
         and evidence.get("gear_configuration") == configuration.key
@@ -1209,6 +1212,7 @@ def detailed_propulsion_evidence(doc, source):
         "source_file": os.path.relpath(path, REPO_ROOT),
         "source_sha256": file_sha256(path),
         "saved_servo_datums": saved_datums,
+        "saved_holder_mounts": saved_holder_mounts,
         "saved_shape_source_comparisons": comparisons,
         "source_reference_print_count": reference_print_count,
         "local_overlap_failures": volume_failures,
@@ -1218,6 +1222,7 @@ def detailed_propulsion_evidence(doc, source):
         "scope": "Recomputed geared-drive mesh, bearings, split output shafts, bounded motion and ordered service paths. Sample fits, loaded retention, cable travel and OEM fastening remain physical qualification requirements.",
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
+        and all(row["passed"] for row in saved_holder_mounts)
         and not volume_failures
         and all(row["passed"] for row in comparisons),
     }

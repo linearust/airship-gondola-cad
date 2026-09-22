@@ -211,7 +211,7 @@ def gear_rotation_check(doc, prefix):
 
 
 def fixed_servo_datum_check(doc, prefix):
-    """Require a fixed servo axis and the selected integral frame identity."""
+    """Require the fixed servo axis, common frame and selected holder identities."""
     mount = doc.getObject(prefix + "ServoMount")
     if mount is None:
         return {"passed": False, "error": "Missing fixed servo mount datum"}
@@ -225,6 +225,7 @@ def fixed_servo_datum_check(doc, prefix):
         if str(path).lstrip(".").startswith("Placement")
     ]
     frame_sku = getattr(doc.PropulsionFixedFrame, "PrintSKU", None)
+    holder_sku = getattr(doc.getObject(prefix + "ServoHolder"), "PrintSKU", None)
     return {
         "pod": prefix,
         "gear_configuration": configuration.key,
@@ -234,12 +235,15 @@ def fixed_servo_datum_check(doc, prefix):
         "placement_expressions": expressions,
         "expected_frame_sku": configuration.frame_sku,
         "actual_frame_sku": frame_sku,
-        "scope": "Fixed servo datum on one integral replaceable propulsion frame; no adjustable mount. Physical printed fit and mesh remain unqualified.",
+        "expected_holder_sku": configuration.servo_holder_sku,
+        "actual_holder_sku": holder_sku,
+        "scope": "Fixed servo datum on a replaceable holder against the common output-bearing frame; no adjustable mount. Physical printed fit and mesh remain unqualified.",
         "passed": error < TOL
         and mount.Placement.Rotation.isSame(App.Rotation(), 1e-7)
         and not expressions
         and "MeshClearance" not in mount.PropertiesList
-        and frame_sku == configuration.frame_sku,
+        and frame_sku == configuration.frame_sku
+        and holder_sku == configuration.servo_holder_sku,
     }
 
 
@@ -449,11 +453,13 @@ def direct_adapter_fit_check(doc, prefix):
 
 
 def servo_mount_check(doc, prefix):
-    """Require seated stock ear fasteners and a collision-free integral cradle."""
+    """Require seated stock ear fasteners and a collision-free removable holder."""
     frame = world_shape(doc.PropulsionFixedFrame)
+    holder = world_shape(doc.getObject(prefix + "ServoHolder"))
     servo = world_shape(doc.getObject(prefix + "Servo"))
-    overlap = intersection_volume(frame, servo)
-    clamps = Part.makeCompound([frame, servo])
+    frame_overlap = intersection_volume(frame, servo)
+    holder_overlap = intersection_volume(holder, servo)
+    clamps = Part.makeCompound([holder, servo])
     rows = []
     for suffix in ("Lower", "Upper"):
         name = prefix + "ServoEar" + suffix
@@ -471,10 +477,67 @@ def servo_mount_check(doc, prefix):
         )
     return {
         "pod": prefix,
-        "servo_frame_intersection_mm3": overlap,
+        "servo_frame_intersection_mm3": frame_overlap,
+        "servo_holder_intersection_mm3": holder_overlap,
         "cases": rows,
-        "scope": "The two published X06 ears bear on open integral saddles using M1.6 fasteners. No separate servo support or frame-mounting bolts. Nominal rigid contact is not proof of clamp torque or actual case fit.",
-        "passed": overlap < TOL and all(row["passed"] for row in rows),
+        "scope": "The two published X06 ears bear on the removable holder using M1.6 fasteners. The separate M2 holder joint retains this complete assembly. Nominal rigid contact is not proof of clamp torque or actual case fit.",
+        "passed": frame_overlap < TOL
+        and holder_overlap < TOL
+        and all(row["passed"] for row in rows),
+    }
+
+
+def holder_mount_check(doc, prefix):
+    """Check a fixed face/ledge/end-stop joint and both seated M2 fasteners."""
+    holder_object = doc.getObject(prefix + "ServoHolder")
+    if holder_object is None:
+        return {"pod": prefix, "passed": False, "error": "Missing servo holder"}
+    frame = world_shape(doc.PropulsionFixedFrame)
+    holder = world_shape(holder_object)
+    overlap = intersection_volume(frame, holder)
+    contact_area = _planar_contact_area(frame, holder)
+    sign = 1 if prefix == "Port" else -1
+    rotation = doc.MainPropulsionModule.getGlobalPlacement().Rotation
+    registers = []
+    for feature, local_delta in (
+        ("mating_face", (0, sign * 0.05, 0)),
+        ("support_ledge", (0, 0, -0.05)),
+        ("end_stop", (-sign * 0.05, 0, 0)),
+    ):
+        delta = rotation.multVec(App.Vector(*local_delta))
+        blocking = intersection_volume(translated_shape(holder, *delta), frame)
+        registers.append(
+            {
+                "feature": feature,
+                "blocking_intersection_mm3": blocking,
+                "passed": blocking > TOL,
+            }
+        )
+    clamps = Part.makeCompound([frame, holder])
+    cases = []
+    for suffix in ("Negative", "Positive"):
+        name = prefix + "HolderMount" + suffix
+        cases.append(
+            {
+                "bolt": name + "Bolt",
+                **clamp_fastener_check(
+                    clamps,
+                    world_shape(doc.getObject(name + "Bolt")),
+                    world_shape(doc.getObject(name + "Nut")),
+                ),
+            }
+        )
+    return {
+        "pod": prefix,
+        "holder": holder_object.Name,
+        "holder_frame_intersection_mm3": overlap,
+        "nominal_mating_contact_area_mm2": contact_area,
+        "registration_faces": registers,
+        "cases": cases,
+        "scope": "Nominal broad mating face, support ledge and one lateral stop with two seated M2 fasteners. Open opposite sides avoid a closed precision pocket. Contact and directional blocking do not establish printed tolerance, clamp stiffness or repeatability.",
+        "passed": overlap < TOL
+        and contact_area > 1
+        and all(row["passed"] for row in registers + cases),
     }
 
 
@@ -552,23 +615,119 @@ def tilt_clearance_check(doc, module, prefix):
     }
 
 
+def holder_mount_fastener_names(prefix):
+    return {
+        prefix + "HolderMount" + side + kind
+        for side in ("Negative", "Positive")
+        for kind in ("Bolt", "Nut")
+    }
+
+
+def driver_lateral_service_check(shape, start, end, obstacles, spec, sign):
+    """Bound the toothed disk and smaller hub separately during lateral release.
+
+    A single bounding box fills the empty corners around the large gear and
+    falsely hits the retained small gear. These exact swept cylinders enclose
+    the complete bought gear; containment of the actual CAD is checked first.
+    """
+    axis = App.Vector(0, sign, 0)
+    x, z = sign * spec.input_x_mm, spec.input_z_mm
+    reference, swept = [], []
+    for y, height, radius in (
+        (propulsion.GEAR_HUB_START_Y, 5, spec.driver.hub_diameter_mm / 2),
+        (
+            propulsion.GEAR_FACE_START_Y,
+            FACE_WIDTH_MM,
+            MODULE_MM * (spec.driver.teeth + 2) / 2,
+        ),
+    ):
+        origin = App.Vector(x, sign * y, z)
+        cylinder = Part.makeCylinder(radius, height, origin, axis)
+        reference.append(cylinder)
+        first = translated_shape(cylinder, *start)
+        last = translated_shape(cylinder, *end)
+        bridge = Part.makeBox(
+            abs(end[0] - start[0]),
+            height,
+            2 * radius,
+            App.Vector(
+                x + min(start[0], end[0]),
+                min(sign * y, sign * (y + height)) + start[1],
+                z - radius + start[2],
+            ),
+        )
+        swept.append(first.fuse(last).fuse(bridge))
+    envelope = reference[0].fuse(reference[1])
+    outside = abs(shape.cut(envelope).Volume)
+    sweep = swept[0].fuse(swept[1])
+    hits = {
+        name: intersection_volume(sweep, other) for name, other in obstacles.items()
+    }
+    axial_invariance = start[1:] == end[1:] and abs(end[0] - start[0]) > TOL
+    return {
+        "obstacles": sorted(obstacles),
+        "segments": [
+            {
+                "start_mm": list(start),
+                "end_mm": list(end),
+                "method": "continuous tooth-disk and hub swept-cylinder union",
+                "intersection_mm3": hits,
+                "passed": all(value < TOL for value in hits.values()),
+            }
+        ],
+        "gear_outside_reference_envelope_mm3": outside,
+        "passed": axial_invariance
+        and outside < TOL
+        and all(value < TOL for value in hits.values()),
+    }
+
+
+def servo_lateral_service_check(shape, start, end, obstacles):
+    """Partition the actual servo at its axial steps before continuous sweeping.
+
+    The ear tips do not extend along the whole case depth. Sweeping one box
+    around case, ears and spline fills those absent corners. Axial slabs from
+    the live shape preserve them, and a coverage check prevents missing solid.
+    """
+    bounds = shape.BoundBox
+    planes = sorted({round(vertex.Point.y, 9) for vertex in shape.Vertexes})
+    pieces, segments = [], []
+    for low, high in zip(planes, planes[1:]):
+        if high - low < TOL:
+            continue
+        slab = shape.common(
+            Part.makeBox(
+                bounds.XLength + 2,
+                high - low,
+                bounds.ZLength + 2,
+                App.Vector(bounds.XMin - 1, low, bounds.ZMin - 1),
+            )
+        )
+        if abs(slab.Volume) < TOL:
+            continue
+        pieces.append(slab)
+        result = continuous_path(slab, [start, end], obstacles)
+        segments.extend(
+            {"source_axial_slab_mm": [low, high], **row} for row in result["segments"]
+        )
+    covered = Part.makeCompound(pieces)
+    missing = abs(shape.cut(covered).Volume) if pieces else abs(shape.Volume)
+    return {
+        "obstacles": sorted(obstacles),
+        "segments": segments,
+        "uncovered_servo_volume_mm3": missing,
+        "passed": bool(segments)
+        and missing < TOL
+        and all(row["passed"] for row in segments),
+    }
+
+
 def servo_assembly_service_check(doc, module, prefix):
-    """Slide the released servo and complete direct drive out of its open cradle."""
+    """Remove the whole servo/driver holder while retaining the output assembly."""
     mount = doc.getObject(prefix + "ServoMount")
     sign = 1 if prefix == "Port" else -1
     objects = module["printed"] + module["hardware"] + module["references"]
-    released = {
-        prefix + "ServoEar" + side + kind
-        for side in ("Lower", "Upper")
-        for kind in ("Bolt", "Nut")
-    }
-    all_shapes = {obj.Name: world_shape(obj) for obj in objects}
-    gear_name = prefix + "OutputGear"
-    gear_removal = continuous_path(
-        all_shapes[gear_name],
-        [(0, 0, 0), (0, -sign * 35, 0)],
-        {name: shape for name, shape in all_shapes.items() if name != gear_name},
-    )
+    released = holder_mount_fastener_names(prefix)
     moving = {
         obj.Name: world_shape(obj)
         for obj in objects
@@ -577,40 +736,64 @@ def servo_assembly_service_check(doc, module, prefix):
     fixed = {
         obj.Name: world_shape(obj)
         for obj in objects
-        if not belongs_to_group(obj, mount) and obj.Name not in released | {gear_name}
+        if not belongs_to_group(obj, mount) and obj.Name not in released
     }
+    # Sweep in the module frame: the conservative fallback uses axis-aligned
+    # bounds and must not grow merely because the whole gondola is rotated.
+    placement = module["group"].getGlobalPlacement()
+    inverse = placement.inverse()
+    for shape in (*moving.values(), *fixed.values()):
+        shape.Placement = inverse.multiply(shape.Placement)
+    inward = -sign * propulsion.HOLDER_RELEASE_INBOARD
+    outward = sign * propulsion.HOLDER_RELEASE_OUTWARD
+    waypoints = [(0, 0, 0), (0, inward, 0), (outward, inward, 0)]
     rows = []
-    for index in range(81):
-        distance = sign * 40 * index / 80
-        collisions = []
-        for name, shape in moving.items():
-            placed = translated_shape(shape, x=distance)
-            for other, obstacle in fixed.items():
-                volume = intersection_volume(placed, obstacle)
-                if volume > TOL:
-                    collisions.append(
-                        {"moving": name, "fixed": other, "intersection_mm3": volume}
-                    )
-        rows.append(
-            {
-                "translation_mm": [distance, 0, 0],
-                "collisions": collisions,
-                "passed": not collisions,
+    for name, shape in moving.items():
+        if name == prefix + "DriverGear":
+            axial = continuous_path(shape, waypoints[:2], fixed)
+            lateral = driver_lateral_service_check(
+                shape,
+                waypoints[1],
+                waypoints[2],
+                fixed,
+                drive_for_document(doc),
+                sign,
+            )
+            result = {
+                "obstacles": axial["obstacles"],
+                "segments": axial["segments"] + lateral["segments"],
+                "gear_outside_reference_envelope_mm3": lateral[
+                    "gear_outside_reference_envelope_mm3"
+                ],
+                "passed": axial["passed"] and lateral["passed"],
             }
-        )
-
+        elif name == prefix + "Servo":
+            axial = continuous_path(shape, waypoints[:2], fixed)
+            lateral = servo_lateral_service_check(
+                shape, waypoints[1], waypoints[2], fixed
+            )
+            result = {
+                "obstacles": axial["obstacles"],
+                "segments": axial["segments"] + lateral["segments"],
+                "uncovered_servo_volume_mm3": lateral["uncovered_servo_volume_mm3"],
+                "passed": axial["passed"] and lateral["passed"],
+            }
+        else:
+            result = continuous_path(shape, waypoints, fixed)
+        rows.append({"part": name, **result})
     return {
         "servo_mount": mount.Name,
         "released_fasteners": sorted(released),
-        "removed_output_gear": gear_name,
-        "output_gear_removal": gear_removal,
+        "retained_output_gear": prefix + "OutputGear",
         "moving_parts": sorted(moving),
-        "translation_mm": [sign * 40, 0, 0],
-        "sampled_positions": rows,
-        "scope": "Disconnect leads, release the small output gear's set screw and withdraw that gear inward along its checked path, then remove both servo ear bolt/nut pairs. Slide the servo, horn, adapter and driver gear together sideways out of the open C cradle. All remaining local parts stay installed. 81 sampled positions include sliding ear-face contact; not a continuous sweep proof. Bench-service geometry does not model flexible wires or handling tools.",
-        "passed": bool(moving)
-        and gear_removal["passed"]
-        and all(row["passed"] for row in rows),
+        "coordinate_frame": "propulsion module",
+        "waypoints_mm": [list(point) for point in waypoints],
+        "world_displacements_mm": [
+            list(placement.Rotation.multVec(App.Vector(*point))) for point in waypoints
+        ],
+        "part_paths": rows,
+        "scope": "Disconnect leads at neutral and remove the two holder M2 bolt/nut pairs. Move the complete holder/servo/horn/driver assembly 4mm axially inward to disengage the 3mm gear faces, then 40mm sideways outward. Servo-ear fasteners, output gear, shafts, bearings and motor remain assembled. Continuous translation envelopes include all retained local obstacles; flexible leads and handling tools are unmodeled.",
+        "passed": bool(moving) and all(row["passed"] for row in rows),
     }
 
 
@@ -643,12 +826,13 @@ def continuous_path(shape, waypoints, obstacles):
 
 
 def horn_adapter_service_check(doc, module, prefix):
-    """Separate the adapter on the removed servo assembly, in declared order."""
+    """Separate the adapter on the removed servo/holder assembly, in declared order."""
     mount = doc.getObject(prefix + "ServoMount")
     shapes = {
         obj.Name: world_shape(obj)
         for obj in module["printed"] + module["hardware"] + module["references"]
         if belongs_to_group(obj, mount)
+        and obj.Name not in holder_mount_fastener_names(prefix)
     }
     sign = 1 if prefix == "Port" else -1
     removed = {
@@ -672,7 +856,7 @@ def horn_adapter_service_check(doc, module, prefix):
                 "removed_local_parts": sorted(removed),
                 "translation_mm": list(delta),
                 **result,
-                "scope": "After checked whole-servo removal, remove the driver gear axially and release the single adapter fastener. Pull the front adapter forward off the installed horn, then slide its rear retainer sideways. The stock horn and servo stay together; remove the adapter before servicing the unmodeled OEM retaining screw.",
+                "scope": "After checked whole-holder removal, remove the driver gear axially and release the single adapter fastener. Pull the front adapter forward off the installed horn, then slide its rear retainer sideways. The stock horn and servo stay together; remove the adapter before servicing the unmodeled OEM retaining screw.",
             }
         )
         removed.add(name)
@@ -821,6 +1005,7 @@ def _record_drive_motion_checks(report, doc, module, physical, prefix):
     report["drive_motion"].append(drive_motion_check(doc, prefix))
     report["fixed_servo_datum"].append(fixed_servo_datum_check(doc, prefix))
     report["servo_mounts"].append(servo_mount_check(doc, prefix))
+    report["holder_mounts"].append(holder_mount_check(doc, prefix))
     report["direct_adapter_fit"].append(direct_adapter_fit_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
     report["gear_mesh_alignment"].append(
@@ -932,7 +1117,7 @@ def _record_drive_service_checks(report, prefix, sign, physical, servo_names):
         report["gear_service"].append(
             {
                 "gear": name,
-                "scope": "Release the included radial set screw before axial withdrawal. Driver gear is serviced on the removed servo assembly; all remaining local parts stay installed. Set-screw tip/length and driver access are unmodeled release gates.",
+                "scope": "Release the included radial set screw before axial withdrawal. Driver gear is serviced on the removed servo/holder assembly; all remaining local parts stay installed. Set-screw tip/length and driver access are unmodeled release gates.",
                 **continuous_path(
                     physical[name],
                     [(0, 0, 0), (0, direction * 35, 0)],
@@ -968,7 +1153,9 @@ def _record_drive_checks(report, doc, module, objects, physical, frame, prefix, 
     pod = doc.getObject(prefix + "Pod")
     mount = doc.getObject(prefix + "ServoMount")
     _record_drive_motion_checks(report, doc, module, physical, prefix)
-    servo_names = {obj.Name for obj in objects if belongs_to_group(obj, mount)}
+    servo_names = {
+        obj.Name for obj in objects if belongs_to_group(obj, mount)
+    } - holder_mount_fastener_names(prefix)
     bearing_specs = _record_output_stub_checks(report, prefix, pod, physical, frame)
     _record_bearing_checks(report, prefix, physical, bearing_specs)
     _record_drive_service_checks(report, prefix, sign, physical, servo_names)

@@ -12,7 +12,7 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "U"
+DESIGN_REVISION = "V"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -98,13 +98,13 @@ EXCLUDED_EQUIPMENT = (
     "fin_servos",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_SOCKET_CAP": 10,
+    "M2X8_SOCKET_CAP": 14,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     "M2X5_PA66_PAN_HEAD": 6,
     "M2_FF_PA66_AF4_L25": 2,
     "M2x6_ISO4026_DIN913": 3,
-    "M2_SQUARE_NUT_DIN562": 15,
+    "M2_SQUARE_NUT_DIN562": 19,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "MR63ZZ": 4,
@@ -134,12 +134,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 2,
     "tilting_propulsors": 2,
-    "installed_prints": 17,
+    "installed_prints": 19,
     "optical_mount_parts": 3,
     "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 14,
+    "unique_print_files": 15,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -236,7 +236,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching integral propulsion frame for the selected gear pair; changing ratio requires replacement driver gears and the complete frame, followed by a complete rebuild and validation. No cartridge mount or mesh-adjustment slot remains; servo ear clearance, printed-position error and PA12 creep still affect the mesh. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the frame; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching fixed-datum servo holder for the selected gear pair. The common frame retains the output bearings; changing between supported ratios requires replacement driver gears and holders, followed by a complete rebuild and validation. Each holder carries the servo, stock horn and large driver gear and uses two M2 fasteners against fixed registration faces. No mesh-adjustment slots are provided; servo ear clearance, printed-position error and PA12 creep still affect the mesh. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the affected holder; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -261,6 +261,10 @@ UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
         "optical_stack_retention",
         "Verify purchased M2 PA66 spacers, both-end thread depths/engagement, printed pads, pivot friction, PA12/PA66 creep, vibration loosening and cable torque. Test both stack hosts and loaded rail/tape retention; no qualified tightening torque or stiffness is claimed.",
+    ),
+    UnresolvedInterface(
+        "rc_and_heading_installation",
+        "The latest supplied vehicle document selects a RadioMaster XR2 receiver and leaves the heading-reference device unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.",
     ),
     UnresolvedInterface(
         "finished_mass",
@@ -318,5 +322,6 @@ def project_status():
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
+        "notion_source_scope": "Retained timestamp identifies the earlier source snapshot. Rev V also considers the user-supplied vehicle-document attachment; mechanical replacement text is proposed separately. The live Notion page was not re-read or updated for this revision.",
         **release_status(),
     }

@@ -26,8 +26,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - Prioritize low mass, simple geometry and few purchased part types for this
   indoor LTA gondola. Lower stiffness than a sub-250 g multirotor is accepted;
   this is not a strength qualification. Prefer verified stock components and
-  integral printable carriers. Replace the integral propulsion frame for servo
-  or gear interface changes; retain separable parts needed for assembly or service.
+  integral printable carriers. Use a detachable fixed-datum servo/driver holder
+  where replacement avoids rebuilding the output-bearing frame; retain only
+  separable parts needed for assembly or service.
 - Model only supported interfaces. Do not invent device holes, bearing planes,
   thread depths, mounting kits, cable datums or electrical compatibility.
   Preserve source discrepancies and explicit design allowances.
@@ -39,10 +40,11 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   retention together. Purchased gear profiles are reference geometry, never
   printable replacements; shaft and bearing fits require physical trials.
 - The selected driver gears mount on bought KST horns through compact printed
-  adapters. Only output axes use external shafts/bearings. The matching integral
-  propulsion frame fixes the servo position; replace that whole print when a
-  ratio or servo interface changes. Rebuild geometry, controls and BOM together.
-  No adjustable cartridge, sliding slots or GUI ratio-only property is needed.
+  adapters. Only output axes use external shafts/bearings. The gear-specific
+  holder fixes the servo position against the common propulsion frame. Replace
+  the holder and driver for a supported ratio change; a different servo still
+  requires its own verified interface. Rebuild geometry, controls and BOM together.
+  No sliding slots or GUI ratio-only property is needed.
   Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh, adapter
   concentricity/retention and servo output loading; printed nominal dimensions
   are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
