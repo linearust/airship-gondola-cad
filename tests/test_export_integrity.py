@@ -85,9 +85,7 @@ class ExportIntegrityTests(unittest.TestCase):
                         PrintPart=False,
                     )
                 )
-        nuts = [
-            obj for obj in self.hardware if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562"
-        ]
+        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT"]
         # One purchase specification has different native evidence and wording
         # across rail, journal and optical instances. It must remain one BOM row.
         for obj in nuts[2:]:
@@ -114,8 +112,8 @@ class ExportIntegrityTests(unittest.TestCase):
         self.assertEqual(len(bom["items"]), len(expected))
         self.assertEqual(bom["purchase_scope"], procurement.hardware_bom_scope())
         self.assertFalse(bom["purchase_scope"]["complete_gondola_purchase_list"])
-        nuts = next(row for row in bom["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562")
-        self.assertEqual(nuts["quantity"], expected["M2_SQUARE_NUT_DIN562"])
+        nuts = next(row for row in bom["items"] if row["sku"] == "M2_HEX_NUT")
+        self.assertEqual(nuts["quantity"], expected["M2_HEX_NUT"])
         self.assertEqual(
             nuts["sources"],
             ["https://example.com/first-journal", "https://example.com/journal-nuts"],
@@ -133,9 +131,7 @@ class ExportIntegrityTests(unittest.TestCase):
         self.assertTrue(audit["not_printed"])
 
     def test_shared_sku_keeps_all_role_notes_and_is_order_independent(self):
-        nuts = [
-            obj for obj in self.hardware if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562"
-        ]
+        nuts = [obj for obj in self.hardware if obj.HardwareSKU == "M2_HEX_NUT"]
         for index, part in enumerate(nuts):
             part.Label = "Rail nut" if index < 3 else "Journal / optical nut"
             part.Notes = (
@@ -144,9 +140,7 @@ class ExportIntegrityTests(unittest.TestCase):
                 else "Hold exposed nut while tightening"
             )
         first = self.export()
-        row = next(
-            row for row in first["items"] if row["sku"] == "M2_SQUARE_NUT_DIN562"
-        )
+        row = next(row for row in first["items"] if row["sku"] == "M2_HEX_NUT")
         self.assertEqual(row["labels"], ["Journal / optical nut", "Rail nut"])
         self.assertEqual(
             row["notes"], ["Captive clamp pocket", "Hold exposed nut while tightening"]
@@ -171,10 +165,10 @@ class ExportIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "more than once"):
             self.export()
 
-    def test_audit_rejects_hex_nut_substitution_for_square_rail_nuts(self):
+    def test_audit_rejects_an_unapproved_nut_substitution(self):
         for obj in self.hardware:
-            if obj.HardwareSKU == "M2_SQUARE_NUT_DIN562":
-                obj.HardwareSKU = "M2_HEX_NUT"
+            if obj.HardwareSKU == "M2_HEX_NUT":
+                obj.HardwareSKU = "M2_UNQUALIFIED_NUT"
         self.export()
         audit = self.equipment.hardware_check(self.document, self.source)
         self.assertFalse(audit["passed"])
@@ -186,9 +180,7 @@ class ExportIntegrityTests(unittest.TestCase):
                 with self.subTest(field=key, operation=operation):
                     bom = self.export()
                     nuts = next(
-                        row
-                        for row in bom["items"]
-                        if row["sku"] == "M2_SQUARE_NUT_DIN562"
+                        row for row in bom["items"] if row["sku"] == "M2_HEX_NUT"
                     )
                     if operation == "remove":
                         nuts[key].pop()
@@ -203,7 +195,7 @@ class ExportIntegrityTests(unittest.TestCase):
                         next(
                             row
                             for row in audit["bom_rows"]
-                            if row["sku"] == "M2_SQUARE_NUT_DIN562"
+                            if row["sku"] == "M2_HEX_NUT"
                         )["matches_native_instances"]
                     )
 

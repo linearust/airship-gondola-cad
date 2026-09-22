@@ -20,7 +20,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         module = build_propulsion_module(doc, configuration or SELECTED_DRIVE)
         return doc, module
 
-    def test_both_ratios_and_sides_keep_the_reserve_after_axial_play(self):
+    def test_selected_drive_both_sides_keep_the_reserve_after_axial_play(self):
         from gondola.contracts.drive import DRIVE_CONFIGURATIONS
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 

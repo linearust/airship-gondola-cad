@@ -5,13 +5,16 @@ from pathlib import Path
 
 from .config import ARTIFACT_SCHEMA_VERSION
 from .contracts.design import hardware_bom_scope
+from .contracts.fasteners import KIT_MATERIAL
 from .provenance import source_fingerprint
 
 HARDWARE_MATERIAL_CODES = {
     "A2 stainless steel": "A2",
     "Nylon PA66": "PA66",
-    "POM": "POM",
-    "SUJ2-equivalent hard-chrome steel": "SUJ2",
+    KIT_MATERIAL: "CarbonSteel",
+    "Aluminium 6061 (seller claim)": "Al6061",
+    "Copper alloy (seller claim)": "CopperAlloy",
+    "Aluminium alloy (seller claim; steel attribute conflicts)": "UnverifiedAluminium",
     "Bearing steel": "BearingSteel",
     "Aluminium alloy (grade unspecified)": "Aluminium",
 }
@@ -115,10 +118,10 @@ def export_hardware_bom(objects, out, stem):
         "source_fingerprint": source_fingerprint(),
         "purchased_hardware_quantity": len(objects),
         "unique_purchase_spec_count": len(rows),
-        "all_threads": "General mechanism fasteners use M2 x0.4. Four X06 ear pairs use M1.6 x0.35 for hole/head clearance. Purchased GEABP gears include M3 set screws; bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
+        "all_threads": "General mechanism fasteners use M2 x0.4. Four X06 ear pairs use M1.6 x0.35 for hole/head clearance. Selected gears have M3 threaded holes; four M3 set screws remain unmodeled pending actual hub and screw dimensions. Bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
         "purchase_scope": hardware_bom_scope(),
         "color": "Gold = purchased hardware; not a material or finish specification.",
-        "purchasing_status": "Specifications and source drawings; no marketplace SKU or seller lot verified.",
+        "purchasing_status": "Selected cart variants and supplier drawings recorded; delivered dimensions, material, fit and seller lot not physically verified.",
         "items": rows,
     }
     Path(out, stem + "_hardware_bom.json").write_text(

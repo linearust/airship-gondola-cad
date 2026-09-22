@@ -8,11 +8,12 @@ from dataclasses import asdict, dataclass
 
 from .drive import SELECTED_DRIVE
 from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
+from .fasteners import KIT_MATERIAL
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AA"
+DESIGN_REVISION = "AB"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -114,36 +115,43 @@ EXCLUDED_EQUIPMENT = (
     "yaw_motor",
     "fins",
     "fin_servos",
+    "MG-A01 M10 Ultra",
+    "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_SOCKET_CAP": 12,
+    "M2X8_BUTTON_HEAD": 15,
+    "M2X6_BUTTON_HEAD": 4,
+    "M2X5_BUTTON_HEAD": 4,
+    "M2_HEX_NUT": 19,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
-    "M2X5_PA66_PAN_HEAD": 6,
     "M2_FF_PA66_AF4_L25": 2,
-    "M2x6_ISO4026_DIN913": 3,
-    "M2_SQUARE_NUT_DIN562": 17,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
-    "MR63ZZ": 4,
-    "PSFU3-24-FC5-A3": 2,
-    "PSFU3-14": 2,
+    "BEARING_3X6X2_5": 4,
+    "AL6061_CUT3_L24_FLAT5_A0": 2,
+    "AL6061_CUT3_L14": 2,
+    "AL6061_CUT3_L16_FLAT16_A0": 2,
     "KST_0415_13": 2,
 }
 
 HARDWARE_MATERIALS = {
     sku: (
         "Nylon PA66"
-        if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD")
-        else "POM"
-        if sku.startswith("GEABP")
-        else "SUJ2-equivalent hard-chrome steel"
-        if sku.startswith("PSFU")
+        if sku == "M2_FF_PA66_AF4_L25"
+        else "Aluminium alloy (seller claim; steel attribute conflicts)"
+        if sku == SELECTED_DRIVE.driver.sku
+        else "Copper alloy (seller claim)"
+        if sku == SELECTED_DRIVE.output.sku
+        else "Aluminium 6061 (seller claim)"
+        if sku.startswith("AL6061_CUT")
         else "Bearing steel"
-        if sku == "MR63ZZ"
+        if sku == "BEARING_3X6X2_5"
         else "Aluminium alloy (grade unspecified)"
         if sku == "KST_0415_13"
         else "A2 stainless steel"
+        if sku.startswith("M1_6")
+        else KIT_MATERIAL
     )
     for sku in PURCHASED_HARDWARE_QUANTITIES
 }
@@ -246,7 +254,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed horn-adapter fit, concentric 7mm gear-bore seating and gear retention on the printed spigot. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
+        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed horn-adapter fit, 8 mm D socket and locally cut Ø3×16 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -254,7 +262,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. Changing between supported ratios replaces the bridge and both driver gears, followed by a complete rebuild and validation. Two broad local Z seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify MR63ZZ shaft/housing fits, outer-race cap capture, shield clearance and axial stops. PSFU3 h5 is not guaranteed to slip into every bearing; shaft friction retention and preload remain unqualified.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T selected seller pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. Two broad local Z seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3×6×2.5 bearing and Ø3 6061 rod fits, outer-race cap capture, shield clearance and axial stops. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision Ø3 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -282,7 +290,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
-        "The latest supplied vehicle document selects a RadioMaster XR2 receiver and leaves the heading-reference device unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.",
+        "The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.",
     ),
     UnresolvedInterface(
         "finished_mass",
@@ -310,6 +318,7 @@ def hardware_bom_scope():
         "excluded_unmodeled_requirements": [
             "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
             "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Selected stock horns and modeled adapter hardware are included.",
+            "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
         ],
         "unmodeled_wiring_purchase_plan": WIRING_PURCHASE_PLAN,

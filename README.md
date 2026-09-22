@@ -12,9 +12,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   the finite gear configurations and source-authoritative `SELECTED_DRIVE`.
   Inspect project status with `python3 -m gondola status`.
 - Read `references/drive_selection_review.md` before drivetrain changes or
-  purchasing. It records the user's revised gear requirement and its pending
-  implementation; `SELECTED_DRIVE` currently identifies the previous CAD
-  configuration, not the newly selected target.
+  purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
+  `references/kailash_gears_selected_evidence.md` retains its seller evidence.
+  `references/cart_adaptation_review.md` records cart choices and remaining
+  purchases; current build quantities belong to `contracts/design.py`.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
@@ -54,12 +55,16 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   Check continuous rotation envelopes near fasteners as well as sampled poses.
   Include permitted axial travel in clearance and gear-face engagement budgets;
   distinguish deliberate bearing, gear and axial-stop contact from collisions.
-- The selected driver gears mount on bought KST horns through compact printed
-  adapters. Only output axes use external shafts/bearings. One removable
+- The selected plain-bore driver gears mount on short nominal-3mm input stubs,
+  retained in printed couplings around bought KST horns. Keep the original
+  horn spline and retaining screw; do not invent a printed spline or restore
+  the former hollow journal for a 7 mm gear bore. Only output axes use external
+  bearings. One removable
   bridge carries both servo cradles and complete input drives. Two local seats
   and fixed datums locate it on the common output-bearing frame. Replace the
-  bridge and drivers for a supported ratio change; a different servo requires
-  its own verified interface. Check seated contact and the ordered module
+  bridge and the affected transmission parts for a ratio change; only the
+  selected ratio is currently supported. A different servo requires its own
+  verified interface. Check seated contact and the ordered module
   removal path while retaining the output shafts, bearings and motor carriers.
   Rebuild geometry, controls and BOM together.
   No sliding slots or GUI ratio-only property is needed.
@@ -67,6 +72,16 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   concentricity/retention and servo output loading; printed nominal dimensions
   are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
   fixture audit and release checks below.
+- M2 kit screws use explicit design head envelopes until measured. Do not label
+  them DIN912/A2 or infer their mass from the envelope as a measured value.
+  Retain short stack screws to avoid blind-spacer bottoming. The rail hex-nut
+  seat requires its declared finished-fit range and coupon checks; raw printing
+  tolerance does not guarantee capture. Ordinary bolt tips must be checked
+  before pressing the rail; they are not certified DIN913 flat points.
+- Cut the selected nominal-3mm rod to the encoded preparation keys. Keep output
+  bearing journals round; full-length flats belong only on input stubs. Generic
+  selected bearings are not certified ISC parts; retained ISC evidence is a
+  dimensional comparison, not the purchased lot's mass or fit qualification.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

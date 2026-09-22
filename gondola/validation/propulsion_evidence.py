@@ -2,8 +2,6 @@
 
 from types import MappingProxyType
 
-from gondola.contracts.design import PURCHASED_HARDWARE_QUANTITIES
-
 PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
     {
         "drive_motion": 2,
@@ -14,6 +12,7 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "bridge_joint": 1,
         "servo_module_service": 1,
         "direct_adapter_fit": 2,
+        "input_shaft_retention": 2,
         "bearing_stacks": 4,
         "output_stub_clearance": 4,
         "shaft_service": 4,
@@ -27,11 +26,13 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_drive_service": 2,
         "servo_case_service": 2,
         "rail_key_access": 2,
-        "fastener_stacks": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
-        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "fastener_service": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
-        + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "functional_wall_probes": 12,
+        # Twelve seated M2 propulsion joints and four M1.6 servo-ear joints.
+        # Rail screws are outside this module. The two radial input-stub jack
+        # clamps stay assembled during service and use input_shaft_retention;
+        # their deliberately unseated heads are not bearing-face stacks.
+        "fastener_stacks": 16,
+        "fastener_service": 16,
+        "functional_wall_probes": 13,
         "continuous_nut_loading": 2,
         "geometry": 12,  # Common output frame, servo bridge and five prints per side.
     }

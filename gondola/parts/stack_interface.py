@@ -11,6 +11,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, box, set_property, union
+from gondola.contracts import fasteners
 from gondola.contracts.design import (
     STACK_AXIS_LOCATIONS,
     STACK_HOLE_CENTRES,
@@ -144,13 +145,14 @@ def build_stack_hardware(doc, group):
                 doc,
                 group,
                 f"OpticalStack{end}Bolt{index}",
-                "BUY | M2x5 PA66 slotted pan screw",
+                "BUY | M2x5 kit button-head screw | design head envelope",
                 purchased_hardware.stack_screw_shape(),
-                "M2X5_PA66_PAN_HEAD",
+                "M2X5_BUTTON_HEAD",
                 common
-                + " Nominal thread entry3.0mm through printed2mm plate without washers; actual printed thickness, screw tolerance and blind depth must be checked.",
+                + " Nominal thread entry3.0mm through printed2mm plate without washers; retain5mm length to avoid bottoming. Actual printed thickness, screw tolerance and blind depth must be checked. "
+                + fasteners.HEAD_ENVELOPE_NOTE,
                 STACK_SCREW_SOURCE,
-                "Nylon PA66",
+                fasteners.KIT_MATERIAL,
             )
             bolt.Placement = App.Placement(V(x, y, bearing_z), rotation)
             set_property(bolt, "StackEnd", end)

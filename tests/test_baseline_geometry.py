@@ -273,11 +273,11 @@ class FrozenBaselineTests(unittest.TestCase):
         actual = self.feature("ActualHardware", shape)
         for obj in (expected, actual):
             obj.addProperty("App::PropertyString", "HardwareSKU")
-            obj.HardwareSKU = "M2X8_SOCKET_CAP"
+            obj.HardwareSKU = "M2X8_BUTTON_HEAD"
             obj.addProperty("App::PropertyBool", "PrintPart")
             obj.PrintPart = False
             obj.addProperty("App::PropertyString", "PurchaseRequirements")
-            obj.PurchaseRequirements = "A2 stainless steel, M2x8, DIN912"
+            obj.PurchaseRequirements = "Kit steel M2x8; unmeasured button-head envelope"
         self.assertTrue(compare_shape_objects(actual, expected)["passed"])
         actual.HardwareSKU = "M2_HEX_NUT"
         self.assertFalse(compare_shape_objects(actual, expected)["passed"])

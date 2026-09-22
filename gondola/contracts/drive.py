@@ -1,4 +1,4 @@
-"""Finite, sourced gear choices on a replaceable paired servo bridge.
+"""Selected purchased gears on a replaceable paired servo bridge.
 
 Select a complete configuration before building. A saved CAD property is an
 identity record, not a live gear-ratio knob: changing it cannot change teeth.
@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from types import MappingProxyType
 
 MODULE_MM = 0.5
-FACE_WIDTH_MM = 3.0
+PRESSURE_ANGLE_DEG = 20.0
 PIVOT_Z_MM = 48.2
 RADIAL_X = 0.4
 RADIAL_Z = -math.sqrt(1 - RADIAL_X**2)
@@ -21,17 +21,54 @@ class GearSpec:
     teeth: int
     hub_diameter_mm: float
     bore_mm: float
+    face_width_mm: float
+    total_length_mm: float
+    bore_tolerance: str
+    sku: str
+    item_url: str
+    material_claim: str
+    set_screw_axis_from_hub_end_mm: float | None
+    measured_mass_g: float | None = None
 
     @property
-    def sku(self):
-        return f"GEABP0.5-{self.teeth}-3-B-{self.bore_mm:g}"
+    def hub_extension_mm(self):
+        return self.total_length_mm - self.face_width_mm
+
+    @property
+    def pitch_diameter_mm(self):
+        return MODULE_MM * self.teeth
+
+    @property
+    def outside_diameter_mm(self):
+        return MODULE_MM * (self.teeth + 2)
 
 
 GEARS = MappingProxyType(
     {
-        20: GearSpec(20, 8.5, 3.0),
-        60: GearSpec(60, 10.0, 7.0),
-        64: GearSpec(64, 10.0, 7.0),
+        16: GearSpec(
+            teeth=16,
+            hub_diameter_mm=6.5,
+            bore_mm=3.0,
+            face_width_mm=5.0,
+            total_length_mm=10.0,
+            bore_tolerance="Unspecified by seller",
+            sku="ALI_KAILASH_M05_16T_B3",
+            item_url="https://www.aliexpress.com/item/1005013121105173.html",
+            material_claim="Copper/copper alloy in seller text; exact alloy unverified",
+            set_screw_axis_from_hub_end_mm=2.5,
+        ),
+        48: GearSpec(
+            teeth=48,
+            hub_diameter_mm=12.0,
+            bore_mm=3.0,
+            face_width_mm=3.0,
+            total_length_mm=8.0,
+            bore_tolerance="H8 claimed by seller",
+            sku="ALI_KAILASH_M05_48T_B3",
+            item_url="https://www.aliexpress.com/item/1005011637445325.html",
+            material_claim="Aluminium alloy in seller description; alloy-steel attribute conflicts",
+            set_screw_axis_from_hub_end_mm=None,
+        ),
     }
 )
 
@@ -71,6 +108,11 @@ class DriveSpec:
             **asdict(self),
             "driver_sku": self.driver.sku,
             "output_sku": self.output.sku,
+            "module_mm": MODULE_MM,
+            "pressure_angle_deg": PRESSURE_ANGLE_DEG,
+            "nominal_full_face_overlap_mm": min(
+                self.driver.face_width_mm, self.output.face_width_mm
+            ),
             "angle_ratio": -self.ratio,
             "nominal_center_mm": self.center_distance_mm,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
@@ -81,13 +123,16 @@ class DriveSpec:
 
 DRIVE_CONFIGURATIONS = MappingProxyType(
     {
-        f"{teeth}_20": DriveSpec(f"{teeth}_20", GEARS[teeth], GEARS[20])
-        for teeth in (60, 64)
+        "48_16": DriveSpec("48_16", GEARS[48], GEARS[16]),
     }
 )
 # Source-authoritative build selection. Changing this requires a reviewed native
 # baseline transition; source fingerprints bind all subsequent release reports.
-SELECTED_DRIVE = DRIVE_CONFIGURATIONS["60_20"]
+SELECTED_DRIVE = DRIVE_CONFIGURATIONS["48_16"]
+# Effective mesh width only. Gear bodies must use their own face_width_mm.
+FACE_WIDTH_MM = min(
+    SELECTED_DRIVE.driver.face_width_mm, SELECTED_DRIVE.output.face_width_mm
+)
 
 
 def drive_for_document(doc):

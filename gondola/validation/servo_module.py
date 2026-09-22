@@ -141,6 +141,9 @@ def servo_module_service_check(doc, module):
             "Servo",
             "ServoHorn",
             "DriverGear",
+            "InputShaft",
+            "InputShaftClampBolt",
+            "InputShaftClampNut",
             "HornGearAdapter",
             "HornGearRetainer",
             "HornGearClampBolt",
@@ -186,7 +189,7 @@ def servo_module_service_check(doc, module):
         "part_paths": rows,
         "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",
-        "scope": "Neutral, unpowered bench service with leads disconnected. Release the supplied set screws and withdraw both small output gears inboard. Withdraw the two M2 mounting bolts, then slide each unthreaded square nut outward. Lift the paired servo module 0.5 mm and slide it 80 mm in +X. Keep both servos, horns, adapters, driver gears and their fasteners assembled. All output shafts, bearings, caps and motor carriers remain installed. Reverse for installation, fully seat the three datums and recheck neutral, tooth phase and shaft-flat alignment. Adjacent rail equipment, flexible leads, set-screw tools and actual fit forces are not certified by this local bench path.",
+        "scope": "Neutral, unpowered bench service with leads disconnected. Release the selected gear set screws and withdraw both small output gears inboard. Withdraw the two M2 mounting bolts, then slide each unthreaded hex nut outward. Lift the paired servo module 0.5 mm and slide it 80 mm in +X. Keep both servos, horns, adapters, driver gears, metal input stubs and both radial jack clamps assembled. Individual jack-clamp screw/nut access is a separate bench task and is not certified by this path. All output shafts, bearings, caps and motor carriers remain installed. Reverse for installation, fully seat the three datums and recheck neutral, tooth phase and shaft-flat alignment. Adjacent rail equipment, flexible leads, set-screw tools and actual fit forces are not certified by this local bench path.",
         "passed": moving == expected_moving
         and all(row["passed"] for row in gear_paths + fasteners + rows),
     }

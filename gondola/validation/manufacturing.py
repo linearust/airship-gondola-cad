@@ -112,15 +112,27 @@ def review(doc, registry):
         (
             "bare_shoe_nut_pocket_roof",
             "PropulsionFixedFrame",
-            (4, 8.0, 8.49),
-            (4, 8.0, 10.21),
-            1.7,
+            (
+                4,
+                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
+                rail.CLAMP_Z + rail.NUT_POCKET_AF / 2 - 0.01,
+            ),
+            (
+                4,
+                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
+                rail.TOP_Z + 0.01,
+            ),
+            rail.TOP_Z - rail.CLAMP_Z - rail.NUT_POCKET_AF / 2,
         ),
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (8.0, 80, propulsion.BASE_Z - 0.01),
-            (8.0, 80, propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01),
+            (8.0, propulsion.PIVOT_HALF_SPAN, propulsion.BASE_Z - 0.01),
+            (
+                8.0,
+                propulsion.PIVOT_HALF_SPAN,
+                propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01,
+            ),
             propulsion.FOOT_THICKNESS,
         ),
         (

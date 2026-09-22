@@ -32,6 +32,8 @@ class OpticalMountTests(unittest.TestCase):
         self.doc.recompute()
 
     def test_three_separate_solids_and_four_purchased_fasteners(self):
+        from gondola.contracts import fasteners
+
         self.assertEqual(len(self.module["printed"]), 3)
         self.assertEqual(len(self.module["hardware"]), 4)
         for obj in self.module["printed"] + self.module["hardware"]:
@@ -41,11 +43,11 @@ class OpticalMountTests(unittest.TestCase):
             self.assertFalse(obj.PrintPart, obj.Name)
             self.assertNotIn("WASHER", obj.HardwareSKU)
             if obj.Name.endswith("Bolt"):
-                self.assertEqual(obj.HardwareSKU, "M2X5_PA66_PAN_HEAD")
-                self.assertEqual(obj.MaterialSelection, "Nylon PA66")
+                self.assertEqual(obj.HardwareSKU, "M2X6_BUTTON_HEAD")
+                self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
             else:
-                self.assertEqual(obj.HardwareSKU, "M2_SQUARE_NUT_DIN562")
-                self.assertEqual(obj.MaterialSelection, "A2 stainless steel")
+                self.assertEqual(obj.HardwareSKU, "M2_HEX_NUT")
+                self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
         contract = json.loads(self.module["group"].OpticalMountContract)
         self.assertFalse(contract["holding_torque_verified"])
         self.assertFalse(contract["self_levelling"])
@@ -152,8 +154,8 @@ class OpticalMountTests(unittest.TestCase):
             direction = App.Vector(1, 0, 0) if axis == 0 else App.Vector(0, 1, 0)
             core = Part.makeCylinder(0.8, high - low, origin, direction)
             self.assertLess(abs(core.cut(bolt).Volume), 1e-5, prefix)
-            self.assertAlmostEqual(high - low, 1.2, places=7)
-            self.assertAlmostEqual(tip - high, 0.8, places=7)
+            self.assertAlmostEqual(high - low, 1.6, places=7)
+            self.assertAlmostEqual(tip - high, 1.4, places=7)
 
     def test_backset_post_regression_would_obstruct_the_pitch_screw(self):
         from gondola.cad import world_shape

@@ -103,18 +103,16 @@ def bridge_shape(drive=SELECTED_DRIVE):
         (x - CASE_WINDOW_WIDTH / 2, y - 1, z - 5 - CASE_WINDOW_HEIGHT / 2),
     )
     bridge = bridge_blank(drive).cut(window).cut(opposite(window))
-    # The connecting bars must not refill either sourced ear hole or its open
-    # neck, particularly with the lower 64T servo datum.
+    # The connecting bars must not refill either sourced ear hole or its neck.
     void = _ear_clearance(drive)
     bridge = bridge.cut(void).cut(opposite(void))
-    # Leave the lower M1.6 nut an open axial passage. This is needed for the
-    # lower 64T mounting datum and adds handling margin for the 60T bridge.
+    # Leave the lower M1.6 nut an open axial passage for assembly and service.
     nut_passage = box(5, 7.5, 2.2, (x - 2.5, PAD_INNER_Y, SEAT_Z - 0.1))
     return _mount_holes(bridge.cut(nut_passage).cut(opposite(nut_passage)))
 
 
 def frame_seats():
-    """Open nut entries and broad pads; identical for every supported gear pair."""
+    """Open nut entries and broad pads locating the removable paired drive."""
     width = PAD_OUTER_X - PAD_INNER_X
     seat = union(
         [

@@ -13,6 +13,36 @@ MINIMUM_GAP_MM = 0.1
 TOL = 1e-7
 
 
+def _input_drive_membership(parts):
+    """Require the selected metal-stub mechanism to share each input motion."""
+    suffixes = (
+        "ServoHorn",
+        "DriverGear",
+        "HornGearAdapter",
+        "HornGearRetainer",
+        "HornGearClampBolt",
+        "HornGearClampNut",
+        "InputShaft",
+        "InputShaftClampBolt",
+        "InputShaftClampNut",
+    )
+    rows = []
+    for prefix in ("Port", "Starboard"):
+        expected = {prefix + suffix for suffix in suffixes}
+        actual = {
+            part["name"] for part in parts if part["group"] == prefix + "InputDrive"
+        }
+        rows.append(
+            {
+                "group": prefix + "InputDrive",
+                "expected_parts": sorted(expected),
+                "actual_parts": sorted(actual),
+                "passed": actual == expected,
+            }
+        )
+    return rows
+
+
 def _static_expression_contract(doc, spec):
     """Allow only the source architecture's closed, manual-control dependencies.
 
@@ -320,7 +350,7 @@ def relative_motion_check(doc, module):
     result = {
         "minimum_nominal_gap_mm": MINIMUM_GAP_MM,
         "angle_domain_deg": [-180, 180],
-        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Same-group assembly contacts, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
+        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
     }
     try:
         spec = drive_for_document(doc)
@@ -483,6 +513,12 @@ def relative_motion_check(doc, module):
                     rate=info["rate"],
                 )
             parts.append(_part(shape, name, **arguments))
+        membership = _input_drive_membership(parts)
+        result["input_drive_membership"] = membership
+        if not all(row["passed"] for row in membership):
+            raise ValueError(
+                "Selected input drive has missing or misplaced physical parts"
+            )
         functional, exemptions = _functional_pairs(parts, spec)
         for index, first in enumerate(parts):
             for second in parts[index + 1 :]:

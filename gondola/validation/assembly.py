@@ -36,7 +36,7 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
-from gondola.contracts.drive import SELECTED_DRIVE, drive_for_document
+from gondola.contracts.drive import GEARS, SELECTED_DRIVE, drive_for_document
 from gondola.mass_budget import mass_budget
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import propulsion, rail, stack_interface
@@ -262,61 +262,7 @@ def rail_check(registry, shapes):
                 ),
             }
         )
-    nut_rotation = []
-    for angle in (-45, 45):
-        nut = rail.nut_shape().copy()
-        nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
-        vol = intersection_volume(nut, nominal_shoe)
-        nut_rotation.append(
-            {
-                "rotation_about_constrained_screw_axis_deg": angle,
-                "blocking_intersection_mm3": vol,
-                "blocked": vol > TOL,
-            }
-        )
-    # Screen antirotation using the smallest published nut and a slot
-    # enlarged by the supplier's 0.3 mm dimensional tolerance.
-    pocket_tolerance = 0.3
-    largest_slot = rail.NUT_POCKET_AF + pocket_tolerance
-    smallest_slot = rail.NUT_POCKET_AF - pocket_tolerance
-    tolerance_shoe = nominal_shoe.cut(rail.nut_pocket_void(largest_slot))
-    tolerance_shoe = tolerance_shoe.cut(
-        rail.half_turn(rail.nut_pocket_void(largest_slot))
-    )
-    tolerance_rotations = []
-    for angle in (-45, 45):
-        smallest_nut = rail.nut_shape(
-            rail.fasteners.SQUARE_NUT_MIN_AF, rail.fasteners.SQUARE_NUT_MIN_HEIGHT
-        )
-        smallest_nut.rotate(V(0, 0, rail.CLAMP_Z), V(0, 1, 0), angle)
-        vol = intersection_volume(smallest_nut, tolerance_shoe)
-        tolerance_rotations.append(
-            {
-                "rotation_deg": angle,
-                "blocking_intersection_mm3": vol,
-                "passed": vol > TOL,
-            }
-        )
-    minimum_diagonal = rail.fasteners.SQUARE_NUT_MIN_AF * math.sqrt(2)
-    insertion_clearance = smallest_slot - rail.NUT_AF
-    tolerance_capture = {
-        "square_nut_af_range_mm": [rail.fasteners.SQUARE_NUT_MIN_AF, rail.NUT_AF],
-        "square_nut_thickness_range_mm": [
-            rail.fasteners.SQUARE_NUT_MIN_HEIGHT,
-            rail.NUT_THICKNESS,
-        ],
-        "slot_width_range_mm": [smallest_slot, largest_slot],
-        "minimum_total_insertion_clearance_mm": insertion_clearance,
-        "minimum_square_diagonal_mm": minimum_diagonal,
-        "rotation_blocking_width_margin_mm": minimum_diagonal - largest_slot,
-        "minimum_geometric_thread_turns": rail.fasteners.SQUARE_NUT_MIN_HEIGHT
-        / rail.fasteners.THREAD_PITCH,
-        "rotation_cases": tolerance_rotations,
-        "scope": "Size-only tolerance screen for a square nut with unchamfered corners and a straight slot. Actual corners, distortion, thread engagement, torque and PA12 bearing strength require coupon and load testing; no strength qualification.",
-        "passed": insertion_clearance >= pocket_tolerance - TOL
-        and minimum_diagonal > largest_slot + TOL
-        and all(row["passed"] for row in tolerance_rotations),
-    }
+    finished_capture = rail.hex_nut_capture_check()
     tape_rows = []
     for name, shape in tapes:
         bounds = shape.optimalBoundingBox(False, False)
@@ -343,16 +289,14 @@ def rail_check(registry, shapes):
         "rail_count": len(objects),
         "rails": rows,
         "sliding_phase_checks": phase_rows,
-        "nominal_nut_rotation_blocking": nut_rotation,
-        "square_nut_tolerance_capture": tolerance_capture,
+        "hex_nut_finished_capture": finished_capture,
         "tape_over_wing_checks": tape_rows,
         "head_is_uninterrupted": False,
         "one_piece_unbroken_base": True,
         "passed": len(objects) == 1
         and all(r["passed"] for r in rows + tape_rows)
         and len(tape_rows) == 2 * len(rail.PAD_CENTRES)
-        and all(r["blocked"] for r in nut_rotation)
-        and tolerance_capture["passed"]
+        and finished_capture["passed"]
         and all(
             r["slide_intersection_mm3"] < TOL
             and r["lift_1mm_blocking_mm3"] > TOL
@@ -378,7 +322,7 @@ def hardware_check(registry):
         elif sku.startswith("M1_6"):
             expected_diameter, expected_pitch = 1.6, 0.35
             thread_description_matches = "M1.6" in standard
-        elif sku.startswith("GEABP"):
+        elif sku in {gear.sku for gear in GEARS.values()}:
             expected_diameter, expected_pitch = 3.0, 0.5
             thread_description_matches = "M3" in standard
         else:

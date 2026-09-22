@@ -13,14 +13,13 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import set_property as _set_property
+from gondola.contracts import fasteners
 from gondola.contracts import hardware as hardware_contract
 from gondola.contracts.fasteners import CLAMP_SCREW_LENGTH as CLAMP_SCREW_LENGTH
+from gondola.contracts.fasteners import HEX_NUT_AF as HEX_NUT_AF
+from gondola.contracts.fasteners import HEX_NUT_HEIGHT as HEX_NUT_HEIGHT
 from gondola.contracts.fasteners import SCREW_HEAD_DIAMETER as SCREW_HEAD_DIAMETER
 from gondola.contracts.fasteners import SCREW_HEAD_HEIGHT as SCREW_HEAD_HEIGHT
-from gondola.contracts.fasteners import SOCKET_DEPTH as SOCKET_DEPTH
-from gondola.contracts.fasteners import SOCKET_KEY as SOCKET_KEY
-from gondola.contracts.fasteners import SQUARE_NUT_AF as SQUARE_NUT_AF
-from gondola.contracts.fasteners import SQUARE_NUT_HEIGHT as SQUARE_NUT_HEIGHT
 from gondola.contracts.fasteners import THREAD_DIAMETER as THREAD_DIAMETER
 from gondola.contracts.fasteners import THREAD_PITCH as THREAD_PITCH
 
@@ -28,9 +27,7 @@ set_property = partial(_set_property, group="Purchased hardware")
 
 V = App.Vector
 PURCHASED_COLOR = (0.86, 0.67, 0.27)
-STACK_SCREW_LENGTH = 5.0
-STACK_SCREW_HEAD_DIAMETER = 4.0
-STACK_SCREW_HEAD_HEIGHT = 1.3
+STACK_SCREW_LENGTH = fasteners.STACK_SCREW_LENGTH
 STACK_SPACER_AF = 4.0
 STACK_SPACER_LENGTH = 25.0
 STACK_SPACER_THREAD_DEPTH_REFERENCE = 4.0
@@ -72,13 +69,14 @@ def hex_prism(across_flats, height, z=0):
 
 @functools.lru_cache(None)
 def screw_shape(length=CLAMP_SCREW_LENGTH):
-    # The bearing face is Z0; the head is below it and the shank points +Z.
+    # The bearing face is Z0; the head is a design envelope below that plane.
+    # No socket recess is invented: the selected kit supplies a 1.5 mm key but
+    # does not document socket depth or the button-head profile.
     head = Part.makeCylinder(
         SCREW_HEAD_DIAMETER / 2, SCREW_HEAD_HEIGHT, V(0, 0, -SCREW_HEAD_HEIGHT)
     )
     shank = Part.makeCylinder(THREAD_DIAMETER / 2, length)
-    drive = hex_prism(SOCKET_KEY, SOCKET_DEPTH + 0.1, -SCREW_HEAD_HEIGHT - 0.1)
-    return head.fuse(shank).cut(drive).removeSplitter()
+    return head.fuse(shank).removeSplitter()
 
 
 @functools.lru_cache(None)
@@ -102,14 +100,8 @@ def servo_nut_shape():
 
 @functools.lru_cache(None)
 def stack_screw_shape():
-    """Bought PA66 screw; cylinder bounds avoid guessing its slot and crown."""
-    head = Part.makeCylinder(
-        STACK_SCREW_HEAD_DIAMETER / 2,
-        STACK_SCREW_HEAD_HEIGHT,
-        V(0, 0, -STACK_SCREW_HEAD_HEIGHT),
-    )
-    shank = Part.makeCylinder(THREAD_DIAMETER / 2, STACK_SCREW_LENGTH)
-    return head.fuse(shank).removeSplitter()
+    """M2x5 from the shared kit; keep blind-spacer penetration at 3 mm."""
+    return screw_shape(STACK_SCREW_LENGTH)
 
 
 @functools.lru_cache(None)
@@ -128,19 +120,12 @@ def spacer_shape():
 
 
 @functools.lru_cache(None)
-def square_nut_shape():
-    """The same purchased DIN 562 nut serves every structural nut interface."""
+def hex_nut_shape():
+    """Accepted M2 kit hex-nut envelope; chamfers and threads are unmeasured."""
     return (
-        Part.makeBox(
-            SQUARE_NUT_AF,
-            SQUARE_NUT_AF,
-            SQUARE_NUT_HEIGHT,
-            V(-SQUARE_NUT_AF / 2, -SQUARE_NUT_AF / 2, 0),
-        )
+        hex_prism(HEX_NUT_AF, HEX_NUT_HEIGHT)
         .cut(
-            Part.makeCylinder(
-                THREAD_DIAMETER / 2, SQUARE_NUT_HEIGHT + 0.2, V(0, 0, -0.1)
-            )
+            Part.makeCylinder(THREAD_DIAMETER / 2, HEX_NUT_HEIGHT + 0.2, V(0, 0, -0.1))
         )
         .removeSplitter()
     )
@@ -159,7 +144,7 @@ def add_hardware(
     thread_diameter=THREAD_DIAMETER,
     thread_pitch=THREAD_PITCH,
 ):
-    if sku in ("M2_FF_PA66_AF4_L25", "M2X5_PA66_PAN_HEAD") and material != "Nylon PA66":
+    if sku == "M2_FF_PA66_AF4_L25" and material != "Nylon PA66":
         raise ValueError("PA66 stack hardware requires explicit Nylon PA66 material.")
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Invalid purchased envelope: " + name)
@@ -211,12 +196,7 @@ def add_hardware(
         "ShapeModelNotes",
         "Nominal dimensional envelope only; material selection does not qualify "
         "strength, preload or retention. Helical threads and actual mass are unverified."
-        + (
-            " PA66 pan-head screw uses a full cylinder for the head; the "
-            "undimensioned slot and crown are not generated."
-            if sku == "M2X5_PA66_PAN_HEAD"
-            else ""
-        ),
+        + (" " + fasteners.HEAD_ENVELOPE_NOTE if sku.endswith("_BUTTON_HEAD") else ""),
     )
     set_property(
         obj,

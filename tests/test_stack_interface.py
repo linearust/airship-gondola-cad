@@ -112,13 +112,31 @@ class StackInterfaceTests(unittest.TestCase):
         self.assertFalse(is_removable_head_part(self.doc.BatteryMount, group))
         self.assertFalse(is_removable_head_part(self.doc.ModuleFCEnvelope, group))
 
-    def test_stock_nylon_skus_reject_wrong_material(self):
+    def test_four_five_mm_bolts_leave_blind_depth_margin_without_washers(self):
+        from gondola.contracts import fasteners
+
+        screws = [
+            obj
+            for obj in self.kit["hardware"]
+            if str(getattr(obj, "StackEnd", "")) in ("Lower", "Upper")
+        ]
+        self.assertEqual(len(screws), 4)
+        for obj in screws:
+            self.assertEqual(obj.HardwareSKU, "M2X5_BUTTON_HEAD")
+            self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
+            unplaced = obj.Shape.copy()
+            unplaced.Placement = App.Placement()
+            tip = obj.Placement.multVec(App.Vector(0, 0, unplaced.BoundBox.ZMax)).z
+            penetration = tip + 25 if obj.StackEnd == "Lower" else -tip
+            self.assertAlmostEqual(penetration, 3.0, places=7)
+            # Worst thin-plate error adds 0.3 mm entry. A 6 mm bolt would fail
+            # this measured usable-depth purchasing condition.
+            self.assertGreater(3.6 - (penetration + 0.3), 0.25)
+
+    def test_stock_nylon_spacer_rejects_wrong_material(self):
         from gondola.parts import purchased_hardware
 
-        for sku, shape in (
-            ("M2X5_PA66_PAN_HEAD", purchased_hardware.stack_screw_shape()),
-            ("M2_FF_PA66_AF4_L25", purchased_hardware.spacer_shape()),
-        ):
+        for sku, shape in (("M2_FF_PA66_AF4_L25", purchased_hardware.spacer_shape()),):
             for wrong in ("A2 stainless steel", "PA12", "Nylon PA6"):
                 with (
                     self.subTest(sku=sku, material=wrong),

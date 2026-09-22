@@ -47,13 +47,14 @@ class OpticalClearanceTests(unittest.TestCase):
             (self.doc.OpticalFlowModule, "SelfLevelling", True),
             (screw, "MaterialSelection", "A2 stainless steel"),
             (screw, "SourceURL", "https://example.invalid/unverified-screw"),
-            (pivot, "HardwareSKU", "M2X8_SOCKET_CAP"),
-            (self.doc.OpticalRollNut, "HardwareSKU", "M2_HEX_NUT"),
+            (pivot, "HardwareSKU", "M2X8_BUTTON_HEAD"),
+            (self.doc.OpticalRollNut, "HardwareSKU", "M2_UNQUALIFIED_NUT"),
         )
         for obj, name, changed in mutations:
             with self.subTest(object=obj.Name, property=name):
                 original = getattr(obj, name)
                 try:
+                    self.assertNotEqual(original, changed)
                     setattr(obj, name, changed)
                     self.assertFalse(_source_evidence(self.doc)["passed"])
                 finally:

@@ -315,7 +315,7 @@ def fixed_servo_datum_check(doc, prefix):
 
 
 def bearing_stack_check(bearing, shaft, seat, cap):
-    """Check a nominal MR63ZZ seat, coaxial through-shaft and two-sided capture.
+    """Check a nominal 3x6x2.5 bearing seat, shaft and two-sided capture.
 
     The bearing reference is a 3 × 6 × 2.5 mm annular stock envelope. The outer
     ring is retained by the printed seat and removable cap. Shaft grip is a
@@ -364,7 +364,7 @@ def bearing_stack_check(bearing, shaft, seat, cap):
         "bearing_cap_overlap_mm3": cap_hit,
         "bearing_shaft_overlap_mm3": shaft_hit,
         "axial_capture": capture_rows,
-        "scope": "Nominal MR63ZZ envelope, coaxial shaft coverage and bidirectional outer-ring capture. Printed fits, bearing race contact, clamp grip and loads require a physical trial.",
+        "scope": "Nominal generic 3x6x2.5 bearing envelope, coaxial shaft coverage and bidirectional outer-ring capture. The retained ISC catalog is a design comparison, not the selected seller's identity or race-land certification. Printed fits, actual bearing race contact, clamp grip and loads require a physical trial.",
         "passed": bearing_comparison["difference_mm3"] < TOL
         and shaft_axis_error < TOL
         and shaft_coverage >= 2.5 - TOL
@@ -393,7 +393,7 @@ def _planar_contact_area(first, second):
     return area
 
 
-def clamp_fastener_check(clamp, bolt, nut, *, thread_diameter=2.0, nut_height=1.2):
+def clamp_fastener_check(clamp, bolt, nut, *, thread_diameter=2.0, nut_height=1.6):
     """Require seated bolt/nut bearing faces and a complete nominal metric nut core.
 
     This checks assembly geometry only. A tightened split clamp's shaft torque
@@ -455,12 +455,137 @@ def output_stub_check(shaft, motor, pivot_y):
     }
 
 
-def direct_adapter_fit_check(doc, prefix):
-    """Check the purchased bore, full spigot engagement and bought-horn capture."""
+def _coupling_shape_world(doc, prefix, shape):
+    """Place a horn-local probe through the actual moving input-drive parents."""
     from gondola.parts import servo_coupling as coupling
 
-    mount = doc.getObject(prefix + "ServoMount")
-    sign = 1 if prefix == "Port" else -1
+    shape = shape.copy()
+    shape.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
+    if prefix == "Starboard":
+        shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+    drive = doc.getObject(prefix + "InputDrive")
+    shape.Placement = drive.getGlobalPlacement().multiply(shape.Placement)
+    return shape
+
+
+def input_shaft_retention_check(doc, prefix):
+    """Measure the metal stub's keyed socket, axial stop and radial jack clamp."""
+    from gondola.parts import purchased_hardware as hardware
+    from gondola.parts import servo_coupling as coupling
+
+    names = (
+        "InputShaft",
+        "InputShaftClampBolt",
+        "InputShaftClampNut",
+        "HornGearAdapter",
+    )
+    if any(doc.getObject(prefix + suffix) is None for suffix in names):
+        return {"pod": prefix, "passed": False, "error": "Missing driver stub or clamp"}
+    shaft, screw, nut, adapter = (
+        world_shape(doc.getObject(prefix + suffix)) for suffix in names
+    )
+    expected_shaft = _coupling_shape_world(doc, prefix, coupling.driver_shaft_shape())
+    missing_shaft = abs(expected_shaft.cut(shaft).Volume)
+    extra_shaft = abs(shaft.cut(expected_shaft).Volume)
+    head_probe = Part.makeCylinder(
+        hardware.SCREW_HEAD_DIAMETER / 2 + 0.01,
+        hardware.SCREW_HEAD_HEIGHT + 0.1,
+        App.Vector(coupling.SHAFT_SCREW_HEAD_X, coupling.SHAFT_CLAMP_Y, 0),
+        App.Vector(1, 0, 0),
+    )
+    head = screw.common(_coupling_shape_world(doc, prefix, head_probe))
+    head_gap = head.distToShape(adapter)[0] if head.Volume > TOL else -1
+    tip_contact = _planar_contact_area(screw, shaft)
+    # Only the outer pocket wall reacts against tightening the radial screw.
+    # Contact with the opposite insertion-slot wall cannot establish preload.
+    seat_x, seat_y = coupling.SHAFT_NUT_SEAT_X, coupling.SHAFT_CLAMP_Y
+    seat_points = [
+        App.Vector(seat_x, seat_y + y, z)
+        for y, z in ((-3, -3), (3, -3), (3, 3), (-3, 3))
+    ]
+    seat_plane = Part.Face(Part.makePolygon(seat_points + seat_points[:1]))
+    retaining_wall = adapter.common(_coupling_shape_world(doc, prefix, seat_plane))
+    nut_wall_contact = _planar_contact_area(nut, retaining_wall)
+    stop_contact = _planar_contact_area(shaft, adapter)
+    roof_probe = Part.makeLine(App.Vector(0, 5.2, 0), App.Vector(0, 7.1, 0))
+    roof_thickness = adapter.common(
+        _coupling_shape_world(doc, prefix, roof_probe)
+    ).Length
+    key_checks = []
+    for angle in (-15, 15):
+        rotated = coupling.driver_shaft_shape()
+        rotated.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
+        overlap = intersection_volume(
+            adapter, _coupling_shape_world(doc, prefix, rotated)
+        )
+        key_checks.append(
+            {
+                "attempted_rotation_deg": angle,
+                "key_probe_penetration_mm3": overlap,
+                "passed": overlap > 1e-3,
+            }
+        )
+    stop_probe = coupling.driver_shaft_shape()
+    stop_probe.translate(App.Vector(0, -0.01, 0))
+    stop_overlap = intersection_volume(
+        adapter, _coupling_shape_world(doc, prefix, stop_probe)
+    )
+    socket_probe = Part.makeCylinder(
+        2,
+        coupling.SHAFT_SOCKET_LENGTH,
+        App.Vector(0, coupling.SHAFT_START_Y, 0),
+        App.Vector(0, 1, 0),
+    )
+    socket_shaft = expected_shaft.common(
+        _coupling_shape_world(doc, prefix, socket_probe)
+    )
+    missing_engagement = abs(socket_shaft.cut(shaft).Volume)
+    return {
+        "pod": prefix,
+        "shaft_nominal_diameter_mm": coupling.SHAFT_DIAMETER,
+        "shaft_length_mm": coupling.SHAFT_LENGTH,
+        "filed_flat_depth_mm": coupling.SHAFT_FLAT_DEPTH,
+        "socket_engagement_mm": coupling.SHAFT_SOCKET_LENGTH,
+        "missing_nominal_stub_mm3": missing_shaft,
+        "extra_stub_material_mm3": extra_shaft,
+        "missing_socket_engagement_mm3": missing_engagement,
+        "shaft_stop_contact_mm2": stop_contact,
+        "stop_probe_penetration_mm3": stop_overlap,
+        "key_checks": key_checks,
+        "screw_tip_to_flat_contact_mm2": tip_contact,
+        "nut_to_retaining_wall_contact_mm2": nut_wall_contact,
+        "screw_head_to_adapter_gap_mm": head_gap,
+        "required_nominal_head_gap_mm": 0.5,
+        "shaft_stop_roof_thickness_mm": roof_thickness,
+        "scope": "Nominal metal D stub and finished printed socket; positive key engagement after clearance is taken up, axial stop, radial M2x6 screw contact and retained hex nut. The screw head must remain free to advance against the flat. Manual rod diameter/straightness/flat, nut capture, clamp preload, axial grip, actual gear set-screw retention and loaded servo deflection remain physical checks. The bore key alone is not axial retention.",
+        "passed": missing_shaft < TOL
+        and extra_shaft < TOL
+        and socket_shaft.Volume > TOL
+        and missing_engagement < TOL
+        and stop_contact > 1
+        and stop_overlap > 1e-5
+        and all(row["passed"] for row in key_checks)
+        and tip_contact > 1
+        and nut_wall_contact > 1
+        and abs(head_gap - 0.5) < TOL
+        and abs(roof_thickness - 1.9) < TOL
+        and all(
+            intersection_volume(a, b) < TOL
+            for a, b in (
+                (shaft, adapter),
+                (screw, shaft),
+                (screw, adapter),
+                (nut, adapter),
+                (screw, nut),
+            )
+        ),
+    }
+
+
+def direct_adapter_fit_check(doc, prefix):
+    """Preserve the actual Ø3 gear bore, metal engagement and stock-horn capture."""
+    from gondola.parts import servo_coupling as coupling
+
     parts = {
         suffix: world_shape(doc.getObject(prefix + suffix))
         for suffix in (
@@ -470,24 +595,28 @@ def direct_adapter_fit_check(doc, prefix):
             "HornGearRetainer",
             "HornGearClampBolt",
             "HornGearClampNut",
+            "InputShaft",
+            "InputShaftClampBolt",
+            "InputShaftClampNut",
         )
     }
-    axis = App.Vector(0, sign, 0)
-    origin = App.Vector(0, sign * propulsion.GEAR_HUB_START_Y, 0)
-    bore = Part.makeCylinder(3.5, 8, origin, axis)
-    ring = Part.makeCylinder(3.8, 8, origin, axis).cut(bore)
-    spigot = Part.makeCylinder(
-        coupling.SPIGOT_DIAMETER / 2, coupling.SPIGOT_LENGTH, origin, axis
-    ).cut(
-        Part.makeCylinder(
-            coupling.SPIGOT_BORE_DIAMETER / 2, coupling.SPIGOT_LENGTH, origin, axis
-        )
+    specification = drive_for_document(doc).driver
+    origin = App.Vector(0, coupling.GEAR_START_Y, 0)
+    axis = App.Vector(0, 1, 0)
+    bore = Part.makeCylinder(
+        specification.bore_mm / 2, specification.total_length_mm, origin, axis
     )
-    for shape in (bore, ring, spigot):
-        shape.Placement = mount.getGlobalPlacement().multiply(shape.Placement)
+    ring = Part.makeCylinder(
+        specification.bore_mm / 2 + 0.3, specification.total_length_mm, origin, axis
+    ).cut(bore)
+    bore = _coupling_shape_world(doc, prefix, bore)
+    ring = _coupling_shape_world(doc, prefix, ring)
     bore_intrusion = intersection_volume(bore, parts["DriverGear"])
     missing_hub = abs(ring.cut(parts["DriverGear"]).Volume)
-    missing_spigot = abs(spigot.cut(parts["HornGearAdapter"]).Volume)
+    adapter_in_gear_bore = intersection_volume(bore, parts["HornGearAdapter"])
+    expected_shaft = _coupling_shape_world(doc, prefix, coupling.driver_shaft_shape())
+    gear_journal = expected_shaft.common(bore)
+    missing_gear_engagement = abs(gear_journal.cut(parts["InputShaft"]).Volume)
     rows = []
     names = list(parts)
     for index, name in enumerate(names):
@@ -502,18 +631,27 @@ def direct_adapter_fit_check(doc, prefix):
         name: _planar_contact_area(parts["ServoHorn"], parts[name])
         for name in ("HornGearAdapter", "HornGearRetainer")
     }
+    retention = input_shaft_retention_check(doc, prefix)
     return {
         "pod": prefix,
-        "gear_bore_mm": 7,
+        "gear_bore_mm": specification.bore_mm,
         "gear_bore_intrusion_mm3": bore_intrusion,
         "missing_gear_hub_ring_mm3": missing_hub,
-        "missing_spigot_mm3": missing_spigot,
+        "printed_adapter_in_gear_bore_mm3": adapter_in_gear_bore,
+        "metal_gear_engagement_mm": specification.total_length_mm,
+        "missing_metal_gear_engagement_mm3": missing_gear_engagement,
+        "input_shaft_retention_passed": retention["passed"],
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Neutral nominal geometry: 7mm bought bore, complete hollow spigot engagement, no internal part intersections and horn contact on both printed capture faces. Set-screw preload, finishing tolerance, concentricity under load and servo radial-load capacity remain physical checks.",
-        "passed": bore_intrusion < TOL
+        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver, the printed adapter stays outside its bore, and both horn capture faces contact without drilling the horn. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
+        "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
+        and specification.total_length_mm == coupling.GEAR_LENGTH
+        and bore_intrusion < TOL
         and missing_hub < TOL
-        and missing_spigot < TOL
+        and adapter_in_gear_bore < TOL
+        and gear_journal.Volume > TOL
+        and missing_gear_engagement < TOL
+        and retention["passed"]
         and all(row["intersection_mm3"] < TOL for row in rows)
         and all(area > 1 for area in capture.values()),
     }
@@ -722,6 +860,53 @@ def servo_lateral_service_check(shape, start, end, obstacles):
     }
 
 
+def adapter_service_check(shape, waypoints, obstacles, spec, sign):
+    """Fill the forward clamp voids while preserving the rear horn socket.
+
+    The transverse shaft screw hole prevents the generic coaxial sweep from
+    retaining the horn pocket. A solid block around the forward clamp is a
+    conservative replacement for that region only. The live adapter must fit
+    completely within this reference before its continuous sweep is accepted.
+    Every retained obstacle remains checked, including the original horn.
+    """
+    from gondola.parts import servo_coupling as coupling
+
+    reference = coupling.adapter_shape()
+    bounds = reference.BoundBox
+    # Start just beyond the rear body's front face so its boundary alone cannot
+    # enlarge the clamp's measured section to the remote horn-clamp bolt tip.
+    front = reference.common(
+        Part.makeBox(
+            bounds.XLength + 2,
+            bounds.YMax - coupling.SHAFT_START_Y,
+            bounds.ZLength + 2,
+            App.Vector(bounds.XMin - 1, coupling.SHAFT_START_Y + 1e-4, bounds.ZMin - 1),
+        )
+    )
+    if not front.Solids or front.Volume < TOL:
+        return {"passed": False, "error": "Missing forward adapter clamp"}
+    front_bounds = front.BoundBox
+    filled = Part.makeBox(
+        front_bounds.XLength,
+        bounds.YMax - coupling.SHAFT_START_Y,
+        front_bounds.ZLength,
+        App.Vector(front_bounds.XMin, coupling.SHAFT_START_Y, front_bounds.ZMin),
+    )
+    envelope = reference.fuse(filled).removeSplitter()
+    envelope.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
+    if sign < 0:
+        envelope.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+    envelope.translate(App.Vector(sign * spec.input_x_mm, 0, spec.input_z_mm))
+    outside = abs(shape.cut(envelope).Volume)
+    result = continuous_path(envelope, waypoints, obstacles)
+    return {
+        **result,
+        "adapter_outside_reference_envelope_mm3": outside,
+        "reference_envelope": "Actual nominal horn socket with forward shaft-clamp voids conservatively filled; no obstacle exclusions",
+        "passed": outside < TOL and result["passed"],
+    }
+
+
 def _service_shapes(doc, module):
     """Require every retained physical obstacle, in the local propulsion frame."""
     group = module["group"]
@@ -751,6 +936,9 @@ def _input_service_removed(prefix):
             "HornGearRetainer",
             "HornGearClampBolt",
             "HornGearClampNut",
+            "InputShaft",
+            "InputShaftClampBolt",
+            "InputShaftClampNut",
         )
     }
 
@@ -807,7 +995,16 @@ def input_drive_service_check(doc, module, prefix):
     )
     rows = [{"part": retainer, "waypoints_mm": retainer_points, **retainer_path}]
     removed.add(retainer)
-    moving = {prefix + "HornGearAdapter", prefix + "DriverGear"}
+    moving = {
+        prefix + suffix
+        for suffix in (
+            "HornGearAdapter",
+            "DriverGear",
+            "InputShaft",
+            "InputShaftClampBolt",
+            "InputShaftClampNut",
+        )
+    }
     fixed = _service_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, sign * 1.5, 0), (sign * 40, sign * 1.5, 0)]
     for name in sorted(moving):
@@ -821,6 +1018,10 @@ def input_drive_service_check(doc, module, prefix):
                 sign=sign,
             )
             if name.endswith("DriverGear")
+            else adapter_service_check(
+                shapes[name], points, fixed, drive_for_document(doc), sign
+            )
+            if name.endswith("HornGearAdapter")
             else continuous_path(shapes[name], points, fixed)
         )
         rows.append({"part": name, "waypoints_mm": points, **path})
@@ -834,7 +1035,7 @@ def input_drive_service_check(doc, module, prefix):
         "part_paths": rows,
         "coordinate_frame": "propulsion module",
         "retained_parts": sorted(fixed),
-        "scope": "At neutral, free the leads and release the small gear's supplied set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter and driver together 1.5 mm gearward, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
+        "scope": "At neutral, free the leads and release the small gear's selected set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter, metal stub, captive radial clamp and driver together 1.5 mm gearward, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
         "passed": output_path["passed"]
         and clamp_path["passed"]
         and all(row["passed"] for row in rows),
@@ -931,7 +1132,7 @@ def continuous_path(shape, waypoints, obstacles):
 def rail_key_access_check(doc, module):
     """Check the complete fixed module in both rail-key approaches."""
     objects = module["printed"] + module["hardware"] + module["references"]
-    screw_bounds = rail.set_screw_shape().optimalBoundingBox(False, False)
+    screw_bounds = rail.clamp_screw_shape().optimalBoundingBox(False, False)
     shapes = {obj.Name: world_shape(obj) for obj in objects}
     rows = []
     for side in (1, -1):
@@ -1041,7 +1242,7 @@ def _record_rail_fit_checks(report, frame, physical):
             translated_shape(frame, y=side * rail.CLAMP_SHIFT_Y), rail.rail_shape()
         )
         for name, shape in (
-            ("clamp_screw", rail.set_screw_shape()),
+            ("clamp_screw", rail.clamp_screw_shape()),
             ("clamp_nut", rail.nut_shape()),
         ):
             report[label + "_" + name + "_frame_overlap_mm3"] = intersection_volume(
@@ -1050,18 +1251,30 @@ def _record_rail_fit_checks(report, frame, physical):
         key = Part.makeCylinder(
             0.9,
             110,
-            App.Vector(0, rail.SHOE_WIDTH / 2 + 0.7, rail.CLAMP_Z),
+            App.Vector(0, rail.clamp_screw_shape().BoundBox.YMax + 0.1, rail.CLAMP_Z),
             App.Vector(0, 1, 0),
         )
         report[label + "_clamp_driver_frame_overlap_mm3"] = intersection_volume(
             frame, transform(key)
         )
-    report["continuous_nut_loading"] = [
-        continuous_path(rail.nut_shape(), [(0, 0, 0), (20, 0, 0)], physical),
-        continuous_path(
-            rail.half_turn(rail.nut_shape()), [(0, 0, 0), (-20, 0, 0)], physical
-        ),
-    ]
+    # Fill the bore for this insertion audit. The resulting hex prism contains
+    # the whole nut and has an exact planar translation sweep; a transverse
+    # cylinder otherwise triggers an unnecessarily broad rectangular fallback
+    # that reports the pocket's intended hex corner material as a collision.
+    outer_nut = rail.hex_along_y(
+        rail.NUT_AF,
+        rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH - rail.NUT_THICKNESS,
+        rail.NUT_THICKNESS,
+    )
+    report["continuous_nut_loading"] = []
+    for side in (1, -1):
+        envelope = outer_nut if side > 0 else rail.half_turn(outer_nut)
+        result = continuous_path(envelope, [(0, 0, 0), (side * 20, 0, 0)], physical)
+        result["scope"] = (
+            "Continuous outer-hex insertion envelope with the bore filled; "
+            "conservative over the complete nut, with its rail bolt removed."
+        )
+        report["continuous_nut_loading"].append(result)
 
 
 def _record_drive_motion_checks(report, doc, module, prefix):
@@ -1070,6 +1283,7 @@ def _record_drive_motion_checks(report, doc, module, prefix):
     report["fixed_servo_datum"].append(fixed_servo_datum_check(doc, prefix))
     report["servo_mounts"].append(servo_mount_check(doc, prefix))
     report["direct_adapter_fit"].append(direct_adapter_fit_check(doc, prefix))
+    report["input_shaft_retention"].append(input_shaft_retention_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
     carrier_clearance = carrier_metal_clearance_check(doc, prefix)
     report["carrier_metal_clearance"].append(carrier_clearance)
@@ -1102,7 +1316,7 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
             {
                 "shaft": shaft_name,
                 "excluded_physical_parts": sorted(excluded),
-                "scope": "Remove the output gear and release its supplied set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
+                "scope": "Remove the output gear and release its selected set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
                 **continuous_path(
                     physical[shaft_name],
                     [(0, 0, 0), (0, side * 45, 0)],
@@ -1182,14 +1396,23 @@ def _record_drive_service_checks(report, prefix, sign, physical):
         report["gear_service"].append(
             {
                 "gear": name,
-                "scope": "Release the included radial set screw before axial withdrawal. The output gear is removed in place. After the checked input-drive release, separate the driver from its adapter on the bench. Set-screw tip/length and actual driver access remain physical release gates.",
+                "scope": "Release the selected radial set screw before axial withdrawal. The output gear is removed in place. After the checked input-drive release, separate the driver from its adapter on the bench. Set-screw tip/length and actual driver access remain physical release gates.",
                 **continuous_path(
                     physical[name],
                     [(0, 0, 0), (0, direction * 35, 0)],
                     _service_obstacles(
                         physical,
                         excluded,
-                        members={prefix + "DriverGear", prefix + "HornGearAdapter"}
+                        members={
+                            prefix + suffix
+                            for suffix in (
+                                "DriverGear",
+                                "HornGearAdapter",
+                                "InputShaft",
+                                "InputShaftClampBolt",
+                                "InputShaftClampNut",
+                            )
+                        }
                         if bench
                         else None,
                     ),
@@ -1235,13 +1458,13 @@ def _record_fastener_checks(report, module, physical):
     bolts = [
         obj
         for obj in module["hardware"]
-        if obj.HardwareSKU in ("M2X8_SOCKET_CAP", "M1_6X8_CHEESE_HEAD")
+        if obj.HardwareSKU in ("M2X8_BUTTON_HEAD", "M1_6X8_CHEESE_HEAD")
     ]
     for bolt in bolts:
         nut_name = bolt.Name.removesuffix("Bolt") + "Nut"
         nut = physical[nut_name]
         thread_diameter = float(bolt.NominalThreadDiameter.Value)
-        nut_height = 1.2 if thread_diameter == 2 else 1.3
+        nut_height = 1.6 if thread_diameter == 2 else 1.3
         report["fastener_stacks"].append(
             {
                 "bolt": bolt.Name,
@@ -1323,8 +1546,8 @@ def _record_print_checks(report, module, physical):
         (
             "guard_radial",
             "PortMotorCarrier",
-            (12, 80, propulsion.PIVOT_Z + 22.79),
-            (12, 80, propulsion.PIVOT_Z + 24.31),
+            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 22.79),
+            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 24.31),
             1.5,
         ),
     ]
@@ -1335,11 +1558,26 @@ def _record_print_checks(report, module, physical):
     wall_probes.extend(
         [
             (
-                "direct_spigot_radial_wall",
+                "driver_shaft_stop_roof",
                 "PortHornGearAdapter",
-                (x + coupling.SPIGOT_BORE_DIAMETER / 2 - 0.01, 42, z),
-                (x + coupling.SPIGOT_DIAMETER / 2 + 0.01, 42, z),
-                (coupling.SPIGOT_DIAMETER - coupling.SPIGOT_BORE_DIAMETER) / 2,
+                (x, coupling.HORN_BOTTOM_Y + 5.19, z),
+                (x, coupling.HORN_BOTTOM_Y + coupling.SHAFT_START_Y + 0.01, z),
+                1.9,
+            ),
+            (
+                "driver_shaft_nut_retaining_wall",
+                "PortHornGearAdapter",
+                (
+                    x + coupling.SHAFT_NUT_SEAT_X - 0.01,
+                    coupling.HORN_BOTTOM_Y + coupling.SHAFT_CLAMP_Y + 1.5,
+                    z,
+                ),
+                (
+                    x + coupling.SHAFT_BOSS_END_X + 0.01,
+                    coupling.HORN_BOTTOM_Y + coupling.SHAFT_CLAMP_Y + 1.5,
+                    z,
+                ),
+                coupling.SHAFT_BOSS_END_X - coupling.SHAFT_NUT_SEAT_X,
             ),
             (
                 "horn_rear_retainer",

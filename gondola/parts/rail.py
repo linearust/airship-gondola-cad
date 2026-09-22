@@ -21,7 +21,7 @@ from gondola.cad import (
 )
 from gondola.contracts import fasteners
 from gondola.contracts.design import RAIL_LENGTH_MM
-from gondola.contracts.hardware import SQUARE_NUT_SOURCE
+from gondola.contracts.hardware import HEX_NUT_SOURCE
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
@@ -33,13 +33,17 @@ SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.2
 CLEARANCE = 0.45
 CLAMP_Z = 6.2
 CLAMP_SHIFT_Y = 0.45
-NUT_AF = fasteners.SQUARE_NUT_AF
-NUT_POCKET_AF, NUT_THICKNESS = 4.6, fasteners.SQUARE_NUT_HEIGHT
+NUT_AF = fasteners.HEX_NUT_AF
+NUT_POCKET_AF, NUT_THICKNESS = 4.15, fasteners.HEX_NUT_HEIGHT
+# Finished acceptance limits, not a claim about unprocessed powder-bed parts.
+# The smaller corner/flat difference of a hex nut cannot absorb the former
+# square slot's +/-0.3 mm variation and still guarantee rotation blocking.
+NUT_FINISHED_MIN_AF, NUT_FINISHED_MAX_AF = 4.05, 4.25
 NUT_POCKET_Y, NUT_POCKET_DEPTH = 6.95, 2.2
 CLAMP_LAND_OFFSET = 4.0
 RELEASE_TRAVEL = 1.2
 LAND_PITCH, FLEX_GAP = 18.0, 4.5
-SCREW_LENGTH = fasteners.SET_SCREW_LENGTH
+SCREW_LENGTH = fasteners.RAIL_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
 SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 
@@ -136,13 +140,19 @@ def hex_along_y(across_flats, y0, length):
 
 
 def nut_pocket_void(width=NUT_POCKET_AF):
-    # Square flats retain useful rotation blocking with M2 supplier tolerances.
-    # Load from +X before equipment installation; validate the actual coupon.
-    return box(
-        11 + width / 2,
-        NUT_POCKET_DEPTH,
-        width,
-        (-width / 2, NUT_POCKET_Y, CLAMP_Z - width / 2),
+    # A hex seat locates the nut; the flat-sided port loads from +X. The bolt
+    # retains the nut laterally. Finish the port to the coupon acceptance range
+    # and check the bought nut rather than claiming as-printed antirotation.
+    return union(
+        [
+            hex_along_y(width, NUT_POCKET_Y, NUT_POCKET_DEPTH),
+            box(
+                SHOE_LENGTH / 2 + 1,
+                NUT_POCKET_DEPTH,
+                width,
+                (0, NUT_POCKET_Y, CLAMP_Z - width / 2),
+            ),
+        ]
     )
 
 
@@ -150,14 +160,14 @@ def screw_bore_void():
     return Part.makeCylinder(1.4, 10, V(0, 4, CLAMP_Z), V(0, 1, 0))
 
 
-def shoe_shape():
+def shoe_shape(nut_pocket_af=NUT_POCKET_AF):
     shoe = box(
         SHOE_LENGTH,
         SHOE_WIDTH,
         TOP_Z - SHOE_BOTTOM,
         (-SHOE_LENGTH / 2, -SHOE_WIDTH / 2, SHOE_BOTTOM),
     )
-    clamp_void = union([nut_pocket_void(), screw_bore_void()])
+    clamp_void = union([nut_pocket_void(nut_pocket_af), screw_bore_void()])
     shoe = (
         shoe.cut(capture_void())
         .cut(clamp_void)
@@ -169,30 +179,100 @@ def shoe_shape():
     return shoe
 
 
-def set_screw_shape():
+def clamp_screw_shape():
     # In the locked assembly the shoe moves +Y .45 until its far jaw seats.
     tip_y = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y
-    screw = Part.makeCone(0.65, 1.0, 0.35, V(0, tip_y, CLAMP_Z), V(0, 1, 0)).fuse(
-        Part.makeCylinder(
-            1.0, SCREW_LENGTH - 0.35, V(0, tip_y + 0.35, CLAMP_Z), V(0, 1, 0)
-        )
+    # The unknown screw-tip chamfer is conservatively bounded by a full shank.
+    # Inspect the real end for a usable bearing face/burrs before pressing PA12.
+    # An 8 mm screw puts its head 1.55 mm outside the shoe; a 6 mm one would
+    # collide with the outer wall before reaching this contact plane.
+    return union(
+        [
+            Part.makeCylinder(
+                fasteners.THREAD_DIAMETER / 2,
+                SCREW_LENGTH,
+                V(0, tip_y, CLAMP_Z),
+                V(0, 1, 0),
+            ),
+            Part.makeCylinder(
+                fasteners.SCREW_HEAD_DIAMETER / 2,
+                fasteners.SCREW_HEAD_HEIGHT,
+                V(0, tip_y + SCREW_LENGTH, CLAMP_Z),
+                V(0, 1, 0),
+            ),
+        ]
     )
-    recess = hex_along_y(fasteners.SET_SCREW_KEY, tip_y + SCREW_LENGTH - 1.2, 1.3)
-    return screw.cut(recess)
 
 
 def nut_shape(across_flats=NUT_AF, thickness=NUT_THICKNESS):
     # Clamp load seats the nut against the outside wall of the loading slot.
-    return box(
-        across_flats,
-        thickness,
-        across_flats,
-        (
-            -across_flats / 2,
-            NUT_POCKET_Y + NUT_POCKET_DEPTH - thickness,
-            CLAMP_Z - across_flats / 2,
-        ),
+    return hex_along_y(
+        across_flats, NUT_POCKET_Y + NUT_POCKET_DEPTH - thickness, thickness
     ).cut(Part.makeCylinder(1.0, 4, V(0, 6.5, CLAMP_Z), V(0, 1, 0)))
+
+
+def hex_nut_capture_check():
+    """Conditional geometry screen for a measured/finished hex capture.
+
+    This deliberately does not pass the former raw +/-0.3 mm tolerance claim.
+    The nut must be measured and the coupon fitted before a production print.
+    A retained bolt constrains the nut axis during the rotation probes.
+    """
+    largest_pocket = shoe_shape(NUT_FINISHED_MAX_AF)
+    tightest_pocket = shoe_shape(NUT_FINISHED_MIN_AF)
+    rotations = []
+    for width, height, shoe, kind in (
+        (NUT_AF, NUT_THICKNESS, shoe_shape(), "nominal"),
+        (
+            fasteners.HEX_NUT_MIN_AF,
+            fasteners.HEX_NUT_MIN_HEIGHT,
+            largest_pocket,
+            "smallest_accepted_nut_in_largest_finished_pocket",
+        ),
+    ):
+        for angle in (-30, 30):
+            nut = nut_shape(width, height)
+            nut.rotate(V(0, 0, CLAMP_Z), V(0, 1, 0), angle)
+            volume = abs(nut.common(shoe).Volume)
+            rotations.append(
+                {
+                    "case": kind,
+                    "rotation_deg": angle,
+                    "blocking_intersection_mm3": volume,
+                    "passed": volume > 1e-5,
+                }
+            )
+    insertion_samples = []
+    for offset in (0, 0.5, 1, 2, 4, 6, 9, 12):
+        nut = translated_shape(nut_shape(), x=offset)
+        volume = abs(nut.common(tightest_pocket).Volume)
+        insertion_samples.append(
+            {
+                "translation_x_mm": offset,
+                "intersection_mm3": volume,
+                "passed": volume < 1e-5,
+            }
+        )
+    corner_diameter = 2 * fasteners.HEX_NUT_MIN_AF / math.sqrt(3)
+    return {
+        "accepted_hex_nut_af_range_mm": [fasteners.HEX_NUT_MIN_AF, NUT_AF],
+        "accepted_hex_nut_height_range_mm": [
+            fasteners.HEX_NUT_MIN_HEIGHT,
+            NUT_THICKNESS,
+        ],
+        "finished_pocket_af_range_mm": [NUT_FINISHED_MIN_AF, NUT_FINISHED_MAX_AF],
+        "minimum_total_insertion_clearance_mm": NUT_FINISHED_MIN_AF - NUT_AF,
+        "minimum_hex_corner_diameter_mm": corner_diameter,
+        "rotation_blocking_width_margin_mm": corner_diameter - NUT_FINISHED_MAX_AF,
+        "minimum_geometric_thread_turns": fasteners.HEX_NUT_MIN_HEIGHT
+        / fasteners.THREAD_PITCH,
+        "rotation_cases": rotations,
+        "insertion_samples": insertion_samples,
+        "as_printed_capture_guaranteed": False,
+        "physical_fit_verified": False,
+        "scope": "Nominal and finished-size geometric checks only. Inspect actual nut corners, finish the coupon to the stated size range and test insertion/rotation blocking. Raw powder-bed +/-0.3mm tolerance cannot guarantee this hex capture. No torque, thread-strength or PA12 retention qualification.",
+        "passed": all(row["passed"] for row in rotations + insertion_samples),
+    }
 
 
 def _hardware(doc, parent, name, label, shape, sku, notes):
@@ -208,7 +288,7 @@ def _hardware(doc, parent, name, label, shape, sku, notes):
         ("ModelDetail", "Simplified thread envelope; do not print"),
         (
             "SourceURL",
-            "https://www.bossard.com/us-en/eshop/set-screws/hex-socket-set-screws-with-flat-point/p/617/",
+            fasteners.KIT_SOURCE,
         ),
     ]:
         set_property(obj, key, value)
@@ -217,7 +297,14 @@ def _hardware(doc, parent, name, label, shape, sku, notes):
     )
     set_property(obj, "ThreadPitch", fasteners.THREAD_PITCH, "App::PropertyLength")
     set_property(obj, "PrintPart", False, "App::PropertyBool")
-    set_property(obj, "MaterialSelection", "A2 stainless steel")
+    set_property(obj, "MaterialSelection", fasteners.KIT_MATERIAL)
+    set_property(
+        obj,
+        "ShapeModelNotes",
+        fasteners.HEAD_ENVELOPE_NOTE
+        if sku.endswith("_BUTTON_HEAD")
+        else "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+    )
     if App.GuiUp:
         obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
     return obj
@@ -228,25 +315,26 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
         doc,
         parent,
         prefix + "RailClampScrew",
-        "M2 x 6 flat-point socket set screw",
-        set_screw_shape(),
-        "M2x6_ISO4026_DIN913",
-        "ISO4026 / DIN913 M2x0.4 x6, flat point, 0.9mm hex key. Friction clamp; no removable printed key. "
+        "M2 x 8 kit button-head screw | design head envelope",
+        clamp_screw_shape(),
+        "M2X8_BUTTON_HEAD",
+        "M2x0.4 x8 from the kit. Friction clamp; inspect the actual screw end and test its PA12 contact. "
         "Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. "
-        "Screw remains in the captured nut during normal adjustment.",
+        "Screw remains in the captured nut during normal adjustment. "
+        + fasteners.HEAD_ENVELOPE_NOTE,
     )
     nut = _hardware(
         doc,
         parent,
         prefix + "RailClampNut",
-        "M2 DIN562 square nut, AF4 x1.2",
+        "M2 kit hex nut | accepted AF4 x1.6 envelope",
         nut_shape(),
-        "M2_SQUARE_NUT_DIN562",
-        "Metric M2x0.4 DIN562 square nut AF4mm, thickness1.2mm. PositiveY port loads from+X; negativeY port loads from-X. Choose one port before mounting equipment. "
-        "Insert screw to retain nut. Square pocket is4.6mm wide; actual nut width/corners and coupon fit must be checked. Do not substitute a hex nut. "
-        "Model seats the nut against the outside slot wall under clamp load; thin-nut torque and retention remain unqualified.",
+        "M2_HEX_NUT",
+        "M2x0.4 hex nut, accepted AF3.8-4.0mm and height1.4-1.6mm; measure the purchased lot. PositiveY port loads from+X; negativeY port loads from-X. Choose one port before mounting equipment. "
+        "Insert screw to retain nut. Nominal hex seat/port AF4.15; finished flat separation must be4.05-4.25mm and rotation blocking must be verified with the coupon. Raw +/-0.3mm printing tolerance does not guarantee the hex capture. "
+        "Nut seats against the outside slot wall under clamp load; torque and retention remain unqualified.",
     )
-    nut.SourceURL = SQUARE_NUT_SOURCE
+    nut.SourceURL = HEX_NUT_SOURCE
     for hardware in (screw, nut):
         set_property(
             hardware,
@@ -352,7 +440,7 @@ def build_coupons(doc):
         "PRINT FIRST | integral rail shoe with M2 nut slot",
         shoe_shape(),
         App.Rotation(),
-        "Use purchased M2x6 DIN913 and M2 DIN562 square nut. Sample checks nut loading, rotation blocking, screw access and the sliding fit. No printed threads.",
+        "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, screw-tip contact and sliding fit. Raw printing tolerance is not sufficient for hex capture. No printed threads.",
     )
     return {"group": group, "printed": [rail_coupon, shoe_coupon]}
 
@@ -379,11 +467,11 @@ def validate_mechanism():
     seated_intersections = {
         "rail_shoe": intersection_volume(rail, locked_shoe),
         "rail_screw": intersection_volume(
-            rail, translated_shape(set_screw_shape(), y=CLAMP_SHIFT_Y)
+            rail, translated_shape(clamp_screw_shape(), y=CLAMP_SHIFT_Y)
         ),
-        "shoe_screw": intersection_volume(shoe, set_screw_shape()),
+        "shoe_screw": intersection_volume(shoe, clamp_screw_shape()),
         "shoe_nut": intersection_volume(shoe, nut_shape()),
-        "nut_screw": intersection_volume(nut_shape(), set_screw_shape()),
+        "nut_screw": intersection_volume(nut_shape(), clamp_screw_shape()),
         "tape_shoe": intersection_volume(tape, locked_shoe),
         "tape_rail": intersection_volume(tape, rail),
     }
@@ -403,9 +491,9 @@ def validate_mechanism():
             rail, translated_shape(shoe, y=-CLAMP_SHIFT_Y)
         ),
         "rail_screw": intersection_volume(
-            rail, translated_shape(half_turn(set_screw_shape()), y=-CLAMP_SHIFT_Y)
+            rail, translated_shape(half_turn(clamp_screw_shape()), y=-CLAMP_SHIFT_Y)
         ),
-        "shoe_screw": intersection_volume(shoe, half_turn(set_screw_shape())),
+        "shoe_screw": intersection_volume(shoe, half_turn(clamp_screw_shape())),
         "shoe_nut": intersection_volume(shoe, half_turn(nut_shape())),
     }
     return {

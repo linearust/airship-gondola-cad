@@ -50,7 +50,7 @@ class NativeInterfaceTests(unittest.TestCase):
                 self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
                 self.assertEqual(len(doc.DesignRegistry.Modules), 3)
                 self.assertEqual(len(doc.DesignRegistry.PrintedParts), 18)
-                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 62)
+                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 68)
                 self.assertEqual(
                     list(doc.DesignRegistry.PrintedParts).count(doc.ServoDriveBridge), 1
                 )
@@ -103,18 +103,26 @@ class NativeInterfaceTests(unittest.TestCase):
             self.assertNotIn("unthreaded", part.ThreadStandard.lower())
 
     def test_shared_nut_and_clamp_screw_declare_m2_threads(self):
+        from gondola.contracts import fasteners
         from gondola.parts import purchased_hardware
 
         document = App.newDocument("HardwareThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parts = (
-            ("M2_SQUARE_NUT_DIN562", purchased_hardware.square_nut_shape()),
-            ("M2X8_SOCKET_CAP", purchased_hardware.screw_shape(8)),
+            ("M2_HEX_NUT", purchased_hardware.hex_nut_shape()),
+            ("M2X8_BUTTON_HEAD", purchased_hardware.screw_shape(8)),
         )
         for index, (sku, shape) in enumerate(parts):
             with self.subTest(sku=sku):
                 obj = purchased_hardware.add_hardware(
-                    document, None, f"Hardware{index}", sku, shape, sku, "Test only"
+                    document,
+                    None,
+                    f"Hardware{index}",
+                    sku,
+                    shape,
+                    sku,
+                    "Test only",
+                    material=fasteners.KIT_MATERIAL,
                 )
                 self.assertEqual(obj.NominalThreadDiameter.Value, 2)
                 self.assertEqual(obj.ThreadPitch.Value, 0.4)

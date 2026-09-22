@@ -1,7 +1,7 @@
-"""Portable purchase specifications; native hardware geometry lives in parts.
+"""Portable purchase and stock-preparation contracts.
 
-A CAD SKU denotes a required interface, not a verified marketplace listing.
-Preserve this evidence in native hardware metadata and generated purchase lists.
+Project purchase keys distinguish selected options; they are not manufacturer
+part numbers or received-lot certification. Native geometry lives in parts.
 """
 
 import re
@@ -10,46 +10,25 @@ from urllib.parse import quote_plus
 from gondola.contracts.drive import GEARS
 from gondola.contracts.equipment_interfaces import (
     BEARING_SOURCE,
-    GEAR_SOURCE,
     HORN_SOURCE,
-    SHAFT_CATALOG_SOURCE,
     SHAFT_SOURCE,
 )
 
-CLAMP_SCREW_SOURCE = (
-    "https://www.accu.co.uk/metric-cap-head-screws/152178-SSCF-M2-8-A2-BL"
-)
-
+FASTENER_KIT_SOURCE = "https://www.aliexpress.com/item/1005005551208735.html"
+CLAMP_SCREW_SOURCE = FASTENER_KIT_SOURCE
+STACK_SCREW_SOURCE = FASTENER_KIT_SOURCE
+HEX_NUT_SOURCE = FASTENER_KIT_SOURCE
 SERVO_SCREW_SOURCE = (
     "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2"
 )
-
 SERVO_NUT_SOURCE = "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
-
-STACK_SCREW_SOURCE = (
-    "https://www.ricoplastics.co.uk/shop-components/product/"
-    "167-nylon-pan-head-screws-m2-x-5mm/"
-)
-
-STACK_SCREW_DRAWING_SOURCE = (
-    "https://cdn.rwd.group/ricoplastics.co.uk/docs/shop/"
-    "167-nylon-pan-head-screws-m2-x-5mm-179.pdf"
-)
-
 STACK_SPACER_SOURCE = (
     "https://www.kangyang-usa.com/wp-content/uploads/2026/09/HPS2-H-18-2.pdf"
 )
-
-SQUARE_NUT_SOURCE = "https://www.accu.co.uk/flat-square-nuts/21324-HFSN-M2-A2"
-
-SQUARE_NUT_PTS_SOURCE = (
-    "https://www.pts-uk.com/products/nuts/square-nuts/metric-a2/a56202"
-)
-
 PURCHASING_STATUS = (
-    "Specification only; no AliExpress SKU, supplier lot or actual purchased sample "
-    "has been verified. Search results and cited dimensional examples are not "
-    "approved purchase selections."
+    "Design purchase/preparation specification. Selected seller options and "
+    "dimensional references are distinguished in each item; received-lot "
+    "dimensions, material, fit and strength remain unverified."
 )
 
 PROCUREMENT_SPECS = {
@@ -61,204 +40,156 @@ PROCUREMENT_SPECS = {
     "M1_6_HEX_NUT_DIN934": {
         "search_query": "M1.6 DIN934 A2 hex nut 3.2mm 1.3mm",
         "candidate_url": SERVO_NUT_SOURCE,
-        "requirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 ear nuts, accessible with a small wrench. Does not replace the captive M2 DIN 562 square nuts elsewhere. No washers; check actual engagement and printed support faces.",
+        "requirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 ear nuts, accessible with a small wrench. These match the M1.6 servo-ear screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
     },
-    "MR63ZZ": {
-        "search_query": "NSK Micro Precision ISC MR63ZZ 3x6x2.5 bearing",
+    "BEARING_3X6X2_5": {
+        "search_query": "3x6x2.5mm miniature ball bearing",
         "candidate_url": BEARING_SOURCE,
-        "requirements": "NSK Micro Precision (ISC) MR63ZZ, 3 x 6 x 2.5 mm, double shielded. Four installed, on the two output axes. The servo directly supports each driver gear. Do not substitute an open MR63 or a different brand under the same generic size without rechecking fits. Published reference mass 0.27 g each. Do not load the shields; inner-ring abutment OD at most 3.7 mm, housing shoulder opening at least 5.4 mm. Fits and endplay require trials.",
+        "requirements": "User-selected generic miniature bearing, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm; four on the two output axes. Check the actual shields, race lands, fit, free rotation and endplay. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
+        "evidence_notes": "The saved cart establishes only the selected 3x6x2.5mm size option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the nominal shoulder/cap clearance: inner abutment OD at most 3.7 mm and housing opening at least 5.4 mm. Verify those contacts on the received generic part. ISC's 0.27 g is comparison data, not this seller's measured mass.",
     },
     "KST_0415_13": {
         "search_query": "KST 0415.13 aluminium servo arm 15T 4mm",
         "candidate_url": HORN_SOURCE,
-        "requirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
+        "requirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade and connects to the selected nominal-3mm input stub. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
     },
-    "M2X8_SOCKET_CAP": {
-        "search_query": "M2x8 DIN912 A2 socket cap screw",
-        "requirements": (
-            "A2 stainless steel, M2 x 0.4 right-hand, 8 mm under-head length. "
-            "DIN 912 / ISO 4762 socket cap shape; nominal head diameter 3.8 mm, "
-            "head height 2 mm and 1.5 mm hex key. Shared propulsion mounting, "
-            "bearing caps and shaft clamps; match each documented grip and "
-            "thread projection. No washers. Use minimal preload and verify "
-            "PA12 retention/creep. This is not an OEM horn or motor screw."
-        ),
-        "evidence_notes": (
-            "Accu's discontinued black-finish A2 example supports nominal "
-            "dimensions only; no finish or current stock requirement is inferred. "
-            "Select a currently available A2 DIN 912 / ISO 4762 screw matching "
-            "the interface. Seller lot, strength and actual mass remain unverified."
-        ),
-    },
-    "M2X5_PA66_PAN_HEAD": {
-        "search_query": "M2x5 PA66 nylon 66 slotted pan head screw 4mm head",
-        "requirements": (
-            "Bought Nylon PA66 slotted pan screw, M2 x 0.4 right-hand, "
-            "5 mm under-head length; nominal head diameter 4 mm and height "
-            "1.3 mm. Match RI-CO's M2 x 5 mm nylon pan-head product; no "
-            "DIN 912 / ISO 4762 or socket-drive claim. No washers. Four screws "
-            "attach two stack spacers through 2 mm printed plates; nominal "
-            "thread penetration is 3.0 mm. Two screws clamp the manual optical "
-            "pivots through two 1.5 mm ears and a DIN 562 square nut: nominal "
-            "grip 4.2 mm and tip projection 0.8 mm. Check actual printed thickness, "
-            "screw length and usable female depth; do not bottom the screw. "
-            "Use minimal hand preload and check angle retention with actual "
-            "cables. Do not substitute PA6, unspecified nylon or printed screws."
-        ),
-        "candidate_url": STACK_SCREW_SOURCE,
-        "evidence_notes": (
-            "RI-CO's product page lists Nylon 66, M2, length 5 mm and head "
-            "4 x 1.3 mm. Its linked preliminary drawing dated 30/6/24 "
-            "identifies a slotted pan head and under-head thread length, "
-            "but does not dimension the slot or tolerances. M2 x 0.4 is "
-            "the required mating thread; the product page does not separately "
-            "state pitch. CAD retains the cylindrical head envelope without "
-            "inventing the slot or crown profile. Drawing: "
-            + STACK_SCREW_DRAWING_SOURCE
-            + ". Retained evidence: references/rico_m2x5_nylon_screw.pdf. "
-            "Nominal screw length with a printed plate 2 +/-0.3 mm gives "
-            "2.7-3.3 mm stack penetration. Two pivot ears each 1.5 +/-0.3 mm "
-            "leave at least 0.2 mm nominal tip projection through a 1.2 mm nut. "
-            "Both ranges exclude screw-length tolerance. These geometric "
-            "allowances do not qualify thread engagement, tightening torque, "
-            "PA66 creep life or strength. No seller lot or actual mass is verified."
-        ),
+    "M2_HEX_NUT": {
+        "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
+        "candidate_url": HEX_NUT_SOURCE,
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
     "M2_FF_PA66_AF4_L25": {
         "search_query": "M2 female female nylon PA66 hex standoff 25mm 4mm AF",
+        "candidate_url": STACK_SPACER_SOURCE,
         "requirements": (
             "Bought Nylon PA66 female-female standoff, M2 x 0.4 right-hand "
             "threads at both ends. Match Kang Yang HPS2-25: nominal body "
             "length 25 mm, across flats 4 mm; drawing tolerances +/-0.4 mm "
-            "length and +/-0.2 mm across flats. Do not substitute metal, "
-            "PA6, an unspecified nylon grade, a male-female part or a printed "
-            "spacer. Verify at least 3.6 mm actual usable female depth at "
-            "each end, then confirm measured screw penetration does not bottom. "
-            "This depth acceptance is our purchasing condition, not a "
-            "manufacturer-guaranteed thread depth or retention rating."
+            "length and +/-0.2 mm across flats. Do not substitute a male-female "
+            "part or a printed spacer. Verify at least 3.6 mm actual usable "
+            "female depth at each end, then confirm measured screw penetration "
+            "does not bottom. This depth acceptance is a design purchasing "
+            "condition, not a manufacturer-guaranteed engagement rating."
         ),
-        "candidate_url": STACK_SPACER_SOURCE,
         "evidence_notes": (
-            "Kang Yang HPS2-H Rev B drawing specifies Nylon 66 UL94V-2, "
-            "M2x0.4 and the HPS2-25 dimensions. Its long-spacer drawing shows "
-            "4 mm REF tapped depth at each end, not guaranteed full-length "
-            "threading. CAD uses a solid hex body and two diameter 2 mm by "
-            "4 mm nominal bores; internal unthreaded geometry, chamfers and "
-            "helical threads are not measured. Manufacturer mass, minimum "
-            "usable engagement, thread strength, preload and creep life "
-            "remain unverified. Retained evidence: "
-            "references/kangyang_hps2_dimensions.pdf."
-        ),
-    },
-    "M2x6_ISO4026_DIN913": {
-        "search_query": "M2x6 DIN913 flat point stainless set screw",
-        "requirements": (
-            "A2 stainless steel, M2 x 0.4 right-hand, 6 mm overall length. "
-            "DIN 913 / ISO 4026 flat-point set screw with 0.9 mm hex key. "
-            "Do not substitute a cup point or cone point. One screw/DIN 562 "
-            "square-nut pair per rail shoe; the unused opposite clamp port stays empty."
-        ),
-    },
-    "M2_SQUARE_NUT_DIN562": {
-        "search_query": "M2 DIN562 A2 flat square nut 4 1.2",
-        "requirements": (
-            "A2 stainless steel, DIN 562 M2 x 0.4 right-hand flat square nut. "
-            "Nominal width 4 mm and height 1.2 mm; accepted width 3.6-4.0 mm "
-            "and height 0.8-1.2 mm. Shared by the rail clamps, propulsion clamps, "
-            "bearing caps and optical pivots. No washers. Preserve square "
-            "corners for rail anti-rotation; verify actual corner form and captive "
-            "fit with the printed coupon. Exposed propulsion and pivot nuts require "
-            "a holding tool. Do not substitute a hex nut."
-        ),
-        "candidate_url": SQUARE_NUT_SOURCE,
-        "evidence_notes": (
-            "Accu HFSN-M2-A2 lists width 4 +0/-0.4 mm (minimum 3.6 mm) "
-            "and height 1.2 +0/-0.4 mm. PTS A56202 lists width 4.0-3.7 mm "
-            "and height 1.2-0.8 mm: " + SQUARE_NUT_PTS_SOURCE + ". "
-            "The tolerance check uses the broader Accu minimum width 3.6 mm. "
-            "The dimensional examples do not verify the selected seller lot, "
-            "corner form, thread strength or printed pocket retention."
+            "Kang Yang HPS2-H Rev B specifies Nylon 66 UL94V-2, M2x0.4 and "
+            "the HPS2-25 dimensions; the long-spacer drawing gives 4 mm REF "
+            "tapped depth at each end. CAD models two nominal diameter-2 mm "
+            "by 4 mm bores without helical threads. Internal unthreaded shape, "
+            "minimum usable engagement, mass and strength remain unverified. "
+            "Retained evidence: references/kangyang_hps2_dimensions.pdf."
         ),
     },
 }
 
-for _gear in GEARS.values():
-    _sku = _gear.sku
-    PROCUREMENT_SPECS[_sku] = {
-        "search_query": f"MISUMI {_sku}",
-        "candidate_url": GEAR_SOURCE,
+for _length in (5, 6, 8):
+    PROCUREMENT_SPECS[f"M2X{_length}_BUTTON_HEAD"] = {
+        "search_query": f"M2x{_length} black steel button head hex socket screw",
+        "candidate_url": FASTENER_KIT_SOURCE,
         "requirements": (
-            f"MISUMI {_sku}: white POM, module 0.5, pressure angle 20 degrees, "
-            f"{_gear.teeth} teeth, {_gear.bore_mm:g} mm H7 bore, 3 mm face, 8 mm total length, "
+            f"Selected black-steel M2 x 0.4 button-head screw, {_length} mm "
+            "under-head length, from the user's screw/nut kit. Design clearance "
+            "envelope: head diameter 4.5 mm and head height 2 mm. Check actual "
+            "head, length, 1.5 mm hex-key access and the documented joint grip. "
+            "No washers. Use minimal preload and verify PA12/PA66 retention "
+            "and creep; these are not OEM motor or horn screws."
+        ),
+        "evidence_notes": (
+            "Kit image identifies a button head, lengths 5/6/8 mm and a "
+            "1.5 mm hex key. Head envelopes are deliberate design allowances, "
+            "not seller-dimensioned maxima or an ISO conformity claim. The "
+            "seller's 10.9 statement is unverified for the received lot. "
+            "No socket recess depth or exact crown profile is assumed."
+        ),
+    }
+
+for _gear in GEARS.values():
+    PROCUREMENT_SPECS[_gear.sku] = {
+        "search_query": f"Kailash module 0.5 {_gear.teeth}T gear 3mm bore",
+        "candidate_url": _gear.item_url,
+        "requirements": (
+            f"User-selected Kailash Store option: {_gear.teeth} teeth, module "
+            f"0.5, pressure angle 20 degrees, {_gear.bore_mm:g} mm bore "
+            f"({_gear.bore_tolerance}), {_gear.face_width_mm:g} mm face, "
+            f"{_gear.total_length_mm:g} mm overall length, "
             f"{_gear.hub_diameter_mm:g} mm hub diameter. "
-            "B-type hub with one included M3 SCM435 black-oxide set screw; "
-            "do not order a second screw for the same gear. No metal hub insert. "
-            "Set-screw length/tip/torque and actual mass remain unverified. "
-            "Prefer MISUMI Korea; Korean order acceptance, price and lead time "
-            "are not confirmed by the Japanese dimensional catalog."
+            f"Material statement: {_gear.material_claim}. "
+            "Radial thread is M3; screw length, point and quantity to buy "
+            "separately remain to be selected after the actual interface is "
+            "checked. Do not assume an included screw. Both bores are plain "
+            "round nominal-3mm bores, not X06 splines."
+        ),
+        "evidence_notes": (
+            "Selected saved supplier page and user-provided 16T drawings are "
+            "retained in references/kailash_gears_selected_evidence.md. "
+            "These project keys are not manufacturer order codes. The 48T "
+            "material attribute conflicts with its aluminium description; "
+            "the user deferred material/mass resolution without changing the "
+            "selected item. Neither gear has a measured mass. The 16T "
+            "drawing locates the M3 axis 2.5 mm from the hub end; the 48T "
+            "axis is unpublished. Confirm mesh, axial alignment and grip "
+            "with the received parts."
         ),
     }
 
 
 def _shaft_dimensions(sku):
-    """Decode the verified diameter-3 straight-shaft and one-flat order syntax."""
-    match = re.fullmatch(r"PSFU3-(\d+)(?:-FC(\d+)-A(\d+))?", sku)
+    """Decode cut lengths and optional hand-prepared flats on selected rod."""
+    match = re.fullmatch(r"AL6061_CUT3_L(\d+)(?:_FLAT(\d+)_A(\d+))?", sku)
     if match is None:
+        if sku.startswith("AL6061_CUT3_"):
+            raise ValueError("Invalid nominal-3mm cut-rod preparation key")
         return None
     length = int(match.group(1))
-    if not 10 <= length <= 400:
-        raise ValueError("PSFU3 standard shaft length must be 10 to 400 mm")
+    if not 1 <= length <= 330:
+        raise ValueError("Cut length must be 1 to 330 mm for selected rod stock")
     flat_length = int(match.group(2)) if match.group(2) is not None else None
     offset = int(match.group(3)) if match.group(3) is not None else None
-    if flat_length is not None:
-        if length < 20:
-            raise ValueError("PSFU3 FC alteration requires shaft length at least20mm")
-        if not 1 <= flat_length <= 15:
-            raise ValueError("PSFU3 FC flat length must be 1 to 15 mm")
-        if offset == 1 or offset + flat_length > length:
-            raise ValueError("PSFU3 flat offset must be0or≥2mm and fit within shaft")
+    if flat_length is not None and not (
+        1 <= flat_length <= length and offset + flat_length <= length
+    ):
+        raise ValueError("Local flat must have positive length and fit within shaft")
     return length, flat_length, offset
 
 
 def procurement_spec(sku, *, allow_unknown=False):
-    """Return a fresh purchase contract, optionally None for an unknown SKU.
-
-    Invalid shaft orders and incomplete known specifications always raise.
-    """
+    """Return a fresh purchase/preparation contract; invalid known keys raise."""
     shaft = _shaft_dimensions(sku)
     if shaft is not None:
         length, flat_length, offset = shaft
         flat_requirement = (
-            "No flat is included. "
+            "Leave the rod round; no flat is specified. "
             if flat_length is None
             else (
-                f"Factory FC{flat_length}-A{offset} alteration: one0.5mm-deep "
-                f"flat, {flat_length}mm long, starting{offset}mm from the reference "
-                "end. Clock this flat under the actual gear's radial set screw; "
-                "its angle relative to tooth phase is not published. No manual "
-                "grinding or substitute plain round shaft. "
+                f"Prepare one local flat, nominal depth 0.5 mm, length "
+                f"{flat_length} mm, starting {offset} mm from the reference "
+                "end shown in CAD. A full-length flat is permitted on the "
+                "input stub because it has no bearing journal. Keep every "
+                "output-bearing journal round. Align the actual gear's radial "
+                "set screw with the flat; tooth-to-screw clocking is not specified. "
             )
         )
         spec = {
-            "search_query": f"MISUMI {sku}",
+            "search_query": "6061 aluminium round rod 3mm 330mm",
             "candidate_url": SHAFT_SOURCE,
             "requirements": (
-                f"MISUMI {sku}: 3 mm h5 x {length} mm straight shaft, "
-                "SUJ2-equivalent hardened hard-chrome steel. Diameter 2.996 to "
-                "3.000 mm. No shoulder or thread is included. "
-                + flat_requirement
-                + "This order "
-                "does not qualify bearing slip fit, shaft-clamp torque transfer "
-                "or gear set-screw retention; verify actual interfaces. Do not "
-                "silently substitute unhardened rod or add unmodeled end machining."
+                f"{sku}: cut the selected nominal-diameter-3mm 6061 aluminium rod "
+                f"to {length} mm length. The cart stock is 330 mm long; this "
+                "project key describes workshop preparation, not a supplier "
+                "finished-shaft order. Cut square and deburr without a raised "
+                "edge. " + flat_requirement + "Measure diameter, straightness "
+                "and actual bearing/gear fit before cutting the full batch. "
+                "Use a precision nominal-3mm replacement rod if fit is "
+                "inadequate; do not force an oversized or bent rod through "
+                "bearings. Retention and torque transfer require physical trials."
             ),
             "evidence_notes": (
-                "MISUMI straight-shaft catalog and current product alteration "
-                "table: FC and A use1mm increments; D3 flat depth0.5mm, "
-                "FC≤15mm, A=0or≥2mm, and altered D3–12 shafts require L≥20mm. "
-                "The selected complete order code must be accepted by the supplier. "
-                "Catalog: " + SHAFT_CATALOG_SOURCE + ". Retained evidence: "
-                "references/misumi_psfu_shaft_catalog.pdf."
+                "User selected the cart's 3x330mm, five-piece 6061 rod option "
+                "and authorized cutting/local-flat preparation. Seller "
+                "diameter, roundness, straightness, alloy temper and length "
+                "tolerances are unspecified. No h5 class, hard chrome, "
+                "factory flat or guaranteed slip fit is claimed."
             ),
         }
     else:
@@ -272,9 +203,9 @@ def procurement_spec(sku, *, allow_unknown=False):
     spec.setdefault("candidate_url", "")
     spec.setdefault(
         "evidence_notes",
-        "SourceURL supports the nominal dimensions. Verify selected seller "
-        "options, material and actual dimensions before purchasing; the "
-        "AliExpress URL is a search link, not a verified listing.",
+        "The cited reference supports nominal dimensions, not a received "
+        "supplier lot. Verify actual options, interfaces and material. Search "
+        "links alone do not establish product selection or compatibility.",
     )
     spec["status"] = PURCHASING_STATUS
     return spec

@@ -84,7 +84,7 @@ def create_attachment_detail_document(side=1):
 
     add_detail_object(
         "PurchasedM2x6",
-        translated_shape(orient(rail.set_screw_shape()), y=side * 0.45),
+        translated_shape(orient(rail.clamp_screw_shape()), y=side * 0.45),
         (0.92, 0.64, 0.19),
     )
     add_detail_object(

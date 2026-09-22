@@ -10,8 +10,10 @@ DENSITIES_G_CM3 = {
     "PA12": 1.01,
     "A2": 7.9,
     "PA66": 1.14,
-    "POM": 1.41,
-    "SUJ2": 7.85,
+    "CarbonSteel": 7.85,
+    "Al6061": 2.70,
+    "CopperAlloy": 8.5,
+    "UnverifiedAluminium": 2.70,
     "BearingSteel": 7.85,
     "Aluminium": 2.70,
 }
@@ -24,7 +26,7 @@ EXCLUDED_ITEMS = (
     "Wiring, connectors, pigtails and heat-shrink beyond any included equipment mass.",
     "Unmodeled FC/P-AS mounting spacers, dampers and fastening stacks; their bearing planes and screw lengths are unverified.",
     "Unmodeled OEM motor/horn retaining fasteners and interfaces represented only as clearance reservations.",
-    "GEABP gears' included M3 set screws: their exact dimensions and mass are unverified, and the POM gear envelope does not include their steel mass.",
+    "Four M3 gear set screws: inclusion, exact dimensions and mass unverified; gear envelopes exclude their mass.",
     "Antennas, capacitor, regulators and accessory parts not included in listed equipment masses.",
     "Finish, moisture, manufacturing variation and differences from actual purchased parts.",
 )
@@ -129,7 +131,7 @@ def mass_budget(printed, hardware):
         "is_all_up_flight_mass": False,
         "complete_device_mounting_hardware_included": False,
         "device_mounting_hardware_scope": "X06 ear screws/nuts and stock horns are included. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
-        "comparison_limit": "Compare modeled structure and mechanism hardware only. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
+        "comparison_limit": "Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
                 "density_g_cm3": DENSITIES_G_CM3["PA12"],
@@ -152,7 +154,14 @@ def mass_budget(printed, hardware):
                     "basis": "Engineering assumption for modeled material volume; use sourced complete-part reference mass where available.",
                     "source": None,
                 }
-                for material in ("POM", "SUJ2", "BearingSteel", "Aluminium")
+                for material in (
+                    "CarbonSteel",
+                    "Al6061",
+                    "CopperAlloy",
+                    "UnverifiedAluminium",
+                    "BearingSteel",
+                    "Aluminium",
+                )
             },
         },
         "printed": printed_rows,
