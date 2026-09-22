@@ -13,7 +13,7 @@ from gondola.contracts.drive import (
 
 
 class DriveContractTests(unittest.TestCase):
-    def test_catalog_alternative_preserves_radial_direction_and_hub_interface(self):
+    def test_catalog_alternative_preserves_hub_and_shared_fixed_mount_interface(self):
         baseline = DRIVE_CONFIGURATIONS["60_20"]
         alternative = DRIVE_CONFIGURATIONS["64_20"]
         self.assertEqual(baseline.center_distance_mm, 20)
@@ -29,6 +29,13 @@ class DriveContractTests(unittest.TestCase):
                 alternative.input_z_mm - baseline.input_z_mm,
             ),
             1,
+        )
+        self.assertNotIn("mesh_clearance_max_mm", baseline.contract())
+        self.assertEqual(
+            baseline.contract()["input_support_print_sku"], "GearedInputSupport60T"
+        )
+        self.assertEqual(
+            alternative.contract()["input_support_print_sku"], "GearedInputSupport64T"
         )
         self.assertEqual(baseline.contract()["servo_endpoint_for_180_deg"], 60)
         self.assertEqual(alternative.contract()["servo_endpoint_for_180_deg"], 56.25)

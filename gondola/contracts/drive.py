@@ -1,4 +1,4 @@
-"""Finite, sourced gear choices sharing one radial input-cartridge interface.
+"""Finite, sourced gear choices using replaceable fixed input supports.
 
 Select a complete configuration before building. A saved CAD property is an
 identity record, not a live gear-ratio knob: changing it cannot change teeth.
@@ -14,7 +14,7 @@ FACE_WIDTH_MM = 3.0
 PIVOT_Z_MM = 48.2
 RADIAL_X = 0.4
 RADIAL_Z = -math.sqrt(1 - RADIAL_X**2)
-MESH_CLEARANCE_MAX_MM = 0.19
+INPUT_MOUNT_X_MM = 8.0
 INPUT_MOUNT_HALF_SPAN = 12.5
 INPUT_MOUNT_Z_MM = 8.3
 
@@ -57,8 +57,8 @@ class DriveSpec:
         return PIVOT_Z_MM + RADIAL_Z * self.center_distance_mm
 
     @property
-    def max_mesh_clearance_mm(self):
-        return MESH_CLEARANCE_MAX_MM
+    def input_support_sku(self):
+        return f"GearedInputSupport{self.driver.teeth}T"
 
     def contract(self):
         return {
@@ -68,7 +68,7 @@ class DriveSpec:
             "angle_ratio": -self.ratio,
             "nominal_center_mm": self.center_distance_mm,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
-            "mesh_clearance_max_mm": self.max_mesh_clearance_mm,
+            "input_support_print_sku": self.input_support_sku,
         }
 
 
@@ -78,13 +78,6 @@ DRIVE_CONFIGURATIONS = MappingProxyType(
         for teeth in (60, 64)
     }
 )
-# The installed bolt-guided slider accommodates every supported gear pair and
-# the separately bounded fine mesh adjustment without changing the print.
-INPUT_SLIDE_TRAVEL_MM = max(
-    spec.center_distance_mm + spec.max_mesh_clearance_mm
-    for spec in DRIVE_CONFIGURATIONS.values()
-) - min(spec.center_distance_mm for spec in DRIVE_CONFIGURATIONS.values())
-
 # Source-authoritative build selection. Changing this requires a reviewed native
 # baseline transition; source fingerprints bind all subsequent release reports.
 SELECTED_DRIVE = DRIVE_CONFIGURATIONS["60_20"]

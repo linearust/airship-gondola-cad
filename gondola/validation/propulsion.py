@@ -20,7 +20,6 @@ from gondola.cad import (
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.drive import (
     FACE_WIDTH_MM,
-    MESH_CLEARANCE_MAX_MM,
     MODULE_MM,
     SELECTED_DRIVE,
     drive_for_document,
@@ -48,7 +47,6 @@ def gear_mesh_check(
     driver_teeth,
     output_teeth,
     minimum_face_overlap,
-    maximum_centre_adjustment=MESH_CLEARANCE_MAX_MM,
     minimum_contact_ratio=1.3,
 ):
     """Measure tooth-face engagement independently of the protruding gear hubs.
@@ -114,15 +112,13 @@ def gear_mesh_check(
         "output": second,
         "axis_distance_mm": distance,
         "nominal_axis_distance_mm": expected_distance,
-        "maximum_axis_distance_mm": expected_distance + maximum_centre_adjustment,
+        "axis_position_tolerance_mm": TOL,
         "tooth_face_overlap_mm": face_overlap,
         "minimum_face_overlap_mm": minimum_face_overlap,
         "standard_involute_contact_ratio": contact_ratio,
         "minimum_contact_ratio": minimum_contact_ratio,
         "scope": "Saved gear position, actual tooth-band axial overlap and theoretical unshifted 20-degree involute contact ratio. Tooth approximation, backlash, tooth strength and operational servo fit remain unqualified.",
-        "passed": expected_distance - TOL
-        <= distance
-        <= expected_distance + maximum_centre_adjustment + TOL
+        "passed": abs(distance - expected_distance) <= TOL
         and face_overlap >= minimum_face_overlap - TOL
         and contact_ratio >= minimum_contact_ratio - TOL,
     }
@@ -215,69 +211,41 @@ def gear_rotation_check(doc, prefix):
     }
 
 
-def mesh_adjustment_check(doc, prefix):
-    """Bound the native adjustment and check both operating mesh extremes."""
-    pod = doc.getObject(prefix + "Pod")
+def fixed_input_datum_check(doc, prefix):
+    """Require the selected fixed support's datum without a live adjustment axis."""
     cartridge = doc.getObject(prefix + "InputCartridge")
+    if cartridge is None:
+        return {"passed": False, "error": "Missing fixed input cartridge"}
     configuration = drive_for_document(doc)
-    nominal_distance = configuration.center_distance_mm
-    maximum_clearance = configuration.max_mesh_clearance_mm
-    original_tilt = float(pod.Tilt)
-    original_adjustment = float(cartridge.MeshClearance.Value)
-    rows = []
-    phase_checks = []
     sign = 1 if prefix == "Port" else -1
-    try:
-        pod.Tilt = 0
-        for requested in (-999, 0, maximum_clearance, 999):
-            cartridge.MeshClearance = requested
-            doc.recompute()
-            expected = min(maximum_clearance, max(0, requested))
-            base = cartridge.Placement.Base
-            measured = (
-                math.hypot(base.x, base.z - propulsion.PIVOT_Z) - nominal_distance
-            )
-            expected_x = (
-                sign * configuration.input_x_mm * (1 + expected / nominal_distance)
-            )
-            expected_z = propulsion.PIVOT_Z + (
-                configuration.input_z_mm - propulsion.PIVOT_Z
-            ) * (1 + expected / nominal_distance)
-            line_error = math.hypot(base.x - expected_x, base.z - expected_z)
-            mesh = gear_mesh_check(
-                world_shape(doc.getObject(prefix + "DriverGear")),
-                world_shape(doc.getObject(prefix + "OutputGear")),
-                module=MODULE_MM,
-                driver_teeth=configuration.driver.teeth,
-                output_teeth=configuration.output.teeth,
-                minimum_face_overlap=FACE_WIDTH_MM,
-                maximum_centre_adjustment=maximum_clearance,
-            )
-            rows.append(
-                {
-                    "requested_radial_clearance_mm": requested,
-                    "bounded_adjustment_mm": expected,
-                    "actual_adjustment_mm": measured,
-                    "radial_position_error_mm": line_error,
-                    "mesh": mesh,
-                    "passed": abs(measured - expected) < TOL
-                    and line_error < TOL
-                    and mesh["passed"],
-                }
-            )
-            if requested in (0, maximum_clearance):
-                phase_checks.append(
-                    {"mesh_clearance_mm": expected, **gear_rotation_check(doc, prefix)}
-                )
-    finally:
-        pod.Tilt = original_tilt
-        cartridge.MeshClearance = original_adjustment
-        doc.recompute()
+    expected = App.Vector(sign * configuration.input_x_mm, 0, configuration.input_z_mm)
+    position_error = (cartridge.Placement.Base - expected).Length
+    rotation_matches = cartridge.Placement.Rotation.isSame(App.Rotation(), 1e-7)
+    placement_expressions = [
+        str(path)
+        for path, _ in cartridge.ExpressionEngine
+        if str(path).lstrip(".").startswith("Placement")
+    ]
+    has_adjustment_property = "MeshClearance" in cartridge.PropertiesList
+    support = doc.getObject(prefix + "InputSupport")
+    support_sku = getattr(support, "PrintSKU", None)
     return {
         "pod": prefix,
-        "cases": rows,
-        "tooth_phase_checks": phase_checks,
-        "passed": all(row["passed"] for row in rows + phase_checks),
+        "gear_configuration": configuration.key,
+        "expected_input_axis_mm": list(expected),
+        "actual_input_axis_mm": list(cartridge.Placement.Base),
+        "datum_position_error_mm": position_error,
+        "datum_rotation_matches": rotation_matches,
+        "placement_expressions": placement_expressions,
+        "has_adjustment_property": has_adjustment_property,
+        "expected_support_sku": configuration.input_support_sku,
+        "actual_support_sku": support_sku,
+        "scope": "Nominal fixed input-cartridge datum for the selected gear pair. Replace the matched printed support to change gear ratio; printed tolerances and physical backlash remain prototype checks.",
+        "passed": position_error < TOL
+        and rotation_matches
+        and not placement_expressions
+        and not has_adjustment_property
+        and support_sku == configuration.input_support_sku,
     }
 
 
@@ -418,45 +386,60 @@ def output_stub_check(shaft, motor, pivot_y):
     }
 
 
-def input_mount_adjustment_check(doc, prefix):
-    """Keep both cartridge clamps seated at each supported mesh setting."""
-    cartridge = doc.getObject(prefix + "InputCartridge")
+def fixed_input_mount_check(doc, prefix):
+    """Check fixed round-hole alignment, flange contacts and both bolt stacks."""
     configuration = drive_for_document(doc)
-    original = float(cartridge.MeshClearance.Value)
+    frame = world_shape(doc.PropulsionFixedFrame)
+    support = world_shape(doc.getObject(prefix + "InputSupport"))
+    support_overlap = intersection_volume(frame, support)
+    clamps = Part.makeCompound([frame, support])
+    placement = doc.MainPropulsionModule.getGlobalPlacement()
+    sign = 1 if prefix == "Port" else -1
     rows = []
-    try:
-        for clearance in (0, configuration.max_mesh_clearance_mm):
-            cartridge.MeshClearance = clearance
-            doc.recompute()
-            frame = world_shape(doc.PropulsionFixedFrame)
-            support = world_shape(doc.getObject(prefix + "InputSupport"))
-            support_overlap = intersection_volume(frame, support)
-            clamps = Part.makeCompound([frame, support])
-            for suffix in ("Negative", "Positive"):
-                name = prefix + "InputMount" + suffix
-                fastener = clamp_fastener_check(
-                    clamps,
-                    world_shape(doc.getObject(name + "Bolt")),
-                    world_shape(doc.getObject(name + "Nut")),
-                )
-                rows.append(
-                    {
-                        "bolt": name + "Bolt",
-                        "mesh_clearance_mm": clearance,
-                        "support_frame_intersection_mm3": support_overlap,
-                        **fastener,
-                        "passed": fastener["passed"] and support_overlap < TOL,
-                    }
-                )
-    finally:
-        cartridge.MeshClearance = original
-        doc.recompute()
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        name = prefix + "InputMount" + suffix
+        fastener = clamp_fastener_check(
+            clamps,
+            world_shape(doc.getObject(name + "Bolt")),
+            world_shape(doc.getObject(name + "Nut")),
+        )
+        hole_rows = []
+        x = sign * propulsion.INPUT_MOUNT_X_MM + side * propulsion.INPUT_MOUNT_HALF_SPAN
+        for part, shape, y in (("frame", frame, 17.25), ("support", support, 19.25)):
+            origin = App.Vector(x, sign * y, propulsion.INPUT_MOUNT_Z_MM)
+            axis = App.Vector(0, sign, 0)
+            bore = Part.makeCylinder(1.1, 1.5, origin, axis)
+            rim = Part.makeCylinder(1.3, 1.5, origin, axis).cut(bore)
+            bore.Placement = placement.multiply(bore.Placement)
+            rim.Placement = placement.multiply(rim.Placement)
+            bore_intrusion = intersection_volume(bore, shape)
+            missing_rim = abs(rim.cut(shape).Volume)
+            hole_rows.append(
+                {
+                    "part": part,
+                    "hole_diameter_mm": 2.2,
+                    "bore_intrusion_mm3": bore_intrusion,
+                    "missing_round_hole_rim_mm3": missing_rim,
+                    "passed": bore_intrusion < TOL and missing_rim < TOL,
+                }
+            )
+        rows.append(
+            {
+                "bolt": name + "Bolt",
+                "support_frame_intersection_mm3": support_overlap,
+                "round_mount_holes": hole_rows,
+                **fastener,
+                "passed": fastener["passed"]
+                and support_overlap < TOL
+                and all(row["passed"] for row in hole_rows),
+            }
+        )
     return {
         "pod": prefix,
         "gear_configuration": configuration.key,
         "cases": rows,
-        "scope": "Input support and fixed frame remain nonintersecting, and both fixed cartridge bolts retain seated bearing faces and full nut engagement at both mesh-clearance extremes. These rigid contacts do not qualify tightening torque, slip resistance or PA12 creep.",
-        "passed": len(rows) == 4 and all(row["passed"] for row in rows),
+        "scope": "Both fixed M2 mount pairs have aligned 2.2 mm round holes, seated bearing faces and full nut engagement. Flanges do not intersect. Nominal round-hole geometry constrains gross sliding but does not remove bolt clearance, PA12 dimensional error or compliance; physical backlash and fit still require a prototype.",
+        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
     }
 
 
@@ -474,15 +457,9 @@ def tilt_clearance_check(doc, module, prefix):
     input_moving = [obj for obj in moving if belongs_to_group(obj, drive)]
     fixed = [obj for obj in objects if obj not in moving]
     original_tilt = float(pod.Tilt)
-    cartridge = doc.getObject(prefix + "InputCartridge")
-    original_clearance = float(cartridge.MeshClearance.Value)
-    maximum_clearance = drive_for_document(doc).max_mesh_clearance_mm
     rows = []
     try:
-        for clearance, index in (
-            (c, i) for c in (0, maximum_clearance) for i in range(49)
-        ):
-            cartridge.MeshClearance = clearance
+        for index in range(49):
             angle = -180 + index * 7.5
             pod.Tilt = angle
             doc.recompute()
@@ -520,7 +497,6 @@ def tilt_clearance_check(doc, module, prefix):
             rows.append(
                 {
                     "output_angle_deg": angle,
-                    "mesh_clearance_mm": clearance,
                     "minimum_z_mm": minimum_z,
                     "collisions": collisions,
                     "passed": not collisions and minimum_z >= -TOL,
@@ -528,7 +504,6 @@ def tilt_clearance_check(doc, module, prefix):
             )
     finally:
         pod.Tilt = original_tilt
-        cartridge.MeshClearance = original_clearance
         doc.recompute()
     return {
         "pod": prefix,
@@ -537,7 +512,7 @@ def tilt_clearance_check(doc, module, prefix):
         "relative_motion_pairs_checked_per_pose": len(output_moving)
         * len(input_moving),
         "poses": rows,
-        "scope": "49 sampled coupled-output/input positions at each of both radial mesh-clearance extremes, including both bounded rotation endpoints. Checks live fixed obstacles and every output-pod/input-drive pair, including gear teeth; no gear-pair exclusion. Not a continuous rigid-body or connected-wire sweep proof.",
+        "scope": "49 sampled coupled-output/input positions at the fixed nominal center distance, including both bounded rotation endpoints. Checks live fixed obstacles and every output-pod/input-drive pair, including gear teeth; no gear-pair exclusion. Not a continuous rigid-body or connected-wire sweep proof.",
         "passed": bool(moving) and all(row["passed"] for row in rows),
     }
 
@@ -638,10 +613,8 @@ def horn_clamp_service_check(doc, module, prefix):
     cartridge = doc.getObject(prefix + "InputCartridge")
     pod = doc.getObject(prefix + "Pod")
     original_tilt = float(pod.Tilt)
-    original_clearance = float(cartridge.MeshClearance.Value)
     try:
         pod.Tilt = 0
-        cartridge.MeshClearance = 0
         doc.recompute()
         shapes = {
             obj.Name: world_shape(obj)
@@ -650,7 +623,6 @@ def horn_clamp_service_check(doc, module, prefix):
         }
     finally:
         pod.Tilt = original_tilt
-        cartridge.MeshClearance = original_clearance
         doc.recompute()
     removed = {
         prefix + "HornClamp" + suffix
@@ -660,7 +632,7 @@ def horn_clamp_service_check(doc, module, prefix):
     rows = []
     for suffix, waypoints in (
         ("Upper", ((0, 0, 0), (0, 0, 25))),
-        ("Lower", ((0, 0, 0), (0, 0, -3), (sign * 35, 0, -3))),
+        ("Lower", ((0, 0, 0), (0, 0, -2.5), (sign * 35, 0, -2.5))),
     ):
         name = prefix + "HornClamp" + suffix
         obstacles = {
@@ -683,7 +655,7 @@ def horn_clamp_service_check(doc, module, prefix):
                 "part": name,
                 "removed_local_parts": sorted(removed),
                 "segments": segments,
-                "scope": "Detach the input cartridge using its checked gear-first path and set the input drive to neutral. Remove both coupling bolt/nut pairs using their checked paths. Remove the upper half before the lower half. Servo, bought horn, input shaft, bearings and driver gear stay installed. Continuous translation clearance is certified by distance bounds; this does not qualify clamp closure, torque or manipulation of flexible wiring.",
+                "scope": "Detach the input cartridge using its checked gear-first path and set the input drive to neutral. Remove both coupling bolt/nut pairs using their checked paths. Lift the upper half 25 mm first; lower the bottom half 2.5 mm, then translate it 35 mm sideways away from the central rail. Servo, bought horn, input shaft, bearings and driver gear stay installed. Continuous translation clearance is certified by distance bounds; this does not qualify clamp closure, torque or manipulation of flexible wiring.",
                 "passed": all(segment["passed"] for segment in segments),
             }
         )
@@ -692,54 +664,37 @@ def horn_clamp_service_check(doc, module, prefix):
 
 
 def rail_key_access_check(doc, module):
-    """Check the complete module in both rail-key approaches and mesh extremes."""
-    cartridges = [
-        doc.getObject(prefix + "InputCartridge") for prefix in ("Port", "Starboard")
-    ]
-    original_clearances = [float(obj.MeshClearance.Value) for obj in cartridges]
-    maximum_clearance = drive_for_document(doc).max_mesh_clearance_mm
+    """Check the complete fixed module in both rail-key approaches."""
     objects = module["printed"] + module["hardware"] + module["references"]
     screw_bounds = rail.set_screw_shape().optimalBoundingBox(False, False)
+    shapes = {obj.Name: world_shape(obj) for obj in objects}
     rows = []
-    try:
-        for clearance in (0, maximum_clearance):
-            for cartridge in cartridges:
-                cartridge.MeshClearance = clearance
-            doc.recompute()
-            shapes = {obj.Name: world_shape(obj) for obj in objects}
-            for side in (1, -1):
-                tool = Part.makeCylinder(
-                    1.0,
-                    65,
-                    App.Vector(0, screw_bounds.YMax + 0.1, rail.CLAMP_Z),
-                    App.Vector(0, 1, 0),
-                )
-                if side < 0:
-                    tool = rail.half_turn(tool)
-                tool.Placement = (
-                    module["group"].getGlobalPlacement().multiply(tool.Placement)
-                )
-                collisions = [
-                    {"part": name, "intersection_mm3": volume}
-                    for name, shape in shapes.items()
-                    if (volume := intersection_volume(tool, shape)) > TOL
-                ]
-                rows.append(
-                    {
-                        "approach_side_y": side,
-                        "mesh_clearance_mm": clearance,
-                        "tool_radius_mm": 1.0,
-                        "tool_length_mm": 65.0,
-                        "checked_objects": sorted(shapes),
-                        "collisions": collisions,
-                        "scope": "Oversized straight rail-key reservation against every installed local print, bought part and equipment reference at both mesh extremes. Actual key handle and neighboring rail modules are covered only by separate assembly/service checks.",
-                        "passed": bool(shapes) and not collisions,
-                    }
-                )
-    finally:
-        for cartridge, original in zip(cartridges, original_clearances):
-            cartridge.MeshClearance = original
-        doc.recompute()
+    for side in (1, -1):
+        tool = Part.makeCylinder(
+            1.0,
+            65,
+            App.Vector(0, screw_bounds.YMax + 0.1, rail.CLAMP_Z),
+            App.Vector(0, 1, 0),
+        )
+        if side < 0:
+            tool = rail.half_turn(tool)
+        tool.Placement = module["group"].getGlobalPlacement().multiply(tool.Placement)
+        collisions = [
+            {"part": name, "intersection_mm3": volume}
+            for name, shape in shapes.items()
+            if (volume := intersection_volume(tool, shape)) > TOL
+        ]
+        rows.append(
+            {
+                "approach_side_y": side,
+                "tool_radius_mm": 1.0,
+                "tool_length_mm": 65.0,
+                "checked_objects": sorted(shapes),
+                "collisions": collisions,
+                "scope": "Oversized straight rail-key reservation against every installed local print, bought part and equipment reference. Actual key handle and neighboring rail modules are covered only by separate assembly/service checks.",
+                "passed": bool(shapes) and not collisions,
+            }
+        )
     return rows
 
 
@@ -848,8 +803,8 @@ def _record_drive_motion_checks(report, doc, module, physical, prefix):
     """Keep native motion, meshing and coupled service evidence together."""
     configuration = drive_for_document(doc)
     report["drive_motion"].append(drive_motion_check(doc, prefix))
-    report["mesh_adjustment"].append(mesh_adjustment_check(doc, prefix))
-    report["input_mount_adjustment"].append(input_mount_adjustment_check(doc, prefix))
+    report["fixed_input_datum"].append(fixed_input_datum_check(doc, prefix))
+    report["fixed_input_mounts"].append(fixed_input_mount_check(doc, prefix))
     report["gear_rotation"].append(gear_rotation_check(doc, prefix))
     report["gear_mesh_alignment"].append(
         {
@@ -861,7 +816,6 @@ def _record_drive_motion_checks(report, doc, module, physical, prefix):
                 driver_teeth=configuration.driver.teeth,
                 output_teeth=configuration.output.teeth,
                 minimum_face_overlap=FACE_WIDTH_MM,
-                maximum_centre_adjustment=configuration.max_mesh_clearance_mm,
             ),
         }
     )

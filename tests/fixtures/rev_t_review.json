@@ -1,0 +1,144 @@
+{
+  "revision": "T",
+  "reviewed_on": "2026-09-22T02:43:39.088736+00:00",
+  "intent": "Replace assembly-tolerance adjustment slots with source-selected fixed, replaceable input supports; preserve operating rail/tilt/optical controls.",
+  "previous_source_commit": "10fb04398dc118882bc34e4ee5038b00ed0b3097",
+  "previous_saved_cad_sha256": "78c2f3d5ea5f290684f8bbd9fc2deef3511442580000d5a490b8338bce2e3190",
+  "previous_fixture_sha256": "5c673a24c535b0ad6c7f54e5e1b1582305d4c2976fdaf1837702a906480ff092",
+  "candidate_saved_cad_sha256": "3fb28659cbe747b923534060caa1ae48a17bdae34abbe629378441e06b4f99b0",
+  "candidate_source_fingerprint": "f85725a276763f94a6226618b247345f775d43ab0846aa32f83ceba15372e5e2",
+  "audit_scope": "All 151 local/world shapes, local/global placements, complete native property schemas, numeric/enumeration controls, interface/procurement metadata, group hierarchy, registries, expressions, dynamic control behavior and inventory/mass. Only two input supports may change shape; only their PrintSKU and propulsion DriveContract interface metadata may change; only two MeshClearance properties and four corresponding translation expressions may disappear.",
+  "shape_counts": {
+    "before": 151,
+    "after": 151,
+    "changed": 2
+  },
+  "native_interface_metadata_changes": {
+    "MainPropulsionModule": {
+      "DriveContract": {
+        "before": "{\"angle_ratio\": -3.0, \"driver\": {\"hub_diameter_mm\": 10.0, \"teeth\": 60}, \"driver_sku\": \"GEABP0.5-60-3-B-3\", \"key\": \"60_20\", \"mesh_clearance_max_mm\": 0.19, \"nominal_center_mm\": 20.0, \"output\": {\"hub_diameter_mm\": 8.5, \"teeth\": 20}, \"output_sku\": \"GEABP0.5-20-3-B-3\", \"servo_endpoint_for_180_deg\": 60.0}",
+        "after": "{\"angle_ratio\": -3.0, \"driver\": {\"hub_diameter_mm\": 10.0, \"teeth\": 60}, \"driver_sku\": \"GEABP0.5-60-3-B-3\", \"input_support_print_sku\": \"GearedInputSupport60T\", \"key\": \"60_20\", \"nominal_center_mm\": 20.0, \"output\": {\"hub_diameter_mm\": 8.5, \"teeth\": 20}, \"output_sku\": \"GEABP0.5-20-3-B-3\", \"servo_endpoint_for_180_deg\": 60.0}"
+      }
+    },
+    "PortInputSupport": {
+      "PrintSKU": {
+        "before": "GearedInputSupport",
+        "after": "GearedInputSupport60T"
+      }
+    },
+    "StarboardInputSupport": {
+      "PrintSKU": {
+        "before": "GearedInputSupport",
+        "after": "GearedInputSupport60T"
+      }
+    }
+  },
+  "native_property_schema_changes": {
+    "PortInputCartridge": {
+      "MeshClearance": {
+        "before": {
+          "type": "App::PropertyLength",
+          "group": "Adjustment"
+        },
+        "after": null
+      }
+    },
+    "StarboardInputCartridge": {
+      "MeshClearance": {
+        "before": {
+          "type": "App::PropertyLength",
+          "group": "Adjustment"
+        },
+        "after": null
+      }
+    }
+  },
+  "removed_input_cartridge_expressions": {
+    "PortInputCartridge": [
+      [
+        ".Placement.Base.x",
+        "8 mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)"
+      ],
+      [
+        ".Placement.Base.z",
+        "48.2 mm - 18.330302779823 mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)"
+      ]
+    ],
+    "StarboardInputCartridge": [
+      [
+        ".Placement.Base.x",
+        "-8 mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)"
+      ],
+      [
+        ".Placement.Base.z",
+        "48.2 mm - 18.330302779823 mm * (1 + min(0.19 mm; max(0 mm; MeshClearance)) / 20 mm)"
+      ]
+    ]
+  },
+  "mass_delta_g": {
+    "printed": 0.028914815819135242,
+    "hardware": 0.0,
+    "expected_from_support_volume": 0.02891481581913814
+  },
+  "physical_fit_limitation": "Fixed holes remove the intended slide, not manufacturing clearance or tolerance. Hole clearance still permits limited pose variation, and fastener clamp friction remains necessary. Actual printed bearing/shaft fits, gear backlash, servo/horn interface, wire travel and retention require physical qualification. If mesh is unsuitable, measure and replace the complete input support with corrected fixed geometry; do not claim guaranteed interchangeability or positive locating features.",
+  "gates": {
+    "exact_151_shapes_and_names": true,
+    "only_two_input_support_shapes_changed": true,
+    "all_object_names_and_types_unchanged": true,
+    "all_shape_types_solids_and_placements_unchanged": true,
+    "all_native_container_placements_unchanged": true,
+    "all_native_hierarchy_unchanged": true,
+    "native_interface_metadata_changes_only_declared": true,
+    "only_four_mesh_clearance_expressions_removed": true,
+    "only_two_mesh_clearance_properties_removed": true,
+    "all_other_numeric_and_enumeration_controls_unchanged": true,
+    "registry_unchanged": true,
+    "hardware_inventory_unchanged": true,
+    "installed_counts_unchanged": true,
+    "hardware_mass_unchanged": true,
+    "mass_delta_only_support_material": true,
+    "retained_native_controls_pass_both_documents": true,
+    "coupled_3_to_1_motion_pass_both_documents": true,
+    "physical_qualification_not_promoted": true,
+    "saved_candidate_fingerprint_matches_current_source": true,
+    "saved_documents_unchanged_during_audit": true,
+    "source_unchanged_during_audit": true
+  },
+  "passed": true,
+  "geometry_changes": [
+    {
+      "object": "PortInputSupport",
+      "volume_before_mm3": 2263.953245500473,
+      "volume_after_mm3": 2278.267510757472,
+      "material_added_mm3": 14.3142652413026,
+      "material_removed_mm3": 0.0,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true,
+      "candidate_valid_closed_solid": true
+    },
+    {
+      "object": "StarboardInputSupport",
+      "volume_before_mm3": 2263.953245500473,
+      "volume_after_mm3": 2278.267510757472,
+      "material_added_mm3": 14.31426524130259,
+      "material_removed_mm3": 0.0,
+      "local_placement_unchanged": true,
+      "world_placement_unchanged": true,
+      "candidate_valid_closed_solid": true
+    }
+  ],
+  "preserved_control_checks_per_document": {
+    "native_cases": 29,
+    "coupled_gear_cases": 10
+  },
+  "fixed_support_review": {
+    "circular_mount_hole_diameter_mm": 2.2,
+    "smallest_measured_flange_wall_mm": 1.6,
+    "hole_to_key_corridor_web_mm": 1.67,
+    "frame_and_hardware_unchanged": true,
+    "alternative_support_print_sku": "GearedInputSupport64T",
+    "keep_separate_reason": "Input support removal is needed for horn-clamp and input-bearing service; integrating it into the paired frame would obstruct those paths and enlarge the replacement scope.",
+    "horn_clamp_service": "After detaching the cartridge and removing the fasteners and upper clamp half, lower the bottom half 2.5 mm then withdraw it 35 mm laterally. The former 3 mm drop catches the 64T support arm. Both gear configurations and both sides have continuous translation checks; no shape change or removed-obstacle exception is used.",
+    "service_clearance_limit": "The 64T lower-half route passes a continuous distance certificate. A 141-position lateral sample measured 0.3000 mm minimum to the printed support and 0.212652 mm to all retained parts (bought horn limits the latter); samples are not a continuous minimum-clearance bound or an actual-fit guarantee."
+  }
+}

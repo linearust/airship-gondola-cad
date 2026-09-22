@@ -25,7 +25,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 - Prioritize low mass, simple geometry and few purchased part types for this
   indoor LTA gondola. Lower stiffness than a sub-250 g multirotor is accepted;
-  this is not a strength qualification. Prefer verified stock components.
+  this is not a strength qualification. Prefer verified stock components and
+  integral printable carriers. Use matched replacement supports for interface
+  changes; retain separable parts when needed for assembly, cleaning or service.
 - Model only supported interfaces. Do not invent device holes, bearing planes,
   thread depths, mounting kits, cable datums or electrical compatibility.
   Preserve source discrepancies and explicit design allowances.
@@ -36,12 +38,14 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   tilt controls. Validate gear contact, coupled motion and bearing/fastener
   retention together. Purchased gear profiles are reference geometry, never
   printable replacements; shaft and bearing fits require physical trials.
-- The shared radial input slide supports the declared 60T/64T drivers with the
-  same output gear and shaft stack. `MeshClearance` adjusts backlash, not ratio.
-  Select the complete drive in source and rebuild geometry, controls and BOM;
-  never add a GUI ratio-only property. An alternative's module checks do not
-  establish a complete gondola baseline. Changing `SELECTED_DRIVE` requires the
-  full fixture audit and release checks below.
+- The declared 60T/64T drivers use distinct fixed input supports with a shared
+  frame, output gear and shaft stack. Select the complete drive in source and
+  replace its driver gears and matching supports; rebuild geometry, controls
+  and BOM together. Do not restore sliding slots or a GUI ratio-only property.
+  Round bolt holes do not prove accurate gear-centre positioning: measure the
+  actual mesh and correct/reprint a support if necessary. An alternative's
+  module checks do not establish a complete gondola baseline. Changing
+  `SELECTED_DRIVE` requires the full fixture audit and release checks below.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

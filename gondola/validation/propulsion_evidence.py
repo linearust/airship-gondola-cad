@@ -9,8 +9,8 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "drive_motion": 2,
         "gear_mesh_alignment": 2,
         "gear_rotation": 2,
-        "mesh_adjustment": 2,
-        "input_mount_adjustment": 2,
+        "fixed_input_datum": 2,
+        "fixed_input_mounts": 2,
         "bearing_stacks": 8,
         "output_stub_clearance": 4,
         "shaft_service": 6,
@@ -20,12 +20,12 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "tilt_clearance": 2,
         "input_cartridge_removal": 2,
         "horn_clamp_service": 4,
-        "rail_key_access": 4,
+        "rail_key_access": 2,
         "fastener_stacks": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
         + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
         "fastener_service": PURCHASED_HARDWARE_QUANTITIES["M2X8_SOCKET_CAP"]
         + PURCHASED_HARDWARE_QUANTITIES["M1_6X8_CHEESE_HEAD"],
-        "functional_wall_probes": 6,
+        "functional_wall_probes": 7,
         "continuous_nut_loading": 2,
         "geometry": 17,  # Fixed frame plus eight prints per independent drive.
     }

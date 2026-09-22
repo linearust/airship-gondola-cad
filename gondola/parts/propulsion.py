@@ -25,13 +25,10 @@ from gondola.contracts.drive import (
     FACE_WIDTH_MM,
     GEARS,
     INPUT_MOUNT_HALF_SPAN,
+    INPUT_MOUNT_X_MM,
     INPUT_MOUNT_Z_MM,
-    INPUT_SLIDE_TRAVEL_MM,
-    MESH_CLEARANCE_MAX_MM,
     MODULE_MM,
     PIVOT_Z_MM,
-    RADIAL_X,
-    RADIAL_Z,
     SELECTED_DRIVE,
 )
 from gondola.contracts.equipment_interfaces import (
@@ -68,10 +65,10 @@ GEAR_FACE_WIDTH = FACE_WIDTH_MM
 GEAR_HUB_START_Y = 38.5
 GEAR_FACE_START_Y = 43.5
 GEAR_END_Y = 46.5
-# Shared printed geometry uses the 60/20 datum for both installed gear choices.
-INPUT_AXIS_X = DRIVE_CONFIGURATIONS["60_20"].input_x_mm
-INPUT_AXIS_Z = DRIVE_CONFIGURATIONS["60_20"].input_z_mm
-MESH_ADJUSTMENT_MAX = MESH_CLEARANCE_MAX_MM
+# The frame flange stays fixed when a ratio-specific input support is replaced.
+INPUT_MOUNT_HOLE_RADIUS = 1.1
+INPUT_FLANGE_BOTTOM_Z = 5.6
+INPUT_FLANGE_TOP_Z = 12.1
 BEARING_WINDOW_DIAMETER = 5.6
 BEARING_CAP_THICKNESS = 1.5
 BEARING_CAP_BOLT_X = 17.5
@@ -205,22 +202,24 @@ def _output_support(sign):
     # Low fixed face lies below the bought horn's complete radial envelope.
     mount_face = union(
         [
-            box(36, 2, 6.8, (INPUT_AXIS_X - 18, 17, 4.2)),
-            box(40, 2, 3.0, (INPUT_AXIS_X - 20, 17, 4.2)),
+            box(36, 2, 6.8, (INPUT_MOUNT_X_MM - 18, 17, 4.2)),
+            box(40, 2, 3.0, (INPUT_MOUNT_X_MM - 20, 17, 4.2)),
         ]
     )
     for x in (
-        INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN,
-        INPUT_AXIS_X + INPUT_MOUNT_HALF_SPAN,
+        INPUT_MOUNT_X_MM - INPUT_MOUNT_HALF_SPAN,
+        INPUT_MOUNT_X_MM + INPUT_MOUNT_HALF_SPAN,
     ):
-        mount_face = mount_face.cut(cylinder(1.1, 3, (x, 16.5, INPUT_MOUNT_Z_MM)))
+        mount_face = mount_face.cut(
+            cylinder(INPUT_MOUNT_HOLE_RADIUS, 3, (x, 16.5, INPUT_MOUNT_Z_MM))
+        )
     parts.append(mount_face)
     parts.extend(
         [
-            _beam((-7, 25, 3.2), (INPUT_AXIS_X - 20, 25, 3.4)),
-            _beam((INPUT_AXIS_X - 20, 25, 3.4), (INPUT_AXIS_X - 20, 18, 3.4)),
-            _beam((7, 25, 3.2), (INPUT_AXIS_X + 20, 25, 3.4)),
-            _beam((INPUT_AXIS_X + 20, 25, 3.4), (INPUT_AXIS_X + 20, 18, 3.4)),
+            _beam((-7, 25, 3.2), (INPUT_MOUNT_X_MM - 20, 25, 3.4)),
+            _beam((INPUT_MOUNT_X_MM - 20, 25, 3.4), (INPUT_MOUNT_X_MM - 20, 18, 3.4)),
+            _beam((7, 25, 3.2), (INPUT_MOUNT_X_MM + 20, 25, 3.4)),
+            _beam((INPUT_MOUNT_X_MM + 20, 25, 3.4), (INPUT_MOUNT_X_MM + 20, 18, 3.4)),
         ]
     )
     result = union(parts)
@@ -241,38 +240,46 @@ def integral_frame_shape():
     return _checked(frame, "Paired bearing frame")
 
 
-def _input_mount_slot(x):
-    """An oblique through-slot parallel to the line joining the gear axes."""
-    start = V(x, 18.5, INPUT_MOUNT_Z_MM - INPUT_AXIS_Z)
-    end = start - V(RADIAL_X, 0, RADIAL_Z) * INPUT_SLIDE_TRAVEL_MM
-    normal = V(-RADIAL_Z, 0, RADIAL_X) * 1.2
-    vertices = [start + normal, end + normal, end - normal, start - normal]
-    bridge = Part.Face(Part.makePolygon(vertices + [vertices[0]])).extrude(V(0, 3, 0))
-    return union([cylinder(1.2, 3, tuple(start)), cylinder(1.2, 3, tuple(end)), bridge])
+def input_cartridge_shape(drive=SELECTED_DRIVE):
+    """One fixed servo/bearing support with a common replaceable frame flange.
 
-
-def input_cartridge_shape():
-    # Local axis X=Z=0; Y uses the Port module's absolute station distances.
-    # The two retained M2 bolts guide the common input unit along parallel slots.
-    # Loosen to adjust, set the measured mesh, then clamp both bolts; this is not
-    # a precision running slide. A separate printed rail would add no useful
-    # constraint inside the wider PA12 fit clearance.
-    plate = box(36, 2, 6.5, (-18, 19, 5.6 - INPUT_AXIS_Z))
-    # Full-stroke rail-key reservation; the neighboring slot keeps a 1.57 mm web.
-    plate = plate.cut(
-        box(3.0, 3, 4.7, (-INPUT_AXIS_X - 1.73, 18.5, 4.5 - INPUT_AXIS_Z))
+    The local origin is the input axle; the flange and its circular holes retain
+    the same module coordinates for both gear choices. Changing gear ratio
+    therefore replaces this print, without moving or modifying the fixed frame.
+    """
+    flange_x = INPUT_MOUNT_X_MM - drive.input_x_mm
+    flange_z = INPUT_FLANGE_BOTTOM_Z - drive.input_z_mm
+    plate = box(
+        36,
+        2,
+        INPUT_FLANGE_TOP_Z - INPUT_FLANGE_BOTTOM_Z,
+        (flange_x - 18, 19, flange_z),
     )
-    for x in (-INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_HALF_SPAN):
-        plate = plate.cut(_input_mount_slot(x))
+    # Keep the rail-key corridor fixed with the flange, not with the gear axle.
+    plate = plate.cut(
+        box(3.0, 3, 4.7, (-drive.input_x_mm - 1.73, 18.5, 4.5 - drive.input_z_mm))
+    )
+    for offset in (-INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_HALF_SPAN):
+        plate = plate.cut(
+            cylinder(
+                INPUT_MOUNT_HOLE_RADIUS,
+                3,
+                (flange_x + offset, 18.5, INPUT_MOUNT_Z_MM - drive.input_z_mm),
+            )
+        )
     cups = [
         _bearing_cup(32.5, opens_positive=False).mirror(V(), V(1, 0, 0)),
         _bearing_cup(34, opens_positive=True),
     ]
     parts = [plate, *cups]
+    flange_arm_z = 11 - drive.input_z_mm
     for x in (-3.6, 3.6):
         parts.append(_beam((x, 31, -3.2), (x, 35, -3.2)))
         parts.append(
-            _beam((-16 if x < 0 else 20, 21.5, 11 - INPUT_AXIS_Z), (x, 32.8, -3.2))
+            _beam(
+                (flange_x + (-16 if x < 0 else 20), 21.5, flange_arm_z),
+                (x, 32.8, -3.2),
+            )
         )
     # Verified ear axes use open saddles; supplied horn screws remain unmodeled.
     seat = box(23, 18.5, 1.5, (-6.5, -5, -5.3)).cut(box(17, 14, 2, (-3.5, -2, -5.55)))
@@ -288,12 +295,17 @@ def input_cartridge_shape():
         parts.append(box(3, 5, 2, (hole_x - 1.5, 3.3, -5.3)))
     parts.extend(
         [
-            _beam((17, 21.5, 11 - INPUT_AXIS_Z), (20, 21.5, 11 - INPUT_AXIS_Z)),
-            _beam((20, 21.5, 11 - INPUT_AXIS_Z), (20, 9, -4.8)),
+            _beam(
+                (flange_x + 17, 21.5, flange_arm_z),
+                (flange_x + 20, 21.5, flange_arm_z),
+            ),
+            _beam((flange_x + 20, 21.5, flange_arm_z), (20, 9, -4.8)),
             _beam((20, 9, -4.8), (15.5, 9, -4.8)),
         ]
     )
-    return _checked(union(parts), "Adjustable input-bearing and servo cartridge")
+    return _checked(
+        union(parts), f"Fixed {drive.driver.teeth}T input-bearing and servo support"
+    )
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -565,16 +577,11 @@ def _build_coupling(doc, parent, prefix, sign):
 
 
 def manufacturing_wall_probes(drive=SELECTED_DRIVE):
-    offset_x = drive.input_x_mm - INPUT_AXIS_X
-    offset_z = drive.input_z_mm - INPUT_AXIS_Z
-    upper_slot_x = (
-        INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN - RADIAL_X * INPUT_SLIDE_TRAVEL_MM
-    )
-    upper_slot_z = INPUT_MOUNT_Z_MM - RADIAL_Z * INPUT_SLIDE_TRAVEL_MM + 1.2
-
-    def at(x, z):
-        return (x + offset_x, 20, z + offset_z)
-
+    hole_x = INPUT_MOUNT_X_MM - INPUT_MOUNT_HALF_SPAN
+    hole_top = INPUT_MOUNT_Z_MM + INPUT_MOUNT_HOLE_RADIUS
+    hole_bottom = INPUT_MOUNT_Z_MM - INPUT_MOUNT_HOLE_RADIUS
+    hole_right = hole_x + INPUT_MOUNT_HOLE_RADIUS
+    key_left = -1.73
     return [
         (
             "output_bearing_outer_wall",
@@ -591,25 +598,32 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             1.5,
         ),
         (
-            "input_mount_slot_upper_wall",
+            "input_bearing_outer_wall",
             "PortInputSupport",
-            at(upper_slot_x, upper_slot_z - 0.01),
-            at(upper_slot_x, 12.11),
-            12.1 - upper_slot_z,
+            (drive.input_x_mm - 4.81, 35, drive.input_z_mm),
+            (drive.input_x_mm - 2.99, 35, drive.input_z_mm),
+            1.8,
         ),
         (
-            "input_mount_slot_lower_wall",
+            "input_mount_hole_upper_wall",
             "PortInputSupport",
-            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN, 5.59),
-            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN, INPUT_MOUNT_Z_MM - 1.19),
-            INPUT_MOUNT_Z_MM - 1.2 - 5.6,
+            (hole_x, 20, hole_top - 0.01),
+            (hole_x, 20, INPUT_FLANGE_TOP_Z + 0.01),
+            INPUT_FLANGE_TOP_Z - hole_top,
         ),
         (
-            "input_mount_slot_to_key_web",
+            "input_mount_hole_lower_wall",
             "PortInputSupport",
-            at(INPUT_AXIS_X - INPUT_MOUNT_HALF_SPAN + 1.19, INPUT_MOUNT_Z_MM),
-            at(-1.72, INPUT_MOUNT_Z_MM),
-            1.57,
+            (hole_x, 20, INPUT_FLANGE_BOTTOM_Z - 0.01),
+            (hole_x, 20, hole_bottom + 0.01),
+            hole_bottom - INPUT_FLANGE_BOTTOM_Z,
+        ),
+        (
+            "input_mount_hole_to_key_web",
+            "PortInputSupport",
+            (hole_right - 0.01, 20, INPUT_MOUNT_Z_MM),
+            (key_left + 0.01, 20, INPUT_MOUNT_Z_MM),
+            key_left - hole_right,
         ),
     ]
 
@@ -894,25 +908,16 @@ def _build_servo(doc, cartridge, prefix, sign):
 
 
 def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle, spec):
-    """Build the adjustable input support, drive, servo and horn coupling."""
+    """Build the replaceable fixed input support, drive, servo and coupling."""
     printed, hardware, references, clearances = [], [], [], []
     cartridge = create_group(
         doc,
         prefix + "InputCartridge",
-        prefix + " adjustable supported servo/gear cartridge",
+        prefix + " fixed supported servo/gear cartridge",
     )
     assembly.addObject(cartridge)
-    set_property(cartridge, "MeshClearance", 0.0, "App::PropertyLength", "Adjustment")
     cartridge.Placement.Base = V(sign * spec.input_x_mm, 0, spec.input_z_mm)
-    cartridge.setExpression(
-        "Placement.Base.x",
-        f"{sign * spec.input_x_mm:g} mm * (1 + min({spec.max_mesh_clearance_mm:g} mm; max(0 mm; MeshClearance)) / {spec.center_distance_mm:g} mm)",
-    )
-    cartridge.setExpression(
-        "Placement.Base.z",
-        f"{PIVOT_Z:g} mm - {PIVOT_Z - spec.input_z_mm:.14g} mm * (1 + min({spec.max_mesh_clearance_mm:g} mm; max(0 mm; MeshClearance)) / {spec.center_distance_mm:g} mm)",
-    )
-    cartridge_shape = input_cartridge_shape()
+    cartridge_shape = input_cartridge_shape(spec)
     if sign < 0:
         cartridge_shape = cartridge_shape.mirror(V(), V(1, 0, 0))
         cartridge_shape = mirrored_y(cartridge_shape, -1)
@@ -922,9 +927,9 @@ def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle, spec):
             cartridge,
             prefix + "InputSupport",
             cartridge_shape,
-            "Two supported input bearings isolate gear radial loads from the servo coupling. Common parallel slots accommodate both supported gear pairs; the entire servo, coupling, shaft and two input bearings move together. Existing two M2 bolts guide and clamp the adjusted support. Set the configuration-specific center distance and then the bounded fine mesh clearance; slot motion does not change gear ratio. Slots provide no positive lock; verify retained center distance/backlash under loaded reversals and PA12 settling. Full physical stroke is substitution travel, not extra mesh allowance; a slipping 60T cartridge can fully disengage before its outer slot stop. Set measured mesh and backlash; the adjustment is not a measured gear-fit guarantee. KST case rests on an open cradle; published ear axes use open mounting saddles andM1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
+            f"Two supported input bearings isolate gear radial loads from the servo coupling. One fixed {spec.driver.teeth}T support integrates the bearing cups, servo cradle and common mounting flange. Two circular nominal Ø2.2 mm M2 clearance holes replace adjustment slots; measure and finish the printed holes as needed, then install both M2x8 bolts before tightening. Select the complete gear configuration in source and replace this support for a different center distance; the common frame, shafts and mount fasteners stay unchanged. Printed-hole and bolt clearances still permit finite placement error; nominal center distance is not a precision fit or backlash guarantee. Check actual gear mesh, parallel axes and retained center distance after assembly and loaded reversals. Correct a measured mismatch by revising and reprinting this support, not by forcing gears, elongating holes or preloading the servo. KST case rests on an open cradle; published ear axes use open mounting saddles and M1.6x8 DIN84 bolts. Horn and coupling fit remain explicit acceptance gates.",
             rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
-            sku="GearedInputSupport",
+            sku=spec.input_support_sku,
         )
     )
     # Heads face outboard for driver access; remove each bolt first while
@@ -935,7 +940,7 @@ def _build_input_cartridge(doc, assembly, prefix, sign, driver_angle, spec):
                 doc,
                 assembly,
                 prefix + ("InputMountNegative" if x < 0 else "InputMountPositive"),
-                (sign * INPUT_AXIS_X + x, sign * 21, INPUT_MOUNT_Z_MM),
+                (sign * INPUT_MOUNT_X_MM + x, sign * 21, INPUT_MOUNT_Z_MM),
                 (0, -sign, 0),
                 grip=4,
             )
@@ -1079,8 +1084,8 @@ def _module_metrics(printed, hardware, references, spec):
             "input_axis_abs_x_mm": spec.input_x_mm,
             "input_axis_z_mm": spec.input_z_mm,
             "output_to_input_angle_ratio": -spec.ratio,
-            "mesh_center_distance_increase_mm": [0, MESH_ADJUSTMENT_MAX],
-            "shared_print_slide_travel_mm": INPUT_SLIDE_TRAVEL_MM,
+            "input_support_print_sku": spec.input_support_sku,
+            "input_mount": "Fixed circular-hole flange; replace the ratio-specific support to change the gear center distance.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },

@@ -103,11 +103,11 @@ class GearEngagementTests(unittest.TestCase):
         self.assertFalse(result["passed"], result)
         self.assertLess(result["tooth_face_overlap_mm"], 0)
 
-    def test_axis_distance_cannot_be_below_nominal_or_beyond_adjustment(self):
+    def test_axis_distance_must_match_the_fixed_nominal_datum(self):
         from gondola.cad import translated_shape
 
         driver, output = self.gears()
-        for shift in (-0.1, 0.51):
+        for shift in (-0.1, 0.05):
             with self.subTest(shift=shift):
                 result = self.check(driver, translated_shape(output, x=shift))
                 self.assertFalse(result["passed"], result)
@@ -187,13 +187,13 @@ class NativeGearedDriveTests(unittest.TestCase):
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
-    def test_rail_key_clears_complete_module_on_both_sides_and_mesh_limits(self):
+    def test_rail_key_clears_complete_fixed_module_on_both_sides(self):
         from gondola.validation.propulsion import rail_key_access_check
 
         rows = rail_key_access_check(self.doc, self.module)
         self.assertEqual(
-            {(row["approach_side_y"], row["mesh_clearance_mm"]) for row in rows},
-            {(1, 0), (-1, 0), (1, 0.19), (-1, 0.19)},
+            {row["approach_side_y"] for row in rows},
+            {1, -1},
         )
         for row in rows:
             self.assertTrue(row["passed"], row)
@@ -225,17 +225,17 @@ class NativeGearedDriveTests(unittest.TestCase):
             support.Shape = original
             self.doc.recompute()
 
-    def test_native_output_limits_ratio_and_mesh_adjustment(self):
+    def test_native_output_limits_ratio_and_fixed_input_datum(self):
         from gondola.validation.propulsion import (
             drive_motion_check,
-            mesh_adjustment_check,
+            fixed_input_datum_check,
         )
 
         for prefix in ("Port", "Starboard"):
             with self.subTest(prefix=prefix):
                 result = drive_motion_check(self.doc, prefix)
                 self.assertTrue(result["passed"], result)
-                result = mesh_adjustment_check(self.doc, prefix)
+                result = fixed_input_datum_check(self.doc, prefix)
                 self.assertTrue(result["passed"], result)
 
     def test_wrong_input_rotation_direction_is_rejected(self):
@@ -466,7 +466,7 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         for doc, _ in cls.configurations.values():
             App.closeDocument(doc.Name)
 
-    def test_both_gear_pairs_reuse_every_printed_part_and_other_bought_part(self):
+    def test_gear_substitution_only_replaces_drivers_and_matched_input_supports(self):
         from gondola.print_export import geometry_comparison
 
         _, first = self.configurations["60_20"]
@@ -481,6 +481,12 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                     self.assertEqual(original.HardwareSKU, "GEABP0.5-60-3-B-3")
                     self.assertEqual(replacement.HardwareSKU, "GEABP0.5-64-3-B-3")
                     self.assertGreater(replacement.Shape.Volume, original.Shape.Volume)
+                    continue
+                if name.endswith("InputSupport"):
+                    self.assertEqual(original.PrintSKU, "GearedInputSupport60T")
+                    self.assertEqual(replacement.PrintSKU, "GearedInputSupport64T")
+                    result = geometry_comparison(original.Shape, replacement.Shape)
+                    self.assertGreater(result["difference_mm3"], 1)
                     continue
                 with self.subTest(category=category, part=name):
                     result = geometry_comparison(original.Shape, replacement.Shape)
@@ -503,8 +509,8 @@ class InterchangeableGearDriveTests(unittest.TestCase):
     def test_native_motion_teeth_and_mounts_follow_each_complete_configuration(self):
         from gondola.validation.propulsion import (
             drive_motion_check,
-            input_mount_adjustment_check,
-            mesh_adjustment_check,
+            fixed_input_datum_check,
+            fixed_input_mount_check,
             rail_key_access_check,
         )
 
@@ -519,11 +525,38 @@ class InterchangeableGearDriveTests(unittest.TestCase):
                             case["required_servo_deg"],
                             -case["bounded_output_deg"] / configuration.ratio,
                         )
-                    for check in (mesh_adjustment_check, input_mount_adjustment_check):
+                    for check in (fixed_input_datum_check, fixed_input_mount_check):
                         result = check(doc, prefix)
                         self.assertTrue(result["passed"], result)
             for row in rail_key_access_check(doc, module):
                 self.assertTrue(row["passed"], (key, row))
+
+    def test_both_horn_clamp_halves_have_continuous_service_paths_for_each_gear_pair(
+        self,
+    ):
+        from gondola.validation.propulsion import horn_clamp_service_check
+
+        for key, (doc, module) in self.configurations.items():
+            for prefix in ("Port", "Starboard"):
+                with self.subTest(configuration=key, pod=prefix):
+                    rows = horn_clamp_service_check(doc, module, prefix)
+                    self.assertEqual(
+                        {row["part"] for row in rows},
+                        {prefix + "HornClampUpper", prefix + "HornClampLower"},
+                    )
+                    for row in rows:
+                        self.assertTrue(row["passed"], row)
+                        self.assertTrue(all(step["passed"] for step in row["segments"]))
+                    lower = next(row for row in rows if row["part"].endswith("Lower"))
+                    self.assertIn(
+                        prefix + "InputSupport", lower["segments"][1]["obstacles"]
+                    )
+                    self.assertIn(
+                        prefix + "ServoHorn", lower["segments"][1]["obstacles"]
+                    )
+                    self.assertIn(
+                        prefix + "HornClampUpper", lower["removed_local_parts"]
+                    )
 
     def test_correct_direction_with_stale_ratio_is_rejected_for_alternate_gears(self):
         from gondola.validation.propulsion import drive_motion_check
@@ -620,32 +653,119 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         _record_fastener_checks(report, doc, one_fastener, objects, physical)
         self.assertFalse(report["fastener_service"][-1]["passed"])
 
-    def test_adjustment_checks_restore_the_saved_setting_on_failure(self):
-        from unittest.mock import patch
+    def test_shifted_or_rotated_input_cartridge_is_rejected(self):
+        from gondola.validation.propulsion import fixed_input_datum_check
 
-        from gondola.validation import propulsion
+        for key, (doc, _) in self.configurations.items():
+            cartridge = doc.PortInputCartridge
+            original = App.Placement(cartridge.Placement)
+            try:
+                with self.subTest(configuration=key, change="position"):
+                    cartridge.Placement.Base = original.Base + App.Vector(0.02, 0, 0)
+                    doc.recompute()
+                    result = fixed_input_datum_check(doc, "Port")
+                    self.assertFalse(result["passed"], result)
+                with self.subTest(configuration=key, change="rotation"):
+                    cartridge.Placement = App.Placement(
+                        original.Base, App.Rotation(App.Vector(0, 1, 0), 0.1)
+                    )
+                    doc.recompute()
+                    result = fixed_input_datum_check(doc, "Port")
+                    self.assertFalse(result["passed"], result)
+            finally:
+                cartridge.Placement = original
+                doc.recompute()
+
+    def test_stale_adjustment_property_or_live_datum_expression_is_rejected(self):
+        from gondola.validation.propulsion import fixed_input_datum_check
+
+        doc, _ = self.configurations["60_20"]
+        cartridge = doc.PortInputCartridge
+        try:
+            cartridge.addProperty("App::PropertyLength", "MeshClearance")
+            result = fixed_input_datum_check(doc, "Port")
+            self.assertFalse(result["passed"], result)
+        finally:
+            cartridge.removeProperty("MeshClearance")
+        try:
+            # A currently correct expression would allow future drift.
+            cartridge.setExpression("Placement.Base.x", "8 mm")
+            doc.recompute()
+            result = fixed_input_datum_check(doc, "Port")
+            self.assertFalse(result["passed"], result)
+        finally:
+            cartridge.setExpression("Placement.Base.x", None)
+            doc.recompute()
+
+    def test_wrong_support_identity_is_rejected(self):
+        from gondola.validation.propulsion import fixed_input_datum_check
 
         doc, _ = self.configurations["64_20"]
-        cartridge = doc.PortInputCartridge
-        original = float(cartridge.MeshClearance.Value)
+        support = doc.PortInputSupport
+        original = support.PrintSKU
         try:
-            cartridge.MeshClearance = 0.11
-            doc.recompute()
-            with patch.object(
-                propulsion,
-                "clamp_fastener_check",
-                side_effect=RuntimeError("test failure"),
-            ):
-                with self.assertRaisesRegex(RuntimeError, "test failure"):
-                    propulsion.input_mount_adjustment_check(doc, "Port")
-            self.assertAlmostEqual(float(cartridge.MeshClearance.Value), 0.11)
+            support.PrintSKU = "GearedInputSupport60T"
+            result = fixed_input_datum_check(doc, "Port")
+            self.assertFalse(result["passed"], result)
         finally:
-            cartridge.MeshClearance = original
+            support.PrintSKU = original
+
+    def test_wrong_gear_specific_support_and_enlarged_mount_holes_are_rejected(self):
+        from gondola.validation.propulsion import fixed_input_mount_check
+
+        baseline, _ = self.configurations["60_20"]
+        doc, _ = self.configurations["64_20"]
+        support = doc.PortInputSupport
+        original = support.Shape.copy()
+        try:
+            support.Shape = baseline.PortInputSupport.Shape.copy()
+            doc.recompute()
+            result = fixed_input_mount_check(doc, "Port")
+            self.assertFalse(result["passed"], result)
+            support.Shape = original
+            # A radial slot can retain nominal bolt contact while permitting
+            # movement. Removing any of the round bore's rim must be rejected.
+            cutter = Part.makeCylinder(
+                1.3, 3, App.Vector(-4.5, 18.5, 8.3), App.Vector(0, 1, 0)
+            )
+            cutter.Placement = (
+                support.getGlobalPlacement().inverse().multiply(cutter.Placement)
+            )
+            support.Shape = original.cut(cutter)
+            doc.recompute()
+            result = fixed_input_mount_check(doc, "Port")
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(
+                result["cases"][0]["round_mount_holes"][1][
+                    "missing_round_hole_rim_mm3"
+                ],
+                0.1,
+            )
+        finally:
+            support.Shape = original
+            doc.recompute()
+
+    def test_fixed_mount_checks_follow_the_whole_module_placement(self):
+        from gondola.validation.propulsion import fixed_input_mount_check
+
+        doc, _ = self.configurations["64_20"]
+        module = doc.MainPropulsionModule
+        original = App.Placement(module.Placement)
+        try:
+            module.Placement = App.Placement(
+                App.Vector(36, 0.45, 2), App.Rotation(App.Vector(0, 0, 1), 13)
+            )
+            doc.recompute()
+            for prefix in ("Port", "Starboard"):
+                result = fixed_input_mount_check(doc, prefix)
+                self.assertTrue(result["passed"], result)
+        finally:
+            module.Placement = original
             doc.recompute()
 
     def test_fixed_support_collision_is_rejected_even_with_seated_bolts(self):
         from gondola.cad import world_shape
-        from gondola.validation.propulsion import input_mount_adjustment_check
+        from gondola.validation.propulsion import fixed_input_mount_check
 
         doc, _ = self.configurations["64_20"]
         frame = doc.PropulsionFixedFrame
@@ -653,7 +773,7 @@ class InterchangeableGearDriveTests(unittest.TestCase):
         try:
             frame.Shape = original.fuse(world_shape(doc.PortInputSupport))
             doc.recompute()
-            result = input_mount_adjustment_check(doc, "Port")
+            result = fixed_input_mount_check(doc, "Port")
             self.assertFalse(result["passed"], result)
             self.assertTrue(
                 any(

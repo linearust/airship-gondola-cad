@@ -12,7 +12,7 @@ from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 NOTION_URL = "https://app.notion.com/p/3de264c511c680d193fcd373405765c7"
 NOTION_LAST_EDITED = "2026-09-20T07:25:14.031Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "S"
+DESIGN_REVISION = "T"
 # User's nominal CAD length ceiling; part geometry consumes this requirement.
 RAIL_LENGTH_MM = 340.0
 # Project structural interface, independent of the FC mounting-hole pattern.
@@ -237,7 +237,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Set the shared radial slide for the installed pair; MeshClearance adjusts mesh, not tooth ratio. Set the measured mesh and lock both retained M2 input-mount fasteners. Verify centre distance and backlash under loaded reversals and after PA12 settling; the slots provide adjustment, not positive locking. The full physical stroke includes gear-substitution travel, not extra mesh allowance: a slipping 60T cartridge can fully disengage before the outer slot stop. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T POM pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Use the matching fixed input support for the selected gear pair; changing ratio requires replacement gears and supports, followed by a complete rebuild and validation. Circular mounting holes remove the designed sliding travel but do not eliminate bolt clearance, printed-position error or PA12 creep. Measure centre distance and backlash with the actual parts before operation. If fit is unsuitable, correct and reprint the matched support; do not elongate its holes or force the mesh. Qualify MR63ZZ shaft/housing fits, inner-ring-only abutments, axial retention and preload. PSFU3 h5 is not guaranteed to slip into every bearing; a straight shaft has no inherent axial retainer.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -302,7 +302,7 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12; SLS preferred for fit trial, supplier process agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
+        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. Prefer integral printable carriers and fixed replacement parts over tolerance-adjustment mechanisms. Retain separable parts for assembly/service and purposeful rail/optical alignment. Minimize hardware and unsupported strength claims; physical retention remains unverified.",
         "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
