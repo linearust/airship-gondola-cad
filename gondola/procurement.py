@@ -6,6 +6,7 @@ from pathlib import Path
 from .config import ARTIFACT_SCHEMA_VERSION
 from .contracts.design import hardware_bom_scope
 from .contracts.fasteners import KIT_MATERIAL
+from .contracts.hardware import PROCUREMENT_FIELDS
 from .provenance import source_fingerprint
 
 HARDWARE_MATERIAL_CODES = {
@@ -53,12 +54,7 @@ def purchase_evidence(instances):
 # Mandatory procurement fields must be identical for every instance of a SKU.
 # Candidate URLs and evidence notes may be empty when no item is selected.
 PURCHASE_METADATA_FIELDS = {
-    "purchase_search_query": "PurchaseSearchQuery",
-    "purchase_search_url": "PurchaseSearchURL",
-    "purchase_requirements": "PurchaseRequirements",
-    "purchase_candidate_url": "PurchaseCandidateURL",
-    "purchase_evidence_notes": "PurchaseEvidenceNotes",
-    "purchasing_status": "PurchasingStatus",
+    field: property_name for _, property_name, field in PROCUREMENT_FIELDS
 }
 REQUIRED_PURCHASE_FIELDS = frozenset(
     (

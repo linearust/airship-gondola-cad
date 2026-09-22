@@ -926,19 +926,29 @@ def _service_shapes(doc, module):
     return shapes, sorted(expected - shapes.keys())
 
 
-def _input_service_removed(prefix):
+def _input_drive_names(prefix):
+    """Parts withdrawn together, then separated on the bench."""
     return {
         prefix + suffix
         for suffix in (
-            "OutputGear",
             "DriverGear",
             "HornGearAdapter",
-            "HornGearRetainer",
-            "HornGearClampBolt",
-            "HornGearClampNut",
             "InputShaft",
             "InputShaftClampBolt",
             "InputShaftClampNut",
+        )
+    }
+
+
+def _input_service_removed(prefix):
+    """Complete removal prerequisite for accessing the servo ear fasteners."""
+    return _input_drive_names(prefix) | {
+        prefix + suffix
+        for suffix in (
+            "OutputGear",
+            "HornGearRetainer",
+            "HornGearClampBolt",
+            "HornGearClampNut",
         )
     }
 
@@ -965,6 +975,22 @@ def _axial_then_lateral_path(shape, waypoints, obstacles, *, kind, spec, sign):
         "segments": axial["segments"] + lateral["segments"],
         "passed": axial["passed"] and lateral["passed"],
     }
+
+
+def _input_service_path(name, shape, waypoints, obstacles, spec, sign):
+    """Select each part's conservative envelope for the ordered release path."""
+    if name.endswith("DriverGear") or name.endswith("Servo"):
+        return _axial_then_lateral_path(
+            shape,
+            waypoints,
+            obstacles,
+            kind="gear" if name.endswith("DriverGear") else "servo",
+            spec=spec,
+            sign=sign,
+        )
+    if name.endswith("HornGearAdapter"):
+        return adapter_service_check(shape, waypoints, obstacles, spec, sign)
+    return continuous_path(shape, waypoints, obstacles)
 
 
 def input_drive_service_check(doc, module, prefix):
@@ -995,35 +1021,12 @@ def input_drive_service_check(doc, module, prefix):
     )
     rows = [{"part": retainer, "waypoints_mm": retainer_points, **retainer_path}]
     removed.add(retainer)
-    moving = {
-        prefix + suffix
-        for suffix in (
-            "HornGearAdapter",
-            "DriverGear",
-            "InputShaft",
-            "InputShaftClampBolt",
-            "InputShaftClampNut",
-        )
-    }
+    moving = _input_drive_names(prefix)
     fixed = _service_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, sign * 1.5, 0), (sign * 40, sign * 1.5, 0)]
+    spec = drive_for_document(doc)
     for name in sorted(moving):
-        path = (
-            _axial_then_lateral_path(
-                shapes[name],
-                points,
-                fixed,
-                kind="gear",
-                spec=drive_for_document(doc),
-                sign=sign,
-            )
-            if name.endswith("DriverGear")
-            else adapter_service_check(
-                shapes[name], points, fixed, drive_for_document(doc), sign
-            )
-            if name.endswith("HornGearAdapter")
-            else continuous_path(shapes[name], points, fixed)
-        )
+        path = _input_service_path(name, shapes[name], points, fixed, spec, sign)
         rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
@@ -1069,20 +1072,10 @@ def servo_case_service_check(doc, module, prefix):
     moving = {prefix + "Servo", prefix + "ServoHorn"}
     fixed = _service_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, sign * 12.5, 0), (sign * 40, sign * 12.5, 0)]
+    spec = drive_for_document(doc)
     rows = []
     for name in sorted(moving):
-        path = (
-            _axial_then_lateral_path(
-                shapes[name],
-                points,
-                fixed,
-                kind="servo",
-                spec=drive_for_document(doc),
-                sign=sign,
-            )
-            if name.endswith("Servo")
-            else continuous_path(shapes[name], points, fixed)
-        )
+        path = _input_service_path(name, shapes[name], points, fixed, spec, sign)
         rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
@@ -1403,18 +1396,7 @@ def _record_drive_service_checks(report, prefix, sign, physical):
                     _service_obstacles(
                         physical,
                         excluded,
-                        members={
-                            prefix + suffix
-                            for suffix in (
-                                "DriverGear",
-                                "HornGearAdapter",
-                                "InputShaft",
-                                "InputShaftClampBolt",
-                                "InputShaftClampNut",
-                            )
-                        }
-                        if bench
-                        else None,
+                        members=_input_drive_names(prefix) if bench else None,
                     ),
                 ),
             }

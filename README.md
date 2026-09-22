@@ -7,9 +7,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 - `gondola/contracts/` holds data independent of FreeCAD: `design.py` for scope,
   decisions, inventory and unresolved interfaces; `equipment_interfaces.py` for
-  published device evidence; `hardware.py` for purchase specifications and shaft
-  order validation; `fasteners.py` for shared nominal dimensions; `drive.py` for
-  the finite gear configurations and source-authoritative `SELECTED_DRIVE`.
+  published device evidence; `hardware.py` for purchase specifications, shaft
+  preparation validation and shared CAD/BOM field names; `fasteners.py` for
+  shared nominal dimensions; `drive.py` for the finite gear configurations and
+  source-authoritative `SELECTED_DRIVE`.
   Inspect project status with `python3 -m gondola status`.
 - Read `references/drive_selection_review.md` before drivetrain changes or
   purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
@@ -59,18 +60,18 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   retained in printed couplings around bought KST horns. Keep the original
   horn spline and retaining screw; do not invent a printed spline or restore
   the former hollow journal for a 7 mm gear bore. Only output axes use external
-  bearings. One removable
-  bridge carries both servo cradles and complete input drives. Two local seats
-  and fixed datums locate it on the common output-bearing frame. Replace the
+  bearings. One removable bridge carries both servo cradles and complete input
+  drives. Two local seats and fixed datums locate it on the common
+  output-bearing frame. Replace the
   bridge and the affected transmission parts for a ratio change; only the
   selected ratio is currently supported. A different servo requires its own
   verified interface. Check seated contact and the ordered module
   removal path while retaining the output shafts, bearings and motor carriers.
   Rebuild geometry, controls and BOM together.
   No sliding slots or GUI ratio-only property is needed.
-  Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh, adapter
-  concentricity/retention and servo output loading; printed nominal dimensions
-  are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
+  Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh,
+  adapter concentricity/retention and servo output loading; printed nominal
+  dimensions are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
   fixture audit and release checks below.
 - M2 kit screws use explicit design head envelopes until measured. Do not label
   them DIN912/A2 or infer their mass from the envelope as a measured value.

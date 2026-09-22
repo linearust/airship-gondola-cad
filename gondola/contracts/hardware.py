@@ -7,14 +7,15 @@ part numbers or received-lot certification. Native geometry lives in parts.
 import re
 from urllib.parse import quote_plus
 
-from gondola.contracts.drive import GEARS
+from gondola.contracts.drive import GEARS, MODULE_MM, PRESSURE_ANGLE_DEG
 from gondola.contracts.equipment_interfaces import (
     BEARING_SOURCE,
     HORN_SOURCE,
     SHAFT_SOURCE,
 )
+from gondola.contracts.fasteners import KIT_SOURCE
 
-FASTENER_KIT_SOURCE = "https://www.aliexpress.com/item/1005005551208735.html"
+FASTENER_KIT_SOURCE = KIT_SOURCE
 CLAMP_SCREW_SOURCE = FASTENER_KIT_SOURCE
 STACK_SCREW_SOURCE = FASTENER_KIT_SOURCE
 HEX_NUT_SOURCE = FASTENER_KIT_SOURCE
@@ -29,6 +30,17 @@ PURCHASING_STATUS = (
     "Design purchase/preparation specification. Selected seller options and "
     "dimensional references are distinguished in each item; received-lot "
     "dimensions, material, fit and strength remain unverified."
+)
+
+# Specification key, native CAD property, exported BOM field. Keep attachment
+# and export mappings together so neither side silently loses purchase data.
+PROCUREMENT_FIELDS = (
+    ("search_query", "PurchaseSearchQuery", "purchase_search_query"),
+    ("search_url", "PurchaseSearchURL", "purchase_search_url"),
+    ("requirements", "PurchaseRequirements", "purchase_requirements"),
+    ("candidate_url", "PurchaseCandidateURL", "purchase_candidate_url"),
+    ("evidence_notes", "PurchaseEvidenceNotes", "purchase_evidence_notes"),
+    ("status", "PurchasingStatus", "purchasing_status"),
 )
 
 PROCUREMENT_SPECS = {
@@ -106,11 +118,11 @@ for _length in (5, 6, 8):
 
 for _gear in GEARS.values():
     PROCUREMENT_SPECS[_gear.sku] = {
-        "search_query": f"Kailash module 0.5 {_gear.teeth}T gear 3mm bore",
+        "search_query": f"Kailash module {MODULE_MM:g} {_gear.teeth}T gear {_gear.bore_mm:g}mm bore",
         "candidate_url": _gear.item_url,
         "requirements": (
             f"User-selected Kailash Store option: {_gear.teeth} teeth, module "
-            f"0.5, pressure angle 20 degrees, {_gear.bore_mm:g} mm bore "
+            f"{MODULE_MM:g}, pressure angle {PRESSURE_ANGLE_DEG:g} degrees, {_gear.bore_mm:g} mm bore "
             f"({_gear.bore_tolerance}), {_gear.face_width_mm:g} mm face, "
             f"{_gear.total_length_mm:g} mm overall length, "
             f"{_gear.hub_diameter_mm:g} mm hub diameter. "

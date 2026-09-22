@@ -20,6 +20,7 @@ class NativeInterfaceTests(unittest.TestCase):
 
         from gondola import assembly
         from gondola.cad import belongs_to_group
+        from gondola.contracts.design import EXCLUDED_EQUIPMENT
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.validation.propulsion import (
             fixed_servo_datum_check,
@@ -51,6 +52,10 @@ class NativeInterfaceTests(unittest.TestCase):
                 self.assertEqual(len(doc.DesignRegistry.Modules), 3)
                 self.assertEqual(len(doc.DesignRegistry.PrintedParts), 18)
                 self.assertEqual(len(doc.DesignRegistry.HardwareParts), 68)
+                self.assertEqual(
+                    doc.DesignRegistry.ScopeExclusions.split("; "),
+                    list(EXCLUDED_EQUIPMENT),
+                )
                 self.assertEqual(
                     list(doc.DesignRegistry.PrintedParts).count(doc.ServoDriveBridge), 1
                 )

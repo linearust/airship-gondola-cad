@@ -1,8 +1,8 @@
 """Purchased mechanism hardware, modeled as simple dimensional envelopes.
 
-No modeled helical threads, no custom printed fasteners. The exact procurement
-item remains unselected; the cited manufacturers substantiate the purchasing
-geometry, not a tested marketplace SKU. All objects are excluded from STL lists.
+No modeled helical threads or custom printed fasteners. Purchase contracts
+distinguish selected cart options from dimensional references; received-part
+fit remains unverified. All objects are excluded from STL lists.
 """
 
 import functools
@@ -44,14 +44,7 @@ def add_procurement_properties(obj):
     spec = hardware_contract.procurement_spec(sku, allow_unknown=True)
     if spec is None:
         return obj
-    for name, key in (
-        ("PurchaseSearchQuery", "search_query"),
-        ("PurchaseSearchURL", "search_url"),
-        ("PurchaseRequirements", "requirements"),
-        ("PurchaseCandidateURL", "candidate_url"),
-        ("PurchaseEvidenceNotes", "evidence_notes"),
-        ("PurchasingStatus", "status"),
-    ):
+    for key, name, _ in hardware_contract.PROCUREMENT_FIELDS:
         set_property(obj, name, spec[key])
     return obj
 

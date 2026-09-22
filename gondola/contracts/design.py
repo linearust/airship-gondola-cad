@@ -136,24 +136,20 @@ PURCHASED_HARDWARE_QUANTITIES = {
 }
 
 HARDWARE_MATERIALS = {
-    sku: (
-        "Nylon PA66"
-        if sku == "M2_FF_PA66_AF4_L25"
-        else "Aluminium alloy (seller claim; steel attribute conflicts)"
-        if sku == SELECTED_DRIVE.driver.sku
-        else "Copper alloy (seller claim)"
-        if sku == SELECTED_DRIVE.output.sku
-        else "Aluminium 6061 (seller claim)"
-        if sku.startswith("AL6061_CUT")
-        else "Bearing steel"
-        if sku == "BEARING_3X6X2_5"
-        else "Aluminium alloy (grade unspecified)"
-        if sku == "KST_0415_13"
-        else "A2 stainless steel"
-        if sku.startswith("M1_6")
-        else KIT_MATERIAL
-    )
-    for sku in PURCHASED_HARDWARE_QUANTITIES
+    "M2X8_BUTTON_HEAD": KIT_MATERIAL,
+    "M2X6_BUTTON_HEAD": KIT_MATERIAL,
+    "M2X5_BUTTON_HEAD": KIT_MATERIAL,
+    "M2_HEX_NUT": KIT_MATERIAL,
+    "M1_6X8_CHEESE_HEAD": "A2 stainless steel",
+    "M1_6_HEX_NUT_DIN934": "A2 stainless steel",
+    "M2_FF_PA66_AF4_L25": "Nylon PA66",
+    SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
+    SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
+    "BEARING_3X6X2_5": "Bearing steel",
+    "AL6061_CUT3_L24_FLAT5_A0": "Aluminium 6061 (seller claim)",
+    "AL6061_CUT3_L14": "Aluminium 6061 (seller claim)",
+    "AL6061_CUT3_L16_FLAT16_A0": "Aluminium 6061 (seller claim)",
+    "KST_0415_13": "Aluminium alloy (grade unspecified)",
 }
 
 EXPECTED_INVENTORY = {

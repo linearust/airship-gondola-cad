@@ -16,6 +16,7 @@ from gondola.cad import (
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import (
     DESIGN_REVISION,
+    EXCLUDED_EQUIPMENT,
     MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
@@ -243,7 +244,7 @@ def build_assembly():
     set_property(
         registry,
         "ScopeExclusions",
-        "Yaw motor, fins and fin servos",
+        "; ".join(EXCLUDED_EQUIPMENT),
     )
     set_property(
         registry, "ReleaseStatus", json.dumps(release_status(), ensure_ascii=False)

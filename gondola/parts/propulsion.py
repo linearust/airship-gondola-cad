@@ -26,6 +26,7 @@ from gondola.contracts.drive import (
     GEARS,
     MODULE_MM,
     PIVOT_Z_MM,
+    PRESSURE_ANGLE_DEG,
     SELECTED_DRIVE,
 )
 from gondola.contracts.equipment_interfaces import (
@@ -288,8 +289,9 @@ def gear_shape(teeth, phase_degrees=0):
     pitch = GEAR_MODULE * teeth / 2
     root = GEAR_MODULE * (teeth - 2.5) / 2
     tip = GEAR_MODULE * (teeth + 2) / 2
-    base = pitch * math.cos(math.radians(20))
-    inv_pitch = math.tan(math.radians(20)) - math.radians(20)
+    pressure_angle = math.radians(PRESSURE_ANGLE_DEG)
+    base = pitch * math.cos(pressure_angle)
+    inv_pitch = math.tan(pressure_angle) - pressure_angle
 
     def half_angle(radius):
         alpha = math.acos(min(1, base / max(radius, base)))
