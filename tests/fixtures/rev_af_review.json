@@ -1,0 +1,414 @@
+{
+  "revision": "AF",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "494706e2710dbcf1a37ed3634d3452a46dc0e37f",
+  "previous_fixture_sha256": "9879103a59dd699c332fc104f87fefa8eb66e9874472d650c6036c0fbccfcfa5",
+  "approved_fixture_sha256": "7e164d8fb3d003fd3b1de6acc9511ba8bab094dbe5e03f45dfa146ba617c9bbb",
+  "scope": "Intentional geometry and native-contract transition audited against all retained AE shapes before replacing the pinned fixture. Physical fits, clamp retention, PA12 creep and flight qualification are unresolved.",
+  "intentional_geometry_changes": [
+    {
+      "object": "BatteryMount",
+      "local_shape": {
+        "difference_mm3": 325.73757593834114,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.8485281374238554,
+        "volume_difference_mm3": 71.64283366173368,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 325.7375759383421,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.8485281374238625,
+        "volume_difference_mm3": 71.64283366173186,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "CapacitorServiceReserve",
+      "local_shape": {
+        "difference_mm3": 635.7073603407712,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 635.7073603407715,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_shape": {
+        "difference_mm3": 325.7375759383413,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.8485281374238554,
+        "volume_difference_mm3": 71.64283366172731,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 325.737575938342,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.8485281374238554,
+        "volume_difference_mm3": 71.64283366173004,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 987.3253831501498,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.200000000000003,
+        "volume_difference_mm3": 737.9723883774959,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 987.3253831501529,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.200000000000003,
+        "volume_difference_mm3": 737.9723883774968,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    }
+  ],
+  "added_shapes": [
+    "OpticalStackFootBolt0",
+    "OpticalStackFootBolt1",
+    "OpticalStackFootNut0",
+    "OpticalStackFootNut1"
+  ],
+  "removed_shapes": [
+    "OpticalLatchHostCoupon",
+    "OpticalLatchTowerCoupon"
+  ],
+  "retained_shape_count": 124,
+  "placements_unchanged": true,
+  "native_expressions_unchanged": true,
+  "native_control_behavior_passed": true,
+  "registry_changes": "HardwareParts gains two optical foot screws and two nuts; FitCoupons loses two obsolete latch coupons. Other memberships unchanged.",
+  "native_metadata_changed_fields": {
+    "BatteryEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "BatteryEquipmentModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "BatteryMount": [
+      "StackInterfaceContract"
+    ],
+    "ElectronicsEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "ElectronicsEquipmentModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "ElectronicsMount": [
+      "StackInterfaceContract"
+    ],
+    "MainPropulsionModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "MainPropulsionModuleRailClampScrew": [
+      "PurchaseRequirements"
+    ],
+    "OpticalFlowModule": [
+      "OpticalMountContract",
+      "StackInterfaceContract"
+    ],
+    "OpticalMountBase": [
+      "OpticalMountContract",
+      "StackInterfaceContract"
+    ],
+    "OpticalPitchBolt": [
+      "PurchaseRequirements"
+    ],
+    "OpticalPitchNut": [
+      "PurchaseRequirements"
+    ],
+    "OpticalRollBolt": [
+      "PurchaseRequirements"
+    ],
+    "OpticalRollBracket": [
+      "OpticalMountContract"
+    ],
+    "OpticalRollNut": [
+      "PurchaseRequirements"
+    ],
+    "OpticalSensorTray": [
+      "OpticalMountContract"
+    ],
+    "PortHornGearClampBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortHornGearClampNut": [
+      "PurchaseRequirements"
+    ],
+    "PortInputShaftClampNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingCapNegativeBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingCapNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingCapPositiveBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingCapPositiveNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputClampNegativeBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputClampNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputClampPositiveBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputClampPositiveNut": [
+      "PurchaseRequirements"
+    ],
+    "ServoBridgePortBolt": [
+      "PurchaseRequirements"
+    ],
+    "ServoBridgePortNut": [
+      "PurchaseRequirements"
+    ],
+    "ServoBridgeStarboardBolt": [
+      "PurchaseRequirements"
+    ],
+    "ServoBridgeStarboardNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardHornGearClampBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardHornGearClampNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardInputShaftClampNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingCapNegativeBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingCapNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingCapPositiveBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingCapPositiveNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputClampNegativeBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputClampNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputClampPositiveBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputClampPositiveNut": [
+      "PurchaseRequirements"
+    ]
+  },
+  "native_metadata_changes": [
+    "Optical hosts/base/module describe two directly clamped broad feet, clearance-hole assembly registration, no axial seating gap and no elastic latch or unspecified pad.",
+    "Existing M2x8 purchase requirements add measured flat under-head bearing diameter >=3.5 mm and thread crest >=1.8 mm for optical feet, with finished holes <=2.9 mm. These remain received-part acceptance limits, not seller certification. Radial lands are explicitly concentric reference values, not guaranteed eccentric contact.",
+    "Foot service requires removal of the host carrier for bench access; no underside tool clearance to an unmodeled balloon is claimed."
+  ],
+  "structure_changes": [
+    "Replace latch fingers, hooks and guide tongues with two 2 mm broad feet, each nominally 81.891 mm2 in direct contact with a 2 mm host tab; ordinary M2x8 screws below and M2 hex nuts above. Host/foot width8 mm, clamp axes offset4 mm outward from retained48 mm anchor pattern. Tower32 mm and sensor/angle datums unchanged.",
+    "Capacitor planning reserve moves2 mm outward in localX to40 mm, full diameter10 x16 mm allowance unchanged. Minimum1.5 mm service margin now checked across seated tower registration; calculated lower gap2.239 mm.",
+    "Propulsion geometry, bearing caps, shaft interfaces and deliberately removable paired-servo/input-drive module unchanged."
+  ],
+  "validation_changes": [
+    "Optical checks bind saved hardware and host contracts, direct seats, full nut engagement, tool access, ordered nut/screw extraction and tower removal to saved geometry. Replacement sweep proxies must fully contain the saved parts.",
+    "Horn/servo contact excludes only the nominal sourced spline cylinder; full servo case and ears receive continuous rotation checking. A neutral-clear case lobe entering the horn orbit and changed spline projection are rejected by regressions.",
+    "Foot fastener access is checked after the required carrier removal: complete current-host geometry and reservations remain obstacles, while explicitly identified separated vehicle groups are recorded and excluded. Full installed-vehicle angle, field and registration checks are unchanged. The separate module-service check certifies carrier end removal."
+  ],
+  "independent_horn_sweep": [
+    {
+      "part": "PortServoHorn",
+      "obstacle": "PortServoWithoutSpline",
+      "sample_min_gap_mm": 0.1999999999999993,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 0.13239810956941112,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortHornGearAdapter",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 1.099999999999985,
+      "at_input_angle_deg": 35.0,
+      "continuous_lower_mm": 1.0018408227063123,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortHornGearRetainer",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 0.5999999999999979,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 0.5024332061328389,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortHornGearClampBolt",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 3.281390598791872,
+      "at_input_angle_deg": 60.0,
+      "continuous_lower_mm": 3.192489633610412,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortHornGearClampNut",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 7.086339213260466,
+      "at_input_angle_deg": 60.0,
+      "continuous_lower_mm": 6.99729415607263,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortInputShaft",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 4.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 4.59074400122139,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortInputShaftClampBolt",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 7.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 7.55952153728738,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortInputShaftClampNut",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 6.757403347440493,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 6.733372056544913,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "PortDriverGear",
+      "obstacle": "PortServo",
+      "sample_min_gap_mm": 12.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 12.522867112069296,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardServoHorn",
+      "obstacle": "StarboardServoWithoutSpline",
+      "sample_min_gap_mm": 0.1999999999999993,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 0.13239810956941112,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardHornGearAdapter",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 1.099999999999986,
+      "at_input_angle_deg": -47.0,
+      "continuous_lower_mm": 1.0018408227063134,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardHornGearRetainer",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 0.5999999999999979,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 0.5024332061328389,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardHornGearClampBolt",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 3.281390598791879,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 3.192489633610419,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardHornGearClampNut",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 7.08633921326047,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 6.997294156072634,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardInputShaft",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 4.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 4.59074400122139,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardInputShaftClampBolt",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 7.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 7.55952153728738,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardInputShaftClampNut",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 6.757403347440494,
+      "at_input_angle_deg": 54.0,
+      "continuous_lower_mm": 6.733372056544914,
+      "sample_step_deg": 0.5
+    },
+    {
+      "part": "StarboardDriverGear",
+      "obstacle": "StarboardServo",
+      "sample_min_gap_mm": 12.600000000000001,
+      "at_input_angle_deg": -60.0,
+      "continuous_lower_mm": 12.522867112069296,
+      "sample_step_deg": 0.5
+    }
+  ],
+  "horn_sweep_scope": "Input +/-60 degrees, closed0.5degree grid. A chord bound 2*r*sin(step/4) from a sampled pose to any intermediate angle is subtracted from sampled minimum separation. Nominal geometry only, not manufacturing tolerance or unmodeled OEM/M3 screw clearance. Broad rear retainer retained rather than sacrificing horn contact area.",
+  "installed_prints": 18,
+  "hardware_before": 62,
+  "hardware_after": 66,
+  "hardware_types": 12,
+  "fit_coupons_before": 6,
+  "fit_coupons_after": 4,
+  "unique_print_files": 15,
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 54.09259315608828,
+      "after": 53.491959567823706,
+      "delta": -0.6006335882645715
+    },
+    "current_hardware_g": {
+      "before": 32.149474868707415,
+      "after": 33.31261045102543,
+      "delta": 1.163135582318013
+    },
+    "structure_hardware_g": {
+      "before": 86.24206802479569,
+      "after": 86.80457001884913,
+      "delta": 0.5625019940534486
+    }
+  },
+  "mass_scope": "Common-assumption CAD volume/density comparison, not measured or all-up mass; existing exclusions unchanged."
+}

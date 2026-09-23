@@ -188,7 +188,6 @@ def build_assembly():
         clearance_volumes.append(obj)
     fit_coupons = rail.build_coupons(doc)
     fit_coupons["printed"] += propulsion.build_fit_coupons(doc)["printed"]
-    fit_coupons["printed"] += stack_interface.build_fit_coupons(doc)["printed"]
     printed_parts = (
         rail_assembly["printed"]
         + mount_parts
@@ -228,7 +227,7 @@ def build_assembly():
     set_property(
         registry,
         "Status",
-        "PA12 CAD fit prototype: rail and optical-latch flexures, tape/curvature, friction retention, optical pointing stability, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
+        "PA12 CAD fit prototype: rail flexures, tape/curvature, friction retention, optical pointing stability, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
     )
     set_property(registry, "SourceFingerprint", fingerprint)
     set_property(registry, "NotionSource", NOTION_URL)

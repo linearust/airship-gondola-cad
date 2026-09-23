@@ -901,11 +901,11 @@ def battery_check(doc, objects):
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
-        "tower_rigid_guide_float_gaps": float_rows,
-        "tower_float_scope": "Continuous conservative component bounds over the coupled rigid-guide XY/yaw domain and declared axial play. Unsupported rocking is not certified; fit measured anti-rattle contact and accept optical pointing before operation.",
+        "tower_clamped_registration_gaps": float_rows,
+        "tower_registration_scope": "Continuous conservative component bounds over the coupled XY/yaw registration permitted by both clearance-hole pairs. No axial play is added: both broad feet must seat and be clamped before operation. Physical pointing stability and clamp friction require verification.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
-        and len(float_rows) == 6
+        and len(float_rows) == 4
         and all(row["passed"] for row in float_rows)
         and {row["object"] for row in tower_gaps} == tower_names
         and all(

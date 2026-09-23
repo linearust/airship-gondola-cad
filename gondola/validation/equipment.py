@@ -386,7 +386,7 @@ def mounting_check(doc):
                 "complete_optical_tower_removed": release_head,
                 "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack push the supported tower toward its carrier to unload hooks, release both integral outward-flexing fingers and withdraw the complete optical tower along optical+Z first; peel any anti-rattle adhesive contact and support the sensor. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. When this carrier hosts the optical stack, detach the carrier from the rail for bench access, support the tower, remove both foot nuts and withdraw both foot screws downward before lifting the complete tower along optical+Z. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }

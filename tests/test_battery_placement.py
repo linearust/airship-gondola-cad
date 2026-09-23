@@ -55,8 +55,8 @@ class BatteryPlacementTests(unittest.TestCase):
         result = self.check()
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), 18)
-        floats = result["continuous_translation"]["tower_rigid_guide_float_gaps"]
-        self.assertEqual(len(floats), 6)
+        floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
+        self.assertEqual(len(floats), 4)
         self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
             result["continuous_translation"]["local_size_mm"], [28, 74, 17]

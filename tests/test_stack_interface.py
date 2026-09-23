@@ -1,4 +1,4 @@
-"""Native regressions for loose rigid guides and independent positive latches."""
+"""Native regressions for direct seating clamps and bounded assembly registration."""
 
 import math
 import unittest
@@ -46,7 +46,7 @@ class StackInterfaceTests(unittest.TestCase):
         stack_interface.attach_to_host(self.kit["group"], self.battery)
         optical_mount.set_angles(self.doc, 0, 0)
 
-    def test_complete_tower_reparents_with_positive_capture_on_each_host(self):
+    def test_complete_tower_reparents_with_direct_clamping_on_each_host(self):
         from gondola.parts import stack_interface
         from gondola.validation.optical import tower_attachment_check
 
@@ -65,15 +65,10 @@ class StackInterfaceTests(unittest.TestCase):
                 )
             result = tower_attachment_check(self.doc, host)
             self.assertTrue(result["passed"], result)
-            self.assertEqual(len(result["positive_latch_seats"]), 2)
-            self.assertGreater(
-                result["dimensional_and_strain_screen"][
-                    "minimum_remaining_guide_engagement_mm"
-                ],
-                1.5,
-            )
+            self.assertEqual(len(result["direct_clamped_seats"]), 2)
+            self.assertEqual(result["clamp_fit"]["nominal_axial_seating_gap_mm"], 0)
 
-    def test_cut_away_hook_or_refilled_host_guide_is_rejected(self):
+    def test_cut_away_seat_or_refilled_clamp_hole_is_rejected(self):
         from gondola.parts import stack_interface as s
         from gondola.validation.optical import tower_attachment_check
 
@@ -82,28 +77,20 @@ class StackInterfaceTests(unittest.TestCase):
         x, y = s.ANCHOR_CENTRES[1]
         radius, angle = math.hypot(x, y), math.degrees(math.atan2(y, x))
         try:
-            cut = Part.makeBox(
-                12, 12, 5, App.Vector(radius - 3, -6, s.HOOK_BOTTOM_Z - 1)
-            )
+            cut = Part.makeBox(12, 12, 1, App.Vector(radius - 4, -6, -s.TOWER_HEIGHT))
             cut.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
             base.Shape = old_base.cut(cut)
             self.assertFalse(tower_attachment_check(self.doc, self.battery)["passed"])
             base.Shape = old_base
-            fill = Part.makeBox(
-                3.4,
-                7.4,
-                2,
-                App.Vector(
-                    radius + s.FIXED_LEG_INNER - 0.7, -3.7, s.HOST_DECK_BOTTOM_Z
-                ),
+            cx, cy = s.CLAMP_CENTRES[1]
+            host.Shape = old_host.fuse(
+                Part.makeCylinder(1.3, 2, App.Vector(cx, cy, s.HOST_DECK_BOTTOM_Z))
             )
-            fill.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
-            host.Shape = old_host.fuse(fill)
             self.assertFalse(tower_attachment_check(self.doc, self.battery)["passed"])
         finally:
             base.Shape, host.Shape = old_base, old_host
 
-    def test_no_foot_fasteners_or_retained_stack_parts(self):
+    def test_foot_hardware_is_in_removable_kit_and_uses_existing_sizes(self):
         from gondola.parts.stack_interface import is_removable_head_part
 
         self.assertTrue(
@@ -112,47 +99,12 @@ class StackInterfaceTests(unittest.TestCase):
         self.assertFalse(
             is_removable_head_part(self.doc.BatteryMount, self.kit["group"])
         )
-        self.assertEqual(len(self.kit["hardware"]), 4)
-        self.assertFalse(any("Foot" in obj.Name for obj in self.kit["hardware"]))
-
-    def test_coupon_has_the_production_contact_geometry_and_orientation(self):
-        from gondola.parts import equipment_mounts
-        from gondola.parts import stack_interface as s
-
-        coupons = s.build_fit_coupons(self.doc)
-        try:
-            coupon = coupons["printed"][0]
-            anchor = App.Rotation(App.Vector(0, 0, 1), 45)
-            expected_rotation = equipment_mounts.PRINT_ROTATION.multiply(anchor)
-            self.assertTrue(coupon.PrintRotation.isSame(expected_rotation, 1e-7))
-            radius = math.hypot(*s.ANCHOR_CENTRES[1])
-            transformed = coupon.Shape.copy()
-            transformed.translate(App.Vector(radius, 0, s.HOST_DECK_BOTTOM_Z))
-            transformed.rotate(App.Vector(), App.Vector(0, 0, 1), 45)
-            crop = Part.makeBox(
-                s.HOST_SEAT_OUTER - s.FOOT_INNER_OFFSET,
-                s.HOST_SEAT_WIDTH,
-                s.DECK_THICKNESS,
-                App.Vector(
-                    radius + s.FOOT_INNER_OFFSET,
-                    -s.HOST_SEAT_WIDTH / 2,
-                    s.HOST_DECK_BOTTOM_Z,
-                ),
-            )
-            crop.rotate(App.Vector(), App.Vector(0, 0, 1), 45)
-            for kind in ("battery", "electronics"):
-                production = equipment_mounts.mount_shape(kind).common(crop)
-                sample = transformed.common(crop)
-                self.assertLess(
-                    abs(production.cut(sample).Volume)
-                    + abs(sample.cut(production).Volume),
-                    1e-5,
-                )
-            self.assertTrue(coupons["printed"][1].PrintRotation.isSame(anchor, 1e-7))
-        finally:
-            for obj in coupons["printed"]:
-                self.doc.removeObject(obj.Name)
-            self.doc.removeObject(coupons["group"].Name)
+        self.assertEqual(len(self.kit["hardware"]), 8)
+        feet = [obj for obj in self.kit["hardware"] if "Foot" in obj.Name]
+        self.assertEqual(len(feet), 4)
+        self.assertEqual(
+            {obj.HardwareSKU for obj in feet}, {"M2X8_BUTTON_HEAD", "M2_HEX_NUT"}
+        )
 
     def test_release_and_lift_are_clear_on_both_hosts_and_reject_blockers(self):
         from gondola.cad import world_shape
@@ -176,23 +128,116 @@ class StackInterfaceTests(unittest.TestCase):
             self.assertTrue(floating["passed"], floating)
         s.attach_to_host(self.kit["group"], self.battery)
         fixed = {"BatteryMount": world_shape(self.doc.BatteryMount)}
-        local = s.latch_press_reservations()[0][1]
+        local = s.clamp_tool_reservations()[0][1]
         local.Placement = (
             self.kit["group"].getGlobalPlacement().multiply(local.Placement)
         )
         point = local.CenterOfMass
         result = _tower_service_check(
             self.doc,
-            {**fixed, "PressBlocker": Part.makeSphere(0.2, point)},
+            {**fixed, "KeyBlocker": Part.makeSphere(0.2, point)},
             self.moving,
         )
         self.assertFalse(result["passed"])
         self.assertTrue(
-            any(
-                row["manual_access_collisions"]
-                for row in result["manual_release_access"]
-            )
+            any(row["access_collisions"] for row in result["clamp_tool_access"])
         )
+
+    def test_bench_service_separates_tape_but_keeps_host_and_unknown_obstacles(self):
+        from gondola.cad import world_shape
+        from gondola.parts import stack_interface as s
+        from gondola.validation.optical import _tower_service_check
+
+        s.attach_to_host(self.kit["group"], self.battery)
+        tool = s.clamp_tool_reservations()[0][1]
+        tool.Placement = self.kit["group"].getGlobalPlacement().multiply(tool.Placement)
+        point = tool.CenterOfMass
+        tape_group = self.doc.addObject("App::Part", "TapeAttachmentReference")
+        blocker = self.doc.addObject("Part::Feature", "BenchServiceBlocker")
+        tape_group.addObject(blocker)
+        blocker.Shape = Part.makeSphere(0.2, point)
+        try:
+            fixed = {
+                "BatteryMount": world_shape(self.doc.BatteryMount),
+                blocker.Name: world_shape(blocker),
+            }
+            result = _tower_service_check(self.doc, fixed, self.moving)
+            self.assertTrue(result["passed"], result)
+            frame = result["bench_service_frame"]
+            self.assertEqual(frame["host"], self.battery.Name)
+            self.assertIn(
+                {"object": blocker.Name, "separated_vehicle_group": tape_group.Name},
+                frame["removed_nonhost_objects"],
+            )
+            self.assertIn("ModuleBatteryEnvelope", frame["retained_obstacles"])
+            # Reclassifying the same physical obstruction as host-attached must
+            # prevent its removal, even if the caller omits it from the mapping.
+            tape_group.removeObject(blocker)
+            self.battery.addObject(blocker)
+            blocker.Shape = Part.makeSphere(
+                0.2, self.battery.getGlobalPlacement().inverse().multVec(point)
+            )
+            result = _tower_service_check(
+                self.doc,
+                {"BatteryMount": world_shape(self.doc.BatteryMount)},
+                self.moving,
+            )
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                blocker.Name, result["bench_service_frame"]["retained_obstacles"]
+            )
+            self.assertTrue(
+                any(
+                    any(
+                        hit["object"] == blocker.Name
+                        for hit in row["access_collisions"]
+                    )
+                    for row in result["clamp_tool_access"]
+                )
+            )
+            self.battery.removeObject(blocker)
+            self.doc.removeObject(blocker.Name)
+            result = _tower_service_check(
+                self.doc,
+                {"UnknownBenchBlocker": Part.makeSphere(0.2, point)},
+                self.moving,
+            )
+            self.assertFalse(result["passed"])
+            self.assertIn(
+                "UnknownBenchBlocker",
+                result["bench_service_frame"]["retained_obstacles"],
+            )
+        finally:
+            if self.doc.getObject("BenchServiceBlocker") is not None:
+                self.doc.removeObject("BenchServiceBlocker")
+            self.doc.removeObject(tape_group.Name)
+
+    def test_registration_requires_a_service_gap_even_without_a_collision(self):
+        from gondola.cad import world_shape
+        from gondola.parts import stack_interface as s
+        from gondola.validation.optical import _tower_float_clearance_check
+
+        s.attach_to_host(self.kit["group"], self.electronics)
+        capacitor = world_shape(self.doc.CapacitorServiceReserve)
+        leg = dict(s.rigid_float_component_bounds())["load_leg_1"]
+        leg.Placement = self.kit["group"].getGlobalPlacement().multiply(leg.Placement)
+        gap, pairs, _ = leg.distToShape(capacitor)
+        self.assertGreater(gap, 1.5)
+        move = pairs[0][0] - pairs[0][1]
+        move.normalize()
+        capacitor.translate(move * (gap - 1.0))
+        self.assertLess(abs(leg.common(capacitor).Volume), 1e-5)
+        result = _tower_float_clearance_check(
+            self.doc, self.electronics, {"CapacitorServiceReserve": capacitor}
+        )
+        self.assertFalse(result["passed"])
+        row = next(
+            item
+            for item in result["component_bounds"]
+            if item["component"] == "load_leg_1"
+        )
+        self.assertFalse(row["collisions"])
+        self.assertAlmostEqual(row["capacitor_service_gap_mm"], 1.0, places=6)
 
     def test_continuous_float_bounds_contain_coupled_translated_and_yawed_tower(self):
         from gondola.cad import union
@@ -200,24 +245,25 @@ class StackInterfaceTests(unittest.TestCase):
 
         bound = union([shape for _, shape in s.rigid_float_component_bounds()])
         tower = s.tower_shape()
-        a, b = s.FIXED_LEG_THICKNESS / 2, s.LEG_WIDTH / 2
-        radius = math.hypot(*s.ANCHOR_CENTRES[0]) + s.FIXED_LEG_INNER + a
+        radius = math.hypot(*s.CLAMP_CENTRES[0])
         gap = s.MAX_RADIAL_FLOAT
-        # A near-end yaw with almost zero remaining tangent translation.
-        end_angle = math.asin(gap / (radius + a))
-        for yaw in (-end_angle, 0, end_angle):
-            c, sn = math.cos(yaw), abs(math.sin(yaw))
-            tr = a + gap - a * c - b * sn - radius * (1 - c)
-            tt = b + gap - a * sn - b * c - radius * sn
-            self.assertGreaterEqual(min(tr, tt), 0)
-            for radial, tangent in ((-tr, -tt), (-tr, tt), (tr, -tt), (tr, tt)):
+        limit = 2 * math.asin(gap / (2 * radius))
+        for yaw in (-0.9 * limit, -0.5 * limit, 0, 0.5 * limit, 0.9 * limit):
+            dr, dt = radius * (math.cos(yaw) - 1), radius * math.sin(yaw)
+            d = math.hypot(dr, dt)
+            t = math.sqrt(max(0, gap * gap - d * d))
+            direction = (1, 0) if d < 1e-9 else (-dt / d, dr / d)
+            for sign in (-1, 1):
+                radial, tangent = (sign * t * v for v in direction)
+                self.assertLessEqual(math.hypot(radial + dr, tangent + dt), gap + 1e-7)
+                self.assertLessEqual(math.hypot(radial - dr, tangent - dt), gap + 1e-7)
                 moved = tower.copy()
                 moved.rotate(App.Vector(), App.Vector(0, 0, 1), math.degrees(yaw))
                 moved.translate(
                     App.Vector(
                         (radial - tangent) / math.sqrt(2),
                         (radial + tangent) / math.sqrt(2),
-                        gap,
+                        0,
                     )
                 )
                 self.assertLess(

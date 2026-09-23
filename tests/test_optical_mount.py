@@ -31,18 +31,18 @@ class OpticalMountTests(unittest.TestCase):
         self.parent.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_three_separate_solids_and_four_purchased_fasteners(self):
+    def test_three_separate_solids_and_eight_purchased_fasteners(self):
         from gondola.contracts import fasteners
 
         self.assertEqual(len(self.module["printed"]), 3)
-        self.assertEqual(len(self.module["hardware"]), 4)
+        self.assertEqual(len(self.module["hardware"]), 8)
         for obj in self.module["printed"] + self.module["hardware"]:
             self.assertTrue(obj.Shape.isValid(), obj.Name)
             self.assertEqual(len(obj.Shape.Solids), 1, obj.Name)
         for obj in self.module["hardware"]:
             self.assertFalse(obj.PrintPart, obj.Name)
             self.assertNotIn("WASHER", obj.HardwareSKU)
-            if obj.Name.endswith("Bolt"):
+            if "Bolt" in obj.Name:
                 self.assertEqual(obj.HardwareSKU, "M2X8_BUTTON_HEAD")
                 self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
             else:
@@ -53,20 +53,20 @@ class OpticalMountTests(unittest.TestCase):
         self.assertFalse(contract["self_levelling"])
         self.assertFalse(contract["physical_angle_stops_modeled"])
 
-    def test_integral_tower_has_separate_load_legs_latches_and_open_device_space(self):
+    def test_integral_tower_has_broad_clamped_feet_and_open_device_space(self):
         from gondola.parts import optical_mount, stack_interface
 
         base = optical_mount.base_shape()
         tower = stack_interface.tower_shape()
         self.assertLess(abs(tower.cut(base).Volume), 1e-5)
         self.assertEqual(set(stack_interface.ANCHOR_CENTRES), {(-24, -24), (24, 24)})
-        self.assertAlmostEqual(base.BoundBox.ZMin, stack_interface.HOOK_BOTTOM_Z)
+        self.assertAlmostEqual(base.BoundBox.ZMin, -stack_interface.TOWER_HEIGHT)
         self.assertEqual(len(base.Solids), 1)
         # Devices and wiring remain in the open centre, while both complete
-        # latch sides belong to one installed print.
+        # clamped feet belong to one installed print.
         centre = Part.makeBox(30, 30, 31, App.Vector(-15, -15, -32))
         self.assertLess(abs(base.common(centre).Volume), 1e-5)
-        self.assertFalse(any("Foot" in obj.Name for obj in self.module["hardware"]))
+        self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 4)
 
     def test_native_angles_clamp_independently_and_follow_the_host(self):
         from gondola.cad import world_shape

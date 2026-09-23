@@ -231,8 +231,8 @@ def _certify_pair(first, second, *, max_depth=18, max_evaluations=2048):
     )
 
 
-def _cylindrical_datum(part, radius, axis):
-    """Locate a real bore/shaft face, rather than relying on an object label."""
+def _cylindrical_faces(part, radius, axis):
+    """Locate real coaxial bore/shaft faces rather than trusting part labels."""
     for face in part["shape"].Faces:
         surface = face.Surface
         if type(surface).__name__ != "Cylinder":
@@ -242,8 +242,50 @@ def _cylindrical_datum(part, radius, axis):
             and abs(abs(surface.Axis.y) - 1) < TOL
             and math.hypot(surface.Center.x - axis[0], surface.Center.z - axis[2]) < TOL
         ):
-            return True
-    return False
+            yield face
+
+
+def _cylindrical_datum(part, radius, axis):
+    return any(_cylindrical_faces(part, radius, axis))
+
+
+def _horn_case_clearance(horn, servo):
+    """Exempt only the sourced spline volume, never the entire servo case.
+
+    Both solids are already in the neutral propulsion frame. Deriving the
+    spline interval from its actual cylindrical face preserves native mirrored
+    placement. Its length must still match the sourced projection. The full
+    remaining case and both ears stay in the continuous motion certificate.
+    """
+    import FreeCAD as App
+    import Part
+
+    from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE
+
+    evidence = PROPULSION_EVIDENCE["X06"]
+    radius = evidence["spline_major_diameter_mm"] / 2
+    length = evidence["overall_height_with_spline_mm"] - evidence["case_size_mm"][2]
+    faces = list(_cylindrical_faces(servo, radius, horn["axis"]))
+    if len(faces) != 1 or abs(faces[0].BoundBox.YLength - length) > TOL:
+        return {"passed": False, "error": "Missing unique sourced servo spline face"}
+    bounds = faces[0].BoundBox
+    axis = horn["axis"]
+    spline = Part.makeCylinder(
+        radius,
+        length,
+        App.Vector(axis[0], bounds.YMin, axis[2]),
+        App.Vector(0, 1, 0),
+    )
+    case = servo["shape"].cut(spline)
+    if case.isNull() or not case.isValid() or not case.Solids:
+        return {"passed": False, "error": "Invalid servo case after spline separation"}
+    result = _certify_pair(horn, _part(case, servo["name"] + "CaseAndEars"))
+    return {
+        **result,
+        "excluded_spline_radius_mm": radius,
+        "excluded_spline_axial_interval_mm": [bounds.YMin, bounds.YMax],
+        "scope": "Continuous nominal horn separation from the actual case and ears, excluding only the sourced cylindrical spline projection. The 0.1 mm screen is not a manufacturing allowance. Actual stock horn seating, case tolerances and the unmodeled OEM retaining screw require physical checks.",
+    }
 
 
 def _functional_pairs(parts, spec):
@@ -323,15 +365,20 @@ def _functional_pairs(parts, spec):
                 datums = datums and abs(separation - spec.center_distance_mm) < TOL
             else:
                 datums = datums and first["shape"].distToShape(second["shape"])[0] < TOL
-            rows.append(
-                dict(
-                    row,
-                    classification_passed=groups and datums and overlap < 1e-5,
-                    neutral_intersection_mm3=overlap,
-                    native_groups_match=groups,
-                    cylindrical_datums_match=datums,
-                )
+            row = dict(
+                row,
+                classification_passed=groups and datums and overlap < 1e-5,
+                neutral_intersection_mm3=overlap,
+                native_groups_match=groups,
+                cylindrical_datums_match=datums,
             )
+            if a == "ServoHorn":
+                row["case_and_ears_clearance"] = _horn_case_clearance(first, second)
+                row["classification_passed"] = (
+                    row["classification_passed"]
+                    and row["case_and_ears_clearance"]["passed"]
+                )
+            rows.append(row)
     return rows, keys
 
 
@@ -350,7 +397,7 @@ def relative_motion_check(doc, module):
     result = {
         "minimum_nominal_gap_mm": MINIMUM_GAP_MM,
         "angle_domain_deg": [-180, 180],
-        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
+        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Horn/spline contact is excluded only within the sourced spline projection; each remaining case and both ears receive a separate continuous clearance check. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
     }
     try:
         spec = drive_for_document(doc)

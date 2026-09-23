@@ -1,5 +1,13 @@
 # Optical tower latch — revision AD
 
+Historical review, superseded by revision AF. The AD/AE trial allowed nominal
+0.7 mm seating play (up to 1.3 mm under its dimensional allowance). An
+unspecified adhesive pad did not establish a stable optical pointing datum.
+AF removes the spring fingers and guide features, directly clamping two broad
+feet with ordinary M2 screws and nuts. Do not use the assembly or coupon
+instructions below for the current model; current authority is
+`gondola/parts/stack_interface.py` and `gondola/contracts/design.py`.
+
 The user requested structural joints in place of bolts where tightening is not
 essential, while preserving simple integral parts. Two optical tower-foot
 screw/nut pairs are removed. Both existing carrier locations accept the same

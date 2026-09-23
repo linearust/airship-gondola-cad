@@ -45,8 +45,9 @@ authority if this table is intentionally revised.
 ## Fastener adaptation and purchases not covered by the cart
 
 The M2 kit replaces thin square nuts, PA66 screws and rail set screws. Rail
-clamps and propulsion structural joints use 8 mm screws; optical pivots and radial
-coupling retention use 6 mm screws. Revision AD removes optical tower-foot hardware. The modeled mechanism requires only these
+clamps, propulsion structural joints, optical pivots and optical feet use 8 mm
+screws; the short radial coupling joints retain 6 mm screws. Revision AF restores
+two directly clamped optical feet. The modeled mechanism requires only these
 two M2 lengths. No washers are required by the modeled
 stacks. A 4.5 mm-diameter by 2 mm-high head cylinder is a **design acceptance
 envelope**, not a supplier claim. Measure actual button heads and nuts before
@@ -157,7 +158,7 @@ and manufacturing screens, export identity and prototype bundle checks passed.
 
 ## Revision AD optical attachment
 
-The current optical tower replaces its two M2x8 screws and two M2 nuts with
+The AD trial (superseded by AF) replaced its two M2x8 screws and two M2 nuts with
 integral positive hooks and open host seats. Refer to
 [latch attachment review](latch_attachment_review.md) for the release mechanism,
 clearance tradeoff and mandatory same-process coupon checks. The paired servo
@@ -176,14 +177,14 @@ complete output rotation and the existing axial-travel allowance.
 
 The optical head's pivot ears, narrow connecting post and tray neck increase
 from 1.5 to 2 mm. Its two pivot screws change from M2x6 to the already-selected
-M2x8 kit size. The tower latches retain their separately specified flexible
-sections; do not apply the pivot thickness to the latch fingers. Part count,
+M2x8 kit size. At AE the tower latches retained their separately specified flexible
+sections; AF subsequently removed them. Part count,
 sensor datum and angle controls remain unchanged. The selected gear report now
 distinguishes the 3 mm driver face, 5 mm output face and 3 mm nominal overlap.
 
 The modeled print and fastener mass increases by approximately 3.21 g under
 the existing density assumptions; this is not measured or all-up mass.
-Physical stiffness, screw fit, latch retention and pointing still require the
+Physical stiffness, screw fit, retention and pointing still require the
 existing prototype checks. The intentional geometry and metadata transition is
 recorded in `tests/fixtures/rev_ae_review.json`; current quantities remain in
 `gondola/contracts/design.py` and the generated BOM.
@@ -192,3 +193,28 @@ AE verification passed 262 native FreeCAD tests without skips, complete saved
 assembly/equipment and propulsion checks, 126-shape fixture comparison, native
 controls, print-export identity and prototype bundle checks. These are CAD and
 consistency results, not physical strength or fatigue qualification.
+
+## Revision AF optical seating and motion review
+
+The AD/AE latch allowed 0.7 mm nominal seating play, up to 1.3 mm under its
+dimensional allowance. Its unspecified anti-rattle pad did not establish a
+stable optical datum. AF removes the fingers and guide features; two broad
+integral feet now contact their host directly and are clamped with the existing
+M2x8 screws and M2 nuts. No new fastener type or washer is introduced. Remove
+these four fasteners before lifting the complete tower; the current outboard
+axes clear modeled parts during downward screw extraction. Detach the host
+carrier for bench service: the balloon is not modeled and may block underside
+tool access. Reinstall the carrier and re-trim afterward. Confirm received screw bearing faces, thread diameter, print flatness and clamp
+retention. The remaining clearance-hole registration is a pre-tightening
+position allowance, not permissible operating wobble.
+The provisional capacitor reservation moves another 2 mm outward in X to
+preserve a service margin across the permitted seated tower registration.
+Its full Ø10 x 16 mm allowance is retained; no actual capacitor mount is implied.
+
+The horn motion audit now excludes only the actual nominal spline projection
+from horn/servo contact, separately checking the full case and mounting ears.
+Bearing outer-ring caps remain because the examined shaft rings and collars
+do not replace their housing-retention function; see
+[bearing retention review](retention_review.md). No propulsion geometry or
+purchased drivetrain interface changes in AF. Current quantities and unresolved
+physical checks remain authoritative in the contracts and generated BOM.

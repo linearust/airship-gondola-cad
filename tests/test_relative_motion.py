@@ -119,6 +119,92 @@ class NativeRelativeMotionTests(unittest.TestCase):
         ):
             return relative_motion_check(self.doc, module or self.module)
 
+    def horn_and_servo_parts(self, prefix):
+        from gondola.cad import world_shape
+        from gondola.validation.relative_motion import _part
+
+        inverse = self.doc.MainPropulsionModule.getGlobalPlacement().inverse()
+        mount = self.doc.getObject(prefix + "ServoMount")
+        axis = inverse.multiply(mount.getGlobalPlacement()).Base
+        result = []
+        for suffix in ("ServoHorn", "Servo"):
+            obj = self.doc.getObject(prefix + suffix)
+            shape = world_shape(obj)
+            shape.Placement = inverse.multiply(shape.Placement)
+            arguments = (
+                dict(
+                    group=prefix + "InputDrive",
+                    prefix=prefix,
+                    axis=tuple(axis),
+                    rate=-1 / 3,
+                )
+                if suffix == "ServoHorn"
+                else {}
+            )
+            result.append(_part(shape, obj.Name, **arguments))
+        return result
+
+    def test_both_mirrored_horns_clear_actual_cases_and_ears_continuously(self):
+        from gondola.validation.relative_motion import _horn_case_clearance
+
+        for prefix in ("Port", "Starboard"):
+            with self.subTest(side=prefix):
+                result = _horn_case_clearance(*self.horn_and_servo_parts(prefix))
+                self.assertTrue(result["passed"], result)
+                self.assertGreater(result["guaranteed_gap_mm"], 0.1)
+                self.assertLessEqual(result["guaranteed_gap_mm"], 0.2 + 1e-7)
+                interval = result["excluded_spline_axial_interval_mm"]
+                self.assertAlmostEqual(interval[1] - interval[0], 2.7)
+
+    def test_case_lobe_entering_horn_orbit_is_not_hidden_as_spline_contact(self):
+        from gondola.parts import servo_bridge
+        from gondola.validation.relative_motion import _horn_case_clearance
+
+        servo = self.doc.PortServo
+        original = servo.Shape.copy()
+        try:
+            # The lobe joins the actual case but clears the neutral horn; its
+            # forward face enters the blade orbit at intermediate input angles.
+            lobe = Part.makeBox(
+                9, 5, 1, App.Vector(0, servo_bridge.case_front_y() - 1, -6)
+            )
+            servo.Shape = original.fuse(lobe)
+            self.doc.recompute()
+            horn, body = self.horn_and_servo_parts("Port")
+            self.assertLess(horn["shape"].common(body["shape"]).Volume, 1e-7)
+            result = _horn_case_clearance(horn, body)
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(result["intersection_mm3"], 0)
+            # The top-level functional classification must consume this new
+            # guard, instead of accepting the old whole-servo exemption.
+            with patch(
+                "gondola.validation.relative_motion._horn_case_clearance",
+                return_value=result,
+            ):
+                result = self.check_without_repeating_all_pair_geometry()
+            self.assertFalse(result["passed"], result)
+        finally:
+            servo.Shape = original
+            self.doc.recompute()
+
+    def test_changed_spline_projection_cannot_expand_the_contact_exemption(self):
+        from gondola.validation.relative_motion import _horn_case_clearance
+
+        servo = self.doc.PortServo
+        original = servo.Shape.copy()
+        try:
+            extension = Part.makeCylinder(
+                1.95, 0.4, App.Vector(0, 33.4, 0), App.Vector(0, 1, 0)
+            )
+            servo.Shape = original.fuse(extension).removeSplitter()
+            self.doc.recompute()
+            result = _horn_case_clearance(*self.horn_and_servo_parts("Port"))
+            self.assertFalse(result["passed"], result)
+            self.assertIn("unique sourced servo spline", result["error"])
+        finally:
+            servo.Shape = original
+            self.doc.recompute()
+
     def test_transformed_root_and_independent_poses_are_restored(self):
         root = self.doc.MainPropulsionModule
         original = App.Placement(root.Placement)

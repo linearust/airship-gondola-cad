@@ -17,8 +17,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.
   `references/cart_adaptation_review.md` records cart choices and remaining
   purchases; current build quantities belong to `contracts/design.py`.
-  `references/latch_attachment_review.md` explains the removable optical latch
-  and why the remaining preload-dependent joints retain fasteners.
+  `references/retention_review.md` distinguishes bearing outer-ring capture
+  from shaft retention. The optical seats use direct M2 clamps; the archived
+  latch review records a superseded trial, not an assembly instruction.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
@@ -71,7 +72,7 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   verified interface. Check seated contact and the ordered module
   removal path while retaining the output shafts, bearings and motor carriers.
   Rebuild geometry, controls and BOM together.
-  Gear spacing remains fixed; optical latch clearances do not authorize slotted
+  Gear spacing remains fixed; optical mounting clearances do not authorize slotted
   gear supports or an unsupported GUI ratio-only property.
   Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh,
   adapter concentricity/retention and servo output loading; printed nominal
@@ -91,17 +92,14 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
   and service checks, including integral legs/feet and complete tower removal.
-  Support and push the tower toward its carrier to seat the rigid feet and
-  unload the hooks; release both fingers outward before withdrawing the tower.
-  Check the spring fingers' rotation as well as lateral movement; a rigid
-  translation of a hooked leg does not prove elastic release clearance.
-  Preserve real undeformed printable geometry and the declared assembly gap.
-  Print the mating latch coupons first with the same process, finish and
-  corresponding orientation. Calculated beam strain is a screen, not a PA12
-  allowable or fatigue qualification. Hook retention must work independently
-  of an as-needed measured adhesive anti-rattle pad. Do not invent pad thickness,
-  compression or mass, or claim zero play; reject rocking before accepting
-  vertical sensor alignment. Positive sensor Z points away from the balloon;
+  Seat both broad feet directly before tightening their M2 clamps. Clearance
+  holes allow assembly registration, not operating play; validate their full
+  registration envelope on both hosts. Check actual fastener bearing faces,
+  print flatness, clamp friction and PA12 creep. Reject rocking or slip before
+  accepting sensor alignment. Detach the host carrier for bench access to the
+  underside screws; the unmodeled balloon may obstruct an in-place tool.
+  Support the tower, remove both foot nuts and withdraw the screws downward
+  before lifting it. Reinstall the carrier, verify retention and re-trim. Positive sensor Z points away from the balloon;
   consider loads in both axial directions. Keep reservations in the moving
   sensor frame.
 - Passing geometry tests does not resolve physical qualification or change

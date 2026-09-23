@@ -61,21 +61,25 @@ class OpticalClearanceTests(unittest.TestCase):
                     setattr(obj, name, original)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_changed_latch_coupon_geometry_or_orientation_is_rejected(self):
+    def test_changed_foot_hardware_geometry_or_hierarchy_is_rejected(self):
         from gondola.validation.optical import _source_evidence
 
-        coupon = self.doc.OpticalLatchHostCoupon
-        shape, rotation = coupon.Shape.copy(), coupon.PrintRotation
+        bolt = self.doc.OpticalStackFootBolt0
+        shape = bolt.Shape.copy()
+        parent = bolt.getParentGeoFeatureGroup()
         try:
-            coupon.PrintRotation = App.Rotation()
-            self.assertFalse(_source_evidence(self.doc)["passed"])
-            coupon.PrintRotation = rotation
-            coupon.Shape = coupon.Shape.fuse(
-                Part.makeBox(1, 1, 1, App.Vector(-10, 0, 2))
+            bolt.Shape = bolt.Shape.fuse(
+                Part.makeBox(1, 1, 1, bolt.Shape.BoundBox.Center)
             )
             self.assertFalse(_source_evidence(self.doc)["passed"])
+            bolt.Shape = shape
+            parent.removeObject(bolt)
+            self.doc.BatteryEquipmentModule.addObject(bolt)
+            self.assertFalse(_source_evidence(self.doc)["passed"])
         finally:
-            coupon.Shape, coupon.PrintRotation = shape, rotation
+            bolt.Shape = shape
+            self.doc.BatteryEquipmentModule.removeObject(bolt)
+            parent.addObject(bolt)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
     def test_obsolete_optical_washer_cannot_remain_in_the_purchase_registry(self):

@@ -198,7 +198,7 @@ def build_equipment(doc, battery_group, electronics_group):
         electronics_group,
         "CapacitorServiceReserve",
         "35V220uF capacitor reserve diameter10x16",
-        Part.makeCylinder(5, 16, V(38, 22, 13.2)),
+        Part.makeCylinder(5, 16, V(40, 22, 13.2)),
         "Provisional space for the specified35V220uF capacitor, not a selected component or retaining mount. Insulation, leads, actual dimensions and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )

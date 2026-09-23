@@ -13,7 +13,7 @@ from .fasteners import KIT_MATERIAL
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AE"
+DESIGN_REVISION = "AF"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -38,7 +38,7 @@ MANUFACTURING_DECISION = {
     "rationale": "PA12 is Creallo's documented functional powder-bed nylon and suits open integral supports and the rail flexure trial. Neither SLS nor MJF is established as superior for this assembly; choose with the supplier using fit, stiffness, straightness and mass requirements. A material/process change requires renewed fit and flexure qualification.",
     "supplier_process_policy": "Creallo integrates SLS/MJF quotations and selects the process unless separately agreed. No process is preselected here. Confirm the actual PA12 grade, process and finish before printing matched coupons and full parts.",
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
-    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, optical hooks, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Optical latch coupons require retention, repeated release and permanent-set checks before full-part release.",
+    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical tower's broad clamped seats for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": 1.2,
     "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
@@ -61,7 +61,7 @@ PART_SEPARATION_REASONS = {
     "bearing_caps_and_frame": "Insert/remove stock bearings and retain their outer rings without relying on printed snap retention.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
     "horn_adapter_and_retainer": "Capture a stock horn after its OEM retaining screw is installed; separate backstrap preserves the assembly path without inventing spline teeth or screw-tool clearance.",
-    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base integrates two rigid tower supports, broad seating feet and separate integral flexible retaining fingers. Release both hooks outward and remove the complete tower for host service or transfer. No tower-foot hardware remains. Hook retention is independent of an as-needed measured adhesive anti-rattle pad; reject rocking before accepting optical alignment. The two angle clamps remain bolted because they must hold a continuously selected angle.",
+    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base integrates two rigid tower supports and broad feet clamped directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
 }
 
 
@@ -118,9 +118,9 @@ EXCLUDED_EQUIPMENT = (
     "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 17,
+    "M2X8_BUTTON_HEAD": 19,
     "M2X6_BUTTON_HEAD": 2,
-    "M2_HEX_NUT": 19,
+    "M2_HEX_NUT": 21,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
@@ -153,10 +153,10 @@ EXPECTED_INVENTORY = {
     "tilting_propulsors": 2,
     "installed_prints": 18,
     "optical_mount_parts": 3,
-    "fit_coupons": 6,
+    "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 17,
+    "unique_print_files": 15,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -277,7 +277,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Qualify the two positive hook/host coupons in the same unfilled PA12 process, finish and corresponding orientation as the full parts. Measure engagement under seat play, release deflection, repeated removal, retention and permanent set; strain calculations are geometric screens, not material allowables. Use a measured piece of the existing adhesive consumable at broad upper seats only as needed to eliminate rocking; no pad dimensions, compression or material performance are assumed. Hooks must retain independently of the pad. Recheck vertical sensor aim, pivot friction and cable torque on both hosts. Disconnect wiring, release both hooks outward and lift the complete tower for service. Physical stiffness, retention and fatigue remain unqualified.",
+        "Seat both broad tower feet directly on the host and tighten two ordinary M2x8 screws with M2 hex nuts. Verify printed flatness, actual hole and screw dimensions, full nut engagement, holding friction and PA12 creep; no pad or spring preload is assumed. Clearance holes permit registration before tightening, not operating movement. Reject rocking or slip under cable loads and recheck vertical sensor aim and pivot friction on both hosts. Disconnect wiring and remove the host carrier from the rail for bench service; underside tool access around the balloon is not established. Support the tower, remove its nuts and withdraw the screws downward before lifting it. Reinstall the carrier, check rail retention and re-trim. Physical stiffness and retention remain unqualified.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
@@ -337,7 +337,7 @@ def project_status():
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "optical_stack_host": OPTICAL_STACK_HOST,
-        "optical_stack_scope": f"Common structural positive-hook anchors at {STACK_ANCHOR_LOCATIONS} on battery and electronics carriers; an integral PA12 tower supports a manually locked two-axis optical head without tower-foot fasteners. Actual dimensions and tolerance screens belong to parts/stack_interface.py. Independent of the FC soft-mount stack; pad fitting and physical retention/pointing qualification remain required.",
+        "optical_stack_scope": f"Common structural tower anchors at {STACK_ANCHOR_LOCATIONS} on battery and electronics carriers; two outboard M2 clamps seat broad integral feet directly on their host. An integral PA12 tower supports a manually locked two-axis optical head, independent of the FC soft-mount stack. Actual dimensions, clearance-hole registration bounds and fastener acceptance belong to parts/stack_interface.py. Physical retention/pointing qualification remains required.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,

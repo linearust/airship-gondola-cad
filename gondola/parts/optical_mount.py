@@ -46,7 +46,7 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Integral latched tower and a 2 mm negative-X roll ear."""
+    """Integral clamped tower and a 2 mm negative-X roll ear."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
@@ -119,7 +119,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal positive latch anchors at {STACK_ANCHOR_LOCATIONS}, one open tower with integral cantilever legs independently of FC dampers",
+        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, one open tower with two directly clamped broad feet independently of FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -137,7 +137,7 @@ def mount_contract():
         - purchased_hardware.HEX_NUT_HEIGHT,
         "minimum_nominal_pivot_wall_mm": EAR_THICKNESS,
         "fastener_fit_scope": "Nominal screw projection is 2.4 mm beyond a 1.6 mm nut. Two ears each 0.3 mm thicker leave 1.8 mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
-        "assembly": "Print all three parts separately; the base integrates its support legs and positive hooks. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
+        "assembly": "Print all three parts separately; the base integrates its rigid support legs and broad clamped feet. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
         "adjustment": "Support the sensor, hold the hex nut with a small wrench or pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
     }
@@ -247,7 +247,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two outward-release positive hooks; no foot fasteners. Same-process latch coupons and measured anti-rattle seating are required before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
@@ -258,6 +258,7 @@ def build_optical_mount(doc, parent):
         printed.append(obj)
     hardware = _pivot_hardware(doc, group, "OpticalRoll", "X", ROLL_PIVOT_Z)
     hardware += _pivot_hardware(doc, roll, "OpticalPitch", "Y", PITCH_PIVOT_OFFSET_Z)
+    hardware += stack_interface.build_stack_hardware(doc, group)
     doc.recompute()
     return {
         "group": group,
