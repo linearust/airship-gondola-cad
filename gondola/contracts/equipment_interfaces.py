@@ -62,6 +62,7 @@ X06_EAR_HOLE_DIAMETER_MM = 2.0
 X06_OUTPUT_FROM_CASE_END_MM = 5.0
 X06_EAR_TOP_FROM_CASE_TOP_MM = 3.7
 X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM = 4.7
+X06_SPLINE_DIAMETER_MM = 3.90
 HORN_SOURCE = "https://www.aliexpress.com/item/1005010458484391.html"
 SHAFT_SOURCE = "https://www.aliexpress.com/item/1005007648646117.html"
 BEARING_SOURCE = "https://www.aliexpress.com/item/1005007668446060.html"
@@ -85,7 +86,7 @@ PROPULSION_EVIDENCE = {
         "ear_top_from_case_top_mm": X06_EAR_TOP_FROM_CASE_TOP_MM,
         "ear_underside_from_case_top_mm": X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM,
         "spline_teeth": 15,
-        "spline_major_diameter_mm": 3.90,
+        "spline_major_diameter_mm": X06_SPLINE_DIAMETER_MM,
         "spline_major_tolerance_plus_minus_mm": 0.01,
         "default_travel_deg": [-60.0, 60.0],
         "position_reference_us": [1000, 1500, 2000],
@@ -132,11 +133,11 @@ PROPULSION_EVIDENCE = {
     },
     "selected_shaft_stock": {
         "sources": [SHAFT_SOURCE],
-        "seller_material_claim": "6061 aluminium",
+        "seller_material_claim": "304 stainless steel",
         "nominal_diameter_mm": 3.0,
-        "stock_length_mm": 330.0,
+        "stock_lengths_mm": [100.0, 200.0],
         "diameter_tolerance": "Unspecified",
-        "scope": "User selected 3x330mm stock rod to cut to CAD lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. File only specified local flats outside bearing journals. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
+        "scope": "User selected nominal-3mm 304 rod options in 100/200mm stock lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. Output journals remain round with only the specified local gear-end flat; input stubs have the specified full-length flat. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
     },
     "selected_bearing": {
         "sources": [BEARING_SOURCE],

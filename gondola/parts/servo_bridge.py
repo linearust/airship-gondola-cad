@@ -11,14 +11,16 @@ import Part
 from gondola.cad import box, mirrored_y, union
 from gondola.contracts.drive import SELECTED_DRIVE
 
-from . import rail, servo_coupling
+from . import rail, servo_coupling, servo_envelope
+from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
 # The bought case is not a locating datum. Clearance around its nominal 7 x20
 # section also accommodates the published +/-0.2 mm case-size tolerance.
-CASE_WINDOW_WIDTH = 8.0
-CASE_WINDOW_HEIGHT = 21.0
+CASE_CLEARANCE = 0.5
+CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
+CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
 SIDE_WALL = 3.0
 CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
 REAR_LEAD_ALLOWANCE = 13.9
@@ -40,19 +42,16 @@ def opposite(shape):
     return mirrored_y(shape.mirror(V(), V(1, 0, 0)), -1)
 
 
-def case_front_y():
-    return servo_coupling.HORN_BOTTOM_Y - 0.2
-
-
 def bulkhead_width(drive=SELECTED_DRIVE):
     return 2 * drive.input_x_mm + CRADLE_WIDTH
 
 
 def _ear_clearance(drive):
     x, z = drive.input_x_mm, drive.input_z_mm
-    start_y = case_front_y() - 4.7 - MOUNT_DEPTH - 1
+    start_y = servo_envelope.ear_seat_y() - MOUNT_DEPTH - 1
     cuts = []
-    for hole_z, opening in ((z - 17, 1), (z + 7, -1)):
+    for centre_z, opening in zip(servo_envelope.EAR_CENTRES_Z, (1, -1)):
+        hole_z = z + centre_z
         cuts.extend(
             [
                 Part.makeCylinder(
@@ -71,7 +70,7 @@ def _ear_clearance(drive):
 
 def _cradle_blank(drive):
     z = drive.input_z_mm
-    y = case_front_y() - 4.7 - MOUNT_DEPTH
+    y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
     if abs(y + MOUNT_DEPTH / 2) > 1e-7:
         raise ValueError("Paired servo ears must share the central mounting wall")
     width = bulkhead_width(drive)
@@ -123,12 +122,16 @@ def bridge_blank(drive=SELECTED_DRIVE):
 
 def bridge_shape(drive=SELECTED_DRIVE):
     x, z = drive.input_x_mm, drive.input_z_mm
-    y = case_front_y() - 4.7 - MOUNT_DEPTH
+    y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
     window = box(
         CASE_WINDOW_WIDTH,
         MOUNT_DEPTH + 2,
         CASE_WINDOW_HEIGHT,
-        (x - CASE_WINDOW_WIDTH / 2, y - 1, z - 5 - CASE_WINDOW_HEIGHT / 2),
+        (
+            x - CASE_WINDOW_WIDTH / 2,
+            y - 1,
+            z + servo_envelope.CASE_CENTRE_Z - CASE_WINDOW_HEIGHT / 2,
+        ),
     )
     bridge = bridge_blank(drive).cut(window).cut(opposite(window))
     # Retain the sourced ear axes and their open necks into the body windows.
@@ -199,7 +202,6 @@ def frame_seats():
             # tolerance trap. The opposite seat has no competing Y stop.
             box(width, 1.5, 5, (-PAD_OUTER_X, -PAD_INNER_Y, NUT_SEAT_Z)),
             # An outside X stop releases directly during the checked +X slide.
-            box(4, 3, 3, (-CONNECTOR_PLATE_HALF_WIDTH - 2, -24, NUT_SEAT_Z)),
             box(
                 2,
                 3,

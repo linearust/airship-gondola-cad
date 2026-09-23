@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -130,6 +131,27 @@ class HornRegistrationTests(unittest.TestCase):
             )
         finally:
             obj.Shape = original
+
+    def test_jig_checks_follow_declared_working_range_and_reject_an_oversize_entry(
+        self,
+    ):
+        from gondola.parts import servo_coupling as c
+        from gondola.validation.horn_coupling import horn_registration_check
+
+        for limits, expected, passed in (
+            ((0.9, 1.5), (0.9, 1.2, 1.5), True),
+            ((0.8, 2.0), (0.8, 1.4, 2.0), False),
+        ):
+            with (
+                self.subTest(limits=limits),
+                patch.object(c, "JIG_ACCEPTED_ENTRY_DIAMETERS", limits),
+            ):
+                result = horn_registration_check(self.doc, "Port")
+                self.assertEqual(result["passed"], passed, result)
+                for row, diameter in zip(result["jig_working_range"], expected):
+                    self.assertAlmostEqual(row["synthetic_entry_diameter_mm"], diameter)
+                if not passed:
+                    self.assertFalse(result["jig_working_range"][-1]["passed"])
 
     def test_filled_guide_passage_is_rejected(self):
         from gondola.parts import servo_coupling as c

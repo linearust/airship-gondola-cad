@@ -126,7 +126,9 @@ class IntegralBearingCaptureTests(unittest.TestCase):
             for side in (-1, 1):
                 with self.subTest(pod_y=pod_y, side=side):
                     report = bearing_stack_check(
-                        *self._stack(side=side, pod_y=pod_y), opposite_travel=0.5
+                        *self._stack(side=side, pod_y=pod_y),
+                        toward_travel=0.5,
+                        away_travel=0.5,
                     )
                     self.assertTrue(report["passed"], report)
                     self.assertAlmostEqual(
@@ -143,9 +145,50 @@ class IntegralBearingCaptureTests(unittest.TestCase):
             rotated = frame.copy()
             rotated.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
             report = bearing_stack_check(
-                bearing, shaft, rotated, carrier, opposite_travel=0.5
+                bearing, shaft, rotated, carrier, toward_travel=0.5, away_travel=0.5
             )
             self.assertTrue(report["passed"], report)
+
+    def test_unequal_travel_checks_both_ends_of_the_moving_shaft_journal(self):
+        from gondola.validation.bearing_capture import bearing_stack_check
+
+        # A deliberately shortened journal isolates both axial coverage limits.
+        shaft = self.p.cylinder(1.5, 6.1, (0, 27.9, 0))
+        for toward, away, expected_coverage, passed in (
+            (0.25, 2.5, 2.7, True),
+            (0.5, 2.5, 2.6, False),
+            (0.25, 3.1, 2.6, False),
+        ):
+            with self.subTest(toward=toward, away=away):
+                result = bearing_stack_check(
+                    *self._stack(shaft=shaft),
+                    toward_travel=toward,
+                    away_travel=away,
+                )
+                self.assertEqual(result["passed"], passed, result)
+                self.assertEqual(
+                    result["nominal_3mm_journal_covers_bearing_and_carrier_motion"],
+                    passed,
+                )
+                self.assertAlmostEqual(
+                    result["minimum_shaft_coverage_over_bearing_motion_mm"],
+                    expected_coverage,
+                )
+                self.assertGreaterEqual(
+                    result["minimum_carrier_to_bearing_face_gap_mm"], 1.8 - 1e-5
+                )
+
+    def test_missing_or_invalid_either_carrier_stop_is_rejected(self):
+        from gondola.validation.bearing_capture import bearing_stack_check
+
+        for invalid in (None, float("nan"), float("inf"), -0.1):
+            for toward, away in ((invalid, 0.5), (0.5, invalid)):
+                with self.subTest(toward=toward, away=away):
+                    result = bearing_stack_check(
+                        *self._stack(), toward_travel=toward, away_travel=away
+                    )
+                    self.assertFalse(result["passed"], result)
+                    self.assertEqual(result["error"], "Unproven carrier axial stop")
 
     def test_saved_frame_missing_hook_fails_capture(self):
         from gondola.cad import translated_shape
@@ -156,7 +199,7 @@ class IntegralBearingCaptureTests(unittest.TestCase):
             translated_shape(self.b.hook_shape(1), y=self.p.BEARING_START_Y)
         )
         report = bearing_stack_check(
-            bearing, shaft, frame, carrier, opposite_travel=0.5
+            bearing, shaft, frame, carrier, toward_travel=0.5, away_travel=0.5
         )
         self.assertFalse(report["passed"])
         self.assertIn("two separate", report["error"])
@@ -171,14 +214,14 @@ class IntegralBearingCaptureTests(unittest.TestCase):
             self.p.cylinder(1.4, 14, (0, 20, 0)),
         ):
             report = bearing_stack_check(
-                bearing, candidate, frame, carrier, opposite_travel=0.5
+                bearing, candidate, frame, carrier, toward_travel=0.5, away_travel=0.5
             )
             self.assertFalse(report["passed"], report)
         wrong_bearing = self.p.cylinder(3.5, 3, (0, self.p.BEARING_START_Y, 0)).cut(
             self.p.cylinder(1.5, 3, (0, self.p.BEARING_START_Y, 0))
         )
         report = bearing_stack_check(
-            wrong_bearing, shaft, frame, carrier, opposite_travel=0.5
+            wrong_bearing, shaft, frame, carrier, toward_travel=0.5, away_travel=0.5
         )
         self.assertFalse(report["passed"], report)
 

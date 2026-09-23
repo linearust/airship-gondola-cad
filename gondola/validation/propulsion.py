@@ -27,11 +27,13 @@ from gondola.contracts.drive import (
 from gondola.parts import propulsion, rail
 from gondola.print_export import mesh_checks, print_shape
 
+from .bearing_capture import bearing_stack_check
 from .evidence import overlap_failures
 from .geometry import (
     belongs_to_group,
     intersection_volume,
 )
+from .horn_coupling import coupling_frame
 from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 from .propulsion_service import (
@@ -321,12 +323,6 @@ def fixed_servo_datum_check(doc, prefix):
     }
 
 
-def bearing_stack_check(bearing, shaft, seat, carrier, *, opposite_travel):
-    from .bearing_capture import bearing_stack_check as check_capture
-
-    return check_capture(bearing, shaft, seat, carrier, opposite_travel=opposite_travel)
-
-
 def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
     """Normalize all real saved placements before the local capture proof."""
     from .motion_clearance import _in_pod_coordinates
@@ -358,9 +354,10 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
         "bearing": names[0],
         **bearing_stack_check(
             *shapes,
-            opposite_travel=stops[
-                "negative_mm" if suffix == "Positive" else "positive_mm"
+            toward_travel=stops[
+                "positive_mm" if suffix == "Positive" else "negative_mm"
             ],
+            away_travel=stops["negative_mm" if suffix == "Positive" else "positive_mm"],
         ),
     }
 
@@ -446,14 +443,8 @@ def output_stub_check(shaft, motor, pivot_y):
 
 def _coupling_shape_world(doc, prefix, shape):
     """Place a horn-local probe through the actual moving input-drive parents."""
-    from gondola.parts import servo_coupling as coupling
-
     shape = shape.copy()
-    shape.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
-    if prefix == "Starboard":
-        shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
-    drive = doc.getObject(prefix + "InputDrive")
-    shape.Placement = drive.getGlobalPlacement().multiply(shape.Placement)
+    shape.Placement = coupling_frame(doc, prefix).multiply(shape.Placement)
     return shape
 
 
@@ -738,7 +729,7 @@ def direct_adapter_fit_check(doc, prefix):
 
 def _servo_rear_body_allowance(doc, prefix):
     """Measure the rear case separately from its lower mounting ear."""
-    from gondola.parts import servo_bridge
+    from gondola.parts import servo_bridge, servo_envelope
 
     from .relative_motion import _certify_pair, _part
 
@@ -770,13 +761,21 @@ def _servo_rear_body_allowance(doc, prefix):
             shapes[obj.Name] = shape
     if any(name not in shapes for name in (prefix + "Servo", "ServoDriveBridge")):
         return {"passed": False, "error": "Missing servo case or connecting plate"}
-    rear = servo_bridge.case_front_y() - 16.6
+    rear = servo_envelope.case_rear_y()
     # Read a rear-case strip that does not contain the forward mounting ears.
     # The lower ear reaches four millimetres below the actual body.
-    strip = Part.makeBox(9, 1, 40, App.Vector(-4.5, rear + 0.5, -30))
+    strip_width = servo_envelope.CASE_WIDTH + 2
+    strip = Part.makeBox(
+        strip_width, 1, 40, App.Vector(-strip_width / 2, rear + 0.5, -30)
+    )
     body = shapes[prefix + "Servo"].common(strip)
     under = shapes["ServoDriveBridge"].common(
-        Part.makeBox(7, 1, 40, App.Vector(-3.5, rear + 0.5, -40))
+        Part.makeBox(
+            servo_envelope.CASE_WIDTH,
+            1,
+            40,
+            App.Vector(-servo_envelope.CASE_WIDTH / 2, rear + 0.5, -40),
+        )
     )
     if not body.Solids or not under.Solids:
         return {"passed": False, "error": "Missing rear body strip or plate beneath it"}
@@ -846,9 +845,9 @@ def _servo_rear_body_allowance(doc, prefix):
         "planning_volume_collisions": collisions,
         "continuous_input_drive_clearance": moving_rows,
         "scope": "Saved rear case strip excludes the lower mounting ear. Rearward planning space stops before the case rear face and never claims under-ear/nut access. Every physical input-drive part on both sides is checked through its complete bounded motion. Received lead exit position, diameter, connector and bend radius are unspecified; this rigid design allowance is not a factory cable route or installed harness qualification.",
-        "passed": abs(body_bounds.ZMin + 15) < TOL
-        and abs(body_bounds.ZLength - 20) < TOL
-        and abs(body_bounds.XLength - 7) < TOL
+        "passed": abs(body_bounds.ZMin - servo_envelope.CASE_BOTTOM_Z) < TOL
+        and abs(body_bounds.ZLength - servo_envelope.CASE_LENGTH) < TOL
+        and abs(body_bounds.XLength - servo_envelope.CASE_WIDTH) < TOL
         and gap >= 5.0 - TOL
         and not collisions
         and bool(moving_rows)
@@ -1504,6 +1503,10 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
         name = prefix + "OutputBearing" + suffix
         stack = output_bearing_stack_check(doc, prefix, suffix)
         report["bearing_stacks"].append(stack)
+        capture_geometry = stack.get(
+            "capture_geometry",
+            {"passed": False, "error": "Saved bearing capture geometry was not proven"},
+        )
         closed = _bearing_cup_world(doc, prefix, side, capture.cup_shape())
         opened = _bearing_cup_world(
             doc, prefix, side, capture.cup_shape(capture.RELEASE_MM)
@@ -1554,7 +1557,7 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
                 "missing_saved_cup_mm3": missing_cup,
                 "release_per_arm_mm": capture.RELEASE_MM,
                 "release_tools": tools,
-                "local_release_geometry": capture.geometry_check(),
+                "local_release_geometry": capture_geometry,
                 "sampled_hook_release_clearance": release_motion,
                 "scope": "Remove the carrier and both shafts first; hold both integral hooks out using two tools, withdraw the bearing inward, then release the hooks. This explicit sheared release pose checks clearance only. PA12 elastic recovery, force, fatigue and creep require the process-matched coupon. Do not lever on the bearing shield.",
                 **path,
@@ -1563,7 +1566,7 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
                 and missing_cup < TOL
                 and path["passed"]
                 and all(r["passed"] for r in tools)
-                and capture.geometry_check()["passed"]
+                and capture_geometry["passed"]
                 and release_motion["passed"],
             }
         )

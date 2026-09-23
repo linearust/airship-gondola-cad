@@ -21,8 +21,8 @@ preparation remain unqualified until physical inspection and trials pass.
   purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.
   `references/cart_adaptation_review.md` records cart choices and remaining
-  purchases, including owned kits and the supplied-horn/no-bearing-spacer decisions;
-  current build quantities belong to `contracts/design.py`.
+  purchases, distinguishing owned and selected kits and the supplied-horn/
+  no-bearing-spacer decisions. Current build quantities belong to `contracts/design.py`.
   `references/retention_review.md` describes integral outer-ring bearing capture,
   its process coupon and release path, and supplied-horn workshop preparation.
   Preserve separate shaft grip and broad carrier/frame axial stops. Do not
@@ -32,17 +32,21 @@ preparation remain unqualified until physical inspection and trials pass.
   `references/rail_joint_review.md` explains the solid rail-head clamp,
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
-  `references/shape_simplification_review.md` records the optical portal and
-  open paired-servo support and straight P-AS arm. Its earlier horn-adapter
-  description is superseded by the current retention/preparation contract. Preserve their
-  locating faces, load paths and functional service openings. The optical
-  connecting post stays in the pitch-ear plane and above the roll nut's
+  `references/shape_simplification_review.md` describes the optical portal,
+  open paired-servo support, straight P-AS arm and current adapter boundaries.
+  Preserve their locating faces, load paths and functional service openings.
+  The optical connecting post stays in the pitch-ear plane and above the roll nut's
   rotation envelope; do not widen it into either fastener.
   `references/rail_fit_review.md` distinguishes the matched T-head fit from
   relieved nonlocating surfaces. Qualify the existing coupons before full prints;
   do not claim raw powder-bed tolerance guarantees hand insertion or retention.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
-  and wiring reserves. `references/` retains primary evidence; preserve it.
+  and wiring reserves. `parts/servo_envelope.py` derives the selected X06 case,
+  ear and spline envelope from `contracts/equipment_interfaces.py`. Reuse its
+  oriented datums in the servo body, support and rear-wire checks; do not copy
+  their dimensions into independent literals. This is the selected X06 interface,
+  not a universal replacement-servo contract. `references/` retains primary
+  evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
   `print_export.py`, `procurement.py` and `mass_budget.py` define export accounting.
 - `gondola/validation/` and `tests/fixtures/` define regression checks;

@@ -43,7 +43,14 @@ from gondola.contracts.hardware import (
     SERVO_SCREW_SOURCE,
 )
 
-from . import bearing_retention, purchased_hardware, rail, servo_bridge, servo_coupling
+from . import (
+    bearing_retention,
+    purchased_hardware,
+    rail,
+    servo_bridge,
+    servo_coupling,
+    servo_envelope,
+)
 
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
@@ -77,11 +84,11 @@ def gear_axial_span(teeth):
     )
 
 
-BEARING_WINDOW_DIAMETER = 5.6
-BEARING_GUIDE_START_Y = 26.5
 BEARING_START_Y = 28.5
-BEARING_SHOULDER_Y = 31.0
-BEARING_SHOULDER_THICKNESS = 1.5
+BEARING_WINDOW_DIAMETER = bearing_retention.SHIELD_OPENING_DIAMETER
+BEARING_GUIDE_START_Y = BEARING_START_Y + bearing_retention.GUIDE_START_Y
+BEARING_SHOULDER_Y = BEARING_START_Y + bearing_retention.SHOULDER_START_Y
+BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
 CARRIER_END_Y = 26.0
 CARRIER_STOP_RADIUS = 3.8
 SHAFT_ASSEMBLY_RETRACTION = 6.5
@@ -115,18 +122,27 @@ def _bearing_cup(start_y, *, positive_side=True):
     return translated_shape(body, y=start_y)
 
 
-def shaft_clamp_shape():
+def _carrier_side_shape():
+    """One integral side strut and shaft clamp, cut through as a single body.
+
+    Apply the bore, split and bolt clearance after union so the adjacent strut
+    cannot refill a clamp opening when either section is changed.
+    """
     body = union(
         [
             cylinder(3.1, 5.5, (0, 20.5, 0)),
             cylinder(CARRIER_STOP_RADIUS, 1.5, (0, CARRIER_END_Y - 1.5, 0)),
             box(6, 5.5, 6, (1, 20.5, -3)),
+            box(18, 5.5, 6.4, (-7, 20.5, -3.2)),
         ]
     )
     body = body.cut(cylinder(1.6, 6, (0, 20.25, 0)))
-    body = body.cut(box(8, 6, 0.8, (0, 20.25, -0.4)))
+    body = body.cut(box(12, 6, 0.8, (0, 20.25, -0.4)))
     body = body.cut(cylinder(1.1, 8, (4.2, 23.25, -4), (0, 0, 1)))
-    return _checked(body, "Split output shaft clamp")
+    # Open complete head/nut seats without leaving thin cylindrical crescents.
+    for z in (2.5, -4.5):
+        body = body.cut(box(5.8, 6, 2, (1.3, 20.25, z)))
+    return _checked(body, "Integral carrier strut and split shaft clamp")
 
 
 def moving_carrier_shape():
@@ -146,18 +162,9 @@ def moving_carrier_shape():
         slot.rotate(V(), V(1, 0, 0), angle)
         rear = rear.cut(slot)
     parts = [rear]
+    side_shape = _carrier_side_shape()
     for side in (-1, 1):
-        strut = box(18, 5.5, 6.4, (-7, 20.5, -3.2))
-        # The clamp slot remains open all the way through the adjacent strut.
-        strut = strut.cut(cylinder(1.6, 6, (0, 20.25, 0)))
-        strut = strut.cut(box(12, 6, 0.8, (0, 20.25, -0.4)))
-        strut = strut.cut(cylinder(1.1, 8, (4.2, 23.25, -4), (0, 0, 1)))
-        clamp = union([strut, shaft_clamp_shape()])
-        # Open the complete seat above/below the enlarged clamp, without the
-        # thin crescent that a 1 mm-deep cut leaves at its outer cylindrical edge.
-        for z in (2.5, -4.5):
-            clamp = clamp.cut(box(5.8, 6, 2, (1.3, 20.25, z)))
-        parts.append(mirrored_y(clamp, side))
+        parts.append(mirrored_y(side_shape, side))
     guard = cylinder(GUARD_OUTER_RADIUS, 2, (11, 0, 0), (1, 0, 0)).cut(
         cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
     )
@@ -546,7 +553,7 @@ def _build_coupling(doc, parent, prefix, sign):
 
 def manufacturing_wall_probes(drive=SELECTED_DRIVE):
     x, z = drive.input_x_mm, drive.input_z_mm
-    y = servo_bridge.case_front_y() - 4.7 - servo_bridge.MOUNT_DEPTH / 2
+    y = servo_envelope.ear_seat_y() - servo_bridge.MOUNT_DEPTH / 2
     return (
         [
             (
@@ -797,22 +804,14 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
 def _build_servo(doc, mount, prefix, sign):
     """Mount the sourced vertical X06 case on its replaceable bridge cradle."""
     hardware = []
-    front = servo_bridge.case_front_y()
-    servo = box(7, 16.6, 20, (-3.5, front - 16.6, -15))
-    for hole_z in (-17, 7):
-        ear = box(7, 1, 4, (-3.5, front - 4.7, hole_z - 2)).cut(
-            cylinder(1, 1.2, (0, front - 4.8, hole_z))
-        )
-        servo = servo.fuse(ear)
-    servo = servo.fuse(cylinder(1.95, 2.7, (0, front, 0)))
-    servo = mirrored_y(servo, sign)
-    for hole_z, suffix in ((-17, "Lower"), (7, "Upper")):
+    servo = mirrored_y(servo_envelope.shape(), sign)
+    for hole_z, suffix in zip(servo_envelope.EAR_CENTRES_Z, ("Lower", "Upper")):
         hardware.extend(
             _bolt_pair(
                 doc,
                 mount,
                 prefix + "ServoEar" + suffix,
-                (0, sign * (front - 3.7), hole_z),
+                (0, sign * servo_envelope.ear_head_y(), hole_z),
                 (0, -sign, 0),
                 grip=6,
                 servo_ear=True,

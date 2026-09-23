@@ -48,7 +48,7 @@ class NativeHardwareProcurementTests(unittest.TestCase):
                 Part.makeCylinder(1.5, 14),
                 code,
                 "Metadata-only regression envelope",
-                material="Aluminium; 6061 seller claim",
+                material="304 stainless steel (seller claim)",
                 thread_diameter=None,
             )
             self.assertIn(code, obj.PurchaseRequirements)
@@ -56,6 +56,23 @@ class NativeHardwareProcurementTests(unittest.TestCase):
 
 
 class HardwareSpecificationTests(unittest.TestCase):
+    def test_selected_shaft_evidence_matches_preparation_and_materials(self):
+        from gondola.contracts.design import HARDWARE_MATERIALS
+        from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE
+
+        evidence = PROPULSION_EVIDENCE["selected_shaft_stock"]
+        self.assertEqual(evidence["seller_material_claim"], "304 stainless steel")
+        self.assertEqual(evidence["stock_lengths_mm"], [100.0, 200.0])
+        self.assertEqual(evidence["nominal_diameter_mm"], 3.0)
+        for sku in PURCHASED_HARDWARE_QUANTITIES:
+            if not sku.startswith("SS304_CUT3_"):
+                continue
+            spec = procurement_spec(sku)
+            self.assertEqual(spec["candidate_url"], evidence["sources"][0])
+            self.assertIn(evidence["seller_material_claim"], HARDWARE_MATERIALS[sku])
+            self.assertIn("304 stainless", spec["requirements"])
+            self.assertIn("100/200 mm", spec["requirements"])
+
     def test_only_unknown_skus_can_be_explicitly_allowed(self):
         with self.assertRaises(KeyError):
             procurement_spec("UNREGISTERED_PART")

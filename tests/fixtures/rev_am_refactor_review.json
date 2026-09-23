@@ -1,0 +1,253 @@
+{
+  "revision": "AM",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "3521b982c510e7b96834de771d4248b7f4692988",
+  "scope": "Geometry-preserving refactor and validation/evidence corrections. Preserve the separate removable servo/input module and output propulsion frame. No dimensions, purchase quantities or printing blanks changed; no physical qualification implied.",
+  "source_fingerprint": "92c6f837d388b398217d5cc28545932a19f023728f947ba4d943fb296f914592",
+  "pinned_fixture": {
+    "file": "tests/fixtures/rev_am_geometry.FCStd",
+    "sha256": "2c3c83d21350e1764031be9ac3c85f0db7fe811f68cd63dc85e756f1e91b695e",
+    "unchanged": true
+  },
+  "changes": [
+    "Derive the selected X06 oriented body, ear and spline envelope from published interface constants; share these datums with the printed bridge and rear-wire checker.",
+    "Fuse each motor-carrier side strut and shaft clamp before common cuts; remove duplicated openings and the fully contained frame-seat block. All actual solids and manufacturing blanks remain identical.",
+    "Check independent toward/away axial travel at each bearing and each journal end. Preserve current symmetric 0.5 mm stops; asymmetric travel regressions expose the former direction error.",
+    "Reuse actual saved-frame capture checks and share horn-local coordinate conversion and jig working-range derivation.",
+    "Correct stale selected-shaft evidence and active purchase/assembly instructions: supplied horn, nominal-3mm 304 stock in 100/200mm options, integral outer-ring capture without purchased bearing spacers."
+  ],
+  "pre_preview_geometry_audit": {
+    "passed": true,
+    "shape_count": 118,
+    "comparisons": [
+      "previous released AM CAD",
+      "unchanged pinned AM fixture"
+    ],
+    "all_local_and_world_solids_unchanged": true,
+    "all_object_placements_unchanged": true,
+    "manufacturing_blanks_unchanged": true,
+    "registries_and_native_expressions_unchanged": true,
+    "procurement_and_interface_metadata_unchanged": true,
+    "native_control_cases": 29,
+    "native_controls_unchanged": true,
+    "audit_sha256": "c80e1921eed2be08b45dad5d9ea9990b943d840468790e606b2d3db0406ebd2c",
+    "old_release_cad_sha256": "55fe8953171196179688dc4311a5058d8c0351e9ee26da361661787f424a2da3",
+    "scope": "Read-only geometry comparison before GUI preview. Final saved identity and display are recorded with release checks."
+  },
+  "intentional_metrics_changes": [
+    {
+      "path": "/propulsion/OEM_interfaces/selected_shaft_stock/scope",
+      "before": "User selected 3x330mm stock rod to cut to CAD lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. File only specified local flats outside bearing journals. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
+      "after": "User selected nominal-3mm 304 rod options in 100/200mm stock lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. Output journals remain round with only the specified local gear-end flat; input stubs have the specified full-length flat. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
+      "kind": "changed"
+    },
+    {
+      "path": "/propulsion/OEM_interfaces/selected_shaft_stock/seller_material_claim",
+      "before": "6061 aluminium",
+      "after": "304 stainless steel",
+      "kind": "changed"
+    },
+    {
+      "path": "/propulsion/OEM_interfaces/selected_shaft_stock/stock_length_mm",
+      "before": 330.0,
+      "after": null,
+      "kind": "missing_key"
+    },
+    {
+      "path": "/propulsion/OEM_interfaces/selected_shaft_stock/stock_lengths_mm",
+      "before": null,
+      "after": [
+        100.0,
+        200.0
+      ],
+      "kind": "missing_key"
+    },
+    {
+      "path": "/source_fingerprint",
+      "before": "e2a95b077fa31db72ca8af0207433be30af1fbdec49afc6310c325623c92bf71",
+      "after": "92c6f837d388b398217d5cc28545932a19f023728f947ba4d943fb296f914592",
+      "kind": "changed"
+    }
+  ],
+  "release_checks": {
+    "status": "Validated geometry-preserving refactor; matching CAD, print bundle, Blender and inspection packet complete",
+    "tests": {
+      "native_full_run": {
+        "count": 343,
+        "seconds": 608.314,
+        "skipped": 0,
+        "passed_cases": 342,
+        "failures": 1,
+        "failure": "test_extra_stop_travel_consumes_clearance_even_without_nominal_collision retained the former reversed travel-direction expectation."
+      },
+      "correction": "Updated only the stale test expectation: positive approach loses clearance; negative retreat retains clearance. Production source remained frozen.",
+      "corrected_motion_clearance_module": {
+        "count": 9,
+        "seconds": 44.337,
+        "skipped": 0,
+        "passed": true
+      },
+      "focused_validation": {
+        "count": 43,
+        "seconds": 121.223,
+        "passed": true
+      },
+      "four_bearing_asymmetric_wrapper": {
+        "count": 1,
+        "seconds": 17.048,
+        "passed": true
+      },
+      "final_test_case_coverage": "All final test definitions passed across the full run and corrected affected-module rerun; the initial full-run exit code is retained above.",
+      "offline": {
+        "count": 343,
+        "skipped": 256,
+        "passed": true,
+        "scope": "FreeCAD-independent checks only"
+      }
+    },
+    "production_released": false,
+    "native_assembly_sha256": "33dacf3b8c1588e230bc9c61a7b85fd542e4b71d4d80db5e01e5ded693a54808",
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 234.703
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 632.513
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 11.531
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.142
+      }
+    ],
+    "validation_reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "58bd0cbcd01ed41cd738e43626241303777cfc2bacc1bfb900066fece434970d"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "a527b2744b9b8da4fa941823d563cea9938f38156b8f24d1be7baf7afb616ccf"
+      }
+    },
+    "static_checks": {
+      "ruff_version": "0.16.8",
+      "ruff_check": "passed",
+      "ruff_format": "passed (93 files)",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    },
+    "print_archive": {
+      "file": "build/gondola_print_parts.zip",
+      "entries": 49,
+      "crc_passed": true,
+      "sha256": "8aa638558cc3104f1bb21ea72beb9fbab69911fef266959722b977bd30f03e3e",
+      "stage": "fit_prototype"
+    },
+    "visual_review": {
+      "assembly": true,
+      "print_layout": true,
+      "optical_battery_host": true,
+      "optical_electronics_host": true
+    },
+    "independent_final_audit": {
+      "passed": true,
+      "shape_count": 118,
+      "old_release_geometry_unchanged": true,
+      "committed_fixture_geometry_unchanged": true,
+      "print_blanks_unchanged": true,
+      "native_controls_pass_and_equal": true,
+      "preview_display_scalar_audit_passed": true,
+      "final_baseline_matches_current_cad_and_source": true,
+      "fixture_file_unchanged": true
+    },
+    "blender_review": {
+      "passed": true,
+      "cad_sha256": "33dacf3b8c1588e230bc9c61a7b85fd542e4b71d4d80db5e01e5ded693a54808",
+      "source_fingerprint": "92c6f837d388b398217d5cc28545932a19f023728f947ba4d943fb296f914592",
+      "blend_sha256": "219e538ec7d926e07bfc4f223ba7506eaa0009200ffa7a377e7544f795cf11a9",
+      "json_sha256": "4d5fb6aca4da2c1174978a3bb3012e99c793bebe3f65a929287325c6378f5011",
+      "verification_sha256": "10353e729e4b3fb7b77fbfb29cc2dd65a4c660fbd75eded5d73d79e339ac2c72",
+      "scenes": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "visibility_checks": 138415,
+      "discrepancies": 0,
+      "visually_reviewed_stills": [
+        "01_Assembly.png",
+        "02_Independent_tilt.png",
+        "03_Gear_and_horn.png",
+        "04_Axial_allowance.png",
+        "05_Optical_on_Battery.png",
+        "06_Optical_on_FC.png",
+        "07_Servo_module_removal.png"
+      ],
+      "file": "build/blender_review/cad_review.blend",
+      "scope": "Evaluated rigid poses match CAD; not a physical dynamics, strength or wire simulation."
+    },
+    "inspection_packet": {
+      "revision": "AM",
+      "date": "2026-09-24",
+      "cad_sha256": "33dacf3b8c1588e230bc9c61a7b85fd542e4b71d4d80db5e01e5ded693a54808",
+      "source_fingerprint": "92c6f837d388b398217d5cc28545932a19f023728f947ba4d943fb296f914592",
+      "checks": 168,
+      "specimen_rows": 527,
+      "pdf_pages": 32,
+      "workbook_sheets": {
+        "검수 현황": "overview",
+        "부품 실측": 307,
+        "조립 검수": 220
+      },
+      "pdf_visual_review": "PASS, pages 1..32; bounds and source identity verified",
+      "workbook_visual_review": "PASS, every sheet plus 304 stock reference/length note, compound measurements and horn details",
+      "workbook_functional_checks": "PASS, blank/zero/text/inclusive bounds/manual judgments/recalculation/export-reimport and XML features; all user inputs restored",
+      "numerical_criteria_unchanged": true,
+      "data_corrections": {
+        "shaft_source_rows": 10,
+        "shaft_stock_notes": 3
+      },
+      "user_edit_preservation": {
+        "preflight_pdf_matched_previous_delivery": true,
+        "preflight_xlsx_matched_previous_delivery": true
+      },
+      "artifacts": [
+        {
+          "path": "output/pdf/gondola_inspection_AM.pdf",
+          "bytes": 426121,
+          "sha256": "a9595ab6c38b7ff4b1a2b53110e73b488a2607114b26b2057b33811a7e0369c3"
+        },
+        {
+          "path": "output/inspection/rev_AM/outputs/gondola-inspection-am/gondola_inspection_AM.xlsx",
+          "bytes": 107227,
+          "sha256": "5696b07e9c6b0899b3855bd04905e10ff1aaa0fbdad784d982335114051e56ce"
+        },
+        {
+          "path": "output/inspection/rev_AM/inspection_data.json",
+          "bytes": 190075,
+          "sha256": "ca56eb22f4af6fed8bf5e49896911f3f45d69e5252591bf28df55d0fc6e9eaa3"
+        }
+      ]
+    }
+  },
+  "post_preview_display_audit": {
+    "passed": true,
+    "visibility_camera_and_material_payloads_unchanged": true,
+    "interface_metadata_unchanged": true,
+    "source_fingerprint": "92c6f837d388b398217d5cc28545932a19f023728f947ba4d943fb296f914592",
+    "scope": "Only saved SourceFingerprint changed; final geometry regression is recorded in release checks.",
+    "audit_sha256": "bd94a88d6f72de373d97c63f2c754c69ae8ba90b5f0bf9230d602014e1b3933e"
+  }
+}

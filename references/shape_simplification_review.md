@@ -1,4 +1,4 @@
-# Printed shape and support review — AL
+# Printed shape and support review — AM
 
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
@@ -36,14 +36,17 @@ accuracy is claimed.
 
 ## Central paired servo module
 
-AJ moved the two servo/input-drive assemblies 23.5 mm inward on each side; AK retains those positions. Their
+The central paired servo/input-drive arrangement introduced in AJ remains. Its
 cradles merge into one continuous upright with two 8 by 21 mm case windows,
 3 mm outside walls and a 4.8 mm central web. The bought servo ears still locate
 and clamp each case; the case windows are clearance features, not press fits.
 Allowing the manufacturer's case-size tolerance of ±0.2 mm and a printed-window
 size allowance of ±0.3 mm leaves 0.5 mm minimum total size-only clearance in
-each window direction. Actual positions, flatness and lead exit still need
-inspection.
+each window direction. The outside walls include open-edge access reliefs for
+the prepared horn fasteners; the nominal 3 mm wall does not describe the
+minimum at those local reliefs. Keep the checked example fastener locations
+and ordered service path from [the retention review](retention_review.md).
+Actual positions, flatness and lead exit still need inspection.
 
 The common upright stands on a 26.8 by 22 by 2 mm central plate. Two broad
 15.6 by 18 by 2 mm straight arms join the diagonally opposed mounting feet
@@ -93,36 +96,39 @@ separate fit allowances and the web remains relieved. Follow
 ordering complete carriers. A small nominal clearance is not an as-printed
 fit guarantee or a prediction of insertion/holding force.
 
-Keep the selected gear bodies, shaft journals, spacer lands and mesh geometry
-source-specific. Gear axial positioning uses their existing shaft/set-screw
-interfaces; do not squeeze unknown hub thicknesses between new printed walls.
-The input metal stubs increase from 16 to 18 mm, retaining their full-length
-flat and 8 mm socket engagement. The selected 8 mm gear body leaves 2 mm of
-shaft beyond its outer face. This gives small axial fitting freedom without
+Keep the selected gear bodies, shaft journals and mesh geometry source-specific.
+Bearing outer-ring contacts and shield clearances need the actual lot and
+production-matched retention coupon; do not restore separate spacer lands.
+Gear axial positioning uses their existing shaft/set-screw interfaces; do not squeeze unknown hub thicknesses between new printed walls.
+The input metal stubs retain their full-length flat and prescribed socket
+engagement. The selected 8 mm gear body leaves 2 mm of shaft beyond its outer
+face. This gives small axial fitting freedom without
 new printed walls or fasteners; the opposite gear face overlap and actual M3
 set-screw position still limit usable adjustment. A different gear thickness
 requires measured engagement and renewed collision checks, not an assumption
-of universal compatibility. The horn register and input D socket retain
-0.05 mm nominal finish-fit allowances and still require fitting. Device holes and optical foot holes
+of universal compatibility. Finish the input D socket against the actual stub.
+The supplied horn has no assumed outline-fitting register; its prepared
+adapter and temporary jig require the actual fit and runout checks in
+[the retention review](retention_review.md). Device holes and optical foot holes
 retain assembly clearance for relative hole-position errors; their tightened
 face contacts, rather than loose-hole diameters, provide the operating seat.
 Connector reserves, optical visibility and moving-part separation are not
 unnecessary play and must not be reduced to achieve a snug mechanical fit.
 
-## Open horn adapter
+## Supplied-horn adapter
 
-Both long walls around the horn blade are removed. A constant-thickness semicircular root
-register and a central tip stop, 3 mm wide by 1.8 mm thick, retain nominal
-location with the existing 0.05 mm finish-fit allowance. Removing every
-locating surface would make shaft centring depend on loose bolt holes. The
-broad front face and existing M1.6 through-bolt still clamp the blade. The
-remaining locating faces alone are not a torque-retention qualification.
+AM replaces the earlier purchased-horn root register, tip stop and single
+through-bolt layout. The current printed part is a plain machining blank
+without assumed horn attachment holes. Its illustrative prepared assembly and
+the temporary bench jig are distinct from the exported blank. Preserve the
+socket floor, gear datum and material needed for the actual two fastening
+sites; do not restore the former horn-outline-fitting surfaces.
 
-The adapter still installs axially over the already retained OEM horn. The
-socket floor, original-screw cavity, metal shaft and radial M2 nut housing
-are unchanged. Saved-geometry checks verify that small local X/Z translations
-encounter the locating faces on both sides through representative attitudes;
-these rigid checks do not predict combined fit errors, preload or creep.
+Preparation and service belong to [the retention review](retention_review.md)
+and `parts/servo_coupling.py:machining_contract()`. The small jig, hole fits and
+nominal CAD example do not establish concentricity or loaded retention for the
+unmeasured supplied horn. Other prepared hole locations require renewed
+clearance and tool/removal-path checks.
 
 ## Straight P-AS support
 
@@ -135,10 +141,13 @@ unmeasured.
 
 ## Other reviewed features
 
-The horn adapter retains its prepared metal stub and admits the radial nut. The motor-carrier split slots provide shaft
-clamping; its end flanges and the frame shoulders retain the bearing stack.
-Those features remain functional. Filling them would obstruct assembly or
-remove retention, rather than simplify an equivalent assembly.
+The horn adapter retains its prepared metal stub and admits the radial nut.
+Motor-carrier split slots grip the shafts; carrier end flanges and frame stops
+limit rotor travel. Separate integral frame hooks and shoulders retain the
+bearing outer rings. These are distinct retention paths, described in
+[the retention review](retention_review.md), and remain functional. Filling them
+would obstruct assembly or remove retention, rather than simplify an equivalent
+assembly.
 
 The continuous bearing-post roots and solid rail clamping head from AH remain.
 Device supports retain verified mounting axes and the existing connector

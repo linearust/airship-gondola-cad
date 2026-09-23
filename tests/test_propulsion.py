@@ -279,19 +279,38 @@ class BearingCaptureTests(unittest.TestCase):
         result = self.check()
         self.assertFalse(result["passed"], result)
 
-    def test_extra_carrier_travel_cannot_reuse_the_nominal_face_clearance(self):
+    def test_each_bearing_uses_its_own_approach_stop_for_face_clearance(self):
         from gondola.validation.propulsion import output_bearing_stack_check
 
-        result = output_bearing_stack_check(
-            self.doc,
-            "Port",
-            "Positive",
-            {"passed": True, "negative_mm": 1.5, "positive_mm": 0.5},
-        )
-        self.assertFalse(result["passed"], result)
-        self.assertLess(result["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
-        # The fixed hooks still capture the bearing independently of the carrier.
-        self.assertTrue(result["capture_geometry"]["passed"], result)
+        for prefix in ("Port", "Starboard"):
+            for suffix, approach_key, retreat_key in (
+                ("Positive", "positive_mm", "negative_mm"),
+                ("Negative", "negative_mm", "positive_mm"),
+            ):
+                for approach, retreat, expected_gap, passed in (
+                    (1.5, 0.5, 0.8, False),
+                    (0.5, 1.5, 1.8, True),
+                ):
+                    with self.subTest(
+                        prefix=prefix, suffix=suffix, approach=approach, retreat=retreat
+                    ):
+                        result = output_bearing_stack_check(
+                            self.doc,
+                            prefix,
+                            suffix,
+                            {
+                                "passed": True,
+                                approach_key: approach,
+                                retreat_key: retreat,
+                            },
+                        )
+                        self.assertEqual(result["passed"], passed, result)
+                        self.assertAlmostEqual(
+                            result["minimum_carrier_to_bearing_face_gap_mm"],
+                            expected_gap,
+                        )
+                        # The hooks retain the bearing independently of carrier travel.
+                        self.assertTrue(result["capture_geometry"]["passed"], result)
 
     def test_parent_transform_and_tilt_preserve_the_capture_proof(self):
         root = self.doc.addObject("App::Part", "MovedRoot")

@@ -183,12 +183,15 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         from gondola.validation.propulsion import output_bearing_stack_check
 
-        # The fixed bearing hooks still capture the bearing. Increased carrier
-        # motion instead consumes its separate clearance from the bearing face.
-        bearing = output_bearing_stack_check(doc, "Port", "Negative")
-        self.assertFalse(bearing["passed"], bearing)
-        self.assertLess(bearing["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
-        self.assertTrue(bearing["capture_geometry"]["passed"], bearing)
+        # Removing the positive stop reduces the positive face clearance only.
+        # The opposite bearing and its intact hooks remain independently safe.
+        positive = output_bearing_stack_check(doc, "Port", "Positive")
+        negative = output_bearing_stack_check(doc, "Port", "Negative")
+        self.assertFalse(positive["passed"], positive)
+        self.assertAlmostEqual(positive["minimum_carrier_to_bearing_face_gap_mm"], 0.8)
+        self.assertTrue(negative["passed"], negative)
+        self.assertAlmostEqual(negative["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
+        self.assertTrue(negative["capture_geometry"]["passed"], negative)
 
     def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check

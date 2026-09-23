@@ -80,22 +80,23 @@ def _normalise_seat(seat, origin, contacts):
     return min(candidates, key=lambda item: item[0])[1]
 
 
-def bearing_stack_check(bearing, shaft, seat, carrier, *, opposite_travel):
+def bearing_stack_check(bearing, shaft, seat, carrier, *, toward_travel, away_travel):
     """Check actual solids with this bearing's outboard direction along +Y.
 
     Neither the carrier nor a spacer retains the bearing. The independently
     verified carrier/frame stops bound carrier motion; the bearing itself is
     captured by two inboard outer-ring hooks and one outboard shoulder.
+    Carrier/shaft translation is bounded by [-away_travel, +toward_travel]
+    in this normalized frame; unequal stop clearances are permitted.
     """
     if any(
         shape.isNull() or not shape.isValid()
         for shape in (bearing, shaft, seat, carrier)
     ):
         return {"passed": False, "error": "Missing or invalid bearing-stack solid"}
-    if (
-        opposite_travel is None
-        or not math.isfinite(opposite_travel)
-        or opposite_travel < 0
+    if any(
+        value is None or not math.isfinite(value) or value < 0
+        for value in (toward_travel, away_travel)
     ):
         return {"passed": False, "error": "Unproven carrier axial stop"}
     bounds = bearing.optimalBoundingBox(False, False)
@@ -107,16 +108,16 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, opposite_travel):
     axis_error = math.hypot(shaft_bounds.Center.x - x, shaft_bounds.Center.z - z)
     inward = -bearing_retention.HOOK_STOP_Y
     bearing_interval = [bounds.YMin - inward, bounds.YMax]
-    shaft_coverage = min(bounds.YMax, shaft_bounds.YMax - opposite_travel) - max(
-        bounds.YMin - inward, shaft_bounds.YMin + opposite_travel
+    shaft_coverage = min(bounds.YMax, shaft_bounds.YMax - away_travel) - max(
+        bounds.YMin - inward, shaft_bounds.YMin + toward_travel
     )
     shaft_journal = any(
         type(face.Surface).__name__ == "Cylinder"
         and abs(face.Surface.Radius - 1.5) < TOL
         and abs(abs(face.Surface.Axis.y) - 1) < TOL
         and math.hypot(face.Surface.Center.x - x, face.Surface.Center.z - z) < TOL
-        and face.BoundBox.YMin <= bounds.YMin - inward - opposite_travel + TOL
-        and face.BoundBox.YMax >= bounds.YMax + opposite_travel - TOL
+        and face.BoundBox.YMin <= bounds.YMin - inward - toward_travel + TOL
+        and face.BoundBox.YMax >= bounds.YMax + away_travel - TOL
         for face in shaft.Faces
     )
 
@@ -156,10 +157,10 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, opposite_travel):
         "bearing_shaft_overlap_mm3": intersection_volume(bearing, shaft),
         "bearing_travel_seat_overlap_mm3": intersection_volume(travel, seat),
     }
-    # Existing symmetric carrier stops are independently verified by the caller.
-    # Use their full travel as a conservative approach bound, not as retention.
+    # The caller verifies each carrier stop independently. Only travel toward
+    # this bearing reduces the face clearance; neither stop retains the bearing.
     carrier_end = carrier.optimalBoundingBox(False, False).YMax
-    carrier_gap = bounds.YMin - inward - carrier_end - opposite_travel
+    carrier_gap = bounds.YMin - inward - carrier_end - toward_travel
     return {
         "stock_shape_comparison": comparison,
         "shaft_axis_error_mm": axis_error,
@@ -168,7 +169,8 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, opposite_travel):
         "bearing_motion_interval_y_mm": bearing_interval,
         "maximum_bearing_inward_travel_mm": inward,
         "maximum_bearing_outward_travel_mm": 0.0,
-        "opposite_carrier_travel_mm": opposite_travel,
+        "carrier_travel_toward_bearing_mm": toward_travel,
+        "carrier_travel_away_from_bearing_mm": away_travel,
         "minimum_carrier_to_bearing_face_gap_mm": carrier_gap,
         "hook_contact_patch_areas_mm2": contact_areas,
         "opposed_hook_contact_centre_error_mm": opposed_error,

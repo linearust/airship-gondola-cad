@@ -19,10 +19,13 @@ Their source selection is not an assertion about physical fit or strength.
 - Reference centre distance is 16 mm. Printed axis positions, actual backlash,
   free rotation and output loading require checks with the received gears.
 - Both bores remain 3 mm; neither is a directly compatible X06 spline.
-  Retain the selected KST 0415.13 horn and design its coupling around a short
-  nominal-3mm input stub. Its existing tip hole is locally enlarged to 1.8 mm
-  for an M1.6 screw attaching the single printed adapter; preserve the original
-  spline and OEM retaining screw. Do not shrink the former hollow Ø7 coupling post.
+  Use the supplied X06 horn, preserving its genuine spline and OEM screw.
+  The printed adapter is an undrilled blank prepared against the actual horn
+  with the temporary centring jig; the displayed two-hole assembly is an
+  example, not the received horn geometry. Follow the
+  [preparation and retention contract](retention_review.md) before machining.
+  Neither a separate 0415.13 horn nor its former tip-hole modification is
+  required. The short nominal-3mm input stub preserves the selected gear bore.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
   dimensional design; do not report POM materials or assert weight reduction.
@@ -35,11 +38,17 @@ Their source selection is not an assertion about physical fit or strength.
 
 ## Rod and bearing selection
 
-Use the user's selected [6061 nominal Ø3 x 330 mm rod](https://www.aliexpress.com/item/1005005983061241.html),
-cut to CAD lengths. This supersedes finished MISUMI PSFU3 orders. The diameter,
-roundness, straightness and alloy temper are unspecified. Measure actual
-bearing/gear fits before preparing the entire batch. If unsuitable, use a
-measured precision nominal-3mm replacement rod while preserving the interfaces.
+Use the user's selected nominal Ø3 mm 304 rod, cut to the preparation keys in
+`gondola/contracts/design.py` and the generated hardware BOM. The seller's
+material description does not establish diameter tolerance, roundness or
+straightness. Measure bearing/gear fits before preparing the entire batch.
+If unsuitable, use a dimensionally verified nominal-3mm precision replacement
+and recheck grip and fit. Current preparation is summarized in
+[the cart review](cart_adaptation_review.md).
+
+Historical choices only: finished MISUMI PSFU3 and the earlier
+[6061 rod listing](https://www.aliexpress.com/item/1005005983061241.html) are
+superseded. Retaining their evidence is not an instruction to order them.
 
 The stock-preparation keys encode cut length and optional local-flat length and
 offset. Flat depth is nominally 0.5 mm. Cut square, deburr and keep all output
@@ -49,14 +58,18 @@ one another; do not infer tooth-to-screw phase from the seller images.
 
 The selected [generic 3 x 6 x 2.5 mm bearings](https://www.aliexpress.com/item/1005007668446060.html)
 are not identified as NSK/ISC parts. Retained ISC MR63ZZ data remain a dimensional
-comparison for the integral shoulder and inner-ring spacer design, not certification of the selected lot
-or its mass. Verify race-land and shield clearance, shaft fit and axial capture.
+comparison only, not certification of the selected lot or its mass. The frame
+now captures each outer ring with an integral shoulder and two releasable hooks;
+there are no purchased bearing spacers or separate caps. Shaft grip and the
+carrier/frame axial stops remain independent. Qualify the matching process
+coupon, actual ring lands, shield clearance and release path as described in
+[the retention review](retention_review.md).
 
 ## Release and physical verification
 
 The source selection describes the intended build. Native CAD, exported parts,
 procurement, motion/service checks and the pinned fixture must be regenerated
 and independently reviewed together before a release represents this selection.
-Previous revision-AA clearance reports and mass totals do not qualify this
-conversion. Geometry checks do not establish actual fit, screw retention,
+Older clearance reports and mass totals do not qualify a changed source or CAD.
+Geometry checks do not establish actual fit, screw retention,
 PA12 creep, actuator load capability or flight readiness.

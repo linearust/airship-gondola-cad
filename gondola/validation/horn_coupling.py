@@ -16,7 +16,8 @@ TOL = 1e-5
 V = App.Vector
 
 
-def _frame(doc, prefix):
+def coupling_frame(doc, prefix):
+    """Map horn-local geometry through the actual mirrored input-drive parents."""
     mirror = App.Rotation(V(0, 0, 1), 180 if prefix == "Starboard" else 0)
     return (
         doc.getObject(prefix + "InputDrive")
@@ -69,7 +70,7 @@ def horn_registration_check(doc, prefix):
             "missing_objects": missing,
             "physical_concentricity_verified": False,
         }
-    inverse = _frame(doc, prefix).inverse()
+    inverse = coupling_frame(doc, prefix).inverse()
     shapes = {}
     for suffix in names:
         obj = doc.getObject(prefix + suffix)
@@ -166,7 +167,8 @@ def horn_registration_check(doc, prefix):
     jig.Placement = App.Placement()
     jig_difference = _difference(jig, coupling.centering_jig_shape())
     jig_rows = []
-    for diameter in (0.8, 1.2, 1.6):
+    lower_entry, upper_entry = coupling.JIG_ACCEPTED_ENTRY_DIAMETERS
+    for diameter in (lower_entry, (lower_entry + upper_entry) / 2, upper_entry):
         cone_station = (
             coupling.JIG_NOSE_START_Y
             + (diameter - coupling.JIG_NOSE_TIP_DIAMETER)
