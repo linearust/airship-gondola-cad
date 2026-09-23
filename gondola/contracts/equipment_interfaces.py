@@ -62,12 +62,8 @@ X06_EAR_HOLE_DIAMETER_MM = 2.0
 X06_OUTPUT_FROM_CASE_END_MM = 5.0
 X06_EAR_TOP_FROM_CASE_TOP_MM = 3.7
 X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM = 4.7
-HORN_SOURCE = (
-    "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo"
-)
-HORN_DRAWING_SOURCE = "https://cdn.shopify.com/s/files/1/0712/1472/7353/files/15T-4mm_0415.13.png?v=1764920833"
-
-SHAFT_SOURCE = "https://www.aliexpress.com/item/1005005983061241.html"
+HORN_SOURCE = "https://www.aliexpress.com/item/1005010458484391.html"
+SHAFT_SOURCE = "https://www.aliexpress.com/item/1005007648646117.html"
 BEARING_SOURCE = "https://www.aliexpress.com/item/1005007668446060.html"
 BEARING_REFERENCE_SOURCE = (
     "https://www.nskmicro.co.jp/products/bearing/bearing_size_pdf/single_row_mm.pdf"
@@ -96,25 +92,12 @@ PROPULSION_EVIDENCE = {
         "listed_mass_g": 6.0,
         "listed_mass_tolerance_percent": 10,
         "scope": "KST-authored May 2023 drawing obtained through the distributor. Regular-tab X06 V6.0, not X06H or X06N. Ear thickness is the 4.7 minus 3.7 mm drawing datum difference. Published case tolerance is not a fit allowance. Spline major diameter does not establish horn geometry or a retaining screw thread.",
-        "unknown": "Supplied plastic horn dimensions and OEM retaining screw; selected stock aluminium horn seating, loaded travel and permissible external gear load.",
+        "unknown": "Supplied plastic horn dimensions and OEM retaining screw; supplied horn seating, loaded travel and permissible external gear load.",
     },
-    "KST_0415_13": {
-        "sources": [HORN_SOURCE, HORN_DRAWING_SOURCE],
-        "retained_evidence": "references/kst_0415_13_horn_dimensions.png",
-        "spline_class": "KST 15T-4mm",
-        "hub_diameter_mm": 6.0,
-        "tip_diameter_mm": 4.0,
-        "tip_centre_radius_mm": 13.2,
-        "overall_axial_height_mm": 3.5,
-        "blade_thickness_mm": 1.6,
-        "spline_recess_depth_mm": 2.5,
-        "centre_clearance_diameter_mm": 2.2,
-        "counterbore_diameter_mm": 4.4,
-        "hole_radius_by_diameter_mm": {
-            "0.8": [4.5, 8.0, 11.5],
-            "1.0": [6.8, 10.0, 13.2],
-        },
-        "scope": "KST-authored drawing supplied through a distributor. Nominal geometry supports a conservative blade-capture pocket with explicit fit allowance; exact outline fillets, tolerances, installed seating and OEM screw head/engagement remain sample checks. The centre clearance hole is not an M2 thread specification.",
+    "KST_X06_SUPPLIED_HORN": {
+        "sources": [HORN_SOURCE],
+        "retained_evidence": "references/cart_adaptation_review.md",
+        "scope": "User-selected original supplied horn and OEM centre screw. Shape, installed seating, hole pattern, material and mass are not established. CAD depicts an explicitly bounded fit/preparation example; verify the actual supplied horn before manufacture and assembly.",
     },
     "selected_gears": {
         "sources": [gear.item_url for gear in GEARS.values()],
@@ -161,7 +144,7 @@ PROPULSION_EVIDENCE = {
         "bore_outside_width_mm": [3.0, 6.0, 2.5],
         "manufacturer": "Unverified generic seller part",
         "measured_mass_g": None,
-        "scope": "User-selected 3x6x2.5mm option. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearing against its integral shoulder, metal spacer and shaft before assembly.",
+        "scope": "User-selected 3x6x2.5mm option. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearing against its integral outer-ring capture and shaft before assembly.",
     },
     "MR63ZZ_design_reference": {
         "sources": [BEARING_REFERENCE_SOURCE, BEARING_FIT_SOURCE],
@@ -175,7 +158,7 @@ PROPULSION_EVIDENCE = {
         "inner_ring_abutment_outer_diameter_max_mm": 3.7,
         "housing_abutment_opening_diameter_min_mm": 5.4,
         "abutment_fillet_max_mm": 0.1,
-        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the selected generic bearing. Integral outer-shoulder and inner-ring-spacer clearance targets use this reference pending physical verification. Keep hubs off shields and outer rings; check fits, free rotation and axial capture with the received lot.",
+        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the selected generic bearing. Integral shoulder/hook outer-ring contact and shield-clearance targets use this reference pending physical verification. Keep hubs off shields and outer rings; check fits, free rotation and axial capture with the received lot.",
     },
 }
 

@@ -21,7 +21,7 @@ from mathutils import Matrix, Vector
 MM_TO_M = 0.001
 MODEL_ROTATION = Matrix.Rotation(math.pi, 4, "X")
 LIMIT_NOTE = (
-    "Rigid CAD review | propellers shown as disks | loads and cables unverified"
+    "Rigid CAD review | horn is an unmeasured example | loads and cables unverified"
 )
 
 
@@ -147,6 +147,7 @@ def make_cad_objects(scene, specification, parts, meshes):
         obj["CADLabel"] = part.get("label", name)
         obj["CADCategory"] = part["category"]
         obj["ReviewScene"] = scene.name
+        obj["Representation"] = part.get("representation", "Saved nominal CAD shape.")
         if "propellerdisk" in name.lower():
             obj.display_type = "WIRE"
             obj["Representation"] = (

@@ -1,4 +1,4 @@
-"""Physical fit and assembly paths for the direct stock-horn gear adapter."""
+"""Machining blank, prepared example and removable supplied-horn centring aid."""
 
 import unittest
 
@@ -26,18 +26,18 @@ class ServoCouplingTests(unittest.TestCase):
         from gondola.parts import purchased_hardware as hardware
         from gondola.parts import servo_coupling as coupling
 
-        anchors = coupling.fastener_positions()[0]
-        rotation = App.Rotation(
-            App.Vector(0, 0, 1), App.Vector(*coupling.BOLT_DIRECTION)
-        )
         result = []
-        for shape, anchor in (
-            (hardware.servo_screw_shape(), anchors["screw"]),
-            (hardware.servo_nut_shape(), anchors["nut"]),
-        ):
-            placed = shape.copy()
-            placed.Placement = App.Placement(App.Vector(*anchor), rotation)
-            result.append(placed)
+        for anchors in coupling.fastener_positions():
+            rotation = App.Rotation(
+                App.Vector(0, 0, 1), App.Vector(*coupling.BOLT_DIRECTION)
+            )
+            for shape, anchor in (
+                (hardware.servo_screw_shape(), anchors["screw"]),
+                (hardware.servo_nut_shape(), anchors["nut"]),
+            ):
+                placed = shape.copy()
+                placed.Placement = App.Placement(App.Vector(*anchor), rotation)
+                result.append(placed)
         return result
 
     @staticmethod
@@ -65,8 +65,6 @@ class ServoCouplingTests(unittest.TestCase):
         specification = SELECTED_DRIVE.driver
         axis = App.Vector(0, 1, 0)
         start = coupling.GEAR_START_Y
-        # Tip cylinder conservatively includes every tooth; the gear itself is
-        # bought and must retain the selected seller's complete axial stack.
         shape = Part.makeCylinder(
             specification.hub_diameter_mm / 2,
             specification.hub_extension_mm,
@@ -89,285 +87,247 @@ class ServoCouplingTests(unittest.TestCase):
             )
         )
 
-    def test_prepared_horn_gear_and_existing_m1_6_fasteners_fit(self):
+    def test_prepared_example_two_joints_and_metal_transmission_fit(self):
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.parts import servo_coupling as coupling
+        from gondola.parts import servo_coupling as c
 
-        self.assertEqual(SELECTED_DRIVE.driver.bore_mm, coupling.GEAR_BORE_DIAMETER)
-        self.assertEqual(SELECTED_DRIVE.driver.total_length_mm, coupling.GEAR_LENGTH)
-        main = coupling.adapter_shape()
-        horn = coupling.horn_shape()
-        gear = self._driver_gear()
-        shaft = coupling.driver_shaft_shape()
-        screw, nut = self._clamp_hardware()
+        self.assertEqual(SELECTED_DRIVE.driver.bore_mm, c.GEAR_BORE_DIAMETER)
+        self.assertEqual(SELECTED_DRIVE.driver.total_length_mm, c.GEAR_LENGTH)
+        main, horn, shaft, gear = (
+            c.adapter_shape(),
+            c.horn_shape(),
+            c.driver_shaft_shape(),
+            self._driver_gear(),
+        )
+        fasteners = self._clamp_hardware()
         radial_screw, radial_nut = self._shaft_clamp_hardware()
-        shapes = [
-            main,
-            horn,
-            gear,
-            shaft,
-            screw,
-            nut,
-            radial_screw,
-            radial_nut,
-        ]
+        shapes = [main, horn, shaft, gear, *fasteners, radial_screw, radial_nut]
         for shape in shapes:
             self.assertTrue(shape.isValid())
             self.assertEqual(len(shape.Solids), 1)
         for index, first in enumerate(shapes):
             for second in shapes[index + 1 :]:
                 self.assertLess(first.common(second).Volume, 1e-7)
-        self.assertAlmostEqual(main.distToShape(gear)[0], 0, places=6)
-        self.assertAlmostEqual(shaft.distToShape(gear)[0], 0, places=6)
-        self.assertAlmostEqual(shaft.distToShape(radial_screw)[0], 0, places=6)
-        self.assertAlmostEqual(main.distToShape(radial_nut)[0], 0, places=6)
-        self.assertAlmostEqual(main.distToShape(radial_screw)[0], 0.1, places=6)
+        for a, b in (
+            (main, gear),
+            (shaft, gear),
+            (shaft, radial_screw),
+            (main, radial_nut),
+            (main, horn),
+        ):
+            self.assertAlmostEqual(a.distToShape(b)[0], 0, places=6)
+        for screw, nut in (fasteners[:2], fasteners[2:]):
+            self.assertAlmostEqual(screw.distToShape(horn)[0], 0, places=6)
+            self.assertAlmostEqual(nut.distToShape(main)[0], 0, places=6)
+            self.assertAlmostEqual(
+                screw.BoundBox.YMax - nut.BoundBox.YMax, 1.5, places=6
+            )
         head = radial_screw.common(
-            Part.makeBox(3, 5, 5, App.Vector(7, coupling.SHAFT_CLAMP_Y - 2.5, -2.5))
+            c.shaft_frame_shape(
+                Part.makeBox(3, 5, 5, App.Vector(-10, c.SHAFT_CLAMP_Y - 2.5, -2.5))
+            )
         )
+        self.assertGreater(head.Volume, 1)
         self.assertAlmostEqual(head.distToShape(main)[0], 0.5, places=6)
         self.assertGreater(head.distToShape(gear)[0], 1.5)
-        self.assertAlmostEqual(main.distToShape(horn)[0], 0, places=6)
-        self.assertAlmostEqual(screw.distToShape(horn)[0], 0, places=6)
-        self.assertAlmostEqual(nut.distToShape(main)[0], 0, places=6)
-        self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.5, places=6)
 
-    def test_only_outer_stock_hole_is_prepared_and_blade_web_remains(self):
-        from gondola.parts import servo_coupling as coupling
+    def test_blank_has_stock_at_both_holes_and_preparation_only_removes_material(self):
+        from gondola.parts import servo_coupling as c
 
-        horn = coupling.horn_shape()
-        axis = App.Vector(0, 1, 0)
-        for x, radius in (
-            (4.5, 0.4),
-            (8, 0.4),
-            (11.5, 0.4),
-            (6.8, 0.5),
-            (10, 0.5),
-            (13.2, 0.9),
-        ):
-            hole = Part.makeCylinder(radius, 1.6, App.Vector(x, 1.9, 0), axis)
-            self.assertLess(horn.common(hole).Volume, 1e-7)
-            enlarged = Part.makeCylinder(
-                radius + 0.01, 1.6, App.Vector(x, 1.9, 0), axis
+        blank, main, horn = c.adapter_blank_shape(), c.adapter_shape(), c.horn_shape()
+        self.assertLess(main.cut(blank).Volume, 1e-7)
+        self.assertGreater(blank.cut(main).Volume, 100)
+        for (x, z), diameter in zip(c.HORN_BOLT_CENTRES, c.HORN_ADAPTER_HOLE_DIAMETERS):
+            passage = Part.makeCylinder(
+                diameter / 2,
+                c.PLATE_FRONT_Y - c.HORN_BLADE_BOTTOM,
+                App.Vector(x, c.HORN_BLADE_BOTTOM, z),
+                App.Vector(0, 1, 0),
             )
-            self.assertGreater(horn.common(enlarged).Volume, 1e-4)
-        web = Part.makeLine(App.Vector(11.9, 2.7, 0), App.Vector(12.3, 2.7, 0))
-        self.assertAlmostEqual(horn.common(web).Length, 0.4, places=6)
-        self.assertEqual(coupling.HORN_SKU, "KST_0415_13_TIP_D1_8")
+            self.assertLess(main.common(passage).Volume, 1e-7)
+            self.assertLess(horn.common(passage).Volume, 1e-7)
+            self.assertGreater(blank.common(passage).Volume, 1)
+            edge = Part.makeCylinder(
+                diameter / 2 + 0.01,
+                c.PLATE_FRONT_Y - c.HORN_HEIGHT,
+                App.Vector(x, c.HORN_HEIGHT, z),
+                App.Vector(0, 1, 0),
+            )
+            self.assertGreater(main.common(edge).Volume, 1e-3)
+        self.assertEqual(c.HORN_SKU, "KST_X06_SUPPLIED_HORN")
+        self.assertEqual(c.HORN_ADAPTER_HOLE_DIAMETERS, (1.7, 1.8))
 
-    def test_front_nut_removes_axially_then_outboard_before_rear_screw(self):
-        from gondola.parts import servo_coupling as coupling
+    def test_close_hole_and_second_fastener_bound_gross_rotation_without_register_claim(
+        self,
+    ):
+        from gondola.parts import servo_coupling as c
 
-        main = coupling.adapter_shape()
-        horn = coupling.horn_shape()
-        gear = self._driver_gear()
-        shaft = coupling.driver_shaft_shape()
-        screw, nut = self._clamp_hardware()
-        radial_screw, radial_nut = self._shaft_clamp_hardware()
-        obstacles = (
-            main,
-            horn,
-            gear,
-            shaft,
-            screw,
-            radial_screw,
-            radial_nut,
-            self._servo_envelope(),
+        main, horn = c.adapter_shape(), c.horn_shape()
+        screws = self._clamp_hardware()[::2]
+        self.assertGreaterEqual(
+            c.HORN_BOLT_CENTRES[1][0] - c.HORN_BOLT_CENTRES[0][0], 4
         )
-        for step in range(1, 13):
-            released = nut.copy()
-            released.translate(App.Vector(0, step * 0.25, 0))
-            for obstacle in obstacles:
-                self.assertLess(released.common(obstacle).Volume, 1e-7)
-        self.assertGreater(released.BoundBox.YMin, screw.BoundBox.YMax)
-        for step in range(1, 41):
-            cleared = released.copy()
-            cleared.translate(App.Vector(step * 0.5, 0, 0))
-            for obstacle in obstacles:
-                self.assertLess(cleared.common(obstacle).Volume, 1e-7)
-
-    def test_metal_stub_seats_in_adapter_and_key_cannot_turn_freely(self):
-        from gondola.parts import servo_coupling as coupling
-
-        main = coupling.adapter_shape()
-        shaft = coupling.driver_shaft_shape()
-        self.assertAlmostEqual(shaft.BoundBox.YLength, 18, places=6)
-        self.assertAlmostEqual(shaft.BoundBox.XMax, 1, places=6)
-        self.assertAlmostEqual(
-            shaft.BoundBox.YMax, coupling.GEAR_START_Y + 10, places=6
-        )
-        displaced = shaft.copy()
-        displaced.translate(App.Vector(0, -0.01, 0))
-        self.assertGreater(displaced.common(main).Volume, 1e-5)
-        for angle in (-15, 15):
-            displaced = shaft.copy()
-            displaced.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
-            self.assertGreater(displaced.common(main).Volume, 1e-3)
-        # The D key is an anti-rotation interface, not an axial locking feature.
-        # Forward retention comes from the radial screw and must be load-tested.
-        displaced = shaft.copy()
-        displaced.translate(App.Vector(0, 0.5, 0))
-        self.assertLess(displaced.common(main).Volume, 1e-7)
-
-    def test_radial_nut_and_screw_have_open_loading_paths(self):
-        from gondola.parts import servo_coupling as coupling
-
-        main = coupling.adapter_shape()
-        gear = self._driver_gear()
-        shaft = coupling.driver_shaft_shape()
-        screw, nut = self._shaft_clamp_hardware()
-        for step in range(1, 21):
-            lifted = nut.copy()
-            lifted.translate(App.Vector(0, 0, step * 0.5))
-            for obstacle in (main, shaft, gear):
-                self.assertLess(lifted.common(obstacle).Volume, 1e-7)
-            withdrawn = screw.copy()
-            withdrawn.translate(App.Vector(step * 0.5, 0, 0))
-            for obstacle in (main, shaft, nut, gear):
-                self.assertLess(withdrawn.common(obstacle).Volume, 1e-7)
-
-    def test_shallow_socket_centres_horn_and_metal_screw_head_clamps_blade(self):
-        from gondola.parts import servo_coupling as coupling
-
-        main = coupling.adapter_shape()
-        horn = coupling.horn_shape()
-        registers = [
-            face
-            for face in main.Faces
-            if type(face.Surface).__name__ == "Cylinder"
-            and abs(face.Surface.Radius - 3.05) < 1e-7
-        ]
-        self.assertTrue(registers)
-        for face in registers:
-            self.assertAlmostEqual(face.BoundBox.YLength, 1.3, places=6)
-            self.assertAlmostEqual(face.BoundBox.YMax, 3.5, places=6)
-        screw, _ = self._clamp_hardware()
-        for direction, obstacle in ((1, main), (-1, screw)):
-            displaced = horn.copy()
-            displaced.translate(App.Vector(0, direction * 0.01, 0))
-            self.assertGreater(displaced.common(obstacle).Volume, 1e-5)
-
-    def test_open_arm_preserves_hub_and_tip_position_datums(self):
-        from gondola.parts import servo_coupling as coupling
-
-        main = coupling.adapter_shape()
-        horn = coupling.horn_shape()
-        # Removing the arm walls must not free translation of the input axis.
-        # The open root circle needs its opposing flat tip stop for +X.
-        for dx, dz in ((0.1, 0), (-0.1, 0), (0, 0.1), (0, -0.1)):
-            displaced = horn.copy()
-            displaced.translate(App.Vector(dx, 0, dz))
-            self.assertGreater(displaced.common(main).Volume, 1e-4)
-        # A wider blade is accepted with the same hub and overall length.
-        # Trimming the end preserves the deliberately critical tip datum.
-        wider_blade = coupling._tangent_hull(1.9, 1.6, 3, 2.2, 13.2)
-        wider_blade = wider_blade.common(
-            Part.makeBox(20.2, 2, 10, App.Vector(-5, 1.7, -5))
-        )
-        self.assertLess(main.common(wider_blade).Volume, 1e-7)
-        # The entire positive-X root opening is empty, including the former
-        # narrowing crescents between the circular outside and straight throat.
-        open_arm_sides = Part.makeBox(15.19, 1.28, 10, App.Vector(0.01, 2.21, -5))
-        self.assertLess(main.common(open_arm_sides).Volume, 1e-7)
-        # Torque normally comes from clamp preload. With the side walls gone,
-        # the retained through-bolt, rather than a surrounding channel, limits
-        # gross rotation after slip; this does not establish a load capacity.
-        screw, _ = self._clamp_hardware()
         for angle in (-3, 3):
             turned = horn.copy()
             turned.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
             self.assertLess(turned.common(main).Volume, 1e-7)
-            self.assertGreater(turned.common(screw).Volume, 1e-3)
+            for screw in screws:
+                self.assertGreater(turned.common(screw).Volume, 1e-3)
+        # The generous hub cavity deliberately supplies no old exact root/tip
+        # registration. Actual axis alignment comes from matched preparation.
+        moved = horn.copy()
+        moved.translate(App.Vector(0.1, 0, 0))
+        self.assertLess(moved.common(main).Volume, 1e-7)
+        contract = c.machining_contract()
+        self.assertFalse(contract["supplied_horn_measured"])
+        self.assertTrue(contract["prepared_preview_is_example"])
+        self.assertIn("measured M1.6 shank", contract["centering_sequence"])
+        self.assertIn("runout", contract["final_alignment"])
 
-    def test_parts_install_around_an_already_retained_horn_at_neutral(self):
-        from gondola.parts import servo_coupling as coupling
+    def test_front_nuts_remove_far_first_then_near_without_other_joint_collision(self):
+        from gondola.parts import servo_coupling as c
 
-        main = coupling.adapter_shape()
-        horn = coupling.horn_shape()
-        case = self._servo_envelope()
-        screw, _ = self._clamp_hardware()
-        for step in range(1, 51):
-            distance = step * 0.5
-            incoming = main.copy()
-            incoming.translate(App.Vector(0, distance, 0))
-            for obstacle in (horn, screw, case):
-                self.assertLess(incoming.common(obstacle).Volume, 1e-7)
-            incoming = screw.copy()
-            incoming.translate(App.Vector(0, -distance, 0))
-            for obstacle in (main, horn, case):
-                self.assertLess(incoming.common(obstacle).Volume, 1e-7)
-
-    def test_rear_clamp_head_clears_servo_through_full_input_travel(self):
-        from gondola.parts import servo_coupling as coupling
-
-        case = self._servo_envelope()
-        moving = [
-            coupling.adapter_shape(),
-            coupling.driver_shaft_shape(),
-            *self._clamp_hardware(),
+        near_screw, near_nut, far_screw, far_nut = self._clamp_hardware()
+        common = [
+            c.adapter_shape(),
+            c.horn_shape(),
+            c.driver_shaft_shape(),
+            self._driver_gear(),
+            near_screw,
+            far_screw,
             *self._shaft_clamp_hardware(),
+            self._servo_envelope(),
         ]
+        for nut, other in ((far_nut, [near_nut]), (near_nut, [])):
+            obstacles = common + other
+            for step in range(1, 13):
+                released = nut.copy()
+                released.translate(App.Vector(0, step * 0.25, 0))
+                for obstacle in obstacles:
+                    self.assertLess(released.common(obstacle).Volume, 1e-7)
+            for step in range(1, 41):
+                cleared = released.copy()
+                cleared.translate(App.Vector(step * 0.5, 0, 0))
+                for obstacle in obstacles:
+                    self.assertLess(cleared.common(obstacle).Volume, 1e-7)
+
+    def test_metal_stub_seats_on_perforated_floor_and_key_blocks_rotation(self):
+        from gondola.parts import servo_coupling as c
+
+        main, shaft = c.adapter_shape(), c.driver_shaft_shape()
+        self.assertAlmostEqual(shaft.BoundBox.YLength, 18, places=6)
+        self.assertAlmostEqual(shaft.BoundBox.ZMin, -1, places=6)
+        self.assertAlmostEqual(shaft.BoundBox.YMax, c.GEAR_START_Y + 10, places=6)
+        displaced = shaft.copy()
+        displaced.translate(App.Vector(0, -0.01, 0))
+        self.assertGreater(displaced.common(main).Volume, 0.01)
+        for angle in (-15, 15):
+            displaced = shaft.copy()
+            displaced.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
+            self.assertGreater(displaced.common(main).Volume, 1e-3)
+        displaced = shaft.copy()
+        displaced.translate(App.Vector(0, 0.5, 0))
+        self.assertLess(displaced.common(main).Volume, 1e-7)
+
+    def test_radial_nut_and_negative_z_screw_have_open_loading_paths(self):
+        from gondola.parts import servo_coupling as c
+
+        main, shaft, gear = (
+            c.adapter_shape(),
+            c.driver_shaft_shape(),
+            self._driver_gear(),
+        )
+        screw, nut = self._shaft_clamp_hardware()
+        for step in range(1, 21):
+            lifted = nut.copy()
+            lifted.translate(c.shaft_frame_point(0, 0, step * 0.5))
+            for obstacle in (main, shaft, gear, *self._clamp_hardware()):
+                self.assertLess(lifted.common(obstacle).Volume, 1e-7)
+            withdrawn = screw.copy()
+            withdrawn.translate(c.shaft_frame_point(-step * 0.5, 0, 0))
+            for obstacle in (main, shaft, nut, gear, *self._clamp_hardware()):
+                self.assertLess(withdrawn.common(obstacle).Volume, 1e-7)
+
+    def test_rear_heads_clear_servo_through_full_nominal_input_travel(self):
+        from gondola.parts import servo_coupling as c
+
+        case = self._servo_envelope()
         for angle in range(-60, 61, 5):
-            for shape in moving:
+            for shape in (
+                c.adapter_shape(),
+                c.driver_shaft_shape(),
+                *self._clamp_hardware(),
+                *self._shaft_clamp_hardware(),
+            ):
                 rotated = shape.copy()
                 rotated.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
                 self.assertLess(rotated.common(case).Volume, 1e-7)
-                self.assertGreaterEqual(rotated.distToShape(case)[0], 1.1 - 1e-7)
+                self.assertGreaterEqual(rotated.distToShape(case)[0], 0.5 - 1e-7)
 
-    def test_functional_walls_and_separate_open_pockets_remain_manufacturable(self):
-        import math
-
-        from gondola.parts import servo_coupling as coupling
+    def test_planar_walls_floor_and_jig_guide_remain_open_and_at_least_1_5mm(self):
+        from gondola.parts import servo_coupling as c
         from gondola.validation.manufacturing import planar_wall_regions
 
-        main = coupling.adapter_shape()
-        thin = [
-            row
-            for row in planar_wall_regions(main)
-            if row["material_thickness_mm"] < 1.5 - 1e-6
-        ]
-        self.assertEqual(thin, [])
-        # Check actual material around the remaining semicircle, not only its
-        # back centreline. The open positive half is covered by the test above.
-        for angle in range(90, 271, 15):
-            direction = App.Vector(
-                math.cos(math.radians(angle)), 0, math.sin(math.radians(angle))
+        for main in (c.adapter_blank_shape(), c.adapter_shape()):
+            self.assertEqual(
+                [
+                    r
+                    for r in planar_wall_regions(main)
+                    if r["material_thickness_mm"] < 1.5 - 1e-6
+                ],
+                [],
             )
-            section = main.common(
-                Part.makeLine(
-                    App.Vector(0, 3, 0) + direction * 3.04,
-                    App.Vector(0, 3, 0) + direction * 4.71,
+            for x, z in ((2, 0), (-2, 0), (0, 2), (0, -2)):
+                section = Part.makeLine(
+                    App.Vector(x, c.OEM_HEAD_CAVITY_TOP_Y, z),
+                    App.Vector(x, c.SHAFT_START_Y, z),
                 )
+                self.assertAlmostEqual(main.common(section).Length, 1.5, places=6)
+            guide = Part.makeCylinder(
+                1.2,
+                c.GEAR_START_Y - c.BODY_BACK_Y,
+                App.Vector(0, c.BODY_BACK_Y, 0),
+                App.Vector(0, 1, 0),
             )
-            with self.subTest(root_section_angle=angle):
-                self.assertAlmostEqual(section.Length, 1.65)
-        # The short root register and standalone end datum retain useful
-        # lateral sections without restoring walls along the metal arm.
-        for start, end, required in (
-            ((-4.71, 3, 0), (-3.04, 3, 0), 1.65),
-            ((15.24, 3, 0), (17.06, 3, 0), 1.8),
-            ((16, 3, -1.51), (16, 3, 1.51), 3.0),
-        ):
-            section = main.common(Part.makeLine(App.Vector(*start), App.Vector(*end)))
-            self.assertAlmostEqual(section.Length, required)
-        self.assertGreaterEqual(
-            coupling.SHAFT_BOSS_END_X - coupling.SHAFT_NUT_SEAT_X, 1.5
+            self.assertLess(main.common(guide).Volume, 1e-7)
+        self.assertAlmostEqual(c.SHAFT_NUT_SEAT_X - c.SHAFT_BOSS_END_X, 1.5)
+
+    def test_centred_jig_works_across_declared_synthetic_entry_range(self):
+        from gondola.parts import servo_coupling as c
+
+        main, jig = c.adapter_blank_shape(), c.centering_jig_shape()
+        self.assertTrue(jig.isValid())
+        self.assertEqual(len(jig.Solids), 1)
+        for diameter in (0.8, 1.2, 1.6):
+            offset = c.JIG_REFERENCE_ENTRY_Y - (
+                c.JIG_NOSE_START_Y
+                + (diameter - c.JIG_NOSE_TIP_DIAMETER)
+                / (c.JIG_NOSE_BASE_DIAMETER - c.JIG_NOSE_TIP_DIAMETER)
+                * c.JIG_NOSE_LENGTH
+            )
+            placed = jig.copy()
+            placed.translate(App.Vector(0, offset, 0))
+            self.assertLess(main.common(placed).Volume, 1e-7)
+            # If the finished guide is moved off-axis the actual socket stops
+            # it. This is nominal tool guidance, not print accuracy proof.
+            displaced = placed.copy()
+            displaced.translate(App.Vector(0.11, 0, 0))
+            self.assertGreater(main.common(displaced).Volume, 0.01)
+        self.assertIn("prototype", c.metrics()["qualification"].lower())
+
+    def test_oem_head_envelope_clears_but_unknown_original_screw_requires_adapter_removal(
+        self,
+    ):
+        from gondola.parts import servo_coupling as c
+
+        main = c.adapter_shape()
+        head = Part.makeCylinder(2.2, 1.9, App.Vector(0, 3.5, 0), App.Vector(0, 1, 0))
+        self.assertLess(main.common(head).Volume, 1e-7)
+        self.assertAlmostEqual(main.distToShape(head)[0], 0.2, places=6)
+        self.assertIn(
+            "Remove gear, metal stub and adapter",
+            c.machining_contract()["centre_screw_service"],
         )
-        # Both blind cavities have their own exterior opening. A full roof,
-        # including the centre, isolates the retained OEM screw from the shaft.
-        axis = App.Vector(0, 1, 0)
-        head_cavity = Part.makeCylinder(2.5, 5.3, App.Vector(0, -0.1, 0), axis)
-        self.assertLess(main.common(head_cavity).Volume, 1e-7)
-        shaft_path = coupling.driver_shaft_shape()
-        shaft_path.translate(App.Vector(0, 1, 0))
-        self.assertLess(main.common(shaft_path).Volume, 1e-7)
-        centre = Part.makeLine(App.Vector(0, 5.2, 0), App.Vector(0, 7.1, 0))
-        self.assertAlmostEqual(main.common(centre).Length, 1.9, places=6)
-        for x, z in ((2, 0), (-2, 0), (0, 2), (0, -2)):
-            section = Part.makeLine(
-                App.Vector(x, -0.1, z), App.Vector(x, coupling.SHAFT_START_Y, z)
-            )
-            self.assertAlmostEqual(main.common(section).Length, 1.9, places=6)
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
@@ -378,6 +338,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
 
         cls.doc = App.newDocument("InputShaftEvidenceRegression")
         cls.module = propulsion.build_propulsion_module(cls.doc)
+        propulsion.build_fit_coupons(cls.doc)
         cls.doc.recompute()
 
     @classmethod
@@ -453,7 +414,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
         screw = self.doc.PortInputShaftClampBolt
         original = App.Placement(screw.Placement)
         try:
-            screw.Placement.Base += App.Vector(0.3, 0, 0)
+            screw.Placement.Base += App.Vector(0, 0, -0.3)
             self.doc.recompute()
             result = input_shaft_retention_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
@@ -470,7 +431,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
         try:
             for displacement in (-0.1, -0.2):
                 nut.Placement = App.Placement(original)
-                nut.Placement.Base += App.Vector(displacement, 0, 0)
+                nut.Placement.Base += App.Vector(0, 0, displacement)
                 self.doc.recompute()
                 result = input_shaft_retention_check(self.doc, "Port")
                 self.assertFalse(result["passed"], result)
@@ -500,7 +461,9 @@ class InputShaftEvidenceTests(unittest.TestCase):
             )
             # Preserve the nut's axial reaction wall, shaft stop and screw
             # contact. Only the pocket's rotation-blocking sides are enlarged.
-            adapter.Shape = original.cut(enlarged).removeSplitter()
+            adapter.Shape = original.cut(
+                coupling.shaft_frame_shape(enlarged)
+            ).removeSplitter()
             self.doc.recompute()
             result = input_shaft_retention_check(self.doc, "Port")
             capture = result["minimum_nut_capture"]

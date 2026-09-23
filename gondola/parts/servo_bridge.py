@@ -33,6 +33,7 @@ CONNECTOR_ARM_OVERLAP = 3.0
 MOUNT_HEAD_ACCESS_DIAMETER = 6.0
 BOLT_X, BOLT_Y = 14.5, 18.0
 MOUNT_GRIP = MOUNT_BOLT_SEAT_Z - NUT_SEAT_Z
+HORN_SERVICE_RADIUS = 2.05
 
 
 def opposite(shape):
@@ -133,6 +134,19 @@ def bridge_shape(drive=SELECTED_DRIVE):
     # Retain the sourced ear axes and their open necks into the body windows.
     void = _ear_clearance(drive)
     bridge = bridge.cut(void).cut(opposite(void))
+    # Open edge reliefs let the prepared example's near horn screw and driver
+    # withdraw rearward. They leave a continuous side ligament; other transferred
+    # hole locations require a fresh service check with the actual horn.
+    near_x, near_z = servo_coupling.HORN_BOLT_CENTRES[0]
+    for sign in (-1, 1):
+        bridge = bridge.cut(
+            Part.makeCylinder(
+                HORN_SERVICE_RADIUS,
+                MOUNT_DEPTH + 2,
+                V(sign * (x + near_x), y - 1, z + near_z),
+                V(0, 1, 0),
+            )
+        )
     # The plate sits above the complete rail-key elbow; its feet stand outside
     # the rail screw head. Neither needs a tunnel, roof notch or thin ring.
     # The lower servo nut also clears the plate, including its removal path.

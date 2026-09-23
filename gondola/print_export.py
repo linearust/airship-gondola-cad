@@ -143,7 +143,7 @@ def print_size_declaration_check(entry, local_sizes_mm, export_sizes_mm, stl_siz
 
 def local_part_dimensions(obj):
     """Measure native local axes with neither placement nor PrintRotation applied."""
-    shape = obj.Shape.copy()
+    shape = manufacturing_shape(obj)
     shape.Placement = App.Placement()
     bounds = shape.optimalBoundingBox(False, False)
     return [bounds.XLength, bounds.YLength, bounds.ZLength]
@@ -159,9 +159,30 @@ def mesh_from_shape(shape):
     )
 
 
+def manufacturing_shape(obj):
+    """Saved machining blank where declared, otherwise the installed solid.
+
+    A blank may add stock, never remove material from the prepared example.
+    Keep this distinction in the saved CAD so independent export validation
+    does not silently manufacture an unmeasured supplied-horn hole pattern.
+    """
+    if not hasattr(obj, "PrintBlankShape"):
+        return obj.Shape.copy()
+    blank = obj.PrintBlankShape.copy()
+    if (
+        blank.isNull()
+        or not blank.isValid()
+        or len(blank.Solids) != 1
+        or not getattr(obj, "AfterPrintPreparation", "")
+        or abs(obj.Shape.cut(blank).Volume) > 1e-5
+    ):
+        raise ValueError("Invalid or undocumented machining blank: " + obj.Name)
+    return blank
+
+
 def print_shape(obj):
     """Orient a local part for manufacture and put its exact minimum at zero."""
-    shape = obj.Shape.copy()
+    shape = manufacturing_shape(obj)
     rotation = obj.PrintRotation
     shape.rotate(App.Vector(), rotation.Axis, math.degrees(rotation.Angle))
     # Legacy BoundBox may overestimate trimmed curves. Exact extrema keep the
@@ -451,6 +472,12 @@ def export_print_parts(assembly, installed, coupons, out, stem):
                 "single_part_volume_cm3": shape.Volume / 1000,
                 "duplicate_geometry_verification": duplicate_checks,
                 "print_notes": str(getattr(obj, "PrintNotes", "")),
+                "manufacturing_geometry": "Saved machining blank"
+                if hasattr(obj, "PrintBlankShape")
+                else "Installed part",
+                "after_print_preparation": str(
+                    getattr(obj, "AfterPrintPreparation", "")
+                ),
                 "checks": checks,
             }
         )

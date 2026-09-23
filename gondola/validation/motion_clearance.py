@@ -19,7 +19,7 @@ MINIMUM_METAL_RESERVE_MM = 1.5
 GUARD_SPHERE_RADIUS_MM = math.hypot(13.0, 24.3)
 RIB_CYLINDER_RADIUS_MM = math.hypot(13.0, 3.2)
 CARRIER_HALF_WIDTH_MM = 26.0
-# This band lies on the clamp end and the complete bearing-cup shoulder.
+# This band lies on the clamp end and the retained bearing-cup stop sectors.
 STOP_WITNESS_INNER_MM = 3.25
 STOP_WITNESS_OUTER_MM = 3.55
 
@@ -62,10 +62,10 @@ def _faces_at(faces, y):
 def carrier_axial_travel(doc, prefix):
     """Measure both travel limits using real, rotation-independent stop faces.
 
-    A complete fixed annular shoulder is required at each frame stop. The
-    carrier must have an actual end-face patch in that radial band. Rotating
-    this patch cannot escape a complete annulus, so it still stops axial travel
-    at every tilt. This proves a nominal geometric stop, not its loaded wear,
+    Both contact patches lie in one rotation-invariant annulus. Their overlap
+    at any angle is at least moving area + fixed area - annulus area. Require
+    a substantial positive bound, allowing bearing-release pockets without
+    relying on sampled poses. This proves a nominal geometric stop, not its loaded wear,
     strength, printed tolerance, bearing preload or friction qualification.
     """
     pod = doc.getObject(prefix + "Pod")
@@ -114,18 +114,25 @@ def carrier_axial_travel(doc, prefix):
             stop_witness = _annular_face(position)
             fixed_faces = _faces_at(frame_faces, position)
             uncovered = stop_witness.cut(fixed_faces).Area
-            if uncovered > TOL:
+            fixed_area = stop_witness.Area - uncovered
+            overlap_lower_bound = moving_area + fixed_area - stop_witness.Area
+            if overlap_lower_bound < 0.25 * stop_witness.Area - TOL:
                 continue
             travel = sign * (position - end)
             row.update(
                 frame_stop_y_mm=position,
                 frame_uncovered_witness_area_mm2=uncovered,
+                frame_contact_area_mm2=fixed_area,
+                all_angles_contact_lower_bound_mm2=overlap_lower_bound,
+                required_contact_lower_bound_mm2=0.25 * stop_witness.Area,
                 travel_mm=max(0.0, travel),
                 passed=travel >= -TOL,
             )
             break
         if not row["passed"]:
-            row["error"] = "No complete fixed annular end stop was found"
+            row["error"] = (
+                "No fixed end stop with sufficient all-angle contact was found"
+            )
         stops.append(row)
     passed = all(row["passed"] for row in stops)
     return {
@@ -134,7 +141,7 @@ def carrier_axial_travel(doc, prefix):
         "negative_mm": stops[0].get("travel_mm"),
         "positive_mm": stops[1].get("travel_mm"),
         "maximum_mm": max(row["travel_mm"] for row in stops) if passed else None,
-        "scope": "Actual planar carrier ends against complete fixed annular shoulder witnesses. Valid through all output rotations; nominal geometry only, without manufacturing tolerance or loaded stop qualification.",
+        "scope": "Actual planar carrier/frame end-face patches within a rotation-invariant annulus. Inclusion-exclusion area bound proves at least 25 percent of the witness area overlaps through every output rotation. Nominal geometry only; no manufacturing, friction or strength qualification.",
         "passed": passed,
     }
 

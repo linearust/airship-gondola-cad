@@ -11,6 +11,8 @@ from .provenance import source_fingerprint
 
 HARDWARE_MATERIAL_CODES = {
     "A2 stainless steel": "A2",
+    "304 stainless steel (seller claim)": "SS304",
+    "Supplied horn material unverified": "UnverifiedHorn",
     "Nylon PA66": "PA66",
     KIT_MATERIAL: "CarbonSteel",
     "Aluminium 6061 (seller claim)": "Al6061",
@@ -115,7 +117,7 @@ def export_hardware_bom(objects, out, stem):
         "source_fingerprint": source_fingerprint(),
         "purchased_hardware_quantity": len(objects),
         "unique_purchase_spec_count": len(rows),
-        "all_threads": "General mechanism fasteners use M2 x0.4. Four X06 ear joints and two prepared horn-tip joints share M1.6 x0.35 screws and nuts. Selected gears have M3 threaded holes; four M3 set screws remain unmodeled pending actual hub and screw dimensions. Bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
+        "all_threads": "General mechanism fasteners use M2 x0.4. Four X06 ear joints and the prepared supplied-horn joints share M1.6 x0.35 screws and nuts. Selected gears have M3 threaded holes; four M3 set screws remain unmodeled pending actual hub and screw dimensions. Bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
         "purchase_scope": hardware_bom_scope(),
         "color": "Gold = purchased hardware; not a material or finish specification.",
         "purchasing_status": "Selected cart variants and supplier drawings recorded; delivered dimensions, material, fit and seller lot not physically verified.",

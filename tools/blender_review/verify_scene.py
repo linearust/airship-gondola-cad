@@ -133,6 +133,11 @@ def verify(payload, blend):
         or len(part_names) != metadata["part_count"]
     ):
         fail("source_part_inventory")
+    descriptions = {
+        part["name"]: part.get("representation") for part in payload["parts"]
+    }
+    if set(metadata.get("excluded_fit_samples", [])).intersection(part_names):
+        fail("bench_sample_in_installed_inventory")
     object_owners, action_owners = {}, {}
     for scene in bpy.data.scenes:
         for obj in scene.objects:
@@ -174,6 +179,12 @@ def verify(payload, blend):
             objects[cad_name] = obj
             if obj.type != "MESH" or obj.get("ReviewScene") != name:
                 fail("cad_object_identity", scene=name, part=cad_name)
+            if (
+                "propellerdisk" not in cad_name.lower()
+                and descriptions.get(cad_name) is not None
+                and obj.get("Representation") != descriptions[cad_name]
+            ):
+                fail("cad_part_representation", scene=name, part=cad_name)
         if set(objects) != set(expected):
             fail(
                 "cad_object_inventory",

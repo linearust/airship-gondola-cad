@@ -22,6 +22,87 @@ def part(name, volume_mm3, *, print_sku=None, hardware_sku=None, material=None):
 
 
 class MassBudgetTests(unittest.TestCase):
+    def test_unverified_horns_keep_null_mass_and_do_not_hide_inventory(self):
+        horns = [
+            part(
+                name,
+                volume,
+                hardware_sku="SuppliedHorn",
+                material="Supplied horn material unverified",
+            )
+            for name, volume in (("PortHorn", 120), ("StarboardHorn", 180))
+        ]
+        shaft = part(
+            "Shaft",
+            1000,
+            hardware_sku="Rod",
+            material="304 stainless steel (seller claim)",
+        )
+        report = mass_budget([part("Frame", 1000)], [shaft, *horns])
+        horn_row = next(
+            row for row in report["hardware"] if row["sku"] == "SuppliedHorn"
+        )
+        self.assertIsNone(horn_row["density_g_cm3"])
+        self.assertIsNone(horn_row["estimated_mass_g"])
+        self.assertEqual(horn_row["total_volume_mm3"], 300)
+        self.assertEqual(report["hardware_part_count"], 3)
+        self.assertFalse(report["modeled_hardware_mass_complete"])
+        unknown = report["hardware_with_unmeasured_mass"]
+        self.assertEqual(len(unknown), 1)
+        self.assertEqual(unknown[0]["instances"], ["PortHorn", "StarboardHorn"])
+        self.assertEqual(unknown[0]["quantity"], 2)
+        self.assertEqual(unknown[0]["material"], "UnverifiedHorn")
+        self.assertAlmostEqual(report["current_hardware_g"], 7.9)
+        self.assertAlmostEqual(report["structure_hardware_g"], 8.91)
+        self.assertAlmostEqual(
+            report["accounted_subtotal_g"], 8.91 + SCOPED_LISTED_EQUIPMENT_MASS_G
+        )
+        self.assertIn("subtotals", report["totals_basis"])
+        self.assertIsNone(
+            report["density_assumptions"]["UnverifiedHorn"]["density_g_cm3"]
+        )
+        self.assertEqual(report["density_assumptions"]["SS304"]["density_g_cm3"], 7.9)
+        self.assertEqual(json.loads(json.dumps(report, allow_nan=False)), report)
+
+        # A zero known subtotal must not turn unknown parts into zero-mass parts.
+        unknown_only = mass_budget([], horns)
+        self.assertEqual(unknown_only["current_hardware_g"], 0)
+        self.assertFalse(unknown_only["modeled_hardware_mass_complete"])
+        self.assertIsNone(unknown_only["hardware"][0]["estimated_mass_g"])
+        self.assertEqual(unknown_only["hardware_part_count"], 2)
+
+    def test_sourced_mass_can_resolve_unknown_material_without_inventing_density(self):
+        horn = part(
+            "Horn",
+            120,
+            hardware_sku="SuppliedHorn",
+            material="Supplied horn material unverified",
+        )
+        horn.ReferenceMassGrams = 0.3
+        horn.ReferenceMassSource = "https://example.test/supplied-horn-datasheet"
+        report = mass_budget([], [horn])
+        self.assertAlmostEqual(report["current_hardware_g"], 0.3)
+        self.assertIsNone(report["hardware"][0]["density_g_cm3"])
+        self.assertEqual(
+            report["hardware"][0]["mass_basis"], "Published reference mass"
+        )
+        self.assertTrue(report["modeled_hardware_mass_complete"])
+        self.assertEqual(report["hardware_with_unmeasured_mass"], [])
+        self.assertFalse(report["is_all_up_flight_mass"])
+        horn.ReferenceMassSource = ""
+        with self.assertRaisesRegex(ValueError, "Invalid reference mass"):
+            mass_budget([], [horn])
+
+    def test_unverified_material_does_not_bypass_solid_volume_validation(self):
+        horn = part(
+            "Horn",
+            0,
+            hardware_sku="SuppliedHorn",
+            material="Supplied horn material unverified",
+        )
+        with self.assertRaisesRegex(ValueError, "solid volume"):
+            mass_budget([], [horn])
+
     def test_complete_bearing_reference_mass_replaces_solid_envelope_estimate(self):
         bearings = [
             part(name, 100, hardware_sku="MR63ZZ", material="Bearing steel")

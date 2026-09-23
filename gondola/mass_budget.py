@@ -9,6 +9,7 @@ from .procurement import hardware_material_code
 DENSITIES_G_CM3 = {
     "PA12": 1.01,
     "A2": 7.9,
+    "SS304": 7.9,
     "PA66": 1.14,
     "CarbonSteel": 7.85,
     "Al6061": 2.70,
@@ -16,6 +17,7 @@ DENSITIES_G_CM3 = {
     "UnverifiedAluminium": 2.70,
     "BearingSteel": 7.85,
     "Aluminium": 2.70,
+    "UnverifiedHorn": None,
 }
 PA12_DENSITY_SOURCE = "https://creallo.com/ko/capability/material/SLS/SLSPA12"
 
@@ -84,11 +86,15 @@ def _grouped_masses(objects, *, hardware, seen_names):
         has_reference = any(item[2] is not None for item in instances)
         if has_reference and (len(reference_values) != 1 or instances[0][2] is None):
             raise ValueError(f"Conflicting reference masses for hardware SKU {sku}")
-        estimated_mass = (
-            math.fsum(item[2] for item in instances)
-            if has_reference
-            else volume_cm3 * density
-        )
+        if has_reference:
+            estimated_mass = math.fsum(item[2] for item in instances)
+            mass_basis = "Published reference mass"
+        elif density is None:
+            estimated_mass = None
+            mass_basis = "Material unverified; no assumed density or mass"
+        else:
+            estimated_mass = volume_cm3 * density
+            mass_basis = "Modeled envelope volume times assumed density"
         rows.append(
             {
                 "sku": sku,
@@ -100,9 +106,7 @@ def _grouped_masses(objects, *, hardware, seen_names):
                 "total_volume_cm3": volume_cm3,
                 "density_g_cm3": None if has_reference else density,
                 "estimated_mass_g": estimated_mass,
-                "mass_basis": "Published reference mass"
-                if has_reference
-                else "Modeled envelope volume times assumed density",
+                "mass_basis": mass_basis,
                 "reference_unit_mass_g": instances[0][2] if has_reference else None,
                 "reference_mass_source": instances[0][3] if has_reference else None,
             }
@@ -114,24 +118,43 @@ def mass_budget(printed, hardware):
     """Count supplied installed instances once; the caller must omit coupons.
 
     No document traversal or equipment-envelope volume is used. Printed solids use
-    PA12 density; hardware requires explicit material metadata. Summing
+    PA12 density; hardware requires explicit material metadata. Explicitly
+    unverified material remains in the inventory with no mass estimate unless a
+    sourced reference mass is available. Summing
     every instance volume avoids assuming that a shared SKU proves equal geometry.
     """
     seen_names = set()
     printed_rows = _grouped_masses(printed, hardware=False, seen_names=seen_names)
     hardware_rows = _grouped_masses(hardware, hardware=True, seen_names=seen_names)
     printed_g = math.fsum(row["estimated_mass_g"] for row in printed_rows)
-    hardware_g = math.fsum(row["estimated_mass_g"] for row in hardware_rows)
+    unknown_hardware = [
+        {
+            "sku": row["sku"],
+            "material": row["material"],
+            "quantity": row["quantity"],
+            "instances": row["instances"],
+            "reason": row["mass_basis"],
+        }
+        for row in hardware_rows
+        if row["estimated_mass_g"] is None
+    ]
+    hardware_g = math.fsum(
+        row["estimated_mass_g"]
+        for row in hardware_rows
+        if row["estimated_mass_g"] is not None
+    )
     structure_g = printed_g + hardware_g
     equipment_g = SCOPED_LISTED_EQUIPMENT_MASS_G
     subtotal_g = structure_g + equipment_g
     return {
-        "method": "BRep solid volume in mm3 / 1000 times density in g/cm3, except explicitly sourced reference masses (such as complete bearings). Purchased geometry is a dimensional envelope: gear teeth, internal bearing details and helical threads may be simplified. These are estimates, not measured samples.",
+        "method": "BRep solid volume in mm3 / 1000 times density in g/cm3, except explicitly sourced reference masses (such as complete bearings). A part with explicitly unverified material and no reference mass has a null estimate, not zero. Purchased geometry is a dimensional envelope: gear teeth, internal bearing details and helical threads may be simplified. These are estimates, not measured samples.",
         "scope": "Modeled installed printed parts, modeled mechanism hardware and the design contract's scoped listed equipment masses. Equipment-envelope volumes are not weighed or converted to mass.",
+        "totals_basis": "current_hardware_g, structure_hardware_g and accounted_subtotal_g are known modeled/listed subtotals. Hardware with null mass estimates, equipment with unmeasured mass and excluded items do not contribute; no complete assembly mass is implied.",
         "is_all_up_flight_mass": False,
+        "modeled_hardware_mass_complete": not unknown_hardware,
         "complete_device_mounting_hardware_included": False,
-        "device_mounting_hardware_scope": "X06 ear screws/nuts and stock horns are included. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
-        "comparison_limit": "Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
+        "device_mounting_hardware_scope": "X06 ear screws/nuts and stock horns are included in the modeled inventory; horns with unverified material and no sourced reference mass have no mass estimate. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
+        "comparison_limit": "Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only; changing which parts have unknown mass can change the accounted subtotal without reducing physical mass. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
                 "density_g_cm3": DENSITIES_G_CM3["PA12"],
@@ -161,11 +184,18 @@ def mass_budget(printed, hardware):
                     "UnverifiedAluminium",
                     "BearingSteel",
                     "Aluminium",
+                    "SS304",
                 )
+            },
+            "UnverifiedHorn": {
+                "density_g_cm3": None,
+                "basis": "Supplied horn material is unverified; no plastic or metal density is assumed.",
+                "source": None,
             },
         },
         "printed": printed_rows,
         "hardware": hardware_rows,
+        "hardware_with_unmeasured_mass": unknown_hardware,
         "printed_part_count": sum(row["quantity"] for row in printed_rows),
         "hardware_part_count": sum(row["quantity"] for row in hardware_rows),
         "current_printed_g": printed_g,

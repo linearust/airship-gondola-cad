@@ -319,7 +319,7 @@ def unresolved_scope(doc):
         obj is not None
         and obj in registry.HardwareParts
         and obj not in registry.PrintedParts
-        and str(getattr(obj, "HardwareSKU", "")) == "KST_0415_13_TIP_D1_8"
+        and str(getattr(obj, "HardwareSKU", "")) == "KST_X06_SUPPLIED_HORN"
         for obj in horns
     )
     mtf = doc.getObject("ModuleMTF02PEnvelope")
@@ -411,6 +411,8 @@ def procurement_and_scope_metadata(obj):
         "FDMPrintValidated",
         "GearConfiguration",
         "DriveContract",
+        "AfterPrintPreparation",
+        "SuppliedHornMeasured",
     )
     values = {}
     for name in fields:
@@ -442,8 +444,27 @@ def compare_shape_objects(actual, expected):
     actual_metadata = procurement_and_scope_metadata(actual)
     expected_metadata = procurement_and_scope_metadata(expected)
     same_metadata = actual_metadata == expected_metadata
+    blank_presence = hasattr(actual, "PrintBlankShape") == hasattr(
+        expected, "PrintBlankShape"
+    )
+    blank = None
+    if hasattr(actual, "PrintBlankShape") and hasattr(expected, "PrintBlankShape"):
+        blank = geometry_comparison(actual.PrintBlankShape, expected.PrintBlankShape)
+    same_blank = blank_presence and (
+        blank is None
+        or all(
+            blank[field] < TOL
+            for field in (
+                "difference_mm3",
+                "bounds_difference_mm",
+                "volume_difference_mm3",
+            )
+        )
+    )
     return {
         "object": actual.Name,
+        "print_blank_unchanged": same_blank,
+        "print_blank_comparison": blank,
         "local_shape": local,
         "world_shape": world,
         "object_type_unchanged": same_type,
@@ -453,6 +474,7 @@ def compare_shape_objects(actual, expected):
         "current_procurement_and_scope_metadata": actual_metadata,
         "baseline_procurement_and_scope_metadata": expected_metadata,
         "passed": same_type
+        and same_blank
         and same_placement
         and same_solids
         and same_metadata

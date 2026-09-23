@@ -250,6 +250,30 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.doc.PortPod.Tilt = old
             self.doc.recompute()
 
+    def test_second_horn_fastener_cannot_be_declared_fixed(self):
+        # Both prepared horn joints rotate with the input. Keeping an object
+        # in the inventory while silently changing its motion group is unsafe.
+        nut = self.doc.PortHornGearClampFarNut
+        parent = nut.getParentGeoFeatureGroup()
+        placement = App.Placement(nut.Placement)
+        try:
+            self.doc.MainPropulsionModule.addObject(nut)
+            self.doc.recompute()
+            result = self.check_without_repeating_all_pair_geometry()
+            self.assertFalse(result["passed"], result)
+            membership = next(
+                row
+                for row in result["input_drive_membership"]
+                if row["group"] == "PortInputDrive"
+            )
+            self.assertFalse(membership["passed"])
+            self.assertIn(nut.Name, membership["expected_parts"])
+            self.assertNotIn(nut.Name, membership["actual_parts"])
+        finally:
+            parent.addObject(nut)
+            nut.Placement = placement
+            self.doc.recompute()
+
     def test_moved_bearing_is_not_exempted_by_its_name(self):
         bearing = self.doc.PortOutputBearingNegative
         original = App.Placement(bearing.Placement)

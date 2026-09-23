@@ -26,3 +26,9 @@ HEAD_ENVELOPE_NOTE = (
     "diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a "
     "published head dimension; socket depth and actual head mass are unknown."
 )
+
+# Selected micro-screw kit: explicit acceptance envelopes, not seller dimensions.
+SERVO_SCREW_HEAD_DIAMETER = 3.5
+SERVO_SCREW_HEAD_HEIGHT = 1.6
+SERVO_SCREW_LENGTH = 8.0
+SERVO_SCREW_MATERIAL = "304 stainless steel (seller claim)"

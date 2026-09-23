@@ -58,6 +58,34 @@ class ContinuousServiceTests(unittest.TestCase):
                 abs(translated_shape(moving, x=distance).cut(swept).Volume), 1e-7
             )
 
+    def test_horn_nut_exit_checks_the_space_between_clear_endpoints(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import purchased_hardware as hardware
+        from gondola.validation.propulsion import _horn_clamp_service_check
+
+        bolt = hardware.servo_screw_shape().copy()
+        nut = translated_shape(hardware.servo_nut_shape(), z=5.2)
+        baseline = _horn_clamp_service_check(bolt, nut, {}, (1, 0, 0))
+        self.assertTrue(baseline["passed"], baseline)
+        self.assertAlmostEqual(baseline["measured_head_envelope_diameter_mm"], 3.5)
+        self.assertAlmostEqual(baseline["measured_head_envelope_height_mm"], 1.6)
+        self.assertEqual(len(baseline["nut_axial_removal"]["segments"]), 2)
+        obstacle = Part.makeBox(0.1, 0.2, 0.2, App.Vector(12.5, -0.1, 8.3))
+        for offset in ((0, 0, 0), (0, 0, 3), (25, 0, 3)):
+            self.assertLess(
+                translated_shape(nut, *offset).common(obstacle).Volume, 1e-7
+            )
+        result = _horn_clamp_service_check(
+            bolt, nut, {"intermediate_obstacle": obstacle}, (1, 0, 0)
+        )
+        self.assertFalse(result["passed"], result)
+        self.assertGreater(
+            result["nut_axial_removal"]["segments"][1]["intersection_mm3"][
+                "intermediate_obstacle"
+            ],
+            0.001,
+        )
+
     def test_invalid_displacement_is_rejected(self):
         from gondola.validation.geometry import translation_sweep
 
@@ -174,27 +202,47 @@ class BearingCaptureTests(unittest.TestCase):
 
         return output_bearing_stack_check(self.doc, "Port", "Positive")
 
-    def test_nominal_capless_stack_keeps_full_bearing_guidance(self):
+    def test_nominal_spacerless_stack_keeps_two_hooks_and_fixed_guidance(self):
         result = self.check()
         self.assertTrue(result["passed"], result)
-        self.assertAlmostEqual(result["maximum_bearing_inward_travel_mm"], 1.0)
-        self.assertAlmostEqual(result["full_bearing_guide_reserve_mm"], 0.5)
-        self.assertGreater(result["inner_ring_contact_at_inward_limit_mm2"], 0.1)
+        self.assertAlmostEqual(result["maximum_bearing_inward_travel_mm"], 0.2)
+        self.assertAlmostEqual(result["maximum_bearing_outward_travel_mm"], 0)
+        capture = result["capture_geometry"]
+        self.assertAlmostEqual(capture["complete_guide_length_mm"], 2.1)
+        self.assertAlmostEqual(
+            capture["complete_guide_overlap_at_inward_limit_mm"], 1.9
+        )
+        self.assertEqual(len(result["hook_contact_patch_areas_mm2"]), 2)
+        self.assertGreater(min(result["hook_contact_patch_areas_mm2"]), 0.5)
+        self.assertIsNone(self.doc.getObject("PortOutputBearingSpacerPositive"))
 
-    def test_missing_spacer_cannot_claim_inward_capture(self):
-        self.doc.PortOutputBearingSpacerPositive.Shape = Part.Shape()
+    def test_missing_one_integral_hook_cannot_claim_inward_capture(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import bearing_retention, propulsion
+
+        frame = self.doc.PropulsionFixedFrame
+        hook = translated_shape(
+            bearing_retention.hook_shape(1),
+            y=propulsion.PIVOT_HALF_SPAN + propulsion.BEARING_START_Y,
+            z=propulsion.PIVOT_Z,
+        )
+        frame.Shape = frame.Shape.cut(hook)
         self.doc.recompute()
         self.assertFalse(self.check()["passed"])
 
     def test_removed_integral_outer_shoulder_cannot_claim_capture(self):
-        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.parts.propulsion import (
+            BEARING_SHOULDER_Y,
+            PIVOT_HALF_SPAN,
+            PIVOT_Z,
+        )
 
         frame = self.doc.PropulsionFixedFrame
         frame.Shape = frame.Shape.cut(
             Part.makeCylinder(
                 3.01,
                 2,
-                App.Vector(0, PIVOT_HALF_SPAN + 30.49, PIVOT_Z),
+                App.Vector(0, PIVOT_HALF_SPAN + BEARING_SHOULDER_Y - 0.01, PIVOT_Z),
                 App.Vector(0, 1, 0),
             )
         )
@@ -206,7 +254,7 @@ class BearingCaptureTests(unittest.TestCase):
 
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
-        for local_y, depth in ((26.5, 3.5), (30.51, 0.5)):
+        for local_y, depth in ((28.91, 1.5), (31.01, 0.5)):
             with self.subTest(local_y=local_y):
                 frame.Shape = original.cut(
                     Part.makeBox(
@@ -222,17 +270,16 @@ class BearingCaptureTests(unittest.TestCase):
         self.doc.recompute()
         self.assertFalse(self.check()["passed"])
 
-    def test_flipped_spacer_flange_cannot_bear_on_the_shield(self):
-        spacer = self.doc.PortOutputBearingSpacerPositive
-        shape = spacer.Shape.copy()
-        shape.rotate(App.Vector(0, 26.75, 0), App.Vector(1, 0, 0), 180)
-        spacer.Shape = shape
+    def test_carrier_protrusion_toward_bearing_shield_is_rejected(self):
+        carrier = self.doc.PortMotorCarrier
+        carrier.Shape = carrier.Shape.fuse(
+            Part.makeCylinder(2.7, 2.6, App.Vector(0, 26, 0), App.Vector(0, 1, 0))
+        )
         self.doc.recompute()
         result = self.check()
         self.assertFalse(result["passed"], result)
-        self.assertGreater(result["spacer_contact_radius_mm"], 1.85)
 
-    def test_extra_carrier_travel_cannot_eject_a_bearing_from_its_guide(self):
+    def test_extra_carrier_travel_cannot_reuse_the_nominal_face_clearance(self):
         from gondola.validation.propulsion import output_bearing_stack_check
 
         result = output_bearing_stack_check(
@@ -242,7 +289,9 @@ class BearingCaptureTests(unittest.TestCase):
             {"passed": True, "negative_mm": 1.5, "positive_mm": 0.5},
         )
         self.assertFalse(result["passed"], result)
-        self.assertLess(result["full_bearing_guide_reserve_mm"], 0.3)
+        self.assertLess(result["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
+        # The fixed hooks still capture the bearing independently of the carrier.
+        self.assertTrue(result["capture_geometry"]["passed"], result)
 
     def test_parent_transform_and_tilt_preserve_the_capture_proof(self):
         root = self.doc.addObject("App::Part", "MovedRoot")
@@ -264,6 +313,7 @@ class NativeGearedDriveTests(unittest.TestCase):
 
         cls.doc = App.newDocument("GearedDriveRegression")
         cls.module = propulsion.build_propulsion_module(cls.doc)
+        propulsion.build_fit_coupons(cls.doc)
 
     @classmethod
     def tearDownClass(cls):
@@ -337,7 +387,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                     servo_bridge.case_front_y() - 16.7,
                 )
                 self.assertAlmostEqual(allowance["inward_planning_volume_mm"][1], 13.9)
-                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 16)
+                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 20)
                 self.assertIn(
                     "StarboardServoEarLowerNut", allowance["checked_physical_objects"]
                 )
@@ -569,12 +619,12 @@ class NativeGearedDriveTests(unittest.TestCase):
             ("InputShaft", App.Vector(0, 0.2, 0), "shaft_stop_contact_mm2"),
             (
                 "InputShaftClampBolt",
-                App.Vector(0.2, 0, 0),
+                App.Vector(0, 0, -0.2),
                 "screw_tip_to_flat_contact_mm2",
             ),
             (
                 "InputShaftClampNut",
-                App.Vector(-0.2, 0, 0),
+                App.Vector(0, 0, 0.2),
                 "nut_to_retaining_wall_contact_mm2",
             ),
         ):
@@ -883,7 +933,7 @@ class NativeGearedDriveTests(unittest.TestCase):
             4,
         )
         self.assertEqual(
-            sum(str(obj.HardwareSKU).startswith("AL6061_CUT3_") for obj in hardware), 6
+            sum(str(obj.HardwareSKU).startswith("SS304_CUT3_") for obj in hardware), 6
         )
         self.assertTrue(
             all(not bool(getattr(obj, "PrintPart", False)) for obj in hardware)
@@ -906,6 +956,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                 doc,
                 propulsion.build_propulsion_module(doc, drive=configuration),
             )
+            propulsion.build_fit_coupons(doc)
 
     @classmethod
     def tearDownClass(cls):
@@ -928,9 +979,9 @@ class SelectedGearDriveTests(unittest.TestCase):
                     gear.Shape.BoundBox.YLength, spec.total_length_mm
                 )
             shaft = doc.getObject(prefix + "InputShaft")
-            self.assertEqual(shaft.HardwareSKU, "AL6061_CUT3_L18_FLAT18_A0")
+            self.assertEqual(shaft.HardwareSKU, "SS304_CUT3_L18_FLAT18_A0")
             self.assertAlmostEqual(shaft.Shape.BoundBox.YLength, 18)
-            self.assertAlmostEqual(shaft.Shape.BoundBox.XLength, 2.5)
+            self.assertAlmostEqual(shaft.Shape.BoundBox.ZLength, 2.5)
             self.assertFalse(bool(getattr(shaft, "PrintPart", False)))
 
     def test_selected_servo_module_has_seated_joint_and_checked_service(
@@ -965,7 +1016,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                         retained = {"PropulsionFixedFrame"} | {
                             prefix + "Output" + part + side
                             for prefix in ("Port", "Starboard")
-                            for part in ("Shaft", "Bearing", "BearingSpacer")
+                            for part in ("Shaft", "Bearing")
                             for side in ("Negative", "Positive")
                         }
                         self.assertTrue(retained.issubset(result["retained_parts"]))
@@ -995,8 +1046,10 @@ class SelectedGearDriveTests(unittest.TestCase):
                 "InputShaftClampBolt",
                 "InputShaftClampNut",
                 "HornGearAdapter",
-                "HornGearClampBolt",
-                "HornGearClampNut",
+                "HornGearClampNearBolt",
+                "HornGearClampFarBolt",
+                "HornGearClampNearNut",
+                "HornGearClampFarNut",
                 "ServoEarLowerBolt",
                 "ServoEarLowerNut",
                 "ServoEarUpperBolt",
@@ -1177,9 +1230,34 @@ class SelectedGearDriveTests(unittest.TestCase):
                     )
                     self.assertTrue(result["output_gear_removal"]["passed"])
                     self.assertTrue(result["adapter_clamp_release"]["passed"])
+                    clamp_release = result["adapter_clamp_release"]
+                    self.assertEqual(clamp_release["release_order"], ["Far", "Near"])
+                    far, near = clamp_release["fasteners"]
+                    self.assertIn(
+                        prefix + "HornGearClampNearBolt", far["retained_parts"]
+                    )
+                    self.assertIn(
+                        prefix + "HornGearClampNearNut", far["retained_parts"]
+                    )
+                    for kind in ("Bolt", "Nut"):
+                        name = prefix + "HornGearClampFar" + kind
+                        self.assertIn(name, near["removed_prior_parts"])
+                        self.assertNotIn(name, near["retained_parts"])
+                    for joint in (far, near):
+                        self.assertEqual(len(joint["nut_axial_removal"]["segments"]), 2)
+                        self.assertAlmostEqual(
+                            joint["measured_head_envelope_diameter_mm"], 3.5
+                        )
+                        self.assertAlmostEqual(
+                            joint["measured_head_envelope_height_mm"], 1.6
+                        )
                     self.assertEqual(
                         set(result["released_fasteners"]),
-                        {prefix + "HornGearClamp" + kind for kind in ("Bolt", "Nut")},
+                        {
+                            prefix + "HornGearClamp" + position + kind
+                            for position in ("Near", "Far")
+                            for kind in ("Bolt", "Nut")
+                        },
                     )
                     case_service = servo_case_service_check(doc, module, prefix)
                     self.assertTrue(case_service["passed"], case_service)
@@ -1201,7 +1279,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                     retained = (
                         {
                             prefix + "Output" + part + side
-                            for part in ("Shaft", "Bearing", "BearingSpacer")
+                            for part in ("Shaft", "Bearing")
                             for side in ("Negative", "Positive")
                         }
                         | {"PropulsionFixedFrame", "ServoDriveBridge"}
@@ -1216,6 +1294,46 @@ class SelectedGearDriveTests(unittest.TestCase):
                         for row in service["part_paths"]:
                             self.assertTrue(row["passed"], row)
                             self.assertTrue(retained.issubset(row["obstacles"]))
+
+    def test_horn_fastener_report_retains_the_other_joint_until_ordered_release(self):
+        from gondola.cad import world_shape
+        from gondola.validation.propulsion import _record_fastener_checks
+
+        doc, module = self.configurations["48_16"]
+        physical = {
+            obj.Name: world_shape(obj)
+            for obj in module["printed"] + module["hardware"] + module["references"]
+        }
+        report = {
+            "fastener_stacks": [],
+            "fastener_service": [],
+            "gear_service": [
+                {"gear": prefix + "OutputGear", "passed": True}
+                for prefix in ("Port", "Starboard")
+            ],
+            "input_drive_service": [
+                {"pod": prefix, "passed": True} for prefix in ("Port", "Starboard")
+            ],
+        }
+        _record_fastener_checks(report, module, physical)
+        for prefix in ("Port", "Starboard"):
+            rows = {row["bolt"]: row for row in report["fastener_service"]}
+            far = rows[prefix + "HornGearClampFarBolt"]
+            near = rows[prefix + "HornGearClampNearBolt"]
+            self.assertTrue(far["passed"], far)
+            self.assertTrue(near["passed"], near)
+            self.assertIn(
+                prefix + "HornGearClampNearBolt", far["retained_service_parts"]
+            )
+            self.assertIn(prefix + "HornGearClampFarBolt", near["removed_local_parts"])
+            self.assertIn(
+                {
+                    "check": "fastener_service",
+                    "object": prefix + "HornGearClampFarBolt",
+                    "passed": True,
+                },
+                near["service_dependencies"],
+            )
 
     def test_servo_case_service_rejects_a_midpath_cradle_obstruction(self):
         from gondola.cad import translated_shape, world_shape
@@ -1271,11 +1389,11 @@ class SelectedGearDriveTests(unittest.TestCase):
             "PortInputShaft",
             "PortInputShaftClampBolt",
             "PortInputShaftClampNut",
-            "PortHornGearClampNut",
+            "PortHornGearClampNearNut",
             "PortServoHorn",
             "PortHornGearAdapter",
             "PortOutputShaftPositive",
-            "PortOutputBearingSpacerPositive",
+            "PortOutputBearingPositive",
             "PropulsionFixedFrame",
             "ServoDriveBridge",
             "ServoBridgePortNut",

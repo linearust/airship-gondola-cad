@@ -185,6 +185,6 @@ def fastener_service_check(
         "nut_thread_disengagement_travel_mm": nut_travel,
         "bolt_withdrawal_travel_mm": bolt_travel,
         "service_order": sequence,
-        "scope": "Modeled full thread/shank withdrawal includes 0.2 mm clearance. Named obstacles stay installed at neutral tilt. Cylindrical driver reservation: 1 mm radius for M2 hex socket, 1.6 mm for M1.6 slotted head. Handling the released nut, actual blade match and wrench handling remain unverified.",
+        "scope": "Modeled full thread/shank withdrawal includes 0.2 mm clearance. Named obstacles stay installed at neutral tilt. Cylindrical driver reservation: 1 mm radius for M2 hex socket, 1.6 mm for the M1.6 Phillips kit head. This is a tool-space envelope, not a measured bit or proof of recess engagement. Handling the released nut, bit match and wrench handling remain unverified.",
         "passed": nut_path["passed"] and bolt_path["passed"] and not tool_hits,
     }

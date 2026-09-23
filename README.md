@@ -2,6 +2,11 @@
 
 Keep source contracts, native CAD metadata and generated artifacts consistent.
 Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
+AM bearing-retention and supplied-horn geometry passed the native validation
+and regression suite; its matching build, preview, comparison and bundle passed.
+Use only matching AM artifacts; AL inspection instructions
+are obsolete for those interfaces. Received-hardware fit and workshop horn
+preparation remain unqualified until physical inspection and trials pass.
 
 ## Authorities
 
@@ -16,17 +21,20 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.
   `references/cart_adaptation_review.md` records cart choices and remaining
-  purchases; current build quantities belong to `contracts/design.py`.
-  `references/retention_review.md` describes inward-loaded bearing cups,
-  integral outer shoulders, bought inner-ring spacers and the staged assembly
-  path. Preserve separate shaft grip and broad carrier/frame axial stops.
+  purchases, including owned kits and the supplied-horn/no-bearing-spacer decisions;
+  current build quantities belong to `contracts/design.py`.
+  `references/retention_review.md` describes integral outer-ring bearing capture,
+  its process coupon and release path, and supplied-horn workshop preparation.
+  Preserve separate shaft grip and broad carrier/frame axial stops. Do not
+  restore purchased bearing spacers or the rejected oil-free bush.
   The optical seats use direct M2 clamps; the archived
   latch review records a superseded trial, not an assembly instruction.
   `references/rail_joint_review.md` explains the solid rail-head clamp,
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
   `references/shape_simplification_review.md` records the optical portal and
-  open paired-servo support, horn adapter and straight P-AS arm. Preserve their
+  open paired-servo support and straight P-AS arm. Its earlier horn-adapter
+  description is superseded by the current retention/preparation contract. Preserve their
   locating faces, load paths and functional service openings. The optical
   connecting post stays in the pitch-ear plane and above the roll nut's
   rotation envelope; do not widen it into either fastener.
@@ -76,14 +84,17 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   Check continuous rotation envelopes near fasteners as well as sampled poses.
   Include permitted axial travel in clearance and gear-face engagement budgets;
   distinguish deliberate bearing, gear and axial-stop contact from collisions.
-- The selected plain-bore driver gears mount on short nominal-3mm input stubs,
-  retained in open printed clamping adapters on bought KST horns. Preserve the
-  short root/end locating faces and verify their registration from saved geometry;
-  bolt-hole clearance alone does not establish concentricity. The prepared-horn
-  purchase key requires enlarging only the sourced tip hole for the direct
-  M1.6 adapter joint; do not describe that modification as a factory feature
-  or infer strength from clearance tests. Keep the original horn spline and
-  retaining screw; do not invent a printed spline or restore
+- The selected plain-bore driver gears mount on short input stubs retained in
+  prepared printed adapters on the X06's supplied horns. Their actual geometry
+  is unmeasured: do not restore a separately purchased horn, its outline or
+  sourced tip-hole preparation. Export the adapter's undrilled `PrintBlankShape`,
+  not the illustrative faced/drilled assembly shape. Preserve the declared
+  facing/fastener envelope and temporary centering-jig contract. Transfer two
+  sound fastening sites while centered, then drill with both parts removed from
+  the servo. Qualify actual concentricity and bidirectional torque retention;
+  nominal bolt holes and the prototype jig do not prove either. Keep the original
+  spline and OEM screw, removing the adapter for screw service. Do not invent
+  a printed spline or restore
   the former hollow journal for a 7 mm gear bore. Only output axes use external
   bearings. One removable bridge carries both servos in a common central wall
   and retains their complete input drives. A central seat supports that wall
@@ -110,6 +121,13 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   bearing journals round; full-length flats belong only on input stubs. Generic
   selected bearings are not certified ISC parts; retained ISC evidence is a
   dimensional comparison, not the purchased lot's mass or fit qualification.
+  `parts/bearing_retention.py` owns the integral outer-ring hooks, side pockets,
+  fixed cup and matched process coupon. Its released-arm shape is prescribed
+  kinematics, not elastic simulation. Check saved hook material, pockets, guide
+  engagement, shield clearance and removal-tool paths; preserve open pockets
+  when joining cups to posts. Coupon fitting and repeated physical retention/
+  release checks precede full-frame fabrication. No shield-contact substitute,
+  press-fit assumption or bearing preload closes an unverified retention path.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
@@ -126,7 +144,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   sensor frame.
 - Passing geometry tests does not resolve physical qualification or change
   `contracts.design.release_status()`. Keep estimated mass exclusions and
-  unresolved interfaces explicit in generated outputs.
+  unresolved interfaces explicit in generated outputs. Unverified supplied-horn
+  material has no assumed density or mass; preserve null estimates and unknown
+  inventory rows. Report known subtotals without claiming physical mass savings
+  from removing unknown values from a sum.
 - Preserve the pinned fixture during refactors. Intentional geometry or native
   contract changes require an old/new shape, placement, control and metadata
   audit before updating the fixture and checksum. Never regenerate it merely

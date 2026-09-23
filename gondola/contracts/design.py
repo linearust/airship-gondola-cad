@@ -9,12 +9,11 @@ from dataclasses import asdict, dataclass
 from .drive import SELECTED_DRIVE
 from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 from .fasteners import KIT_MATERIAL
-from .hardware import BEARING_SPACER
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AL"
+DESIGN_REVISION = "AM"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -58,10 +57,10 @@ MANUFACTURING_DECISION = {
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
-    "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, bearings, spacers and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
-    "bearings_and_frame": "Bearings enter inward-facing pockets before the carrier is inserted. Integral outer shoulders replace separate caps and fasteners. Four bought flanged metal spacers limit inward bearing withdrawal while contacting only inner rings; enlarged carrier ends retain broad axial stop faces against the frame. Stage spacers and retract shafts before inserting/removing the carrier. Do not assume printed interference or a snap fit retains the bearings.",
+    "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
+    "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
-    "horn_and_adapter": "The bought KST horn retains its original spline and OEM retaining screw. Enlarge only its existing tip hole to 1.8 mm and attach the one-piece printed adapter with an M1.6x8 screw/nut shared with the servo ears. Open arm sides remove the enclosing blade walls; only a short root register and small tip stop retain nominal position. The broad front face and through-bolt clamp the blade, without a separate printed backstrap, new fastener family or washer. Install the OEM screw first; the tip screw is accessible from behind at neutral. Local metal preparation and loaded retention require physical verification.",
+    "horn_and_adapter": "Use each X06 supplied horn with its genuine spline and OEM centre screw. A one-piece flat adapter blank is locally prepared with the actual horn using the centring jig and documented machining zone. The displayed prepared horn is an acceptance example, not measured supplied hardware. Do not reproduce a spline or assume the old 0415.13 outline. Preserve coaxial registration and gear plane, adequate edge distances and two-way torque retention. Original screw access and the ordered coupling removal path remain required. No separate rear strap or permanent alignment jig.",
     "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base is one open rectangular portal with its top beam flush with the two legs; broad feet clamp directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
 }
 
@@ -122,32 +121,30 @@ PURCHASED_HARDWARE_QUANTITIES = {
     "M2X8_BUTTON_HEAD": 13,
     "M2X6_BUTTON_HEAD": 2,
     "M2_HEX_NUT": 15,
-    "M1_6X8_CHEESE_HEAD": 6,
-    "M1_6_HEX_NUT_DIN934": 6,
+    "M1_6X8_PAN_HEAD_KIT": 8,
+    "M1_6_HEX_NUT_DIN934": 8,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "BEARING_3X6X2_5": 4,
-    BEARING_SPACER["sku"]: 4,
-    "AL6061_CUT3_L24_FLAT5_A0": 2,
-    "AL6061_CUT3_L14": 2,
-    "AL6061_CUT3_L18_FLAT18_A0": 2,
-    "KST_0415_13_TIP_D1_8": 2,
+    "SS304_CUT3_L24_FLAT5_A0": 2,
+    "SS304_CUT3_L14": 2,
+    "SS304_CUT3_L18_FLAT18_A0": 2,
+    "KST_X06_SUPPLIED_HORN": 2,
 }
 
 HARDWARE_MATERIALS = {
     "M2X8_BUTTON_HEAD": KIT_MATERIAL,
     "M2X6_BUTTON_HEAD": KIT_MATERIAL,
     "M2_HEX_NUT": KIT_MATERIAL,
-    "M1_6X8_CHEESE_HEAD": "A2 stainless steel",
-    "M1_6_HEX_NUT_DIN934": "A2 stainless steel",
+    "M1_6X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
+    "M1_6_HEX_NUT_DIN934": "304 stainless steel (seller claim)",
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
     "BEARING_3X6X2_5": "Bearing steel",
-    BEARING_SPACER["sku"]: BEARING_SPACER["material"],
-    "AL6061_CUT3_L24_FLAT5_A0": "Aluminium 6061 (seller claim)",
-    "AL6061_CUT3_L14": "Aluminium 6061 (seller claim)",
-    "AL6061_CUT3_L18_FLAT18_A0": "Aluminium 6061 (seller claim)",
-    "KST_0415_13_TIP_D1_8": "Aluminium alloy (grade unspecified)",
+    "SS304_CUT3_L24_FLAT5_A0": "304 stainless steel (seller claim)",
+    "SS304_CUT3_L14": "304 stainless steel (seller claim)",
+    "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
+    "KST_X06_SUPPLIED_HORN": "Supplied horn material unverified",
 }
 
 EXPECTED_INVENTORY = {
@@ -156,10 +153,10 @@ EXPECTED_INVENTORY = {
     "tilting_propulsors": 2,
     "installed_prints": 12,
     "optical_mount_parts": 3,
-    "fit_coupons": 3,
+    "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 13,
+    "unique_print_files": 14,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -200,7 +197,7 @@ WIRING_PURCHASE_PLAN = {
         "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
     ],
     "seller_or_completed_harness_verified": False,
-    "stock_replacement_decision": "Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and direct horn-to-gear adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.",
+    "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, OEM supplied X06 horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchase of bearing spacers or separate 0415.13 horns. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and prepared supplied-horn adapters. The centring jig and fit coupons are bench tools, not installed parts.",
 }
 
 
@@ -248,7 +245,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw. Inspect the locally enlarged 1.8 mm tip hole at radius13.2mm, metal blade integrity, M1.6 head bearing and nut seating; CAD does not qualify this modification. Verify the printed horn-adapter short root/end locating faces and open blade sides, 8 mm D socket and locally cut Ø3×18 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; open blade sides do not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
+        "Verify the actual supplied X06 horn against the adapter preparation envelope. Keep its spline and OEM screw intact. Centre the horn and adapter with the bench jig, prepare attachment holes only in sound material with sufficient edge distance, then verify assembled runout and loaded retention in both directions. The displayed horn and fastener arrangement are a preparation example, not a measured part. Verify actual blade thickness, installed height, screw-head protrusion, safe nut engagement and OEM screw access. The D-socket and nominal-3mm 304 stub retain the original gear bore and gear plane. Direct gear loading, PA12 creep and servo output radial-load capacity remain unqualified.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -256,7 +253,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "gear_mesh_and_shaft_retention",
-        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T selected seller pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. A broad central Z seat, two local mounting seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Check that the two outer seats are coplanar with each other and that all three corresponding contact faces, including the higher central seat, seat simultaneously; reject rocking. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3×6×2.5 bearing and Ø3 6061 rod fits, integral outer shoulders, flanged metal inner-ring spacers, full bearing seating throughout permitted axial movement, shield clearance and broad carrier/frame axial stops. Measure the actual spacer lengths, frame spacing and carrier width together; reject preload, shield rubbing, inadequate bore engagement or excess endplay. Follow the staged inward bearing/spacer and retracted-shaft assembly path. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision Ø3 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.",
+        f"Check the purchased {SELECTED_DRIVE.driver.teeth}T/{SELECTED_DRIVE.output.teeth}T selected seller pair at nominal {SELECTED_DRIVE.center_distance_mm:g} mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. A broad central Z seat, two local mounting seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Check that the two outer seats are coplanar with each other and that all three corresponding contact faces, including the higher central seat, seat simultaneously; reject rocking. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3×6×2.5 bearing and Ø3 304 rod fits, integral outer-ring shoulders/latches, fixed guide support, shield clearance and independent carrier/frame axial stops. Measure the bearing pocket, released-latch clearance, frame spacing and carrier width together; reject preload, shield rubbing, weak latch retention or excess endplay. Follow the inward bearing insertion and retracted-shaft assembly path; printed flexure recovery and retention need a physical coupon. Rod tolerance evidence is waived as a design blocker; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision Ø3 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.",
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
@@ -311,7 +308,7 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
-            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Selected stock horns and modeled adapter hardware are included.",
+            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Supplied horns and modeled adapter hardware are included; no separate horn purchase is required.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
         ],

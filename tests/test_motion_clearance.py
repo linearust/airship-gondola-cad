@@ -62,6 +62,44 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             places=6,
         )
 
+    def test_open_release_pockets_preserve_a_substantial_all_angle_stop_bound(self):
+        from gondola.validation.motion_clearance import carrier_axial_travel
+
+        doc, _ = self.module()
+        for prefix in ("Port", "Starboard"):
+            result = carrier_axial_travel(doc, prefix)
+            self.assertTrue(result["passed"], result)
+            for stop in result["stops"]:
+                # AM deliberately leaves the side pockets open. A test that
+                # still demanded a complete fixed annulus would refill them.
+                self.assertGreater(stop["frame_uncovered_witness_area_mm2"], 0.1)
+                self.assertGreaterEqual(
+                    stop["all_angles_contact_lower_bound_mm2"],
+                    0.25 * stop["witness_area_mm2"],
+                )
+                self.assertAlmostEqual(stop["travel_mm"], 0.5)
+
+    def test_a_small_remaining_stop_sector_cannot_claim_all_angle_contact(self):
+        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.validation.motion_clearance import carrier_axial_travel
+
+        doc, _ = self.module()
+        frame = doc.PropulsionFixedFrame
+        # Keep one quarter of the annular stop, including real neutral contact,
+        # while removing the other sectors through every possible cup face.
+        remove_right = Part.makeBox(
+            8, 10, 16, App.Vector(0, PIVOT_HALF_SPAN + 26.4, PIVOT_Z - 8)
+        )
+        remove_upper_left = Part.makeBox(
+            8, 10, 8, App.Vector(-8, PIVOT_HALF_SPAN + 26.4, PIVOT_Z)
+        )
+        frame.Shape = frame.Shape.cut(remove_right.fuse(remove_upper_left))
+        doc.recompute()
+        result = carrier_axial_travel(doc, "Port")
+        self.assertFalse(result["passed"], result)
+        self.assertTrue(result["stops"][0]["passed"], result)
+        self.assertFalse(result["stops"][1]["passed"], result)
+
     def test_curved_protrusion_cannot_hide_between_its_inside_vertices(self):
         from gondola.validation.motion_clearance import (
             GUARD_SPHERE_RADIUS_MM,
@@ -145,11 +183,12 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         from gondola.validation.propulsion import output_bearing_stack_check
 
-        # Distant mounting screws still clear, but the frame envelope and
-        # bearing capture both reject this increased endplay.
+        # The fixed bearing hooks still capture the bearing. Increased carrier
+        # motion instead consumes its separate clearance from the bearing face.
         bearing = output_bearing_stack_check(doc, "Port", "Negative")
         self.assertFalse(bearing["passed"], bearing)
-        self.assertLess(bearing["full_bearing_guide_reserve_mm"], 0.3)
+        self.assertLess(bearing["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
+        self.assertTrue(bearing["capture_geometry"]["passed"], bearing)
 
     def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check

@@ -1,94 +1,92 @@
-# Selected cart and preparation work
+# Selected cart and preparation work — AM
 
-This is a record of the user-selected cart variants and preparation work, not
-a seller certification or an exported bill of materials. Current installed
-quantities and exclusions are authoritative in `gondola/contracts/design.py`.
-The user authorized adapting CAD to these selected parts. Preserve unresolved
-interfaces instead of restoring previous MISUMI/POM or A2 fastener assumptions.
+This records the user's selected parts and preparation decisions, not seller
+certification or a shopping list. The AM geometry passed native validation and
+regression checks; use matching AM exports and the AM inspection packet for the
+changed interfaces. This does not qualify the received parts or prepared horn.
+Current installed quantities belong to `gondola/contracts/design.py` and the matching
+generated BOM, not the cart pack counts.
 
-## Selected relevant items
+## Selected parts and exclusions
 
-| Cart selection | Design treatment |
+| Selection | Design treatment |
 | --- | --- |
-| M2 482-piece black-steel button-head kit | M2 x 4/5/6/8/10/12/16/20: 30 of each; hex nuts 240; 1.5 mm keys 2. The selected lengths cover the modeled M2 joints. Kit contents are not dimensional certification. |
-| Gemfan 1610, 4 pairs Blue 1.5 mm | Corrected bore matches the nominal 1.5 mm RS1102 shaft; main propulsion uses one CW and one CCW. |
-| RS1102, 4 PCS 10000KV | Two installed main motors; the other motors are outside gondola scope or spares. |
-| KST X06 V6.0, six units | Two tilt servos in CAD; fin servos and spares are outside its scope. Preserve the regular mounting-tab variant. |
-| Generic 3 x 6 x 2.5 mm bearings, 10-piece pack | Four installed. Actual race lands, shields, clearance, material and mass remain unverified; do not identify the lot as NSK/ISC MR63ZZ. |
-| 6061 nominal 3 x 330 mm rod, five-piece pack | Cut and prepare as below. Diameter tolerance, straightness and temper are unpublished; verify received rod in the bearings and gears first. |
-| Kailash 48T / 3 mm and 16T / `3mm3`, three of each | Two pairs installed, one pair spare. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md) for actual dimensions and remaining material/screw uncertainties. |
-| MicoAir743v2 AIO35A, PX4 option | Selected FC/ESC model. Firmware option is not a completed PX4 integration or ground-power test. |
-| Tattu 2S 450 mAh 75C | Electrical selection matches; XT30 variant, long-pack dimensions and received mass still need verification. |
-| XT30 35 V 220 uF lead | Selected electrical option; actual lead/capacitor envelope, polarity and strain relief remain received-part checks. |
-| MTF-02P; LR900-A; XR2 Nano 2.4G | Selected sensor/radio/receiver. LR900-A pack contents and ground-radio availability need checking; XR2 mounting is not yet modeled. |
-| SH 1.0 mm connector kit | Subtract supplied device cables. This does not supply the required GH 1.25 mm ends or establish pin order; follow the wiring contract. |
+| Owned M2 482-piece black-steel button-head kit | Eight lengths and hex nuts cover the modeled M2 joints. Do not request another purchase. Measure the actual heads/nuts against the declared design envelopes. |
+| Selected M1.4/M1.6 Phillips kit, assorted lengths | Use received screws after checking head envelope, usable engagement and tool access. Do not ask for the length inventory again or identify this kit as DIN84 slotted screws. |
+| Owned GH1.25 and selected SH1.0 connector kits | Subtract supplied cables before preparing harnesses. Connector families do not establish pin order or voltage. |
+| Gemfan 1610, 1.5 mm bore | Two main propellers, one CW and one CCW. Match the actual RS1102 shaft. |
+| RS1102 10000KV | Two main motors in this CAD; aft motor and spares are outside gondola scope. |
+| KST X06 V6.0, regular mounting tabs | Two tilt servos. Use their supplied horns and original spline screws; fin servos and spares are outside this CAD. |
+| Generic 3 x 6 x 2.5 mm ball bearings | Four installed. Actual race lands, shields, internal play, fit, material and mass remain unverified. Do not identify the received lot as NSK/ISC MR63ZZ. |
+| Selected nominal Ø3 mm 304 rods | Prepare the six shafts below. The user accepts replacing unsuitable stock with precision shafts; nominal size does not establish a fit tolerance. |
+| Kailash 48T / 3 mm and 16T / `3mm3` | Two pairs installed. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md); do not restore the old MISUMI/POM assumptions. |
+| MicoAir743v2 AIO35A, PX4 option | Selected FC/ESC. The option is not completed firmware or ground-power validation. |
+| Tattu 2S 450 mAh 75C, XT30 | Long-pack dimensions, leads and received mass still require inspection. |
+| XT30 lead, 35 V / 220 µF capacitor | Inspect actual envelope, polarity and strain relief. |
+| MTF-02P; LR900-A; XR2 Nano 2.4G | Selected sensor/radio/receiver. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
 
-MG-A01 M10 Ultra and the ordinary servo Y harness belong to separate user work
-and are excluded from this gondola. Do not introduce either while reconciling
-the cart. Other test equipment, the X500/Pixhawk platform, furnishing and balloon
-experiments do not define gondola mounting interfaces.
+The user will not purchase bearing spacers. AM uses direct frame-side capture
+of the ball-bearing outer rings; no HIROSUGI spacer, 3 x 5 x 3 mm oil-free bush,
+ordinary washer or push-on shaft ring replaces it. The rejected bush touches
+the selected bearing shield. Do not enlarge the assembly to accommodate it or
+accept shield contact as a thrust interface. See [retention](retention_review.md)
+for the process-coupon and assembly requirements.
+
+MG-A01, the ordinary servo Y harness, push-on retaining-ring kit and nylon M2
+standoff kit are outside this purchasing/design change. Other test equipment,
+X500/Pixhawk hardware, furnishings and balloon experiments do not define
+gondola mounting interfaces. FC/P-AS support stacks remain separate unresolved
+interfaces; the bearing-spacer decision does not delete those requirements.
 
 ## Rod preparation
 
 | Quantity | Cut length | Flat preparation | Role |
 | --- | --- | --- | --- |
-| 2 | 24 mm | 5 mm-long local flat starting at the gear end; nominal depth 0.5 mm | Geared output stubs; keep bearing journals round |
+| 2 | 24 mm | 5 mm-long flat from the gear end; nominal depth 0.5 mm | Geared output stubs; keep bearing journals round |
 | 2 | 14 mm | None | Opposite output stubs |
-| 2 | 18 mm | Full-length flat; nominal depth 0.5 mm | Input stubs captured by the horn couplings; no external bearing journal |
+| 2 | 18 mm | Full-length flat; nominal depth 0.5 mm | Input stubs; no external bearing journal |
 
-Cut square and deburr without enlarging the bearing fit. Cut lengths exclude
-saw kerf and finishing allowance. Confirm fit on a sample before preparing the
-batch. Clock flats to the actual screws; the photographs do not define their
-phase relative to the teeth. The stock-preparation keys and CAD remain the
-authority if this table is intentionally revised.
+Lengths exclude saw kerf and finishing allowance. Cut square and deburr;
+confirm received-stock fit in the bearings and gears before preparing a batch.
+Do not assign an unpublished h5 tolerance. Clock flats to the actual screws;
+photos do not establish their phase relative to gear teeth. Encoded preparation
+keys and the final CAD remain authoritative if the interfaces change.
 
-## Fastener adaptation and purchases not covered by the cart
+## Fasteners and preparation
 
-The M2 kit replaces thin square nuts, PA66 screws and rail set screws. Rail
-clamps, propulsion structural joints, optical pivots and optical feet use 8 mm
-screws; the short radial coupling joints retain 6 mm screws. The optical feet
-are directly clamped. The modeled mechanism uses these two M2 lengths;
-prepared horn-tip joints share the servo-ear M1.6 hardware. No washers are
-required by the modeled stacks. A 4.5 mm-diameter by 2 mm-high head cylinder is a **design acceptance
-envelope**, not a supplier claim. Measure actual button heads and nuts before
-manufacturing. The hex rail seat requires the finished-size range and coupon
-checks in `parts/rail.py`; raw PA12 tolerance alone does not qualify capture.
+The mechanism uses M2 button-head screws of 8 mm and 6 mm length with one M2
+hex-nut family. The short radial shaft joints use the 6 mm screws. No washer
+is required by the modeled stacks. The Ø4.5 x 2 mm M2 head cylinder is a design
+acceptance envelope, not a measured or published kit dimension. Inspect actual
+head bearing faces, nut capture and rail contact; qualify the finished rail
+nut-seat range with the matched coupon.
 
-Still needed or unresolved:
+The M1.6 Phillips screws have their own declared head envelope in
+`contracts/fasteners.py`. The actual head, tool fit and safe thread engagement
+must fit the receiving joint. Their use does not establish OEM motor screw
+depth or the supplied horn's central retaining-screw specification.
 
-- Two KST 0415.13 horns, retaining the proper OEM spline screws. The unmeasured
-  plastic horns in the servo box are not automatic replacements. Enlarge only
-  the existing tip hole at radius 13.2 mm from nominal 1.0 mm to 1.8 mm, supporting
-  the blade and deburring without countersinking. This is local preparation,
-  not a factory hole or a qualified strength change. Inspect for distortion
-  and cracks and verify the assembled joint under bidirectional load.
-- M1.6 x 8 DIN84 screws and M1.6 DIN934 nuts for both servo ears and
-  prepared horn-tip joints; use the current quantities in the generated BOM
-  and inspect actual hole, head and nut seating. These are separate from the M2 kit.
-- HIROSUGI F3035-5105T flanged metal bearing spacers. These replace the
-  printed caps and their fasteners; verify received bearing lands and assembled
-  endplay. The catalog minimum is 50 pieces and Korean supply is unconfirmed.
-  See [retention review](retention_review.md).
-- Four actual M3 gear set screws, after checking what is supplied. Screw length,
-  point, projection and the 48T screw-axis location remain unverified.
-- Motor M1.4 screws, FC damping/insulation hardware, P-AS mounting hardware and
-  finished harnesses: identify supplied parts and establish safe lengths before
-  buying replacements. Their unverified interfaces are not completed by this
-  M2 kit or by a passing CAD envelope check.
-- The LinkTrack P-AS and compatible ground equipment are not established as
-  purchased by this cart. Subtract any already-owned items before ordering.
+The supplied-horn adapter is a workshop-prepared blank, not a part that assumes
+the purchased horn has the old KST 0415.13 outline or a 13.2 mm tip hole. Retain
+the genuine spline and OEM screw. Check actual horn geometry and complete the
+centred, two-hole preparation described in [retention](retention_review.md).
+There is no separate horn purchase requirement. Its material and mass remain
+unknown; a null mass is not a zero-mass part or a demonstrated mass saving.
 
-Previous revision-AA exports do not represent these choices. Release artifacts
-must be regenerated from the complete current source and reviewed together; passing
-geometry checks never certifies the received hardware or flight readiness.
+Still establish from the received parts:
 
-The AH rail/head and bearing-post-root revision retains these purchase
-quantities. Its 1.5 mm L-key access uses the short arm at the propulsion frame
-and the long arm at equipment carriers; compare the supplied kit tool with the
-checked envelope in [rail joint review](rail_joint_review.md).
+- Four M3 gear set screws: supplied contents, lengths, points, projection and
+  the 48T screw-axis position are unverified.
+- Motor M1.4 screw engagement, FC damping/insulation and fastening stacks,
+  P-AS support/fastening stacks and finished harnesses. Use owned/supplied
+  hardware first; only identified shortfalls justify purchases.
+- LinkTrack P-AS and compatible ground equipment: this cart does not establish
+  their purchase. Subtract already-owned equipment before ordering.
 
-The subsequent AJ close-fit rail and central servo revision preserve this purchase selection;
-see `references/shape_simplification_review.md`. Current release changes are
-audited in `tests/fixtures/rev_ak_review.json`.
-Earlier geometry and assembly instructions remain in Git history and the
-versioned fixture reviews; they are not current build instructions.
+The checked rail L-key envelope remains a tool compatibility requirement;
+compare the supplied tool with [rail access](rail_joint_review.md). Geometry
+checks do not certify received hardware, printed spring recovery or flight
+readiness. The AM fixture was updated after the native old/new geometry and
+metadata audit. Future changes require a new audit and regenerated release
+artifacts from one frozen source. Earlier assembly methods belong to Git history,
+not current instructions.

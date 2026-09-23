@@ -51,6 +51,35 @@ def color(obj, category, rail_names):
     return [0.29, 0.34, 0.4, 1]
 
 
+def representation(obj):
+    """Describe the installed proxy without substituting manufacturing stock."""
+    if hasattr(obj, "SuppliedHornMeasured") and not obj.SuppliedHornMeasured:
+        return "Unmeasured supplied X06 horn; locally prepared example, not purchased dimensions or verified material."
+    if hasattr(obj, "PrintBlankShape"):
+        return "Prepared assembly example only; the manufacturing print uses a separate undrilled blank."
+    return "Saved nominal installed CAD shape."
+
+
+def review_objects(registry):
+    """Installed leaves only: no fit samples, centring jig or clearance solids."""
+    objects = [obj for category in CATEGORIES for obj in getattr(registry, category)]
+    names = [obj.Name for obj in objects]
+    if len(set(names)) != len(names):
+        raise RuntimeError("Registry contains duplicate review parts.")
+    excluded = {
+        obj.Name
+        for field in ("FitCoupons", "ClearanceVolumes")
+        for obj in getattr(registry, field)
+    }
+    if excluded.intersection(names):
+        raise RuntimeError(
+            "A bench fit sample or clearance volume leaked into installed review parts."
+        )
+    if any("OutputBearingSpacer" in name for name in names):
+        raise RuntimeError("Update the axial-travel caption for an installed spacer.")
+    return objects
+
+
 def check_review_basis(doc, report):
     """Reject stale presentation assumptions after a mechanical redesign."""
     evidence = report["local_propulsion_evidence"]
@@ -60,6 +89,23 @@ def check_review_basis(doc, report):
             "Update review angles and captions for the selected gearing."
         )
     for prefix in ("Port", "Starboard"):
+        horn = doc.getObject(prefix + "ServoHorn")
+        adapter = doc.getObject(prefix + "HornGearAdapter")
+        if (
+            horn is None
+            or getattr(horn, "SuppliedHornMeasured", True)
+            or adapter is None
+            or not hasattr(adapter, "PrintBlankShape")
+        ):
+            raise RuntimeError(
+                "Update review captions for changed horn/preparation evidence."
+            )
+        for position in ("Near", "Far"):
+            for kind in ("Bolt", "Nut"):
+                if doc.getObject(prefix + "HornGearClamp" + position + kind) is None:
+                    raise RuntimeError(
+                        "Expected both prepared-example horn fastening pairs."
+                    )
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
@@ -116,11 +162,7 @@ def export(cad_path, output):
                 "Validation report does not identify these exact saved CAD bytes."
             )
         check_review_basis(doc, report)
-        objects = [
-            obj for category in CATEGORIES for obj in getattr(registry, category)
-        ]
-        if len({obj.Name for obj in objects}) != len(objects):
-            raise RuntimeError("Registry contains duplicate review parts.")
+        objects = review_objects(registry)
         rail_names = {obj.Name for obj in registry.RailSegments}
         parts = []
         max_bound_error = 0.0
@@ -154,6 +196,7 @@ def export(cad_path, output):
                         "name": obj.Name,
                         "label": obj.Label,
                         "category": category,
+                        "representation": representation(obj),
                         "color": color(obj, category, rail_names),
                         "vertices": [[v.x, v.y, v.z] for v in vertices],
                         "triangles": [list(triangle) for triangle in triangles],
@@ -236,7 +279,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks show swept envelopes, not blade geometry.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Supplied horns and machined adapters are unmeasured preparation examples. Bench centring jig and print blanks are not installed parts.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -296,7 +339,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver and 16T driven gear: input -60..+60 deg, output +180..-180 deg. Reference tooth geometry; no backlash or contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Supplied horn and paired-drilled adapter are preparation examples, not measured purchased fits or print blanks. Reference teeth; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -322,7 +365,7 @@ def export(cad_path, output):
         scene(
             "04 Axial allowance",
             "AXIAL TRAVEL AT ACTUAL SCALE",
-            "Carrier movement +/-0.5 mm to frame stops; NOT bearing internal play. Spacers are shown in the nominal carried position, not keyed. No friction, retention or load simulation.",
+            "Carrier and shafts move +/-0.5 mm toward integral frame stops; NOT bearing internal play. Bearings stay fixed in this prescribed pose; no spacer is installed. No friction, bearing-capture deformation, retention or load simulation.",
             241,
             port_detail,
             [[-18, 83, 36], [18, 100, 61]],
@@ -444,6 +487,8 @@ def export(cad_path, output):
                 "units": "mm",
                 "fps": 24,
                 "part_count": len(parts),
+                "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
+                "installed_representation": "Prepared assembly examples are displayed; undrilled PrintBlankShape stock and the bench-only centring jig are excluded.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(report_path),

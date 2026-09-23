@@ -35,9 +35,9 @@ class NativeHardwareProcurementTests(unittest.TestCase):
         self.addCleanup(App.closeDocument, doc.Name)
         for index, (code, detail) in enumerate(
             (
-                ("AL6061_CUT3_L18_FLAT18_A0", "length 18 mm, starting 0 mm"),
-                ("AL6061_CUT3_L24_FLAT5_A0", "length 5 mm, starting 0 mm"),
-                ("AL6061_CUT3_L14", "Leave the rod round"),
+                ("SS304_CUT3_L18_FLAT18_A0", "length 18 mm, starting 0 mm"),
+                ("SS304_CUT3_L24_FLAT5_A0", "length 5 mm, starting 0 mm"),
+                ("SS304_CUT3_L14", "Leave the rod round"),
             )
         ):
             obj = purchased_hardware.add_hardware(
@@ -61,7 +61,7 @@ class HardwareSpecificationTests(unittest.TestCase):
             procurement_spec("UNREGISTERED_PART")
         self.assertIsNone(procurement_spec("UNREGISTERED_PART", allow_unknown=True))
         with self.assertRaises(ValueError):
-            procurement_spec("AL6061_CUT3_L14_FLAT15_A0", allow_unknown=True)
+            procurement_spec("SS304_CUT3_L14_FLAT15_A0", allow_unknown=True)
 
     def test_every_selected_hardware_sku_has_a_portable_purchase_specification(self):
         for code in PURCHASED_HARDWARE_QUANTITIES:
@@ -73,12 +73,12 @@ class HardwareSpecificationTests(unittest.TestCase):
 
     def test_impossible_cut_lengths_and_flat_preparations_are_rejected(self):
         for code in (
-            "AL6061_CUT3_L0",
-            "AL6061_CUT3_L331",
-            "AL6061_CUT3_L14_FLAT15_A0",
-            "AL6061_CUT3_L24_FLAT0_A0",
-            "AL6061_CUT3_L24_FLAT5_A20",
-            "AL6061_CUT3_L24_BROKEN",
+            "SS304_CUT3_L0",
+            "SS304_CUT3_L201",
+            "SS304_CUT3_L14_FLAT15_A0",
+            "SS304_CUT3_L24_FLAT0_A0",
+            "SS304_CUT3_L24_FLAT5_A20",
+            "SS304_CUT3_L24_BROKEN",
         ):
             with self.subTest(code=code), self.assertRaises(ValueError):
                 procurement_spec(code)
@@ -100,7 +100,7 @@ class HardwareSpecificationTests(unittest.TestCase):
     def test_full_length_input_flat_is_valid_and_old_finished_shaft_is_not_selected(
         self,
     ):
-        stub = procurement_spec("AL6061_CUT3_L18_FLAT18_A0")
+        stub = procurement_spec("SS304_CUT3_L18_FLAT18_A0")
         self.assertIn("nominal depth 0.5 mm", stub["requirements"])
         self.assertIn("no bearing journal", stub["requirements"])
         with self.assertRaises(KeyError):
