@@ -95,6 +95,7 @@ class ModuleControlMappingTests(unittest.TestCase):
     def test_actual_manual_stages_are_bounded_and_independent(self):
         from gondola.cad import create_group, set_property
         from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import rail
         from gondola.parts.optical_mount import build_optical_mount
         from gondola.validation.baseline import control_behavior
 
@@ -114,7 +115,7 @@ class ModuleControlMappingTests(unittest.TestCase):
             module.setExpression("Placement.Base.x", "RailPositionX")
             module.setExpression(
                 "Placement.Base.y",
-                f"AssemblySettings.{station.clamp_control} == 0 ? 0.45mm : -0.45mm",
+                f"AssemblySettings.{station.clamp_control} == 0 ? {rail.CLAMP_SHIFT_Y:g}mm : -{rail.CLAMP_SHIFT_Y:g}mm",
             )
             modules.append(module)
         pods = []
@@ -137,7 +138,7 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc.OpticalRollStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
 
-    def test_shapeless_stack_group_metadata_is_frozen_too(self):
+    def test_shapeless_stack_and_rail_group_metadata_is_frozen_too(self):
         from gondola.cad import create_group, set_property
         from gondola.validation.baseline import native_interface_metadata
 
@@ -152,6 +153,12 @@ class ModuleControlMappingTests(unittest.TestCase):
         self.assertNotEqual(original, native_interface_metadata(doc))
         group.HoldingTorqueVerified = False
         group.StackHostName = "ElectronicsEquipmentModule"
+        self.assertNotEqual(original, native_interface_metadata(doc))
+        carrier = create_group(doc, "BatteryEquipmentModule", "Rail carrier")
+        set_property(carrier, "RailFitContract", '{"physical_fit_verified": false}')
+        original = native_interface_metadata(doc)
+        self.assertIn(carrier.Name, original)
+        carrier.RailFitContract = '{"physical_fit_verified": true}'
         self.assertNotEqual(original, native_interface_metadata(doc))
 
 

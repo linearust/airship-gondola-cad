@@ -11,7 +11,7 @@ from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail, stack_interface
+from gondola.parts import propulsion, rail, servo_bridge, stack_interface
 
 from .geometry import local_shape
 
@@ -117,7 +117,7 @@ def review(doc, registry):
             mounts.DECK_THICKNESS,
         ),
         (
-            "bare_shoe_nut_pocket_roof",
+            "central_servo_seat_over_nut_pocket",
             "PropulsionFixedFrame",
             (
                 4,
@@ -127,9 +127,11 @@ def review(doc, registry):
             (
                 4,
                 rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
-                rail.TOP_Z + 0.01,
+                servo_bridge.CONNECTOR_PLATE_BOTTOM_Z + 0.01,
             ),
-            rail.TOP_Z - rail.CLAMP_Z - rail.NUT_POCKET_AF / 2,
+            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z
+            - rail.CLAMP_Z
+            - rail.NUT_POCKET_AF / 2,
         ),
         (
             "frame_foot_thickness",
@@ -236,8 +238,7 @@ def review(doc, registry):
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,
-            "rail_nominal_total_gap_mm": 0.9,
-            "size_only_worst_case_total_gap_mm": 0.3,
+            "rail_fit": rail.fit_contract(),
             "not_a_GDT_position_or_actual_fit_guarantee": True,
         },
         "blanket_guide_compliance_claimed": False,

@@ -34,7 +34,7 @@ experiments do not define gondola mounting interfaces.
 | --- | --- | --- | --- |
 | 2 | 24 mm | 5 mm-long local flat starting at the gear end; nominal depth 0.5 mm | Geared output stubs; keep bearing journals round |
 | 2 | 14 mm | None | Opposite output stubs |
-| 2 | 16 mm | Full-length flat; nominal depth 0.5 mm | Input stubs captured by the horn couplings; no external bearing journal |
+| 2 | 18 mm | Full-length flat; nominal depth 0.5 mm | Input stubs captured by the horn couplings; no external bearing journal |
 
 Cut square and deburr without enlarging the bearing fit. Cut lengths exclude
 saw kerf and finishing allowance. Confirm fit on a sample before preparing the
@@ -87,8 +87,8 @@ quantities. Its 1.5 mm L-key access uses the short arm at the propulsion frame
 and the long arm at equipment carriers; compare the supplied kit tool with the
 checked envelope in [rail joint review](rail_joint_review.md).
 
-The subsequent AI shape simplification preserves this purchase selection;
+The subsequent AJ close-fit rail and central servo revision preserve this purchase selection;
 see `references/shape_simplification_review.md`. Current release changes are
-audited in `tests/fixtures/rev_ai_review.json`.
+audited in `tests/fixtures/rev_aj_review.json`.
 Earlier geometry and assembly instructions remain in Git history and the
 versioned fixture reviews; they are not current build instructions.

@@ -26,7 +26,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
   `references/shape_simplification_review.md` records the optical portal and
-  paired-servo support simplification; preserve functional service openings.
+  central paired-servo support and solid floor; preserve functional service openings.
+  `references/rail_fit_review.md` distinguishes the matched T-head fit from
+  relieved nonlocating surfaces. Qualify the existing coupons before full prints;
+  do not claim raw powder-bed tolerance guarantees hand insertion or retention.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
@@ -74,9 +77,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   or infer strength from clearance tests. Keep the original horn spline and
   retaining screw; do not invent a printed spline or restore
   the former hollow journal for a 7 mm gear bore. Only output axes use external
-  bearings. One removable bridge carries both servo cradles and complete input
-  drives. Two local seats and fixed datums locate it on the common
-  output-bearing frame. Replace the
+  bearings. One removable bridge carries both servos in a common central wall
+  and retains their complete input drives. A central seat supports that wall
+  directly; two outer mounting seats and fixed datums locate the module on the
+  common output-bearing frame. Replace the
   bridge and the affected transmission parts for a ratio change; only the
   selected ratio is currently supported. A different servo requires its own
   verified interface. Check seated contact and the ordered module

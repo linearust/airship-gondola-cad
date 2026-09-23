@@ -41,7 +41,11 @@ class FrameRootTests(unittest.TestCase):
                     6.4,
                     4,
                     4,
-                    App.Vector(-3.2, propulsion.PIVOT_HALF_SPAN + 26.5, 4),
+                    App.Vector(
+                        -3.2,
+                        propulsion.PIVOT_HALF_SPAN + 26.5,
+                        propulsion.BASE_Z + propulsion.FOOT_THICKNESS,
+                    ),
                 )
             )
             self.doc.recompute()
@@ -53,6 +57,42 @@ class FrameRootTests(unittest.TestCase):
         finally:
             frame.Shape = original
             self.doc.recompute()
+
+    def test_long_output_feet_are_full_width_three_mm_plates(self):
+        from gondola.parts import propulsion
+
+        frame = self.doc.PropulsionFixedFrame.Shape
+        outer_y = propulsion.PIVOT_HALF_SPAN + 33
+        for start_y in (20, -outer_y):
+            with self.subTest(start_y=start_y):
+                solid_foot = Part.makeBox(
+                    18,
+                    outer_y - 20,
+                    3,
+                    App.Vector(-9, start_y, propulsion.BASE_Z),
+                )
+                self.assertLess(solid_foot.cut(frame).Volume, 1e-7)
+
+    def test_central_shoe_roof_reaches_the_common_servo_wall_plate(self):
+        from gondola.parts import rail, servo_bridge
+
+        frame = self.doc.PropulsionFixedFrame.Shape
+        bridge = self.doc.ServoDriveBridge.Shape
+        support = Part.makeBox(
+            18,
+            22,
+            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - rail.TOP_Z,
+            App.Vector(-9, -11, rail.TOP_Z),
+        )
+        contact = Part.makePlane(
+            18,
+            22,
+            App.Vector(-9, -11, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
+        )
+        self.assertLess(support.cut(frame).Volume, 1e-7)
+        self.assertAlmostEqual(contact.common(frame).Area, 396, places=5)
+        self.assertAlmostEqual(contact.common(bridge).Area, 396, places=5)
+        self.assertLess(frame.common(bridge).Volume, 1e-7)
 
     def test_raised_head_clears_bridge_and_intact_two_mm_foot_floor(self):
         from gondola.contracts import fasteners

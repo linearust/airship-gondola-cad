@@ -26,7 +26,7 @@ KEY_LONG_ARM_MM = 50.0
 KEY_SHORT_ARM_MM = 16.0
 KEY_AXIAL_CENTRELINE_MM = KEY_SHORT_ARM_MM - KEY_RADIUS_MM
 KEY_WORKING_SECTOR_DEG = (0.0, 60.0)
-KEY_REINDEX_OFFSET_MM = 4.0
+KEY_REINDEX_OFFSET_MM = 1.5
 SOCKET_INSERTION_ACCEPTANCE_MM = 2.0
 SOCKET_VALIDATION_RADIUS_MM = KEY_RADIUS_MM + 0.1
 TOOL_FACE_RESERVE_MM = 0.1
@@ -327,9 +327,9 @@ def rail_key_service_check(
     # After each engaged stroke, withdraw before resetting the key angle;
     # turning back while engaged would undo the stroke. The separate certified
     # disengaged reindex arc below returns the key to the sector start. For
-    # final removal, keep the tip at least 4 mm beyond the external head
-    # reference and take the key out of the module. This is an absolute clear
-    # position, not 4 mm from an engaged tip. Insertion reverses the path.
+    # final removal, keep the tip beyond the external head by the reindex
+    # offset plus face reserve, then take the key out of the module. This is an absolute clear
+    # position, not travel measured from an engaged tip. Insertion reverses it.
     parked = tool.copy()
     parked.rotate(axis, V(0, 1, 0), KEY_WORKING_SECTOR_DEG[0])
     clear_offset = rail.RELEASE_TRAVEL + KEY_REINDEX_OFFSET_MM

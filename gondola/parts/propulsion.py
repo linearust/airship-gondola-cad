@@ -44,13 +44,14 @@ from gondola.contracts.hardware import (
     SERVO_SCREW_SOURCE,
 )
 
-from . import purchased_hardware, rail, servo_bridge
+from . import purchased_hardware, rail, servo_bridge, servo_coupling
 
 V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
-FOOT_THICKNESS = 2.0
+FOOT_THICKNESS = 3.0
+RAIL_SERVICE_FLOOR_THICKNESS = 2.0
 PIVOT_Z = PIVOT_Z_MM
-PIVOT_HALF_SPAN = 89.0
+PIVOT_HALF_SPAN = 65.5
 GUARD_OUTER_RADIUS = 24.3
 GUARD_INNER_RADIUS = 22.8
 MOTOR_NOMINAL_DIAMETER = 13.5
@@ -61,9 +62,9 @@ PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 GEAR_MODULE = MODULE_MM
 GEAR_FACE_WIDTH = FACE_WIDTH_MM
-GEAR_HUB_START_Y = 46.0
-GEAR_FACE_START_Y = 51.0
-GEAR_END_Y = 54.0
+GEAR_HUB_START_Y = servo_coupling.HORN_BOTTOM_Y + servo_coupling.GEAR_START_Y
+GEAR_FACE_START_Y = GEAR_HUB_START_Y + SELECTED_DRIVE.driver.hub_extension_mm
+GEAR_END_Y = GEAR_FACE_START_Y + SELECTED_DRIVE.driver.face_width_mm
 
 
 def gear_axial_span(teeth):
@@ -212,11 +213,10 @@ def moving_carrier_shape():
 
 def _output_support(sign):
     parts = []
-    # An open perimeter foot is shared structure, independent of servo model.
+    # A plain full-width foot distributes the bearing-post loads without long
+    # lightening windows, separate ribs or narrow perimeter strips.
     foot_length = PIVOT_HALF_SPAN + 33 - 20
-    foot = box(18, foot_length, FOOT_THICKNESS, (-9, 20, BASE_Z)).cut(
-        box(14, foot_length - 4, 3, (-7, 22, BASE_Z - 0.5))
-    )
+    foot = box(18, foot_length, FOOT_THICKNESS, (-9, 20, BASE_Z))
     parts.append(foot)
     for side in (-1, 1):
         y_start = 26.5 if side > 0 else -30.5
@@ -233,13 +233,7 @@ def _output_support(sign):
         post = post.cut(
             cylinder(3, 4.02, (0, PIVOT_HALF_SPAN + y_start - 0.01, PIVOT_Z))
         )
-        parts.extend(
-            [
-                post,
-                cup,
-                box(18, 4, FOOT_THICKNESS, (-9, y_start + PIVOT_HALF_SPAN, BASE_Z)),
-            ]
-        )
+        parts.extend([post, cup])
     result = union(parts)
     if sign < 0:
         result = result.mirror(V(), V(1, 0, 0))
@@ -249,12 +243,23 @@ def _output_support(sign):
 
 def fixed_frame_shape():
     """Common rail shoe, output supports and fixed servo-bridge seats."""
-    wings = box(18, 70, FOOT_THICKNESS, (-9, -35, BASE_Z)).cut(
+    # The short central floor stays below the rail screw head. The outboard
+    # bearing feet are thicker and overlap it without separate connectors.
+    wings = box(18, 70, RAIL_SERVICE_FLOOR_THICKNESS, (-9, -35, BASE_Z)).cut(
         box(20, rail.SHOE_WIDTH, 20, (-10, -rail.SHOE_WIDTH / 2, 0))
+    )
+    # Raise the already solid shoe roof to carry the common servo wall through
+    # its plate directly, instead of spanning between the two outboard feet.
+    central_seat = box(
+        rail.SHOE_LENGTH,
+        rail.SHOE_WIDTH,
+        servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - rail.TOP_Z,
+        (-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.TOP_Z),
     )
     frame = union(
         [
             rail.shoe_shape(),
+            central_seat,
             wings,
             _output_support(1),
             _output_support(-1),
@@ -485,7 +490,9 @@ def _build_coupling(doc, parent, prefix, sign):
             parent,
             prefix + "HornGearAdapter",
             positioned(coupling.adapter_shape()),
-            "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an8mm D socket and locally cut Ø3×16 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+            "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. "
+            f"The stock horn drives an {coupling.SHAFT_SOCKET_LENGTH:g} mm D socket and locally cut Ø3×{coupling.SHAFT_LENGTH:g} metal stub. "
+            "A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
             rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
             sku="KST0415_GearAdapter",
         )
@@ -519,8 +526,9 @@ def _build_coupling(doc, parent, prefix, sign):
             parent,
             prefix + "InputShaft",
             positioned(coupling.driver_shaft_shape()),
-            "AL6061_CUT3_L16_FLAT16_A0",
-            "Cut selected Ø3 6061 stock to 16 mm, deburr, and file a 0.5 mm-deep full-length flat. The finished D socket keys torque; an M2 radial jack screw bears on the flat for axial retention. The M3 gear screw also bears on the flat. Nominal geometry is not a guarantee of stock diameter, straightness, concentricity or holding torque.",
+            f"AL6061_CUT3_L{coupling.SHAFT_LENGTH:g}_FLAT{coupling.SHAFT_LENGTH:g}_A0",
+            f"Cut selected Ø3 6061 stock to {coupling.SHAFT_LENGTH:g} mm, deburr, and file a {coupling.SHAFT_FLAT_DEPTH:g} mm-deep full-length flat. "
+            "The finished D socket keys torque; an M2 radial jack screw bears on the flat for axial retention. The M3 gear screw also bears on the flat. Nominal geometry is not a guarantee of stock diameter, straightness, concentricity or holding torque.",
             SHAFT_SOURCE,
             "Aluminium 6061 (seller claim)",
         )
@@ -584,18 +592,25 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             1.5,
         ),
         (
-            "servo_cradle_left_wall",
+            "servo_common_cradle_negative_outer_wall",
             "ServoDriveBridge",
-            (x - servo_bridge.CRADLE_WIDTH / 2 - 0.01, y, z - 5),
-            (x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
+            (-x - servo_bridge.CRADLE_WIDTH / 2 - 0.01, y, z - 5),
+            (-x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
             servo_bridge.SIDE_WALL,
         ),
         (
-            "servo_cradle_right_wall",
+            "servo_common_cradle_positive_outer_wall",
             "ServoDriveBridge",
             (x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
             (x + servo_bridge.CRADLE_WIDTH / 2 + 0.01, y, z - 5),
             servo_bridge.SIDE_WALL,
+        ),
+        (
+            "servo_common_cradle_central_web",
+            "ServoDriveBridge",
+            (-x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
+            (x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
+            2 * x - servo_bridge.CASE_WINDOW_WIDTH,
         ),
         (
             "servo_cradle_upper_wall",
@@ -614,8 +629,8 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "servo_bridge_connector_plate",
             "ServoDriveBridge",
-            (0, 0, 11.39),
-            (0, 0, 13.41),
+            (0, 8, 11.39),
+            (0, 8, 13.41),
             2.0,
         ),
         (
@@ -642,7 +657,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad rectangular seats for the removable paired servo bridge. The seats stand outside the rail screw head, leaving naturally open L-key access without tunnels or post cutouts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four plain 9.6 by 4 mm bearing posts with continuous roots. The output axes are 131 mm apart. An 18 by 22 mm central shoe roof reaches the bridge plate at Z11.4 and supports its common servo wall directly; the two broad rectangular outboard seats remain. These contact faces must all seat without rocking or drawing a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One inside Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -650,6 +665,18 @@ def _build_frame(doc, module, spec):
     set_property(frame, "CarriageContactZ", BASE_Z, "App::PropertyLength")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
+    set_property(
+        frame,
+        "RailServiceFloorThickness",
+        RAIL_SERVICE_FLOOR_THICKNESS,
+        "App::PropertyLength",
+    )
+    set_property(
+        frame,
+        "CentralBridgeSeatZ",
+        servo_bridge.CONNECTOR_PLATE_BOTTOM_Z,
+        "App::PropertyLength",
+    )
     return frame
 
 
@@ -810,7 +837,7 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. The closed cradle has two 2 mm side walls and a 9×21.5 mm nonlocating axial case opening (1 mm side and 0.75 mm end nominal body clearance). M1.6×8 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3 mm outer sides and a 4.8 mm central web. Each nonlocating 8 by 21 mm case opening has nominal 0.5 mm side and end clearance around the body. M1.6×8 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware
@@ -965,7 +992,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on one removable paired bridge. Two broad seats under the cradles and unilateral locating datums establish the fixed position; two M2 mount pairs clamp it. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
+            "input_mount": "Prepared stock-horn drives on one removable paired bridge with a common central servo wall. The integral central shoe roof directly supports its connecting plate; two broad outboard seats and unilateral locating datums establish the fixed position, with two M2 mount pairs providing clamping. All support faces must seat without rocking. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -974,7 +1001,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_driven_length_mm": 24,
             "output_idle_length_mm": 14,
             "input_count": 2,
-            "input_length_mm": 16,
+            "input_length_mm": servo_coupling.SHAFT_LENGTH,
             "through_shaft_allowed": False,
             "reason": "A through-shaft crosses the motor. Separate stubs leave the motor bay clear.",
         },
@@ -1000,7 +1027,8 @@ def _module_metrics(printed, hardware, references, spec):
             "process": "PA12 SLS/MJF",
             "minimum_feature_wall_mm": 1.5,
             "guard_radial_wall_mm": 1.5,
-            "frame_foot_thickness_mm": 2,
+            "frame_foot_thickness_mm": FOOT_THICKNESS,
+            "rail_service_floor_thickness_mm": RAIL_SERVICE_FLOOR_THICKNESS,
         },
         "OEM_interfaces": PROPULSION_EVIDENCE,
         "horn_coupling": coupling_metrics(),
@@ -1056,7 +1084,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "One paired bridge with straight 2 mm servo walls, a plain 39 by 52 by 2 mm connecting plate and two broad solid seating feet. The raised plate clears the rail-key elbow, while the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal body-underplate clearance exceeds 5 mm; actual servo lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
+        "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a plain 39 by 52 by 2 mm plate, directly supported by the frame's central shoe roof as well as two broad solid outboard feet. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
         sku=drive.bridge_sku,
     )
     mount_hardware = []

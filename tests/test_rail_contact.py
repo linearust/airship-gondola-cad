@@ -54,9 +54,96 @@ class RailContactTests(unittest.TestCase):
             rail.HEAD_TOP - rail.HEAD_BOTTOM
         ) - math.pi * 1.4**2
         for row in report["contact_cases"]:
-            self.assertAlmostEqual(
-                row["opposing_jaw_contact_area_mm2"], expected_jaw_area
+            if row["clamp_offset_from_land_centre_mm"] == 0:
+                self.assertAlmostEqual(
+                    row["opposing_jaw_contact_area_mm2"], expected_jaw_area
+                )
+            else:
+                # Both entry chamfers can shorten contact at an off-centre
+                # land. Bound the real area without counting either bevel.
+                self.assertGreaterEqual(
+                    row["opposing_jaw_contact_area_mm2"],
+                    expected_jaw_area
+                    - 2 * rail.HEAD_ENTRY_CHAMFER * (rail.HEAD_TOP - rail.HEAD_BOTTOM),
+                )
+
+    def test_head_is_the_close_datum_while_web_stays_relieved(self):
+        from gondola.parts import rail
+
+        report = rail.head_fit_check()
+        self.assertTrue(report["passed"], report)
+        fit = report["fit_contract"]
+        self.assertEqual(fit["nominal_head_total_width_gap_mm"], 0.2)
+        self.assertEqual(fit["nominal_head_total_height_gap_mm"], 0.2)
+        self.assertEqual(fit["nominal_web_total_width_gap_mm"], 0.9)
+        self.assertEqual(rail.CLAMP_SHIFT_Y, rail.HEAD_SIDE_CLEARANCE)
+        self.assertEqual(fit["size_only_raw_width_gap_range_mm"], [-0.4, 0.8])
+        self.assertEqual(fit["size_only_raw_height_gap_range_mm"], [-0.4, 0.8])
+        self.assertFalse(fit["as_printed_fit_guaranteed"])
+        self.assertFalse(fit["physical_fit_verified"])
+        self.assertFalse(fit["holding_force_verified"])
+
+    def test_previous_loose_head_channel_is_rejected(self):
+        from gondola.parts import rail
+
+        with (
+            patch.object(rail, "HEAD_SIDE_CLEARANCE", 0.45),
+            patch.object(rail, "HEAD_VERTICAL_CLEARANCE", 0.45),
+        ):
+            loose_shoe = rail.shoe_shape()
+        report = rail.head_fit_check(shoe=loose_shoe)
+        self.assertFalse(report["passed"], report)
+        self.assertTrue(
+            all(
+                row["beyond_boundary_intersection_mm3"] < 1e-6
+                for row in report["boundary_probes"]
             )
+        )
+
+    def test_under_sized_channel_cannot_pass_nominal_clearance_check(self):
+        from gondola.parts import rail
+
+        with (
+            patch.object(rail, "HEAD_SIDE_CLEARANCE", 0.05),
+            patch.object(rail, "HEAD_VERTICAL_CLEARANCE", 0.05),
+        ):
+            tight_shoe = rail.shoe_shape()
+        report = rail.head_fit_check(shoe=tight_shoe)
+        self.assertFalse(report["passed"], report)
+        self.assertTrue(
+            all(
+                row["boundary_intersection_mm3"] > 1e-5
+                for row in report["boundary_probes"]
+            )
+        )
+
+    def test_entry_bevel_preserves_solid_wall_and_exterior_envelope(self):
+        from gondola.parts import rail
+
+        shoe = rail.shoe_shape()
+        self.assertEqual(len(shoe.Solids), 1)
+        self.assertTrue(shoe.isValid())
+        self.assertAlmostEqual(shoe.BoundBox.XLength, rail.SHOE_LENGTH)
+        self.assertAlmostEqual(shoe.BoundBox.YLength, rail.SHOE_WIDTH)
+        self.assertAlmostEqual(shoe.BoundBox.ZMin, rail.SHOE_BOTTOM)
+        self.assertAlmostEqual(shoe.BoundBox.ZMax, rail.TOP_Z)
+        cavity_side = rail.HEAD_WIDTH / 2 + rail.HEAD_SIDE_CLEARANCE
+        self.assertGreaterEqual(
+            rail.NUT_POCKET_Y - cavity_side - rail.HEAD_ENTRY_CHAMFER, 1.5
+        )
+        for side in (-1, 1):
+            # The lead-in is clear at the mouth but its extension must not
+            # remove the straight running face farther inside the shoe.
+            mouth = App.Vector(
+                side * (rail.SHOE_LENGTH / 2 - 0.05), cavity_side + 0.1, rail.CLAMP_Z
+            )
+            datum = App.Vector(
+                side * (rail.SHOE_LENGTH / 2 - rail.HEAD_ENTRY_CHAMFER - 0.05),
+                cavity_side + 0.1,
+                rail.CLAMP_Z,
+            )
+            self.assertFalse(shoe.isInside(mouth, 1e-7, True))
+            self.assertTrue(shoe.isInside(datum, 1e-7, True))
 
     def test_former_thin_head_is_not_accepted_as_full_face_contact(self):
         from gondola.parts import rail

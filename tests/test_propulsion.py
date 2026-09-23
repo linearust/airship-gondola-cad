@@ -319,6 +319,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                     )
 
     def test_rear_servo_body_allowance_excludes_the_lower_ear(self):
+        from gondola.parts import servo_bridge
         from gondola.validation.propulsion import servo_mount_check
 
         for prefix in ("Port", "Starboard"):
@@ -329,19 +330,28 @@ class NativeGearedDriveTests(unittest.TestCase):
                 self.assertAlmostEqual(allowance["rear_body_bottom_z_mm"], -15)
                 self.assertAlmostEqual(allowance["servo_with_ears_bottom_z_mm"], -19)
                 self.assertGreaterEqual(allowance["rear_body_to_plate_gap_mm"], 5)
-                self.assertEqual(allowance["rear_body_section_mm"], [7.0, 20.0])
-                self.assertAlmostEqual(allowance["inward_planning_y_range_mm"][1], 14.0)
+                for actual, expected in zip(allowance["rear_body_section_mm"], (7, 20)):
+                    self.assertAlmostEqual(actual, expected)
+                self.assertAlmostEqual(
+                    allowance["inward_planning_y_range_mm"][1],
+                    servo_bridge.case_front_y() - 16.7,
+                )
+                self.assertAlmostEqual(allowance["inward_planning_volume_mm"][1], 13.9)
+                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 16)
                 self.assertIn(
                     "StarboardServoEarLowerNut", allowance["checked_physical_objects"]
                 )
 
     def test_rear_servo_lead_allowance_detects_an_added_physical_obstacle(self):
+        from gondola.parts import servo_bridge
         from gondola.validation.propulsion import servo_mount_check
 
         obstacle = self.doc.addObject("Part::Feature", "AddedServoLeadObstacle")
         self.doc.PortServoMount.addObject(obstacle)
         try:
-            obstacle.Shape = Part.makeBox(1, 1, 2, App.Vector(-0.5, 7, -2))
+            obstacle.Shape = Part.makeBox(
+                1, 1, 2, App.Vector(-0.5, servo_bridge.case_front_y() - 23.6, -2)
+            )
             self.doc.recompute()
             result = servo_mount_check(self.doc, "Port")
             self.assertLess(result["servo_frame_intersection_mm3"], 1e-5)
@@ -352,6 +362,48 @@ class NativeGearedDriveTests(unittest.TestCase):
                 obstacle.Name,
                 {row["part"] for row in allowance["planning_volume_collisions"]},
             )
+        finally:
+            self.doc.removeObject(obstacle.Name)
+            self.doc.recompute()
+
+    def test_rear_servo_lead_allowance_detects_opposite_drive_mid_sweep(self):
+        from gondola.cad import world_shape
+        from gondola.parts import servo_bridge
+        from gondola.validation.propulsion import servo_mount_check
+
+        obstacle = self.doc.addObject("Part::Feature", "MovingRearLeadBlocker")
+        drive = self.doc.StarboardInputDrive
+        drive.addObject(obstacle)
+        try:
+            # The protrusion is clear at neutral, but enters the opposite
+            # servo's rear lead allowance during its independent input motion.
+            shape = Part.makeBox(
+                0.5,
+                1,
+                0.5,
+                App.Vector(9, servo_bridge.case_front_y() - 22.2, 19),
+            )
+            axis = App.Vector(-SELECTED_DRIVE.input_x_mm, 0, SELECTED_DRIVE.input_z_mm)
+            shape.rotate(axis, App.Vector(0, 1, 0), -30)
+            shape.Placement = (
+                drive.getGlobalPlacement()
+                .inverse()
+                .multiply(self.doc.MainPropulsionModule.getGlobalPlacement())
+                .multiply(shape.Placement)
+            )
+            obstacle.Shape = shape
+            self.doc.recompute()
+            self.assertTrue(world_shape(obstacle).isValid())
+            result = servo_mount_check(self.doc, "Port")
+            allowance = result["rear_body_and_inward_lead_allowance"]
+            self.assertEqual(allowance["planning_volume_collisions"], [])
+            self.assertFalse(result["passed"], result)
+            failures = [
+                row
+                for row in allowance["continuous_input_drive_clearance"]
+                if not row["passed"]
+            ]
+            self.assertTrue(any(obstacle.Name in row["parts"] for row in failures))
         finally:
             self.doc.removeObject(obstacle.Name)
             self.doc.recompute()
@@ -876,8 +928,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                     gear.Shape.BoundBox.YLength, spec.total_length_mm
                 )
             shaft = doc.getObject(prefix + "InputShaft")
-            self.assertEqual(shaft.HardwareSKU, "AL6061_CUT3_L16_FLAT16_A0")
-            self.assertAlmostEqual(shaft.Shape.BoundBox.YLength, 16)
+            self.assertEqual(shaft.HardwareSKU, "AL6061_CUT3_L18_FLAT18_A0")
+            self.assertAlmostEqual(shaft.Shape.BoundBox.YLength, 18)
             self.assertAlmostEqual(shaft.Shape.BoundBox.XLength, 2.5)
             self.assertFalse(bool(getattr(shaft, "PrintPart", False)))
 
@@ -1180,7 +1232,11 @@ class SelectedGearDriveTests(unittest.TestCase):
             drive = DRIVE_CONFIGURATIONS["48_16"]
             stem_left = -servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.2
             stem_width = -3.6 - stem_left
-            origin = App.Vector(drive.input_x_mm + stem_left, 25, drive.input_z_mm - 10)
+            origin = App.Vector(
+                drive.input_x_mm + stem_left,
+                servo_bridge.case_front_y() - 5.7,
+                drive.input_z_mm - 10,
+            )
             stem = Part.makeBox(stem_width, 7.2, 2, origin)
             lip = Part.makeBox(stem_width + 0.5, 0.2, 2, origin + App.Vector(0, 7, 0))
             bridge.Shape = original.fuse(stem).fuse(lip).removeSplitter()
@@ -1393,7 +1449,7 @@ class SelectedGearDriveTests(unittest.TestCase):
             servo_bridge.opposite(largest_case_section),
         ):
             self.assertLess(bridge.common(section).Volume, 1e-7)
-            self.assertGreaterEqual(bridge.distToShape(section)[0], 0.65 - 1e-7)
+            self.assertGreaterEqual(bridge.distToShape(section)[0], 0.4 - 1e-7)
 
     def test_fixed_mount_checks_follow_the_whole_module_placement(self):
         from gondola.validation.propulsion import (
@@ -1455,13 +1511,19 @@ class SavedDriveManufacturingTests(unittest.TestCase):
     def test_wall_probes_follow_saved_selected_drive_and_root_transform(self):
         from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
         from gondola.validation.manufacturing import review
+        from gondola.validation.propulsion import _record_print_checks, _service_shapes
+        from gondola.validation.propulsion_evidence import PROPULSION_EVIDENCE_COUNTS
 
         selected = SELECTED_DRIVE
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "selected_drive.FCStd"
             doc = App.newDocument("SavedSelectedDriveWalls")
             try:
-                propulsion.build_propulsion_module(doc, drive=selected)
+                module = propulsion.build_propulsion_module(doc, drive=selected)
+                module_names = {
+                    key: [obj.Name for obj in module[key]]
+                    for key in ("printed", "hardware", "references")
+                }
                 # A nonzero module placement also exercises the measurement's
                 # conversion from global coordinates back to the module frame.
                 doc.MainPropulsionModule.Placement.Base = App.Vector(36, 0.45, 0)
@@ -1495,6 +1557,29 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                         self.assertEqual(row["sample_line_mm"], [start, end])
                         self.assertTrue(row["passed"], row)
                 self.assertTrue(result["passed"], result)
+                # Exercise the actual release evidence generator against saved
+                # geometry. A synthetic report sized from the contract cannot
+                # detect a newly added probe whose required count was missed.
+                saved_module = {
+                    key: [saved.getObject(name) for name in names]
+                    for key, names in module_names.items()
+                }
+                saved_module["group"] = saved.MainPropulsionModule
+                physical, missing = _service_shapes(saved, saved_module)
+                self.assertFalse(missing)
+                evidence = {"functional_wall_probes": [], "geometry": []}
+                _record_print_checks(evidence, saved_module, physical)
+                self.assertEqual(
+                    len(evidence["functional_wall_probes"]),
+                    PROPULSION_EVIDENCE_COUNTS["functional_wall_probes"],
+                )
+                self.assertIn(
+                    "servo_common_cradle_central_web",
+                    {row["feature"] for row in evidence["functional_wall_probes"]},
+                )
+                self.assertTrue(
+                    all(row["passed"] for row in evidence["functional_wall_probes"])
+                )
             finally:
                 App.closeDocument(saved.Name)
 

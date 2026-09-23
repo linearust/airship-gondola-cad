@@ -68,7 +68,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "Two broad coplanar seats carry the cradles locally; unilateral Y and X datums locate the removable bridge. Bolt clearance does not locate the gear axes. Actual seating, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
+        "scope": "Two broad outer feet and a central shoe saddle support the shared wall and plate; unilateral Y and X datums locate the removable bridge. Bolt clearance does not locate the gear axes. The two outer feet share one seating height; the central support is higher and must meet its corresponding underside simultaneously. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
         "passed": overlap < TOL
         and all(row["passed"] for row in contacts)
         and doc.ServoDriveBridge.PrintSKU == spec.bridge_sku,

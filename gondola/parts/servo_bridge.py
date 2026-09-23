@@ -1,8 +1,8 @@
-"""Two servo cradles on one plain connecting plate and two solid seating feet.
+"""Two servo openings share one central bulkhead on a removable plate.
 
-All dimensions are millimetres. Each cradle stands on the common plate above
-its own broad foot. The unilateral locating faces are fixed datums, not mesh
-adjustment slots. Open counterbores retain the existing mounting screw length.
+All dimensions are millimetres. The common wall has thick outer columns and
+a shared central web. A broad central frame saddle supports its plate directly;
+the two feet retain the fixed locating datums and mounting screw grip.
 """
 
 import FreeCAD as App
@@ -17,10 +17,11 @@ V = App.Vector
 MOUNT_DEPTH = 5.0
 # The bought case is not a locating datum. Clearance around its nominal 7 x20
 # section also accommodates the published +/-0.2 mm case-size tolerance.
-CASE_WINDOW_WIDTH = 9.0
-CASE_WINDOW_HEIGHT = 21.5
-SIDE_WALL = 2.0
+CASE_WINDOW_WIDTH = 8.0
+CASE_WINDOW_HEIGHT = 21.0
+SIDE_WALL = 3.0
 CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
+REAR_LEAD_ALLOWANCE = 13.9
 SEAT_Z = 8.7
 NUT_SEAT_Z = 5.7
 MOUNT_BOLT_SEAT_Z = 10.7
@@ -65,11 +66,14 @@ def _ear_clearance(drive):
 def _cradle_blank(drive):
     x, z = drive.input_x_mm, drive.input_z_mm
     y = case_front_y() - 4.7 - MOUNT_DEPTH
+    if abs(y + MOUNT_DEPTH / 2) > 1e-7:
+        raise ValueError("Paired servo ears must share the central mounting wall")
+    width = 2 * x + CRADLE_WIDTH
     return box(
-        CRADLE_WIDTH,
+        width,
         MOUNT_DEPTH,
         z + 10.1 - CONNECTOR_PLATE_BOTTOM_Z,
-        (x - CRADLE_WIDTH / 2, y, CONNECTOR_PLATE_BOTTOM_Z),
+        (-width / 2, y, CONNECTOR_PLATE_BOTTOM_Z),
     )
 
 
@@ -96,7 +100,7 @@ def bridge_blank(drive=SELECTED_DRIVE):
         CONNECTOR_PLATE_THICKNESS,
         (-CONNECTOR_PLATE_HALF_WIDTH, -PAD_OUTER_Y, CONNECTOR_PLATE_BOTTOM_Z),
     )
-    return union([cradle, opposite(cradle), pad, opposite(pad), plate])
+    return union([cradle, pad, opposite(pad), plate])
 
 
 def bridge_shape(drive=SELECTED_DRIVE):
@@ -183,4 +187,5 @@ def contact_planes():
         ("negative_cradle_seat", 2, SEAT_Z, 120.0),
         ("inside_y_datum", 1, -PAD_INNER_Y, 20.0),
         ("outside_x_datum", 0, -CONNECTOR_PLATE_HALF_WIDTH, 5.0),
+        ("central_bulkhead_support", 2, CONNECTOR_PLATE_BOTTOM_Z, 300.0),
     )

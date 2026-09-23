@@ -1,4 +1,4 @@
-# Printed shape simplification — AI
+# Printed shape and support review — AJ
 
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
@@ -19,36 +19,78 @@ beam thickness must not change the shared host-deck thickness or move the
 optical axes. Both hosts still require optical, connector, registration and
 complete-tower service checks.
 
-## Paired servo module
+## Central paired servo module
 
-One 39 by 52 by 2 mm plate now joins the two servo cradles. Each cradle starts
-directly on that plate and stands over a solid rectangular foot, supported by
-the corresponding frame seat. The former thin perimeter ring, rail-head roof
-reliefs and lower nut-clearance notches are removed. The plate sits above the
-rail-key envelope and the feet stand outside it, so separate tool tunnels are
-unnecessary. The frame retains its continuous bearing-post roots.
+The two servo/input-drive assemblies move 23.5 mm inward on each side. Their
+cradles merge into one continuous upright with two 8 by 21 mm case windows,
+3 mm outside walls and a 4.8 mm central web. The bought servo ears still locate
+and clamp each case; the case windows are clearance features, not press fits.
+Allowing the manufacturer's case-size tolerance of ±0.2 mm and a printed-window
+size allowance of ±0.3 mm leaves 0.5 mm minimum total size-only clearance in
+each window direction. Actual positions, flatness and lead exit still need
+inspection.
 
-Two open 6 mm head-access bores preserve the original M2 screw seating plane
-and grip; the original bolts, nuts and gear axes remain unchanged. The outer
-foot edges align with the plate to avoid thin cusps around these bores. Fixed
-X/Y datums and broad local seats locate the removable module. The two servos
-and complete input drives remain one separately serviceable part of the
-assembly; the output-bearing frame is not merged into it.
+The common upright stands on the existing plain connector plate. The frame's
+solid shoe roof now rises to the plate underside as a broad central seat, so
+the servo loads do not depend solely on bending the plate between its outer
+feet. The original two M2 mount pairs, open head-access bores and fixed X/Y
+datums remain. The two outer seats at Z8.7 must be coplanar with each other;
+the higher central seat at Z11.4 must simultaneously contact its matching
+underside. Reject rocking rather than drawing a warped plate down with the screws. The complete paired
+servo/input-drive module stays removable from the output-bearing frame.
+
+Propulsor centre spacing changes from 178 to 131 mm. This shortens the bearing
+support arms and narrows the assembly. For the same differential thrust and
+unchanged geometry otherwise, the corresponding moment arm is 26.4% smaller.
+This is a control-authority trade-off, not an aerodynamic efficiency gain.
+Update vehicle actuator geometry/control allocation before flight; this CAD
+change does not qualify the controller or actual flight response.
 
 The [KST X06 V6 drawing](kst_x06_v6_datasheet.pdf) defines the nominal case
 and ear geometry, but does not dimension a finished lead/connector envelope.
-The new plate leaves 5.136 mm below the nominal **case body**, measured from
-its lower face rather than the lower mounting ear. The lower ear has only
-1.136 mm nominal clearance and is not a wire corridor. A 13.9 mm inward space
-behind the case rear face is also checked against the saved physical CAD.
-These are design allowances, not a certified cable exit, bend radius or
-connector specification. Route and secure the received leads in those spaces;
-do not assume the entire underside footprint is unobstructed by ear hardware.
+The plate leaves 5.136 mm below the nominal case body; the lower mounting ear
+is a different surface and is not a wire corridor. Keep the rear-case planning
+spaces clear through the complete bounded input rotation. These are design
+allowances, not certified lead exits, bend radii or connector specifications.
 
-Continuous nominal rotation, ear-fastener access, paired-module removal,
-input-drive service and rail-clamp key access must pass on the simplified
-parts. Geometry checks do not establish the loaded stiffness or retention
-of the printed plate, feet or servo joints.
+## Propulsor support floor
+
+The former long perimeter openings are filled by plain 18 mm wide, 3 mm thick
+integral feet. Narrow parallel strips and small transverse foot additions are
+unnecessary. The short central floor remains 2 mm thick to preserve the rail
+clamp's key/head access; no holes pierce the bearing-post roots. The central
+servo seat directly transfers the common upright load into the rail shoe.
+
+[Creallo's guide](https://creallo.com/ko/guide/design-spec-guide), checked
+2026-09-23, lists 2 mm for 150 mm and 3 mm for 200 mm-plus thin/broad SLS PA12
+structures. The approximately 197 mm frame uses the more conservative 3 mm
+outboard floor while SLS/MJF selection is pending. This is a manufacturing
+and geometric design choice, not a measured strength, stiffness or fatigue
+qualification.
+
+## Fit priorities
+
+The T-head is a matched close-running interface; its width and height have
+separate fit allowances and the web remains relieved. Follow
+[the rail fit review](rail_fit_review.md) and trial the actual coupons before
+ordering complete carriers. A small nominal clearance is not an as-printed
+fit guarantee or a prediction of insertion/holding force.
+
+Keep the selected gear bodies, shaft journals, spacer lands and mesh geometry
+source-specific. Gear axial positioning uses their existing shaft/set-screw
+interfaces; do not squeeze unknown hub thicknesses between new printed walls.
+The input metal stubs increase from 16 to 18 mm, retaining their full-length
+flat and 8 mm socket engagement. The selected 8 mm gear body leaves 2 mm of
+shaft beyond its outer face. This gives small axial fitting freedom without
+new printed walls or fasteners; the opposite gear face overlap and actual M3
+set-screw position still limit usable adjustment. A different gear thickness
+requires measured engagement and renewed collision checks, not an assumption
+of universal compatibility. The horn register and input D socket retain
+0.05 mm nominal finish-fit allowances and still require fitting. Device holes and optical foot holes
+retain assembly clearance for relative hole-position errors; their tightened
+face contacts, rather than loose-hole diameters, provide the operating seat.
+Connector reserves, optical visibility and moving-part separation are not
+unnecessary play and must not be reduced to achieve a snug mechanical fit.
 
 ## Other reviewed features
 
@@ -58,9 +100,6 @@ clamping; its end flanges and the frame shoulders retain the bearing stack.
 Those features remain functional. Filling them would obstruct assembly or
 remove retention, rather than simplify an equivalent assembly.
 
-The long frame feet retain their plain perimeter openings. Filling those
-large areas adds material without removing a difficult local feature;
-replacing the perimeter by a narrow central strip reduces its lateral section.
 The continuous bearing-post roots and solid rail clamping head from AH remain.
 Device supports retain verified mounting axes and the existing connector
 reservations. No new fastener family or printed separation is introduced.

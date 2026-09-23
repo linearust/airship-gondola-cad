@@ -191,9 +191,11 @@ class ServoCouplingTests(unittest.TestCase):
 
         main = coupling.adapter_shape()
         shaft = coupling.driver_shaft_shape()
-        self.assertAlmostEqual(shaft.BoundBox.YLength, 16, places=6)
+        self.assertAlmostEqual(shaft.BoundBox.YLength, 18, places=6)
         self.assertAlmostEqual(shaft.BoundBox.XMax, 1, places=6)
-        self.assertAlmostEqual(shaft.BoundBox.YMax, coupling.GEAR_START_Y + 8, places=6)
+        self.assertAlmostEqual(
+            shaft.BoundBox.YMax, coupling.GEAR_START_Y + 10, places=6
+        )
         displaced = shaft.copy()
         displaced.translate(App.Vector(0, -0.01, 0))
         self.assertGreater(displaced.common(main).Volume, 1e-5)
@@ -372,9 +374,40 @@ class InputShaftEvidenceTests(unittest.TestCase):
                     self.doc.recompute()
                     result = direct_adapter_fit_check(self.doc, prefix)
                     self.assertTrue(result["passed"], result)
+                    self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 2)
             finally:
                 pod.Tilt = original
                 self.doc.recompute()
+
+    def test_full_gear_engagement_does_not_hide_a_missing_end_reserve(self):
+        from gondola.parts import servo_coupling as coupling
+        from gondola.validation.propulsion import direct_adapter_fit_check
+
+        shaft = self.doc.PortInputShaft
+        original = shaft.Shape.copy()
+        try:
+            # Keep the entire socket and selected gear journal, but remove the
+            # two-millimetre projection beyond the gear's front face.
+            shaft.Shape = original.cut(
+                Part.makeBox(
+                    6,
+                    3,
+                    6,
+                    App.Vector(
+                        -3,
+                        coupling.HORN_BOTTOM_Y + coupling.GEAR_START_Y + 8,
+                        -3,
+                    ),
+                )
+            )
+            self.doc.recompute()
+            result = direct_adapter_fit_check(self.doc, "Port")
+            self.assertLess(result["missing_metal_gear_engagement_mm3"], 1e-5)
+            self.assertGreater(result["missing_gear_end_reserve_mm3"], 1)
+            self.assertFalse(result["passed"], result)
+        finally:
+            shaft.Shape = original
+            self.doc.recompute()
 
     def test_unseated_input_stub_is_rejected(self):
         from gondola.validation.propulsion import input_shaft_retention_check

@@ -27,6 +27,7 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
+from gondola.parts import rail
 from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -135,7 +136,10 @@ def control_behavior(doc):
                             doc.getObject(name).Placement.isSame(placement, 1e-7)
                             for name, placement in other_modules.items()
                         ),
-                        "passed": abs(module.Placement.Base.y - sign * 0.45) < TOL
+                        "passed": abs(
+                            module.Placement.Base.y - sign * rail.CLAMP_SHIFT_Y
+                        )
+                        < TOL
                         and all(
                             doc.getObject(name).Placement.isSame(placement, 1e-7)
                             for name, placement in other_modules.items()
@@ -395,6 +399,7 @@ def procurement_and_scope_metadata(obj):
         "OpticalMountContract",
         "StackInterfaceContract",
         "BatteryPlacementContract",
+        "RailFitContract",
         "StackHostName",
         "StackFitVerified",
         "HoldingTorqueVerified",

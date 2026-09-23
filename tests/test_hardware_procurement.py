@@ -35,7 +35,7 @@ class NativeHardwareProcurementTests(unittest.TestCase):
         self.addCleanup(App.closeDocument, doc.Name)
         for index, (code, detail) in enumerate(
             (
-                ("AL6061_CUT3_L16_FLAT16_A0", "length 16 mm, starting 0 mm"),
+                ("AL6061_CUT3_L18_FLAT18_A0", "length 18 mm, starting 0 mm"),
                 ("AL6061_CUT3_L24_FLAT5_A0", "length 5 mm, starting 0 mm"),
                 ("AL6061_CUT3_L14", "Leave the rod round"),
             )
@@ -100,7 +100,7 @@ class HardwareSpecificationTests(unittest.TestCase):
     def test_full_length_input_flat_is_valid_and_old_finished_shaft_is_not_selected(
         self,
     ):
-        stub = procurement_spec("AL6061_CUT3_L16_FLAT16_A0")
+        stub = procurement_spec("AL6061_CUT3_L18_FLAT18_A0")
         self.assertIn("nominal depth 0.5 mm", stub["requirements"])
         self.assertIn("no bearing journal", stub["requirements"])
         with self.assertRaises(KeyError):

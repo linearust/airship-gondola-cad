@@ -140,7 +140,7 @@ def rail_shoe_section(shapes, centre_y=0):
     band = Part.makeBox(
         bounds.XLength + 2,
         rail.SHOE_WIDTH,
-        rail.HEAD_TOP + rail.CLEARANCE - rail.SHOE_BOTTOM,
+        rail.HEAD_TOP + rail.HEAD_VERTICAL_CLEARANCE - rail.SHOE_BOTTOM,
         V(bounds.XMin - 1, centre_y - rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
     )
     return compound.common(band)
@@ -252,6 +252,26 @@ def rail_check(registry, shapes):
             }
         )
     finished_capture = rail.hex_nut_capture_check()
+    matched_head_fit = rail.head_fit_check()
+    fit_annotations = []
+    for obj in (
+        list(registry.Modules)
+        + objects
+        + [
+            registry.Document.getObject("RailFitSample"),
+            registry.Document.getObject("ShoeFitSample"),
+        ]
+    ):
+        try:
+            contract = json.loads(obj.RailFitContract)
+        except (AttributeError, TypeError, ValueError):
+            contract = None
+        fit_annotations.append(
+            {
+                "object": obj.Name if obj is not None else "missing_coupon",
+                "matches_current_fit_contract": contract == rail.fit_contract(),
+            }
+        )
     tape_rows = []
     for name, shape in tapes:
         bounds = shape.optimalBoundingBox(False, False)
@@ -279,6 +299,8 @@ def rail_check(registry, shapes):
         "rails": rows,
         "sliding_phase_checks": phase_rows,
         "hex_nut_finished_capture": finished_capture,
+        "matched_head_fit": matched_head_fit,
+        "native_fit_annotations": fit_annotations,
         "tape_over_wing_checks": tape_rows,
         "head_is_uninterrupted": False,
         "one_piece_unbroken_base": True,
@@ -286,6 +308,8 @@ def rail_check(registry, shapes):
         and all(r["passed"] for r in rows + tape_rows)
         and len(tape_rows) == 2 * len(rail.PAD_CENTRES)
         and finished_capture["passed"]
+        and matched_head_fit["passed"]
+        and all(row["matches_current_fit_contract"] for row in fit_annotations)
         and all(
             r["slide_intersection_mm3"] < TOL
             and r["lift_1mm_blocking_mm3"] > TOL
@@ -471,7 +495,12 @@ def module_service(registry, objects, shapes):
             if o not in members and o.Name not in removed_names
         ]
         centre_release = path_checks(
-            moving, obstacles, [(0, side * y, 0) for y in (0, -0.15, -0.3, -0.45)]
+            moving,
+            obstacles,
+            [
+                (0, -side * rail.CLAMP_SHIFT_Y * fraction, 0)
+                for fraction in (0, 1 / 3, 2 / 3, 1)
+            ],
         )
         moving = [
             (name, translated_shape(s, y=-side * rail.CLAMP_SHIFT_Y))
@@ -535,7 +564,7 @@ def module_service(registry, objects, shapes):
             "module_centre_at_exit_x_mm": target_x,
             "shoe_fully_past_rail_end": end_exit,
             "clamp_land_centre_offset_mm": land_offset,
-            "axial_lock_type": "Friction clamp only; no numerical holding-force proof",
+            "axial_lock_type": "Coupon-matched friction fit plus additional screw lock; no numerical holding-force proof",
             "passed": screw_release["passed"]
             and nut_load["passed"]
             and key_service["passed"]

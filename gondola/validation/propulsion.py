@@ -757,6 +757,24 @@ def direct_adapter_fit_check(doc, prefix):
     expected_shaft = _coupling_shape_world(doc, prefix, coupling.driver_shaft_shape())
     gear_journal = expected_shaft.common(bore)
     missing_gear_engagement = abs(gear_journal.cut(parts["InputShaft"]).Volume)
+    projection = (
+        coupling.SHAFT_START_Y
+        + coupling.SHAFT_LENGTH
+        - (coupling.GEAR_START_Y + specification.total_length_mm)
+    )
+    reserve = expected_shaft.common(
+        _coupling_shape_world(
+            doc,
+            prefix,
+            Part.makeCylinder(
+                specification.bore_mm / 2,
+                projection,
+                App.Vector(0, coupling.GEAR_START_Y + specification.total_length_mm, 0),
+                axis,
+            ),
+        )
+    )
+    missing_reserve = abs(reserve.cut(parts["InputShaft"]).Volume)
     rows = []
     names = list(parts)
     for index, name in enumerate(names):
@@ -780,10 +798,12 @@ def direct_adapter_fit_check(doc, prefix):
         "printed_adapter_in_gear_bore_mm3": adapter_in_gear_bore,
         "metal_gear_engagement_mm": specification.total_length_mm,
         "missing_metal_gear_engagement_mm3": missing_gear_engagement,
+        "metal_projection_beyond_gear_mm": projection,
+        "missing_gear_end_reserve_mm3": missing_reserve,
         "input_shaft_retention_passed": retention["passed"],
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver, the printed adapter stays outside its bore, and the prepared Ø1.8 mm horn-tip clearance hole accepts the M1.6 clamp, whose head bears directly on the metal horn opposite the adapter. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
+        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore, and the prepared Ø1.8 mm horn-tip clearance hole accepts the M1.6 clamp, whose head bears directly on the metal horn opposite the adapter. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
         "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
         and specification.total_length_mm == coupling.GEAR_LENGTH
         and bore_intrusion < TOL
@@ -791,6 +811,9 @@ def direct_adapter_fit_check(doc, prefix):
         and adapter_in_gear_bore < TOL
         and gear_journal.Volume > TOL
         and missing_gear_engagement < TOL
+        and abs(projection - 2) < TOL
+        and reserve.Volume > TOL
+        and missing_reserve < TOL
         and retention["passed"]
         and all(row["intersection_mm3"] < TOL for row in rows)
         and all(area > 1 for area in capture.values()),
@@ -800,6 +823,8 @@ def direct_adapter_fit_check(doc, prefix):
 def _servo_rear_body_allowance(doc, prefix):
     """Measure the rear case separately from its lower mounting ear."""
     from gondola.parts import servo_bridge
+
+    from .relative_motion import _certify_pair, _part
 
     mount = doc.getObject(prefix + "ServoMount")
     group = doc.getObject("MainPropulsionModule")
@@ -842,17 +867,51 @@ def _servo_rear_body_allowance(doc, prefix):
     body_bounds = body.optimalBoundingBox(False, False)
     plate_bounds = under.optimalBoundingBox(False, False)
     gap = body_bounds.ZMin - plate_bounds.ZMax
+    lane_end = rear - 0.1
+    lane_start = lane_end - servo_bridge.REAR_LEAD_ALLOWANCE
     lane = Part.makeBox(
         body_bounds.XLength,
-        rear - 0.2,
+        servo_bridge.REAR_LEAD_ALLOWANCE,
         body_bounds.ZLength,
-        App.Vector(body_bounds.XMin, 0.1, body_bounds.ZMin),
+        App.Vector(body_bounds.XMin, lane_start, body_bounds.ZMin),
     )
     collisions = [
         {"part": name, "intersection_mm3": volume}
         for name, obstacle in shapes.items()
         if (volume := intersection_volume(lane, obstacle)) > TOL
     ]
+    # Keep the complete rear lead allowance clear of both independently moving
+    # input drives. Normalize each actual part to neutral without changing the
+    # document, then certify every point in its bounded +/-60 degree motion.
+    stationary = _part(lane, prefix + "RearLeadAllowance")
+    moving_rows = []
+    spec = drive_for_document(doc)
+    for side in ("Port", "Starboard"):
+        drive = doc.getObject(side + "InputDrive")
+        if drive is None:
+            return {"passed": False, "error": "Missing input drive: " + side}
+        placed = drive.getGlobalPlacement()
+        parent = drive.getParentGeoFeatureGroup().getGlobalPlacement()
+        neutral = parent.multiply(App.Placement(drive.Placement.Base, App.Rotation()))
+        to_neutral = inverse.multiply(neutral).multiply(placed.inverse())
+        axis = inverse.multiply(neutral).Base
+        for obj in doc.Objects:
+            if obj.Name not in shapes or not belongs_to_group(obj, drive):
+                continue
+            shape = world_shape(obj)
+            shape.Placement = to_neutral.multiply(shape.Placement)
+            moving_rows.append(
+                _certify_pair(
+                    stationary,
+                    _part(
+                        shape,
+                        obj.Name,
+                        axis=tuple(axis),
+                        rate=-1 / spec.ratio,
+                        prefix=side,
+                    ),
+                )
+            )
     return {
         "coordinate_frame": "servo axis, positive Y toward the horn",
         "rear_body_bottom_z_mm": body_bounds.ZMin,
@@ -863,18 +922,21 @@ def _servo_rear_body_allowance(doc, prefix):
         "minimum_rear_body_allowance_mm": 5.0,
         "inward_planning_volume_mm": [
             body_bounds.XLength,
-            rear - 0.2,
+            servo_bridge.REAR_LEAD_ALLOWANCE,
             body_bounds.ZLength,
         ],
-        "inward_planning_y_range_mm": [0.1, rear - 0.1],
+        "inward_planning_y_range_mm": [lane_start, lane_end],
         "checked_physical_objects": sorted(shapes),
         "planning_volume_collisions": collisions,
-        "scope": "Saved rear case strip excludes the lower mounting ear. Inward planning space stops before the case rear face and never claims under-ear/nut access. Received lead exit position, diameter, connector and bend radius are unspecified; this is a static design allowance, not a factory cable route or installed harness qualification.",
+        "continuous_input_drive_clearance": moving_rows,
+        "scope": "Saved rear case strip excludes the lower mounting ear. Rearward planning space stops before the case rear face and never claims under-ear/nut access. Every physical input-drive part on both sides is checked through its complete bounded motion. Received lead exit position, diameter, connector and bend radius are unspecified; this rigid design allowance is not a factory cable route or installed harness qualification.",
         "passed": abs(body_bounds.ZMin + 15) < TOL
         and abs(body_bounds.ZLength - 20) < TOL
         and abs(body_bounds.XLength - 7) < TOL
         and gap >= 5.0 - TOL
-        and not collisions,
+        and not collisions
+        and bool(moving_rows)
+        and all(row["passed"] for row in moving_rows),
     }
 
 
@@ -1535,7 +1597,7 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
                 "scope": "Remove the output gear and release its selected set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
                 **continuous_path(
                     physical[shaft_name],
-                    [(0, 0, 0), (0, side * 45, 0)],
+                    [(0, 0, 0), (0, side * 35, 0), (40, side * 35, 0)],
                     _service_obstacles(physical, excluded),
                 ),
             }
@@ -1594,7 +1656,7 @@ def output_carrier_service_check(doc, module, prefix):
         name = prefix + "OutputShaft" + suffix
         path = continuous_path(
             staged[name],
-            [(0, 0, 0), (0, side * 45, 0)],
+            [(0, 0, 0), (0, side * 35, 0), (40, side * 35, 0)],
             _service_obstacles(staged, {name}),
         )
         full_shaft_paths.append({"part": name, **path})
@@ -1609,7 +1671,7 @@ def output_carrier_service_check(doc, module, prefix):
         "carrier_removal": paths,
         "full_shaft_removal": full_shaft_paths,
         "retained_parts": sorted(fixed),
-        "scope": "Unpowered bench sequence with leads freed and both shaft clamps loosened: remove the small gear, retract each stub 6.5 mm while supporting the loose bearing/spacer, move each spacer 0.3 mm outward, then slide the complete motor/carrier and its clamp fasteners 40 mm in +X. Withdraw both stubs fully after removing the rotor. Reverse for assembly, return spacers against the carrier, position the shafts and tighten the split clamps. Bearings, frame and paired servo module remain installed. Temporary hand support, physical fits and wrench access to loosened clamps need a prototype.",
+        "scope": "Unpowered bench sequence with leads freed and both shaft clamps loosened: remove the small gear, retract each stub 6.5 mm while supporting the loose bearing/spacer, move each spacer 0.3 mm outward, then slide the complete motor/carrier and its clamp fasteners 40 mm in +X. After removing the rotor, withdraw each stub 35 mm axially and 40 mm in +X, keeping the opposite shaft installed. Reverse for assembly, return spacers against the carrier, position the shafts and tighten the split clamps. Bearings, frame and paired servo module remain installed. Temporary hand support, physical fits and wrench access to loosened clamps need a prototype.",
         "passed": gear_path["passed"]
         and bool(moving)
         and all(

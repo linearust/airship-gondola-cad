@@ -5,6 +5,7 @@ import math
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts.design import MODULE_STATIONS
 from gondola.contracts.drive import drive_for_document
+from gondola.parts import rail
 
 from .geometry import intersection_volume
 from .rotation_envelope import full_orbit_envelope
@@ -57,7 +58,7 @@ def _static_expression_contract(doc, spec):
         control = "AssemblySettings." + station.clamp_control
         allowed[station.object_name] = {
             "Placement.Base.x": "RailPositionX",
-            "Placement.Base.y": control + "==0?0.45mm:-0.45mm",
+            "Placement.Base.y": f"{control}==0?{rail.CLAMP_SHIFT_Y:g}mm:-{rail.CLAMP_SHIFT_Y:g}mm",
         }
         for suffix in ("Screw", "Nut"):
             allowed[station.object_name + "RailClamp" + suffix] = {

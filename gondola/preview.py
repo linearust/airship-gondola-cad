@@ -74,7 +74,7 @@ def create_attachment_detail_document(side=1):
     add_detail_object("RailSection", rail.rail_shape(48, (0,)), (0.7, 0.76, 0.79))
     add_detail_object(
         "IntegratedShoe",
-        translated_shape(rail.shoe_shape(), y=side * 0.45),
+        translated_shape(rail.shoe_shape(), y=side * rail.CLAMP_SHIFT_Y),
         (0.31, 0.66, 0.76),
         65,
     )
@@ -84,12 +84,12 @@ def create_attachment_detail_document(side=1):
 
     add_detail_object(
         "PurchasedM2x6",
-        translated_shape(orient(rail.clamp_screw_shape()), y=side * 0.45),
+        translated_shape(orient(rail.clamp_screw_shape()), y=side * rail.CLAMP_SHIFT_Y),
         (0.92, 0.64, 0.19),
     )
     add_detail_object(
         "PurchasedM2Nut",
-        translated_shape(orient(rail.nut_shape()), y=side * 0.45),
+        translated_shape(orient(rail.nut_shape()), y=side * rail.CLAMP_SHIFT_Y),
         (0.92, 0.64, 0.19),
     )
     for sign in (-1, 1):

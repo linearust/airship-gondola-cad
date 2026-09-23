@@ -5,6 +5,7 @@ each lateral wing and continues onto the envelope. It never crosses the
 central running head. Commercial threads are documented, not tessellated.
 """
 
+import json
 import math
 
 import FreeCAD as App
@@ -30,10 +31,15 @@ PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.2
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
 HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 8.4
 SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.8
-CLEARANCE = 0.45
+# The head is the mating datum; leave the recessed web relieved. These are
+# coupon starting dimensions, not a guaranteed as-printed or friction fit.
+HEAD_SIDE_CLEARANCE = 0.1
+HEAD_VERTICAL_CLEARANCE = 0.1
+WEB_SIDE_CLEARANCE = 0.45
+HEAD_ENTRY_CHAMFER = 0.3
 CLAMP_Z = 6.9
 CLAMP_FACE_EDGE_ALLOWANCE = 0.5
-CLAMP_SHIFT_Y = 0.45
+CLAMP_SHIFT_Y = HEAD_SIDE_CLEARANCE
 NUT_AF = fasteners.HEX_NUT_AF
 NUT_POCKET_AF, NUT_THICKNESS = 4.15, fasteners.HEX_NUT_HEIGHT
 # Finished acceptance limits, not a claim about unprocessed powder-bed parts.
@@ -119,15 +125,19 @@ def capture_void():
         [
             box(
                 length,
-                WEB_WIDTH + 2 * CLEARANCE,
-                HEAD_BOTTOM - CLEARANCE + 3,
-                (-length / 2, -WEB_WIDTH / 2 - CLEARANCE, -3),
+                WEB_WIDTH + 2 * WEB_SIDE_CLEARANCE,
+                HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE + 3,
+                (-length / 2, -WEB_WIDTH / 2 - WEB_SIDE_CLEARANCE, -3),
             ),
             box(
                 length,
-                HEAD_WIDTH + 2 * CLEARANCE,
-                HEAD_TOP - HEAD_BOTTOM + 2 * CLEARANCE,
-                (-length / 2, -HEAD_WIDTH / 2 - CLEARANCE, HEAD_BOTTOM - CLEARANCE),
+                HEAD_WIDTH + 2 * HEAD_SIDE_CLEARANCE,
+                HEAD_TOP - HEAD_BOTTOM + 2 * HEAD_VERTICAL_CLEARANCE,
+                (
+                    -length / 2,
+                    -HEAD_WIDTH / 2 - HEAD_SIDE_CLEARANCE,
+                    HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE,
+                ),
             ),
         ]
     )
@@ -176,26 +186,36 @@ def shoe_shape(nut_pocket_af=NUT_POCKET_AF):
         TOP_Z - SHOE_BOTTOM,
         (-SHOE_LENGTH / 2, -SHOE_WIDTH / 2, SHOE_BOTTOM),
     )
+    shoe = shoe.cut(capture_void()).removeSplitter()
+    # Ease only the five head-capture edges at each open end. The straight
+    # running datum, web relief and exterior mounting envelope stay unchanged.
+    entry_edges = [
+        edge
+        for edge in shoe.Edges
+        if edge.BoundBox.XLength < 1e-7
+        and abs(abs(edge.CenterOfMass.x) - SHOE_LENGTH / 2) < 1e-7
+        and edge.BoundBox.ZMin >= HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE - 1e-7
+        and max(abs(edge.BoundBox.YMin), abs(edge.BoundBox.YMax))
+        <= HEAD_WIDTH / 2 + HEAD_SIDE_CLEARANCE + 1e-7
+    ]
+    if len(entry_edges) != 10:
+        raise RuntimeError("Rail shoe entry no longer has two five-edge head rims")
+    shoe = shoe.makeChamfer(HEAD_ENTRY_CHAMFER, entry_edges)
     clamp_void = union([nut_pocket_void(nut_pocket_af), screw_bore_void()])
-    shoe = (
-        shoe.cut(capture_void())
-        .cut(clamp_void)
-        .cut(half_turn(clamp_void))
-        .removeSplitter()
-    )
+    shoe = shoe.cut(clamp_void).cut(half_turn(clamp_void)).removeSplitter()
     if not shoe.isValid() or len(shoe.Solids) != 1:
         raise RuntimeError("Invalid integral rail shoe")
     return shoe
 
 
 def clamp_screw_shape():
-    # In the locked assembly the shoe moves +Y .45 until its far jaw seats.
+    # The secondary lock shifts the shoe to seat its opposite head-side jaw.
     tip_y = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y
     # The unknown screw-tip chamfer is conservatively bounded by a full shank.
     # Its full nominal face bears within the solid 3 mm head, leaving 0.5 mm
     # above and below. The opposite shoe jaw reacts that load across the head.
     # Inspect the real end for a usable bearing face/burrs before pressing PA12.
-    # An 8 mm screw puts its head 1.55 mm outside the shoe; a 6 mm one would
+    # An 8 mm screw puts its head 1.9 mm outside the shoe; a 6 mm one would
     # collide with the outer wall before reaching this contact plane.
     return union(
         [
@@ -329,9 +349,9 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
         "M2 x 8 kit button-head screw | design head envelope",
         clamp_screw_shape(),
         "M2X8_BUTTON_HEAD",
-        "M2x0.4 x8 from the kit. Friction clamp against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. "
+        "M2x0.4 x8 from the kit. Secondary friction lock for the coupon-matched rail fit, against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. "
         "The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. "
-        "Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. "
+        "Loosen three turns (1.2mm), then push the matched shoe by hand. Hand snug only; no qualified torque or holding force. "
         "Screw remains in the captured nut during normal adjustment. "
         + fasteners.HEAD_ENVELOPE_NOTE,
     )
@@ -394,11 +414,15 @@ def build_rail(doc):
         f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x{HEAD_TOP:g}mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
         "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
         "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. "
+        "Head/shoe nominal trial clearance is0.1mm per side and above/below; relieved web clearance is0.45mm per side. Print matching coupons first, finish/recalibrate to hand-push fit without rocking or free sliding; bolt is an additional lock. Raw PA12 tolerance does not guarantee this fit. "
         "The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. "
         f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
         "The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
     )
     set_property(printed_rail, "PrintProcess", "PA12 SLS or MJF")
+    set_property(
+        printed_rail, "RailFitContract", json.dumps(fit_contract(), sort_keys=True)
+    )
     set_property(
         printed_rail,
         "ManufacturingException",
@@ -444,7 +468,7 @@ def build_coupons(doc):
         "PRINT FIRST | 48mm T rail with tape wing",
         rail_shape(48, (0,)),
         App.Rotation(),
-        "PA12 SLS/MJF sample for sliding, clamp and tape-over-wing fit. Same section as full rail.",
+        "PA12 SLS/MJF matched sample for hand-push rail fit, secondary clamp and tape-over-wing trial. Same section as full rail. Print with the intended supplier/process/finish and relevant production orientation; transfer only after checking full-length straightness and fit. Nominal head clearance0.1mm per face is a coupon starting value, not guaranteed as-printed fit.",
     )
     shoe_coupon = create_printed_part(
         doc,
@@ -453,8 +477,12 @@ def build_coupons(doc):
         "PRINT FIRST | integral rail shoe with M2 nut slot",
         shoe_shape(),
         App.Rotation(),
-        "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, full screw-tip contact on the thick head and sliding fit. Check sustained grip and rail indentation with hand-snug pressure. Raw printing tolerance is not sufficient for hex capture. No printed threads or qualified torque.",
+        "Match this shoe to the rail coupon before production. With screw backed off, it must push on by hand without rocking or free sliding. Lightly finish binding head-contact faces evenly; if loose, compensate the mating dimensions and reprint, because sanding cannot reduce clearance. Do not force the flexible rail or qualify fit by screw tightening. Head clearance0.1mm per face and0.3mm entry chamfers are trial geometry. Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion/rotation blocking with the actual nut, head/tool access and full screw-tip contact. Check sustained grip and indentation with hand-snug pressure. Raw printing tolerance guarantees neither the matched rail fit nor hex capture. No printed threads or qualified torque.",
     )
+    for coupon in (rail_coupon, shoe_coupon):
+        set_property(
+            coupon, "RailFitContract", json.dumps(fit_contract(), sort_keys=True)
+        )
     return {"group": group, "printed": [rail_coupon, shoe_coupon]}
 
 
@@ -559,6 +587,75 @@ def clamp_contact_check(rail_section=None, shoe=None):
     }
 
 
+def fit_contract():
+    """Nominal matched-coupon starting geometry and required physical outcome."""
+    total_y = 2 * HEAD_SIDE_CLEARANCE
+    total_z = 2 * HEAD_VERTICAL_CLEARANCE
+    # Two independent +/-0.3 mm size errors are a conservative size-only
+    # budget. Surface texture, curvature and print anisotropy are additional.
+    size_error = 0.3
+    return {
+        "head_width_mm": HEAD_WIDTH,
+        "head_height_mm": HEAD_TOP - HEAD_BOTTOM,
+        "shoe_head_cavity_width_mm": HEAD_WIDTH + total_y,
+        "shoe_head_cavity_height_mm": HEAD_TOP - HEAD_BOTTOM + total_z,
+        "nominal_head_side_gap_mm": HEAD_SIDE_CLEARANCE,
+        "nominal_head_vertical_gap_mm": HEAD_VERTICAL_CLEARANCE,
+        "nominal_head_total_width_gap_mm": total_y,
+        "nominal_head_total_height_gap_mm": total_z,
+        "nominal_web_total_width_gap_mm": 2 * WEB_SIDE_CLEARANCE,
+        "head_entry_chamfer_mm": HEAD_ENTRY_CHAMFER,
+        "straight_head_guide_length_mm": SHOE_LENGTH - 2 * HEAD_ENTRY_CHAMFER,
+        "individual_size_error_budget_mm": size_error,
+        "size_only_raw_width_gap_range_mm": [
+            round(total_y - 2 * size_error, 6),
+            round(total_y + 2 * size_error, 6),
+        ],
+        "size_only_raw_height_gap_range_mm": [
+            round(total_z - 2 * size_error, 6),
+            round(total_z + 2 * size_error, 6),
+        ],
+        "physical_acceptance": "With clamp screw backed off, matched parts push together and reposition by hand without rocking or free sliding. No numeric interference or insertion force is prescribed; prove fit on process-matched coupons and then the full rail at every used station.",
+        "fit_correction": "Lightly finish tight head-contact faces evenly; compensate dimensions and reprint a loose pair. Sanding cannot remove excessive clearance. Do not force the flexible rail. Keep the relieved web free and use the bolt only as an additional lock.",
+        "manufacturing_tolerance_rule": "Creallo SLS/MJF +/-0.3%, minimum+/-0.3mm. The nominal 0.2mm total head gap is below the general 0.3mm assembly-gap guide and intentionally requires matched-coupon correction; it is not a guarantee of raw print assembly.",
+        "as_printed_fit_guaranteed": False,
+        "physical_fit_verified": False,
+        "holding_force_verified": False,
+    }
+
+
+def head_fit_check(rail_section=None, shoe=None):
+    """Check actual capture boundaries; does not simulate friction or preload."""
+    rail_section = rail_shape(48, (0,)) if rail_section is None else rail_section
+    shoe = shoe_shape() if shoe is None else shoe
+    rows = []
+    for axis, clearance in (
+        ("y", HEAD_SIDE_CLEARANCE),
+        ("z", HEAD_VERTICAL_CLEARANCE),
+    ):
+        for side in (-1, 1):
+            boundary = translated_shape(shoe, **{axis: side * clearance})
+            beyond = translated_shape(shoe, **{axis: side * (clearance + 0.02)})
+            boundary_overlap = abs(boundary.common(rail_section).Volume)
+            beyond_overlap = abs(beyond.common(rail_section).Volume)
+            rows.append(
+                {
+                    "axis": axis,
+                    "direction": side,
+                    "nominal_face_clearance_mm": clearance,
+                    "boundary_intersection_mm3": boundary_overlap,
+                    "beyond_boundary_intersection_mm3": beyond_overlap,
+                    "passed": boundary_overlap < 1e-6 and beyond_overlap > 1e-5,
+                }
+            )
+    return {
+        "fit_contract": fit_contract(),
+        "boundary_probes": rows,
+        "scope": "Solid capture geometry only. Nominal positive clearance does not produce elastic preload or certify a snug physical fit.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def validate_mechanism():
     rail = rail_shape(48, (0,))
     shoe = shoe_shape()
@@ -612,6 +709,7 @@ def validate_mechanism():
     }
     clamp_contact = clamp_contact_check(rail, shoe)
     flex_relief = flex_relief_check(rail)
+    head_fit = head_fit_check(rail, shoe)
     return {
         "passed": max(seated_intersections.values()) < 1e-6
         and max(negative_side_intersections.values()) < 1e-6
@@ -619,19 +717,17 @@ def validate_mechanism():
         and all(p["rail_shoe_overlap_mm3"] < 1e-6 for p in slide_samples)
         and all(v > 1e-5 for v in capture_intersections.values())
         and clamp_contact["passed"]
-        and flex_relief["passed"],
+        and flex_relief["passed"]
+        and head_fit["passed"],
         "clamp_contact": clamp_contact,
         "flex_relief": flex_relief,
+        "head_fit": head_fit,
         "rail_length_mm": LENGTH,
         "continuous_single_rail": True,
         "unbroken_base": True,
         "head_land_pitch_mm": LAND_PITCH,
         "head_relief_gap_mm": FLEX_GAP,
         "head_is_uninterrupted": False,
-        "nominal_mating_side_gap_mm": CLEARANCE,
-        "nominal_width_gap_mm": 0.9,
-        "worst_case_width_gap_using_two_0_3mm_size_errors_mm": 0.3,
-        "manufacturing_tolerance_rule": "Creallo SLS/MJF +/-0.3%, minimum+/-0.3mm; tolerances are not a promise of achieved local surface fit.",
         "shoe_180deg_symmetry_difference_mm3": symmetry_difference,
         "negative_side_intersections_mm3": negative_side_intersections,
         "side_selection": "AssemblySettings clamp approach enumeration drives shoe seating offset and installed hardware orientation. Only one pair is installed.",
@@ -639,8 +735,8 @@ def validate_mechanism():
         "seated_intersections_mm3": seated_intersections,
         "capture_collision_probes_mm3": capture_intersections,
         "released_slide_path": slide_samples,
-        "release": "Loosen M2x0.4 screw three turns, slide along rail; remove at an open rail end. No lift-off in the middle.",
-        "axial_lock": "Friction only; no numerical retention/torque qualification.",
+        "release": "Loosen M2x0.4 screw three turns, reposition the matched shoe by hand along the rail; remove at an open rail end. No lift-off in the middle. Nominal CAD clearance does not prove the required snug hand fit.",
+        "axial_lock": "Coupon-matched friction fit with an additional screw lock; no numerical retention/torque qualification.",
         "tape": "Two separate strips over each side wing, not under rail, not across central cap",
         "tape_to_shoe_nominal_vertical_gap_mm": SHOE_BOTTOM
         - PAD_THICKNESS

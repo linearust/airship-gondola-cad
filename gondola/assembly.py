@@ -126,6 +126,9 @@ def build_assembly():
             module, "RailPositionX", x, "App::PropertyDistance", "Rail adjustment"
         )
         set_property(
+            module, "RailFitContract", json.dumps(rail.fit_contract(), sort_keys=True)
+        )
+        set_property(
             module,
             "RailPositionNotes",
             f"Default land centre. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
@@ -133,7 +136,7 @@ def build_assembly():
         module.setExpression("Placement.Base.x", "RailPositionX")
         module.setExpression(
             "Placement.Base.y",
-            "AssemblySettings." + clamp_control + " == 0 ? 0.45 mm : -0.45 mm",
+            f"AssemblySettings.{clamp_control} == 0 ? {rail.CLAMP_SHIFT_Y:g} mm : -{rail.CLAMP_SHIFT_Y:g} mm",
         )
         set_property(
             module,

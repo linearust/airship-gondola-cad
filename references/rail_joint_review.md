@@ -1,7 +1,9 @@
-# Rail clamp and bearing-post roots — AH
+# Rail clamp and bearing-post roots
 
 This is a nominal geometric design review. It does not qualify tightening
 torque, holding force, PA12 creep, flexure fatigue or vehicle loads.
+The solid head and continuous roots introduced in AH remain. AJ's matched
+rail fit is described in [the rail fit review](rail_fit_review.md).
 
 ## Clamp load path
 
@@ -41,10 +43,11 @@ No completed cable route justified piercing the roots.
 The roots are now continuous. Only local access near the rail fastener and
 servo bridge remains. Route leads around the posts, secured to existing arms;
 the motor-wire loop reservation is not a complete connected harness route.
-The longer horizontal openings in the perimeter base remain: they do not cut
-through the post-to-foot connection and filling them would add unnecessary
-material. Removing the root openings broadens the load path and removes their
-internal corners; it is not a quantified strength multiplier.
+AJ also replaces the former long perimeter openings with a continuous 3 mm
+outboard floor, while preserving the short 2 mm rail-tool floor. The shorter
+propulsor spacing and the central servo seat are covered in
+[the support review](shape_simplification_review.md). These wider load paths
+are not a quantified strength multiplier.
 
 Propulsion-clamp access uses a 1.5 mm L-key by its short arm instead of a long
 straight driver through the posts. Equipment clamps use its long arm. The
