@@ -164,3 +164,31 @@ clearance tradeoff and mandatory same-process coupon checks. The paired servo
 module and all preload-dependent mechanism joints retain their fasteners.
 Current counts and release status come from `gondola/contracts/design.py`;
 the AC quantities and 25 mm tower described above are historical.
+
+## Revision AE handling robustness
+
+The user accepts modest mass increases for simpler, less delicate structures.
+The four tall output-bearing posts now have plain 9.6 x 4 mm web sections;
+their unnecessary lightening windows are removed. The separate low wire/key
+corridors, bearing seats, shaft locations, fasteners and removable servo bridge
+remain unchanged. No purchased interface is resized. CAD screening includes
+complete output rotation and the existing axial-travel allowance.
+
+The optical head's pivot ears, narrow connecting post and tray neck increase
+from 1.5 to 2 mm. Its two pivot screws change from M2x6 to the already-selected
+M2x8 kit size. The tower latches retain their separately specified flexible
+sections; do not apply the pivot thickness to the latch fingers. Part count,
+sensor datum and angle controls remain unchanged. The selected gear report now
+distinguishes the 3 mm driver face, 5 mm output face and 3 mm nominal overlap.
+
+The modeled print and fastener mass increases by approximately 3.21 g under
+the existing density assumptions; this is not measured or all-up mass.
+Physical stiffness, screw fit, latch retention and pointing still require the
+existing prototype checks. The intentional geometry and metadata transition is
+recorded in `tests/fixtures/rev_ae_review.json`; current quantities remain in
+`gondola/contracts/design.py` and the generated BOM.
+
+AE verification passed 262 native FreeCAD tests without skips, complete saved
+assembly/equipment and propulsion checks, 126-shape fixture comparison, native
+controls, print-export identity and prototype bundle checks. These are CAD and
+consistency results, not physical strength or fatigue qualification.

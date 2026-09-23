@@ -32,7 +32,7 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         # their deliberately unseated heads are not bearing-face stacks.
         "fastener_stacks": 16,
         "fastener_service": 16,
-        "functional_wall_probes": 13,
+        "functional_wall_probes": 17,  # Includes all four plain bearing-post webs.
         "continuous_nut_loading": 2,
         "geometry": 12,  # Common output frame, servo bridge and five prints per side.
     }

@@ -1,6 +1,7 @@
 """Native CAD regressions; run with the installed FreeCAD Python runtime."""
 
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -223,6 +224,69 @@ class NativeGearedDriveTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
+
+    def test_plain_bearing_posts_keep_the_low_wire_corridor_open(self):
+        from gondola.parts import propulsion
+
+        frame = self.doc.PropulsionFixedFrame.Shape
+        for sign in (-1, 1):
+            for local_y in (-28.5, 28.5):
+                y = sign * (propulsion.PIVOT_HALF_SPAN + local_y)
+                with self.subTest(sign=sign, local_y=local_y):
+                    # A full section replaces each tall internal window.
+                    section = Part.makeBox(9.6, 4, 20, App.Vector(-4.8, y - 2, 14))
+                    self.assertLess(section.cut(frame).Volume, 1e-7)
+                    # The independent, low wire/key tunnel must remain open.
+                    corridor = Part.makeBox(6.4, 4, 4, App.Vector(-3.2, y - 2, 4))
+                    self.assertLess(corridor.common(frame).Volume, 1e-7)
+
+    def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
+        from gondola.cad import belongs_to_group, world_shape
+        from gondola.parts import propulsion
+        from gondola.validation.motion_clearance import carrier_axial_travel
+
+        # Added web material occupies local Y26.5..30.5 and Y-30.5..-26.5,
+        # ending 9.2 mm below the output axis. Rotation leaves Y unchanged.
+        # Each real moving solid must either remain within the opposed inner
+        # planes at both axial limits, or fit radially inside the web top.
+        minimum_web_radius = propulsion.PIVOT_Z - 39.0
+        physical = [
+            *self.module["printed"],
+            *self.module["hardware"],
+            *self.module["references"],
+        ]
+        for prefix in ("Port", "Starboard"):
+            pod = self.doc.getObject(prefix + "Pod")
+            travel = carrier_axial_travel(self.doc, prefix)
+            self.assertTrue(travel["passed"], travel)
+            for obj in physical:
+                if not belongs_to_group(obj, pod):
+                    continue
+                shape = world_shape(obj)
+                shape.Placement = (
+                    pod.getGlobalPlacement().inverse().multiply(shape.Placement)
+                )
+                bounds = shape.optimalBoundingBox(False, False)
+                inside_axial_planes = (
+                    bounds.YMin - travel["negative_mm"] >= -26.5 - 1e-7
+                    and bounds.YMax + travel["positive_mm"] <= 26.5 + 1e-7
+                )
+                radial_bound = math.hypot(
+                    max(abs(bounds.XMin), abs(bounds.XMax)),
+                    max(abs(bounds.ZMin), abs(bounds.ZMax)),
+                )
+                with self.subTest(object=obj.Name):
+                    self.assertTrue(
+                        inside_axial_planes or radial_bound < minimum_web_radius,
+                        (obj.Name, bounds, radial_bound, travel),
+                    )
+
+    def test_gear_metrics_distinguish_driver_and_output_face_width(self):
+        metrics = self.module["metrics"]["gear_drive"]
+        self.assertNotIn("face_width_mm", metrics)
+        self.assertEqual(metrics["driver_face_width_mm"], 3.0)
+        self.assertEqual(metrics["output_face_width_mm"], 5.0)
+        self.assertEqual(metrics["nominal_full_face_overlap_mm"], 3.0)
 
     def test_rail_key_clears_complete_fixed_module_on_both_sides(self):
         from gondola.validation.propulsion import rail_key_access_check

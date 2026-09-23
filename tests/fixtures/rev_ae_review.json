@@ -1,0 +1,227 @@
+{
+  "revision": "AE",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "69c1380f0424fb3336f580814556423ca90c8b37",
+  "previous_fixture_sha256": "01ec30f2242ef8461a51c5e5d69fce9373ea8f0db068c79762027db3080f144d",
+  "approved_fixture_sha256": "9879103a59dd699c332fc104f87fefa8eb66e9874472d650c6036c0fbccfcfa5",
+  "scope": "Intentional geometry and native-contract transition audited against all retained AD objects before changing the pinned fixture. Not strength, physical fit, fatigue or flight qualification.",
+  "intentional_geometry_changes": [
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 27.966481709335355,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 27.96648170933304,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 27.966481709335362,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 27.966481709334857,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "OpticalPitchBolt",
+      "local_shape": {
+        "difference_mm3": 6.283185307179585,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 6.283185307179593,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 19.04590546238811,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.5,
+        "volume_difference_mm3": 6.283185307179593,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalPitchNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 10.714813806961226,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.5,
+        "volume_difference_mm3": 3.552713678800501e-15,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalRollBolt",
+      "local_shape": {
+        "difference_mm3": 6.283185307179585,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 6.283185307179593,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 19.04590546238812,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.5,
+        "volume_difference_mm3": 6.283185307179593,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalRollBracket",
+      "local_shape": {
+        "difference_mm3": 39.537691615763855,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 39.53769161576393,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 39.53769161576386,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 39.53769161576389,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "OpticalRollNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 10.714813806961267,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.5,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalSensorTray",
+      "local_shape": {
+        "difference_mm3": 18.989823716860116,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 18.989823716860087,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 18.98982371686011,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 18.989823716860087,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape": {
+        "difference_mm3": 2990.079999999994,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2990.080000000018,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 2990.079999999999,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2990.080000000009,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    }
+  ],
+  "added_shapes": [],
+  "removed_shapes": [],
+  "retained_shape_count": 126,
+  "placement_changes": {
+    "OpticalPitchBolt": {
+      "delta_mm": [
+        0.0,
+        -0.5000000000000002,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "OpticalPitchNut": {
+      "delta_mm": [
+        0.0,
+        0.5,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "OpticalRollBolt": {
+      "delta_mm": [
+        -0.5,
+        0.0,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "OpticalRollNut": {
+      "delta_mm": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "rotation_unchanged": true
+    }
+  },
+  "placement_change_scope": "Only the two optical bolts and two nuts move 0.5 mm outward to seat against the thicker ears. Their axes and rotations remain unchanged. All other retained placements are unchanged.",
+  "native_expressions_unchanged": true,
+  "native_control_behavior_passed": true,
+  "registry_contents_unchanged": true,
+  "native_metadata_changes": [
+    "Optical head contract identifies 2 mm pivot ears, post and neck, M2x8 pivot screws and recalculated projection. Pivot thickness is scoped independently of the unchanged 1.5 mm optical latch features.",
+    "The two optical bolt purchase SKUs and portable procurement fields change to existing M2x8. Other purchased interfaces remain unchanged.",
+    "The generated gear report distinguishes 3 mm driver face, 5 mm output face and 3 mm nominal overlap; no gear geometry changes."
+  ],
+  "structure_changes": [
+    "Four 6.4 x 29.2 mm lightening openings through the 4 mm bearing posts are filled; 2990.08 mm3 added. Low wire/key corridors remain open.",
+    "Optical pivot ears and neck/post increase from 1.5 mm to 2 mm without adding parts or moving the sensor datum."
+  ],
+  "installed_prints": 18,
+  "purchased_hardware_objects": 62,
+  "hardware_types": 12,
+  "fit_coupons": 6,
+  "unique_print_files": 17,
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 50.985253419075875,
+      "after": 54.09259315608828,
+      "delta": 3.1073397370124027
+    },
+    "current_hardware_g": {
+      "before": 32.050828859384694,
+      "after": 32.149474868707415,
+      "delta": 0.09864600932272083
+    },
+    "structure_hardware_g": {
+      "before": 83.03608227846057,
+      "after": 86.24206802479569,
+      "delta": 3.2059857463351165
+    }
+  },
+  "mass_scope": "Common-assumption modeled volume/density comparison only; not measured or all-up mass. Existing exclusions remain unchanged."
+}

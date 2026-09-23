@@ -22,7 +22,7 @@ ROLL_PIVOT_Z = 8.0
 PITCH_PIVOT_OFFSET_Z = 10.0
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 3.5
-EAR_THICKNESS = 1.5
+EAR_THICKNESS = 2.0
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -46,7 +46,7 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Integral latched tower and a 1.5 mm negative-X roll ear."""
+    """Integral latched tower and a 2 mm negative-X roll ear."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
@@ -68,7 +68,7 @@ def base_shape():
 
 
 def roll_bracket_shape():
-    """Orthogonal ears joined by a 1.5 mm square post, in the roll frame."""
+    """Orthogonal ears joined by a 2 mm square post, in the roll frame."""
     first = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (1, 0, 0))
     # Keep the post in the second ear's plane. Extending it behind that plane
     # would obstruct the purchased second-axis screw head.
@@ -97,7 +97,7 @@ def roll_bracket_shape():
 
 
 def sensor_tray_shape():
-    """Continuous adhesive pad and one 1.5 mm pitch ear, in the pitch frame."""
+    """Continuous adhesive pad and one 2 mm pitch ear, in the pitch frame."""
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (0, 1, 0))
     neck = box(4, EAR_THICKNESS, TRAY_BOTTOM_Z, (-2, 0, 0))
     pad = box(
@@ -130,13 +130,13 @@ def mount_contract():
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware_per_axis": "Kit steel M2x6 button-head screw and M2 hex nut; no washers. Unmeasured head uses a design clearance envelope.",
+        "hardware_per_axis": "Kit steel M2x8 button-head screw and M2 hex nut; no washers. Unmeasured head uses a design clearance envelope.",
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "minimum_nominal_wall_mm": EAR_THICKNESS,
-        "fastener_fit_scope": "Nominal screw projection is 1.4mm beyond a 1.6mm nut. Two ears each 0.3mm thicker leave 0.8mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
+        "minimum_nominal_pivot_wall_mm": EAR_THICKNESS,
+        "fastener_fit_scope": "Nominal screw projection is 2.4 mm beyond a 1.6 mm nut. Two ears each 0.3 mm thicker leave 1.8 mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
         "assembly": "Print all three parts separately; the base integrates its support legs and positive hooks. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
         "adjustment": "Support the sensor, hold the hex nut with a small wrench or pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
@@ -151,7 +151,7 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             "Bolt",
             purchased_hardware.screw_shape(SCREW_LENGTH),
             SCREW_BEARING_START,
-            "M2X6_BUTTON_HEAD",
+            "M2X8_BUTTON_HEAD",
             STACK_SCREW_SOURCE,
             fasteners.KIT_MATERIAL,
         ),
@@ -179,7 +179,7 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             + kind,
             shape,
             sku,
-            "One kit steel M2x6 button-head screw and M2 hex nut directly clamp two separately printed1.5mm ears, without washers. Nominal full1.6mm nut engagement and1.4mm tip projection; actual screw length, head envelope and both printed thicknesses must be checked. Manual friction adjustment, not a qualified torque, creep life or holding-load claim.",
+            "One kit steel M2x8 button-head screw and M2 hex nut directly clamp two separately printed 2 mm ears, without washers. Nominal full 1.6 mm nut engagement and 2.4 mm tip projection; actual screw length, head envelope and both printed thicknesses must be checked. Manual friction adjustment, not a qualified torque, creep life or holding-load claim.",
             source,
             material,
         )
@@ -247,7 +247,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two outward-release positive hooks; no foot fasteners. Same-process latch coupons and measured anti-rattle seating are required before accepting optical pointing. Plain1.5mm friction ears and pivot post use M2x6 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two outward-release positive hooks; no foot fasteners. Same-process latch coupons and measured anti-rattle seating are required before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

@@ -13,7 +13,7 @@ from .fasteners import KIT_MATERIAL
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AD"
+DESIGN_REVISION = "AE"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -42,7 +42,7 @@ MANUFACTURING_DECISION = {
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": 1.2,
     "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
-    "dfam_basis": "Prefer integral open ribs, windows and accessible through-features. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions to these already open thin members; avoid extra fine struts and trapped powder.",
+    "dfam_basis": "Prefer simple integral load-bearing sections and accessible through-features. Retain openings for assembly, wiring or motion; omit lightening windows that leave fragile narrow ligaments for negligible system-level benefit. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
         "process_policy": "https://creallo.com/ko/blog/posts/sls-mjf-integration-update",
@@ -118,8 +118,8 @@ EXCLUDED_EQUIPMENT = (
     "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 15,
-    "M2X6_BUTTON_HEAD": 4,
+    "M2X8_BUTTON_HEAD": 17,
+    "M2X6_BUTTON_HEAD": 2,
     "M2_HEX_NUT": 19,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
@@ -192,7 +192,7 @@ WIRING_PURCHASE_PLAN = {
     },
     "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
     "stock_consumables": [
-        "Small nylon cable ties, strap width at most2.5mm, through existing frame windows/arms; quantity after routing. Keep heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips.",
+        "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Keep the open wire/key corridors usable, heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips.",
         "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
         "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
     ],

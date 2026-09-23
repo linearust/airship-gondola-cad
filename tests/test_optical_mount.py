@@ -43,7 +43,7 @@ class OpticalMountTests(unittest.TestCase):
             self.assertFalse(obj.PrintPart, obj.Name)
             self.assertNotIn("WASHER", obj.HardwareSKU)
             if obj.Name.endswith("Bolt"):
-                self.assertEqual(obj.HardwareSKU, "M2X6_BUTTON_HEAD")
+                self.assertEqual(obj.HardwareSKU, "M2X8_BUTTON_HEAD")
                 self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
             else:
                 self.assertEqual(obj.HardwareSKU, "M2_HEX_NUT")
@@ -153,7 +153,7 @@ class OpticalMountTests(unittest.TestCase):
             core = Part.makeCylinder(0.8, high - low, origin, direction)
             self.assertLess(abs(core.cut(bolt).Volume), 1e-5, prefix)
             self.assertAlmostEqual(high - low, 1.6, places=7)
-            self.assertAlmostEqual(tip - high, 1.4, places=7)
+            self.assertAlmostEqual(tip - high, 2.4, places=7)
 
     def test_backset_post_regression_would_obstruct_the_pitch_screw(self):
         from gondola.cad import world_shape
@@ -164,14 +164,14 @@ class OpticalMountTests(unittest.TestCase):
         bolt = world_shape(self.doc.getObject("OpticalPitchBolt"))
         self.assertGreater(intersection_volume(bad_post, bolt), 0.1)
 
-    def test_narrow_post_retains_the_full_one_point_five_mm_section(self):
+    def test_pivot_post_retains_the_full_two_mm_square_section(self):
         from gondola.parts import optical_mount
 
         shape = optical_mount.roll_bracket_shape()
-        section = Part.makeBox(1.5, 1.5, 1, App.Vector(0, -1.5, 4.5))
+        section = Part.makeBox(2, 2, 1, App.Vector(0, -2, 4.5))
         self.assertLess(abs(section.cut(shape).Volume), 1e-5)
         broad_section = Part.makeBox(4, 4, 1, App.Vector(-1, -3, 4.5))
-        self.assertAlmostEqual(shape.common(broad_section).Volume, 2.25, places=7)
+        self.assertAlmostEqual(shape.common(broad_section).Volume, 4.0, places=7)
 
 
 if __name__ == "__main__":

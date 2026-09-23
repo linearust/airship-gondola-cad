@@ -211,7 +211,8 @@ def _output_support(sign):
             PIVOT_Z - BASE_Z - FOOT_THICKNESS,
             (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
         )
-        post = post.cut(box(6.4, 5, 29.2, (-3.2, y_start + PIVOT_HALF_SPAN - 0.5, 9.8)))
+        # Keep the tall support as a plain web. The former lightening window
+        # left two 1.6 mm ligaments; the separate low wire/key corridor remains.
         cup = _bearing_cup(28 if side > 0 else -28, opens_positive=side > 0)
         cup = _shifted(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
         post = post.cut(
@@ -252,7 +253,8 @@ def fixed_frame_shape():
     head_end_y = rail.clamp_screw_shape().BoundBox.YMax
     for side in (-1, 1):
         # Carry the existing 6.4 mm wire/key corridor through the outer post
-        # after changing the pod span. Its two 1.6 mm post legs remain intact.
+        # after changing the pod span. Only this low corridor divides the
+        # otherwise solid post into two short 1.6 mm-wide feet.
         frame = frame.cut(
             mirrored_y(
                 box(
@@ -589,6 +591,16 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
     y = servo_bridge.case_front_y() - 4.7 - servo_bridge.MOUNT_DEPTH / 2
     return [
         (
+            f"{prefix}_bearing_post_{suffix}",
+            "PropulsionFixedFrame",
+            (0, sign * (PIVOT_HALF_SPAN + local_y - 0.01), 24),
+            (0, sign * (PIVOT_HALF_SPAN + local_y + 4.01), 24),
+            4.0,
+        )
+        for sign, prefix in ((1, "port"), (-1, "starboard"))
+        for local_y, suffix in ((-30.5, "inner"), (26.5, "outer"))
+    ] + [
+        (
             "output_bearing_outer_wall",
             "PropulsionFixedFrame",
             (-4.81, PIVOT_HALF_SPAN + 29, PIVOT_Z),
@@ -661,7 +673,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe and output-bearing frame, with two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Finish nominal Ø6 bearing seats using a matching coupon; removable caps capture outer races without designed shield or inner-race preload.",
+        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with an open low wire/key corridor, and two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Finish nominal Ø6 bearing seats using a matching coupon; removable caps capture outer races without designed shield or inner-race preload.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -991,7 +1003,11 @@ def _module_metrics(printed, hardware, references, spec):
             "output_teeth": spec.output.teeth,
             "module_mm": GEAR_MODULE,
             "nominal_center_mm": spec.center_distance_mm,
-            "face_width_mm": 3,
+            "driver_face_width_mm": spec.driver.face_width_mm,
+            "output_face_width_mm": spec.output.face_width_mm,
+            "nominal_full_face_overlap_mm": min(
+                spec.driver.face_width_mm, spec.output.face_width_mm
+            ),
             "driver_axial_span_mm": list(gear_axial_span(spec.driver.teeth)),
             "output_axial_span_mm": list(gear_axial_span(spec.output.teeth)),
             "input_axis_abs_x_mm": spec.input_x_mm,
