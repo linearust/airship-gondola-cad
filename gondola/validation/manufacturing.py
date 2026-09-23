@@ -155,8 +155,8 @@ def review(doc, registry):
             "optical_roll_bracket_wall",
             "OpticalRollBracket",
             (-0.01, -1, 5),
-            (optical_mount.EAR_THICKNESS + 0.01, -1, 5),
-            optical_mount.EAR_THICKNESS,
+            (optical_mount.ROLL_POST_WIDTH + 0.01, -1, 5),
+            optical_mount.ROLL_POST_WIDTH,
         ),
         (
             "optical_tray_neck_wall",

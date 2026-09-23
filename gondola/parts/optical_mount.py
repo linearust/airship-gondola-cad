@@ -23,6 +23,8 @@ PITCH_PIVOT_OFFSET_Z = 10.0
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 3.5
 EAR_THICKNESS = 2.0
+ROLL_POST_WIDTH = 3.0
+ROLL_POST_BOTTOM_Z = 2.8
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -68,15 +70,16 @@ def base_shape():
 
 
 def roll_bracket_shape():
-    """Orthogonal ears joined by a 2 mm square post, in the roll frame."""
+    """Orthogonal ears joined by one 3 by 2 mm beam, in the roll frame."""
     first = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (1, 0, 0))
-    # Keep the post in the second ear's plane. Extending it behind that plane
-    # would obstruct the purchased second-axis screw head.
+    # Widen only +X, within the second ear's radial outline. Start above the
+    # first-axis nut's full circumradius; the first ear contains the old narrow
+    # post below this height. Keep Y in the second ear's plane to clear its head.
     post = box(
+        ROLL_POST_WIDTH,
         EAR_THICKNESS,
-        EAR_THICKNESS,
-        PITCH_PIVOT_OFFSET_Z + EAR_THICKNESS,
-        (0, -EAR_THICKNESS, -EAR_THICKNESS),
+        PITCH_PIVOT_OFFSET_Z - ROLL_POST_BOTTOM_Z,
+        (0, -EAR_THICKNESS, ROLL_POST_BOTTOM_Z),
     )
     second = _cylinder(
         EAR_RADIUS,
@@ -124,7 +127,8 @@ def mount_contract():
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
         "nominal_ear_radial_wall_mm": EAR_RADIUS - PIVOT_HOLE_DIAMETER / 2,
-        "post_section_mm": [EAR_THICKNESS, EAR_THICKNESS],
+        "post_section_mm": [ROLL_POST_WIDTH, EAR_THICKNESS],
+        "roll_post_bottom_z_mm": ROLL_POST_BOTTOM_Z,
         "tray_size_mm": list(TRAY_SIZE_MM),
         "tray_bottom_z_in_pitch_frame_mm": TRAY_BOTTOM_Z,
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
@@ -247,7 +251,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            f"PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a {stack_interface.TOP_BEAM_THICKNESS:g} mm-deep, {stack_interface.LEG_WIDTH:g} mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            f"PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a {stack_interface.TOP_BEAM_THICKNESS:g} mm-deep, {stack_interface.LEG_WIDTH:g} mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears use M2x8 screws and hex nuts; their one {ROLL_POST_WIDTH:g} by {EAR_THICKNESS:g} mm connecting beam starts {ROLL_POST_BOTTOM_Z:g} mm above the roll axis to clear its nut. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

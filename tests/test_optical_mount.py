@@ -180,14 +180,52 @@ class OpticalMountTests(unittest.TestCase):
         bolt = world_shape(self.doc.getObject("OpticalPitchBolt"))
         self.assertGreater(intersection_volume(bad_post, bolt), 0.1)
 
-    def test_pivot_post_retains_the_full_two_mm_square_section(self):
+    def test_pivot_post_has_a_continuous_three_by_two_mm_section(self):
         from gondola.parts import optical_mount
 
         shape = optical_mount.roll_bracket_shape()
-        section = Part.makeBox(2, 2, 1, App.Vector(0, -2, 4.5))
+        section = Part.makeBox(3, 2, 3, App.Vector(0, -2, 3.5))
         self.assertLess(abs(section.cut(shape).Volume), 1e-5)
         broad_section = Part.makeBox(4, 4, 1, App.Vector(-1, -3, 4.5))
-        self.assertAlmostEqual(shape.common(broad_section).Volume, 4.0, places=7)
+        self.assertAlmostEqual(shape.common(broad_section).Volume, 6.0, places=7)
+
+    def test_wider_post_preserves_the_original_ears_and_narrow_post(self):
+        from gondola.parts import optical_mount
+
+        v = App.Vector
+        original = (
+            Part.makeCylinder(3.5, 2, v(), v(1, 0, 0))
+            .fuse(Part.makeBox(2, 2, 12, v(0, -2, -2)))
+            .fuse(Part.makeCylinder(3.5, 2, v(0, -2, 10), v(0, 1, 0)))
+        )
+        original = original.cut(Part.makeCylinder(1.3, 5, v(-1, 0, 0), v(1, 0, 0))).cut(
+            Part.makeCylinder(1.3, 6, v(0, -3, 10), v(0, 1, 0))
+        )
+        shape = optical_mount.roll_bracket_shape()
+        self.assertLess(abs(original.cut(shape).Volume), 1e-5)
+        self.assertGreater(abs(shape.cut(original).Volume), 9.5)
+
+    def test_wider_post_clears_full_roll_nut_circumference_continuously(self):
+        from gondola.parts import optical_mount, purchased_hardware
+
+        shape = optical_mount.roll_bracket_shape()
+        # The nut rotates relative to the bracket. A filled cylinder with its
+        # complete vertex circumradius contains every nut angle, not just poses.
+        nut = purchased_hardware.hex_nut_shape()
+        radius = max((p.Point.x**2 + p.Point.y**2) ** 0.5 for p in nut.Vertexes)
+        nut_bound = Part.makeCylinder(
+            radius,
+            purchased_hardware.HEX_NUT_HEIGHT,
+            App.Vector(2, 0, 0),
+            App.Vector(1, 0, 0),
+        )
+        self.assertLess(abs(shape.common(nut_bound).Volume), 1e-5)
+        # Cut off the intentional ear/nut seating plane before measuring the
+        # new material's all-angle radial gap. The cut is inside that material.
+        widened = shape.common(Part.makeBox(2, 4, 14, App.Vector(2.01, -2, -1)))
+        self.assertGreater(widened.Volume, 9)
+        self.assertGreater(widened.distToShape(nut_bound)[0], 0.49)
+        self.assertLessEqual(optical_mount.ROLL_POST_WIDTH, optical_mount.EAR_RADIUS)
 
 
 if __name__ == "__main__":

@@ -618,6 +618,7 @@ def _coupling_shape_world(doc, prefix, shape):
 
 def input_shaft_retention_check(doc, prefix):
     """Measure the metal stub's keyed socket, axial stop and radial jack clamp."""
+    from gondola.contracts import fasteners
     from gondola.parts import purchased_hardware as hardware
     from gondola.parts import servo_coupling as coupling
 
@@ -654,6 +655,50 @@ def input_shaft_retention_check(doc, prefix):
     seat_plane = Part.Face(Part.makePolygon(seat_points + seat_points[:1]))
     retaining_wall = adapter.common(_coupling_shape_world(doc, prefix, seat_plane))
     nut_wall_contact = _planar_contact_area(nut, retaining_wall)
+    # The smallest accepted nut must also encounter the saved pocket walls.
+    # Keep its threaded axis fixed at the installed screw; this does not model
+    # an unthreaded nut lifted through the deliberately open loading slot.
+    minimum_nut = hardware.hex_prism(
+        fasteners.HEX_NUT_MIN_AF, fasteners.HEX_NUT_MIN_HEIGHT
+    ).cut(
+        Part.makeCylinder(
+            fasteners.THREAD_DIAMETER / 2,
+            fasteners.HEX_NUT_MIN_HEIGHT + 0.2,
+            App.Vector(0, 0, -0.1),
+        )
+    )
+    minimum_nut.Placement = App.Placement(
+        App.Vector(seat_x, seat_y, 0),
+        App.Rotation(App.Vector(0, 0, 1), App.Vector(*coupling.SHAFT_BOLT_DIRECTION)),
+    )
+    placed_minimum_nut = _coupling_shape_world(doc, prefix, minimum_nut)
+    minimum_nut_overlap = intersection_volume(placed_minimum_nut, adapter)
+    minimum_nut_contact = _planar_contact_area(placed_minimum_nut, retaining_wall)
+    nut_rotation_checks = []
+    for angle in (-30, 30):
+        rotated = minimum_nut.copy()
+        rotated.rotate(App.Vector(seat_x, seat_y, 0), App.Vector(1, 0, 0), angle)
+        overlap = intersection_volume(
+            adapter, _coupling_shape_world(doc, prefix, rotated)
+        )
+        nut_rotation_checks.append(
+            {
+                "attempted_rotation_deg": angle,
+                "pocket_probe_penetration_mm3": overlap,
+                "passed": overlap > TOL,
+            }
+        )
+    minimum_nut_capture = {
+        "across_flats_mm": fasteners.HEX_NUT_MIN_AF,
+        "height_mm": fasteners.HEX_NUT_MIN_HEIGHT,
+        "neutral_pocket_overlap_mm3": minimum_nut_overlap,
+        "retaining_wall_contact_mm2": minimum_nut_contact,
+        "rotation_stop_checks": nut_rotation_checks,
+        "scope": "Smallest accepted nut on the fixed threaded axis against the actual saved nominal pocket. Both 30-degree attempts must be blocked. This does not bound angular play or certify as-printed capture with +/-0.3 mm manufacturing variation, nut handling, tightening torque or PA12 strength; finish and trial the received nut.",
+        "passed": minimum_nut_overlap < TOL
+        and minimum_nut_contact > 1
+        and all(row["passed"] for row in nut_rotation_checks),
+    }
     stop_contact = _planar_contact_area(shaft, adapter)
     roof_probe = Part.makeLine(App.Vector(0, 5.2, 0), App.Vector(0, 7.1, 0))
     roof_thickness = adapter.common(
@@ -702,6 +747,7 @@ def input_shaft_retention_check(doc, prefix):
         "key_checks": key_checks,
         "screw_tip_to_flat_contact_mm2": tip_contact,
         "nut_to_retaining_wall_contact_mm2": nut_wall_contact,
+        "minimum_nut_capture": minimum_nut_capture,
         "screw_head_to_adapter_gap_mm": head_gap,
         "required_nominal_head_gap_mm": 0.5,
         "shaft_stop_roof_thickness_mm": roof_thickness,
@@ -715,6 +761,7 @@ def input_shaft_retention_check(doc, prefix):
         and all(row["passed"] for row in key_checks)
         and tip_contact > 1
         and nut_wall_contact > 1
+        and minimum_nut_capture["passed"]
         and abs(head_gap - 0.5) < TOL
         and abs(roof_thickness - 1.9) < TOL
         and all(

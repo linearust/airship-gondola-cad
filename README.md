@@ -27,7 +27,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   outside those roots; do not restore long tool tunnels through them.
   `references/shape_simplification_review.md` records the optical portal and
   open paired-servo support, horn adapter and straight P-AS arm. Preserve their
-  locating faces, load paths and functional service openings.
+  locating faces, load paths and functional service openings. The optical
+  connecting post stays in the pitch-ear plane and above the roll nut's
+  rotation envelope; do not widen it into either fastener.
   `references/rail_fit_review.md` distinguishes the matched T-head fit from
   relieved nonlocating surfaces. Qualify the existing coupons before full prints;
   do not claim raw powder-bed tolerance guarantees hand insertion or retention.

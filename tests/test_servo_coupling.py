@@ -479,6 +479,48 @@ class InputShaftEvidenceTests(unittest.TestCase):
             nut.Placement = original
             self.doc.recompute()
 
+    def test_oversized_pocket_rejects_a_freely_rotating_minimum_nut(self):
+        from gondola.parts import purchased_hardware as hardware
+        from gondola.parts import servo_coupling as coupling
+        from gondola.validation.propulsion import input_shaft_retention_check
+
+        adapter = self.doc.PortHornGearAdapter
+        original = adapter.Shape.copy()
+        try:
+            enlarged = hardware.hex_prism(4.5, coupling.SHAFT_NUT_POCKET_LENGTH)
+            enlarged.Placement = App.Placement(
+                App.Vector(
+                    coupling.SHAFT_NUT_SEAT_X,
+                    coupling.HORN_BOTTOM_Y + coupling.SHAFT_CLAMP_Y,
+                    0,
+                ),
+                App.Rotation(
+                    App.Vector(0, 0, 1), App.Vector(*coupling.SHAFT_BOLT_DIRECTION)
+                ),
+            )
+            # Preserve the nut's axial reaction wall, shaft stop and screw
+            # contact. Only the pocket's rotation-blocking sides are enlarged.
+            adapter.Shape = original.cut(enlarged).removeSplitter()
+            self.doc.recompute()
+            result = input_shaft_retention_check(self.doc, "Port")
+            capture = result["minimum_nut_capture"]
+            self.assertGreater(result["nut_to_retaining_wall_contact_mm2"], 1)
+            self.assertGreater(result["screw_tip_to_flat_contact_mm2"], 1)
+            self.assertGreater(result["shaft_stop_contact_mm2"], 1)
+            self.assertLess(capture["neutral_pocket_overlap_mm3"], 1e-7)
+            self.assertGreater(capture["retaining_wall_contact_mm2"], 1)
+            self.assertTrue(
+                all(
+                    row["pocket_probe_penetration_mm3"] < 1e-7
+                    for row in capture["rotation_stop_checks"]
+                )
+            )
+            self.assertFalse(capture["passed"], capture)
+            self.assertFalse(result["passed"], result)
+        finally:
+            adapter.Shape = original
+            self.doc.recompute()
+
     def test_adapter_continuous_service_preserves_the_retained_horn_socket(self):
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.validation.propulsion import adapter_service_check

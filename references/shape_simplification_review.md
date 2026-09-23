@@ -1,4 +1,4 @@
-# Printed shape and support review — AK
+# Printed shape and support review — AL
 
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
@@ -18,6 +18,21 @@ sensor height, pivot axes and manual angle limits are unchanged. Changing the
 beam thickness must not change the shared host-deck thickness or move the
 optical axes. Both hosts still require optical, connector, registration and
 complete-tower service checks.
+
+The AL roll bracket widens its connecting post from 2 by 2 to 3 by 2 mm.
+The wider straight post begins 2.8 mm above the roll axis, inside the first
+ear's outline, and stays in the pitch ear's plane. This preserves all prior
+material while increasing the section between the two ears without a new
+rib, part or fastener. The pivot axes, clamping faces, screw lengths, sensor
+height and adjustment range are unchanged. Extending the post behind the
+pitch ear would obstruct its screw head and is deliberately avoided.
+
+The added material stays at least 0.4906 mm outside the modeled roll nut's
+full rotational envelope and 1.25 mm from the pitch screw head. These are
+nominal CAD margins, not guaranteed delivered clearances or tool-access
+allowances. Confirm the actual nut, screw head and print. The provisional PA12 mass increase is about 0.01 g. Section enlargement
+is intended to reduce local bending; no measured stiffness or pointing
+accuracy is claimed.
 
 ## Central paired servo module
 
