@@ -20,7 +20,9 @@ Their source selection is not an assertion about physical fit or strength.
   free rotation and output loading require checks with the received gears.
 - Both bores remain 3 mm; neither is a directly compatible X06 spline.
   Retain the selected KST 0415.13 horn and design its coupling around a short
-  nominal-3mm input stub. Do not shrink the former hollow Ø7 coupling post.
+  nominal-3mm input stub. Its existing tip hole is locally enlarged to 1.8 mm
+  for an M1.6 screw attaching the single printed adapter; preserve the original
+  spline and OEM retaining screw. Do not shrink the former hollow Ø7 coupling post.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
   dimensional design; do not report POM materials or assert weight reduction.
@@ -47,7 +49,7 @@ one another; do not infer tooth-to-screw phase from the seller images.
 
 The selected [generic 3 x 6 x 2.5 mm bearings](https://www.aliexpress.com/item/1005007668446060.html)
 are not identified as NSK/ISC parts. Retained ISC MR63ZZ data remain a dimensional
-comparison for the shoulder/cap design, not certification of the selected lot
+comparison for the integral shoulder and inner-ring spacer design, not certification of the selected lot
 or its mass. Verify race-land and shield clearance, shaft fit and axial capture.
 
 ## Release and physical verification

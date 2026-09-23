@@ -1,0 +1,1159 @@
+{
+  "revision": "AG",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "bde99a7b6a31dedbee2aead2a472c3f5b5bcb6ab",
+  "previous_fixture_sha256": "7e164d8fb3d003fd3b1de6acc9511ba8bab094dbe5e03f45dfa146ba617c9bbb",
+  "approved_fixture_sha256": "4db17b3b07a56ba63e66c8b49707704635f0e008de1411fda4ec5858a2b91437",
+  "scope": "Intentional geometry, native controls, procurement and metadata transition audited against every retained AF shape before replacing the pinned fixture. Nominal CAD fit prototype only; actual bearing lands, prepared horn strength, grip, PA12 creep and flight readiness remain unresolved.",
+  "intentional_geometry_changes": [
+    {
+      "object": "BearingSeatFitSample",
+      "local_shape": {
+        "difference_mm3": 415.243618623443,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 16.4,
+        "volume_difference_mm3": 271.9869936197477,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 415.243618623443,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 16.4,
+        "volume_difference_mm3": 271.9869936197477,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "PortHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 189.35720034685806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 4.300000000000001,
+        "volume_difference_mm3": 121.29204668232546,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 189.35720034685806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 4.299999999999997,
+        "volume_difference_mm3": 121.29204668232501,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "KST0415_GearAdapter",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "KST0415_GearAdapter",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "PortHornGearClampBolt",
+      "local_shape": {
+        "difference_mm3": 34.326224695365006,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.0,
+        "volume_difference_mm3": 34.32622469536504,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 79.55650899726498,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.549999999999997,
+        "volume_difference_mm3": 34.326224695365035,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": false,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M1_6X8_CHEESE_HEAD",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "A2 stainless steel",
+        "ThreadStandard": "ISO metric M1.6 x 0.35; right-hand.",
+        "NominalThreadDiameter": 1.6,
+        "ThreadPitch": 0.35,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2",
+        "PurchaseSearchQuery": "M1.6x8 DIN84 A2 slotted cheese head screw 3mm head",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M1.6x8+DIN84+A2+slotted+cheese+head+screw+3mm+head",
+        "PurchaseRequirements": "A2 stainless M1.6 x 0.35, 8 mm under-head length, DIN 84 slotted cheese head: maximum diameter 3 mm, height 1 mm, slot width 0.4 mm and depth 0.45 mm. Shared by four X06 ears and two prepared horn-tip joints. Ear screws have nominal 0.2 mm radial clearance in the published 2 mm holes and 0.5 mm head-to-case gap. Horn screws pass through a locally enlarged 1.8 mm tip hole; the head bears on the metal blade, not a printed rear strap. No washers. Check actual seating, full nut engagement and safe tightening; these are not the OEM spline-retaining screws.",
+        "PurchaseCandidateURL": "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric M2 x 0.4; right-hand.",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    },
+    {
+      "object": "PortHornGearClampNut",
+      "local_shape": {
+        "difference_mm3": 11.169507727506272,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.4618802153517003,
+        "volume_difference_mm3": 8.228977003746225,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 26.058427178529715,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.261880215351699,
+        "volume_difference_mm3": 8.228977003746241,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": false,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M1_6_HEX_NUT_DIN934",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "A2 stainless steel",
+        "ThreadStandard": "ISO metric M1.6 x 0.35; right-hand.",
+        "NominalThreadDiameter": 1.6,
+        "ThreadPitch": 0.35,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create",
+        "PurchaseSearchQuery": "M1.6 DIN934 A2 hex nut 3.2mm 1.3mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M1.6+DIN934+A2+hex+nut+3.2mm+1.3mm",
+        "PurchaseRequirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Shared by the X06 ear and prepared horn-tip joints, accessible with a small wrench. These match the M1.6x8 screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
+        "PurchaseCandidateURL": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric M2 x 0.4; right-hand.",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    },
+    {
+      "object": "PortMotorCarrier",
+      "local_shape": {
+        "difference_mm3": 9.093092250909606,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 9.093092250913742,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 9.093092250909605,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 9.093092250913742,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "MotorCarrier",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "MotorCarrier",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "PortServoHorn",
+      "local_shape": {
+        "difference_mm3": 2.8148670176164545,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2.814867017616507,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 2.814867017616458,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2.81486701761645,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "KST_0415_13_TIP_D1_8",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Aluminium alloy (grade unspecified)",
+        "ThreadStandard": "Unthreaded purchased interface; no modeled thread.",
+        "NominalThreadDiameter": 0.0,
+        "ThreadPitch": 0.0,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseSearchQuery": "KST 0415.13 aluminium servo arm 15T 4mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=KST+0415.13+aluminium+servo+arm+15T+4mm",
+        "PurchaseRequirements": "Buy KST 0415.13 aluminium horn, 15T / 4 mm spline class, then enlarge ONLY the existing nominal 1.0 mm tip hole at radius 13.2 mm to 1.8 mm for the M1.6 adapter screw. This project key specifies local preparation, not a manufacturer variant. Support the metal blade, preserve the existing hole centre, deburr both faces without countersinking, and reject a distorted or cracked arm. Keep all other holes, the spline and the correct OEM retaining screw unchanged; its thread/length are not inferred. The printed coupling locates the hub and tip and connects to the selected nominal-3mm input stub. Confirm actual horn revision, prepared hole, head bearing, clamping, backlash and loaded bidirectional retention before use. Do not substitute an unmeasured supplied plastic horn.",
+        "PurchaseCandidateURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseEvidenceNotes": "KST's retained drawing establishes the original hole locations and nominal 1.6 mm blade thickness. The 1.8 mm prepared hole is a design modification; nominal residual web to the adjacent 0.8 mm hole is 0.4 mm. Alloy grade, edge quality, fatigue and joint strength remain unqualified. CAD motion checks do not qualify the modification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "KST_0415_13",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Aluminium alloy (grade unspecified)",
+        "ThreadStandard": "Unthreaded purchased interface; no modeled thread.",
+        "NominalThreadDiameter": 0.0,
+        "ThreadPitch": 0.0,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseSearchQuery": "KST 0415.13 aluminium servo arm 15T 4mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=KST+0415.13+aluminium+servo+arm+15T+4mm",
+        "PurchaseRequirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade and connects to the selected nominal-3mm input stub. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
+        "PurchaseCandidateURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape": {
+        "difference_mm3": 1660.9744744934421,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 16.400000000000006,
+        "volume_difference_mm3": 1087.9479744776454,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1660.9744744934412,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 16.400000000000006,
+        "volume_difference_mm3": 1087.947974477649,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "PropulsionFixedFrame",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "PropulsionFixedFrame",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "StarboardHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 189.35720034685806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 4.300000000000001,
+        "volume_difference_mm3": 121.29204668232546,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 189.35720034685806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 4.300000000000001,
+        "volume_difference_mm3": 121.29204668232569,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "KST0415_GearAdapter",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "KST0415_GearAdapter",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "StarboardHornGearClampBolt",
+      "local_shape": {
+        "difference_mm3": 34.32622469536502,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.0,
+        "volume_difference_mm3": 34.32622469536503,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 79.55650899726496,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.550000000000004,
+        "volume_difference_mm3": 34.32622469536501,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": false,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M1_6X8_CHEESE_HEAD",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "A2 stainless steel",
+        "ThreadStandard": "ISO metric M1.6 x 0.35; right-hand.",
+        "NominalThreadDiameter": 1.6,
+        "ThreadPitch": 0.35,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2",
+        "PurchaseSearchQuery": "M1.6x8 DIN84 A2 slotted cheese head screw 3mm head",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M1.6x8+DIN84+A2+slotted+cheese+head+screw+3mm+head",
+        "PurchaseRequirements": "A2 stainless M1.6 x 0.35, 8 mm under-head length, DIN 84 slotted cheese head: maximum diameter 3 mm, height 1 mm, slot width 0.4 mm and depth 0.45 mm. Shared by four X06 ears and two prepared horn-tip joints. Ear screws have nominal 0.2 mm radial clearance in the published 2 mm holes and 0.5 mm head-to-case gap. Horn screws pass through a locally enlarged 1.8 mm tip hole; the head bears on the metal blade, not a printed rear strap. No washers. Check actual seating, full nut engagement and safe tightening; these are not the OEM spline-retaining screws.",
+        "PurchaseCandidateURL": "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric M2 x 0.4; right-hand.",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    },
+    {
+      "object": "StarboardHornGearClampNut",
+      "local_shape": {
+        "difference_mm3": 11.169507727506273,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.4618802153517003,
+        "volume_difference_mm3": 8.228977003746218,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 26.058427178529712,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 5.261880215351706,
+        "volume_difference_mm3": 8.228977003746236,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": false,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M1_6_HEX_NUT_DIN934",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "A2 stainless steel",
+        "ThreadStandard": "ISO metric M1.6 x 0.35; right-hand.",
+        "NominalThreadDiameter": 1.6,
+        "ThreadPitch": 0.35,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create",
+        "PurchaseSearchQuery": "M1.6 DIN934 A2 hex nut 3.2mm 1.3mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M1.6+DIN934+A2+hex+nut+3.2mm+1.3mm",
+        "PurchaseRequirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Shared by the X06 ear and prepared horn-tip joints, accessible with a small wrench. These match the M1.6x8 screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
+        "PurchaseCandidateURL": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric M2 x 0.4; right-hand.",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    },
+    {
+      "object": "StarboardMotorCarrier",
+      "local_shape": {
+        "difference_mm3": 9.093092250909606,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 9.093092250913742,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 9.09309225090959,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 9.093092250913287,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "MotorCarrier",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "MotorCarrier",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "StarboardServoHorn",
+      "local_shape": {
+        "difference_mm3": 2.8148670176164545,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2.8148670176164785,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 2.814867017616457,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 2.814867017616507,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "KST_0415_13_TIP_D1_8",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Aluminium alloy (grade unspecified)",
+        "ThreadStandard": "Unthreaded purchased interface; no modeled thread.",
+        "NominalThreadDiameter": 0.0,
+        "ThreadPitch": 0.0,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseSearchQuery": "KST 0415.13 aluminium servo arm 15T 4mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=KST+0415.13+aluminium+servo+arm+15T+4mm",
+        "PurchaseRequirements": "Buy KST 0415.13 aluminium horn, 15T / 4 mm spline class, then enlarge ONLY the existing nominal 1.0 mm tip hole at radius 13.2 mm to 1.8 mm for the M1.6 adapter screw. This project key specifies local preparation, not a manufacturer variant. Support the metal blade, preserve the existing hole centre, deburr both faces without countersinking, and reject a distorted or cracked arm. Keep all other holes, the spline and the correct OEM retaining screw unchanged; its thread/length are not inferred. The printed coupling locates the hub and tip and connects to the selected nominal-3mm input stub. Confirm actual horn revision, prepared hole, head bearing, clamping, backlash and loaded bidirectional retention before use. Do not substitute an unmeasured supplied plastic horn.",
+        "PurchaseCandidateURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseEvidenceNotes": "KST's retained drawing establishes the original hole locations and nominal 1.6 mm blade thickness. The 1.8 mm prepared hole is a design modification; nominal residual web to the adjacent 0.8 mm hole is 0.4 mm. Alloy grade, edge quality, fatigue and joint strength remain unqualified. CAD motion checks do not qualify the modification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "KST_0415_13",
+        "Role": "Purchased mechanism hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Aluminium alloy (grade unspecified)",
+        "ThreadStandard": "Unthreaded purchased interface; no modeled thread.",
+        "NominalThreadDiameter": 0.0,
+        "ThreadPitch": 0.0,
+        "ShapeModelNotes": "Nominal dimensional envelope only; material selection does not qualify strength, preload or retention. Helical threads and actual mass are unverified.",
+        "SourceURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseSearchQuery": "KST 0415.13 aluminium servo arm 15T 4mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=KST+0415.13+aluminium+servo+arm+15T+4mm",
+        "PurchaseRequirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade and connects to the selected nominal-3mm input stub. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
+        "PurchaseCandidateURL": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "PurchaseEvidenceNotes": "The cited reference supports nominal dimensions, not a received supplier lot. Verify actual options, interfaces and material. Search links alone do not establish product selection or compatibility.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified.",
+        "ManufacturingRoute": "Purchase separately; never export as a print part"
+      },
+      "passed": false
+    }
+  ],
+  "added_shapes": [
+    "PortOutputBearingSpacerNegative",
+    "PortOutputBearingSpacerPositive",
+    "StarboardOutputBearingSpacerNegative",
+    "StarboardOutputBearingSpacerPositive"
+  ],
+  "removed_shapes": [
+    "BearingCapFitSample",
+    "PortHornGearRetainer",
+    "PortOutputBearingCapNegative",
+    "PortOutputBearingCapNegativeBolt",
+    "PortOutputBearingCapNegativeNut",
+    "PortOutputBearingCapPositive",
+    "PortOutputBearingCapPositiveBolt",
+    "PortOutputBearingCapPositiveNut",
+    "StarboardHornGearRetainer",
+    "StarboardOutputBearingCapNegative",
+    "StarboardOutputBearingCapNegativeBolt",
+    "StarboardOutputBearingCapNegativeNut",
+    "StarboardOutputBearingCapPositive",
+    "StarboardOutputBearingCapPositiveBolt",
+    "StarboardOutputBearingCapPositiveNut"
+  ],
+  "retained_shape_count": 113,
+  "intentional_placement_changes": {
+    "PortHornGearClampBolt": {
+      "delta_mm": [
+        -4.799999999999997,
+        1.5000000000000036,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "PortHornGearClampNut": {
+      "delta_mm": [
+        -4.799999999999997,
+        1.0,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "StarboardHornGearClampBolt": {
+      "delta_mm": [
+        4.800000000000004,
+        -1.4999999999999964,
+        0.0
+      ],
+      "rotation_unchanged": true
+    },
+    "StarboardHornGearClampNut": {
+      "delta_mm": [
+        4.800000000000004,
+        -1.0,
+        0.0
+      ],
+      "rotation_unchanged": true
+    }
+  },
+  "native_expressions_unchanged": true,
+  "native_control_behavior_passed": true,
+  "registry_before": {
+    "PrintedParts": [
+      "ContinuousRail",
+      "BatteryMount",
+      "ElectronicsMount",
+      "PropulsionFixedFrame",
+      "ServoDriveBridge",
+      "PortMotorCarrier",
+      "PortOutputBearingCapNegative",
+      "PortOutputBearingCapPositive",
+      "PortHornGearAdapter",
+      "PortHornGearRetainer",
+      "StarboardMotorCarrier",
+      "StarboardOutputBearingCapNegative",
+      "StarboardOutputBearingCapPositive",
+      "StarboardHornGearAdapter",
+      "StarboardHornGearRetainer",
+      "OpticalMountBase",
+      "OpticalRollBracket",
+      "OpticalSensorTray"
+    ],
+    "ReferenceParts": [
+      "ModuleBatteryEnvelope",
+      "ModuleFCEnvelope",
+      "ModuleLR900Envelope",
+      "ModulePASEnvelope",
+      "ModuleMTF02PEnvelope",
+      "PortServo",
+      "PortMotor",
+      "PortShaft",
+      "PortPropellerDisk",
+      "StarboardServo",
+      "StarboardMotor",
+      "StarboardShaft",
+      "StarboardPropellerDisk"
+    ],
+    "ClearanceVolumes": [
+      "MaximumBatteryEnvelope",
+      "FCWiringClearanceReserve",
+      "XT30ServiceReserve",
+      "LR900NegativeXConnectorReserve",
+      "LR900PositiveXConnectorReserve",
+      "PASConnectorReserve",
+      "CapacitorServiceReserve",
+      "MTF02POpticalClearanceReserve",
+      "MTF02PConnectorReserve",
+      "PortSweepBound",
+      "StarboardSweepBound",
+      "PortPhaseLeadLoopReserve",
+      "StarboardPhaseLeadLoopReserve"
+    ],
+    "FitCoupons": [
+      "RailFitSample",
+      "ShoeFitSample",
+      "BearingSeatFitSample",
+      "BearingCapFitSample"
+    ],
+    "Modules": [
+      "BatteryEquipmentModule",
+      "MainPropulsionModule",
+      "ElectronicsEquipmentModule"
+    ],
+    "EquipmentMounts": [
+      "BatteryMount",
+      "ElectronicsMount"
+    ],
+    "OpticalMountParts": [
+      "OpticalMountBase",
+      "OpticalRollBracket",
+      "OpticalSensorTray"
+    ],
+    "RailSegments": [
+      "ContinuousRail"
+    ],
+    "RailLocks": [
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "MainPropulsionModuleRailClampScrew",
+      "MainPropulsionModuleRailClampNut",
+      "ElectronicsEquipmentModuleRailClampScrew",
+      "ElectronicsEquipmentModuleRailClampNut"
+    ],
+    "HardwareParts": [
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "MainPropulsionModuleRailClampScrew",
+      "MainPropulsionModuleRailClampNut",
+      "ElectronicsEquipmentModuleRailClampScrew",
+      "ElectronicsEquipmentModuleRailClampNut",
+      "ServoBridgePortBolt",
+      "ServoBridgePortNut",
+      "ServoBridgeStarboardBolt",
+      "ServoBridgeStarboardNut",
+      "PortOutputShaftNegative",
+      "PortOutputClampNegativeBolt",
+      "PortOutputClampNegativeNut",
+      "PortOutputBearingNegative",
+      "PortOutputBearingCapNegativeBolt",
+      "PortOutputBearingCapNegativeNut",
+      "PortOutputShaftPositive",
+      "PortOutputClampPositiveBolt",
+      "PortOutputClampPositiveNut",
+      "PortOutputBearingPositive",
+      "PortOutputBearingCapPositiveBolt",
+      "PortOutputBearingCapPositiveNut",
+      "PortOutputGear",
+      "PortDriverGear",
+      "PortServoEarLowerBolt",
+      "PortServoEarLowerNut",
+      "PortServoEarUpperBolt",
+      "PortServoEarUpperNut",
+      "PortServoHorn",
+      "PortHornGearClampBolt",
+      "PortHornGearClampNut",
+      "PortInputShaft",
+      "PortInputShaftClampBolt",
+      "PortInputShaftClampNut",
+      "StarboardOutputShaftNegative",
+      "StarboardOutputClampNegativeBolt",
+      "StarboardOutputClampNegativeNut",
+      "StarboardOutputBearingNegative",
+      "StarboardOutputBearingCapNegativeBolt",
+      "StarboardOutputBearingCapNegativeNut",
+      "StarboardOutputShaftPositive",
+      "StarboardOutputClampPositiveBolt",
+      "StarboardOutputClampPositiveNut",
+      "StarboardOutputBearingPositive",
+      "StarboardOutputBearingCapPositiveBolt",
+      "StarboardOutputBearingCapPositiveNut",
+      "StarboardOutputGear",
+      "StarboardDriverGear",
+      "StarboardServoEarLowerBolt",
+      "StarboardServoEarLowerNut",
+      "StarboardServoEarUpperBolt",
+      "StarboardServoEarUpperNut",
+      "StarboardServoHorn",
+      "StarboardHornGearClampBolt",
+      "StarboardHornGearClampNut",
+      "StarboardInputShaft",
+      "StarboardInputShaftClampBolt",
+      "StarboardInputShaftClampNut",
+      "OpticalRollBolt",
+      "OpticalRollNut",
+      "OpticalPitchBolt",
+      "OpticalPitchNut",
+      "OpticalStackFootBolt0",
+      "OpticalStackFootNut0",
+      "OpticalStackFootBolt1",
+      "OpticalStackFootNut1"
+    ],
+    "TapeReferences": [
+      "TapeWing0L",
+      "TapeWing0R",
+      "TapeWing1L",
+      "TapeWing1R",
+      "TapeWing2L",
+      "TapeWing2R",
+      "TapeWing3L",
+      "TapeWing3R",
+      "TapeWing4L",
+      "TapeWing4R",
+      "TapeWing5L",
+      "TapeWing5R",
+      "TapeWing6L",
+      "TapeWing6R"
+    ],
+    "TiltingPods": [
+      "PortPod",
+      "StarboardPod"
+    ]
+  },
+  "registry_after": {
+    "PrintedParts": [
+      "ContinuousRail",
+      "BatteryMount",
+      "ElectronicsMount",
+      "PropulsionFixedFrame",
+      "ServoDriveBridge",
+      "PortMotorCarrier",
+      "PortHornGearAdapter",
+      "StarboardMotorCarrier",
+      "StarboardHornGearAdapter",
+      "OpticalMountBase",
+      "OpticalRollBracket",
+      "OpticalSensorTray"
+    ],
+    "ReferenceParts": [
+      "ModuleBatteryEnvelope",
+      "ModuleFCEnvelope",
+      "ModuleLR900Envelope",
+      "ModulePASEnvelope",
+      "ModuleMTF02PEnvelope",
+      "PortServo",
+      "PortMotor",
+      "PortShaft",
+      "PortPropellerDisk",
+      "StarboardServo",
+      "StarboardMotor",
+      "StarboardShaft",
+      "StarboardPropellerDisk"
+    ],
+    "ClearanceVolumes": [
+      "MaximumBatteryEnvelope",
+      "FCWiringClearanceReserve",
+      "XT30ServiceReserve",
+      "LR900NegativeXConnectorReserve",
+      "LR900PositiveXConnectorReserve",
+      "PASConnectorReserve",
+      "CapacitorServiceReserve",
+      "MTF02POpticalClearanceReserve",
+      "MTF02PConnectorReserve",
+      "PortSweepBound",
+      "StarboardSweepBound",
+      "PortPhaseLeadLoopReserve",
+      "StarboardPhaseLeadLoopReserve"
+    ],
+    "FitCoupons": [
+      "RailFitSample",
+      "ShoeFitSample",
+      "BearingSeatFitSample"
+    ],
+    "Modules": [
+      "BatteryEquipmentModule",
+      "MainPropulsionModule",
+      "ElectronicsEquipmentModule"
+    ],
+    "EquipmentMounts": [
+      "BatteryMount",
+      "ElectronicsMount"
+    ],
+    "OpticalMountParts": [
+      "OpticalMountBase",
+      "OpticalRollBracket",
+      "OpticalSensorTray"
+    ],
+    "RailSegments": [
+      "ContinuousRail"
+    ],
+    "RailLocks": [
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "MainPropulsionModuleRailClampScrew",
+      "MainPropulsionModuleRailClampNut",
+      "ElectronicsEquipmentModuleRailClampScrew",
+      "ElectronicsEquipmentModuleRailClampNut"
+    ],
+    "HardwareParts": [
+      "BatteryEquipmentModuleRailClampScrew",
+      "BatteryEquipmentModuleRailClampNut",
+      "MainPropulsionModuleRailClampScrew",
+      "MainPropulsionModuleRailClampNut",
+      "ElectronicsEquipmentModuleRailClampScrew",
+      "ElectronicsEquipmentModuleRailClampNut",
+      "ServoBridgePortBolt",
+      "ServoBridgePortNut",
+      "ServoBridgeStarboardBolt",
+      "ServoBridgeStarboardNut",
+      "PortOutputShaftNegative",
+      "PortOutputClampNegativeBolt",
+      "PortOutputClampNegativeNut",
+      "PortOutputBearingNegative",
+      "PortOutputBearingSpacerNegative",
+      "PortOutputShaftPositive",
+      "PortOutputClampPositiveBolt",
+      "PortOutputClampPositiveNut",
+      "PortOutputBearingPositive",
+      "PortOutputBearingSpacerPositive",
+      "PortOutputGear",
+      "PortDriverGear",
+      "PortServoEarLowerBolt",
+      "PortServoEarLowerNut",
+      "PortServoEarUpperBolt",
+      "PortServoEarUpperNut",
+      "PortServoHorn",
+      "PortHornGearClampBolt",
+      "PortHornGearClampNut",
+      "PortInputShaft",
+      "PortInputShaftClampBolt",
+      "PortInputShaftClampNut",
+      "StarboardOutputShaftNegative",
+      "StarboardOutputClampNegativeBolt",
+      "StarboardOutputClampNegativeNut",
+      "StarboardOutputBearingNegative",
+      "StarboardOutputBearingSpacerNegative",
+      "StarboardOutputShaftPositive",
+      "StarboardOutputClampPositiveBolt",
+      "StarboardOutputClampPositiveNut",
+      "StarboardOutputBearingPositive",
+      "StarboardOutputBearingSpacerPositive",
+      "StarboardOutputGear",
+      "StarboardDriverGear",
+      "StarboardServoEarLowerBolt",
+      "StarboardServoEarLowerNut",
+      "StarboardServoEarUpperBolt",
+      "StarboardServoEarUpperNut",
+      "StarboardServoHorn",
+      "StarboardHornGearClampBolt",
+      "StarboardHornGearClampNut",
+      "StarboardInputShaft",
+      "StarboardInputShaftClampBolt",
+      "StarboardInputShaftClampNut",
+      "OpticalRollBolt",
+      "OpticalRollNut",
+      "OpticalPitchBolt",
+      "OpticalPitchNut",
+      "OpticalStackFootBolt0",
+      "OpticalStackFootNut0",
+      "OpticalStackFootBolt1",
+      "OpticalStackFootNut1"
+    ],
+    "TapeReferences": [
+      "TapeWing0L",
+      "TapeWing0R",
+      "TapeWing1L",
+      "TapeWing1R",
+      "TapeWing2L",
+      "TapeWing2R",
+      "TapeWing3L",
+      "TapeWing3R",
+      "TapeWing4L",
+      "TapeWing4R",
+      "TapeWing5L",
+      "TapeWing5R",
+      "TapeWing6L",
+      "TapeWing6R"
+    ],
+    "TiltingPods": [
+      "PortPod",
+      "StarboardPod"
+    ]
+  },
+  "native_metadata_changed_fields": {
+    "ServoBridgePortNut": [
+      "PurchaseRequirements"
+    ],
+    "ServoBridgeStarboardNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputClampNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingNegative": [
+      "PurchaseEvidenceNotes"
+    ],
+    "PortOutputClampPositiveNut": [
+      "PurchaseRequirements"
+    ],
+    "PortOutputBearingPositive": [
+      "PurchaseEvidenceNotes"
+    ],
+    "PortServoEarLowerBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortServoEarLowerNut": [
+      "PurchaseRequirements"
+    ],
+    "PortServoEarUpperBolt": [
+      "PurchaseRequirements"
+    ],
+    "PortServoEarUpperNut": [
+      "PurchaseRequirements"
+    ],
+    "PortServoHorn": [
+      "HardwareSKU",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements"
+    ],
+    "PortHornGearClampBolt": [
+      "HardwareSKU",
+      "MaterialSelection",
+      "NominalThreadDiameter",
+      "PurchaseCandidateURL",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "PurchaseSearchQuery",
+      "PurchaseSearchURL",
+      "ShapeModelNotes",
+      "SourceURL",
+      "ThreadPitch",
+      "ThreadStandard"
+    ],
+    "PortHornGearClampNut": [
+      "HardwareSKU",
+      "MaterialSelection",
+      "NominalThreadDiameter",
+      "PurchaseCandidateURL",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "PurchaseSearchQuery",
+      "PurchaseSearchURL",
+      "SourceURL",
+      "ThreadPitch",
+      "ThreadStandard"
+    ],
+    "PortInputShaftClampNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputClampNegativeNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingNegative": [
+      "PurchaseEvidenceNotes"
+    ],
+    "StarboardOutputClampPositiveNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardOutputBearingPositive": [
+      "PurchaseEvidenceNotes"
+    ],
+    "StarboardServoEarLowerBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardServoEarLowerNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardServoEarUpperBolt": [
+      "PurchaseRequirements"
+    ],
+    "StarboardServoEarUpperNut": [
+      "PurchaseRequirements"
+    ],
+    "StarboardServoHorn": [
+      "HardwareSKU",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements"
+    ],
+    "StarboardHornGearClampBolt": [
+      "HardwareSKU",
+      "MaterialSelection",
+      "NominalThreadDiameter",
+      "PurchaseCandidateURL",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "PurchaseSearchQuery",
+      "PurchaseSearchURL",
+      "ShapeModelNotes",
+      "SourceURL",
+      "ThreadPitch",
+      "ThreadStandard"
+    ],
+    "StarboardHornGearClampNut": [
+      "HardwareSKU",
+      "MaterialSelection",
+      "NominalThreadDiameter",
+      "PurchaseCandidateURL",
+      "PurchaseEvidenceNotes",
+      "PurchaseRequirements",
+      "PurchaseSearchQuery",
+      "PurchaseSearchURL",
+      "SourceURL",
+      "ThreadPitch",
+      "ThreadStandard"
+    ],
+    "StarboardInputShaftClampNut": [
+      "PurchaseRequirements"
+    ],
+    "OpticalRollNut": [
+      "PurchaseRequirements"
+    ],
+    "OpticalPitchNut": [
+      "PurchaseRequirements"
+    ],
+    "OpticalStackFootNut0": [
+      "PurchaseRequirements"
+    ],
+    "OpticalStackFootNut1": [
+      "PurchaseRequirements"
+    ],
+    "BatteryEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "MainPropulsionModuleRailClampNut": [
+      "PurchaseRequirements"
+    ],
+    "ElectronicsEquipmentModuleRailClampNut": [
+      "PurchaseRequirements"
+    ]
+  },
+  "structure_changes": [
+    "Four inward-opening rigid output-bearing cups integrate their outer shoulders. Remove four caps, cap bolt/nut pairs, tall screw tabs and obsolete cap coupon. Bearings and gear centres retain their positions.",
+    "Four purchased HIROSUGI F3035-5105T flanged steel spacers limit inward bearing withdrawal through the inner rings. One-piece carrier ends add1.5mm-thick broad flanges; retain original clamp section elsewhere and open fastener reliefs fully to remove thin slivers.",
+    "Two separate horn backstraps are removed. Enlarge only the bought horn tip holes from nominal1.0 to1.8mm; share existing M1.6x8/DIN934 hardware with servo ears. Single adapter uses2mm screw clearance and smaller outer end while retaining minimum1.544mm pocket wall.",
+    "Paired servo/input-drive module remains removable. Shaft lengths, gears, optical mounts, rail and equipment placements remain unchanged."
+  ],
+  "validation_changes": [
+    "Bearing capture checks actual integral outer shoulder, spacer inner-ring contact, full360degree guide walls, complete bearing support through bounded inward travel, and carrier/frame stop chain. Missing spacer, flipped spacer, missing shoulder or guide sector and excessive endplay are rejected.",
+    "Ordered service checks output gear removal, shaft retraction6.5mm, spacer staging0.3mm, complete rotor lateral extraction40mm, full shaft withdrawal and inward bearing/spacer removal against retained obstacles.",
+    "Full rotation plus measured axial travel checks complete motor/carrier/propeller/shaft/clamp assembly against frame and fixed mounting hardware. Through-horn joint checks actual head-on-metal and nut-on-adapter seating and ordered screw/nut service.",
+    "Complete old/new native shape, placement, control, registry and procurement audit, followed by regenerated release artifacts and regression checks."
+  ],
+  "installed_prints": 12,
+  "hardware_before": 66,
+  "hardware_after": 62,
+  "hardware_types": 13,
+  "fit_coupons_before": 4,
+  "fit_coupons_after": 3,
+  "unique_print_files": 13,
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 53.491959567823706,
+      "after": 50.9622988584313,
+      "delta": -2.5296607093924024
+    },
+    "current_hardware_g": {
+      "before": 33.31261045102543,
+      "after": 30.740834303120295,
+      "delta": -2.5717761479051333
+    },
+    "structure_hardware_g": {
+      "before": 86.80457001884913,
+      "after": 81.70313316155159,
+      "delta": -5.101436857297543
+    }
+  },
+  "mass_scope": "Common-assumption CAD volume/density comparison, not measured or all-up mass. Other equipment and unmodeled hardware exclusions remain explicit in the generated mass budget.",
+  "release_verification": {
+    "source_fingerprint": "15c2d3f208f470289c2d880fe57b220869f623d483c4e252fdd0e939c04d4c44",
+    "saved_cad_sha256": "13ab2a18dc3f403160db9a3398a9d9a9a4d45c29d89409d6b5c3ed0a83ab58ac",
+    "native_regression": {
+      "passed": true,
+      "tests": 276,
+      "skipped": 0,
+      "note": "Complete native suite passed before final explanatory BOM/metrics wording changes; 7 native procurement tests and all final saved-CAD release checks passed afterward."
+    },
+    "offline_regression": {
+      "passed": true,
+      "tests": 276,
+      "native_skips": 193
+    },
+    "lint_format_compile": true,
+    "saved_assembly_and_equipment_validation": true,
+    "final_fixture_comparison": {
+      "passed": true,
+      "shapes": 117,
+      "native_controls_passed": true,
+      "native_expressions_unchanged": true
+    },
+    "visual_review": [
+      "assembly",
+      "propulsion",
+      "print_layout",
+      "optical_battery_host",
+      "optical_electronics_host"
+    ],
+    "prototype_bundle": {
+      "integrity_verified": true,
+      "files": 47,
+      "sha256": "5a1f6fdc490bc578b58c1b4172f8f9393903959a4c321f715100d1d9116b7453"
+    },
+    "qualification_limit": "Geometry, nominal motion, service paths and artifact identity only; received bearing/spacer fit, prepared horn strength, actual grip and PA12 creep remain physical checks."
+  }
+}

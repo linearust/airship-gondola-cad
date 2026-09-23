@@ -76,13 +76,13 @@ class PropulsionEvidenceTests(unittest.TestCase):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["inventory"]["continuous_nut_loading"]["expected"], 2)
-        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 16)
-        self.assertEqual(result["inventory"]["geometry"]["expected"], 12)
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 12)
+        self.assertEqual(result["inventory"]["geometry"]["expected"], 6)
         self.assertEqual(result["inventory"]["bridge_joint"]["expected"], 1)
         self.assertEqual(result["inventory"]["servo_module_service"]["expected"], 1)
         self.assertEqual(result["inventory"]["input_drive_service"]["expected"], 2)
         self.assertEqual(result["inventory"]["servo_case_service"]["expected"], 2)
-        self.assertEqual(result["inventory"]["cap_service"]["expected"], 4)
+        self.assertEqual(result["inventory"]["spacer_service"]["expected"], 4)
 
     def test_missing_row_cannot_reduce_its_own_required_count(self):
         for key, count in PROPULSION_EVIDENCE_COUNTS.items():

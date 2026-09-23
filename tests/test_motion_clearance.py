@@ -36,8 +36,8 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5)
                     self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5)
                     self.assertGreater(result["minimum_clearance_lower_bound_mm"], 1.64)
-                    self.assertEqual(len(result["fixed_hardware"]), 4)
-                    self.assertEqual(len(result["envelope"]["containment"]), 5)
+                    self.assertEqual(len(result["fixed_hardware"]), 6)
+                    self.assertEqual(len(result["envelope"]["containment"]), 8)
 
     def test_arbitrary_parent_rotation_and_current_tilt_preserve_the_proof(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
@@ -86,17 +86,16 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         carrier = result["envelope"]["containment"][0]
         self.assertGreater(carrier["outside_envelope_mm3"], 0.01)
 
-    def test_a_cap_nut_moved_into_the_motion_reserve_is_rejected(self):
+    def test_a_mount_nut_moved_into_the_motion_reserve_is_rejected(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
-        nut = doc.PortOutputBearingCapPositiveNut
+        nut = doc.ServoBridgePortNut
         position = nut.Placement
         pivot = doc.PortPod.Placement.Base
-        # Move toward the actual rotation axis, independent of whether the cap
-        # is beside or above it. A lateral shift no longer reduces this gap.
-        inward = App.Vector(pivot.x - position.Base.x, 0, pivot.z - position.Base.z)
-        position.Base += inward.normalize() * 2
+        # Put the real fixed nut beside the rotating guard, inside its required
+        # reserve. A nearer architecture cannot reuse the old large gap.
+        position.Base = pivot + App.Vector(10, 25, 0)
         nut.Placement = position
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
@@ -114,7 +113,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         frame = doc.PropulsionFixedFrame
         frame.Shape = frame.Shape.cut(
             Part.makeCylinder(
-                3.2,
+                3.7,
                 10,
                 App.Vector(0, PIVOT_HALF_SPAN + 26, PIVOT_Z),
                 App.Vector(0, 1, 0),
@@ -144,7 +143,13 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         self.assertTrue(result["axial_travel"]["passed"], result)
         self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 1.5)
         self.assertFalse(result["passed"])
-        self.assertLess(result["minimum_clearance_lower_bound_mm"], 1.0)
+        from gondola.validation.propulsion import output_bearing_stack_check
+
+        # Distant mounting screws still clear, but the frame envelope and
+        # bearing capture both reject this increased endplay.
+        bearing = output_bearing_stack_check(doc, "Port", "Negative")
+        self.assertFalse(bearing["passed"], bearing)
+        self.assertLess(bearing["full_bearing_guide_reserve_mm"], 0.3)
 
     def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check

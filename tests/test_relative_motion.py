@@ -237,16 +237,14 @@ class NativeRelativeMotionTests(unittest.TestCase):
     def test_omitted_module_obstacle_fails_and_restores_pose(self):
         modified = dict(self.module)
         modified["hardware"] = [
-            obj
-            for obj in self.module["hardware"]
-            if obj.Name != "PortOutputBearingCapNegativeNut"
+            obj for obj in self.module["hardware"] if obj.Name != "ServoBridgePortNut"
         ]
         old = float(self.doc.PortPod.Tilt)
         try:
             self.doc.PortPod.Tilt = 63
             result = self.check_without_repeating_all_pair_geometry(modified)
             self.assertFalse(result["passed"], result)
-            self.assertIn("PortOutputBearingCapNegativeNut", result["error"])
+            self.assertIn("ServoBridgePortNut", result["error"])
             self.assertEqual(float(self.doc.PortPod.Tilt), 63)
         finally:
             self.doc.PortPod.Tilt = old
@@ -289,7 +287,7 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_an_obstacle_declared_fixed_cannot_follow_the_tilt(self):
-        obstacle = self.doc.PortOutputBearingCapNegativeNut
+        obstacle = self.doc.ServoBridgePortNut
         original = App.Placement(obstacle.Placement)
         try:
             obstacle.setExpression(

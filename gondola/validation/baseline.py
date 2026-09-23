@@ -296,7 +296,7 @@ def unresolved_scope(doc):
     couplings = [
         doc.getObject(prefix + suffix)
         for prefix in ("Port", "Starboard")
-        for suffix in ("HornGearAdapter", "HornGearRetainer")
+        for suffix in ("HornGearAdapter",)
     ]
     horns = [doc.getObject(prefix + "ServoHorn") for prefix in ("Port", "Starboard")]
     forbidden = [
@@ -315,7 +315,7 @@ def unresolved_scope(doc):
         obj is not None
         and obj in registry.HardwareParts
         and obj not in registry.PrintedParts
-        and str(getattr(obj, "HardwareSKU", "")) == "KST_0415_13"
+        and str(getattr(obj, "HardwareSKU", "")) == "KST_0415_13_TIP_D1_8"
         for obj in horns
     )
     mtf = doc.getObject("ModuleMTF02PEnvelope")

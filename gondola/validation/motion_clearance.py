@@ -2,7 +2,7 @@
 
 The carrier is enclosed in two solids invariant under a complete rotation
 about its native Y axis. Containment is a BRep difference, including curved
-faces. Distances from these envelopes to actual cap fasteners therefore bound
+faces. Distances from these envelopes to actual fixed fasteners therefore bound
 all output angles, without replacing close sampled poses with a motion proof.
 """
 
@@ -20,8 +20,8 @@ GUARD_SPHERE_RADIUS_MM = math.hypot(13.0, 24.3)
 RIB_CYLINDER_RADIUS_MM = math.hypot(13.0, 3.2)
 CARRIER_HALF_WIDTH_MM = 26.0
 # This band lies on the clamp end and the complete bearing-cup shoulder.
-STOP_WITNESS_INNER_MM = 2.95
-STOP_WITNESS_OUTER_MM = 3.05
+STOP_WITNESS_INNER_MM = 3.25
+STOP_WITNESS_OUTER_MM = 3.55
 
 
 def _in_pod_coordinates(obj, pod):
@@ -140,7 +140,7 @@ def carrier_axial_travel(doc, prefix):
 
 
 def carrier_metal_clearance_check(doc, prefix):
-    """Prove the required reserve from the rotating carrier to cap metalwork.
+    """Prove the required reserve from the rotating carrier to fixed mounting metalwork.
 
     Both a sphere around the guard and a narrower full-width cylinder around
     its connections are necessary. A single sphere enclosing the full carrier
@@ -151,14 +151,17 @@ def carrier_metal_clearance_check(doc, prefix):
     bound for simultaneous full rotation and any allowed axial displacement.
     """
     pod = doc.getObject(prefix + "Pod")
-    names = [prefix + "MotorCarrier"] + [
+    names = [
+        prefix + suffix
+        for suffix in ("MotorCarrier", "Motor", "PropellerDisk", "Shaft")
+    ] + [
         prefix + "OutputClamp" + side + kind
         for side in ("Negative", "Positive")
         for kind in ("Bolt", "Nut")
     ]
-    metal_names = [
-        prefix + "OutputBearingCap" + side + kind
-        for side in ("Negative", "Positive")
+    metal_names = ["ServoBridge" + prefix + kind for kind in ("Bolt", "Nut")] + [
+        prefix + "ServoEar" + side + kind
+        for side in ("Lower", "Upper")
         for kind in ("Bolt", "Nut")
     ]
     objects = [doc.getObject(name) for name in names + metal_names]
@@ -166,7 +169,7 @@ def carrier_metal_clearance_check(doc, prefix):
         return {
             "pod": prefix,
             "passed": False,
-            "error": "Missing carrier or cap hardware",
+            "error": "Missing carrier or fixed mounting hardware",
         }
     shapes = dict(
         zip(names + metal_names, (_in_pod_coordinates(obj, pod) for obj in objects))
@@ -192,8 +195,24 @@ def carrier_metal_clearance_check(doc, prefix):
     for row in containment:
         row["passed"] = row["outside_envelope_mm3"] <= TOL
     axial = carrier_axial_travel(doc, prefix)
-    rows = []
+    rows, frame_rows = [], []
     if axial["passed"]:
+        from .rotation_envelope import full_orbit_envelope
+
+        frame = _in_pod_coordinates(doc.PropulsionFixedFrame, pod)
+        for name in names:
+            orbit, evidence = full_orbit_envelope(shapes[name], (0, 0, 0))
+            gap = orbit.distToShape(frame)[0]
+            remaining = gap - axial["maximum_mm"]
+            frame_rows.append(
+                {
+                    "moving": name,
+                    "envelope": evidence,
+                    "nominal_frame_gap_lower_bound_mm": gap,
+                    "remaining_gap_after_axial_travel_mm": remaining,
+                    "passed": remaining >= -TOL,
+                }
+            )
         for name in metal_names:
             distances = {
                 "guard_sphere": sphere.distToShape(shapes[name])[0],
@@ -221,12 +240,15 @@ def carrier_metal_clearance_check(doc, prefix):
         },
         "axial_travel": axial,
         "fixed_hardware": rows,
+        "frame_clearance": frame_rows,
         "minimum_clearance_lower_bound_mm": min(
             (row["continuous_clearance_lower_bound_mm"] for row in rows), default=None
         ),
-        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier/clamp BRep containment and distances to live bearing-cap bolts/nuts. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
+        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier, motor, propeller and clamp BRep containment and distances to live servo-module mounting bolts/nuts. Complete orbit cylinders additionally prove no frame penetration through the measured axial travel; equality is the classified carrier/frame stop contact. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
         "passed": axial["passed"]
         and all(row["passed"] for row in containment)
+        and len(frame_rows) == len(names)
+        and all(row["passed"] for row in frame_rows)
         and len(rows) == len(metal_names)
         and all(row["passed"] for row in rows),
     }

@@ -32,8 +32,8 @@ class ServoCouplingTests(unittest.TestCase):
         )
         result = []
         for shape, anchor in (
-            (hardware.screw_shape(), anchors["screw"]),
-            (hardware.hex_nut_shape(), anchors["nut"]),
+            (hardware.servo_screw_shape(), anchors["screw"]),
+            (hardware.servo_nut_shape(), anchors["nut"]),
         ):
             placed = shape.copy()
             placed.Placement = App.Placement(App.Vector(*anchor), rotation)
@@ -89,14 +89,13 @@ class ServoCouplingTests(unittest.TestCase):
             )
         )
 
-    def test_stock_horn_gear_and_fasteners_fit_without_drilling_the_horn(self):
+    def test_prepared_horn_gear_and_existing_m1_6_fasteners_fit(self):
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.parts import servo_coupling as coupling
 
         self.assertEqual(SELECTED_DRIVE.driver.bore_mm, coupling.GEAR_BORE_DIAMETER)
         self.assertEqual(SELECTED_DRIVE.driver.total_length_mm, coupling.GEAR_LENGTH)
         main = coupling.adapter_shape()
-        retainer = coupling.retainer_shape()
         horn = coupling.horn_shape()
         gear = self._driver_gear()
         shaft = coupling.driver_shaft_shape()
@@ -104,7 +103,6 @@ class ServoCouplingTests(unittest.TestCase):
         radial_screw, radial_nut = self._shaft_clamp_hardware()
         shapes = [
             main,
-            retainer,
             horn,
             gear,
             shaft,
@@ -130,7 +128,63 @@ class ServoCouplingTests(unittest.TestCase):
         self.assertAlmostEqual(head.distToShape(main)[0], 0.5, places=6)
         self.assertGreater(head.distToShape(gear)[0], 1.5)
         self.assertAlmostEqual(main.distToShape(horn)[0], 0, places=6)
-        self.assertAlmostEqual(retainer.distToShape(horn)[0], 0, places=6)
+        self.assertAlmostEqual(screw.distToShape(horn)[0], 0, places=6)
+        self.assertAlmostEqual(nut.distToShape(main)[0], 0, places=6)
+        self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.5, places=6)
+
+    def test_only_outer_stock_hole_is_prepared_and_blade_web_remains(self):
+        from gondola.parts import servo_coupling as coupling
+
+        horn = coupling.horn_shape()
+        axis = App.Vector(0, 1, 0)
+        for x, radius in (
+            (4.5, 0.4),
+            (8, 0.4),
+            (11.5, 0.4),
+            (6.8, 0.5),
+            (10, 0.5),
+            (13.2, 0.9),
+        ):
+            hole = Part.makeCylinder(radius, 1.6, App.Vector(x, 1.9, 0), axis)
+            self.assertLess(horn.common(hole).Volume, 1e-7)
+            enlarged = Part.makeCylinder(
+                radius + 0.01, 1.6, App.Vector(x, 1.9, 0), axis
+            )
+            self.assertGreater(horn.common(enlarged).Volume, 1e-4)
+        web = Part.makeLine(App.Vector(11.9, 2.7, 0), App.Vector(12.3, 2.7, 0))
+        self.assertAlmostEqual(horn.common(web).Length, 0.4, places=6)
+        self.assertEqual(coupling.HORN_SKU, "KST_0415_13_TIP_D1_8")
+
+    def test_front_nut_removes_axially_then_outboard_before_rear_screw(self):
+        from gondola.parts import servo_coupling as coupling
+
+        main = coupling.adapter_shape()
+        horn = coupling.horn_shape()
+        gear = self._driver_gear()
+        shaft = coupling.driver_shaft_shape()
+        screw, nut = self._clamp_hardware()
+        radial_screw, radial_nut = self._shaft_clamp_hardware()
+        obstacles = (
+            main,
+            horn,
+            gear,
+            shaft,
+            screw,
+            radial_screw,
+            radial_nut,
+            self._servo_envelope(),
+        )
+        for step in range(1, 13):
+            released = nut.copy()
+            released.translate(App.Vector(0, step * 0.25, 0))
+            for obstacle in obstacles:
+                self.assertLess(released.common(obstacle).Volume, 1e-7)
+        self.assertGreater(released.BoundBox.YMin, screw.BoundBox.YMax)
+        for step in range(1, 41):
+            cleared = released.copy()
+            cleared.translate(App.Vector(step * 0.5, 0, 0))
+            for obstacle in obstacles:
+                self.assertLess(cleared.common(obstacle).Volume, 1e-7)
 
     def test_metal_stub_seats_in_adapter_and_key_cannot_turn_freely(self):
         from gondola.parts import servo_coupling as coupling
@@ -170,11 +224,10 @@ class ServoCouplingTests(unittest.TestCase):
             for obstacle in (main, shaft, nut, gear):
                 self.assertLess(withdrawn.common(obstacle).Volume, 1e-7)
 
-    def test_shallow_socket_centres_the_horn_and_clamps_before_the_parts_bottom(self):
+    def test_shallow_socket_centres_horn_and_metal_screw_head_clamps_blade(self):
         from gondola.parts import servo_coupling as coupling
 
         main = coupling.adapter_shape()
-        retainer = coupling.retainer_shape()
         horn = coupling.horn_shape()
         registers = [
             face
@@ -186,8 +239,8 @@ class ServoCouplingTests(unittest.TestCase):
         for face in registers:
             self.assertAlmostEqual(face.BoundBox.YLength, 1.3, places=6)
             self.assertAlmostEqual(face.BoundBox.YMax, 3.5, places=6)
-        self.assertAlmostEqual(main.distToShape(retainer)[0], 0.3, places=6)
-        for direction, obstacle in ((1, main), (-1, retainer)):
+        screw, _ = self._clamp_hardware()
+        for direction, obstacle in ((1, main), (-1, screw)):
             displaced = horn.copy()
             displaced.translate(App.Vector(0, direction * 0.01, 0))
             self.assertGreater(displaced.common(obstacle).Volume, 1e-5)
@@ -219,15 +272,16 @@ class ServoCouplingTests(unittest.TestCase):
         from gondola.parts import servo_coupling as coupling
 
         main = coupling.adapter_shape()
-        retainer = coupling.retainer_shape()
         horn = coupling.horn_shape()
         case = self._servo_envelope()
+        screw, _ = self._clamp_hardware()
         for step in range(1, 51):
             distance = step * 0.5
             incoming = main.copy()
             incoming.translate(App.Vector(0, distance, 0))
-            self.assertLess(incoming.common(horn).Volume, 1e-7)
-            incoming = retainer.copy()
+            for obstacle in (horn, screw, case):
+                self.assertLess(incoming.common(obstacle).Volume, 1e-7)
+            incoming = screw.copy()
             incoming.translate(App.Vector(0, -distance, 0))
             for obstacle in (main, horn, case):
                 self.assertLess(incoming.common(obstacle).Volume, 1e-7)
@@ -238,7 +292,6 @@ class ServoCouplingTests(unittest.TestCase):
         case = self._servo_envelope()
         moving = [
             coupling.adapter_shape(),
-            coupling.retainer_shape(),
             coupling.driver_shaft_shape(),
             *self._clamp_hardware(),
             *self._shaft_clamp_hardware(),
@@ -248,20 +301,31 @@ class ServoCouplingTests(unittest.TestCase):
                 rotated = shape.copy()
                 rotated.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
                 self.assertLess(rotated.common(case).Volume, 1e-7)
-                self.assertGreaterEqual(rotated.distToShape(case)[0], 0.6 - 1e-7)
+                self.assertGreaterEqual(rotated.distToShape(case)[0], 1.1 - 1e-7)
 
     def test_functional_walls_and_separate_open_pockets_remain_manufacturable(self):
         from gondola.parts import servo_coupling as coupling
         from gondola.validation.manufacturing import planar_wall_regions
 
         main = coupling.adapter_shape()
-        for shape in (main, coupling.retainer_shape()):
-            thin = [
-                row
-                for row in planar_wall_regions(shape)
-                if row["material_thickness_mm"] < 1.5 - 1e-6
-            ]
-            self.assertEqual(thin, [])
+        thin = [
+            row
+            for row in planar_wall_regions(main)
+            if row["material_thickness_mm"] < 1.5 - 1e-6
+        ]
+        self.assertEqual(thin, [])
+        # A small outer tip radius could preserve a valid solid yet leave a
+        # paper-thin wall around the flat pocket corners. Check the complete
+        # section perimeter, including curved surfaces missed by planar probes.
+        outer = coupling._tangent_hull(
+            coupling.BODY_BACK_Y,
+            coupling.SHAFT_START_Y - coupling.BODY_BACK_Y,
+            coupling.ADAPTER_ROOT_RADIUS,
+            coupling.ADAPTER_TIP_RADIUS,
+            coupling.BOLT_X,
+        ).slice(App.Vector(0, 1, 0), 3.0)[0]
+        pocket = coupling._horn_pocket().slice(App.Vector(0, 1, 0), 3.0)[0]
+        self.assertGreaterEqual(outer.distToShape(pocket)[0], 1.5)
         self.assertGreaterEqual(
             coupling.SHAFT_BOSS_END_X - coupling.SHAFT_NUT_SEAT_X, 1.5
         )

@@ -17,8 +17,10 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.
   `references/cart_adaptation_review.md` records cart choices and remaining
   purchases; current build quantities belong to `contracts/design.py`.
-  `references/retention_review.md` distinguishes bearing outer-ring capture
-  from shaft retention. The optical seats use direct M2 clamps; the archived
+  `references/retention_review.md` describes inward-loaded bearing cups,
+  integral outer shoulders, bought inner-ring spacers and the staged assembly
+  path. Preserve separate shaft grip and broad carrier/frame axial stops.
+  The optical seats use direct M2 clamps; the archived
   latch review records a superseded trial, not an assembly instruction.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
@@ -61,8 +63,11 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   Include permitted axial travel in clearance and gear-face engagement budgets;
   distinguish deliberate bearing, gear and axial-stop contact from collisions.
 - The selected plain-bore driver gears mount on short nominal-3mm input stubs,
-  retained in printed couplings around bought KST horns. Keep the original
-  horn spline and retaining screw; do not invent a printed spline or restore
+  retained in printed couplings around bought KST horns. The prepared-horn
+  purchase key requires enlarging only the sourced tip hole for the direct
+  M1.6 adapter joint; do not describe that modification as a factory feature
+  or infer strength from clearance tests. Keep the original horn spline and
+  retaining screw; do not invent a printed spline or restore
   the former hollow journal for a 7 mm gear bore. Only output axes use external
   bearings. One removable bridge carries both servo cradles and complete input
   drives. Two local seats and fixed datums locate it on the common

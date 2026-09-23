@@ -1,4 +1,4 @@
-# Cart adaptation and subsequent mechanical revisions
+# Selected cart and preparation work
 
 This is a record of the user-selected cart variants and preparation work, not
 a seller certification or an exported bill of materials. Current installed
@@ -46,10 +46,10 @@ authority if this table is intentionally revised.
 
 The M2 kit replaces thin square nuts, PA66 screws and rail set screws. Rail
 clamps, propulsion structural joints, optical pivots and optical feet use 8 mm
-screws; the short radial coupling joints retain 6 mm screws. Revision AF restores
-two directly clamped optical feet. The modeled mechanism requires only these
-two M2 lengths. No washers are required by the modeled
-stacks. A 4.5 mm-diameter by 2 mm-high head cylinder is a **design acceptance
+screws; the short radial coupling joints retain 6 mm screws. The optical feet
+are directly clamped. The modeled mechanism uses these two M2 lengths;
+prepared horn-tip joints share the servo-ear M1.6 hardware. No washers are
+required by the modeled stacks. A 4.5 mm-diameter by 2 mm-high head cylinder is a **design acceptance
 envelope**, not a supplier claim. Measure actual button heads and nuts before
 manufacturing. The hex rail seat requires the finished-size range and coupon
 checks in `parts/rail.py`; raw PA12 tolerance alone does not qualify capture.
@@ -57,9 +57,18 @@ checks in `parts/rail.py`; raw PA12 tolerance alone does not qualify capture.
 Still needed or unresolved:
 
 - Two KST 0415.13 horns, retaining the proper OEM spline screws. The unmeasured
-  plastic horns in the servo box are not automatic replacements.
-- Four M1.6 x 8 DIN84 screws and four M1.6 DIN934 nuts for the servo ears;
-  inspect actual ear and screw fit. These are separate from the M2 kit.
+  plastic horns in the servo box are not automatic replacements. Enlarge only
+  the existing tip hole at radius 13.2 mm from nominal 1.0 mm to 1.8 mm, supporting
+  the blade and deburring without countersinking. This is local preparation,
+  not a factory hole or a qualified strength change. Inspect for distortion
+  and cracks and verify the assembled joint under bidirectional load.
+- M1.6 x 8 DIN84 screws and M1.6 DIN934 nuts for both servo ears and
+  prepared horn-tip joints; use the current quantities in the generated BOM
+  and inspect actual hole, head and nut seating. These are separate from the M2 kit.
+- HIROSUGI F3035-5105T flanged metal bearing spacers. These replace the
+  printed caps and their fasteners; verify received bearing lands and assembled
+  endplay. The catalog minimum is 50 pieces and Korean supply is unconfirmed.
+  See [retention review](retention_review.md).
 - Four actual M3 gear set screws, after checking what is supplied. Screw length,
   point, projection and the 48T screw-axis location remain unverified.
 - Motor M1.4 screws, FC damping/insulation hardware, P-AS mounting hardware and
@@ -73,148 +82,6 @@ Previous revision-AA exports do not represent these choices. Release artifacts
 must be regenerated from the complete current source and reviewed together; passing
 geometry checks never certifies the received hardware or flight readiness.
 
-## Native revision audit
-
-The transition from the pinned revision-AA fixture at commit `fa89db5` was
-reviewed before replacing the fixture. All 124 prior shape objects remain;
-six bought objects add the two input stubs and their bolt/nut pairs. The
-installed print count remains 18 and modeled hardware increases from 62 to 68.
-Registry changes contain only those six additions. All native motion/control
-expressions remain identical, and bounded control behavior passed.
-
-Intentional geometry changes are the 48T/16T gear envelopes and 16 mm axis
-distance, input couplings, output shaft flats, 89 mm half-span/support feet,
-M2 kit envelopes, hex rail seats and access corridors, and the reduced 5 mm
-output-clamp grip. Servo/horn/propulsor placements follow those dimensions.
-The continuous rail, battery/FC/P-AS/LR900/MTF-02P device envelopes and their
-connector/service reservations remain geometrically unchanged; phase-wire
-loop reservations follow the moved output axes. Material, sourcing and
-procurement metadata now describe the selected cart rather than the former
-parts. Revision AB represented this authorized design change, not physical
-qualification. Revision AC additionally incorporated the reviewed simplification below;
-revision AD supersedes its optical tower-foot attachment.
-
-The final AB audit additionally extended the fixed frame's two rail-bolt head
-bays by the full 1.2 mm release travel. Only `PropulsionFixedFrame` changed
-(27.648 mm3 removed); its bounds, placement and solid count remain unchanged.
-All other shapes, native controls, inventory and procurement metadata remain
-identical to the reviewed AB assembly. The release sweep checks the complete
-headed bolt continuously, including its fully loosened position.
-
-
-## Revision AC simplification (historical)
-
-The user accepts a modest mass increase in exchange for simpler integral parts
-and less sensitivity to noncritical purchased-part outlines. The paired servo
-and input-gear module deliberately remains removable. Fixed gear centres,
-bearing race contacts, shaft journals and rail nut antirotation remain functional
-datums; loosening those interfaces would not be a safe simplification.
-
-- The AC optical base integrated two open 25 mm legs and through-bolt feet.
-  Two M2x8 screws and ordinary M2 nuts replace two female/female PA66 columns
-  and four M2x5 screws. No blind thread-depth or spacer-across-flats assumption
-  remains. Each foot has a short radial slot accepting +/-0.5 mm local axis
-  mismatch; this is not an arbitrary position or angle adjustment. Whole-tower
-  removal is required for device service on either host: remove the two upper
-  nuts and lift it off the retained lower-headed bolts. Install/replace/transfer
-  those bolts with the carrier off the rail on a bench; downward bolt extraction
-  on the assembled rail would meet the tape/envelope region. Device lift paths
-  must retain the two bolts as obstacles.
-- The optical head's two independent manual alignment pivots, shared host axes,
-  sensor location and field-of-view reservations are unchanged. The provisional
-  capacitor allocation moves 6 mm outward in X to clear the integral tower on
-  the electronics host; its full reserved size is retained.
-- Servo body windows increase from 8x21 to 9x21.5 mm without reducing their
-  nominal 2 mm sidewalls or changing ear mounting axes and gear centres.
-- Horn pockets use straight relieved blade flanks. The root register and flat
-  tip stop retain their functional finish-fit datums: actual horn root size,
-  overall tip reach and coaxiality still require checking. A closed rear hub
-  ring was rejected because it cannot pass over an already retained horn.
-- Bearing caps retain their locating features and assembly splits. The rail's
-  standard M2 nut capture retains its coupon/finished-fit requirement; replacing
-  it with an open tool slot would introduce a cantilever reaction wall and a
-  specially thin holding-tool requirement.
-
-Installed printed part count remains 18; modeled purchased hardware decreases
-from 68 to 66 pieces and from 14 to 12 types. M2x5 and separate optical columns
-are no longer required. This count excludes the unmodeled device fastening
-stacks and other items identified above. Nominal CAD checks do not establish
-received-part fit, tower stiffness or strength.
-
-The modeled structure/hardware estimate changes from 82.653 to 83.297 g
-(+0.644 g): printed PA12 volume adds approximately 1.706 g, while removal of the
-separate columns and changed fasteners subtracts approximately 1.061 g. These
-are common-assumption CAD estimates, not measured product masses or an all-up
-flight mass. Source density/material and omitted-hardware limits remain in the
-exported mass budget.
-
-The AC fixture transition is recorded in `tests/fixtures/rev_ac_review.json`.
-Only the integral optical base, paired servo bridge, two horn adapters and
-capacitor reservation changed geometry; every retained object placement and
-native motion expression stayed unchanged. Four foot hardware objects replace
-six old stack hardware objects. The final 128-shape comparison, 258 native
-FreeCAD tests, both 25-attitude optical host checks, assembly/equipment service
-and manufacturing screens, export identity and prototype bundle checks passed.
-
-## Revision AD optical attachment
-
-The AD trial (superseded by AF) replaced its two M2x8 screws and two M2 nuts with
-integral positive hooks and open host seats. Refer to
-[latch attachment review](latch_attachment_review.md) for the release mechanism,
-clearance tradeoff and mandatory same-process coupon checks. The paired servo
-module and all preload-dependent mechanism joints retain their fasteners.
-Current counts and release status come from `gondola/contracts/design.py`;
-the AC quantities and 25 mm tower described above are historical.
-
-## Revision AE handling robustness
-
-The user accepts modest mass increases for simpler, less delicate structures.
-The four tall output-bearing posts now have plain 9.6 x 4 mm web sections;
-their unnecessary lightening windows are removed. The separate low wire/key
-corridors, bearing seats, shaft locations, fasteners and removable servo bridge
-remain unchanged. No purchased interface is resized. CAD screening includes
-complete output rotation and the existing axial-travel allowance.
-
-The optical head's pivot ears, narrow connecting post and tray neck increase
-from 1.5 to 2 mm. Its two pivot screws change from M2x6 to the already-selected
-M2x8 kit size. At AE the tower latches retained their separately specified flexible
-sections; AF subsequently removed them. Part count,
-sensor datum and angle controls remain unchanged. The selected gear report now
-distinguishes the 3 mm driver face, 5 mm output face and 3 mm nominal overlap.
-
-The modeled print and fastener mass increases by approximately 3.21 g under
-the existing density assumptions; this is not measured or all-up mass.
-Physical stiffness, screw fit, retention and pointing still require the
-existing prototype checks. The intentional geometry and metadata transition is
-recorded in `tests/fixtures/rev_ae_review.json`; current quantities remain in
-`gondola/contracts/design.py` and the generated BOM.
-
-AE verification passed 262 native FreeCAD tests without skips, complete saved
-assembly/equipment and propulsion checks, 126-shape fixture comparison, native
-controls, print-export identity and prototype bundle checks. These are CAD and
-consistency results, not physical strength or fatigue qualification.
-
-## Revision AF optical seating and motion review
-
-The AD/AE latch allowed 0.7 mm nominal seating play, up to 1.3 mm under its
-dimensional allowance. Its unspecified anti-rattle pad did not establish a
-stable optical datum. AF removes the fingers and guide features; two broad
-integral feet now contact their host directly and are clamped with the existing
-M2x8 screws and M2 nuts. No new fastener type or washer is introduced. Remove
-these four fasteners before lifting the complete tower; the current outboard
-axes clear modeled parts during downward screw extraction. Detach the host
-carrier for bench service: the balloon is not modeled and may block underside
-tool access. Reinstall the carrier and re-trim afterward. Confirm received screw bearing faces, thread diameter, print flatness and clamp
-retention. The remaining clearance-hole registration is a pre-tightening
-position allowance, not permissible operating wobble.
-The provisional capacitor reservation moves another 2 mm outward in X to
-preserve a service margin across the permitted seated tower registration.
-Its full Ø10 x 16 mm allowance is retained; no actual capacitor mount is implied.
-
-The horn motion audit now excludes only the actual nominal spline projection
-from horn/servo contact, separately checking the full case and mounting ears.
-Bearing outer-ring caps remain because the examined shaft rings and collars
-do not replace their housing-retention function; see
-[bearing retention review](retention_review.md). No propulsion geometry or
-purchased drivetrain interface changes in AF. Current quantities and unresolved
-physical checks remain authoritative in the contracts and generated BOM.
+Current release changes are audited in `tests/fixtures/rev_ag_review.json`.
+Earlier geometry and assembly instructions remain in Git history and the
+versioned fixture reviews; they are not current build instructions.

@@ -23,6 +23,21 @@ SERVO_SCREW_SOURCE = (
     "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2"
 )
 SERVO_NUT_SOURCE = "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
+BEARING_SPACER = {
+    "sku": "HIROSUGI_F3035_5105T",
+    "source": "https://hirosugi.co.jp/shop/g/gF2030-5805T/",
+    "drawing": "https://hirosugi.co.jp/img/goods/1/Mbush_d.png",
+    "material": "Free-cutting steel (trivalent chromate)",
+    "bore_mm": 3.0,
+    "bore_limits_mm": (3.0, 3.1),
+    "neck_diameter_mm": 3.5,
+    "neck_diameter_limits_mm": (3.4, 3.5),
+    "flange_diameter_mm": 5.0,
+    "flange_thickness_mm": 1.0,
+    "neck_length_mm": 0.5,
+    "overall_length_mm": 1.5,
+    "scope": "Manufacturer table and drawing: neck length L excludes flange thickness t. Flange diameter, axial lengths, chamfers and received-part tolerances are not established by the published bore/neck tolerance. Used as an axial inner-ring spacer, not a replacement plain bearing. Actual bearing lands, fits, axial freedom and Korean supply remain unverified.",
+}
 PURCHASING_STATUS = (
     "Design purchase/preparation specification. Selected seller options and "
     "dimensional references are distinguished in each item; received-lot "
@@ -41,31 +56,38 @@ PROCUREMENT_FIELDS = (
 )
 
 PROCUREMENT_SPECS = {
+    BEARING_SPACER["sku"]: {
+        "search_query": "HIROSUGI F3035-5105T flanged metal bush 3 3.5 5",
+        "candidate_url": BEARING_SPACER["source"],
+        "requirements": "HIROSUGI F3035-5105T turned free-cutting steel flanged bush, trivalent chromate finish: bore3mm (+0.1/0), neckOD3.5mm (+0/-0.1), flangeOD5mm, flange thickness1mm and neck length0.5mm, overall1.5mm. Four used as output-bearing inner-ring spacers. Narrow neck faces the bearing; flange faces the rotating carrier. Verify actual inner-ring contact without shield/outer-ring rubbing, shaft slip fit, flange/neck length and assembled axial freedom before use. Do not substitute an ordinary M3 washer or a printed thin ring. Order acceptance, price and Korean availability are unconfirmed; manufacturer lists a50-piece minimum.",
+        "evidence_notes": BEARING_SPACER["scope"],
+    },
     "M1_6X8_CHEESE_HEAD": {
         "search_query": "M1.6x8 DIN84 A2 slotted cheese head screw 3mm head",
         "candidate_url": SERVO_SCREW_SOURCE,
-        "requirements": "A2 stainless M1.6 x 0.35, 8 mm under-head length, DIN 84 slotted cheese head: maximum diameter 3 mm, height 1 mm, slot width 0.4 mm and depth 0.45 mm. Four X06 ear screws. Smaller than the general M2 hardware to provide nominal 0.2 mm radial clearance in the published 2 mm servo ear holes and 0.5 mm head-to-case gap. No washers. Check actual ear seating and safe tightening; not the OEM spline-retaining screw.",
+        "requirements": "A2 stainless M1.6 x 0.35, 8 mm under-head length, DIN 84 slotted cheese head: maximum diameter 3 mm, height 1 mm, slot width 0.4 mm and depth 0.45 mm. Shared by four X06 ears and two prepared horn-tip joints. Ear screws have nominal 0.2 mm radial clearance in the published 2 mm holes and 0.5 mm head-to-case gap. Horn screws pass through a locally enlarged 1.8 mm tip hole; the head bears on the metal blade, not a printed rear strap. No washers. Check actual seating, full nut engagement and safe tightening; these are not the OEM spline-retaining screws.",
     },
     "M1_6_HEX_NUT_DIN934": {
         "search_query": "M1.6 DIN934 A2 hex nut 3.2mm 1.3mm",
         "candidate_url": SERVO_NUT_SOURCE,
-        "requirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 ear nuts, accessible with a small wrench. These match the M1.6 servo-ear screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
+        "requirements": "A2 stainless DIN 934 / ISO 4032 M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Shared by the X06 ear and prepared horn-tip joints, accessible with a small wrench. These match the M1.6x8 screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
     },
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
         "candidate_url": BEARING_SOURCE,
         "requirements": "User-selected generic miniature bearing, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm; four on the two output axes. Check the actual shields, race lands, fit, free rotation and endplay. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
-        "evidence_notes": "The saved cart establishes only the selected 3x6x2.5mm size option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the nominal shoulder/cap clearance: inner abutment OD at most 3.7 mm and housing opening at least 5.4 mm. Verify those contacts on the received generic part. ISC's 0.27 g is comparison data, not this seller's measured mass.",
+        "evidence_notes": "The saved cart establishes only the selected 3x6x2.5mm size option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the nominal integral-shoulder and inner-ring-spacer clearance: inner abutment OD at most 3.7 mm and housing opening at least 5.4 mm. Verify those contacts on the received generic part. ISC's 0.27 g is comparison data, not this seller's measured mass.",
     },
-    "KST_0415_13": {
+    "KST_0415_13_TIP_D1_8": {
         "search_query": "KST 0415.13 aluminium servo arm 15T 4mm",
         "candidate_url": HORN_SOURCE,
-        "requirements": "KST 0415.13 aluminium horn, 15T / 4 mm spline class. Selected separately from the unmeasured plastic horn supplied with X06. Verify actual spline fit and use the correct OEM retaining screw; its thread/length are not inferred from the horn clearance hole. Stock arm requires no added hole pattern; the printed coupling captures its blade and connects to the selected nominal-3mm input stub. Installed axial seating, outline tolerances and clamping fit remain sample checks.",
+        "requirements": "Buy KST 0415.13 aluminium horn, 15T / 4 mm spline class, then enlarge ONLY the existing nominal 1.0 mm tip hole at radius 13.2 mm to 1.8 mm for the M1.6 adapter screw. This project key specifies local preparation, not a manufacturer variant. Support the metal blade, preserve the existing hole centre, deburr both faces without countersinking, and reject a distorted or cracked arm. Keep all other holes, the spline and the correct OEM retaining screw unchanged; its thread/length are not inferred. The printed coupling locates the hub and tip and connects to the selected nominal-3mm input stub. Confirm actual horn revision, prepared hole, head bearing, clamping, backlash and loaded bidirectional retention before use. Do not substitute an unmeasured supplied plastic horn.",
+        "evidence_notes": "KST's retained drawing establishes the original hole locations and nominal 1.6 mm blade thickness. The 1.8 mm prepared hole is a design modification; nominal residual web to the adjacent 0.8 mm hole is 0.4 mm. Alloy grade, edge quality, fatigue and joint strength remain unqualified. CAD motion checks do not qualify the modification.",
     },
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
 }

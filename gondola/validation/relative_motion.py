@@ -19,7 +19,6 @@ def _input_drive_membership(parts):
         "ServoHorn",
         "DriverGear",
         "HornGearAdapter",
-        "HornGearRetainer",
         "HornGearClampBolt",
         "HornGearClampNut",
         "InputShaft",

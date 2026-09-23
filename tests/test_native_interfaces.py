@@ -20,7 +20,7 @@ class NativeInterfaceTests(unittest.TestCase):
 
         from gondola import assembly
         from gondola.cad import belongs_to_group
-        from gondola.contracts.design import EXCLUDED_EQUIPMENT
+        from gondola.contracts.design import EXCLUDED_EQUIPMENT, EXPECTED_INVENTORY
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.validation.propulsion import (
             fixed_servo_datum_check,
@@ -50,8 +50,14 @@ class NativeInterfaceTests(unittest.TestCase):
                 )
                 self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
                 self.assertEqual(len(doc.DesignRegistry.Modules), 3)
-                self.assertEqual(len(doc.DesignRegistry.PrintedParts), 18)
-                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 66)
+                self.assertEqual(
+                    len(doc.DesignRegistry.PrintedParts),
+                    EXPECTED_INVENTORY["installed_prints"],
+                )
+                self.assertEqual(
+                    len(doc.DesignRegistry.HardwareParts),
+                    EXPECTED_INVENTORY["purchased_hardware"],
+                )
                 self.assertEqual(
                     doc.DesignRegistry.ScopeExclusions.split("; "),
                     list(EXCLUDED_EQUIPMENT),

@@ -314,65 +314,205 @@ def fixed_servo_datum_check(doc, prefix):
     }
 
 
-def bearing_stack_check(bearing, shaft, seat, cap):
-    """Check a nominal 3x6x2.5 bearing seat, shaft and two-sided capture.
+def bearing_stack_check(bearing, shaft, seat, spacer, carrier, *, opposite_travel):
+    """Check one inward-opening cup in coordinates with its opening toward -Y.
 
-    The bearing reference is a 3 × 6 × 2.5 mm annular stock envelope. The outer
-    ring is retained by the printed seat and removable cap. Shaft grip is a
-    separate clamp check; these clearances do not prove a friction fit or load
-    capacity.
+    The integral outer shoulder blocks outward motion. Inward motion is bounded
+    by the bought inner-ring spacer and the carrier's separately proven frame
+    stop. Both rings and the complete radial journal remain in the cup throughout
+    that travel. Annular CAD bearing geometry cannot certify a received shield.
     """
-    if any(shape.isNull() for shape in (bearing, shaft, seat)):
-        return {"passed": False, "error": "Missing bearing, shaft or fixed seat"}
+    shapes = (bearing, shaft, seat, spacer, carrier)
+    if any(shape.isNull() or not shape.isValid() for shape in shapes):
+        return {"passed": False, "error": "Missing or invalid bearing-stack solid"}
+    if (
+        opposite_travel is None
+        or not math.isfinite(opposite_travel)
+        or opposite_travel < 0
+    ):
+        return {"passed": False, "error": "Unproven carrier axial stop"}
     bounds = bearing.optimalBoundingBox(False, False)
-    centre_x = (bounds.XMin + bounds.XMax) / 2
-    centre_z = (bounds.ZMin + bounds.ZMax) / 2
-    origin = App.Vector(centre_x, bounds.YMin, centre_z)
+    x, z = bounds.Center.x, bounds.Center.z
     axis = App.Vector(0, 1, 0)
-    expected_bearing = Part.makeCylinder(3, 2.5, origin, axis).cut(
+    origin = App.Vector(x, bounds.YMin, z)
+    expected = Part.makeCylinder(3, 2.5, origin, axis).cut(
         Part.makeCylinder(1.5, 2.5, origin, axis)
     )
-    bearing_comparison = geometry_comparison(bearing, expected_bearing)
+    comparison = geometry_comparison(bearing, expected)
     shaft_bounds = shaft.optimalBoundingBox(False, False)
-    shaft_axis_error = math.hypot(
-        (shaft_bounds.XMin + shaft_bounds.XMax) / 2 - centre_x,
-        (shaft_bounds.ZMin + shaft_bounds.ZMax) / 2 - centre_z,
+    axis_error = math.hypot(shaft_bounds.Center.x - x, shaft_bounds.Center.z - z)
+    coverage = min(bounds.YMax, shaft_bounds.YMax) - max(bounds.YMin, shaft_bounds.YMin)
+    bore_faces = [
+        face
+        for face in seat.Faces
+        if type(face.Surface).__name__ == "Cylinder"
+        and abs(face.Surface.Radius - 3) < TOL
+        and abs(abs(face.Surface.Axis.y) - 1) < TOL
+        and math.hypot(face.Surface.Center.x - x, face.Surface.Center.z - z) < TOL
+        and min(face.BoundBox.YMax, bounds.YMax) - max(face.BoundBox.YMin, bounds.YMin)
+        >= 2.5 - TOL
+    ]
+    if len(bore_faces) != 1:
+        return {
+            "passed": False,
+            "error": "Missing unique coaxial complete bearing guide",
+        }
+    guide = bore_faces[0].BoundBox
+    spacer_bounds = spacer.optimalBoundingBox(False, False)
+    end = spacer_bounds.YMax
+    contact_faces = [
+        face
+        for face in spacer.Faces
+        if type(face.Surface).__name__ == "Plane"
+        and abs(abs(face.normalAt(0, 0).y) - 1) < TOL
+        and abs(face.CenterOfMass.y - end) < TOL
+    ]
+    if not contact_faces:
+        return {"passed": False, "error": "Missing spacer inner-ring contact face"}
+    contact = Part.makeCompound(contact_faces)
+    contact_bounds = contact.optimalBoundingBox(False, False)
+    contact_radius = max(
+        abs(contact_bounds.XMin - x),
+        abs(contact_bounds.XMax - x),
+        abs(contact_bounds.ZMin - z),
+        abs(contact_bounds.ZMax - z),
     )
-    shaft_coverage = min(bounds.YMax, shaft_bounds.YMax) - max(
-        bounds.YMin, shaft_bounds.YMin
+    spacer_axis_error = math.hypot(
+        spacer_bounds.Center.x - x, spacer_bounds.Center.z - z
     )
-    seat_hit = intersection_volume(bearing, seat)
-    cap_hit = 0 if cap.isNull() else intersection_volume(bearing, cap)
-    shaft_hit = intersection_volume(bearing, shaft)
-    retainers = seat if cap.isNull() else Part.makeCompound([seat, cap])
-    capture_rows = []
-    for direction in (-1, 1):
-        moved = translated_shape(bearing, y=direction)
-        blocking_volume = intersection_volume(moved, retainers)
-        capture_rows.append(
-            {
-                "translation_y_mm": direction,
-                "blocking_intersection_mm3": blocking_volume,
-                "passed": blocking_volume > TOL,
-            }
+    gap = bounds.YMin - end
+    maximum_inward = gap + opposite_travel
+    if maximum_inward < 0:
+        return {"passed": False, "error": "Spacer passes the bearing inner face"}
+    remaining_guide = bounds.YMin - maximum_inward - guide.YMin
+
+    def annular_wall(inner, outer, start, length):
+        position = App.Vector(x, start, z)
+        return Part.makeCylinder(outer, length, position, axis).cut(
+            Part.makeCylinder(inner, length, position, axis)
         )
+
+    guide_witness = annular_wall(
+        3.01, 3.2, bounds.YMin - maximum_inward, bounds.YLength + maximum_inward
+    )
+    outer_shoulder_witness = annular_wall(2.85, 2.95, bounds.YMax + 0.01, 0.5)
+    missing_guide_wall = abs(guide_witness.cut(seat).Volume)
+    missing_outer_shoulder = abs(outer_shoulder_witness.cut(seat).Volume)
+    at_limit = translated_shape(bearing, y=-maximum_inward)
+    spacer_at_limit = translated_shape(spacer, y=-opposite_travel)
+    carrier_contact = _planar_contact_area(spacer, carrier)
+    inner_contact = _planar_contact_area(at_limit, spacer_at_limit)
+    # The nominal generic bearing borrows only a comparison abutment limit:
+    # <=Ø3.7 inner ring, >=Ø5.4 outer housing opening. With a <=Ø3.1 spacer
+    # bore on a measured Ø3 shaft, 0.05 mm radial eccentricity must also fit.
+    maximum_radial_eccentricity = 0.05
+    beyond = translated_shape(at_limit, y=-0.1)
+    inner_block = intersection_volume(beyond, spacer_at_limit)
+    outward_block = intersection_volume(translated_shape(bearing, y=0.1), seat)
+    guide_span = [guide.YMin, guide.YMax]
+    outside_bearing_motion = (
+        intersection_volume(
+            translation_sweep(bearing, (0, -maximum_inward, 0))[0], seat
+        )
+        if maximum_inward >= 0
+        else float("inf")
+    )
+    overlaps = {
+        "bearing_seat_overlap_mm3": intersection_volume(bearing, seat),
+        "bearing_shaft_overlap_mm3": intersection_volume(bearing, shaft),
+        "bearing_spacer_overlap_mm3": intersection_volume(bearing, spacer),
+        "spacer_shaft_overlap_mm3": intersection_volume(spacer, shaft),
+        "spacer_carrier_overlap_mm3": intersection_volume(spacer, carrier),
+        "bearing_travel_seat_overlap_mm3": outside_bearing_motion,
+    }
     return {
-        "stock_shape_comparison": bearing_comparison,
-        "shaft_axis_error_mm": shaft_axis_error,
-        "shaft_through_bearing_length_mm": shaft_coverage,
-        "bearing_seat_overlap_mm3": seat_hit,
-        "bearing_cap_overlap_mm3": cap_hit,
-        "bearing_shaft_overlap_mm3": shaft_hit,
-        "axial_capture": capture_rows,
-        "scope": "Nominal generic 3x6x2.5 bearing envelope, coaxial shaft coverage and bidirectional outer-ring capture. The retained ISC catalog is a design comparison, not the selected seller's identity or race-land certification. Printed fits, actual bearing race contact, clamp grip and loads require a physical trial.",
-        "passed": bearing_comparison["difference_mm3"] < TOL
-        and shaft_axis_error < TOL
-        and shaft_coverage >= 2.5 - TOL
-        and seat_hit < TOL
-        and cap_hit < TOL
-        and shaft_hit < TOL
-        and not cap.isNull()
-        and all(row["passed"] for row in capture_rows),
+        "stock_shape_comparison": comparison,
+        "shaft_axis_error_mm": axis_error,
+        "shaft_through_bearing_length_mm": coverage,
+        "guide_interval_y_mm": guide_span,
+        "bearing_interval_y_mm": [bounds.YMin, bounds.YMax],
+        "spacer_carrier_contact_area_mm2": carrier_contact,
+        "spacer_axis_error_mm": spacer_axis_error,
+        "spacer_contact_radius_mm": contact_radius,
+        "spacer_bore_eccentricity_allowance_mm": maximum_radial_eccentricity,
+        "comparison_inner_abutment_radius_max_mm": 1.85,
+        "nominal_spacer_to_inner_ring_gap_mm": gap,
+        "opposite_carrier_travel_mm": opposite_travel,
+        "maximum_bearing_inward_travel_mm": maximum_inward,
+        "full_bearing_guide_reserve_mm": remaining_guide,
+        "missing_complete_guide_wall_mm3": missing_guide_wall,
+        "missing_complete_outer_shoulder_mm3": missing_outer_shoulder,
+        "inner_ring_contact_at_inward_limit_mm2": inner_contact,
+        "axial_capture": [
+            {
+                "direction": "outward",
+                "blocking_intersection_mm3": outward_block,
+                "passed": outward_block > TOL,
+            },
+            {
+                "direction": "inward",
+                "blocking_intersection_mm3": inner_block,
+                "passed": inner_block > TOL,
+            },
+        ],
+        **overlaps,
+        "scope": "Nominal complete bearing envelope retained outward by an integral cup shoulder and inward through its inner ring, a bought flanged spacer and the independently proven carrier/frame stop. The bearing may slide inward while retaining full radial guide engagement. The 3.7 mm comparison inner-land limit and 0.05 mm spacer eccentricity allowance require received-bearing and shaft checks; no shield identity, preload, fits, rolling axial capacity or PA12 creep is qualified.",
+        "passed": comparison["difference_mm3"] < TOL
+        and axis_error < TOL
+        and coverage >= 2.5 - TOL
+        and abs(bounds.YMax - guide.YMax) < TOL
+        and guide.YLength >= 4 - TOL
+        and spacer_axis_error < TOL
+        and contact_radius + maximum_radial_eccentricity <= 1.85 + TOL
+        and carrier_contact > 1
+        and inner_contact > 1.0
+        and gap >= 0.2 - TOL
+        and remaining_guide >= 0.3 - TOL
+        and missing_guide_wall < TOL
+        and missing_outer_shoulder < TOL
+        and outward_block > TOL
+        and inner_block > TOL
+        and all(value < TOL for value in overlaps.values()),
+    }
+
+
+def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
+    """Normalize all real saved placements before the local capture proof."""
+    from .motion_clearance import _in_pod_coordinates
+
+    pod = doc.getObject(prefix + "Pod")
+    names = [
+        prefix + "OutputBearing" + suffix,
+        prefix + "OutputShaft" + suffix,
+        "PropulsionFixedFrame",
+        prefix + "OutputBearingSpacer" + suffix,
+        prefix + "MotorCarrier",
+    ]
+    objects = [doc.getObject(name) for name in names]
+    if pod is None or any(obj is None for obj in objects):
+        return {"passed": False, "error": "Missing output bearing capture component"}
+    stops = (
+        axial_stops if axial_stops is not None else carrier_axial_travel(doc, prefix)
+    )
+    if not stops.get("passed"):
+        return {
+            "passed": False,
+            "error": "Unproven carrier/frame axial stops",
+            "axial_stops": stops,
+        }
+    shapes = [_in_pod_coordinates(obj, pod) for obj in objects]
+    if suffix == "Negative":
+        for shape in shapes:
+            shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+    return {
+        "bearing": names[0],
+        "spacer": names[3],
+        **bearing_stack_check(
+            *shapes,
+            opposite_travel=stops[
+                "negative_mm" if suffix == "Positive" else "positive_mm"
+            ],
+        ),
     }
 
 
@@ -592,7 +732,6 @@ def direct_adapter_fit_check(doc, prefix):
             "DriverGear",
             "ServoHorn",
             "HornGearAdapter",
-            "HornGearRetainer",
             "HornGearClampBolt",
             "HornGearClampNut",
             "InputShaft",
@@ -629,7 +768,7 @@ def direct_adapter_fit_check(doc, prefix):
             )
     capture = {
         name: _planar_contact_area(parts["ServoHorn"], parts[name])
-        for name in ("HornGearAdapter", "HornGearRetainer")
+        for name in ("HornGearAdapter", "HornGearClampBolt")
     }
     retention = input_shaft_retention_check(doc, prefix)
     return {
@@ -643,7 +782,7 @@ def direct_adapter_fit_check(doc, prefix):
         "input_shaft_retention_passed": retention["passed"],
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver, the printed adapter stays outside its bore, and both horn capture faces contact without drilling the horn. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
+        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver, the printed adapter stays outside its bore, and the prepared Ø1.8 mm horn-tip clearance hole accepts the M1.6 clamp, whose head bears directly on the metal horn opposite the adapter. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
         "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
         and specification.total_length_mm == coupling.GEAR_LENGTH
         and bore_intrusion < TOL
@@ -946,7 +1085,6 @@ def _input_service_removed(prefix):
         prefix + suffix
         for suffix in (
             "OutputGear",
-            "HornGearRetainer",
             "HornGearClampBolt",
             "HornGearClampNut",
         )
@@ -1012,17 +1150,10 @@ def input_drive_service_check(doc, module, prefix):
         shapes[prefix + "HornGearClampBolt"],
         shapes[prefix + "HornGearClampNut"],
         _service_obstacles(shapes, {gear} | released),
+        thread_diameter=1.6,
     )
     removed = {gear} | released
-    retainer = prefix + "HornGearRetainer"
-    retainer_points = [(0, 0, 0), (sign * 35, 0, 0)]
-    retainer_path = continuous_path(
-        shapes[retainer],
-        retainer_points,
-        _service_obstacles(shapes, removed | {retainer}),
-    )
-    rows = [{"part": retainer, "waypoints_mm": retainer_points, **retainer_path}]
-    removed.add(retainer)
+    rows = []
     moving = _input_drive_names(prefix)
     fixed = _service_obstacles(shapes, removed | moving)
     release_y = sign * coupling.ADAPTER_RELEASE_TRAVEL
@@ -1033,7 +1164,7 @@ def input_drive_service_check(doc, module, prefix):
         rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
-        "moving_parts": sorted(moving | {retainer}),
+        "moving_parts": sorted(moving),
         "removed_output_gear": gear,
         "released_fasteners": sorted(released),
         "output_gear_removal": output_path,
@@ -1042,7 +1173,7 @@ def input_drive_service_check(doc, module, prefix):
         "coordinate_frame": "propulsion module",
         "retained_parts": sorted(fixed),
         "adapter_axial_release_travel_mm": coupling.ADAPTER_RELEASE_TRAVEL,
-        "scope": "At neutral, free the leads and release the small gear's selected set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter, metal stub, captive radial clamp and driver together through the reported gearward release travel to clear the horn register, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
+        "scope": "At neutral, free the leads and release the small gear's selected set screw; withdraw that gear inboard. Remove the M1.6 through-horn clamp bolt and nut. Move the adapter, metal stub, captive radial clamp and driver together through the reported gearward release travel to clear the horn register, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and spacers remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
         "passed": output_path["passed"]
         and clamp_path["passed"]
         and all(row["passed"] for row in rows),
@@ -1093,7 +1224,7 @@ def servo_case_service_check(doc, module, prefix):
         "coordinate_frame": "propulsion module",
         "waypoints_mm": points,
         "part_paths": rows,
-        "scope": "After the checked small-gear, rear-strap and adapter/driver removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained original horn 12.5 mm gearward, then 40 mm sideways. The bridge, common frame and every output shaft, bearing and cap remain installed. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
+        "scope": "After the checked small-gear, through-horn clamp and adapter/driver removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained original horn 12.5 mm gearward, then 40 mm sideways. The bridge, common frame and every output shaft, bearing and spacer remain installed. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
         "passed": all(row["passed"] for row in fasteners + rows),
     }
 
@@ -1295,7 +1426,6 @@ def _record_drive_motion_checks(report, doc, module, prefix):
 
 def _record_output_stub_checks(report, prefix, pod, physical, frame):
     """Check the two separate output stubs and describe their bearing stacks."""
-    bearing_specs = []
     for side, suffix in ((-1, "Negative"), (1, "Positive")):
         shaft_name = prefix + "OutputShaft" + suffix
         report["output_stub_clearance"].append(
@@ -1321,65 +1451,137 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
                 ),
             }
         )
-        bearing_specs.append(
-            (
-                prefix + "OutputBearing" + suffix,
-                shaft_name,
-                frame,
-                prefix + "OutputBearingCap" + suffix,
-                side,
+
+
+def output_carrier_service_check(doc, module, prefix):
+    """Release the capless output rotor while temporarily supporting its bearings."""
+    shapes, missing = _service_shapes(doc, module)
+    if missing:
+        return {"pod": prefix, "missing_parts": missing, "passed": False}
+    sign = 1 if prefix == "Port" else -1
+    gear = prefix + "OutputGear"
+    gear_path = continuous_path(
+        shapes[gear],
+        [(0, 0, 0), (0, -sign * 35, 0)],
+        _service_obstacles(shapes, {gear}),
+    )
+    staged = {name: shape.copy() for name, shape in shapes.items() if name != gear}
+    shaft_paths, spacer_paths = [], []
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        for stem, travel, rows in (
+            ("OutputShaft", propulsion.SHAFT_ASSEMBLY_RETRACTION, shaft_paths),
+            ("OutputBearingSpacer", propulsion.SPACER_ASSEMBLY_SHIFT, spacer_paths),
+        ):
+            name = prefix + stem + suffix
+            offset = (0, side * travel, 0)
+            path = continuous_path(
+                staged[name], [(0, 0, 0), offset], _service_obstacles(staged, {name})
             )
+            rows.append({"part": name, **path})
+            staged[name] = translated_shape(staged[name], *offset)
+    pod = doc.getObject(prefix + "Pod")
+    excluded = (
+        {prefix + "OutputShaft" + suffix for suffix in ("Negative", "Positive")}
+        | {
+            prefix + "OutputBearingSpacer" + suffix
+            for suffix in ("Negative", "Positive")
+        }
+        | {gear}
+    )
+    moving = {
+        name for name in shapes if belongs_to_group(doc.getObject(name), pod)
+    } - excluded
+    fixed = _service_obstacles(staged, moving)
+    paths = [
+        {"part": name, **continuous_path(staged[name], [(0, 0, 0), (40, 0, 0)], fixed)}
+        for name in sorted(moving)
+    ]
+    # With the rotor removed, withdraw both stubs completely before taking a
+    # spacer off the inside of its cup. The opposite side remains an obstacle.
+    for name in moving:
+        staged.pop(name)
+    full_shaft_paths = []
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        name = prefix + "OutputShaft" + suffix
+        path = continuous_path(
+            staged[name],
+            [(0, 0, 0), (0, side * 45, 0)],
+            _service_obstacles(staged, {name}),
         )
-    return bearing_specs
+        full_shaft_paths.append({"part": name, **path})
+        staged.pop(name)
+    return {
+        "pod": prefix,
+        "moving_parts": sorted(moving),
+        "removed_output_gear": gear,
+        "output_gear_removal": gear_path,
+        "shaft_staging": shaft_paths,
+        "spacer_staging": spacer_paths,
+        "carrier_removal": paths,
+        "full_shaft_removal": full_shaft_paths,
+        "retained_parts": sorted(fixed),
+        "scope": "Unpowered bench sequence with leads freed and both shaft clamps loosened: remove the small gear, retract each stub 6.5 mm while supporting the loose bearing/spacer, move each spacer 0.3 mm outward, then slide the complete motor/carrier and its clamp fasteners 40 mm in +X. Withdraw both stubs fully after removing the rotor. Reverse for assembly, return spacers against the carrier, position the shafts and tighten the split clamps. Bearings, frame and paired servo module remain installed. Temporary hand support, physical fits and wrench access to loosened clamps need a prototype.",
+        "passed": gear_path["passed"]
+        and bool(moving)
+        and all(
+            row["passed"]
+            for row in shaft_paths + spacer_paths + paths + full_shaft_paths
+        ),
+    }
 
 
-def _record_bearing_checks(report, prefix, physical, bearing_specs):
-    """Check the four retained output bearings and their extraction paths."""
-    for bearing_name, shaft_name, seat, cap_name, direction in bearing_specs:
-        report["bearing_stacks"].append(
+def _record_bearing_checks(report, doc, module, prefix, physical):
+    """Prove capless retention and the ordered inward bearing service paths."""
+    carrier_service = output_carrier_service_check(doc, module, prefix)
+    report["output_carrier_service"].append(carrier_service)
+    removed = (
+        set(carrier_service.get("moving_parts", []))
+        | {prefix + "OutputGear"}
+        | {prefix + "OutputShaft" + suffix for suffix in ("Negative", "Positive")}
+    )
+    staged = {
+        name: shape.copy() for name, shape in physical.items() if name not in removed
+    }
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        spacer_name = prefix + "OutputBearingSpacer" + suffix
+        staged[spacer_name] = translated_shape(
+            staged[spacer_name], y=side * propulsion.SPACER_ASSEMBLY_SHIFT
+        )
+    for side, suffix in ((-1, "Negative"), (1, "Positive")):
+        bearing_name = prefix + "OutputBearing" + suffix
+        spacer_name = prefix + "OutputBearingSpacer" + suffix
+        report["bearing_stacks"].append(output_bearing_stack_check(doc, prefix, suffix))
+        spacer_path = continuous_path(
+            staged[spacer_name],
+            [(0, 0, 0), (0, -side * 35, 0)],
+            _service_obstacles(staged, {spacer_name}),
+        )
+        report["spacer_service"].append(
             {
-                "bearing": bearing_name,
-                **bearing_stack_check(
-                    physical[bearing_name],
-                    physical[shaft_name],
-                    seat,
-                    physical[cap_name],
-                ),
+                "spacer": spacer_name,
+                "required_prior_check": "output_carrier_service",
+                **spacer_path,
+                "passed": carrier_service["passed"] and spacer_path["passed"],
             }
         )
-        excluded = {
-            bearing_name,
-            shaft_name,
-            cap_name,
-            cap_name + "Bolt",
-            cap_name + "Nut",
-            prefix + "OutputGear",
-        }
+        staged.pop(spacer_name)
+        path = continuous_path(
+            staged[bearing_name],
+            [(0, 0, 0), (0, -side * 35, 0)],
+            _service_obstacles(staged, {bearing_name}),
+        )
         report["bearing_service"].append(
             {
                 "bearing": bearing_name,
-                "excluded_physical_parts": sorted(excluded),
-                "scope": "Remove the output gear, this stub shaft and its outer-race cap/fasteners before extracting the bearing. All other parts stay installed; bearing fit forces remain unmodeled.",
-                **continuous_path(
-                    physical[bearing_name],
-                    [(0, 0, 0), (0, direction * 35, 0)],
-                    _service_obstacles(physical, excluded),
-                ),
+                "required_prior_check": "output_carrier_service",
+                "scope": "After the separately checked complete rotor and both-stub removal, remove this staged spacer inward, then extract its bearing inward. The opposite side remains installed until its own ordered step; the paired servo module stays installed. Actual bearing fit force is unqualified.",
+                **path,
+                "passed": carrier_service["passed"]
+                and spacer_path["passed"]
+                and path["passed"],
             }
         )
-        cap_excluded = excluded - {bearing_name}
-        report["cap_service"].append(
-            {
-                "cap": cap_name,
-                "excluded_physical_parts": sorted(cap_excluded),
-                "scope": "Remove the small output gear when fitted, release and withdraw this stub shaft, and remove the cap bolt/nut. Move the cap 1.2 mm axially away from the cup to clear its 1 mm peg, then 35 mm upward. Bearing and all other local parts remain installed; actual fit and handling are unqualified.",
-                **continuous_path(
-                    physical[cap_name],
-                    [(0, 0, 0), (0, direction * 1.2, 0), (0, direction * 1.2, 35)],
-                    _service_obstacles(physical, cap_excluded),
-                ),
-            }
-        )
+        staged.pop(bearing_name)
 
 
 def _record_drive_service_checks(report, prefix, sign, physical):
@@ -1430,8 +1632,8 @@ def _record_drive_checks(report, doc, module, physical, frame, prefix, sign):
     """Collect direct input-drive and separately supported output evidence."""
     pod = doc.getObject(prefix + "Pod")
     _record_drive_motion_checks(report, doc, module, prefix)
-    bearing_specs = _record_output_stub_checks(report, prefix, pod, physical, frame)
-    _record_bearing_checks(report, prefix, physical, bearing_specs)
+    _record_output_stub_checks(report, prefix, pod, physical, frame)
+    _record_bearing_checks(report, doc, module, prefix, physical)
     _record_drive_service_checks(report, prefix, sign, physical)
 
 
@@ -1439,7 +1641,11 @@ def _record_fastener_checks(report, module, physical):
     """Verify installed fastener seats, engagement and ordered access routes."""
     clamp_parts = Part.makeCompound(
         [world_shape(obj) for obj in module["printed"]]
-        + [physical[prefix + "Servo"] for prefix in ("Port", "Starboard")]
+        + [
+            physical[prefix + suffix]
+            for prefix in ("Port", "Starboard")
+            for suffix in ("Servo", "ServoHorn")
+        ]
     )
     bolts = [
         obj
@@ -1564,20 +1770,6 @@ def _record_print_checks(report, module, physical):
                     z,
                 ),
                 coupling.SHAFT_BOSS_END_X - coupling.SHAFT_NUT_SEAT_X,
-            ),
-            (
-                "horn_rear_retainer",
-                "PortHornGearRetainer",
-                (x + 8, coupling.HORN_BOTTOM_Y + coupling.RETAINER_BACK_Y - 0.01, z),
-                (
-                    x + 8,
-                    coupling.HORN_BOTTOM_Y
-                    + coupling.RETAINER_BACK_Y
-                    + coupling.RETAINER_THICKNESS
-                    + 0.01,
-                    z,
-                ),
-                coupling.RETAINER_THICKNESS,
             ),
         ]
     )
