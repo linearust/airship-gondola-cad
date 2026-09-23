@@ -431,10 +431,12 @@ def configure_workspace(default_scene):
             space.overlay.show_axis_x = False
             space.overlay.show_axis_y = False
             space.overlay.show_extras = False
+            space.overlay.show_relationship_lines = False
+            space.overlay.show_overlays = False
             space.clip_start = 0.0001
             space.clip_end = 100
             space.region_3d.view_perspective = "CAMERA"
-            space.region_3d.view_camera_zoom = 0
+            space.region_3d.view_camera_zoom = 14
 
 
 def main():
