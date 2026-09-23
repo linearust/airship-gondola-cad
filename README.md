@@ -187,3 +187,23 @@ every command consistently.
 Export only manifest-listed print parts. Keep generated `build/`, archives,
 logs and temporary mounts out of Git. GUI entry points are
 `build_gondola.FCMacro` and `preview_gondola.FCMacro`.
+
+## Blender review derivative
+
+`tools/blender_review/` exports the validated saved assembly without modifying it.
+Run `python3 tools/blender_review/run.py --render-stills --open` with Blender 5.2
+installed. The default output is `build/blender_review/cad_review.blend` with
+independent scenes for tilt, gearing, axial travel, both optical hosts and bench
+servo-module removal. The builder shares meshes, not animated objects/actions;
+the verifier compares the evaluated Blender transforms with the sampled native
+poses. Preserve the source/CAD hashes and `verification.json` beside the review.
+`render_preview.py` runs inside Blender and accepts `--blend PATH --output PATH.mp4`
+and optional `--scene NAME`; it renders the saved timing without saving the model.
+
+This is prescribed rigid motion, not collision, dynamics, wire, friction or
+strength simulation. Follow native bounded angles and staged removal paths;
+do not imply host-transfer clearance or powered optical adjustment. Propeller
+disks are reference envelopes. The entire display is rotated together so the
+sensor viewing direction points down at neutral; CAD coordinates are unchanged.
+The Blender tools are outside the authoritative CAD source fingerprint; changes
+to them require regenerating and verifying the review, not promoting CAD fixtures.
