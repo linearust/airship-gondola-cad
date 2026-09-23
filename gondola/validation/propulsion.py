@@ -723,6 +723,50 @@ def input_shaft_retention_check(doc, prefix):
     }
 
 
+def horn_registration_check(doc, prefix):
+    """Measure the saved horn's radial location without relying on bolt friction."""
+    from gondola.parts import servo_coupling as coupling
+
+    drive = doc.getObject(prefix + "InputDrive")
+    mirror = App.Rotation(App.Vector(0, 0, 1), 180 if prefix == "Starboard" else 0)
+    frame = (
+        drive.getGlobalPlacement()
+        .multiply(App.Placement(App.Vector(), mirror))
+        .multiply(
+            App.Placement(App.Vector(0, coupling.HORN_BOTTOM_Y, 0), App.Rotation())
+        )
+    )
+    inverse = frame.inverse()
+    shapes = []
+    for suffix in ("ServoHorn", "HornGearAdapter"):
+        shape = world_shape(doc.getObject(prefix + suffix))
+        shape.Placement = inverse.multiply(shape.Placement)
+        shapes.append(shape)
+    horn, adapter = shapes
+    rows = []
+    for x, z in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        volumes = []
+        for distance in (0.04, 0.1):
+            moved = horn.copy()
+            moved.translate(App.Vector(x * distance, 0, z * distance))
+            volumes.append(intersection_volume(moved, adapter))
+        rows.append(
+            {
+                "local_xz_direction": [x, z],
+                "within_clearance_intersection_mm3": volumes[0],
+                "beyond_clearance_intersection_mm3": volumes[1],
+                "passed": volumes[0] < TOL and volumes[1] > 1e-4,
+            }
+        )
+    return {
+        "nominal_translation_probes": rows,
+        "within_clearance_probe_mm": 0.04,
+        "beyond_clearance_probe_mm": 0.1,
+        "scope": "Saved rigid locating faces at the installed horn angle. The root register and short tip datum bound radial translation independently of the loose through-hole. These nominal probes do not establish print fit, a combined translation/rotation tolerance, clamp torque or physical concentricity.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def direct_adapter_fit_check(doc, prefix):
     """Preserve the actual Ø3 gear bore, metal engagement and stock-horn capture."""
     from gondola.parts import servo_coupling as coupling
@@ -790,6 +834,7 @@ def direct_adapter_fit_check(doc, prefix):
         for name in ("HornGearAdapter", "HornGearClampBolt")
     }
     retention = input_shaft_retention_check(doc, prefix)
+    registration = horn_registration_check(doc, prefix)
     return {
         "pod": prefix,
         "gear_bore_mm": specification.bore_mm,
@@ -801,6 +846,7 @@ def direct_adapter_fit_check(doc, prefix):
         "metal_projection_beyond_gear_mm": projection,
         "missing_gear_end_reserve_mm3": missing_reserve,
         "input_shaft_retention_passed": retention["passed"],
+        "horn_registration": registration,
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
         "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore, and the prepared Ø1.8 mm horn-tip clearance hole accepts the M1.6 clamp, whose head bears directly on the metal horn opposite the adapter. Finish fit, clamp preload, aluminium rod quality, supplied gear set screw and servo radial-load capacity remain physical checks.",
@@ -815,6 +861,7 @@ def direct_adapter_fit_check(doc, prefix):
         and reserve.Volume > TOL
         and missing_reserve < TOL
         and retention["passed"]
+        and registration["passed"]
         and all(row["intersection_mm3"] < TOL for row in rows)
         and all(area > 1 for area in capture.values()),
     }

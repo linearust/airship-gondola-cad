@@ -492,7 +492,7 @@ def _build_coupling(doc, parent, prefix, sign):
             positioned(coupling.adapter_shape()),
             "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. "
             f"The stock horn drives an {coupling.SHAFT_SOCKET_LENGTH:g} mm D socket and locally cut Ø3×{coupling.SHAFT_LENGTH:g} metal stub. "
-            "A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+            "A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; the long blade sides are open and a 3 by 1.8 mm central tip stop replaces the enclosing end wall. Bolt preload and the through-bolt retain the joint; the locating faces alone do not qualify torque retention. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
             rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
             sku="KST0415_GearAdapter",
         )
@@ -800,7 +800,7 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
         prefix + "DriverGear",
         mirrored_y(gear_shape(spec.driver.teeth, driver_angle), sign),
         spec.driver.sku,
-        f"Selected seller {spec.driver.teeth}T m0.5/20° gear, nominal Ø3 H8 bore, face 3, overall 8, hub Ø12. Stock X06 horn, captured adapter and a short Ø3 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at {spec.ratio:g} times input. Nominal tooth reference only.",
+        f"Selected seller {spec.driver.teeth}T m0.5/20° gear, nominal Ø3 H8 bore, face 3, overall 8, hub Ø12. Stock X06 horn, open clamping adapter and a short Ø3 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at {spec.ratio:g} times input. Nominal tooth reference only.",
         spec.driver.item_url,
         "Aluminium alloy (seller claim; steel attribute conflicts)",
     )
@@ -992,7 +992,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on one removable paired bridge with a common central servo wall. The integral central shoe roof directly supports its connecting plate; two broad outboard seats and unilateral locating datums establish the fixed position, with two M2 mount pairs providing clamping. All support faces must seat without rocking. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
+            "input_mount": "Prepared stock-horn drives on one removable paired bridge with a common central servo wall. The integral central shoe roof directly supports its central plate, joined to the mounting feet by two broad straight arms with open sides; two broad outboard seats and unilateral locating datums establish the fixed position, with two M2 mount pairs providing clamping. All support faces must seat without rocking. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -1084,7 +1084,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a plain 39 by 52 by 2 mm plate, directly supported by the frame's central shoe roof as well as two broad solid outboard feet. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
+        "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a 26.8 by 22 by 2 mm central plate on the frame's central shoe roof. Two broad 15.6 by 18 by 2 mm straight arms connect the outboard feet with 3 mm overlap onto the central plate; unused side regions are open within the unchanged 39 by 52 mm footprint. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
         sku=drive.bridge_sku,
     )
     mount_hardware = []

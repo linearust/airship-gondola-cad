@@ -1,4 +1,4 @@
-# Printed shape and support review — AJ
+# Printed shape and support review — AK
 
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
@@ -21,7 +21,7 @@ complete-tower service checks.
 
 ## Central paired servo module
 
-The two servo/input-drive assemblies move 23.5 mm inward on each side. Their
+AJ moved the two servo/input-drive assemblies 23.5 mm inward on each side; AK retains those positions. Their
 cradles merge into one continuous upright with two 8 by 21 mm case windows,
 3 mm outside walls and a 4.8 mm central web. The bought servo ears still locate
 and clamp each case; the case windows are clearance features, not press fits.
@@ -30,16 +30,18 @@ size allowance of ±0.3 mm leaves 0.5 mm minimum total size-only clearance in
 each window direction. Actual positions, flatness and lead exit still need
 inspection.
 
-The common upright stands on the existing plain connector plate. The frame's
-solid shoe roof now rises to the plate underside as a broad central seat, so
-the servo loads do not depend solely on bending the plate between its outer
-feet. The original two M2 mount pairs, open head-access bores and fixed X/Y
+The common upright stands on a 26.8 by 22 by 2 mm central plate. Two broad
+15.6 by 18 by 2 mm straight arms join the diagonally opposed mounting feet
+with 3 mm overlap onto that plate. Removing the unused side regions opens
+the view to the frame without enclosed windows or a thin perimeter. The
+frame's solid shoe roof directly contacts the central plate underside, so
+the servo loads do not depend solely on bending between the outer feet. The original two M2 mount pairs, open head-access bores and fixed X/Y
 datums remain. The two outer seats at Z8.7 must be coplanar with each other;
 the higher central seat at Z11.4 must simultaneously contact its matching
 underside. Reject rocking rather than drawing a warped plate down with the screws. The complete paired
 servo/input-drive module stays removable from the output-bearing frame.
 
-Propulsor centre spacing changes from 178 to 131 mm. This shortens the bearing
+The AJ propulsor centre-spacing change from 178 to 131 mm is retained. This shortens the bearing
 support arms and narrows the assembly. For the same differential thrust and
 unchanged geometry otherwise, the corresponding moment arm is 26.4% smaller.
 This is a control-authority trade-off, not an aerodynamic efficiency gain.
@@ -92,10 +94,33 @@ face contacts, rather than loose-hole diameters, provide the operating seat.
 Connector reserves, optical visibility and moving-part separation are not
 unnecessary play and must not be reduced to achieve a snug mechanical fit.
 
+## Open horn adapter
+
+Both long walls around the horn blade are removed. A constant-thickness semicircular root
+register and a central tip stop, 3 mm wide by 1.8 mm thick, retain nominal
+location with the existing 0.05 mm finish-fit allowance. Removing every
+locating surface would make shaft centring depend on loose bolt holes. The
+broad front face and existing M1.6 through-bolt still clamp the blade. The
+remaining locating faces alone are not a torque-retention qualification.
+
+The adapter still installs axially over the already retained OEM horn. The
+socket floor, original-screw cavity, metal shaft and radial M2 nut housing
+are unchanged. Saved-geometry checks verify that small local X/Z translations
+encounter the locating faces on both sides through representative attitudes;
+these rigid checks do not predict combined fit errors, preload or creep.
+
+## Straight P-AS support
+
+One straight 5 by 2 mm arm now runs from the central rail shoe at (0, -9.3)
+to the existing P-AS holes at (42.5, -9.3) and (65.5, -9.3) mm in the mount
+frame. It replaces the former diagonal branch from the FC support. All device
+hole centres, support heights and wire reservations remain unchanged. This
+simplifies the load path and outline; actual loaded deflection remains
+unmeasured.
+
 ## Other reviewed features
 
-The horn-adapter recesses locate the bought horn, retain its prepared metal
-stub and admit the radial nut. The motor-carrier split slots provide shaft
+The horn adapter retains its prepared metal stub and admits the radial nut. The motor-carrier split slots provide shaft
 clamping; its end flanges and the frame shoulders retain the bearing stack.
 Those features remain functional. Filling them would obstruct assembly or
 remove retention, rather than simplify an equivalent assembly.

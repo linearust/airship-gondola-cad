@@ -1,4 +1,4 @@
-"""Captured stock horn driving a bought Ø3-bore gear through a short metal stub.
+"""Open bolted horn plate driving a bought Ø3-bore gear through a metal stub.
 
 The gear runs on the servo output through its bought KST horn. Its outer hole
 is locally enlarged to Ø1.8; an existing M1.6 screw/nut clamps the metal blade
@@ -29,8 +29,9 @@ HORN_BLADE_BOTTOM = HORN_HEIGHT - HORN_BLADE_THICKNESS
 # The two servo ear seats straddle the shared wall at Y +/-2.5 mm.
 HORN_BOTTOM_Y = 7.4
 HORN_REGISTER_CLEARANCE = 0.05
-HORN_BLADE_CLEARANCE = 0.25
 HORN_TIP_CLEARANCE = HORN_REGISTER_CLEARANCE
+TIP_STOP_WIDTH = 3.0
+TIP_STOP_THICKNESS = 1.8
 ADAPTER_RELEASE_TRAVEL = 1.5
 GEAR_BORE_DIAMETER = 3.0
 SHAFT_DIAMETER = 3.0
@@ -94,31 +95,21 @@ def _blade_hull(y, depth, clearance=0.0):
     )
 
 
-def _horn_pocket():
-    """Straight flank relief between the root register and flat tip datum.
+def _root_register_clearance():
+    """Leave a constant-section negative-X semicircle around the horn hub.
 
-    The channel clears the horn's two broad torque flanks. Its flat end locates
-    the horn tip, without requiring a matching curved tip outline. The root
-    circle is open toward the blade: this opposing tip stop remains essential
-    for concentricity and cannot simply be given more longitudinal clearance.
-    Clamp preload carries nominal torque; the relieved flanks limit gross slip
-    but do not promise zero backlash or a qualified holding torque.
+    Removing the complete positive half avoids the feathered ends produced
+    when a narrower rectangular throat intersects the outer circular wall.
     """
-    root = HORN_HUB_RADIUS + HORN_REGISTER_CLEARANCE
-    relieved_tip = HORN_TIP_RADIUS + HORN_BLADE_CLEARANCE
-    cosine = (root - relieved_tip) / HORN_TIP_CENTRE
-    sine = math.sqrt(1 - cosine**2)
-    end_x = HORN_TIP_CENTRE + HORN_TIP_RADIUS + HORN_TIP_CLEARANCE
-    a = V(root * cosine, 0.3, root * sine)
-    b = V(end_x, 0.3, (root - end_x * cosine) / sine)
-    c, d = V(b.x, b.y, -b.z), V(a.x, a.y, -a.z)
-    edges = [
-        Part.makeLine(a, b),
-        Part.makeLine(b, c),
-        Part.makeLine(c, d),
-        Part.Arc(d, V(-root, 0.3, 0), a).toShape(),
-    ]
-    return Part.Face(Part.Wire(edges)).extrude(V(0, HORN_HEIGHT - 0.3, 0))
+    radius = HORN_HUB_RADIUS + HORN_REGISTER_CLEARANCE
+    depth = HORN_HEIGHT - 0.3
+    opening_radius = ADAPTER_ROOT_RADIUS + 0.1
+    return union(
+        [
+            _cylinder(radius, depth, (0, 0.3, 0)),
+            box(opening_radius, depth, 2 * opening_radius, (0, 0.3, -opening_radius)),
+        ]
+    )
 
 
 def _hex_along_axis(across_flats, length, origin, direction):
@@ -172,10 +163,10 @@ def horn_shape():
 
 
 def adapter_shape():
-    """Open horn socket and keyed metal-shaft housing as one printable solid.
+    """Open clamping plate and keyed metal-shaft housing as one solid.
 
-    The open root register and opposing flat tip datum locate the horn while
-    the relieved straight flanks avoid matching its exact blade contour. It
+    Only the short root register and a small opposing tip stop locate the horn;
+    both long arm edges stay uncovered. The broad front face clamps the blade. It
     approaches an already retained horn axially after its outer hole has been
     enlarged and the M1.6 screw inserted from the rear. Both blind pockets open
     to the exterior; a 1.9 mm roof separates the shaft stop from the provisional OEM
@@ -184,11 +175,26 @@ def adapter_shape():
     shape = union(
         [
             _tangent_hull(
-                BODY_BACK_Y,
-                SHAFT_START_Y - BODY_BACK_Y,
+                HORN_HEIGHT,
+                SHAFT_START_Y - HORN_HEIGHT,
                 ADAPTER_ROOT_RADIUS,
                 ADAPTER_TIP_RADIUS,
                 BOLT_X,
+            ),
+            _cylinder(
+                ADAPTER_ROOT_RADIUS,
+                HORN_HEIGHT - BODY_BACK_Y,
+                (0, BODY_BACK_Y, 0),
+            ),
+            box(
+                TIP_STOP_THICKNESS,
+                HORN_HEIGHT - BODY_BACK_Y,
+                TIP_STOP_WIDTH,
+                (
+                    HORN_TIP_CENTRE + HORN_TIP_RADIUS + HORN_TIP_CLEARANCE,
+                    BODY_BACK_Y,
+                    -TIP_STOP_WIDTH / 2,
+                ),
             ),
             _cylinder(3.8, SHAFT_SOCKET_LENGTH, (0, SHAFT_START_Y, 0)),
             box(
@@ -199,7 +205,7 @@ def adapter_shape():
             ),
         ]
     )
-    shape = shape.cut(_horn_pocket())
+    shape = shape.cut(_root_register_clearance())
     # Clearance around an installed original screw head is deliberately a
     # prototype envelope. Remove the adapter for service; the metal shaft and
     # the closed socket floor do not offer access to that unmeasured head.
@@ -289,12 +295,14 @@ def metrics():
         - GEAR_LENGTH,
         "gear_start_from_horn_bottom_mm": GEAR_START_Y,
         "horn_register_clearance_each_side_mm": HORN_REGISTER_CLEARANCE,
-        "horn_flank_relief_at_tip_centre_mm": HORN_BLADE_CLEARANCE,
+        "horn_long_side_walls_retained": False,
+        "horn_tip_stop_width_mm": TIP_STOP_WIDTH,
+        "horn_tip_stop_thickness_mm": TIP_STOP_THICKNESS,
         "horn_tip_clearance_mm": HORN_TIP_CLEARANCE,
         "horn_socket_engagement_mm": HORN_HEIGHT - BODY_BACK_Y,
         "adapter_axial_release_travel_mm": ADAPTER_RELEASE_TRAVEL,
         "common_clamp_fasteners_per_side": 2,
         "shaft_retention": "Nominal Ø3 x18 mm 6061 rod, cut square and deburred, with one continuous 0.5 mm-deep flat. The shaft bottoms in the adapter and projects 2 mm beyond the selected 8 mm gear, leaving a small metal-length reserve without changing its nominal mesh location. This does not qualify arbitrary replacement gears or an axial adjustment range. An M2x6 button screw through a captive M2 hex nut presses the flat. The gear requires a radial M3 set screw on the same flat; inclusion, length, point and protrusion remain unverified. The printed D socket provides geometric anti-rotation after its clearance is taken up; axial retention and initial torque transmission still require actual clamp tests. Both the raw rod diameter and filed flat are shop acceptance dimensions, not guaranteed purchased tolerances.",
         "assembly": "Remove the horn before drilling: support its blade, enlarge only the existing outer Ø1.0 hole at 13.2 mm radius to Ø1.8 and deburr both faces without altering the spline or seating surfaces. Reject cracks, elongated holes or a distorted blade. Refit the horn and its original OEM retaining screw before the adapter. Finish and clean the open D socket and nut-loading slot; seat the metal stub against its stop, drop the radial hex nut through the +Z opening and tighten the M2x6 screw against the flat without bottoming its head. Fit the purchased driver and tighten its verified M3 screw on the same flat. At neutral, insert the M1.6x8 slotted screw from behind the prepared horn tip, approach the adapter axially over the screw and install the M1.6 front hex nut. The screw head bears directly on the metal blade; tighten only enough to prevent slip or rocking without crushing PA12. For removal, unthread the nut 3 mm forward, move it outboard, then withdraw the screw rearward before releasing the adapter. For service, use the checked module or horn-coupling path with the metal stub and radial clamp kept with the adapter. Set neutral, mesh direction and tooth phasing before calibration. Actual screw access, cable handling and both-direction grip remain sample checks.",
-        "qualification": "The open hub register, opposing flat tip stop and D-socket retain 0.05 mm nominal finish-fit clearances, not as-printed tolerance claims. Straight flanks spread from the root datum to 0.25 mm nominal relief at the tip-centre station; exact blade taper and tip radius do not locate the assembly. Horn hub diameter and overall length remain critical for concentricity. Clamp preload transfers normal torque; the through-screw and relieved flanks limit gross slip, not a zero-backlash or strength claim. The prepared Ø1.8 tip hole leaves only 0.4 mm to its neighboring factory Ø0.8 hole in the drawing envelope: inspect that web after preparation and verify the actual horn and clamp under both-direction load. The drawing does not specify alloy grade or allowable loads. Verify clamp grip in both directions, the 1.3 mm register, 1.9 mm roof ahead of the provisional OEM screw-head cavity, nut capture, shaft concentricity, rocking, axial retention and loaded alignment. Check the finished rod against both gear bore and socket; reject bent, oversize or loose stock. Do not force an oversize rod into a gear. The direct gear still applies unqualified radial load to the servo output; no external radial-load rating is published.",
+        "qualification": "The open hub register, short central tip stop and D-socket retain 0.05 mm nominal finish-fit clearances, not as-printed tolerance claims. The long blade sides are uncovered; exact blade taper does not locate the assembly. Horn hub diameter and overall length remain critical for concentricity independently of screw-hole clearance. Clamp preload transfers normal torque; the through-screw limits gross rotation if it slips, without a zero-backlash or strength claim. The prepared Ø1.8 tip hole leaves only 0.4 mm to its neighboring factory Ø0.8 hole in the drawing envelope: inspect that web after preparation and verify the actual horn and clamp under both-direction load. The drawing does not specify alloy grade or allowable loads. Verify clamp grip in both directions, the 1.3 mm register, 1.9 mm roof ahead of the provisional OEM screw-head cavity, nut capture, shaft concentricity, rocking, axial retention and loaded alignment. Check the finished rod against both gear bore and socket; reject bent, oversize or loose stock. Do not force an oversize rod into a gear. The direct gear still applies unqualified radial load to the servo output; no external radial-load rating is published.",
     }

@@ -160,6 +160,12 @@ class ModuleControlMappingTests(unittest.TestCase):
         self.assertIn(carrier.Name, original)
         carrier.RailFitContract = '{"physical_fit_verified": true}'
         self.assertNotEqual(original, native_interface_metadata(doc))
+        mount = create_group(doc, "ElectronicsMount", "Equipment carrier")
+        set_property(mount, "MountContract", '{"fc_wiring_clearance_mm": 8.0}')
+        original = native_interface_metadata(doc)
+        self.assertIn(mount.Name, original)
+        mount.MountContract = '{"fc_wiring_clearance_mm": 4.0}'
+        self.assertNotEqual(original, native_interface_metadata(doc))
 
 
 @unittest.skipIf(

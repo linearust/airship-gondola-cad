@@ -118,16 +118,16 @@ class FrameRootTests(unittest.TestCase):
                 self.assertGreaterEqual(side_head.distToShape(frame)[0], 0.45 - 1e-7)
                 self.assertGreaterEqual(side_head.distToShape(bridge)[0], 1.6 - 1e-7)
 
-    def test_plain_connector_plate_keeps_broad_cradle_seats(self):
+    def test_open_connector_plate_keeps_bulkhead_support_and_mounting_seats(self):
         from gondola.parts import servo_bridge
         from gondola.validation.servo_module import bridge_joint_check
 
         bridge = self.doc.ServoDriveBridge.Shape
         centre = Part.makeBox(
-            32,
-            24,
+            26.8,
+            5,
             2,
-            App.Vector(-16, -12, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
+            App.Vector(-13.4, -2.5, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
         )
         self.assertLess(centre.cut(bridge).Volume, 1e-7)
         self.assertEqual(len(bridge.Solids), 1)

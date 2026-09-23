@@ -247,12 +247,12 @@ class ServoCouplingTests(unittest.TestCase):
             displaced.translate(App.Vector(0, direction * 0.01, 0))
             self.assertGreater(displaced.common(obstacle).Volume, 1e-5)
 
-    def test_relaxed_flanks_preserve_hub_and_tip_position_datums(self):
+    def test_open_arm_preserves_hub_and_tip_position_datums(self):
         from gondola.parts import servo_coupling as coupling
 
         main = coupling.adapter_shape()
         horn = coupling.horn_shape()
-        # Side relief must not turn into free translation of the input axis.
+        # Removing the arm walls must not free translation of the input axis.
         # The open root circle needs its opposing flat tip stop for +X.
         for dx, dz in ((0.1, 0), (-0.1, 0), (0, 0.1), (0, -0.1)):
             displaced = horn.copy()
@@ -265,10 +265,19 @@ class ServoCouplingTests(unittest.TestCase):
             Part.makeBox(20.2, 2, 10, App.Vector(-5, 1.7, -5))
         )
         self.assertLess(main.common(wider_blade).Volume, 1e-7)
+        # The entire positive-X root opening is empty, including the former
+        # narrowing crescents between the circular outside and straight throat.
+        open_arm_sides = Part.makeBox(15.19, 1.28, 10, App.Vector(0.01, 2.21, -5))
+        self.assertLess(main.common(open_arm_sides).Volume, 1e-7)
+        # Torque normally comes from clamp preload. With the side walls gone,
+        # the retained through-bolt, rather than a surrounding channel, limits
+        # gross rotation after slip; this does not establish a load capacity.
+        screw, _ = self._clamp_hardware()
         for angle in (-3, 3):
             turned = horn.copy()
             turned.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
-            self.assertGreater(turned.common(main).Volume, 1e-3)
+            self.assertLess(turned.common(main).Volume, 1e-7)
+            self.assertGreater(turned.common(screw).Volume, 1e-3)
 
     def test_parts_install_around_an_already_retained_horn_at_neutral(self):
         from gondola.parts import servo_coupling as coupling
@@ -306,6 +315,8 @@ class ServoCouplingTests(unittest.TestCase):
                 self.assertGreaterEqual(rotated.distToShape(case)[0], 1.1 - 1e-7)
 
     def test_functional_walls_and_separate_open_pockets_remain_manufacturable(self):
+        import math
+
         from gondola.parts import servo_coupling as coupling
         from gondola.validation.manufacturing import planar_wall_regions
 
@@ -316,18 +327,29 @@ class ServoCouplingTests(unittest.TestCase):
             if row["material_thickness_mm"] < 1.5 - 1e-6
         ]
         self.assertEqual(thin, [])
-        # A small outer tip radius could preserve a valid solid yet leave a
-        # paper-thin wall around the flat pocket corners. Check the complete
-        # section perimeter, including curved surfaces missed by planar probes.
-        outer = coupling._tangent_hull(
-            coupling.BODY_BACK_Y,
-            coupling.SHAFT_START_Y - coupling.BODY_BACK_Y,
-            coupling.ADAPTER_ROOT_RADIUS,
-            coupling.ADAPTER_TIP_RADIUS,
-            coupling.BOLT_X,
-        ).slice(App.Vector(0, 1, 0), 3.0)[0]
-        pocket = coupling._horn_pocket().slice(App.Vector(0, 1, 0), 3.0)[0]
-        self.assertGreaterEqual(outer.distToShape(pocket)[0], 1.5)
+        # Check actual material around the remaining semicircle, not only its
+        # back centreline. The open positive half is covered by the test above.
+        for angle in range(90, 271, 15):
+            direction = App.Vector(
+                math.cos(math.radians(angle)), 0, math.sin(math.radians(angle))
+            )
+            section = main.common(
+                Part.makeLine(
+                    App.Vector(0, 3, 0) + direction * 3.04,
+                    App.Vector(0, 3, 0) + direction * 4.71,
+                )
+            )
+            with self.subTest(root_section_angle=angle):
+                self.assertAlmostEqual(section.Length, 1.65)
+        # The short root register and standalone end datum retain useful
+        # lateral sections without restoring walls along the metal arm.
+        for start, end, required in (
+            ((-4.71, 3, 0), (-3.04, 3, 0), 1.65),
+            ((15.24, 3, 0), (17.06, 3, 0), 1.8),
+            ((16, 3, -1.51), (16, 3, 1.51), 3.0),
+        ):
+            section = main.common(Part.makeLine(App.Vector(*start), App.Vector(*end)))
+            self.assertAlmostEqual(section.Length, required)
         self.assertGreaterEqual(
             coupling.SHAFT_BOSS_END_X - coupling.SHAFT_NUT_SEAT_X, 1.5
         )

@@ -1,0 +1,2903 @@
+{
+  "revision": "AK",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "deed9c9ade7ba397d616ce98d15ac85b876b2c83",
+  "previous_fixture_sha256": "8ce49e698661d106d9f4ea2b163d6d93ae51aaf2a0b3bf62bf49c9d5eac9201e",
+  "previous_release_cad_sha256": "2ae9a7b398951d71ebe7d12fb96d5b34e183036489e552326fd19895235fc920",
+  "approved_fixture_sha256": "3f69926d05aad2429f40f281afd0529b333a66eb509b2d7b4e79efb53ba73665",
+  "scope": "All 117 retained AJ shapes, global placements, native expressions, inventory and scalar metadata audited before fixture promotion. Exactly four intended shape changes. Geometric prototype only; no physical fit, strength, retention or flight qualification.",
+  "intentional_changes": [
+    "Both horn adapters: long blade side/end enclosing walls replaced by open edges, constant1.65 mm semicircular root register and3x1.8 mm central tip stop. Existing clamping face, socket, shaft, OEM screw cavity and hardware retained. Thin positive-X root tips removed after independent review.",
+    "Servo bridge: central26.8x22x2 mm plate and two broad15.6x18x2 mm arms replace full39x52 plate. Existing central/outer contact faces and datums,3 mm joining overlap retained. Module remains removable.",
+    "P-AS: single straight5x2 mm arm from central shoe to unchanged mounting holes replaces bent/diagonal branch. Device and wire reserves unchanged.",
+    "MountContract joins the frozen native metadata checks; the sole contract addition records straight P-AS arm endpoints (empty for battery). Saved horn registration checks four pure-translation directions; no all-direction tolerance or torque claim."
+  ],
+  "shape_comparisons": [
+    {
+      "object": "BatteryEquipmentModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "BatteryEquipmentModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "BatteryMount",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false
+    },
+    {
+      "object": "BearingSeatFitSample",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "CapacitorServiceReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ContinuousRail",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ElectronicsEquipmentModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ElectronicsEquipmentModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_shape": {
+        "difference_mm3": 434.4258108520755,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 112.55798635404972,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 434.42581085207553,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 112.55798635404972,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false
+    },
+    {
+      "object": "FCWiringClearanceReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "LR900NegativeXConnectorReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "LR900PositiveXConnectorReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "MTF02PConnectorReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "MTF02POpticalClearanceReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "MainPropulsionModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "MainPropulsionModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "MaximumBatteryEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ModuleBatteryEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ModuleFCEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ModuleLR900Envelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ModuleMTF02PEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ModulePASEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalPitchBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalPitchNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalRollBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalRollBracket",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalRollNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalSensorTray",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalStackFootBolt0",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalStackFootBolt1",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalStackFootNut0",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "OpticalStackFootNut1",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PASConnectorReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortDriverGear",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 89.42387352885666,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 89.42387352885657,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 89.42387352885675,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 89.4238735288568,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortHornGearClampBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortHornGearClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortInputShaft",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortInputShaftClampBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortInputShaftClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortMotor",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortMotorCarrier",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputBearingNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputBearingPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputBearingSpacerNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputBearingSpacerPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputClampNegativeBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputClampNegativeNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputClampPositiveBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputClampPositiveNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputGear",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputShaftNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortOutputShaftPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortPhaseLeadLoopReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortPropellerDisk",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServo",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServoEarLowerBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServoEarLowerNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServoEarUpperBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServoEarUpperNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortServoHorn",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortShaft",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PortSweepBound",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "RailFitSample",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoBridgePortBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoBridgePortNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoBridgeStarboardBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoBridgeStarboardNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoDriveBridge",
+      "local_shape": {
+        "difference_mm3": 1867.599999999999,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1867.6000000000013,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1867.599999999999,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 1867.6000000000013,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ShoeFitSample",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardDriverGear",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 89.42387352885666,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 89.42387352885657,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 89.42387352885666,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 8.881784197001252e-16,
+        "volume_difference_mm3": 89.42387352885635,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardHornGearClampBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardHornGearClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardInputShaft",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardInputShaftClampBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardInputShaftClampNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardMotor",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardMotorCarrier",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputBearingNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputBearingPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputBearingSpacerNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputBearingSpacerPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputClampNegativeBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputClampNegativeNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputClampPositiveBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputClampPositiveNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputGear",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputShaftNegative",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardOutputShaftPositive",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardPhaseLeadLoopReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardPropellerDisk",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServo",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServoEarLowerBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServoEarLowerNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServoEarUpperBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServoEarUpperNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardServoHorn",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardShaft",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "StarboardSweepBound",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing0L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing0R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing1L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing1R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing2L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing2R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing3L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing3R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing4L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing4R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing5L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing5R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing6L",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "TapeWing6R",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "XT30ServiceReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    }
+  ],
+  "placement_changes": {},
+  "expressions_unchanged": true,
+  "registry_unchanged": true,
+  "native_control_check": {
+    "cases": [
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.1,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "RailPositionX",
+        "input": -72.0,
+        "result_x_mm": -72.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "RailPositionX",
+        "input": 18.0,
+        "result_x_mm": 18.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "RailPositionX",
+        "input": 108.0,
+        "result_x_mm": 108.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      }
+    ],
+    "module_control_mapping_valid": true,
+    "expected_case_count": 29,
+    "passed": true
+  },
+  "semantic_metadata_changes": [
+    {
+      "object": "ServoDriveBridge",
+      "property": "Notes",
+      "before": "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a plain 39 by 52 by 2 mm plate, directly supported by the frame's central shoe roof as well as two broad solid outboard feet. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
+      "after": "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a 26.8 by 22 by 2 mm central plate on the frame's central shoe roof. Two broad 15.6 by 18 by 2 mm straight arms connect the outboard feet with 3 mm overlap onto the central plate; unused side regions are open within the unchanged 39 by 52 mm footprint. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws."
+    },
+    {
+      "object": "ServoDriveBridge",
+      "property": "PrintNotes",
+      "before": "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a plain 39 by 52 by 2 mm plate, directly supported by the frame's central shoe roof as well as two broad solid outboard feet. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
+      "after": "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a 26.8 by 22 by 2 mm central plate on the frame's central shoe roof. Two broad 15.6 by 18 by 2 mm straight arms connect the outboard feet with 3 mm overlap onto the central plate; unused side regions are open within the unchanged 39 by 52 mm footprint. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws."
+    },
+    {
+      "object": "PortDriverGear",
+      "property": "Notes",
+      "before": "Selected seller 48T m0.5/20\u00b0 gear, nominal \u00d83 H8 bore, face 3, overall 8, hub \u00d812. Stock X06 horn, captured adapter and a short \u00d83 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at 3 times input. Nominal tooth reference only.",
+      "after": "Selected seller 48T m0.5/20\u00b0 gear, nominal \u00d83 H8 bore, face 3, overall 8, hub \u00d812. Stock X06 horn, open clamping adapter and a short \u00d83 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at 3 times input. Nominal tooth reference only."
+    },
+    {
+      "object": "PortHornGearAdapter",
+      "property": "Notes",
+      "before": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+      "after": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; the long blade sides are open and a 3 by 1.8 mm central tip stop replaces the enclosing end wall. Bolt preload and the through-bolt retain the joint; the locating faces alone do not qualify torque retention. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification."
+    },
+    {
+      "object": "PortHornGearAdapter",
+      "property": "PrintNotes",
+      "before": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+      "after": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; the long blade sides are open and a 3 by 1.8 mm central tip stop replaces the enclosing end wall. Bolt preload and the through-bolt retain the joint; the locating faces alone do not qualify torque retention. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification."
+    },
+    {
+      "object": "StarboardDriverGear",
+      "property": "Notes",
+      "before": "Selected seller 48T m0.5/20\u00b0 gear, nominal \u00d83 H8 bore, face 3, overall 8, hub \u00d812. Stock X06 horn, captured adapter and a short \u00d83 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at 3 times input. Nominal tooth reference only.",
+      "after": "Selected seller 48T m0.5/20\u00b0 gear, nominal \u00d83 H8 bore, face 3, overall 8, hub \u00d812. Stock X06 horn, open clamping adapter and a short \u00d83 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at 3 times input. Nominal tooth reference only."
+    },
+    {
+      "object": "StarboardHornGearAdapter",
+      "property": "Notes",
+      "before": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+      "after": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; the long blade sides are open and a 3 by 1.8 mm central tip stop replaces the enclosing end wall. Bolt preload and the through-bolt retain the joint; the locating faces alone do not qualify torque retention. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification."
+    },
+    {
+      "object": "StarboardHornGearAdapter",
+      "property": "PrintNotes",
+      "before": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; blade flanks have0.25mm relief near the tip. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification.",
+      "after": "One-piece adapter attaches directly through the prepared horn tip with an M1.6x8 screw and nut; no printed rear strap or washer. The stock horn drives an 8 mm D socket and locally cut \u00d83\u00d718 metal stub. A radial M2 screw/nut retains the stub. The hub register and flat tip datum retain0.05mm nominal finish-fit clearance; the long blade sides are open and a 3 by 1.8 mm central tip stop replaces the enclosing end wall. Bolt preload and the through-bolt retain the joint; the locating faces alone do not qualify torque retention. Install the OEM horn screw before the adapter. Verify prepared hole, face contact, concentricity, screw grip, backlash, creep and loaded deflection; nominal geometry is not a torque qualification."
+    },
+    {
+      "object": "BatteryMount",
+      "property": "MountContract",
+      "before": "{\"arm_width_mm\": 5.0, \"clearance_scope\": \"FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use.\", \"continuous_adhesive_pads\": [{\"centre_xy_mm\": [0.0, 0.0], \"device\": \"battery\", \"size_mm\": [16.0, 52.0]}], \"deck_bottom_z_mm\": 10.2, \"deck_thickness_mm\": 2.0, \"fc_wiring_clearance_mm\": 8.0, \"fc_wiring_corridor_centre_y_mm\": 9.0, \"fc_wiring_corridor_width_mm\": 8.0, \"hole_interface_scope\": \"Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.\", \"integral_common_rail_shoe\": true, \"kind\": \"battery\", \"mount_hole_centres_xy_mm\": [], \"mount_hole_diameter_mm\": 2.6, \"mount_pad_diameter_mm\": 6.5, \"pas_service_clearance_mm\": 4.0, \"stack_interface\": {\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 8.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"top_beam_overhang_past_legs_mm\": 0.0, \"top_beam_section_mm\": [3.0, 8.0], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}, \"support_face_z_mm\": 12.2, \"unresolved_mounting_stack\": \"Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.\"}",
+      "after": "{\"arm_width_mm\": 5.0, \"clearance_scope\": \"FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use.\", \"continuous_adhesive_pads\": [{\"centre_xy_mm\": [0.0, 0.0], \"device\": \"battery\", \"size_mm\": [16.0, 52.0]}], \"deck_bottom_z_mm\": 10.2, \"deck_thickness_mm\": 2.0, \"fc_wiring_clearance_mm\": 8.0, \"fc_wiring_corridor_centre_y_mm\": 9.0, \"fc_wiring_corridor_width_mm\": 8.0, \"hole_interface_scope\": \"Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.\", \"integral_common_rail_shoe\": true, \"kind\": \"battery\", \"mount_hole_centres_xy_mm\": [], \"mount_hole_diameter_mm\": 2.6, \"mount_pad_diameter_mm\": 6.5, \"pas_service_clearance_mm\": 4.0, \"pas_straight_support_endpoints_xy_mm\": [], \"stack_interface\": {\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 8.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"top_beam_overhang_past_legs_mm\": 0.0, \"top_beam_section_mm\": [3.0, 8.0], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}, \"support_face_z_mm\": 12.2, \"unresolved_mounting_stack\": \"Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.\"}"
+    },
+    {
+      "object": "ElectronicsMount",
+      "property": "MountContract",
+      "before": "{\"arm_width_mm\": 5.0, \"clearance_scope\": \"FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use.\", \"continuous_adhesive_pads\": [{\"centre_xy_mm\": [0.0, 47.0], \"device\": \"LR900-A\", \"size_mm\": [26.0, 10.0]}], \"deck_bottom_z_mm\": 10.2, \"deck_thickness_mm\": 2.0, \"fc_wiring_clearance_mm\": 8.0, \"fc_wiring_corridor_centre_y_mm\": 9.0, \"fc_wiring_corridor_width_mm\": 8.0, \"hole_interface_scope\": \"Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.\", \"integral_common_rail_shoe\": true, \"kind\": \"electronics\", \"mount_hole_centres_xy_mm\": [[-18.031222920256962, 0.0], [0.0, -18.031222920256962], [0.0, 18.031222920256962], [18.031222920256962, 0.0], [42.5, -9.3], [65.5, -9.3]], \"mount_hole_diameter_mm\": 2.6, \"mount_pad_diameter_mm\": 6.5, \"pas_service_clearance_mm\": 4.0, \"stack_interface\": {\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 8.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"top_beam_overhang_past_legs_mm\": 0.0, \"top_beam_section_mm\": [3.0, 8.0], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}, \"support_face_z_mm\": 12.2, \"unresolved_mounting_stack\": \"Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.\"}",
+      "after": "{\"arm_width_mm\": 5.0, \"clearance_scope\": \"FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use.\", \"continuous_adhesive_pads\": [{\"centre_xy_mm\": [0.0, 47.0], \"device\": \"LR900-A\", \"size_mm\": [26.0, 10.0]}], \"deck_bottom_z_mm\": 10.2, \"deck_thickness_mm\": 2.0, \"fc_wiring_clearance_mm\": 8.0, \"fc_wiring_corridor_centre_y_mm\": 9.0, \"fc_wiring_corridor_width_mm\": 8.0, \"hole_interface_scope\": \"Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.\", \"integral_common_rail_shoe\": true, \"kind\": \"electronics\", \"mount_hole_centres_xy_mm\": [[-18.031222920256962, 0.0], [0.0, -18.031222920256962], [0.0, 18.031222920256962], [18.031222920256962, 0.0], [42.5, -9.3], [65.5, -9.3]], \"mount_hole_diameter_mm\": 2.6, \"mount_pad_diameter_mm\": 6.5, \"pas_service_clearance_mm\": 4.0, \"pas_straight_support_endpoints_xy_mm\": [[0.0, -9.3], [65.5, -9.3]], \"stack_interface\": {\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 8.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"top_beam_overhang_past_legs_mm\": 0.0, \"top_beam_section_mm\": [3.0, 8.0], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}, \"support_face_z_mm\": 12.2, \"unresolved_mounting_stack\": \"Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.\"}"
+    },
+    {
+      "object": "ElectronicsMount",
+      "property": "Notes",
+      "before": "One integral common rail shoe; PA12 SLS/MJF. Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled.",
+      "after": "One integral common rail shoe; PA12 SLS/MJF. Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One straight 5 by 2 mm arm joins the common rail shoe directly to both P-AS mounting pads without a diagonal elbow; device axes and support height remain unchanged. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+    },
+    {
+      "object": "ElectronicsMount",
+      "property": "PrintNotes",
+      "before": "One integral common rail shoe; PA12 SLS/MJF. Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled.",
+      "after": "One integral common rail shoe; PA12 SLS/MJF. Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One straight 5 by 2 mm arm joins the common rail shoe directly to both P-AS mounting pads without a diagonal elbow; device axes and support height remain unchanged. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+    },
+    {
+      "object": "DesignRegistry",
+      "property": "ReleaseStatus",
+      "before": "{\"stage\": \"fit_prototype\", \"production_released\": false, \"unresolved_interfaces\": [{\"key\": \"motion_endpoints\", \"required_evidence\": \"Calibrate each X06 around nominal \u00b160deg servo motion for the 48T-to-16T speed-increasing pair's opposite-sign \u00b1180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.\", \"status\": \"unverified\"}, {\"key\": \"servo_power_and_load\", \"required_evidence\": \"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by 3 before losses; the direct gear transmits its mesh force to the servo output support, whose external radial-load capacity is unpublished.\", \"status\": \"unverified\"}, {\"key\": \"rail_flexure\", \"required_evidence\": \"Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.\", \"status\": \"unverified\"}, {\"key\": \"motor_mount\", \"required_evidence\": \"RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.\", \"status\": \"unverified\"}, {\"key\": \"servo_drive\", \"required_evidence\": \"Verify the selected KST 0415.13 horn's seating and original X06 retaining screw. Inspect the locally enlarged 1.8 mm tip hole at radius13.2mm, metal blade integrity, M1.6 head bearing and nut seating; CAD does not qualify this modification. Verify the printed horn-adapter root/end locating faces and relieved blade flanks, 8 mm D socket and locally cut \u00d83\u00d718 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; wider blade-side relief does not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.\", \"status\": \"unverified\"}, {\"key\": \"servo_ear_retention\", \"required_evidence\": \"X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement. Both sets of mounting ears seat on one common upright with 3 mm outside walls and a solid central web. The bridge plate bears directly on a broad central frame seat; the paired servo module remains removable. Check fore-aft bending, retained gear spacing and PA12 creep under load. Follow the checked ordered gear, coupling and servo extraction paths; free the leads and confirm the actual wire exit and handling access. Rigid CAD clearance does not establish installed stiffness or a physical assembly fit.\", \"status\": \"unverified\"}, {\"key\": \"gear_mesh_and_shaft_retention\", \"required_evidence\": \"Check the purchased 48T/16T selected seller pair at nominal 16 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. A broad central Z seat, two local mounting seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Check that the two outer seats are coplanar with each other and that all three corresponding contact faces, including the higher central seat, seat simultaneously; reject rocking. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3\u00d76\u00d72.5 bearing and \u00d83 6061 rod fits, integral outer shoulders, flanged metal inner-ring spacers, full bearing seating throughout permitted axial movement, shield clearance and broad carrier/frame axial stops. Measure the actual spacer lengths, frame spacing and carrier width together; reject preload, shield rubbing, inadequate bore engagement or excess endplay. Follow the staged inward bearing/spacer and retracted-shaft assembly path. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision \u00d83 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.\", \"status\": \"unverified\"}, {\"key\": \"electronic_mounting_stack\", \"required_evidence\": \"FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.\", \"status\": \"unverified\"}, {\"key\": \"physical_retention\", \"required_evidence\": \"Match and finish the rail/shoe coupons for deliberate hand insertion without perceptible rocking or free sliding; raw printing may produce either binding or excessive clearance. Correct the channel or reprint after coupon measurement rather than forcing a jammed full-length rail. Then perform loaded tests of tape, additional friction clamps, PA12 flexure life and bearing supports. The rail clamp acts across the solid T head and retains local screw-tip pressure; verify a burr-free received tip, opposed seating and no indentation or creep at the minimum useful hand tightening. No qualified tightening torque or holding force is specified. Check the selected 1.5mm L-key against the modeled short-arm access envelope and confirm the working stroke with actual socket engagement. Continuous post roots remove the former key tunnels but do not establish a strength rating.\", \"status\": \"unverified\"}, {\"key\": \"moving_wires\", \"required_evidence\": \"Actual phase-lead slack/strain relief through bounded \u00b1180deg output motion; reserved loops are not routing proof and endpoints must not wrap.\", \"status\": \"unverified\"}, {\"key\": \"connector_and_wire_fit\", \"required_evidence\": \"Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.\", \"status\": \"unverified\"}, {\"key\": \"optical_sensor_installation\", \"required_evidence\": \"Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.\", \"status\": \"unverified\"}, {\"key\": \"optical_stack_retention\", \"required_evidence\": \"Seat both broad tower feet directly on the host and tighten two ordinary M2x8 screws with M2 hex nuts. Verify printed flatness, actual hole and screw dimensions, full nut engagement, holding friction and PA12 creep; no pad or spring preload is assumed. Clearance holes permit registration before tightening, not operating movement. Reject rocking or slip under cable loads and recheck vertical sensor aim and pivot friction on both hosts. Disconnect wiring and remove the host carrier from the rail for bench service; underside tool access around the balloon is not established. Support the tower, remove its nuts and withdraw the screws downward before lifting it. Reinstall the carrier, check rail retention and re-trim. Physical stiffness and retention remain unqualified.\", \"status\": \"unverified\"}, {\"key\": \"rc_and_heading_installation\", \"required_evidence\": \"The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.\", \"status\": \"unverified\"}, {\"key\": \"finished_mass\", \"required_evidence\": \"Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.\", \"status\": \"unverified\"}]}",
+      "after": "{\"stage\": \"fit_prototype\", \"production_released\": false, \"unresolved_interfaces\": [{\"key\": \"motion_endpoints\", \"required_evidence\": \"Calibrate each X06 around nominal \u00b160deg servo motion for the 48T-to-16T speed-increasing pair's opposite-sign \u00b1180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.\", \"status\": \"unverified\"}, {\"key\": \"servo_power_and_load\", \"required_evidence\": \"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by 3 before losses; the direct gear transmits its mesh force to the servo output support, whose external radial-load capacity is unpublished.\", \"status\": \"unverified\"}, {\"key\": \"rail_flexure\", \"required_evidence\": \"Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.\", \"status\": \"unverified\"}, {\"key\": \"motor_mount\", \"required_evidence\": \"RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.\", \"status\": \"unverified\"}, {\"key\": \"servo_drive\", \"required_evidence\": \"Verify the selected KST 0415.13 horn's seating and original X06 retaining screw. Inspect the locally enlarged 1.8 mm tip hole at radius13.2mm, metal blade integrity, M1.6 head bearing and nut seating; CAD does not qualify this modification. Verify the printed horn-adapter short root/end locating faces and open blade sides, 8 mm D socket and locally cut \u00d83\u00d718 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; open blade sides do not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.\", \"status\": \"unverified\"}, {\"key\": \"servo_ear_retention\", \"required_evidence\": \"X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement. Both sets of mounting ears seat on one common upright with 3 mm outside walls and a solid central web. The bridge plate bears directly on a broad central frame seat; the paired servo module remains removable. Check fore-aft bending, retained gear spacing and PA12 creep under load. Follow the checked ordered gear, coupling and servo extraction paths; free the leads and confirm the actual wire exit and handling access. Rigid CAD clearance does not establish installed stiffness or a physical assembly fit.\", \"status\": \"unverified\"}, {\"key\": \"gear_mesh_and_shaft_retention\", \"required_evidence\": \"Check the purchased 48T/16T selected seller pair at nominal 16 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. A broad central Z seat, two local mounting seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Check that the two outer seats are coplanar with each other and that all three corresponding contact faces, including the higher central seat, seat simultaneously; reject rocking. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3\u00d76\u00d72.5 bearing and \u00d83 6061 rod fits, integral outer shoulders, flanged metal inner-ring spacers, full bearing seating throughout permitted axial movement, shield clearance and broad carrier/frame axial stops. Measure the actual spacer lengths, frame spacing and carrier width together; reject preload, shield rubbing, inadequate bore engagement or excess endplay. Follow the staged inward bearing/spacer and retracted-shaft assembly path. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision \u00d83 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.\", \"status\": \"unverified\"}, {\"key\": \"electronic_mounting_stack\", \"required_evidence\": \"FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.\", \"status\": \"unverified\"}, {\"key\": \"physical_retention\", \"required_evidence\": \"Match and finish the rail/shoe coupons for deliberate hand insertion without perceptible rocking or free sliding; raw printing may produce either binding or excessive clearance. Correct the channel or reprint after coupon measurement rather than forcing a jammed full-length rail. Then perform loaded tests of tape, additional friction clamps, PA12 flexure life and bearing supports. The rail clamp acts across the solid T head and retains local screw-tip pressure; verify a burr-free received tip, opposed seating and no indentation or creep at the minimum useful hand tightening. No qualified tightening torque or holding force is specified. Check the selected 1.5mm L-key against the modeled short-arm access envelope and confirm the working stroke with actual socket engagement. Continuous post roots remove the former key tunnels but do not establish a strength rating.\", \"status\": \"unverified\"}, {\"key\": \"moving_wires\", \"required_evidence\": \"Actual phase-lead slack/strain relief through bounded \u00b1180deg output motion; reserved loops are not routing proof and endpoints must not wrap.\", \"status\": \"unverified\"}, {\"key\": \"connector_and_wire_fit\", \"required_evidence\": \"Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.\", \"status\": \"unverified\"}, {\"key\": \"optical_sensor_installation\", \"required_evidence\": \"Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.\", \"status\": \"unverified\"}, {\"key\": \"optical_stack_retention\", \"required_evidence\": \"Seat both broad tower feet directly on the host and tighten two ordinary M2x8 screws with M2 hex nuts. Verify printed flatness, actual hole and screw dimensions, full nut engagement, holding friction and PA12 creep; no pad or spring preload is assumed. Clearance holes permit registration before tightening, not operating movement. Reject rocking or slip under cable loads and recheck vertical sensor aim and pivot friction on both hosts. Disconnect wiring and remove the host carrier from the rail for bench service; underside tool access around the balloon is not established. Support the tower, remove its nuts and withdraw the screws downward before lifting it. Reinstall the carrier, check rail retention and re-trim. Physical stiffness and retention remain unqualified.\", \"status\": \"unverified\"}, {\"key\": \"rc_and_heading_installation\", \"required_evidence\": \"The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.\", \"status\": \"unverified\"}, {\"key\": \"finished_mass\", \"required_evidence\": \"Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.\", \"status\": \"unverified\"}]}"
+    }
+  ],
+  "display_metadata_change_scope": "Pre-preview build versus styled previous release; only Visibility fields additionally differ. Final preview is followed by saved-CAD validation.",
+  "source_fingerprint_change_expected": true,
+  "mass_comparison_g": {
+    "printed_before": 65.19236160309084,
+    "printed_after": 63.23913294478014,
+    "printed_delta": -1.9532286583107066,
+    "hardware_before": 30.808811802986227,
+    "hardware_after": 30.808811802986227,
+    "basis": "BRep volumes at provisional1.01 g/cm3 PA12; estimates, not measured. Not total flight mass."
+  },
+  "release_checks": {
+    "status": "passed",
+    "native_unittest": {
+      "tests": 311,
+      "skipped": 0,
+      "passed": true,
+      "seconds": 505.163
+    },
+    "ruff_check": true,
+    "ruff_format_check": true,
+    "compileall": true,
+    "diff_check": true,
+    "visual_review": {
+      "current_preview_images": 13,
+      "reviewed_views": [
+        "assembly",
+        "propulsion",
+        "electronics",
+        "print layout",
+        "printed structure",
+        "optical battery host",
+        "optical electronics host"
+      ],
+      "obsolete_unregistered_servo_module_removed_preview": "Removed stale local preview after checking absence from current preview manifest; not a release artifact."
+    },
+    "sequential_pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 11.672
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 41.866
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 613.154
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.497
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.143
+      }
+    ],
+    "source_fingerprint": "2925da74fe11554fb83ef573d15958c269030abce74991cf13ac2ffcd4ec167c",
+    "saved_cad_sha256": "fe57f3789016086e707bf05076c525d2fa5965ffa1f3c3e9f1ff00f4f6d7c85a",
+    "archive_sha256": "91b0913fb7f69bf3832c9aca56a44c54ffb474eaeedab732caf8a682ce37e2d0",
+    "zip_members": 47
+  }
+}

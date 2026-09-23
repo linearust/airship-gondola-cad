@@ -1,4 +1,4 @@
-"""Installed fastener regressions for the plain paired-servo connector plate."""
+"""Open connector plate, broad load paths and installed fastener regressions."""
 
 import unittest
 
@@ -15,7 +15,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
     def setUpClass(cls):
         from gondola.parts import propulsion
 
-        cls.doc = App.newDocument("PlainServoConnectorPlate")
+        cls.doc = App.newDocument("OpenServoConnectorPlate")
         cls.module = propulsion.build_propulsion_module(cls.doc)
 
     @classmethod
@@ -42,6 +42,32 @@ class ServoBridgeShapeTests(unittest.TestCase):
                 self.assertEqual(bolt.HardwareSKU, "M2X8_BUTTON_HEAD")
                 result = self.check_mount(prefix)
                 self.assertTrue(result["passed"], result)
+
+    def test_unused_side_regions_are_open_to_the_plate_edges(self):
+        from gondola.parts import servo_bridge
+
+        bridge = self.doc.ServoDriveBridge.Shape
+        # Two large open-edge regions on each side expose the underlying
+        # frame without retaining a thin outer ring around a viewing hole.
+        openings = (
+            Part.makeBox(17.3, 15, 2, App.Vector(-13.4, 11, 11.4)),
+            Part.makeBox(6.1, 34, 2, App.Vector(-19.5, -8, 11.4)),
+        )
+        for opening in openings:
+            for side in (opening, servo_bridge.opposite(opening)):
+                self.assertLess(bridge.common(side).Volume, 1e-7)
+        self.assertTrue(bridge.isValid())
+        self.assertEqual(len(bridge.Solids), 1)
+
+    def test_each_mounting_arm_has_a_broad_continuous_connection(self):
+        from gondola.parts import servo_bridge
+
+        bridge = self.doc.ServoDriveBridge.Shape
+        # The full 9.5 mm attachment breadth continues from the central stock
+        # into each foot; the necessary bolt counterbores are farther outward.
+        link = Part.makeBox(9.5, 6, 2, App.Vector(3.9, 8, 11.4))
+        for side in (link, servo_bridge.opposite(link)):
+            self.assertLess(side.cut(bridge).Volume, 1e-7)
 
     def test_blocked_head_counterbore_cannot_pass_the_installed_stack_check(self):
         from gondola.cad import world_shape

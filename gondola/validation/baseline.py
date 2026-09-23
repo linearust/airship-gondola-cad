@@ -396,6 +396,7 @@ def procurement_and_scope_metadata(obj):
         "InstalledConnectorFitVerified",
         "ConnectorEvidence",
         "WiringContract",
+        "MountContract",
         "OpticalMountContract",
         "StackInterfaceContract",
         "BatteryPlacementContract",

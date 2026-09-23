@@ -1,8 +1,8 @@
-"""Two servo openings share one central bulkhead on a removable plate.
+"""Two servo openings share one central bulkhead on an open connector plate.
 
 All dimensions are millimetres. The common wall has thick outer columns and
-a shared central web. A broad central frame saddle supports its plate directly;
-the two feet retain the fixed locating datums and mounting screw grip.
+a shared central web. Its supported central plate connects to the two mounting
+feet through broad straight arms, leaving the unused side regions open.
 """
 
 import FreeCAD as App
@@ -29,6 +29,7 @@ PAD_INNER_X, PAD_OUTER_X = 3.9, 19.5
 PAD_INNER_Y, PAD_OUTER_Y = 13.5, 26.0
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = 11.4, 2.0
 CONNECTOR_PLATE_HALF_WIDTH = PAD_OUTER_X
+CONNECTOR_ARM_OVERLAP = 3.0
 MOUNT_HEAD_ACCESS_DIAMETER = 6.0
 BOLT_X, BOLT_Y = 14.5, 18.0
 MOUNT_GRIP = MOUNT_BOLT_SEAT_Z - NUT_SEAT_Z
@@ -40,6 +41,10 @@ def opposite(shape):
 
 def case_front_y():
     return servo_coupling.HORN_BOTTOM_Y - 0.2
+
+
+def bulkhead_width(drive=SELECTED_DRIVE):
+    return 2 * drive.input_x_mm + CRADLE_WIDTH
 
 
 def _ear_clearance(drive):
@@ -64,11 +69,11 @@ def _ear_clearance(drive):
 
 
 def _cradle_blank(drive):
-    x, z = drive.input_x_mm, drive.input_z_mm
+    z = drive.input_z_mm
     y = case_front_y() - 4.7 - MOUNT_DEPTH
     if abs(y + MOUNT_DEPTH / 2) > 1e-7:
         raise ValueError("Paired servo ears must share the central mounting wall")
-    width = 2 * x + CRADLE_WIDTH
+    width = bulkhead_width(drive)
     return box(
         width,
         MOUNT_DEPTH,
@@ -86,7 +91,11 @@ def cut_mounting_holes(shape):
 
 
 def bridge_blank(drive=SELECTED_DRIVE):
-    """Planar stock before openings; also a conservative service envelope."""
+    """Broad central support and two straight arms before functional openings.
+
+    This stock also conservatively bounds the complete printed bridge during
+    module removal. The side openings are real open edges, not enclosed holes.
+    """
     cradle = _cradle_blank(drive)
     pad = box(
         PAD_OUTER_X - PAD_INNER_X,
@@ -94,13 +103,21 @@ def bridge_blank(drive=SELECTED_DRIVE):
         CONNECTOR_PLATE_BOTTOM_Z - SEAT_Z,
         (PAD_INNER_X, PAD_INNER_Y, SEAT_Z),
     )
-    plate = box(
-        2 * CONNECTOR_PLATE_HALF_WIDTH,
-        2 * PAD_OUTER_Y,
+    width = bulkhead_width(drive)
+    central_plate = box(
+        width,
+        rail.SHOE_WIDTH,
         CONNECTOR_PLATE_THICKNESS,
-        (-CONNECTOR_PLATE_HALF_WIDTH, -PAD_OUTER_Y, CONNECTOR_PLATE_BOTTOM_Z),
+        (-width / 2, -rail.SHOE_WIDTH / 2, CONNECTOR_PLATE_BOTTOM_Z),
     )
-    return union([cradle, pad, opposite(pad), plate])
+    arm_start_y = rail.SHOE_WIDTH / 2 - CONNECTOR_ARM_OVERLAP
+    arm = box(
+        PAD_OUTER_X - PAD_INNER_X,
+        PAD_OUTER_Y - arm_start_y,
+        CONNECTOR_PLATE_THICKNESS,
+        (PAD_INNER_X, arm_start_y, CONNECTOR_PLATE_BOTTOM_Z),
+    )
+    return union([cradle, central_plate, arm, opposite(arm), pad, opposite(pad)])
 
 
 def bridge_shape(drive=SELECTED_DRIVE):

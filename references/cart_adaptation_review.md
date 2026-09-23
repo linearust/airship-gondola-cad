@@ -89,6 +89,6 @@ checked envelope in [rail joint review](rail_joint_review.md).
 
 The subsequent AJ close-fit rail and central servo revision preserve this purchase selection;
 see `references/shape_simplification_review.md`. Current release changes are
-audited in `tests/fixtures/rev_aj_review.json`.
+audited in `tests/fixtures/rev_ak_review.json`.
 Earlier geometry and assembly instructions remain in Git history and the
 versioned fixture reviews; they are not current build instructions.

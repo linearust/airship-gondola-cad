@@ -33,6 +33,7 @@ PAS_CENTRE_XY = (54.0, 0.0)
 PAS_HOLE_CENTRES = tuple(
     (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
+PAS_ARM_ROOT_XY = (0.0, PAS_HOLE_CENTRES[0][1])
 LR_CENTRE_XY = (0.0, 47.0)
 LR_ADHESIVE_SIZE = (26.0, 10.0)
 BATTERY_DECK_SIZE = (16.0, 52.0)
@@ -106,8 +107,7 @@ def mount_shape(kind):
         pieces += [_arm((0.0, 0.0), centre) for centre in FC_HOLE_CENTRES]
         pieces += [
             _arm((0.0, FC_AXIS_OFFSET), LR_CENTRE_XY),
-            _arm((FC_AXIS_OFFSET, 0.0), PAS_HOLE_CENTRES[0]),
-            _arm(PAS_HOLE_CENTRES[0], PAS_HOLE_CENTRES[1]),
+            _arm(PAS_ARM_ROOT_XY, PAS_HOLE_CENTRES[-1]),
             _deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY),
         ]
         holes = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
@@ -151,6 +151,9 @@ def mount_contract(kind):
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
         "arm_width_mm": ARM_WIDTH,
+        "pas_straight_support_endpoints_xy_mm": (
+            [PAS_ARM_ROOT_XY, PAS_HOLE_CENTRES[-1]] if kind == "electronics" else []
+        ),
         "continuous_adhesive_pads": (
             [
                 {
@@ -183,7 +186,7 @@ def build_mount(doc, parent, kind):
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
         f"Continuous 16 x 52 x 2 mm battery adhesive deck with two integral structural stack clamp tabs at {STACK_ANCHOR_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
-        else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+        else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One straight 5 by 2 mm arm joins the common rail shoe directly to both P-AS mounting pads without a diagonal elbow; device axes and support height remain unchanged. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )
     obj = create_printed_part(
         doc,
