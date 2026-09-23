@@ -1,4 +1,4 @@
-# Cart adaptation and tolerance simplification — revision AC
+# Cart adaptation and subsequent mechanical revisions
 
 This is a record of the user-selected cart variants and preparation work, not
 a seller certification or an exported bill of materials. Current installed
@@ -44,9 +44,9 @@ authority if this table is intentionally revised.
 
 ## Fastener adaptation and purchases not covered by the cart
 
-The M2 kit replaces thin square nuts, PA66 screws and rail set screws. Integral
-optical tower feet and rail clamps use 8 mm screws; optical pivots and radial
-coupling retention use 6 mm screws. The modeled mechanism requires only these
+The M2 kit replaces thin square nuts, PA66 screws and rail set screws. Rail
+clamps and propulsion structural joints use 8 mm screws; optical pivots and radial
+coupling retention use 6 mm screws. Revision AD removes optical tower-foot hardware. The modeled mechanism requires only these
 two M2 lengths. No washers are required by the modeled
 stacks. A 4.5 mm-diameter by 2 mm-high head cylinder is a **design acceptance
 envelope**, not a supplier claim. Measure actual button heads and nuts before
@@ -69,7 +69,7 @@ Still needed or unresolved:
   purchased by this cart. Subtract any already-owned items before ordering.
 
 Previous revision-AA exports do not represent these choices. Release artifacts
-must be regenerated from the complete AC source and reviewed together; passing
+must be regenerated from the complete current source and reviewed together; passing
 geometry checks never certifies the received hardware or flight readiness.
 
 ## Native revision audit
@@ -90,8 +90,8 @@ connector/service reservations remain geometrically unchanged; phase-wire
 loop reservations follow the moved output axes. Material, sourcing and
 procurement metadata now describe the selected cart rather than the former
 parts. Revision AB represented this authorized design change, not physical
-qualification. The current revision-AC fixture additionally incorporates the
-reviewed simplification below.
+qualification. Revision AC additionally incorporated the reviewed simplification below;
+revision AD supersedes its optical tower-foot attachment.
 
 The final AB audit additionally extended the fixed frame's two rail-bolt head
 bays by the full 1.2 mm release travel. Only `PropulsionFixedFrame` changed
@@ -101,7 +101,7 @@ identical to the reviewed AB assembly. The release sweep checks the complete
 headed bolt continuously, including its fully loosened position.
 
 
-## Revision AC simplification
+## Revision AC simplification (historical)
 
 The user accepts a modest mass increase in exchange for simpler integral parts
 and less sensitivity to noncritical purchased-part outlines. The paired servo
@@ -109,7 +109,7 @@ and input-gear module deliberately remains removable. Fixed gear centres,
 bearing race contacts, shaft journals and rail nut antirotation remain functional
 datums; loosening those interfaces would not be a safe simplification.
 
-- The optical base now integrates two open 25 mm legs and through-bolt feet.
+- The AC optical base integrated two open 25 mm legs and through-bolt feet.
   Two M2x8 screws and ordinary M2 nuts replace two female/female PA66 columns
   and four M2x5 screws. No blind thread-depth or spacer-across-flats assumption
   remains. Each foot has a short radial slot accepting +/-0.5 mm local axis
@@ -154,3 +154,13 @@ native motion expression stayed unchanged. Four foot hardware objects replace
 six old stack hardware objects. The final 128-shape comparison, 258 native
 FreeCAD tests, both 25-attitude optical host checks, assembly/equipment service
 and manufacturing screens, export identity and prototype bundle checks passed.
+
+## Revision AD optical attachment
+
+The current optical tower replaces its two M2x8 screws and two M2 nuts with
+integral positive hooks and open host seats. Refer to
+[latch attachment review](latch_attachment_review.md) for the release mechanism,
+clearance tradeoff and mandatory same-process coupon checks. The paired servo
+module and all preload-dependent mechanism joints retain their fasteners.
+Current counts and release status come from `gondola/contracts/design.py`;
+the AC quantities and 25 mm tower described above are historical.

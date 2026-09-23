@@ -17,6 +17,8 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.
   `references/cart_adaptation_review.md` records cart choices and remaining
   purchases; current build quantities belong to `contracts/design.py`.
+  `references/latch_attachment_review.md` explains the removable optical latch
+  and why the remaining preload-dependent joints retain fasteners.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
@@ -38,7 +40,7 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   assembly, motion and replacement interfaces are explained in `design.py`;
   reassess those reasons rather than preserving the part count by default.
   Apply its part-size ceiling before and after export rotation. Follow the
-  supplier's powder-bed guidance and agreed PA12 process/finish; do not assume
+  supplier's powder-bed guidance and agreed unfilled PA12 process/finish; do not assume
   FDM support rules or an SLS/MJF process preference.
 - Existing geometry, shaft diameters and purchased-part selections are not
   constraints. Redesign them when the complete assembly improves in mass,
@@ -69,7 +71,7 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   verified interface. Check seated contact and the ordered module
   removal path while retaining the output shafts, bearings and motor carriers.
   Rebuild geometry, controls and BOM together.
-  Gear spacing remains fixed; the optical foot slots do not authorize slotted
+  Gear spacing remains fixed; optical latch clearances do not authorize slotted
   gear supports or an unsupported GUI ratio-only property.
   Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh,
   adapter concentricity/retention and servo output loading; printed nominal
@@ -77,8 +79,7 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   fixture audit and release checks below.
 - M2 kit screws use explicit design head envelopes until measured. Do not label
   them DIN912/A2 or infer their mass from the envelope as a measured value.
-  Optical tower feet use accessible through-bolts/nuts and short radial slots;
-  preserve head support and nut engagement throughout their travel. The rail hex-nut
+  The rail hex-nut
   seat requires its declared finished-fit range and coupon checks; raw printing
   tolerance does not guarantee capture. Ordinary bolt tips must be checked
   before pressing the rail; they are not certified DIN913 flat points.
@@ -90,10 +91,19 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
   and service checks, including integral legs/feet and complete tower removal.
-  On the rail, remove the two upper foot nuts and lift the tower off its retained
-  lower-headed bolts; replace or transfer those bolts with the carrier off the
-  rail on a bench. Check device service against the retained bolts. Keep
-  reservations in the moving sensor frame.
+  Support and push the tower toward its carrier to seat the rigid feet and
+  unload the hooks; release both fingers outward before withdrawing the tower.
+  Check the spring fingers' rotation as well as lateral movement; a rigid
+  translation of a hooked leg does not prove elastic release clearance.
+  Preserve real undeformed printable geometry and the declared assembly gap.
+  Print the mating latch coupons first with the same process, finish and
+  corresponding orientation. Calculated beam strain is a screen, not a PA12
+  allowable or fatigue qualification. Hook retention must work independently
+  of an as-needed measured adhesive anti-rattle pad. Do not invent pad thickness,
+  compression or mass, or claim zero play; reject rocking before accepting
+  vertical sensor alignment. Positive sensor Z points away from the balloon;
+  consider loads in both axial directions. Keep reservations in the moving
+  sensor frame.
 - Passing geometry tests does not resolve physical qualification or change
   `contracts.design.release_status()`. Keep estimated mass exclusions and
   unresolved interfaces explicit in generated outputs.

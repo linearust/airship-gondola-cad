@@ -1,0 +1,291 @@
+{
+  "revision": "AD",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "26e36c4f24b2e13e80a7042bc30cb2292c8f316c",
+  "previous_fixture_sha256": "2a488193785ce17e75426d23e3b23f7f5f2a72a242f9223492e0cbdddd1ea7af",
+  "approved_fixture_sha256": "01ec30f2242ef8461a51c5e5d69fce9373ea8f0db068c79762027db3080f144d",
+  "scope": "Intentional geometry and native-contract transition audited against the complete previous assembly before replacing the fixture. Not physical fit, retention, pointing stiffness or fatigue qualification.",
+  "intentional_geometry_changes": [
+    {
+      "object": "BatteryMount",
+      "local_shape": {
+        "difference_mm3": 305.6528994965994,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 8.083809511662444,
+        "volume_difference_mm3": 209.24011758828146,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 305.6528994966002,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 8.083809511662444,
+        "volume_difference_mm3": 209.24011758828237,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "CapacitorServiceReserve",
+      "local_shape": {
+        "difference_mm3": 635.7073603407712,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 635.7073603407711,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_shape": {
+        "difference_mm3": 305.6528994965961,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 8.083809511662444,
+        "volume_difference_mm3": 209.24011758828783,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 305.6528994965967,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 8.08380951166244,
+        "volume_difference_mm3": 209.2401175882851,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "MTF02PConnectorReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 2496.0,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "MTF02POpticalClearanceReserve",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1462377.1200081925,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "ModuleMTF02PEnvelope",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 4492.8,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 3101.6824798770676,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 12.2,
+        "volume_difference_mm3": 474.7004086195793,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 4814.371498864038,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 474.7004086195807,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalPitchBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 101.3163630782708,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 7.105427357601002e-15,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalPitchNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 34.287404182275935,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalRollBolt",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 101.31636307827084,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalRollBracket",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 185.46472460422137,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 1.4210854715202004e-14,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalRollNut",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 34.28740418227589,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    },
+    {
+      "object": "OpticalSensorTray",
+      "local_shape": {
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 935.3691697051163,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 7.0,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": false
+    }
+  ],
+  "added_shapes": [
+    "OpticalLatchHostCoupon",
+    "OpticalLatchTowerCoupon"
+  ],
+  "removed_shapes": [
+    "OpticalStackFootBolt0",
+    "OpticalStackFootBolt1",
+    "OpticalStackFootNut0",
+    "OpticalStackFootNut1"
+  ],
+  "retained_shape_count": 124,
+  "placement_change_scope": "Only the ten retained optical-kit shape objects move +7 mm in optical Z with the taller integral tower. All other retained placements are unchanged. The capacitor reservation moves 2 mm in its local shape, preserving its full dimensions.",
+  "native_expressions_unchanged": true,
+  "native_control_behavior_passed": true,
+  "registry_changes": "HardwareParts removes four optical foot fasteners. FitCoupons adds two mating latch test pieces. Other registry lists are unchanged.",
+  "native_metadata_changes": [
+    "Optical host/module/base contracts describe rigid guides, independent integral hooks, tolerance and release screens, physical qualification and measured anti-rattle pad fitting.",
+    "Anchor pitch increases 44 to 48 mm and tower height increases 25 to 32 mm; the optical head retains its two manual alignment axes and four pivot fasteners.",
+    "M2 procurement text removes the obsolete foot-joint requirements; other selected hardware and drivetrain geometry remain unchanged.",
+    "Two source-linked optical latch coupons retain the corresponding installed feature print orientation.",
+    "The fit-prototype release status and unresolved physical qualification remain explicit."
+  ],
+  "installed_prints": 18,
+  "hardware_before": 66,
+  "hardware_after": 62,
+  "hardware_types_before": 12,
+  "hardware_types_after": 12,
+  "fit_coupons_before": 4,
+  "fit_coupons_after": 6,
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 50.08314096884177,
+      "after": 50.985253419075875,
+      "delta": 0.9021124502341067
+    },
+    "current_hardware_g": {
+      "before": 33.21396444170271,
+      "after": 32.050828859384694,
+      "delta": -1.163135582318013
+    },
+    "structure_hardware_g": {
+      "before": 83.29710541054448,
+      "after": 83.03608227846057,
+      "delta": -0.26102313208390626
+    }
+  },
+  "mass_scope": "Common-assumption modeled volume/density comparison only; not measured hardware or printed mass, and not all-up mass. Adhesive pads and fit coupons are excluded from onboard mass."
+}

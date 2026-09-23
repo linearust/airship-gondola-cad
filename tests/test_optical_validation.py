@@ -36,7 +36,7 @@ class OpticalClearanceTests(unittest.TestCase):
 
         self.assertTrue(_source_evidence(self.doc)["passed"])
         sensor = self.doc.ModuleMTF02PEnvelope
-        screw = self.doc.OpticalStackFootBolt0
+        screw = self.doc.OpticalRollBolt
         pivot = self.doc.OpticalRollBolt
         mutations = (
             (sensor, "ListedMassGrams", 99.0),
@@ -59,6 +59,23 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertFalse(_source_evidence(self.doc)["passed"])
                 finally:
                     setattr(obj, name, original)
+        self.assertTrue(_source_evidence(self.doc)["passed"])
+
+    def test_changed_latch_coupon_geometry_or_orientation_is_rejected(self):
+        from gondola.validation.optical import _source_evidence
+
+        coupon = self.doc.OpticalLatchHostCoupon
+        shape, rotation = coupon.Shape.copy(), coupon.PrintRotation
+        try:
+            coupon.PrintRotation = App.Rotation()
+            self.assertFalse(_source_evidence(self.doc)["passed"])
+            coupon.PrintRotation = rotation
+            coupon.Shape = coupon.Shape.fuse(
+                Part.makeBox(1, 1, 1, App.Vector(-10, 0, 2))
+            )
+            self.assertFalse(_source_evidence(self.doc)["passed"])
+        finally:
+            coupon.Shape, coupon.PrintRotation = shape, rotation
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
     def test_obsolete_optical_washer_cannot_remain_in_the_purchase_registry(self):
@@ -295,13 +312,16 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertEqual(getattr(group, name), value)
 
     def test_continuous_field_bound_detects_a_small_external_obstruction(self):
-        from gondola.validation.optical import _external_field_bound, _hits
+        from gondola.validation.optical import _external_field_bound
+        from gondola.validation.wiring import collision_hits
 
         group = self.doc.OpticalFlowModule
         bound, _ = _external_field_bound(group)
         obstruction = Part.makeBox(1, 1, 1, App.Vector(0, 0, 50))
         obstruction.Placement = group.getGlobalPlacement()
-        result = _hits(bound, {"IntroducedOpticalObstruction": obstruction})
+        result = collision_hits(
+            bound, {"IntroducedOpticalObstruction": obstruction}, tolerance=1e-5
+        )
         self.assertEqual(len(result), 1)
         self.assertAlmostEqual(result[0]["intersection_mm3"], 1.0, places=6)
 

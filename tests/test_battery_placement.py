@@ -31,12 +31,11 @@ class BatteryPlacementTests(unittest.TestCase):
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
         stack_interface.attach_to_host(stack, cls.host)
-        hardware = stack_interface.build_stack_hardware(cls.doc, stack)
         base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
         stack.addObject(base)
         base.Shape = optical_mount.base_shape()
         cls.battery = cls.doc.ModuleBatteryEnvelope
-        cls.objects = [mount, base, *references, *hardware]
+        cls.objects = [mount, base, *references]
         cls.doc.recompute()
 
     @classmethod
@@ -56,6 +55,9 @@ class BatteryPlacementTests(unittest.TestCase):
         result = self.check()
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), 18)
+        floats = result["continuous_translation"]["tower_rigid_guide_float_gaps"]
+        self.assertEqual(len(floats), 6)
+        self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
             result["continuous_translation"]["local_size_mm"], [28, 74, 17]
         )

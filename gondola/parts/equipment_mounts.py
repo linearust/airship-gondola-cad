@@ -9,7 +9,7 @@ import Part
 
 from gondola.cad import box, create_printed_part, set_property, union
 from gondola.contracts import equipment_interfaces as interfaces
-from gondola.contracts.design import STACK_AXIS_LOCATIONS
+from gondola.contracts.design import STACK_ANCHOR_LOCATIONS
 
 from . import rail, stack_interface
 
@@ -181,7 +181,7 @@ def mount_contract(kind):
 def build_mount(doc, parent, kind):
     name = {"battery": "BatteryMount", "electronics": "ElectronicsMount"}[kind]
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
-        f"Continuous 16 x 52 x 2 mm battery adhesive deck with two separate structural stack pads at {STACK_AXIS_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
+        f"Continuous 16 x 52 x 2 mm battery adhesive deck with two integral structural stack latch seats at {STACK_ANCHOR_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
         else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )

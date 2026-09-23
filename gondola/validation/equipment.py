@@ -386,7 +386,7 @@ def mounting_check(doc):
                 "complete_optical_tower_removed": release_head,
                 "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack remove both upper foot nuts and lift the complete integral optical tower off its retained lower-headed bolts first. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack push the supported tower toward its carrier to unload hooks, release both integral outward-flexing fingers and withdraw the complete optical tower along optical+Z first; peel any anti-rattle adhesive contact and support the sensor. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }

@@ -1258,6 +1258,8 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 rail.build_rail(doc)
                 host = doc.addObject("App::Part", "BatteryEquipmentModule")
                 equipment_mounts.build_mount(doc, host, "battery")
+                electronics = doc.addObject("App::Part", "ElectronicsEquipmentModule")
+                equipment_mounts.build_mount(doc, electronics, "electronics")
                 optical_mount.build_optical_mount(doc, host)
                 doc.recompute()
                 doc.saveAs(str(path))

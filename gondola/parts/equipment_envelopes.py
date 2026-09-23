@@ -96,7 +96,7 @@ def build_equipment(doc, battery_group, electronics_group):
     set_property(
         battery,
         "Notes",
-        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the stock optical-stack columns clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
+        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the integral optical tower and locating tongues clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
     set_property(
@@ -198,7 +198,7 @@ def build_equipment(doc, battery_group, electronics_group):
         electronics_group,
         "CapacitorServiceReserve",
         "35V220uF capacitor reserve diameter10x16",
-        Part.makeCylinder(5, 16, V(36, 22, 13.2)),
+        Part.makeCylinder(5, 16, V(38, 22, 13.2)),
         "Provisional space for the specified35V220uF capacitor, not a selected component or retaining mount. Insulation, leads, actual dimensions and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )

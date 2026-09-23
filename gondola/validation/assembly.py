@@ -881,13 +881,32 @@ def battery_check(doc, objects):
         for name, shape in obstacles
         if name in tower_names
     ]
+    from gondola.parts import stack_interface
+
+    float_rows = []
+    tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
+    if tower is not None:
+        for component, envelope in stack_interface.rigid_float_component_bounds():
+            envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
+            gap = swept.distToShape(envelope)[0]
+            float_rows.append(
+                {
+                    "component": component,
+                    "minimum_gap_mm": gap,
+                    "passed": gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
+                }
+            )
     continuous = {
         "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
+        "tower_rigid_guide_float_gaps": float_rows,
+        "tower_float_scope": "Continuous conservative component bounds over the coupled rigid-guide XY/yaw domain and declared axial play. Unsupported rocking is not certified; fit measured anti-rattle contact and accept optical pointing before operation.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
+        and len(float_rows) == 6
+        and all(row["passed"] for row in float_rows)
         and {row["object"] for row in tower_gaps} == tower_names
         and all(
             row["minimum_gap_mm"] >= contract["minimum_stack_tower_gap_mm"] - TOL

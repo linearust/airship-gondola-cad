@@ -42,9 +42,6 @@ class WiringReserveTests(unittest.TestCase):
         )
         optical = optical_mount.build_optical_mount(cls.doc, battery)
         stack_interface.attach_to_host(optical["group"], battery)
-        optical["hardware"] += stack_interface.build_stack_hardware(
-            cls.doc, optical["group"]
-        )
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )

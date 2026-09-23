@@ -65,7 +65,7 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps, optical tower feet and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
 }
@@ -79,7 +79,7 @@ for _length in (6, 8):
             "under-head length, from the user's screw/nut kit. Design clearance "
             "envelope: head diameter 4.5 mm and head height 2 mm. Check actual "
             "head, length, 1.5 mm hex-key access and the documented joint grip. "
-            "Optical foot joints require a measured flat under-head bearing diameter at least 3.2 mm at the round host hole; the 4.5 mm envelope is a maximum clearance allocation, not proof of bearing area. No washers. Use minimal preload and verify PA12 retention "
+            "No washers. Use minimal preload and verify PA12 retention "
             "and creep; these are not OEM motor or horn screws."
         ),
         "evidence_notes": (
