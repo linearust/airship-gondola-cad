@@ -39,7 +39,7 @@ from gondola.contracts.design import (
 from gondola.contracts.drive import GEARS, SELECTED_DRIVE, drive_for_document
 from gondola.mass_budget import mass_budget
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail, stack_interface
+from gondola.parts import propulsion, rail
 from gondola.print_export import (
     MESH_PARAMETERS,
     PRINT_PROCESS_DESCRIPTION,
@@ -875,26 +875,23 @@ def battery_check(doc, objects):
     swept_hits = [
         name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
     ]
-    column_names = {
-        f"OpticalStackSpacer{index}"
-        for index in range(len(stack_interface.HOLE_CENTRES))
-    }
-    column_gaps = [
+    tower_names = {"OpticalMountBase"}
+    tower_gaps = [
         {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
         for name, shape in obstacles
-        if name in column_names
+        if name in tower_names
     ]
     continuous = {
         "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
-        "stack_column_gaps": column_gaps,
-        "required_stack_column_gap_mm": contract["minimum_stack_column_gap_mm"],
+        "stack_tower_gaps": tower_gaps,
+        "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
-        and {row["object"] for row in column_gaps} == column_names
+        and {row["object"] for row in tower_gaps} == tower_names
         and all(
-            row["minimum_gap_mm"] >= contract["minimum_stack_column_gap_mm"] - TOL
-            for row in column_gaps
+            row["minimum_gap_mm"] >= contract["minimum_stack_tower_gap_mm"] - TOL
+            for row in tower_gaps
         ),
     }
     rows = []

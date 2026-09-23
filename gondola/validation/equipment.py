@@ -383,10 +383,10 @@ def mounting_check(doc):
                 "device": name,
                 "upward_travel_mm": 32,
                 "optical_head_must_be_removed_first": release_head,
-                "remaining_columns_and_lower_fasteners_checked": True,
+                "complete_optical_tower_removed": release_head,
                 "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack remove its two upper screws and complete optical head first. Stack columns/lower screws remain installed and are checked. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads, release device retention, and when this carrier hosts the stack remove both upper foot nuts and lift the complete integral optical tower off its retained lower-headed bolts first. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }

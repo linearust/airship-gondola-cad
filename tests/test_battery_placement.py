@@ -1,4 +1,4 @@
-"""Native regressions for the declared pack placement and stock column gap."""
+"""Native regressions for the declared pack placement and integral tower gap."""
 
 import json
 import unittest
@@ -13,7 +13,12 @@ except ImportError:
 class BatteryPlacementTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import equipment_envelopes, equipment_mounts, stack_interface
+        from gondola.parts import (
+            equipment_envelopes,
+            equipment_mounts,
+            optical_mount,
+            stack_interface,
+        )
 
         cls.doc = App.newDocument("BatteryPlacementRegression")
         cls.host = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
@@ -27,9 +32,11 @@ class BatteryPlacementTests(unittest.TestCase):
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
         stack_interface.attach_to_host(stack, cls.host)
         hardware = stack_interface.build_stack_hardware(cls.doc, stack)
-        cls.column_centres = stack_interface.HOLE_CENTRES
+        base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
+        stack.addObject(base)
+        base.Shape = optical_mount.base_shape()
         cls.battery = cls.doc.ModuleBatteryEnvelope
-        cls.objects = [mount, *references, *hardware]
+        cls.objects = [mount, base, *references, *hardware]
         cls.doc.recompute()
 
     @classmethod
@@ -41,7 +48,7 @@ class BatteryPlacementTests(unittest.TestCase):
 
         return battery_check(self.doc, self.objects if objects is None else objects)
 
-    def test_declared_rectangle_and_continuous_envelope_clear_all_columns(self):
+    def test_declared_rectangle_and_continuous_envelope_clears_complete_tower(self):
         before = tuple(
             getattr(self.battery, field).Value
             for field in ("Length", "Width", "Height", "CentreX", "CentreY")
@@ -55,16 +62,16 @@ class BatteryPlacementTests(unittest.TestCase):
         self.assertEqual(
             {
                 row["object"]
-                for row in result["continuous_translation"]["stack_column_gaps"]
+                for row in result["continuous_translation"]["stack_tower_gaps"]
             },
-            {f"OpticalStackSpacer{index}" for index in range(len(self.column_centres))},
+            {"OpticalMountBase"},
         )
         self.assertGreater(
             min(
                 row["minimum_gap_mm"]
-                for row in result["continuous_translation"]["stack_column_gaps"]
+                for row in result["continuous_translation"]["stack_tower_gaps"]
             ),
-            3.6,
+            1.5,
         )
         self.assertEqual(
             before,
@@ -113,12 +120,14 @@ class BatteryPlacementTests(unittest.TestCase):
             self.doc.removeObject(obstacle.Name)
             self.doc.recompute()
 
-    def test_column_gap_fails_before_geometric_contact(self):
-        spacer = self.doc.OpticalStackSpacer0
-        before = App.Placement(spacer.Placement)
-        # Move the wider stack's left column into the required margin, while
-        # keeping its solid clear of every permitted battery placement.
-        spacer.Placement.Base.x += 5
+    def test_tower_gap_fails_before_geometric_contact(self):
+        tower = self.doc.OpticalMountBase
+        before = App.Placement(tower.Placement)
+        # Move the complete base until its closest foot/leg enters the declared
+        # reserve, but stop short of contact with the continuous pack envelope.
+        result = self.check()
+        gap = result["continuous_translation"]["stack_tower_gaps"][0]["minimum_gap_mm"]
+        tower.Placement.Base.x += gap - 0.5
         self.doc.recompute()
         try:
             result = self.check()
@@ -126,13 +135,16 @@ class BatteryPlacementTests(unittest.TestCase):
             self.assertFalse(result["passed"])
             continuous = result["continuous_translation"]
             self.assertEqual(continuous["collisions"], [])
-            gap = next(
-                row["minimum_gap_mm"]
-                for row in continuous["stack_column_gaps"]
-                if row["object"] == spacer.Name
-            )
+            gap = continuous["stack_tower_gaps"][0]["minimum_gap_mm"]
             self.assertGreater(gap, 0)
-            self.assertLess(gap, continuous["required_stack_column_gap_mm"])
+            self.assertLess(gap, continuous["required_stack_tower_gap_mm"])
         finally:
-            spacer.Placement = before
+            tower.Placement = before
             self.doc.recompute()
+
+    def test_missing_tower_cannot_pass_clearance_check(self):
+        result = self.check(
+            [obj for obj in self.objects if obj.Name != "OpticalMountBase"]
+        )
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["continuous_translation"]["stack_tower_gaps"], [])

@@ -46,7 +46,7 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Common diagonal stack bar and a 1.5 mm negative-X roll ear."""
+    """Integral open tower and a 1.5 mm negative-X roll ear."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
@@ -63,7 +63,7 @@ def base_shape():
         (1, 0, 0),
     )
     return _finished(
-        union([stack_interface.platform_shape(), ear, post]).cut(bore), "base"
+        union([stack_interface.tower_shape(), ear, post]).cut(bore), "base"
     )
 
 
@@ -119,7 +119,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal M2 clearance axes at {STACK_AXIS_LOCATIONS}, shared open bar; supported by two purchased columns independently of the FC dampers",
+        "standard_stack_interface": f"Two diagonal M2 clearance axes at {STACK_AXIS_LOCATIONS}, one open tower with integral legs and two slotted feet independently of the FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -137,7 +137,7 @@ def mount_contract():
         - purchased_hardware.HEX_NUT_HEIGHT,
         "minimum_nominal_wall_mm": EAR_THICKNESS,
         "fastener_fit_scope": "Nominal screw projection is 1.4mm beyond a 1.6mm nut. Two ears each 0.3mm thicker leave 0.8mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
-        "assembly": "Print all three parts separately; plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
+        "assembly": "Print all three parts separately; the base integrates its support legs and bolt feet. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
         "adjustment": "Support the sensor, hold the hex nut with a small wrench or pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
     }
@@ -247,7 +247,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF, printed separately. Plain1.5mm friction ears and post with kit steel M2x6 screws and hex nuts, no washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and slotted bolt feet; two M2x8/nut pairs retain the complete tower. Plain1.5mm friction ears and pivot post use M2x6 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

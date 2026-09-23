@@ -192,6 +192,29 @@ class ServoCouplingTests(unittest.TestCase):
             displaced.translate(App.Vector(0, direction * 0.01, 0))
             self.assertGreater(displaced.common(obstacle).Volume, 1e-5)
 
+    def test_relaxed_flanks_preserve_hub_and_tip_position_datums(self):
+        from gondola.parts import servo_coupling as coupling
+
+        main = coupling.adapter_shape()
+        horn = coupling.horn_shape()
+        # Side relief must not turn into free translation of the input axis.
+        # The open root circle needs its opposing flat tip stop for +X.
+        for dx, dz in ((0.1, 0), (-0.1, 0), (0, 0.1), (0, -0.1)):
+            displaced = horn.copy()
+            displaced.translate(App.Vector(dx, 0, dz))
+            self.assertGreater(displaced.common(main).Volume, 1e-4)
+        # A wider blade is accepted with the same hub and overall length.
+        # Trimming the end preserves the deliberately critical tip datum.
+        wider_blade = coupling._tangent_hull(1.9, 1.6, 3, 2.2, 13.2)
+        wider_blade = wider_blade.common(
+            Part.makeBox(20.2, 2, 10, App.Vector(-5, 1.7, -5))
+        )
+        self.assertLess(main.common(wider_blade).Volume, 1e-7)
+        for angle in (-3, 3):
+            turned = horn.copy()
+            turned.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
+            self.assertGreater(turned.common(main).Volume, 1e-3)
+
     def test_parts_install_around_an_already_retained_horn_at_neutral(self):
         from gondola.parts import servo_coupling as coupling
 

@@ -31,8 +31,7 @@ MINIMUM_NEIGHBOUR_GAPS = {
         "ModulePASEnvelope": 2.0,
         "XT30ServiceReserve": 2.0,
         "MTF02POpticalClearanceReserve": 1.5,
-        "OpticalStackSpacer0": 1.5,
-        "OpticalStackSpacer1": 1.5,
+        "OpticalMountBase": 1.5,
         "CapacitorServiceReserve": 1.5,
     }
 }

@@ -53,22 +53,23 @@ class OpticalMountTests(unittest.TestCase):
         self.assertFalse(contract["self_levelling"])
         self.assertFalse(contract["physical_angle_stops_modeled"])
 
-    def test_shared_stack_bar_and_both_holes_are_not_refilled(self):
+    def test_integral_tower_has_open_legs_feet_and_no_printed_thread(self):
         from gondola.parts import optical_mount, stack_interface
 
         base = optical_mount.base_shape()
-        platform = stack_interface.platform_shape()
-        slab = Part.makeBox(60, 60, 2, App.Vector(-30, -30, 0))
-        measured = base.common(slab)
-        self.assertLess(abs(platform.cut(measured).Volume), 1e-5)
-        self.assertLess(abs(measured.cut(platform).Volume), 1e-5)
+        tower = stack_interface.tower_shape()
+        self.assertLess(abs(tower.cut(base).Volume), 1e-5)
         self.assertEqual(set(stack_interface.HOLE_CENTRES), {(-22, -22), (22, 22)})
+        self.assertAlmostEqual(base.BoundBox.ZMin, -25)
+        self.assertEqual(len(base.Solids), 1)
         for x, y in stack_interface.HOLE_CENTRES:
-            bore = Part.makeCylinder(1.3, 2, App.Vector(x, y, 0))
+            bore = Part.makeCylinder(1.3, 2, App.Vector(x, y, -25))
             self.assertLess(abs(base.common(bore).Volume), 1e-5)
-        for x, y in ((-22, 22), (22, -22)):
-            removed_pad = Part.makeCylinder(3.25, 2, App.Vector(x, y, 0))
-            self.assertLess(abs(base.common(removed_pad).Volume), 1e-5)
+            head_access = Part.makeCylinder(2.25, 8, App.Vector(x, y, -23))
+            self.assertLess(abs(base.common(head_access).Volume), 1e-5)
+        # The centre remains empty below the bar, preserving device/wire space.
+        centre = Part.makeBox(30, 30, 24, App.Vector(-15, -15, -25))
+        self.assertLess(abs(base.common(centre).Volume), 1e-5)
 
     def test_native_angles_clamp_independently_and_follow_the_host(self):
         from gondola.cad import world_shape

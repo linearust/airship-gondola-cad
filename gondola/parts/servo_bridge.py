@@ -15,8 +15,10 @@ from . import rail, servo_coupling
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
-CASE_WINDOW_WIDTH = 8.0
-CASE_WINDOW_HEIGHT = 21.0
+# The bought case is not a locating datum. Clearance around its nominal 7 x20
+# section also accommodates the published +/-0.2 mm case-size tolerance.
+CASE_WINDOW_WIDTH = 9.0
+CASE_WINDOW_HEIGHT = 21.5
 SIDE_WALL = 2.0
 CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
 SEAT_Z = 8.7

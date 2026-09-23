@@ -13,7 +13,7 @@ from .fasteners import KIT_MATERIAL
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AB"
+DESIGN_REVISION = "AC"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -27,7 +27,7 @@ STACK_AXIS_LOCATIONS = (
 )
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
-    "reviewed_on": "2026-09-22",
+    "reviewed_on": "2026-09-23",
     "supplier": "Creallo",
     "material": "PA12 design basis; supplier grade/process/finish agreement pending",
     "preferred_process": None,
@@ -61,8 +61,7 @@ PART_SEPARATION_REASONS = {
     "bearing_caps_and_frame": "Insert/remove stock bearings and retain their outer rings without relying on printed snap retention.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
     "horn_adapter_and_retainer": "Capture a stock horn after its OEM retaining screw is installed; separate backstrap preserves the assembly path without inventing spline teeth or screw-tool clearance.",
-    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. Each part integrates its own ears, supports and mounting surfaces.",
-    "optical_columns": "Two stock PA66 spacers are light, threaded and replaceable. Integral printed columns would need new through-bolt feet or unqualified printed threads, without removing either alignment joint.",
+    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base integrates its two open tower legs and slotted bolt feet; only the alignment joints remain separate. Removing the two upper ordinary nuts releases the tower for host service; lower-headed bolts remain in the host. Bolt installation/replacement or host transfer requires the carrier off the rail on a bench.",
 }
 
 
@@ -119,13 +118,11 @@ EXCLUDED_EQUIPMENT = (
     "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 15,
+    "M2X8_BUTTON_HEAD": 17,
     "M2X6_BUTTON_HEAD": 4,
-    "M2X5_BUTTON_HEAD": 4,
-    "M2_HEX_NUT": 19,
+    "M2_HEX_NUT": 21,
     "M1_6X8_CHEESE_HEAD": 4,
     "M1_6_HEX_NUT_DIN934": 4,
-    "M2_FF_PA66_AF4_L25": 2,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "BEARING_3X6X2_5": 4,
@@ -138,11 +135,9 @@ PURCHASED_HARDWARE_QUANTITIES = {
 HARDWARE_MATERIALS = {
     "M2X8_BUTTON_HEAD": KIT_MATERIAL,
     "M2X6_BUTTON_HEAD": KIT_MATERIAL,
-    "M2X5_BUTTON_HEAD": KIT_MATERIAL,
     "M2_HEX_NUT": KIT_MATERIAL,
     "M1_6X8_CHEESE_HEAD": "A2 stainless steel",
     "M1_6_HEX_NUT_DIN934": "A2 stainless steel",
-    "M2_FF_PA66_AF4_L25": "Nylon PA66",
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
     "BEARING_3X6X2_5": "Bearing steel",
@@ -250,7 +245,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed horn-adapter fit, 8 mm D socket and locally cut Ø3×16 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
+        "Verify the selected KST 0415.13 horn's seating and original X06 retaining screw, printed horn-adapter root/end locating faces and relieved blade flanks, 8 mm D socket and locally cut Ø3×16 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; wider blade-side relief does not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -282,7 +277,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Verify purchased M2 PA66 spacers, both-end thread depths/engagement, printed pads, pivot friction, PA12/PA66 creep, vibration loosening and cable torque. Test both stack hosts and loaded rail/tape retention; no qualified tightening torque or stiffness is claimed.",
+        "Verify integral PA12 tower legs/feet, slotted through-joints, actual M2 heads/nuts, full thread engagement and contact at the allowed hole mismatch. Test pivot friction, PA12 creep, vibration loosening and cable torque on both hosts. Remove the upper nuts and lift the complete tower off retained lower bolts for host service; install/transfer those bolts with the carrier off the rail on a bench. Loaded rail/tape retention, tightening torque and tower stiffness remain unqualified.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
@@ -328,7 +323,7 @@ def project_status():
         "units": "mm",
         "printed_material": "PA12 design basis; SLS or MJF, supplier grade/process/finish agreement pending",
         "manufacturing_decision": MANUFACTURING_DECISION,
-        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Prefer fixed replacement parts over tolerance-adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
+        "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Allow modest mass increases for simpler integral parts and forgiving noncritical envelopes. Preserve the intentionally removable paired-servo/input-gear module. Use simple clearance or short slots where they reduce fit risk without adding parts; retain functional locating, torque and bearing surfaces. Do not add elaborate adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
         "part_separation_reasons": PART_SEPARATION_REASONS,
         "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
@@ -342,7 +337,7 @@ def project_status():
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "optical_stack_host": OPTICAL_STACK_HOST,
-        "optical_stack_scope": f"Common structural two-axis diagonal M2 interface at {STACK_AXIS_LOCATIONS} on battery and electronics carriers; two bought 25mm PA66 spacers support a manually locked two-axis optical head. Independent of the FC soft-mount stack.",
+        "optical_stack_scope": f"Common structural two-axis diagonal M2 interface at {STACK_AXIS_LOCATIONS} on battery and electronics carriers; an integral 25mm PA12 tower with slotted feet supports a manually locked two-axis optical head, attached by two M2x8 screws and ordinary M2 nuts. Independent of the FC soft-mount stack.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,

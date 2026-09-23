@@ -51,7 +51,7 @@ class NativeInterfaceTests(unittest.TestCase):
                 self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
                 self.assertEqual(len(doc.DesignRegistry.Modules), 3)
                 self.assertEqual(len(doc.DesignRegistry.PrintedParts), 18)
-                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 68)
+                self.assertEqual(len(doc.DesignRegistry.HardwareParts), 66)
                 self.assertEqual(
                     doc.DesignRegistry.ScopeExclusions.split("; "),
                     list(EXCLUDED_EQUIPMENT),

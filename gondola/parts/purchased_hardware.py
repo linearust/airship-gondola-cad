@@ -27,10 +27,6 @@ set_property = partial(_set_property, group="Purchased hardware")
 
 V = App.Vector
 PURCHASED_COLOR = (0.86, 0.67, 0.27)
-STACK_SCREW_LENGTH = fasteners.STACK_SCREW_LENGTH
-STACK_SPACER_AF = 4.0
-STACK_SPACER_LENGTH = 25.0
-STACK_SPACER_THREAD_DEPTH_REFERENCE = 4.0
 
 
 def add_procurement_properties(obj):
@@ -92,27 +88,6 @@ def servo_nut_shape():
 
 
 @functools.lru_cache(None)
-def stack_screw_shape():
-    """M2x5 from the shared kit; keep blind-spacer penetration at 3 mm."""
-    return screw_shape(STACK_SCREW_LENGTH)
-
-
-@functools.lru_cache(None)
-def spacer_shape():
-    """Bought HPS2-25 envelope; 4 mm end bores represent reference tap depths."""
-    body = hex_prism(STACK_SPACER_AF, STACK_SPACER_LENGTH)
-    for start in (0.0, STACK_SPACER_LENGTH - STACK_SPACER_THREAD_DEPTH_REFERENCE):
-        body = body.cut(
-            Part.makeCylinder(
-                THREAD_DIAMETER / 2,
-                STACK_SPACER_THREAD_DEPTH_REFERENCE,
-                V(0, 0, start),
-            )
-        )
-    return body.removeSplitter()
-
-
-@functools.lru_cache(None)
 def hex_nut_shape():
     """Accepted M2 kit hex-nut envelope; chamfers and threads are unmeasured."""
     return (
@@ -137,8 +112,6 @@ def add_hardware(
     thread_diameter=THREAD_DIAMETER,
     thread_pitch=THREAD_PITCH,
 ):
-    if sku == "M2_FF_PA66_AF4_L25" and material != "Nylon PA66":
-        raise ValueError("PA66 stack hardware requires explicit Nylon PA66 material.")
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Invalid purchased envelope: " + name)
     obj = doc.addObject("Part::Feature", name)
@@ -176,12 +149,7 @@ def add_hardware(
     set_property(
         obj,
         "ThreadGeometry",
-        (
-            "Two nominal diameter 2 mm end bores, 4 mm REF deep; usable thread "
-            "depth is unmeasured. No helical thread or thread-retention simulation."
-            if sku == "M2_FF_PA66_AF4_L25"
-            else "Simplified nominal cylinders/bore only; no helical thread or thread-retention simulation"
-        ),
+        "Simplified nominal cylinders/bore only; no helical thread or thread-retention simulation",
     )
     set_property(obj, "MaterialSelection", material)
     set_property(

@@ -1,0 +1,148 @@
+{
+  "revision": "AC",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "b3a248541b7c8bc05aa4a67cba8ad6b0a2abe711",
+  "previous_fixture_sha256": "09e827f20d5fc3c36e29792cfbe4342ef7daa5f5c35c8d583f7d5823efe33735",
+  "approved_fixture_sha256": "2a488193785ce17e75426d23e3b23f7f5f2a72a242f9223492e0cbdddd1ea7af",
+  "scope": "Intentional geometry and native-contract transition; full retained-shape comparison performed before changing the pinned fixture. Not physical fit or strength qualification.",
+  "intentional_geometry_changes": [
+    {
+      "object": "CapacitorServiceReserve",
+      "local_shape": {
+        "difference_mm3": 1797.6017740692432,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 6.0,
+        "volume_difference_mm3": 2.2737367544323206e-13,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1797.6017740692434,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 6.0,
+        "volume_difference_mm3": 2.2737367544323206e-13,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 1631.4391322250162,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 25.000000000000004,
+        "volume_difference_mm3": 1624.7194329957538,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1631.4391322250196,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 25.000000000000004,
+        "volume_difference_mm3": 1624.7194329957501,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "PortHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 6.448551619137266,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 6.4485516191373335,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 6.44855161913725,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 6.448551619136651,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "ServoDriveBridge",
+      "local_shape": {
+        "difference_mm3": 564.8575777614128,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 76.85757776141281,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 564.8575777614126,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 76.85757776140917,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    },
+    {
+      "object": "StarboardHornGearAdapter",
+      "local_shape": {
+        "difference_mm3": 6.448551619137266,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 6.4485516191373335,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 6.448551619137258,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 6.448551619136651,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_placement_unchanged": true
+    }
+  ],
+  "added_shapes": [
+    "OpticalStackFootBolt0",
+    "OpticalStackFootBolt1",
+    "OpticalStackFootNut0",
+    "OpticalStackFootNut1"
+  ],
+  "removed_shapes": [
+    "OpticalStackLowerBolt0",
+    "OpticalStackLowerBolt1",
+    "OpticalStackSpacer0",
+    "OpticalStackSpacer1",
+    "OpticalStackUpperBolt0",
+    "OpticalStackUpperBolt1"
+  ],
+  "retained_shape_count": 124,
+  "all_retained_placements_unchanged": true,
+  "native_expressions_unchanged": true,
+  "native_control_behavior_passed": true,
+  "registry_changes": "Only HardwareParts replaces six previous spacer/stack-screw objects with four foot screw/nut objects. All other registry lists unchanged.",
+  "native_metadata_changes": [
+    "Optical base/host/module mounting contracts now describe the integral tower, foot slots and bench bolt transfer.",
+    "Battery/wiring clearance contracts now check the whole tower.",
+    "M2 purchase requirements add foot nut support and minimum screw bearing face; hardware quantities remove M2x5 and PA66 columns.",
+    "The fit-prototype release status and unresolved physical qualification remain explicit."
+  ],
+  "installed_prints": 18,
+  "hardware_before": 68,
+  "hardware_after": 66,
+  "hardware_types_before": 14,
+  "hardware_types_after": 12,
+  "mass_estimates_g": {
+    "current_printed_g": {
+      "before": 48.37757426224769,
+      "after": 50.08314096884177,
+      "delta": 1.7055667065940767
+    },
+    "current_hardware_g": {
+      "before": 34.275362268640755,
+      "after": 33.21396444170271,
+      "delta": -1.0613978269380482
+    },
+    "structure_hardware_g": {
+      "before": 82.65293653088844,
+      "after": 83.29710541054448,
+      "delta": 0.6441688796560356
+    }
+  },
+  "mass_scope": "Common-assumption modeled volume/density comparison only; not actual measured hardware, printed mass or all-up mass."
+}

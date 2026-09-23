@@ -343,6 +343,156 @@ def _external_field_bound(group):
     }
 
 
+def tower_attachment_check(doc, host):
+    """Check actual through-joints and foot support over the declared local mismatch."""
+    from gondola.contracts import fasteners
+    from gondola.parts import purchased_hardware
+
+    from .propulsion import clamp_fastener_check
+
+    base = world_shape(doc.OpticalMountBase)
+    carrier = world_shape(doc.getObject(stack_interface.SUPPORTED_HOSTS[host.Name]))
+    joints = []
+    for index, (x, y) in enumerate(stack_interface.HOLE_CENTRES):
+        bolt = world_shape(doc.getObject(f"OpticalStackFootBolt{index}"))
+        nut = world_shape(doc.getObject(f"OpticalStackFootNut{index}"))
+        row = clamp_fastener_check(base.fuse(carrier), bolt, nut)
+        row["foot"] = index
+        minimum_head = Part.makeCylinder(
+            stack_interface.MINIMUM_HEAD_BEARING_DIAMETER / 2,
+            0.1,
+            V(x, y, stack_interface.HOST_DECK_BOTTOM_Z),
+        )
+        minimum_head.Placement = host.getGlobalPlacement()
+        minimum_head_area = intersection_volume(carrier, minimum_head) / 0.1
+        row["minimum_accepted_head_bearing_contact_mm2"] = minimum_head_area
+        row["passed"] &= minimum_head_area > 2.5
+        joints.append(row)
+
+    # Local slot mismatch is a manufacturing/assembly allowance, not a command
+    # to translate the whole sensor tower or relocate a host's nominal axes.
+    local_base = local_shape(doc.OpticalMountBase)
+    mismatch = []
+    for index, (x, y) in enumerate(stack_interface.HOLE_CENTRES):
+        radial = V(x, y, 0)
+        radial.normalize()
+        for offset in (
+            -stack_interface.FOOT_SLOT_TRAVEL,
+            0,
+            stack_interface.FOOT_SLOT_TRAVEL,
+        ):
+            centre = V(x, y, -stack_interface.TOWER_HEIGHT) + radial * offset
+            through = Part.makeCylinder(1.0, stack_interface.FOOT_THICKNESS, centre)
+            # A thin pad slice measures true material contact against the
+            # unmodified host pad diameter even at either mismatch endpoint.
+            support = Part.makeCylinder(stack_interface.PAD_DIAMETER / 2, 0.1, centre)
+            support = support.cut(
+                Part.makeCylinder(stack_interface.HOLE_DIAMETER / 2, 0.1, centre)
+            )
+            bearing = purchased_hardware.hex_prism(fasteners.HEX_NUT_MIN_AF, 0.1)
+            bearing.translate(centre + V(0, 0, stack_interface.FOOT_THICKNESS - 0.1))
+            hole_overlap = intersection_volume(local_base, through)
+            support_area = intersection_volume(local_base, support) / 0.1
+            nut_area = intersection_volume(local_base, bearing) / 0.1
+            mismatch.append(
+                {
+                    "foot": index,
+                    "radial_mismatch_mm": offset,
+                    "screw_foot_overlap_mm3": hole_overlap,
+                    "host_contact_area_mm2": support_area,
+                    "minimum_AF_nut_contact_area_mm2": nut_area,
+                    "passed": hole_overlap < TOL and support_area > 20 and nut_area > 4,
+                }
+            )
+    return {
+        "nominal_through_joints": joints,
+        "local_hole_spacing_mismatch": mismatch,
+        "scope": "Source and actual saved foot/host geometry with full nut engagement; local radial mismatch +/-0.5mm only. Minimum accepted nutAF3.8 unchamfered envelope contacts the slot; actual nut chamfers/contact require inspection and actual screw underside must measure>=3.2mm at the round host hole. Contact-area thresholds are geometric support screens, not load or creep qualification.",
+        "passed": all(row["passed"] for row in joints + mismatch),
+    }
+
+
+def _tower_service_check(doc, fixed, kit):
+    """Release accessible foot fasteners, then lift the complete rigid tower."""
+    feet = [obj for obj in kit if getattr(obj, "StackEnd", "") == "Foot"]
+    moving = [obj for obj in kit if obj not in feet]
+    retained_bolts = {
+        obj.Name: world_shape(obj)
+        for obj in feet
+        if obj.Name.startswith("OpticalStackFootBolt")
+    }
+    obstacles = {**fixed, **{obj.Name: world_shape(obj) for obj in moving}}
+    fasteners = []
+    for obj in feet:
+        bolt = obj.Name.startswith("OpticalStackFootBolt")
+        delta = (0, 0, 0 if bolt else 4)
+        if bolt:
+            method, hits = "Bolt retained in host during tower service", []
+        else:
+            sweep, method = translation_sweep(world_shape(obj), delta)
+            hits = _hits(sweep, obstacles)
+        bounds = world_shape(obj).BoundBox
+        centre = V(
+            (bounds.XMin + bounds.XMax) / 2,
+            (bounds.YMin + bounds.YMax) / 2,
+            bounds.ZMin if bolt else bounds.ZMin + 0.01,
+        )
+        tool = Part.makeCylinder(
+            1.5 if bolt else 3.5,
+            8 if bolt else bounds.ZLength + 5,
+            centre,
+            V(0, 0, -1 if bolt else 1),
+        )
+        tool_hits = _hits(tool, obstacles)
+        fasteners.append(
+            {
+                "object": obj.Name,
+                "withdrawal_mm": delta,
+                "method": method,
+                "collisions": hits,
+                "axial_tool_reservation_collisions": tool_hits,
+                "passed": not hits and not tool_hits,
+            }
+        )
+    lift = []
+    for obj in moving:
+        shape = world_shape(obj)
+        containment = 0.0
+        if obj.Name == "OpticalMountBase":
+            # The transverse pivot bore would force a whole-tower bounding box.
+            # Fill only the upper pivot region; preserve the open lower tower.
+            proxy = stack_interface.tower_shape().fuse(
+                Part.makeBox(
+                    optical_mount.EAR_THICKNESS,
+                    2 * optical_mount.EAR_RADIUS,
+                    optical_mount.ROLL_PIVOT_Z + optical_mount.EAR_RADIUS,
+                    V(-optical_mount.EAR_THICKNESS, -optical_mount.EAR_RADIUS, 0),
+                )
+            )
+            proxy.Placement = obj.getGlobalPlacement()
+            containment = abs(shape.cut(proxy).Volume)
+            shape = proxy
+        sweep, method = translation_sweep(shape, (0, 0, 32))
+        hits = _hits(sweep, {**fixed, **retained_bolts})
+        lift.append(
+            {
+                "object": obj.Name,
+                "upward_travel_mm": 32,
+                "method": method,
+                "collisions": hits,
+                "actual_shape_outside_service_envelope_mm3": containment,
+                "passed": not hits and containment < TOL,
+            }
+        )
+    return {
+        "foot_fastener_release": fasteners,
+        "whole_tower_lift": lift,
+        "scope": "Disconnect sensor leads, hold lower-headed bolts with the key, remove both upper nuts, then lift the complete tower32mm off the retained bolts. Key access is from below the host; exposed nut access is above the foot. To withdraw or transfer lower bolts, first remove the carrier from the rail for bench access; an in-place downward bolt-removal path is not claimed. Axial key/nut-tool envelopes reserve access only; exact purchased tool shapes, cable handling and fit forces remain unverified.",
+        "passed": len(fasteners) == 4
+        and all(row["passed"] for row in fasteners + lift),
+    }
+
+
 def _host_checks(doc, host, physical, kit):
     group = doc.OpticalFlowModule
     validation_cache = {}
@@ -487,6 +637,15 @@ def _host_checks(doc, host, physical, kit):
         and not bound_reserve_hits
         and depth_bound <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
     }
+    attachment = tower_attachment_check(doc, host)
+    tower_service = _tower_service_check(
+        doc,
+        {
+            **external,
+            "CapacitorServiceReserve": reservations["CapacitorServiceReserve"],
+        },
+        kit,
+    )
     service = []
     retained = [
         obj
@@ -511,7 +670,8 @@ def _host_checks(doc, host, physical, kit):
                 "device": name,
                 "upward_travel_mm": 32,
                 "method": method,
-                "columns_and_lower_fasteners_retained": True,
+                "complete_tower_removed": True,
+                "lower_foot_bolts_retained": True,
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -523,9 +683,13 @@ def _host_checks(doc, host, physical, kit):
         "maximum_sampled_forward_extent_mm": maximum_depth,
         "continuous_external_optical_bound": continuous,
         "bare_device_removal_after_head_release": service,
+        "integral_tower_attachment": attachment,
+        "integral_tower_service": tower_service,
         "passed": rotor_complete
         and all(row["passed"] for row in rows + service)
-        and continuous["passed"],
+        and continuous["passed"]
+        and attachment["passed"]
+        and tower_service["passed"],
     }
 
 
@@ -562,7 +726,7 @@ def mtf_sensor_check(doc):
         ]
         report["hosts"] = hosts
         report["service_prerequisite"] = (
-            "Disconnect leads, remove the two upper screws and complete optical head before releasing/lifting the host device. Keep both columns and lower screws; device mounting hardware and adhesive must be released. No connected-harness removal claim."
+            "Disconnect leads, remove the two upper foot nuts and lift the complete integral optical tower off its two retained lower-headed bolts before releasing/lifting the host device. Release device mounting hardware and adhesive separately. No connected-harness removal claim."
         )
         report["passed"] = all(row["passed"] for row in hosts)
         return report

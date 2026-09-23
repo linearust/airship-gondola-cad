@@ -11,7 +11,7 @@ from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail
+from gondola.parts import propulsion, rail, stack_interface
 
 from .geometry import local_shape
 
@@ -164,6 +164,55 @@ def review(doc, registry):
             optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
         ),
     ]
+    # Probe both integral legs and feet, including the narrow slot-side land.
+    for index, (x, y) in enumerate(stack_interface.HOLE_CENTRES):
+        direction = V(x, y, 0)
+        direction.normalize()
+        transverse = V(-direction.y, direction.x, 0)
+
+        def tower_point(radial, lateral, z):
+            point = V(x, y, z) + direction * radial + transverse * lateral
+            return (point.x, point.y, point.z)
+
+        analytic.extend(
+            [
+                (
+                    f"optical_tower_leg_{index}",
+                    "OpticalMountBase",
+                    tower_point(stack_interface.LEG_INNER_OFFSET - 0.01, 0, -12),
+                    tower_point(stack_interface.LEG_OUTER_OFFSET + 0.01, 0, -12),
+                    stack_interface.LEG_OUTER_OFFSET - stack_interface.LEG_INNER_OFFSET,
+                ),
+                (
+                    f"optical_tower_foot_{index}",
+                    "OpticalMountBase",
+                    tower_point(0, 2.5, -stack_interface.TOWER_HEIGHT - 0.01),
+                    tower_point(
+                        0,
+                        2.5,
+                        -stack_interface.TOWER_HEIGHT
+                        + stack_interface.FOOT_THICKNESS
+                        + 0.01,
+                    ),
+                    stack_interface.FOOT_THICKNESS,
+                ),
+                (
+                    f"optical_tower_slot_land_{index}",
+                    "OpticalMountBase",
+                    tower_point(
+                        0,
+                        stack_interface.HOLE_DIAMETER / 2 - 0.01,
+                        -stack_interface.TOWER_HEIGHT + 1,
+                    ),
+                    tower_point(
+                        0,
+                        stack_interface.FOOT_RADIUS + 0.01,
+                        -stack_interface.TOWER_HEIGHT + 1,
+                    ),
+                    stack_interface.FOOT_RADIUS - stack_interface.HOLE_DIAMETER / 2,
+                ),
+            ]
+        )
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
         (probe, True)

@@ -23,9 +23,6 @@ SERVO_SCREW_SOURCE = (
     "https://www.accu.co.uk/metric-cheese-head-screws/6455-SFE-M1-6-8-A2"
 )
 SERVO_NUT_SOURCE = "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
-STACK_SPACER_SOURCE = (
-    "https://www.kangyang-usa.com/wp-content/uploads/2026/09/HPS2-H-18-2.pdf"
-)
 PURCHASING_STATUS = (
     "Design purchase/preparation specification. Selected seller options and "
     "dimensional references are distinguished in each item; received-lot "
@@ -68,34 +65,12 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, bearing caps, optical tower feet and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
-    },
-    "M2_FF_PA66_AF4_L25": {
-        "search_query": "M2 female female nylon PA66 hex standoff 25mm 4mm AF",
-        "candidate_url": STACK_SPACER_SOURCE,
-        "requirements": (
-            "Bought Nylon PA66 female-female standoff, M2 x 0.4 right-hand "
-            "threads at both ends. Match Kang Yang HPS2-25: nominal body "
-            "length 25 mm, across flats 4 mm; drawing tolerances +/-0.4 mm "
-            "length and +/-0.2 mm across flats. Do not substitute a male-female "
-            "part or a printed spacer. Verify at least 3.6 mm actual usable "
-            "female depth at each end, then confirm measured screw penetration "
-            "does not bottom. This depth acceptance is a design purchasing "
-            "condition, not a manufacturer-guaranteed engagement rating."
-        ),
-        "evidence_notes": (
-            "Kang Yang HPS2-H Rev B specifies Nylon 66 UL94V-2, M2x0.4 and "
-            "the HPS2-25 dimensions; the long-spacer drawing gives 4 mm REF "
-            "tapped depth at each end. CAD models two nominal diameter-2 mm "
-            "by 4 mm bores without helical threads. Internal unthreaded shape, "
-            "minimum usable engagement, mass and strength remain unverified. "
-            "Retained evidence: references/kangyang_hps2_dimensions.pdf."
-        ),
     },
 }
 
-for _length in (5, 6, 8):
+for _length in (6, 8):
     PROCUREMENT_SPECS[f"M2X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M2x{_length} black steel button head hex socket screw",
         "candidate_url": FASTENER_KIT_SOURCE,
@@ -104,7 +79,7 @@ for _length in (5, 6, 8):
             "under-head length, from the user's screw/nut kit. Design clearance "
             "envelope: head diameter 4.5 mm and head height 2 mm. Check actual "
             "head, length, 1.5 mm hex-key access and the documented joint grip. "
-            "No washers. Use minimal preload and verify PA12/PA66 retention "
+            "Optical foot joints require a measured flat under-head bearing diameter at least 3.2 mm at the round host hole; the 4.5 mm envelope is a maximum clearance allocation, not proof of bearing area. No washers. Use minimal preload and verify PA12 retention "
             "and creep; these are not OEM motor or horn screws."
         ),
         "evidence_notes": (

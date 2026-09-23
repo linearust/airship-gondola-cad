@@ -4,7 +4,7 @@ The gear runs on the servo output through its bought KST horn. Two simple PA12
 parts sandwich that horn without drilling it; a single M2 screw sits beyond the
 horn tip. A locally cut and flattened Ø3 aluminium stub seats in a finished
 D-shaped socket. One radial M2 screw and captive hex nut retain the stub; the
-gear uses its supplied set screw. No printed journal enters the gear bore and
+gear uses an M3 set screw whose supply and exact geometry remain unverified. No printed journal enters the gear bore and
 no external input bearing is added. Local rotation is +Y; the horn points +X.
 """
 
@@ -28,6 +28,9 @@ HORN_SPLINE_RECESS_DEPTH = 2.5
 HORN_BLADE_BOTTOM = HORN_HEIGHT - HORN_BLADE_THICKNESS
 HORN_BOTTOM_Y = 30.9
 HORN_REGISTER_CLEARANCE = 0.05
+HORN_BLADE_CLEARANCE = 0.25
+HORN_TIP_CLEARANCE = HORN_REGISTER_CLEARANCE
+ADAPTER_RELEASE_TRAVEL = 1.5
 GEAR_BORE_DIAMETER = 3.0
 SHAFT_DIAMETER = 3.0
 SHAFT_START_Y = 7.1
@@ -84,6 +87,33 @@ def _blade_hull(y, depth, clearance=0.0):
     )
 
 
+def _horn_pocket():
+    """Straight flank relief between the root register and flat tip datum.
+
+    The channel clears the horn's two broad torque flanks. Its flat end locates
+    the horn tip, without requiring a matching curved tip outline. The root
+    circle is open toward the blade: this opposing tip stop remains essential
+    for concentricity and cannot simply be given more longitudinal clearance.
+    Clamp preload carries nominal torque; the relieved flanks limit gross slip
+    but do not promise zero backlash or a qualified holding torque.
+    """
+    root = HORN_HUB_RADIUS + HORN_REGISTER_CLEARANCE
+    relieved_tip = HORN_TIP_RADIUS + HORN_BLADE_CLEARANCE
+    cosine = (root - relieved_tip) / HORN_TIP_CENTRE
+    sine = math.sqrt(1 - cosine**2)
+    end_x = HORN_TIP_CENTRE + HORN_TIP_RADIUS + HORN_TIP_CLEARANCE
+    a = V(root * cosine, 0.3, root * sine)
+    b = V(end_x, 0.3, (root - end_x * cosine) / sine)
+    c, d = V(b.x, b.y, -b.z), V(a.x, a.y, -a.z)
+    edges = [
+        Part.makeLine(a, b),
+        Part.makeLine(b, c),
+        Part.makeLine(c, d),
+        Part.Arc(d, V(-root, 0.3, 0), a).toShape(),
+    ]
+    return Part.Face(Part.Wire(edges)).extrude(V(0, HORN_HEIGHT - 0.3, 0))
+
+
 def _hex_along_axis(across_flats, length, origin, direction):
     """Plain six-sided pocket, using the stock nut's vertex orientation."""
     from .purchased_hardware import hex_prism
@@ -131,11 +161,12 @@ def horn_shape():
 def adapter_shape():
     """Open horn socket and keyed metal-shaft housing as one printable solid.
 
-    The shallow socket can approach an already retained horn axially. Its hub
-    and blade pocket share the same small nominal finishing allowance;
-    neither the spline nor new holes in the bought horn are fabricated. Both
-    blind pockets open to the exterior; a 1.9 mm roof separates the shaft stop
-    from the provisional OEM screw-head cavity.
+    The open root register and opposing flat tip datum locate the horn while
+    the relieved straight flanks avoid matching its exact blade contour. It
+    approaches an already retained horn axially; neither the spline nor new
+    holes in the bought horn are fabricated. Both blind pockets open to the
+    exterior; a 1.9 mm roof separates the shaft stop from the provisional OEM
+    screw-head cavity.
     """
     shape = union(
         [
@@ -149,7 +180,7 @@ def adapter_shape():
             ),
         ]
     )
-    shape = shape.cut(_blade_hull(0.3, HORN_HEIGHT - 0.3, HORN_REGISTER_CLEARANCE))
+    shape = shape.cut(_horn_pocket())
     # Clearance around an installed original screw head is deliberately a
     # prototype envelope. Remove the adapter for service; the metal shaft and
     # the closed socket floor do not offer access to that unmeasured head.
@@ -236,11 +267,14 @@ def metrics():
         "driver_shaft_socket_clearance_mm": SHAFT_SOCKET_CLEARANCE,
         "gear_start_from_horn_bottom_mm": GEAR_START_Y,
         "horn_register_clearance_each_side_mm": HORN_REGISTER_CLEARANCE,
+        "horn_flank_relief_at_tip_centre_mm": HORN_BLADE_CLEARANCE,
+        "horn_tip_clearance_mm": HORN_TIP_CLEARANCE,
         "horn_socket_engagement_mm": HORN_HEIGHT - BODY_BACK_Y,
+        "adapter_axial_release_travel_mm": ADAPTER_RELEASE_TRAVEL,
         "retainer_thickness_mm": RETAINER_THICKNESS,
         "retainer_closure_gap_mm": BODY_BACK_Y - HORN_BLADE_BOTTOM,
         "common_clamp_fasteners_per_side": 2,
-        "shaft_retention": "Nominal Ø3 x16 mm 6061 rod, cut square and deburred, with one continuous 0.5 mm-deep flat. The shaft bottoms in the adapter; an M2x6 button screw through a captive M2 hex nut presses the flat. The gear uses its supplied radial set screw on the same flat. The printed D socket provides geometric anti-rotation after its clearance is taken up; axial retention and initial torque transmission still require actual clamp tests. Both the raw rod diameter and filed flat are shop acceptance dimensions, not guaranteed purchased tolerances.",
-        "assembly": "Install the OEM horn-retaining screw before the adapter. Finish and clean the open D socket and nut-loading slot; seat the metal stub against its stop, drop the radial hex nut through the +Z opening and tighten the M2x6 screw against the flat without bottoming its head. Fit the purchased driver and tighten its supplied screw on the same flat. Capture the retained horn with the rear strap and M2x8 screw/nut. For service, use the checked module or horn-coupling path with the metal stub and radial clamp kept with the adapter. Set neutral, mesh direction and tooth phasing before calibration. Actual screw access, cable handling and both-direction grip remain sample checks.",
-        "qualification": "The 0.05 mm horn and D-socket clearances are nominal finish-fit targets, not as-printed tolerance claims. Verify the 1.3 mm horn register, 1.9 mm roof ahead of the provisional OEM screw-head cavity, nut capture, shaft concentricity, rocking, axial retention and loaded alignment. Check the finished rod against both gear bore and socket; reject bent, oversize or loose stock. Do not force an oversize rod into a gear. The direct gear still applies unqualified radial load to the servo output; no external radial-load rating is published.",
+        "shaft_retention": "Nominal Ø3 x16 mm 6061 rod, cut square and deburred, with one continuous 0.5 mm-deep flat. The shaft bottoms in the adapter; an M2x6 button screw through a captive M2 hex nut presses the flat. The gear requires a radial M3 set screw on the same flat; inclusion, length, point and protrusion remain unverified. The printed D socket provides geometric anti-rotation after its clearance is taken up; axial retention and initial torque transmission still require actual clamp tests. Both the raw rod diameter and filed flat are shop acceptance dimensions, not guaranteed purchased tolerances.",
+        "assembly": "Install the OEM horn-retaining screw before the adapter. Finish and clean the open D socket and nut-loading slot; seat the metal stub against its stop, drop the radial hex nut through the +Z opening and tighten the M2x6 screw against the flat without bottoming its head. Fit the purchased driver and tighten its verified M3 screw on the same flat. Capture the retained horn with the rear strap and M2x8 screw/nut. For service, use the checked module or horn-coupling path with the metal stub and radial clamp kept with the adapter. Set neutral, mesh direction and tooth phasing before calibration. Actual screw access, cable handling and both-direction grip remain sample checks.",
+        "qualification": "The open hub register, opposing flat tip stop and D-socket retain 0.05 mm nominal finish-fit clearances, not as-printed tolerance claims. Straight flanks spread from the root datum to 0.25 mm nominal relief at the tip-centre station; exact blade taper and tip radius do not locate the assembly. Horn hub diameter and overall length remain critical for concentricity. Clamp preload transfers normal torque; the relieved flanks provide a backup stop, not a zero-backlash claim. Verify clamp grip in both directions, the 1.3 mm register, 1.9 mm roof ahead of the provisional OEM screw-head cavity, nut capture, shaft concentricity, rocking, axial retention and loaded alignment. Check the finished rod against both gear bore and socket; reject bent, oversize or loose stock. Do not force an oversize rod into a gear. The direct gear still applies unqualified radial load to the servo output; no external radial-load rating is published.",
     }

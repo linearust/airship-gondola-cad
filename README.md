@@ -29,8 +29,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 
 ## Editing rules
 
-- Prioritize low mass, simple geometry and few purchased part types for this
-  indoor LTA gondola. Lower stiffness than a sub-250 g multirotor is accepted;
+- Prioritize simple integral geometry, forgiving noncritical interfaces and few
+  purchased part types for this indoor LTA gondola; modest mass increases are
+  accepted when they simplify assembly. Lower stiffness than a sub-250 g multirotor is accepted;
   this is not a strength qualification. First integrate parts without a necessary
   separation, make them printable, then optimize shape. Prefer verified stock
   components with few fastener variants and no unnecessary washers. Retained
@@ -68,14 +69,16 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   verified interface. Check seated contact and the ordered module
   removal path while retaining the output shafts, bearings and motor carriers.
   Rebuild geometry, controls and BOM together.
-  No sliding slots or GUI ratio-only property is needed.
+  Gear spacing remains fixed; the optical foot slots do not authorize slotted
+  gear supports or an unsupported GUI ratio-only property.
   Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh,
   adapter concentricity/retention and servo output loading; printed nominal
   dimensions are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
   fixture audit and release checks below.
 - M2 kit screws use explicit design head envelopes until measured. Do not label
   them DIN912/A2 or infer their mass from the envelope as a measured value.
-  Retain short stack screws to avoid blind-spacer bottoming. The rail hex-nut
+  Optical tower feet use accessible through-bolts/nuts and short radial slots;
+  preserve head support and nut engagement throughout their travel. The rail hex-nut
   seat requires its declared finished-fit range and coupon checks; raw printing
   tolerance does not guarantee capture. Ordinary bolt tips must be checked
   before pressing the rail; they are not certified DIN913 flat points.
@@ -86,7 +89,11 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
-  and service checks. Keep reservations in the moving sensor frame.
+  and service checks, including integral legs/feet and complete tower removal.
+  On the rail, remove the two upper foot nuts and lift the tower off its retained
+  lower-headed bolts; replace or transfer those bolts with the carrier off the
+  rail on a bench. Check device service against the retained bolts. Keep
+  reservations in the moving sensor frame.
 - Passing geometry tests does not resolve physical qualification or change
   `contracts.design.release_status()`. Keep estimated mass exclusions and
   unresolved interfaces explicit in generated outputs.

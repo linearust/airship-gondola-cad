@@ -514,7 +514,7 @@ def _build_coupling(doc, parent, prefix, sign):
                 parent,
                 prefix + "HornGear" + suffix,
                 positioned(shape),
-                "The bought horn drives an 8 mm D-shaped adapter socket and locally cut Ø3×16 aluminium stub into the stock Ø3 gear. A radial M2 screw and captive hex nut retain the stub; one removable rear strap and M2 bolt capture the horn. No external input bearings. Install the OEM horn retaining screw first. Finish and verify the D socket, full-length 0.5 mm shaft flat, concentricity, screw grip, horn capture, creep and loaded deflection; geometry is not a torque qualification.",
+                "The bought horn drives an 8 mm D-shaped adapter socket and locally cut Ø3×16 aluminium stub into the stock Ø3 gear. A radial M2 screw and captive hex nut retain the stub; one removable rear strap and M2 bolt capture the horn. The open hub register and flat tip datum retain the critical 0.05 mm nominal finish-fit clearance; straight blade flanks open to 0.25 mm near the tip. Actual root diameter and overall tip reach still locate the horn, so this is not a universal horn socket. No external input bearings. Install the OEM horn retaining screw first. Finish and verify the D socket, full-length 0.5 mm shaft flat, concentricity, screw grip, horn capture, creep and loaded deflection; geometry is not a torque qualification.",
                 rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
                 sku=sku,
             )
@@ -848,7 +848,7 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. The closed cradle has two 2 mm side walls and an 8×21 mm axial case opening. M1.6×8 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. The closed cradle has two 2 mm side walls and a 9×21.5 mm nonlocating axial case opening (1 mm side and 0.75 mm end nominal body clearance). M1.6×8 DIN84 through-bolts clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware

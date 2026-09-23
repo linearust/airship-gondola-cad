@@ -994,7 +994,9 @@ def _input_service_path(name, shape, waypoints, obstacles, spec, sign):
 
 
 def input_drive_service_check(doc, module, prefix):
-    """Release the shallow coupling while retaining the output shafts and caps."""
+    """Release the hub-registered coupling while keeping output supports."""
+    from gondola.parts import servo_coupling as coupling
+
     shapes, missing = _service_shapes(doc, module)
     if missing:
         return {"pod": prefix, "missing_parts": missing, "passed": False}
@@ -1023,7 +1025,8 @@ def input_drive_service_check(doc, module, prefix):
     removed.add(retainer)
     moving = _input_drive_names(prefix)
     fixed = _service_obstacles(shapes, removed | moving)
-    points = [(0, 0, 0), (0, sign * 1.5, 0), (sign * 40, sign * 1.5, 0)]
+    release_y = sign * coupling.ADAPTER_RELEASE_TRAVEL
+    points = [(0, 0, 0), (0, release_y, 0), (sign * 40, release_y, 0)]
     spec = drive_for_document(doc)
     for name in sorted(moving):
         path = _input_service_path(name, shapes[name], points, fixed, spec, sign)
@@ -1038,7 +1041,8 @@ def input_drive_service_check(doc, module, prefix):
         "part_paths": rows,
         "coordinate_frame": "propulsion module",
         "retained_parts": sorted(fixed),
-        "scope": "At neutral, free the leads and release the small gear's selected set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter, metal stub, captive radial clamp and driver together 1.5 mm gearward, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
+        "adapter_axial_release_travel_mm": coupling.ADAPTER_RELEASE_TRAVEL,
+        "scope": "At neutral, free the leads and release the small gear's selected set screw; withdraw that gear inboard. Remove the adapter clamp bolt/nut and slide the rear strap outward. Move the adapter, metal stub, captive radial clamp and driver together through the reported gearward release travel to clear the horn register, then 40 mm sideways outward. The servo, its original retained horn, both output shafts, bearings and caps remain installed. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
         "passed": output_path["passed"]
         and clamp_path["passed"]
         and all(row["passed"] for row in rows),

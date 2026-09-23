@@ -40,9 +40,9 @@ BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
     "centre_y_limit_mm": 4.0,
     "maximum_size_mm": [66, 18, 17],
-    "minimum_stack_column_gap_mm": 1.5,
+    "minimum_stack_tower_gap_mm": 1.5,
     "frame": "Battery carrier XY; pack long axis along Y, nominal 1mm adhesive allowance",
-    "qualification": "Geometric placement envelope only. Actual pack size, adhesive contact and retention remain unverified. For larger trim changes move the carrier along the rail and recheck module clearances; do not push the pack into the stack columns.",
+    "qualification": "Geometric placement envelope only. Actual pack size, adhesive contact and retention remain unverified. For larger trim changes move the carrier along the rail and recheck module clearances; do not push the pack into the integral optical tower.",
 }
 FC_WIRING_CLEARANCE = 8.0
 FC_WIRING_CORRIDOR_WIDTH = 8.0

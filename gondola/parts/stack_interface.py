@@ -1,7 +1,7 @@
 """Project-standard structural stack, separate from FC holes and soft dampers.
 
 Both rail equipment carriers share the project's diagonal M2 mounting pair.
-Purchased 25 mm nylon spacers support one interchangeable optical head; no printed posts.
+The optical base integrates two open legs and bolt feet; no separate columns or printed threads.
 """
 
 import json
@@ -17,7 +17,7 @@ from gondola.contracts.design import (
     STACK_HOLE_CENTRES,
     STACK_PITCH_MM,
 )
-from gondola.contracts.hardware import STACK_SCREW_SOURCE, STACK_SPACER_SOURCE
+from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
 from . import purchased_hardware
 
@@ -30,8 +30,16 @@ ARM_WIDTH = 5.0
 DECK_THICKNESS = 2.0
 HOST_DECK_BOTTOM_Z = 10.2
 HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
-SPACER_LENGTH = purchased_hardware.STACK_SPACER_LENGTH
-STACK_TOP_Z = HOST_SUPPORT_Z + SPACER_LENGTH
+TOWER_HEIGHT = 25.0
+STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
+FOOT_THICKNESS = 2.0
+FOOT_RADIUS = 3.75
+FOOT_SLOT_TRAVEL = 0.5
+LEG_INNER_OFFSET = 4.0
+LEG_OUTER_OFFSET = 8.0
+LEG_WIDTH = 6.0
+FOOT_SCREW_LENGTH = 8.0
+MINIMUM_HEAD_BEARING_DIAMETER = 3.2
 SUPPORTED_HOSTS = {
     "BatteryEquipmentModule": "BatteryMount",
     "ElectronicsEquipmentModule": "ElectronicsMount",
@@ -48,11 +56,17 @@ def interface_contract():
         "pad_diameter_mm": PAD_DIAMETER,
         "printed_deck_thickness_mm": DECK_THICKNESS,
         "host_support_z_mm": HOST_SUPPORT_Z,
-        "purchased_spacer_length_mm": SPACER_LENGTH,
+        "integral_tower_height_mm": TOWER_HEIGHT,
+        "tower_foot_thickness_mm": FOOT_THICKNESS,
+        "foot_slot_radial_travel_each_way_mm": FOOT_SLOT_TRAVEL,
+        "tower_leg_section_mm": [LEG_OUTER_OFFSET - LEG_INNER_OFFSET, LEG_WIDTH],
+        "tower_attachment": "Two M2x8 button-head screws from below the host and ordinary M2 hex nuts above the slotted feet;4mm host/foot grip, no washers, captive nut fit, blind threads or separate columns. Remove upper nuts to lift the tower; lower-headed bolts remain in the host",
+        "minimum_screw_bearing_face_diameter_mm": MINIMUM_HEAD_BEARING_DIAMETER,
+        "service": "Remove the two upper nuts and lift the complete optical tower off the lower-headed bolts retained in the host. To replace or transfer those bolts between hosts, remove the carrier from the rail for bench access. Host selection in CAD represents reassembly, not an in-place quick swap.",
         "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
-        "load_path": "Carrier pads -> two bought M2 female/female PA66 spacers -> optical platform. No stack load is routed through FC silicone dampers, PCB or battery.",
-        "qualification": "Verify purchased spacer dimensions, usable thread depth>=3.6mm, thread engagement, PA66 clamp/creep strength and retention with actual cables. 4mm REF drawing depth is not a guaranteed minimum. No load/torque qualification is claimed.",
+        "load_path": "Carrier pads -> two integral PA12 bolt feet and outward-offset legs -> optical platform. No stack load is routed through FC silicone dampers, PCB or battery.",
+        "qualification": "The two short radial foot slots absorb up to +/-0.5mm local hole-spacing mismatch without a close captive-nut fit. Measure printed feet and purchased heads/nuts; screw underside bearing diameter must be at least3.2mm while the complete head stays inside the4.5x2mm clearance envelope. Verify full nut engagement and support, and hand snug while holding the exposed nut. Tower stiffness, clamp/creep strength and cable retention require physical checks; no load/torque qualification is claimed.",
     }
 
 
@@ -94,7 +108,7 @@ def annotate_interface(obj):
 
 
 def attach_to_host(group, host):
-    """Reparent the complete kit at the shared datum; never move single pieces."""
+    """Represent bench reassembly on another host; never move single pieces."""
     if host.Name not in SUPPORTED_HOSTS or host.Document != group.Document:
         raise ValueError(
             "Optical stack requires a supported carrier in the same document"
@@ -109,52 +123,101 @@ def attach_to_host(group, host):
     group.Document.recompute()
 
 
+def tower_shape():
+    """One open diagonal platform with outward legs and accessible slotted feet."""
+    pieces = []
+    for x, y in HOLE_CENTRES:
+        radius = math.hypot(x, y)
+        angle = math.degrees(math.atan2(y, x))
+        arm = box(
+            radius + LEG_OUTER_OFFSET, LEG_WIDTH, DECK_THICKNESS, (0, -LEG_WIDTH / 2, 0)
+        )
+        leg = box(
+            LEG_OUTER_OFFSET - LEG_INNER_OFFSET,
+            LEG_WIDTH,
+            TOWER_HEIGHT,
+            (radius + LEG_INNER_OFFSET, -LEG_WIDTH / 2, -TOWER_HEIGHT),
+        )
+        foot = union(
+            [
+                Part.makeCylinder(
+                    FOOT_RADIUS, FOOT_THICKNESS, V(radius, 0, -TOWER_HEIGHT)
+                ),
+                box(
+                    LEG_OUTER_OFFSET,
+                    LEG_WIDTH,
+                    FOOT_THICKNESS,
+                    (radius, -LEG_WIDTH / 2, -TOWER_HEIGHT),
+                ),
+            ]
+        )
+        slot = union(
+            [
+                Part.makeCylinder(
+                    HOLE_DIAMETER / 2,
+                    FOOT_THICKNESS + 2,
+                    V(radius + offset, 0, -TOWER_HEIGHT - 1),
+                )
+                for offset in (-FOOT_SLOT_TRAVEL, FOOT_SLOT_TRAVEL)
+            ]
+            + [
+                box(
+                    2 * FOOT_SLOT_TRAVEL,
+                    HOLE_DIAMETER,
+                    FOOT_THICKNESS + 2,
+                    (radius - FOOT_SLOT_TRAVEL, -HOLE_DIAMETER / 2, -TOWER_HEIGHT - 1),
+                )
+            ]
+        )
+        piece = union([arm, leg, foot.cut(slot)])
+        piece.rotate(V(), V(0, 0, 1), angle)
+        pieces.append(piece)
+    return union(pieces).removeSplitter()
+
+
 def is_removable_head_part(obj, stack):
-    """Release the complete head while retaining both columns and lower screws."""
-    return belongs_to_group(obj, stack) and str(getattr(obj, "StackEnd", "")) not in (
-        "Lower",
-        "Spacer",
+    """Remove the tower and upper nuts; lower-headed bolts stay in the host."""
+    return belongs_to_group(obj, stack) and not obj.Name.startswith(
+        "OpticalStackFootBolt"
     )
 
 
 def build_stack_hardware(doc, group):
-    """All coordinates are relative to the bottom face of the optical platform."""
+    """Open foot through-joints, relative to the optical platform bottom face."""
     hardware = []
-    common = "Structural stack only; never print. Hand snug after verifying actual parts, thread depth/engagement and retention; no qualified tightening torque."
+    common = (
+        "Structural optical tower only; never print. Screw enters from below the host; nut seats on the slotted foot. Require at least3.2mm actual screw underside bearing diameter. Two2mm PA12 plates give4mm "
+        "nominal grip, followed by the full1.6mm M2 nut and2.4mm screw projection. "
+        "Both plates0.3mm thicker still leave1.8mm projection before screw/nut "
+        "tolerances. Hold the exposed nut and hand snug after verifying actual "
+        "parts, support and retention; no qualified tightening torque. "
+    )
     for index, (x, y) in enumerate(HOLE_CENTRES):
-        spacer = purchased_hardware.add_hardware(
+        bolt = purchased_hardware.add_hardware(
             doc,
             group,
-            f"OpticalStackSpacer{index}",
-            "BUY | M2 F/F PA66 AF4 x25mm spacer",
-            purchased_hardware.spacer_shape(),
-            "M2_FF_PA66_AF4_L25",
-            common,
-            STACK_SPACER_SOURCE,
-            "Nylon PA66",
+            f"OpticalStackFootBolt{index}",
+            "BUY | M2x8 kit button-head screw | optical tower foot",
+            purchased_hardware.screw_shape(FOOT_SCREW_LENGTH),
+            "M2X8_BUTTON_HEAD",
+            common + fasteners.HEAD_ENVELOPE_NOTE,
+            STACK_SCREW_SOURCE,
+            fasteners.KIT_MATERIAL,
         )
-        set_property(spacer, "StackEnd", "Spacer")
-        spacer.Placement.Base = V(x, y, -SPACER_LENGTH)
-        hardware.append(spacer)
-        for end, bearing_z, direction in (
-            ("Lower", -SPACER_LENGTH - DECK_THICKNESS, 1),
-            ("Upper", DECK_THICKNESS, -1),
-        ):
-            rotation = App.Rotation(V(0, 0, 1), V(0, 0, direction))
-            bolt = purchased_hardware.add_hardware(
-                doc,
-                group,
-                f"OpticalStack{end}Bolt{index}",
-                "BUY | M2x5 kit button-head screw | design head envelope",
-                purchased_hardware.stack_screw_shape(),
-                "M2X5_BUTTON_HEAD",
-                common
-                + " Nominal thread entry3.0mm through printed2mm plate without washers; retain5mm length to avoid bottoming. Actual printed thickness, screw tolerance and blind depth must be checked. "
-                + fasteners.HEAD_ENVELOPE_NOTE,
-                STACK_SCREW_SOURCE,
-                fasteners.KIT_MATERIAL,
-            )
-            bolt.Placement = App.Placement(V(x, y, bearing_z), rotation)
-            set_property(bolt, "StackEnd", end)
-            hardware.append(bolt)
+        bolt.Placement.Base = V(x, y, -TOWER_HEIGHT - DECK_THICKNESS)
+        set_property(bolt, "StackEnd", "Foot")
+        nut = purchased_hardware.add_hardware(
+            doc,
+            group,
+            f"OpticalStackFootNut{index}",
+            "BUY | M2 kit hex nut | optical tower foot",
+            purchased_hardware.hex_nut_shape(),
+            "M2_HEX_NUT",
+            common,
+            HEX_NUT_SOURCE,
+            fasteners.KIT_MATERIAL,
+        )
+        nut.Placement.Base = V(x, y, -TOWER_HEIGHT + FOOT_THICKNESS)
+        set_property(nut, "StackEnd", "Foot")
+        hardware.extend((bolt, nut))
     return hardware

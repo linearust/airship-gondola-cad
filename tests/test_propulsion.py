@@ -957,6 +957,7 @@ class SelectedGearDriveTests(unittest.TestCase):
 
     def test_servo_case_service_rejects_a_midpath_cradle_obstruction(self):
         from gondola.cad import translated_shape, world_shape
+        from gondola.parts import servo_bridge
         from gondola.validation.geometry import intersection_volume
         from gondola.validation.propulsion import servo_case_service_check
 
@@ -967,9 +968,11 @@ class SelectedGearDriveTests(unittest.TestCase):
             # A lip ahead of the case leaves both endpoints clear but blocks
             # its first withdrawal segment. The stem joins the bridge cradle.
             drive = DRIVE_CONFIGURATIONS["48_16"]
-            origin = App.Vector(drive.input_x_mm - 4.2, 25, drive.input_z_mm - 10)
-            stem = Part.makeBox(0.6, 7.2, 2, origin)
-            lip = Part.makeBox(1.1, 0.2, 2, origin + App.Vector(0, 7, 0))
+            stem_left = -servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.2
+            stem_width = -3.6 - stem_left
+            origin = App.Vector(drive.input_x_mm + stem_left, 25, drive.input_z_mm - 10)
+            stem = Part.makeBox(stem_width, 7.2, 2, origin)
+            lip = Part.makeBox(stem_width + 0.5, 0.2, 2, origin + App.Vector(0, 7, 0))
             bridge.Shape = original.fuse(stem).fuse(lip).removeSplitter()
             doc.recompute()
             self.assertEqual(len(bridge.Shape.Solids), 1)
@@ -1163,6 +1166,24 @@ class SelectedGearDriveTests(unittest.TestCase):
             finally:
                 servo.Placement = original
                 doc.recompute()
+
+    def test_servo_case_tolerance_does_not_consume_the_open_cradle_clearance(self):
+        from gondola.cad import box
+        from gondola.parts import servo_bridge
+
+        spec = SELECTED_DRIVE
+        x, z = spec.input_x_mm, spec.input_z_mm
+        y = servo_bridge.case_front_y() - 4.7 - servo_bridge.MOUNT_DEPTH
+        # Published 7 x20 body dimensions are each allowed +0.2 mm. The body
+        # must clear the cradle independently of its accurately placed ears.
+        largest_case_section = box(7.2, 7, 20.2, (x - 3.6, y - 1, z - 15.1))
+        bridge = servo_bridge.bridge_shape()
+        for section in (
+            largest_case_section,
+            servo_bridge.opposite(largest_case_section),
+        ):
+            self.assertLess(bridge.common(section).Volume, 1e-7)
+            self.assertGreaterEqual(bridge.distToShape(section)[0], 0.65 - 1e-7)
 
     def test_fixed_mount_checks_follow_the_whole_module_placement(self):
         from gondola.validation.propulsion import (

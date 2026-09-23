@@ -36,7 +36,7 @@ class OpticalClearanceTests(unittest.TestCase):
 
         self.assertTrue(_source_evidence(self.doc)["passed"])
         sensor = self.doc.ModuleMTF02PEnvelope
-        screw = self.doc.OpticalStackUpperBolt0
+        screw = self.doc.OpticalStackFootBolt0
         pivot = self.doc.OpticalRollBolt
         mutations = (
             (sensor, "ListedMassGrams", 99.0),
