@@ -66,6 +66,7 @@ from .geometry import (
     local_shape,
 )
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
+from .rail_access import rail_key_service_check
 
 TOL = 1e-5
 V = App.Vector
@@ -161,19 +162,7 @@ def rail_check(registry, shapes):
                     "in_unbroken_base": rail_shape.isInside(V(x, 0, 0.5), TOL, True),
                 }
             )
-        relief_samples = []
-        relief_range = math.ceil(rail.LENGTH / rail.LAND_PITCH)
-        for i in range(-relief_range, relief_range + 1):
-            x = (i + 0.5) * rail.LAND_PITCH
-            if abs(x) >= rail.LENGTH / 2:
-                continue
-            relief_samples.append(
-                {
-                    "x_mm": x,
-                    "base_present": rail_shape.isInside(V(x, 0, 0.5), TOL, True),
-                    "head_absent": not rail_shape.isInside(V(x, 0, 6.2), TOL, True),
-                }
-            )
+        flex_reliefs = rail.flex_relief_check(rail_shape, rail.LENGTH)
         bounds = rail_shape.optimalBoundingBox(False, False)
         pad_rows = []
         for x in rail.PAD_CENTRES:
@@ -223,7 +212,7 @@ def rail_check(registry, shapes):
                 "source_comparison": comparison,
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "unbroken_base_samples": base_samples,
-                "relief_samples": relief_samples,
+                "full_height_flex_reliefs": flex_reliefs,
                 "pad_end_margins": pad_rows,
                 "installed_shoe_end_margins": installed_shoes,
                 "fully_supported_nominal_shoe_centre_x_range_mm": [
@@ -238,7 +227,7 @@ def rail_check(registry, shapes):
                 and abs(bounds.XLength - rail.LENGTH) < TOL
                 and all(row["passed"] for row in pad_rows + installed_shoes)
                 and all(r["in_unbroken_base"] for r in base_samples)
-                and all(r["base_present"] and r["head_absent"] for r in relief_samples),
+                and flex_reliefs["passed"],
             }
         )
     nominal_shoe = rail.shoe_shape()
@@ -459,24 +448,14 @@ def module_service(registry, objects, shapes):
             nut_obstacles,
             [(side * x, 0, 0) for x in (0, 1, 2, 4, 6, 9, 12, 18, 24)],
         )
-        # Tool cylinder deliberately exceeds the circumradius of the 0.9mm A/F
-        # hex key. It checks an accessible straight side approach only.
-        screw_bounds = shapes[screw.Name].optimalBoundingBox(False, False)
-        screw_centre_x = (screw_bounds.XMin + screw_bounds.XMax) / 2
-        tool_y = screw_bounds.YMax + 0.1 if side > 0 else screw_bounds.YMin - 0.1
-        tool = Part.makeCylinder(
-            1.0, 65, V(screw_centre_x, tool_y, rail.CLAMP_Z), V(0, side, 0)
+        key_service = rail_key_service_check(
+            {o.Name: shapes[o.Name] for o in objects if o.Name not in removed_names},
+            side=side,
+            placement=module.getGlobalPlacement(),
+            screw=shapes[screw.Name],
+            screw_name=screw.Name,
+            inserted_leg="short" if module.Name == "MainPropulsionModule" else "long",
         )
-        tool_hits = [
-            {
-                "part": o.Name,
-                "intersection_mm3": intersection_volume(tool, shapes[o.Name]),
-            }
-            for o in objects
-            if o not in (screw, nut)
-            and o.Name not in removed_names
-            and intersection_volume(tool, shapes[o.Name]) > TOL
-        ]
         moving = [
             (
                 o.Name,
@@ -548,7 +527,7 @@ def module_service(registry, objects, shapes):
             "approach_side_y": side,
             "screw_release_three_turns": screw_release,
             "nut_insertion_before_screw": nut_load,
-            "straight_hex_key_approach_collisions": tool_hits,
+            "continuous_l_key_service": key_service,
             "recentering_after_loosening": centre_release,
             "end_slide": slide,
             "lift_after_end_exit": lift,
@@ -559,7 +538,7 @@ def module_service(registry, objects, shapes):
             "axial_lock_type": "Friction clamp only; no numerical holding-force proof",
             "passed": screw_release["passed"]
             and nut_load["passed"]
-            and not tool_hits
+            and key_service["passed"]
             and centre_release["passed"]
             and slide["passed"]
             and end_exit["passed"]
@@ -581,7 +560,7 @@ def module_service(registry, objects, shapes):
     return {
         "removal_order": [m.Name for m, _ in sequence],
         "modules": service_rows,
-        "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. Curved-rail sliding, real screwdriver access, clamp force and tape adhesion require a physical trial.",
+        "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. The separate finite L-key envelope proves continuous nominal working and service access. Curved-rail sliding, actual tool/socket fit, hand clearance, clamp force and tape adhesion require a physical trial.",
         "passed": len(service_rows) == len(MODULE_STATIONS)
         and all(r["passed"] for r in service_rows),
     }
@@ -1117,6 +1096,7 @@ def export_check(source, registry):
 def detailed_propulsion_evidence(doc, source):
     from .motion_clearance import carrier_metal_clearance_check
     from .propulsion import (
+        bearing_post_roots_check,
         bridge_joint_check,
         fixed_servo_datum_check,
         gear_engagement_check,
@@ -1196,6 +1176,7 @@ def detailed_propulsion_evidence(doc, source):
         "hardware": list(doc.DesignRegistry.HardwareParts),
         "references": list(doc.DesignRegistry.ReferenceParts),
     }
+    saved_post_roots = bearing_post_roots_check(doc)
     saved_bridge_joint = bridge_joint_check(doc, saved_module)
     saved_servo_service = servo_module_service_check(doc, saved_module)
     saved_carrier_clearances = [
@@ -1227,6 +1208,7 @@ def detailed_propulsion_evidence(doc, source):
         "source_sha256": file_sha256(path),
         "saved_servo_datums": saved_datums,
         "saved_servo_mounts": saved_servo_mounts,
+        "saved_bearing_post_roots": saved_post_roots,
         "saved_bridge_joint": saved_bridge_joint,
         "saved_servo_module_service": saved_servo_service,
         "saved_carrier_metal_clearances": saved_carrier_clearances,
@@ -1242,6 +1224,7 @@ def detailed_propulsion_evidence(doc, source):
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_servo_mounts)
+        and all(row["passed"] for row in saved_post_roots)
         and saved_bridge_joint["passed"]
         and saved_servo_service["passed"]
         and all(row["passed"] for row in saved_carrier_clearances)

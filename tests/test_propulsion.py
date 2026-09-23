@@ -269,20 +269,13 @@ class NativeGearedDriveTests(unittest.TestCase):
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
-    def test_plain_bearing_posts_keep_the_low_wire_corridor_open(self):
-        from gondola.parts import propulsion
+    def test_plain_bearing_post_roots_keep_the_complete_load_section(self):
+        from gondola.validation.propulsion import bearing_post_roots_check
 
-        frame = self.doc.PropulsionFixedFrame.Shape
-        for sign in (-1, 1):
-            for local_y in (-28.5, 28.5):
-                y = sign * (propulsion.PIVOT_HALF_SPAN + local_y)
-                with self.subTest(sign=sign, local_y=local_y):
-                    # A full section replaces each tall internal window.
-                    section = Part.makeBox(9.6, 4, 20, App.Vector(-4.8, y - 2, 14))
-                    self.assertLess(section.cut(frame).Volume, 1e-7)
-                    # The independent, low wire/key tunnel must remain open.
-                    corridor = Part.makeBox(6.4, 4, 4, App.Vector(-3.2, y - 2, 4))
-                    self.assertLess(corridor.common(frame).Volume, 1e-7)
+        rows = bearing_post_roots_check(self.doc)
+        self.assertEqual(len(rows), 4)
+        for row in rows:
+            self.assertTrue(row["passed"], row)
 
     def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
         from gondola.cad import belongs_to_group, world_shape

@@ -82,6 +82,10 @@ Previous revision-AA exports do not represent these choices. Release artifacts
 must be regenerated from the complete current source and reviewed together; passing
 geometry checks never certifies the received hardware or flight readiness.
 
-Current release changes are audited in `tests/fixtures/rev_ag_review.json`.
+The AH rail/head and bearing-post-root revision retains these purchase
+quantities. Its 1.5 mm L-key access uses the short arm; compare the supplied
+kit tool with the checked envelope in [rail joint review](rail_joint_review.md).
+
+Current release changes are audited in `tests/fixtures/rev_ah_review.json`.
 Earlier geometry and assembly instructions remain in Git history and the
 versioned fixture reviews; they are not current build instructions.

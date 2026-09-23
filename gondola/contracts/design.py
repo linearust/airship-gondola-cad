@@ -14,7 +14,7 @@ from .hardware import BEARING_SPACER
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AG"
+DESIGN_REVISION = "AH"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -57,7 +57,7 @@ MANUFACTURING_DECISION = {
 # Retained splits have assembly, motion or requested replacement functions.
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
-    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame.",
+    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. A thick solid T head provides opposed side contact for each existing M2 friction clamp. The screw does not press the narrow flexure base. Verify actual screw-tip bearing and PA12 creep; geometry alone does not establish holding force. Use the checked short-arm L-key path so bearing-post roots remain continuous.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, bearings, spacers and motor carriers stay installed. Two broad local seats and fixed datums locate the bridge; its ring joins the cradles for handling rather than carrying all mesh load across the span.",
     "bearings_and_frame": "Bearings enter inward-facing pockets before the carrier is inserted. Integral outer shoulders replace separate caps and fasteners. Four bought flanged metal spacers limit inward bearing withdrawal while contacting only inner rings; enlarged carrier ends retain broad axial stop faces against the frame. Stage spacers and retract shafts before inserting/removing the carrier. Do not assume printed interference or a snap fit retains the bearings.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
@@ -195,7 +195,7 @@ WIRING_PURCHASE_PLAN = {
     },
     "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
     "stock_consumables": [
-        "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Keep the open wire/key corridors usable, heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips.",
+        "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep tie heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips or assumed route through the bearing posts.",
         "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
         "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
     ],
@@ -264,7 +264,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "physical_retention",
-        "Loaded tests of tape, friction clamps, PA12 flexure life and bearing supports.",
+        "Loaded tests of tape, friction clamps, PA12 flexure life and bearing supports. The rail clamp acts across the solid T head and retains local screw-tip pressure; verify a burr-free received tip, opposed seating and no indentation or creep at the minimum useful hand tightening. No qualified tightening torque or holding force is specified. Check the selected 1.5mm L-key against the modeled short-arm access envelope and confirm the working stroke with actual socket engagement. Continuous post roots remove the former key tunnels but do not establish a strength rating.",
     ),
     UnresolvedInterface(
         "moving_wires",

@@ -181,7 +181,7 @@ def build_assembly():
                 V(-38, sign * propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z),
                 V(1, 0, 0),
             ),
-            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or route wires through solid tilt shafts.",
+            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties around existing frame arms, routing outside the solid bearing-post roots and clear of the local clamp tool bay. Do not clamp a moving loop taut or route wires through solid tilt shafts.",
         )
         obj.Role = "Clearance"
         obj.Label = "RESERVE | " + suffix + " flexible motor-lead loop"

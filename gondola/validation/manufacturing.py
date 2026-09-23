@@ -88,6 +88,13 @@ def review(doc, registry):
         )
     analytic = [
         (
+            "rail_solid_clamping_head_thickness",
+            "ContinuousRail",
+            (0, 4, rail.HEAD_BOTTOM - 0.01),
+            (0, 4, rail.HEAD_TOP + 0.01),
+            rail.HEAD_TOP - rail.HEAD_BOTTOM,
+        ),
+        (
             "rail_functional_flexure_thickness",
             "ContinuousRail",
             (9, 0, -0.01),

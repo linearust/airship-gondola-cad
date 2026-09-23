@@ -35,6 +35,7 @@ from .geometry import (
 )
 from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
+from .rail_access import rail_key_service_check
 from .relative_motion import relative_motion_check
 from .servo_module import bridge_joint_check, servo_module_service_check
 
@@ -1258,37 +1259,47 @@ def continuous_path(shape, waypoints, obstacles):
 
 
 def rail_key_access_check(doc, module):
-    """Check the complete fixed module in both rail-key approaches."""
+    """Check the finite L-key, working arc and service path on either rail side."""
     objects = module["printed"] + module["hardware"] + module["references"]
-    screw_bounds = rail.clamp_screw_shape().optimalBoundingBox(False, False)
     shapes = {obj.Name: world_shape(obj) for obj in objects}
+    return [
+        rail_key_service_check(
+            shapes, side=side, placement=module["group"].getGlobalPlacement()
+        )
+        for side in (1, -1)
+    ]
+
+
+def bearing_post_roots_check(doc):
+    """Require four full-section load paths from the feet into the bearing posts."""
+    frame = doc.getObject("PropulsionFixedFrame")
+    if frame is None:
+        return [{"passed": False, "error": "Missing output support frame"}]
+    shape = frame.Shape.copy()
+    shape.Placement = App.Placement()
     rows = []
-    for side in (1, -1):
-        tool = Part.makeCylinder(
-            1.0,
-            65,
-            App.Vector(0, screw_bounds.YMax + 0.1, rail.CLAMP_Z),
-            App.Vector(0, 1, 0),
-        )
-        if side < 0:
-            tool = rail.half_turn(tool)
-        tool.Placement = module["group"].getGlobalPlacement().multiply(tool.Placement)
-        collisions = [
-            {"part": name, "intersection_mm3": volume}
-            for name, shape in shapes.items()
-            if (volume := intersection_volume(tool, shape)) > TOL
-        ]
-        rows.append(
-            {
-                "approach_side_y": side,
-                "tool_radius_mm": 1.0,
-                "tool_length_mm": 65.0,
-                "checked_objects": sorted(shapes),
-                "collisions": collisions,
-                "scope": "Oversized straight rail-key reservation against every installed local print, bought part and equipment reference. Actual key handle and neighboring rail modules are covered only by separate assembly/service checks.",
-                "passed": bool(shapes) and not collisions,
-            }
-        )
+    bottom, top = propulsion.BASE_Z + propulsion.FOOT_THICKNESS, 14.0
+    for sign in (-1, 1):
+        for local_y in (-28.5, 28.5):
+            centre_y = sign * (propulsion.PIVOT_HALF_SPAN + local_y)
+            witness = Part.makeBox(
+                9.6,
+                4.0,
+                top - bottom,
+                App.Vector(-4.8, centre_y - 2.0, bottom),
+            )
+            missing = abs(witness.cut(shape).Volume)
+            rows.append(
+                {
+                    "side": sign,
+                    "post_local_y_mm": local_y,
+                    "root_section_mm": [9.6, 4.0],
+                    "root_height_range_mm": [bottom, top],
+                    "missing_root_material_mm3": missing,
+                    "scope": "Complete nominal root section, not a stress or fatigue qualification.",
+                    "passed": missing < TOL,
+                }
+            )
     return rows
 
 
@@ -1376,15 +1387,8 @@ def _record_rail_fit_checks(report, frame, physical):
             report[label + "_" + name + "_frame_overlap_mm3"] = intersection_volume(
                 frame, transform(shape)
             )
-        key = Part.makeCylinder(
-            0.9,
-            110,
-            App.Vector(0, rail.clamp_screw_shape().BoundBox.YMax + 0.1, rail.CLAMP_Z),
-            App.Vector(0, 1, 0),
-        )
-        report[label + "_clamp_driver_frame_overlap_mm3"] = intersection_volume(
-            frame, transform(key)
-        )
+        key = rail_key_service_check(physical, side=side)
+        report[label + "_clamp_key_service"] = key
     # Fill the bore for this insertion audit. The resulting hex prism contains
     # the whole nut and has an exact planar translation sweep; a transverse
     # cylinder otherwise triggers an unnecessarily broad rectangular fallback
@@ -1863,6 +1867,7 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
         report["servo_module_service"].append(servo_module_service_check(doc, module))
         _record_rail_fit_checks(report, frame, physical)
         report["rail_key_access"] = rail_key_access_check(doc, module)
+        report["bearing_post_roots"] = bearing_post_roots_check(doc)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             _record_drive_checks(report, doc, module, physical, frame, prefix, sign)
         _record_fastener_checks(report, module, physical)

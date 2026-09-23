@@ -1,0 +1,1136 @@
+{
+  "revision": "AH",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "8a144a33ec8a03dd67d575e4f424d74ee6fb6ce7",
+  "previous_fixture_sha256": "4db17b3b07a56ba63e66c8b49707704635f0e008de1411fda4ec5858a2b91437",
+  "approved_fixture_sha256": "9637e2bca7767c0bb6e3093bc32c37410d233c54d7c1dde5a4fe76d626313b82",
+  "scope": "Intentional rail-head and bearing-post-root revision audited against all 117 retained AG shapes before replacing the pinned fixture. Geometric fit prototype, not a structural or manufacturing qualification.",
+  "intentional_geometry_changes": [
+    {
+      "object": "BatteryEquipmentModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 14.280248603626564,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 14.280248603626571,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "BatteryEquipmentModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 34.482871087263895,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 34.482871087263845,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "BatteryMount",
+      "local_shape": {
+        "difference_mm3": 389.40215077196103,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 254.78307477435374,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 389.4021507719617,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 254.78307477435192,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "BatteryMount",
+        "Role": "Printed equipment carrier",
+        "PrintPart": true,
+        "SourceURL": "https://creallo.com/ko/guide/design-spec-guide",
+        "MountingStackVerified": false,
+        "StackInterfaceContract": "{\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 6.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}",
+        "StackFitVerified": false,
+        "FDMPrintValidated": false
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "BatteryMount",
+        "Role": "Printed equipment carrier",
+        "PrintPart": true,
+        "SourceURL": "https://creallo.com/ko/guide/design-spec-guide",
+        "MountingStackVerified": false,
+        "StackInterfaceContract": "{\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 6.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}",
+        "StackFitVerified": false,
+        "FDMPrintValidated": false
+      },
+      "passed": false
+    },
+    {
+      "object": "ContinuousRail",
+      "local_shape": {
+        "difference_mm3": 3625.4111325603626,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.4000000000000004,
+        "volume_difference_mm3": 3625.4111325603753,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 3625.4111325603626,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.4000000000000004,
+        "volume_difference_mm3": 3625.4111325603753,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true,
+        "SourceURL": "https://creallo.com/ko/guide/design-spec-guide"
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true,
+        "SourceURL": "https://creallo.com/ko/guide/design-spec-guide"
+      },
+      "passed": false
+    },
+    {
+      "object": "ElectronicsEquipmentModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 14.280248603626564,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 14.28024860362657,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "ElectronicsEquipmentModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 34.482871087263895,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 34.48287108726382,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "ElectronicsMount",
+      "local_shape": {
+        "difference_mm3": 370.2447914590803,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 273.94043408723337,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 370.2447914590807,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 273.94043408723155,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "ElectronicsMount",
+        "Role": "Printed equipment carrier",
+        "PrintPart": true,
+        "SourceURL": "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual",
+        "MountingStackVerified": false,
+        "StackInterfaceContract": "{\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 6.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}",
+        "StackFitVerified": false,
+        "FDMPrintValidated": false
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "ElectronicsMount",
+        "Role": "Printed equipment carrier",
+        "PrintPart": true,
+        "SourceURL": "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual",
+        "MountingStackVerified": false,
+        "StackInterfaceContract": "{\"anchor_centres_xy_mm\": [[-24.0, -24.0], [24.0, 24.0]], \"axis_spacing_mm\": 67.88225099390857, \"clamp_centres_xy_mm\": [[-26.828427124746188, -26.828427124746188], [26.828427124746188, 26.828427124746188]], \"clamp_fit\": {\"bearing_scope\": \"The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.\", \"clearance_hole_diameter_mm\": 2.6, \"concentric_flat_head_radial_land_at_maximum_hole_mm\": 0.29999999999999993, \"concentric_nut_radial_land_at_maximum_hole_mm\": 0.44999999999999984, \"dimension_allowance_each_printed_dimension_mm\": 0.3, \"loosened_state\": \"Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.\", \"maximum_accepted_hole_diameter_mm\": 2.9, \"maximum_seated_registration_axis_offset_mm\": 1.0999999999999999, \"minimum_received_flat_head_bearing_diameter_mm\": 3.5, \"minimum_received_screw_crest_diameter_mm\": 1.8, \"nominal_axial_seating_gap_mm\": 0.0, \"nominal_tip_projection_mm\": 2.4, \"nut_height_mm\": 1.6, \"pointing_acceptance\": \"Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.\", \"printed_grip_mm\": 4.0, \"screw_length_mm\": 8.0, \"tip_projection_with_both_prints_0_3mm_thicker_mm\": 1.7999999999999998}, \"fixed_load_leg_section_mm\": [2.0, 6.0], \"host_support_z_mm\": 12.2, \"industry_standard_claimed\": false, \"integral_tower_height_mm\": 32.0, \"load_path\": \"Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.\", \"printed_deck_thickness_mm\": 2.0, \"service\": \"Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.\", \"stack_platform_bottom_z_mm\": 44.2, \"standard\": \"Project structural stack: rigid legs at (-24, -24) and (24, 24) mm, two outboard M2 clamps\", \"supported_hosts\": [\"BatteryEquipmentModule\", \"ElectronicsEquipmentModule\"], \"tower_attachment\": \"Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.\", \"tower_foot_thickness_mm\": 2.0}",
+        "StackFitVerified": false,
+        "FDMPrintValidated": false
+      },
+      "passed": false
+    },
+    {
+      "object": "MainPropulsionModuleRailClampNut",
+      "local_shape": {
+        "difference_mm3": 14.280248603626564,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 14.280248603626562,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000002,
+        "volume_difference_mm3": 3.552713678800501e-15,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2_HEX_NUT",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2 black steel hex nut 4mm AF 1.6mm",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2+black+steel+hex+nut+4mm+AF+1.6mm",
+        "PurchaseRequirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "MainPropulsionModuleRailClampScrew",
+      "local_shape": {
+        "difference_mm3": 34.482871087263895,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 34.48287108726389,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.7000000000000011,
+        "volume_difference_mm3": 7.105427357601002e-15,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "HardwareSKU": "M2X8_BUTTON_HEAD",
+        "Role": "Purchased metric hardware",
+        "PrintPart": false,
+        "MaterialSelection": "Black steel; seller-stated screw class 10.9, nut grade unverified",
+        "ThreadStandard": "ISO metric coarse M2 x 0.4, right hand",
+        "NominalThreadDiameter": 2.0,
+        "ThreadPitch": 0.4,
+        "ShapeModelNotes": "Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+        "SourceURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseSearchQuery": "M2x8 black steel button head hex socket screw",
+        "PurchaseSearchURL": "https://www.aliexpress.com/wholesale?SearchText=M2x8+black+steel+button+head+hex+socket+screw",
+        "PurchaseRequirements": "Selected black-steel M2 x 0.4 button-head screw, 8 mm under-head length, from the user's screw/nut kit. Design clearance envelope: head diameter 4.5 mm and head height 2 mm. Check actual head, length, 1.5 mm hex-key access and the documented joint grip. For the two optical foot clamps, require a measured flat under-head bearing diameter at least 3.5 mm and thread crest diameter at least 1.8 mm; the 4.5 mm maximum head envelope alone does not establish bearing contact. Both printed clearance holes must be at most 2.9 mm. No washers. Use minimal preload and verify PA12 retention and creep; these are not OEM motor or horn screws.",
+        "PurchaseCandidateURL": "https://www.aliexpress.com/item/1005005551208735.html",
+        "PurchaseEvidenceNotes": "Kit image identifies a button head, lengths 5/6/8 mm and a 1.5 mm hex key. Head envelopes are deliberate design allowances, not seller-dimensioned maxima or an ISO conformity claim. The seller's 10.9 statement is unverified for the received lot. No socket recess depth or exact crown profile is assumed.",
+        "PurchasingStatus": "Design purchase/preparation specification. Selected seller options and dimensional references are distinguished in each item; received-lot dimensions, material, fit and strength remain unverified."
+      },
+      "passed": false
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape": {
+        "difference_mm3": 1208.0247914590811,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 557.7195659127992,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1208.0247914590816,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 557.7195659127901,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "PropulsionFixedFrame",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "PropulsionFixedFrame",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "RailFitSample",
+      "local_shape": {
+        "difference_mm3": 545.4111325603627,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.4000000000000004,
+        "volume_difference_mm3": 545.411132560364,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 545.4111325603627,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 1.4000000000000004,
+        "volume_difference_mm3": 545.411132560364,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "ServoDriveBridge",
+      "local_shape": {
+        "difference_mm3": 118.44000000000007,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 118.43999999999778,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 118.44000000000001,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 118.43999999999869,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "PrintSKU": "ServoDriveBridge48T",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "PrintSKU": "ServoDriveBridge48T",
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    },
+    {
+      "object": "ShoeFitSample",
+      "local_shape": {
+        "difference_mm3": 607.8447914590806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.6000000000000014,
+        "volume_difference_mm3": 36.34043408723346,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 607.8447914590806,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.6000000000000014,
+        "volume_difference_mm3": 36.34043408723346,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true,
+      "current_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "baseline_procurement_and_scope_metadata": {
+        "Role": "Printed fit prototype",
+        "PrintPart": true
+      },
+      "passed": false
+    }
+  ],
+  "unchanged_shape_objects": [
+    "BearingSeatFitSample",
+    "CapacitorServiceReserve",
+    "FCWiringClearanceReserve",
+    "LR900NegativeXConnectorReserve",
+    "LR900PositiveXConnectorReserve",
+    "MTF02PConnectorReserve",
+    "MTF02POpticalClearanceReserve",
+    "MaximumBatteryEnvelope",
+    "ModuleBatteryEnvelope",
+    "ModuleFCEnvelope",
+    "ModuleLR900Envelope",
+    "ModuleMTF02PEnvelope",
+    "ModulePASEnvelope",
+    "OpticalMountBase",
+    "OpticalPitchBolt",
+    "OpticalPitchNut",
+    "OpticalRollBolt",
+    "OpticalRollBracket",
+    "OpticalRollNut",
+    "OpticalSensorTray",
+    "OpticalStackFootBolt0",
+    "OpticalStackFootBolt1",
+    "OpticalStackFootNut0",
+    "OpticalStackFootNut1",
+    "PASConnectorReserve",
+    "PortDriverGear",
+    "PortHornGearAdapter",
+    "PortHornGearClampBolt",
+    "PortHornGearClampNut",
+    "PortInputShaft",
+    "PortInputShaftClampBolt",
+    "PortInputShaftClampNut",
+    "PortMotor",
+    "PortMotorCarrier",
+    "PortOutputBearingNegative",
+    "PortOutputBearingPositive",
+    "PortOutputBearingSpacerNegative",
+    "PortOutputBearingSpacerPositive",
+    "PortOutputClampNegativeBolt",
+    "PortOutputClampNegativeNut",
+    "PortOutputClampPositiveBolt",
+    "PortOutputClampPositiveNut",
+    "PortOutputGear",
+    "PortOutputShaftNegative",
+    "PortOutputShaftPositive",
+    "PortPhaseLeadLoopReserve",
+    "PortPropellerDisk",
+    "PortServo",
+    "PortServoEarLowerBolt",
+    "PortServoEarLowerNut",
+    "PortServoEarUpperBolt",
+    "PortServoEarUpperNut",
+    "PortServoHorn",
+    "PortShaft",
+    "PortSweepBound",
+    "ServoBridgePortBolt",
+    "ServoBridgePortNut",
+    "ServoBridgeStarboardBolt",
+    "ServoBridgeStarboardNut",
+    "StarboardDriverGear",
+    "StarboardHornGearAdapter",
+    "StarboardHornGearClampBolt",
+    "StarboardHornGearClampNut",
+    "StarboardInputShaft",
+    "StarboardInputShaftClampBolt",
+    "StarboardInputShaftClampNut",
+    "StarboardMotor",
+    "StarboardMotorCarrier",
+    "StarboardOutputBearingNegative",
+    "StarboardOutputBearingPositive",
+    "StarboardOutputBearingSpacerNegative",
+    "StarboardOutputBearingSpacerPositive",
+    "StarboardOutputClampNegativeBolt",
+    "StarboardOutputClampNegativeNut",
+    "StarboardOutputClampPositiveBolt",
+    "StarboardOutputClampPositiveNut",
+    "StarboardOutputGear",
+    "StarboardOutputShaftNegative",
+    "StarboardOutputShaftPositive",
+    "StarboardPhaseLeadLoopReserve",
+    "StarboardPropellerDisk",
+    "StarboardServo",
+    "StarboardServoEarLowerBolt",
+    "StarboardServoEarLowerNut",
+    "StarboardServoEarUpperBolt",
+    "StarboardServoEarUpperNut",
+    "StarboardServoHorn",
+    "StarboardShaft",
+    "StarboardSweepBound",
+    "TapeWing0L",
+    "TapeWing0R",
+    "TapeWing1L",
+    "TapeWing1R",
+    "TapeWing2L",
+    "TapeWing2R",
+    "TapeWing3L",
+    "TapeWing3R",
+    "TapeWing4L",
+    "TapeWing4R",
+    "TapeWing5L",
+    "TapeWing5R",
+    "TapeWing6L",
+    "TapeWing6R",
+    "XT30ServiceReserve"
+  ],
+  "added_shape_objects": [],
+  "removed_shape_objects": [],
+  "all_object_placements_unchanged": true,
+  "all_procurement_metadata_unchanged": true,
+  "all_native_interfaces_unchanged": true,
+  "all_expressions_unchanged": true,
+  "registry_unchanged": true,
+  "native_control_checks": {
+    "cases": [
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "RailPositionX",
+        "input": -72.0,
+        "result_x_mm": -72.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "RailPositionX",
+        "input": 18.0,
+        "result_x_mm": 18.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "RailPositionX",
+        "input": 108.0,
+        "result_x_mm": 108.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      }
+    ],
+    "module_control_mapping_valid": true,
+    "expected_case_count": 29,
+    "passed": true
+  },
+  "intentional_annotation_changes": {
+    "PropulsionFixedFrame.PrintNotes": {
+      "before": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with an open low wire/key corridor, and two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+      "after": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed."
+    },
+    "ContinuousRail.PrintNotes": {
+      "before": "PA12 design basis, SLS or MJF pending supplier agreement; one-piece target 340x32x7mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= 161mm). Curvature and tape grip require a physical trial. No printed rail lock pins. The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
+      "after": "PA12 design basis, SLS or MJF pending supplier agreement; one-piece target 340x32x8.4mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= 161mm). Curvature and tape grip require a physical trial. No printed rail lock pins. The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required."
+    },
+    "ElectronicsEquipmentModuleRailClampScrew.Notes": {
+      "before": "M2x0.4 x8 from the kit. Friction clamp; inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+      "after": "M2x0.4 x8 from the kit. Friction clamp against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown."
+    },
+    "DesignRegistry.ReleaseStatus": {
+      "before": "{\"stage\": \"fit_prototype\", \"production_released\": false, \"unresolved_interfaces\": [{\"key\": \"motion_endpoints\", \"required_evidence\": \"Calibrate each X06 around nominal \u00b160deg servo motion for the 48T-to-16T speed-increasing pair's opposite-sign \u00b1180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.\", \"status\": \"unverified\"}, {\"key\": \"servo_power_and_load\", \"required_evidence\": \"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by 3 before losses; the direct gear transmits its mesh force to the servo output support, whose external radial-load capacity is unpublished.\", \"status\": \"unverified\"}, {\"key\": \"rail_flexure\", \"required_evidence\": \"Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.\", \"status\": \"unverified\"}, {\"key\": \"motor_mount\", \"required_evidence\": \"RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.\", \"status\": \"unverified\"}, {\"key\": \"servo_drive\", \"required_evidence\": \"Verify the selected KST 0415.13 horn's seating and original X06 retaining screw. Inspect the locally enlarged 1.8 mm tip hole at radius13.2mm, metal blade integrity, M1.6 head bearing and nut seating; CAD does not qualify this modification. Verify the printed horn-adapter root/end locating faces and relieved blade flanks, 8 mm D socket and locally cut \u00d83\u00d716 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; wider blade-side relief does not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.\", \"status\": \"unverified\"}, {\"key\": \"servo_ear_retention\", \"required_evidence\": \"X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement. Two straight 2 mm cradle walls join both ears to a removable paired bridge, with a broad frame seat immediately below each cradle. Check fore-aft bending, retained gear spacing and PA12 creep under load. Follow the checked ordered gear, coupling and servo extraction paths; free the leads and confirm the actual wire exit and handling access. Rigid CAD clearance does not establish installed stiffness or a physical assembly fit.\", \"status\": \"unverified\"}, {\"key\": \"gear_mesh_and_shaft_retention\", \"required_evidence\": \"Check the purchased 48T/16T selected seller pair at nominal 16 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. Two broad local Z seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3\u00d76\u00d72.5 bearing and \u00d83 6061 rod fits, integral outer shoulders, flanged metal inner-ring spacers, full bearing seating throughout permitted axial movement, shield clearance and broad carrier/frame axial stops. Measure the actual spacer lengths, frame spacing and carrier width together; reject preload, shield rubbing, inadequate bore engagement or excess endplay. Follow the staged inward bearing/spacer and retracted-shaft assembly path. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision \u00d83 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.\", \"status\": \"unverified\"}, {\"key\": \"electronic_mounting_stack\", \"required_evidence\": \"FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.\", \"status\": \"unverified\"}, {\"key\": \"physical_retention\", \"required_evidence\": \"Loaded tests of tape, friction clamps, PA12 flexure life and bearing supports.\", \"status\": \"unverified\"}, {\"key\": \"moving_wires\", \"required_evidence\": \"Actual phase-lead slack/strain relief through bounded \u00b1180deg output motion; reserved loops are not routing proof and endpoints must not wrap.\", \"status\": \"unverified\"}, {\"key\": \"connector_and_wire_fit\", \"required_evidence\": \"Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.\", \"status\": \"unverified\"}, {\"key\": \"optical_sensor_installation\", \"required_evidence\": \"Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.\", \"status\": \"unverified\"}, {\"key\": \"optical_stack_retention\", \"required_evidence\": \"Seat both broad tower feet directly on the host and tighten two ordinary M2x8 screws with M2 hex nuts. Verify printed flatness, actual hole and screw dimensions, full nut engagement, holding friction and PA12 creep; no pad or spring preload is assumed. Clearance holes permit registration before tightening, not operating movement. Reject rocking or slip under cable loads and recheck vertical sensor aim and pivot friction on both hosts. Disconnect wiring and remove the host carrier from the rail for bench service; underside tool access around the balloon is not established. Support the tower, remove its nuts and withdraw the screws downward before lifting it. Reinstall the carrier, check rail retention and re-trim. Physical stiffness and retention remain unqualified.\", \"status\": \"unverified\"}, {\"key\": \"rc_and_heading_installation\", \"required_evidence\": \"The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.\", \"status\": \"unverified\"}, {\"key\": \"finished_mass\", \"required_evidence\": \"Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.\", \"status\": \"unverified\"}]}",
+      "after": "{\"stage\": \"fit_prototype\", \"production_released\": false, \"unresolved_interfaces\": [{\"key\": \"motion_endpoints\", \"required_evidence\": \"Calibrate each X06 around nominal \u00b160deg servo motion for the 48T-to-16T speed-increasing pair's opposite-sign \u00b1180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.\", \"status\": \"unverified\"}, {\"key\": \"servo_power_and_load\", \"required_evidence\": \"Verify the selected X06 supply and PWM configuration, gear side load and measured output torque. The 3:1 angle increase divides ideal output torque by 3 before losses; the direct gear transmits its mesh force to the servo output support, whose external radial-load capacity is unpublished.\", \"status\": \"unverified\"}, {\"key\": \"rail_flexure\", \"required_evidence\": \"Creallo acceptance of one-piece 340mm rail, 1.2mm flexures, curvature and depowdering.\", \"status\": \"unverified\"}, {\"key\": \"motor_mount\", \"required_evidence\": \"RS1102 drawing confirms three M1.4 holes on PCD6.6; verify actual thread engagement, rear shaft/clip envelope and selected screw length before fastening.\", \"status\": \"unverified\"}, {\"key\": \"servo_drive\", \"required_evidence\": \"Verify the selected KST 0415.13 horn's seating and original X06 retaining screw. Inspect the locally enlarged 1.8 mm tip hole at radius13.2mm, metal blade integrity, M1.6 head bearing and nut seating; CAD does not qualify this modification. Verify the printed horn-adapter root/end locating faces and relieved blade flanks, 8 mm D socket and locally cut \u00d83\u00d716 aluminium stub with 0.5 mm full-length flat. Confirm coaxial gear seating, radial M2 shaft retention, M3 gear retention and actual kit head/nut dimensions. The horn root radius and overall tip reach remain functional locating dimensions; wider blade-side relief does not make arbitrary horns interchangeable. The horn's published spline class and blade dimensions support the nominal torque path, not proven installed fit, backlash or retention. The direct driver loads the servo output bearings; no external radial-load rating is published. Check loaded deflection, backlash and both-direction retention.\", \"status\": \"unverified\"}, {\"key\": \"servo_ear_retention\", \"required_evidence\": \"X06 drawing publishes two diameter 2 mm ear holes at 24 mm pitch and ear surfaces 3.7/4.7 mm below the case top. Verify actual ear contact, case tolerance, selected mounting screws and engagement. Two straight 2 mm cradle walls join both ears to a removable paired bridge, with a broad frame seat immediately below each cradle. Check fore-aft bending, retained gear spacing and PA12 creep under load. Follow the checked ordered gear, coupling and servo extraction paths; free the leads and confirm the actual wire exit and handling access. Rigid CAD clearance does not establish installed stiffness or a physical assembly fit.\", \"status\": \"unverified\"}, {\"key\": \"gear_mesh_and_shaft_retention\", \"required_evidence\": \"Check the purchased 48T/16T selected seller pair at nominal 16 mm centre distance, backlash, centre alignment, set-screw retention and PA12 creep. Both servo cradles form one removable ratio-specific bridge on the common output-bearing frame. The supported configuration is 48T/16T only; another ratio or servo requires redesigned replacement parts and renewed validation. Two broad local Z seats and unilateral X/Y datums establish its position; two M2 bolts clamp it without adjustment slots. Servo ear clearance, seating error, print distortion and creep affect the mesh. Measure both assembled centre distances and backlash; correct/reprint the bridge if required rather than elongating holes, forcing gears or pulling a warped bridge flat with the bolts. Qualify the selected generic 3\u00d76\u00d72.5 bearing and \u00d83 6061 rod fits, integral outer shoulders, flanged metal inner-ring spacers, full bearing seating throughout permitted axial movement, shield clearance and broad carrier/frame axial stops. Measure the actual spacer lengths, frame spacing and carrier width together; reject preload, shield rubbing, inadequate bore engagement or excess endplay. Follow the staged inward bearing/spacer and retracted-shaft assembly path. Rod diameter tolerance and straightness are unspecified; deburr cut ends and measure before insertion, never force the shaft through bearings. A dimensionally equivalent precision \u00d83 shaft is a fallback without changing nominal CAD; recheck fits and torque grip. Shaft friction retention and preload remain unqualified. Confirm purchased M3 screw lengths/tips and protrusion before running; those screw solids are not yet modeled.\", \"status\": \"unverified\"}, {\"key\": \"electronic_mounting_stack\", \"required_evidence\": \"FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.\", \"status\": \"unverified\"}, {\"key\": \"physical_retention\", \"required_evidence\": \"Loaded tests of tape, friction clamps, PA12 flexure life and bearing supports. The rail clamp acts across the solid T head and retains local screw-tip pressure; verify a burr-free received tip, opposed seating and no indentation or creep at the minimum useful hand tightening. No qualified tightening torque or holding force is specified. Check the selected 1.5mm L-key against the modeled short-arm access envelope and confirm the working stroke with actual socket engagement. Continuous post roots remove the former key tunnels but do not establish a strength rating.\", \"status\": \"unverified\"}, {\"key\": \"moving_wires\", \"required_evidence\": \"Actual phase-lead slack/strain relief through bounded \u00b1180deg output motion; reserved loops are not routing proof and endpoints must not wrap.\", \"status\": \"unverified\"}, {\"key\": \"connector_and_wire_fit\", \"required_evidence\": \"Verify actual port XYZ, header variants, connector engagement/latch access, cable/heat-shrink dimensions, bend radii and pinouts. Reserved lanes and the 3mm-bundle/R5 planning exits are design allowances, not manufacturer cable requirements. Disconnect leads before device or module removal.\", \"status\": \"unverified\"}, {\"key\": \"optical_sensor_installation\", \"required_evidence\": \"Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.\", \"status\": \"unverified\"}, {\"key\": \"optical_stack_retention\", \"required_evidence\": \"Seat both broad tower feet directly on the host and tighten two ordinary M2x8 screws with M2 hex nuts. Verify printed flatness, actual hole and screw dimensions, full nut engagement, holding friction and PA12 creep; no pad or spring preload is assumed. Clearance holes permit registration before tightening, not operating movement. Reject rocking or slip under cable loads and recheck vertical sensor aim and pivot friction on both hosts. Disconnect wiring and remove the host carrier from the rail for bench service; underside tool access around the balloon is not established. Support the tower, remove its nuts and withdraw the screws downward before lifting it. Reinstall the carrier, check rail retention and re-trim. Physical stiffness and retention remain unqualified.\", \"status\": \"unverified\"}, {\"key\": \"rc_and_heading_installation\", \"required_evidence\": \"The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.\", \"status\": \"unverified\"}, {\"key\": \"finished_mass\", \"required_evidence\": \"Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.\", \"status\": \"unverified\"}]}"
+    },
+    "ShoeFitSample.Notes": {
+      "before": "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, screw-tip contact and sliding fit. Raw printing tolerance is not sufficient for hex capture. No printed threads.",
+      "after": "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, full screw-tip contact on the thick head and sliding fit. Check sustained grip and rail indentation with hand-snug pressure. Raw printing tolerance is not sufficient for hex capture. No printed threads or qualified torque."
+    },
+    "MainPropulsionModuleRailClampScrew.Notes": {
+      "before": "M2x0.4 x8 from the kit. Friction clamp; inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+      "after": "M2x0.4 x8 from the kit. Friction clamp against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown."
+    },
+    "DesignRegistry.SourceFingerprint": {
+      "before": "15c2d3f208f470289c2d880fe57b220869f623d483c4e252fdd0e939c04d4c44",
+      "after": "30f614ea7a35c805773e2d6d16222832701d5c48385c9ccbab9d4fefdaf51906"
+    },
+    "ContinuousRail.Notes": {
+      "before": "PA12 design basis, SLS or MJF pending supplier agreement; one-piece target 340x32x7mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= 161mm). Curvature and tape grip require a physical trial. No printed rail lock pins. The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
+      "after": "PA12 design basis, SLS or MJF pending supplier agreement; one-piece target 340x32x8.4mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= 161mm). Curvature and tape grip require a physical trial. No printed rail lock pins. The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required."
+    },
+    "DesignRegistry.WiringPurchasePlan": {
+      "before": "{\"connector_ends_before_subtracting_included_cables\": {\"GH1.25-4P\": 2, \"SH1.0-4P\": 2, \"SH1.0-6P\": 2}, \"pinout_rule\": \"Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.\", \"scope\": \"Three onboard UART harnesses; subtract cables already supplied with devices. Lengths and finished mass remain unmeasured.\", \"seller_or_completed_harness_verified\": false, \"stock_consumables\": [\"Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Keep the open wire/key corridors usable, heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips.\", \"Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.\", \"XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.\"], \"stock_replacement_decision\": \"Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and direct horn-to-gear adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.\", \"uart_harnesses\": [{\"connection\": \"FC UART1 to LR900-A UART\", \"device_connector\": \"GH1.25-4P\", \"fc_connector\": \"SH1.0-6P UART1/UART6 port\", \"quantity\": 1}, {\"connection\": \"FC UART3 to LinkTrack P-AS UART\", \"device_connector\": \"GH1.25-4P; use one of the two parallel ports\", \"fc_connector\": \"SH1.0-6P UART3/I2C port\", \"quantity\": 1}, {\"connection\": \"FC UART4 to MTF-02P UART\", \"device_connector\": \"SH1.0-4P\", \"fc_connector\": \"SH1.0-4P UART4 port\", \"quantity\": 1}]}",
+      "after": "{\"connector_ends_before_subtracting_included_cables\": {\"GH1.25-4P\": 2, \"SH1.0-4P\": 2, \"SH1.0-6P\": 2}, \"pinout_rule\": \"Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.\", \"scope\": \"Three onboard UART harnesses; subtract cables already supplied with devices. Lengths and finished mass remain unmeasured.\", \"seller_or_completed_harness_verified\": false, \"stock_consumables\": [\"Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep tie heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips or assumed route through the bearing posts.\", \"Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.\", \"XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.\"], \"stock_replacement_decision\": \"Use stock harness parts, fasteners, spacers, dampers, KST 0415.13 horns, gears, shafts, bearings and cable ties. Print the rail, carriers, supports and direct horn-to-gear adapters. Retain the bought horn spline and original retaining screw; qualify the adapter fit and clamping with actual parts.\", \"uart_harnesses\": [{\"connection\": \"FC UART1 to LR900-A UART\", \"device_connector\": \"GH1.25-4P\", \"fc_connector\": \"SH1.0-6P UART1/UART6 port\", \"quantity\": 1}, {\"connection\": \"FC UART3 to LinkTrack P-AS UART\", \"device_connector\": \"GH1.25-4P; use one of the two parallel ports\", \"fc_connector\": \"SH1.0-6P UART3/I2C port\", \"quantity\": 1}, {\"connection\": \"FC UART4 to MTF-02P UART\", \"device_connector\": \"SH1.0-4P\", \"fc_connector\": \"SH1.0-4P UART4 port\", \"quantity\": 1}]}"
+    },
+    "PropulsionFixedFrame.Notes": {
+      "before": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with an open low wire/key corridor, and two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+      "after": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed."
+    },
+    "PortPhaseLeadLoopReserve.Notes": {
+      "before": "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded\u00b1180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or route wires through solid tilt shafts.",
+      "after": "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded\u00b1180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties around existing frame arms, routing outside the solid bearing-post roots and clear of the local clamp tool bay. Do not clamp a moving loop taut or route wires through solid tilt shafts."
+    },
+    "ShoeFitSample.PrintNotes": {
+      "before": "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, screw-tip contact and sliding fit. Raw printing tolerance is not sufficient for hex capture. No printed threads.",
+      "after": "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, full screw-tip contact on the thick head and sliding fit. Check sustained grip and rail indentation with hand-snug pressure. Raw printing tolerance is not sufficient for hex capture. No printed threads or qualified torque."
+    },
+    "BatteryEquipmentModuleRailClampScrew.Notes": {
+      "before": "M2x0.4 x8 from the kit. Friction clamp; inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown.",
+      "after": "M2x0.4 x8 from the kit. Friction clamp against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. Screw remains in the captured nut during normal adjustment. Unmeasured kit button head represented by a conservative design cylinder diameter 4.5 mm x height 2.0 mm. This is an acceptance envelope, not a published head dimension; socket depth and actual head mass are unknown."
+    },
+    "StarboardPhaseLeadLoopReserve.Notes": {
+      "before": "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded\u00b1180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties at existing frame windows; do not clamp a moving loop taut or route wires through solid tilt shafts.",
+      "after": "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded\u00b1180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties around existing frame arms, routing outside the solid bearing-post roots and clear of the local clamp tool bay. Do not clamp a moving loop taut or route wires through solid tilt shafts."
+    }
+  },
+  "design_decisions": [
+    "Raise solid T head from 1.6 to 3 mm and centre nominal M2 tip with 0.5 mm upper/lower edge margins. Opposed shoe jaw reacts transverse clamp load across head; vehicle loads still reach tape through base.",
+    "Raise matched shoe roof to 10.8 mm while retaining equipment support face 12.2 mm and every optical datum. Keep 1.2 mm base and full-height flex reliefs.",
+    "Fill all four 6.4 by 4 mm root openings; each bearing post now has a continuous 9.6 by 4 mm root. Do not quantify strength gain from cross-sectional area.",
+    "Replace long through-post tool corridors with local frame/bridge access; preserve 2 mm foot floor, 2 by 2 mm ring bars and 1.5 mm local pad roofs. Conservative screw-head to roof-corner gap is 0.495 mm nominal.",
+    "Use dimensional 1.5 mm AF, 50 by 16 mm L-key envelope, short leg for propulsion and long leg for equipment. Catalogue/live-title conflict prevents approving a SKU or the unknown kit key without measurement.",
+    "Preserve existing fastener SKUs/counts and separate paired servo/input-drive module."
+  ],
+  "mass_estimate_g": {
+    "before_printed": 50.9622988584313,
+    "after_printed": 54.533625719939,
+    "printed_change": 3.5713268615077,
+    "hardware_unchanged": 30.740834303120295,
+    "scope": "Modeled PA12 volume with provisional 1.01 g/cm3 density; not measured or all-up flight mass."
+  },
+  "inventory": {
+    "installed_printed_part_count": 12,
+    "purchased_hardware_count": 62,
+    "unique_stl_count": 13,
+    "fit_sample_count": 3
+  },
+  "physical_limits": [
+    "Actual screw-tip contact, indentation, clamp holding force and PA12 creep require coupon and installed-load trials.",
+    "50 by 16 mm tool is a dimensional acceptance envelope. Real socket engagement, tool bend, hand and harness room remain unqualified.",
+    "Continuous root geometry is not a strength, fatigue or load rating.",
+    "Unchanged bearing fits, horn preparation, dynamic wire routing and manufacturing process acceptance remain unresolved."
+  ],
+  "targeted_validation": {
+    "rail_contact_and_flex_relief_tests": {
+      "count": 6,
+      "passed": true,
+      "includes_mutation_rejection": true
+    },
+    "frame_root_tests": {
+      "count": 4,
+      "passed": true,
+      "includes_reopened_root_rejection": true
+    },
+    "rail_fastener_and_service_tests": {
+      "count": 11,
+      "passed": true
+    },
+    "propulsion_integration_tests": {
+      "count": 3,
+      "passed": true
+    },
+    "complete_assembly_l_key_checks": {
+      "cases": 6,
+      "installed_obstacles_per_case": 101,
+      "passed": true,
+      "socket_insertion_mm": [
+        0,
+        2
+      ],
+      "screw_release_mm": 1.2,
+      "continuous_working_sector_deg": [
+        0,
+        60
+      ],
+      "method": "Rotation-invariant coaxial leg translation plus continuous bent-handle rotation/translation; indexed withdrawal, reset and removal checked separately."
+    },
+    "geometry_and_visual_review": {
+      "changed_shapes": 13,
+      "all_retained_shapes": 117,
+      "views": [
+        "complete assembly",
+        "propulsion",
+        "rail attachment section",
+        "print layout",
+        "optical battery host",
+        "optical FC host"
+      ],
+      "passed": true
+    },
+    "physical_qualification": false,
+    "full_native_suite": {
+      "tests": 290,
+      "passed": true,
+      "skipped": 0,
+      "elapsed_seconds": 406.64,
+      "runtime": "FreeCAD 1.1.3 AppImage Python"
+    },
+    "static_checks": {
+      "ruff_check": true,
+      "ruff_format": true,
+      "compileall": true,
+      "diff_check": true
+    }
+  },
+  "final_release_checks": {
+    "build": true,
+    "preview": true,
+    "saved_cad_validation": true,
+    "pinned_geometry_comparison": true,
+    "bundle": true,
+    "source_fingerprint": "ffe8ad3f9b20e76df8390684a315477bdcc118faa99270d9a4bf9d4e4870b00f",
+    "saved_cad_sha256": "53c318adf76b7c0494525b3da273e3d9c3d85cdd221e834996e863cfafd5f159",
+    "bundle_sha256": "9148cd05aef5f805b22e3d083d577d32354bfe2aaf0ed6fa33fd7b07ba8cdeec",
+    "production_released": false
+  }
+}

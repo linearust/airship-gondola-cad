@@ -226,8 +226,8 @@ def _output_support(sign):
             PIVOT_Z - BASE_Z - FOOT_THICKNESS,
             (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
         )
-        # Keep the tall support as a plain web. The former lightening window
-        # left two 1.6 mm ligaments; the separate low wire/key corridor remains.
+        # Keep the full post and its root solid. Rail-key access stays in the
+        # central service bay rather than passing through these bearing feet.
         cup = _bearing_cup(28 if side > 0 else -28, positive_side=side > 0)
         cup = _shifted(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
         post = post.cut(
@@ -261,39 +261,7 @@ def fixed_frame_shape():
             servo_bridge.frame_seats(),
         ]
     )
-    frame = servo_bridge.finish_frame(frame)
-    head_end_y = rail.clamp_screw_shape().BoundBox.YMax
-    for side in (-1, 1):
-        # Carry the existing 6.4 mm wire/key corridor through the outer post
-        # after changing the pod span. Only this low corridor divides the
-        # otherwise solid post into two short 1.6 mm-wide feet.
-        frame = frame.cut(
-            mirrored_y(
-                box(
-                    6.4,
-                    PIVOT_HALF_SPAN + 33 - rail.SHOE_WIDTH / 2,
-                    4,
-                    (-3.2, rail.SHOE_WIDTH / 2, 4),
-                ),
-                side,
-            )
-        )
-        # The headed rail bolt reaches slightly below that corridor. Open only
-        # its short floor bay through the complete loosening travel instead of
-        # leaving a thin floor beneath the head. The two 5.8 mm-wide wing
-        # ligaments remain continuous beside the bay.
-        frame = frame.cut(
-            mirrored_y(
-                box(
-                    6.4,
-                    head_end_y + rail.RELEASE_TRAVEL + 0.5 - rail.SHOE_WIDTH / 2,
-                    4 - BASE_Z + 0.01,
-                    (-3.2, rail.SHOE_WIDTH / 2, BASE_Z - 0.01),
-                ),
-                side,
-            )
-        )
-    return _checked(frame, "Common output-bearing frame")
+    return _checked(servo_bridge.finish_frame(frame), "Common output-bearing frame")
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -672,7 +640,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with an open low wire/key corridor, and two broad local seats for the removable paired servo bridge. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )

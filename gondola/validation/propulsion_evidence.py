@@ -14,6 +14,7 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "direct_adapter_fit": 2,
         "input_shaft_retention": 2,
         "bearing_stacks": 4,
+        "bearing_post_roots": 4,
         "output_stub_clearance": 4,
         "shaft_service": 4,
         "bearing_service": 4,

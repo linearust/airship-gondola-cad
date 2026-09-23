@@ -30,6 +30,11 @@ RING_BOTTOM_Z, RING_THICKNESS = 10.4, 2.0
 RING_OUTER_X = 19.5
 BOLT_X, BOLT_Y = 14.5, 18.0
 MOUNT_GRIP = PAD_TOP_Z - NUT_SEAT_Z
+RAIL_SERVICE_HALF_WIDTH = 3.2
+RAIL_SERVICE_END_Y = 35.0
+RAIL_KEY_NOTCH_Y = 23.0
+RAIL_HEAD_PAD_END_Y = 16.0
+RAIL_HEAD_CLEARANCE_TOP_Z = PAD_TOP_Z - 1.5
 
 
 def opposite(shape):
@@ -110,7 +115,27 @@ def bridge_shape(drive=SELECTED_DRIVE):
     bridge = bridge.cut(void).cut(opposite(void))
     # Leave the lower M1.6 nut an open axial passage for assembly and service.
     nut_passage = box(5, 7.5, 2.2, (x - 2.5, PAD_INNER_Y, SEAT_Z - 0.1))
-    return _mount_holes(bridge.cut(nut_passage).cut(opposite(nut_passage)))
+    bridge = bridge.cut(nut_passage).cut(opposite(nut_passage))
+    # The L-key gets full-height edge recesses, leaving 2 mm transverse bars.
+    # Its separate head bay retains a 1.5 mm roof and the inside-Y locating
+    # face; merge it into the existing nut passage to avoid a narrow strip.
+    rail_service = [
+        box(
+            2 * RAIL_SERVICE_HALF_WIDTH,
+            PAD_OUTER_Y - RAIL_KEY_NOTCH_Y + 1,
+            RING_BOTTOM_Z + RING_THICKNESS - SEAT_Z + 0.2,
+            (-RAIL_SERVICE_HALF_WIDTH, RAIL_KEY_NOTCH_Y, SEAT_Z - 0.1),
+        ),
+        box(
+            x - 2.5 - PAD_INNER_X + 0.2,
+            RAIL_HEAD_PAD_END_Y - PAD_INNER_Y + 0.1,
+            RAIL_HEAD_CLEARANCE_TOP_Z - SEAT_Z + 0.1,
+            (PAD_INNER_X - 0.1, PAD_INNER_Y - 0.1, SEAT_Z - 0.1),
+        ),
+    ]
+    for clearance in rail_service:
+        bridge = bridge.cut(clearance).cut(opposite(clearance))
+    return _mount_holes(bridge)
 
 
 def frame_seats():
@@ -159,18 +184,19 @@ def frame_seats():
 
 
 def finish_frame(frame):
-    """Keep mounting bores and the original motor-wire corridors open."""
+    """Keep local rail-key access above the intact foot floor."""
     frame = _mount_holes(frame)
+    service_bottom = rail.SHOE_BOTTOM + 2.0
     for sign in (-1, 1):
         frame = frame.cut(
-            mirrored_y(box(6.4, 104, 4, (-3.2, rail.SHOE_WIDTH / 2, 4)), sign)
-        )
-        # The old 4..8 mm wire corridor otherwise leaves a 0.7 mm roof under
-        # the new seating plane. Open that small inner strip completely; the
-        # broad seat still supports the servo axis and most of the root pad.
-        frame = frame.cut(
             mirrored_y(
-                box(6.4, PAD_OUTER_Y - PAD_INNER_Y, 1, (-3.2, PAD_INNER_Y, 8)), sign
+                box(
+                    2 * RAIL_SERVICE_HALF_WIDTH,
+                    RAIL_SERVICE_END_Y - rail.SHOE_WIDTH / 2,
+                    RAIL_HEAD_CLEARANCE_TOP_Z - service_bottom,
+                    (-RAIL_SERVICE_HALF_WIDTH, rail.SHOE_WIDTH / 2, service_bottom),
+                ),
+                sign,
             )
         )
     return frame.removeSplitter()

@@ -22,6 +22,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   path. Preserve separate shaft grip and broad carrier/frame axial stops.
   The optical seats use direct M2 clamps; the archived
   latch review records a superseded trial, not an assembly instruction.
+  `references/rail_joint_review.md` explains the solid rail-head clamp,
+  continuous bearing-post roots and short-arm L-key access. Keep wiring
+  outside those roots; do not restore long tool tunnels through them.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;

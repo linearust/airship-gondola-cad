@@ -28,10 +28,11 @@ LENGTH = RAIL_LENGTH_MM
 PAD_CENTRES = (-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.2
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
-HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 7.0
-SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.2
+HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 8.4
+SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.8
 CLEARANCE = 0.45
-CLAMP_Z = 6.2
+CLAMP_Z = 6.9
+CLAMP_FACE_EDGE_ALLOWANCE = 0.5
 CLAMP_SHIFT_Y = 0.45
 NUT_AF = fasteners.HEX_NUT_AF
 NUT_POCKET_AF, NUT_THICKNESS = 4.15, fasteners.HEX_NUT_HEIGHT
@@ -43,6 +44,7 @@ NUT_POCKET_Y, NUT_POCKET_DEPTH = 6.95, 2.2
 CLAMP_LAND_OFFSET = 4.0
 RELEASE_TRAVEL = 1.2
 LAND_PITCH, FLEX_GAP = 18.0, 4.5
+FLEX_ROOT_RADIUS = 0.5
 SCREW_LENGTH = fasteners.RAIL_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
 SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
@@ -86,7 +88,14 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     ):
         x = (i + 0.5) * LAND_PITCH
         if abs(x) < length / 2:
-            rail = rail.cut(box(FLEX_GAP, 12, 7, (x - FLEX_GAP / 2, -6, PAD_THICKNESS)))
+            rail = rail.cut(
+                box(
+                    FLEX_GAP,
+                    12,
+                    HEAD_TOP - PAD_THICKNESS + 1,
+                    (x - FLEX_GAP / 2, -6, PAD_THICKNESS),
+                )
+            )
     rail = rail.removeSplitter()
     # Longer reliefs offset the thicker flexure; preserve 0.5 mm root fillets.
     # This is a bending-compliance design choice, not a fatigue qualification.
@@ -100,7 +109,7 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
         and abs(e.CenterOfMass.x) < length / 2 - 0.1
     ]
     if web_root_edges:
-        rail = rail.makeFillet(0.5, web_root_edges).removeSplitter()
+        rail = rail.makeFillet(FLEX_ROOT_RADIUS, web_root_edges).removeSplitter()
     return rail
 
 
@@ -183,6 +192,8 @@ def clamp_screw_shape():
     # In the locked assembly the shoe moves +Y .45 until its far jaw seats.
     tip_y = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y
     # The unknown screw-tip chamfer is conservatively bounded by a full shank.
+    # Its full nominal face bears within the solid 3 mm head, leaving 0.5 mm
+    # above and below. The opposite shoe jaw reacts that load across the head.
     # Inspect the real end for a usable bearing face/burrs before pressing PA12.
     # An 8 mm screw puts its head 1.55 mm outside the shoe; a 6 mm one would
     # collide with the outer wall before reaching this contact plane.
@@ -318,7 +329,8 @@ def build_clamp_hardware(doc, parent, prefix, side_expression):
         "M2 x 8 kit button-head screw | design head envelope",
         clamp_screw_shape(),
         "M2X8_BUTTON_HEAD",
-        "M2x0.4 x8 from the kit. Friction clamp; inspect the actual screw end and test its PA12 contact. "
+        "M2x0.4 x8 from the kit. Friction clamp against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. "
+        "The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. "
         "Loosen three turns (1.2mm) to slide. Hand snug only; no qualified torque or holding force. "
         "Screw remains in the captured nut during normal adjustment. "
         + fasteners.HEAD_ENVELOPE_NOTE,
@@ -379,9 +391,10 @@ def build_rail(doc):
         f"PRINT | PA12 continuous T rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x7mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
+        f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x{HEAD_TOP:g}mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
         "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
-        "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm web-root fillets. Shoe bridges the narrow gaps. "
+        "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. "
+        "The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. "
         f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
         "The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
     )
@@ -440,9 +453,110 @@ def build_coupons(doc):
         "PRINT FIRST | integral rail shoe with M2 nut slot",
         shoe_shape(),
         App.Rotation(),
-        "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, screw-tip contact and sliding fit. Raw printing tolerance is not sufficient for hex capture. No printed threads.",
+        "Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion and rotation blocking with the actual nut, head/tool access, full screw-tip contact on the thick head and sliding fit. Check sustained grip and rail indentation with hand-snug pressure. Raw printing tolerance is not sufficient for hex capture. No printed threads or qualified torque.",
     )
     return {"group": group, "printed": [rail_coupon, shoe_coupon]}
+
+
+def flex_relief_check(rail_section=None, length=48.0):
+    """Require open full-height gaps above the intentional base-root fillets."""
+    rail_section = rail_shape(length, (0,)) if rail_section is None else rail_section
+    start_z = PAD_THICKNESS + FLEX_ROOT_RADIUS + 0.1
+    rows = []
+    for i in range(
+        -int(math.ceil(length / LAND_PITCH)), int(math.ceil(length / LAND_PITCH)) + 1
+    ):
+        x = (i + 0.5) * LAND_PITCH
+        if abs(x) >= length / 2:
+            continue
+        gap = box(
+            FLEX_GAP,
+            HEAD_WIDTH,
+            HEAD_TOP + 0.1 - start_z,
+            (x - FLEX_GAP / 2, -HEAD_WIDTH / 2, start_z),
+        )
+        obstruction = abs(gap.common(rail_section).Volume)
+        rows.append(
+            {
+                "gap_centre_x_mm": x,
+                "gap_obstruction_mm3": obstruction,
+                "passed": obstruction < 1e-6,
+            }
+        )
+    return {
+        "probe_start_z_mm": start_z,
+        "probe_end_z_mm": HEAD_TOP + 0.1,
+        "preserved_base_root_fillet_height_mm": FLEX_ROOT_RADIUS,
+        "gaps": rows,
+        "passed": bool(rows) and all(row["passed"] for row in rows),
+    }
+
+
+def clamp_contact_check(rail_section=None, shoe=None):
+    """Measure the seated screw/head/jaw contact geometry, not holding force.
+
+    Thin witness volumes measure actual material just inside each contact
+    plane. Requiring the entire nominal screw face and the transverse strip
+    to exist rejects the former partial face on a 1.6 mm head. The opposite
+    jaw check does not mistake general T capture for a clamp reaction face.
+    """
+    rail_section = rail_shape(48, (0,)) if rail_section is None else rail_section
+    shoe = shoe_shape() if shoe is None else shoe
+    depth = 0.01
+    radius = fasteners.THREAD_DIAMETER / 2
+    full_tip_area = math.pi * radius**2
+    lower_margin = CLAMP_Z - radius - HEAD_BOTTOM
+    upper_margin = HEAD_TOP - CLAMP_Z - radius
+    rows = []
+    for offset in (-CLAMP_LAND_OFFSET, 0.0, CLAMP_LAND_OFFSET):
+        tip = Part.makeCylinder(
+            radius, depth, V(offset, HEAD_WIDTH / 2, CLAMP_Z), V(0, -1, 0)
+        )
+        tip_area = abs(tip.common(rail_section).Volume) / depth
+        load_strip = box(
+            2 * radius,
+            HEAD_WIDTH,
+            2 * radius,
+            (offset - radius, -HEAD_WIDTH / 2, CLAMP_Z - radius),
+        )
+        strip_missing = abs(load_strip.cut(rail_section).Volume)
+        rail_skin = rail_section.common(
+            box(
+                SHOE_LENGTH,
+                depth,
+                HEAD_TOP - HEAD_BOTTOM,
+                (offset - SHOE_LENGTH / 2, -HEAD_WIDTH / 2, HEAD_BOTTOM),
+            )
+        )
+        seated_shoe = translated_shape(shoe, x=offset, y=CLAMP_SHIFT_Y)
+        jaw_area = (
+            abs(translated_shape(rail_skin, y=-depth).common(seated_shoe).Volume)
+            / depth
+        )
+        rows.append(
+            {
+                "clamp_offset_from_land_centre_mm": offset,
+                "supported_nominal_tip_area_mm2": tip_area,
+                "opposing_jaw_contact_area_mm2": jaw_area,
+                "missing_solid_transverse_load_strip_mm3": strip_missing,
+                "passed": abs(tip_area - full_tip_area) < 1e-5
+                and jaw_area >= 10 * full_tip_area - 1e-5
+                and strip_missing < 1e-6,
+            }
+        )
+    return {
+        "head_thickness_mm": HEAD_TOP - HEAD_BOTTOM,
+        "nominal_screw_tip_face_area_mm2": full_tip_area,
+        "tip_lower_edge_margin_mm": lower_margin,
+        "tip_upper_edge_margin_mm": upper_margin,
+        "required_nominal_vertical_edge_margin_mm": CLAMP_FACE_EDGE_ALLOWANCE,
+        "required_opposing_jaw_contact_area_mm2": 10 * full_tip_area,
+        "contact_cases": rows,
+        "scope": "Nominal seated contact geometry only. The opposing jaw reacts the transverse clamp load across the solid head; the thin base still transmits vehicle loads to the tape. The actual screw end may have a smaller, chamfered bearing face. Powder-bed tolerance, surface texture, indentation, creep and frictional holding force require coupon and installed-load trials; no tightening torque is qualified.",
+        "passed": lower_margin >= CLAMP_FACE_EDGE_ALLOWANCE - 1e-6
+        and upper_margin >= CLAMP_FACE_EDGE_ALLOWANCE - 1e-6
+        and all(row["passed"] for row in rows),
+    }
 
 
 def validate_mechanism():
@@ -496,12 +610,18 @@ def validate_mechanism():
         "shoe_screw": intersection_volume(shoe, half_turn(clamp_screw_shape())),
         "shoe_nut": intersection_volume(shoe, half_turn(nut_shape())),
     }
+    clamp_contact = clamp_contact_check(rail, shoe)
+    flex_relief = flex_relief_check(rail)
     return {
         "passed": max(seated_intersections.values()) < 1e-6
         and max(negative_side_intersections.values()) < 1e-6
         and symmetry_difference < 1e-6
         and all(p["rail_shoe_overlap_mm3"] < 1e-6 for p in slide_samples)
-        and all(v > 1e-5 for v in capture_intersections.values()),
+        and all(v > 1e-5 for v in capture_intersections.values())
+        and clamp_contact["passed"]
+        and flex_relief["passed"],
+        "clamp_contact": clamp_contact,
+        "flex_relief": flex_relief,
         "rail_length_mm": LENGTH,
         "continuous_single_rail": True,
         "unbroken_base": True,
