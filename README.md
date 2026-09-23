@@ -26,7 +26,8 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
   `references/shape_simplification_review.md` records the optical portal and
-  open paired-servo support, horn adapter and straight P-AS arm; preserve their locating faces, load paths and functional service openings.
+  open paired-servo support, horn adapter and straight P-AS arm. Preserve their
+  locating faces, load paths and functional service openings.
   `references/rail_fit_review.md` distinguishes the matched T-head fit from
   relieved nonlocating surfaces. Qualify the existing coupons before full prints;
   do not claim raw powder-bed tolerance guarantees hand insertion or retention.
@@ -37,6 +38,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 - `gondola/validation/` and `tests/fixtures/` define regression checks;
   `validation/manufacturing.py` owns wall measurements and process allowances;
   `validation/wiring.py` owns reserve geometry and declared access margins.
+  `validation/propulsion_service.py` owns shared removal paths and retained
+  obstacles; `validation/servo_module.py` checks paired-module seating and removal.
+  These helpers must not import the coordinating `validation/propulsion.py`.
   `config.py`, `provenance.py` and `bundle.py` enforce artifact identity.
 - `cli.py` dispatches commands; `freecad_runtime.py` manages the AppImage process.
 
@@ -71,7 +75,9 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   Include permitted axial travel in clearance and gear-face engagement budgets;
   distinguish deliberate bearing, gear and axial-stop contact from collisions.
 - The selected plain-bore driver gears mount on short nominal-3mm input stubs,
-  retained in open printed clamping adapters on bought KST horns. Preserve the short root/end locating faces and verify their registration from saved geometry; bolt-hole clearance alone does not establish concentricity. The prepared-horn
+  retained in open printed clamping adapters on bought KST horns. Preserve the
+  short root/end locating faces and verify their registration from saved geometry;
+  bolt-hole clearance alone does not establish concentricity. The prepared-horn
   purchase key requires enlarging only the sourced tip hole for the direct
   M1.6 adapter joint; do not describe that modification as a factory feature
   or infer strength from clearance tests. Keep the original horn spline and

@@ -1126,13 +1126,12 @@ def detailed_propulsion_evidence(doc, source):
     from .motion_clearance import carrier_metal_clearance_check
     from .propulsion import (
         bearing_post_roots_check,
-        bridge_joint_check,
         fixed_servo_datum_check,
         gear_engagement_check,
-        servo_module_service_check,
         servo_mount_check,
     )
     from .relative_motion import relative_motion_check
+    from .servo_module import bridge_joint_check, servo_module_service_check
 
     configuration = drive_for_document(doc)
     path = source.parent / (source.stem + "_propulsion_validation.json")

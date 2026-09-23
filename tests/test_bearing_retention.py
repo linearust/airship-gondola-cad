@@ -21,12 +21,14 @@ class CaplessBearingTests(unittest.TestCase):
 
     def test_full_post_bore_and_outer_shoulder_survive_inward_bearing_float(self):
         """The post must not refill the reversed cup's inboard guide opening."""
+        from gondola.cad import translated_shape
+
         p = self.p
         for pod_y in (-p.PIVOT_HALF_SPAN, p.PIVOT_HALF_SPAN):
             for side in (-1, 1):
                 for inward in (0.0, 1.0):
                     start = min(side * (28 - inward), side * (30.5 - inward))
-                    bearing = p._shifted(
+                    bearing = translated_shape(
                         p.bearing_shape(), y=pod_y + start, z=p.PIVOT_Z
                     )
                     self.assertLess(self.frame.common(bearing).Volume, 1e-7)
@@ -42,12 +44,14 @@ class CaplessBearingTests(unittest.TestCase):
                 self.assertLess(shoulder.cut(self.frame).Volume, 1e-7)
 
     def test_stock_spacer_profile_keeps_its_large_flange_off_bearing_face(self):
+        from gondola.cad import translated_shape
+
         p = self.p
         spacer = p.bearing_spacer_shape()
         self.assertTrue(spacer.isValid())
         self.assertEqual(len(spacer.Solids), 1)
         # Axially shift the bush to first touch the nominal bearing inner ring.
-        seated = p._shifted(spacer, y=0.5)
+        seated = translated_shape(spacer, y=0.5)
         annular_shield_region = p.cylinder(3, 0.2, (0, 27.9, 0)).cut(
             p.cylinder(1.85, 0.2, (0, 27.9, 0))
         )

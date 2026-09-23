@@ -59,7 +59,6 @@ HORN_ADAPTER_HOLE_DIAMETER = 2.0
 HORN_CLAMP_THREAD_DIAMETER = 1.6
 HORN_CLAMP_LENGTH = 8.0
 HORN_CLAMP_NUT_HEIGHT = 1.3
-HORN_CLAMP_HEAD_HEIGHT = 1.0
 NUT_SEAT_Y = SHAFT_START_Y
 BOLT_DIRECTION = (0, 1, 0)
 
@@ -83,16 +82,6 @@ def _tangent_hull(y, depth, root, tip, tip_centre):
         Part.Arc(d, V(-root, y, 0), a).toShape(),
     ]
     return Part.Face(Part.Wire(edges)).extrude(V(0, depth, 0))
-
-
-def _blade_hull(y, depth, clearance=0.0):
-    return _tangent_hull(
-        y,
-        depth,
-        HORN_HUB_RADIUS + clearance,
-        HORN_TIP_RADIUS + clearance,
-        HORN_TIP_CENTRE,
-    )
 
 
 def _root_register_clearance():
@@ -143,7 +132,13 @@ def horn_shape():
     shape = union(
         [
             _cylinder(HORN_HUB_RADIUS, HORN_HEIGHT, (0, 0, 0)),
-            _blade_hull(HORN_BLADE_BOTTOM, HORN_BLADE_THICKNESS),
+            _tangent_hull(
+                HORN_BLADE_BOTTOM,
+                HORN_BLADE_THICKNESS,
+                HORN_HUB_RADIUS,
+                HORN_TIP_RADIUS,
+                HORN_TIP_CENTRE,
+            ),
         ]
     )
     for radius, start, depth in (

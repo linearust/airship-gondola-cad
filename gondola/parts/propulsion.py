@@ -17,12 +17,12 @@ from gondola.cad import (
     create_printed_part,
     mirrored_y,
     set_property,
+    translated_shape,
     union,
 )
 from gondola.contracts.design import DESIGN_REVISION
 from gondola.contracts.drive import (
     DRIVE_CONFIGURATIONS,
-    FACE_WIDTH_MM,
     GEARS,
     MODULE_MM,
     PIVOT_Z_MM,
@@ -61,7 +61,6 @@ MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 GEAR_MODULE = MODULE_MM
-GEAR_FACE_WIDTH = FACE_WIDTH_MM
 GEAR_HUB_START_Y = servo_coupling.HORN_BOTTOM_Y + servo_coupling.GEAR_START_Y
 GEAR_FACE_START_Y = GEAR_HUB_START_Y + SELECTED_DRIVE.driver.hub_extension_mm
 GEAR_END_Y = GEAR_FACE_START_Y + SELECTED_DRIVE.driver.face_width_mm
@@ -97,12 +96,6 @@ def cylinder(radius, length, origin, direction=(0, 1, 0)):
     return Part.makeCylinder(radius, length, V(*origin), V(*direction))
 
 
-def _shifted(shape, x=0, y=0, z=0):
-    result = shape.copy()
-    result.translate(V(x, y, z))
-    return result
-
-
 def _checked(shape, label):
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
@@ -127,7 +120,7 @@ def _bearing_cup(start_y, *, positive_side=True):
     body = body.cut(cylinder(BEARING_WINDOW_DIAMETER / 2, 5.7, (0, -1.6, 0)))
     if not positive_side:
         body = mirrored_y(body, -1)
-    return _shifted(body, y=start_y)
+    return translated_shape(body, y=start_y)
 
 
 def bearing_spacer_shape():
@@ -229,7 +222,7 @@ def _output_support(sign):
         # Keep the full post and its root solid. Rail-key access stays in the
         # central service bay rather than passing through these bearing feet.
         cup = _bearing_cup(28 if side > 0 else -28, positive_side=side > 0)
-        cup = _shifted(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
+        cup = translated_shape(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
         post = post.cut(
             cylinder(3, 4.02, (0, PIVOT_HALF_SPAN + y_start - 0.01, PIVOT_Z))
         )
@@ -469,7 +462,7 @@ def _build_coupling(doc, parent, prefix, sign):
     from . import servo_coupling as coupling
 
     def positioned(shape):
-        shape = _shifted(shape, y=coupling.HORN_BOTTOM_Y)
+        shape = translated_shape(shape, y=coupling.HORN_BOTTOM_Y)
         if sign < 0:
             shape.rotate(V(), V(0, 0, 1), 180)
         return shape
@@ -743,7 +736,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             doc,
             assembly,
             prefix + "OutputBearing" + suffix,
-            _shifted(bearing_shape(), y=bearing_start, z=PIVOT_Z),
+            translated_shape(bearing_shape(), y=bearing_start, z=PIVOT_Z),
             "Selected generic 3×6×2.5 bearing, annular clearance envelope; brand, internal axial play, race lands, shields and fits need inspection. The integral outer shoulder stops outward movement; the inner-ring spacer and retained carrier bound inward movement. The nominal 4 mm guide supports the complete bearing width through the nominal 1 mm maximum inward float. Finish the seat and qualify actual internal play and stack dimensions; no shield contact or bearing preload is intended.",
         )
         hardware.append(bearing)
@@ -765,7 +758,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
     output_angle = driver_angle + 180 + 180 / spec.output.teeth
     output_gear = gear_shape(spec.output.teeth, output_angle)
     output_gear = mirrored_y(output_gear, sign)
-    output_gear = _shifted(output_gear, y=-sign * PIVOT_HALF_SPAN)
+    output_gear = translated_shape(output_gear, y=-sign * PIVOT_HALF_SPAN)
     hardware.append(
         _buy(
             doc,
@@ -921,7 +914,7 @@ def _build_motor_references(doc, pod, prefix, sign):
 def _build_sweep_reserve(doc, assembly, prefix, sign):
     """Create the separate clearance reference for external vehicle equipment."""
     bound = union([cylinder(30, 52, (0, -26, 0)), cylinder(10, 88, (0, -44, 0))])
-    bound = _shifted(bound, y=sign * PIVOT_HALF_SPAN, z=PIVOT_Z)
+    bound = translated_shape(bound, y=sign * PIVOT_HALF_SPAN, z=PIVOT_Z)
     return _reference(
         doc,
         assembly,

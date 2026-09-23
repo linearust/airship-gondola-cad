@@ -12,6 +12,13 @@ from gondola.contracts.drive import drive_for_document
 from gondola.parts import servo_bridge
 
 from .geometry import TOL, intersection_volume
+from .propulsion_service import (
+    continuous_path,
+    driver_lateral_service_check,
+    fastener_service_check,
+    module_service_shapes,
+    retained_obstacles,
+)
 
 
 def _plane_contact_area(first, second, axis, station):
@@ -33,9 +40,7 @@ def _plane_contact_area(first, second, axis, station):
 
 def bridge_joint_check(doc, module):
     """Check the actual two seating pads and unilateral locating faces."""
-    from .propulsion import _service_shapes
-
-    shapes, missing = _service_shapes(doc, module)
+    shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
@@ -82,8 +87,6 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     conservative because every servo, ear bolt and clamp leaves with it.
     Spaces between the stock sections stay open in the exact face-prism sweep.
     """
-    from .propulsion import continuous_path
-
     envelope = servo_bridge.bridge_blank(spec)
     missing = abs(shape.cut(envelope).Volume)
     path = continuous_path(envelope, waypoints, obstacles)
@@ -97,15 +100,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
 
 def servo_module_service_check(doc, module):
     """Remove both small gears, two mount pairs, then the assembled input module."""
-    from .propulsion import (
-        _service_obstacles,
-        _service_shapes,
-        continuous_path,
-        driver_lateral_service_check,
-        fastener_service_check,
-    )
-
-    shapes, missing = _service_shapes(doc, module)
+    shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
     removed, gear_paths, fasteners = set(), [], []
@@ -114,7 +109,7 @@ def servo_module_service_check(doc, module):
         path = continuous_path(
             shapes[name],
             [(0, 0, 0), (0, -sign * 35, 0)],
-            _service_obstacles(shapes, removed | {name}),
+            retained_obstacles(shapes, removed | {name}),
         )
         gear_paths.append({"part": name, **path})
         removed.add(name)
@@ -124,7 +119,7 @@ def servo_module_service_check(doc, module):
         path = fastener_service_check(
             shapes[stem + "Bolt"],
             shapes[stem + "Nut"],
-            _service_obstacles(shapes, removed | pair),
+            retained_obstacles(shapes, removed | pair),
             nut_lateral_direction=(sign, 0, 0),
         )
         fasteners.append({"bolt": stem + "Bolt", "nut": stem + "Nut", **path})
@@ -153,7 +148,7 @@ def servo_module_service_check(doc, module):
             "ServoEarUpperNut",
         )
     }
-    fixed = _service_obstacles(shapes, removed | moving)
+    fixed = retained_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)]
     rows = []
     spec = drive_for_document(doc)

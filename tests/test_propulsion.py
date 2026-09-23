@@ -21,7 +21,7 @@ class ContinuousServiceTests(unittest.TestCase):
     def test_midpath_obstacle_is_not_hidden_by_clear_endpoints(self):
         from gondola.cad import translated_shape
         from gondola.validation.geometry import intersection_volume
-        from gondola.validation.propulsion import continuous_path
+        from gondola.validation.propulsion_service import continuous_path
 
         moving = Part.makeBox(0.1, 1, 1)
         obstacle = Part.makeBox(0.02, 1, 1, App.Vector(5.37, 0, 0))
@@ -594,7 +594,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         from gondola.cad import translated_shape, world_shape
         from gondola.parts import propulsion
         from gondola.validation.geometry import intersection_volume
-        from gondola.validation.propulsion import driver_lateral_service_check
+        from gondola.validation.propulsion_service import driver_lateral_service_check
 
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             with self.subTest(pod=prefix):
@@ -634,7 +634,7 @@ class NativeGearedDriveTests(unittest.TestCase):
     def test_driver_sweep_cannot_ignore_geometry_outside_the_catalog_envelope(self):
         from gondola.cad import world_shape
         from gondola.parts import propulsion
-        from gondola.validation.propulsion import driver_lateral_service_check
+        from gondola.validation.propulsion_service import driver_lateral_service_check
 
         gear = world_shape(self.doc.PortDriverGear)
         start, end = (0, 1.5, 0), (40, 1.5, 0)
@@ -1511,8 +1511,9 @@ class SavedDriveManufacturingTests(unittest.TestCase):
     def test_wall_probes_follow_saved_selected_drive_and_root_transform(self):
         from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
         from gondola.validation.manufacturing import review
-        from gondola.validation.propulsion import _record_print_checks, _service_shapes
+        from gondola.validation.propulsion import _record_print_checks
         from gondola.validation.propulsion_evidence import PROPULSION_EVIDENCE_COUNTS
+        from gondola.validation.propulsion_service import module_service_shapes
 
         selected = SELECTED_DRIVE
         with tempfile.TemporaryDirectory() as directory:
@@ -1565,7 +1566,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                     for key, names in module_names.items()
                 }
                 saved_module["group"] = saved.MainPropulsionModule
-                physical, missing = _service_shapes(saved, saved_module)
+                physical, missing = module_service_shapes(saved, saved_module)
                 self.assertFalse(missing)
                 evidence = {"functional_wall_probes": [], "geometry": []}
                 _record_print_checks(evidence, saved_module, physical)

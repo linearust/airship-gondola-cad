@@ -481,9 +481,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
 
     def test_adapter_continuous_service_preserves_the_retained_horn_socket(self):
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.validation.propulsion import _service_shapes, adapter_service_check
+        from gondola.validation.propulsion import adapter_service_check
+        from gondola.validation.propulsion_service import module_service_shapes
 
-        shapes, missing = _service_shapes(self.doc, self.module)
+        shapes, missing = module_service_shapes(self.doc, self.module)
         self.assertFalse(missing)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             result = adapter_service_check(
@@ -499,9 +500,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
 
     def test_adapter_service_rejects_geometry_outside_its_conservative_reference(self):
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.validation.propulsion import _service_shapes, adapter_service_check
+        from gondola.validation.propulsion import adapter_service_check
+        from gondola.validation.propulsion_service import module_service_shapes
 
-        shapes, _ = _service_shapes(self.doc, self.module)
+        shapes, _ = module_service_shapes(self.doc, self.module)
         shape = shapes["PortHornGearAdapter"]
         bounds = shape.BoundBox
         tab = Part.makeBox(
@@ -525,9 +527,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
         from gondola.cad import translated_shape
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.parts import servo_coupling as coupling
-        from gondola.validation.propulsion import _service_shapes, adapter_service_check
+        from gondola.validation.propulsion import adapter_service_check
+        from gondola.validation.propulsion_service import module_service_shapes
 
-        shapes, _ = _service_shapes(self.doc, self.module)
+        shapes, _ = module_service_shapes(self.doc, self.module)
         shape = shapes["PortHornGearAdapter"]
         waypoints = [(0, 0, 0), (0, 1.5, 0), (40, 1.5, 0)]
         obstacle = Part.makeBox(
