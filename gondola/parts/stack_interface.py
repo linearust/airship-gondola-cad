@@ -27,6 +27,7 @@ PITCH_MM = STACK_PITCH_MM
 ANCHOR_CENTRES = STACK_ANCHOR_CENTRES
 ARM_WIDTH = 5.0
 DECK_THICKNESS = 2.0
+TOP_BEAM_THICKNESS = 3.0
 HOST_DECK_BOTTOM_Z = 10.2
 HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
 TOWER_HEIGHT = 32.0
@@ -36,7 +37,7 @@ FOOT_INNER_OFFSET = -3.6
 FOOT_OUTER_OFFSET = 7.3
 FIXED_LEG_INNER = -1.4
 FIXED_LEG_THICKNESS = 2.0
-LEG_WIDTH = 6.0
+LEG_WIDTH = 8.0
 HOST_SEAT_OUTER = 8.0
 HOST_SEAT_WIDTH = 8.0
 CLAMP_AXIS_OFFSET = 4.0
@@ -107,11 +108,13 @@ def interface_contract():
         "integral_tower_height_mm": TOWER_HEIGHT,
         "tower_foot_thickness_mm": FOOT_THICKNESS,
         "fixed_load_leg_section_mm": [FIXED_LEG_THICKNESS, LEG_WIDTH],
+        "top_beam_section_mm": [TOP_BEAM_THICKNESS, LEG_WIDTH],
+        "top_beam_overhang_past_legs_mm": 0.0,
         "tower_attachment": "Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.",
         "service": "Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.",
         "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
-        "load_path": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+        "load_path": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
         "clamp_fit": clamp_fit_contract(),
     }
 
@@ -192,17 +195,24 @@ def _fixed_leg_pieces(radius):
     )
 
 
+def _top_beam_half(radius):
+    """One half of a continuous beam ending flush with the leg outer face."""
+    return box(
+        radius + FIXED_LEG_INNER + FIXED_LEG_THICKNESS,
+        LEG_WIDTH,
+        TOP_BEAM_THICKNESS,
+        (0, -LEG_WIDTH / 2, 0),
+    )
+
+
 def tower_shape():
+    """Open rectangular portal; outboard foot material stays only at the feet."""
     pieces = []
     for x, y in ANCHOR_CENTRES:
         radius = math.hypot(x, y)
-        arm = box(
-            radius + FOOT_OUTER_OFFSET,
-            LEG_WIDTH,
-            DECK_THICKNESS,
-            (0, -LEG_WIDTH / 2, 0),
+        pieces.append(
+            _radial(union([_top_beam_half(radius), *_fixed_leg_pieces(radius)]), x, y)
         )
-        pieces.append(_radial(union([arm, *_fixed_leg_pieces(radius)]), x, y))
     return _hole_cut(union(pieces), -TOWER_HEIGHT - 1, FOOT_THICKNESS + 2)
 
 
@@ -276,6 +286,13 @@ def manufacturing_wall_probes():
 
         rows.extend(
             [
+                (
+                    f"optical_top_beam_{index}",
+                    "OpticalMountBase",
+                    (x / 2, y / 2, -0.01),
+                    (x / 2, y / 2, TOP_BEAM_THICKNESS + 0.01),
+                    TOP_BEAM_THICKNESS,
+                ),
                 (
                     f"optical_fixed_leg_{index}",
                     "OpticalMountBase",
@@ -352,15 +369,11 @@ def rigid_float_shape_bound(shape):
 
 
 def rigid_float_component_bounds():
+    """Bound two legs and two analytical halves of the single integral beam."""
     rows = []
     for index, (x, y) in enumerate(ANCHOR_CENTRES):
         radius = math.hypot(x, y)
-        arm = box(
-            radius + FOOT_OUTER_OFFSET,
-            LEG_WIDTH,
-            DECK_THICKNESS,
-            (0, -LEG_WIDTH / 2, 0),
-        )
+        beam_half = _top_beam_half(radius)
         rows.append(
             (
                 f"load_leg_{index}",
@@ -372,5 +385,10 @@ def rigid_float_component_bounds():
                 ),
             )
         )
-        rows.append((f"upper_arm_{index}", rigid_float_shape_bound(_radial(arm, x, y))))
+        rows.append(
+            (
+                f"top_beam_half_{index}",
+                rigid_float_shape_bound(_radial(beam_half, x, y)),
+            )
+        )
     return rows

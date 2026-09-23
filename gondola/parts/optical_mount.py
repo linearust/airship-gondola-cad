@@ -46,15 +46,15 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Integral clamped tower and a 2 mm negative-X roll ear."""
+    """Integral rectangular portal and a fully supported negative-X roll ear."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
     post = box(
         EAR_THICKNESS,
         2 * EAR_RADIUS,
-        ROLL_PIVOT_Z - stack_interface.DECK_THICKNESS,
-        (-EAR_THICKNESS, -EAR_RADIUS, stack_interface.DECK_THICKNESS),
+        ROLL_PIVOT_Z - stack_interface.TOP_BEAM_THICKNESS,
+        (-EAR_THICKNESS, -EAR_RADIUS, stack_interface.TOP_BEAM_THICKNESS),
     )
     bore = _cylinder(
         PIVOT_HOLE_DIAMETER / 2,
@@ -119,7 +119,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, one open tower with two directly clamped broad feet independently of FC dampers",
+        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -247,7 +247,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            f"PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a {stack_interface.TOP_BEAM_THICKNESS:g} mm-deep, {stack_interface.LEG_WIDTH:g} mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

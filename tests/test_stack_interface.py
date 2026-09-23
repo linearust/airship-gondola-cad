@@ -68,6 +68,29 @@ class StackInterfaceTests(unittest.TestCase):
             self.assertEqual(len(result["direct_clamped_seats"]), 2)
             self.assertEqual(result["clamp_fit"]["nominal_axial_seating_gap_mm"], 0)
 
+    def test_top_is_one_rectangular_beam_flush_with_the_leg_outer_faces(self):
+        from gondola.parts import stack_interface as s
+
+        tower = s.tower_shape()
+        tower.rotate(App.Vector(), App.Vector(0, 0, 1), -45)
+        half_span = (
+            math.hypot(*s.ANCHOR_CENTRES[0]) + s.FIXED_LEG_INNER + s.FIXED_LEG_THICKNESS
+        )
+        expected = Part.makeBox(
+            2 * half_span,
+            s.LEG_WIDTH,
+            s.TOP_BEAM_THICKNESS,
+            App.Vector(-half_span, -s.LEG_WIDTH / 2, 0),
+        )
+        top = tower.common(Part.makeBox(200, 200, 10, App.Vector(-100, -100, 0)))
+        self.assertLess(
+            abs(top.cut(expected).Volume) + abs(expected.cut(top).Volume), 1e-5
+        )
+        self.assertEqual(len(top.Solids), 1)
+        self.assertEqual(s.DECK_THICKNESS, 2.0)
+        self.assertEqual(s.FOOT_THICKNESS, 2.0)
+        self.assertEqual(s.TOP_BEAM_THICKNESS, 3.0)
+
     def test_cut_away_seat_or_refilled_clamp_hole_is_rejected(self):
         from gondola.parts import stack_interface as s
         from gondola.validation.optical import tower_attachment_check

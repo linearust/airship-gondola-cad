@@ -76,11 +76,11 @@ def bridge_joint_check(doc, module):
 
 
 def _bridge_path(shape, waypoints, obstacles, spec):
-    """Sweep planar stock with the hardware holes filled, preserving the ring.
+    """Sweep the joined plate, pad and cradle stock with hardware holes filled.
 
     Containment of the actual bridge is mandatory. Filling its holes is
     conservative because every servo, ear bolt and clamp leaves with it.
-    The open ring and underside stay open through an exact face-prism sweep.
+    Spaces between the stock sections stay open in the exact face-prism sweep.
     """
     from .propulsion import continuous_path
 

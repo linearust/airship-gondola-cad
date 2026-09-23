@@ -797,12 +797,94 @@ def direct_adapter_fit_check(doc, prefix):
     }
 
 
+def _servo_rear_body_allowance(doc, prefix):
+    """Measure the rear case separately from its lower mounting ear."""
+    from gondola.parts import servo_bridge
+
+    mount = doc.getObject(prefix + "ServoMount")
+    group = doc.getObject("MainPropulsionModule")
+    if mount is None or group is None:
+        return {"passed": False, "error": "Missing servo or propulsion module"}
+    canonical = mount.getGlobalPlacement().multiply(
+        App.Placement(
+            App.Vector(),
+            App.Rotation(App.Vector(0, 0, 1), 180 if prefix == "Starboard" else 0),
+        )
+    )
+    inverse = canonical.inverse()
+    shapes = {}
+    for obj in doc.Objects:
+        if (
+            belongs_to_group(obj, group)
+            and obj.isDerivedFrom("Part::Feature")
+            and getattr(obj, "Role", "") != "Clearance"
+        ):
+            shape = world_shape(obj)
+            if shape.isNull() or not shape.isValid() or not shape.Solids:
+                return {
+                    "passed": False,
+                    "error": "Invalid physical obstacle: " + obj.Name,
+                }
+            shape.Placement = inverse.multiply(shape.Placement)
+            shapes[obj.Name] = shape
+    if any(name not in shapes for name in (prefix + "Servo", "ServoDriveBridge")):
+        return {"passed": False, "error": "Missing servo case or connecting plate"}
+    rear = servo_bridge.case_front_y() - 16.6
+    # Read a rear-case strip that does not contain the forward mounting ears.
+    # The lower ear reaches four millimetres below the actual body.
+    strip = Part.makeBox(9, 1, 40, App.Vector(-4.5, rear + 0.5, -30))
+    body = shapes[prefix + "Servo"].common(strip)
+    under = shapes["ServoDriveBridge"].common(
+        Part.makeBox(7, 1, 40, App.Vector(-3.5, rear + 0.5, -40))
+    )
+    if not body.Solids or not under.Solids:
+        return {"passed": False, "error": "Missing rear body strip or plate beneath it"}
+    body_bounds = body.optimalBoundingBox(False, False)
+    plate_bounds = under.optimalBoundingBox(False, False)
+    gap = body_bounds.ZMin - plate_bounds.ZMax
+    lane = Part.makeBox(
+        body_bounds.XLength,
+        rear - 0.2,
+        body_bounds.ZLength,
+        App.Vector(body_bounds.XMin, 0.1, body_bounds.ZMin),
+    )
+    collisions = [
+        {"part": name, "intersection_mm3": volume}
+        for name, obstacle in shapes.items()
+        if (volume := intersection_volume(lane, obstacle)) > TOL
+    ]
+    return {
+        "coordinate_frame": "servo axis, positive Y toward the horn",
+        "rear_body_bottom_z_mm": body_bounds.ZMin,
+        "servo_with_ears_bottom_z_mm": shapes[prefix + "Servo"].BoundBox.ZMin,
+        "rear_body_section_mm": [body_bounds.XLength, body_bounds.ZLength],
+        "plate_top_below_rear_body_z_mm": plate_bounds.ZMax,
+        "rear_body_to_plate_gap_mm": gap,
+        "minimum_rear_body_allowance_mm": 5.0,
+        "inward_planning_volume_mm": [
+            body_bounds.XLength,
+            rear - 0.2,
+            body_bounds.ZLength,
+        ],
+        "inward_planning_y_range_mm": [0.1, rear - 0.1],
+        "checked_physical_objects": sorted(shapes),
+        "planning_volume_collisions": collisions,
+        "scope": "Saved rear case strip excludes the lower mounting ear. Inward planning space stops before the case rear face and never claims under-ear/nut access. Received lead exit position, diameter, connector and bend radius are unspecified; this is a static design allowance, not a factory cable route or installed harness qualification.",
+        "passed": abs(body_bounds.ZMin + 15) < TOL
+        and abs(body_bounds.ZLength - 20) < TOL
+        and abs(body_bounds.XLength - 7) < TOL
+        and gap >= 5.0 - TOL
+        and not collisions,
+    }
+
+
 def servo_mount_check(doc, prefix):
     """Require both stock ears to seat on the removable bridge without collision."""
     frame = world_shape(doc.ServoDriveBridge)
     servo = world_shape(doc.getObject(prefix + "Servo"))
     frame_overlap = intersection_volume(frame, servo)
     clamps = Part.makeCompound([frame, servo])
+    rear_allowance = _servo_rear_body_allowance(doc, prefix)
     rows = []
     for suffix in ("Lower", "Upper"):
         name = prefix + "ServoEar" + suffix
@@ -821,9 +903,12 @@ def servo_mount_check(doc, prefix):
     return {
         "pod": prefix,
         "servo_frame_intersection_mm3": frame_overlap,
+        "rear_body_and_inward_lead_allowance": rear_allowance,
         "cases": rows,
         "scope": "The two published X06 ears bear directly on the removable bridge using M1.6 fasteners. Nominal rigid contact is not proof of clamp torque, stiffness or actual case fit.",
-        "passed": frame_overlap < TOL and all(row["passed"] for row in rows),
+        "passed": frame_overlap < TOL
+        and rear_allowance["passed"]
+        and all(row["passed"] for row in rows),
     }
 
 

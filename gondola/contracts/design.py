@@ -14,7 +14,7 @@ from .hardware import BEARING_SPACER
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AH"
+DESIGN_REVISION = "AI"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -58,11 +58,11 @@ MANUFACTURING_DECISION = {
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. A thick solid T head provides opposed side contact for each existing M2 friction clamp. The screw does not press the narrow flexure base. Verify actual screw-tip bearing and PA12 creep; geometry alone does not establish holding force. Use the checked short-arm L-key path so bearing-post roots remain continuous.",
-    "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, bearings, spacers and motor carriers stay installed. Two broad local seats and fixed datums locate the bridge; its ring joins the cradles for handling rather than carrying all mesh load across the span.",
+    "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, bearings, spacers and motor carriers stay installed. A broad continuous plate joins the two simple cradles. Two rectangular local seats and fixed datums locate the bridge and carry each cradle locally; the connecting plate does not replace those seats. Existing M2 mount pairs retain their original seating height through open head-access bores.",
     "bearings_and_frame": "Bearings enter inward-facing pockets before the carrier is inserted. Integral outer shoulders replace separate caps and fasteners. Four bought flanged metal spacers limit inward bearing withdrawal while contacting only inner rings; enlarged carrier ends retain broad axial stop faces against the frame. Stage spacers and retract shafts before inserting/removing the carrier. Do not assume printed interference or a snap fit retains the bearings.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
     "horn_and_adapter": "The bought KST horn retains its original spline and OEM retaining screw. Enlarge only its existing tip hole to 1.8 mm and attach the one-piece printed adapter with an M1.6x8 screw/nut shared with the servo ears. This removes the separate printed backstrap without a new fastener family or washer. Install the OEM screw first; the tip screw is accessible from behind at neutral. Local metal preparation and loaded retention require physical verification.",
-    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base integrates two rigid tower supports and broad feet clamped directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
+    "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base is one open rectangular portal with its top beam flush with the two legs; broad feet clamp directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
 }
 
 

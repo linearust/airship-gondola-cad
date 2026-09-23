@@ -73,24 +73,23 @@ class FrameRootTests(unittest.TestCase):
             side_floor = floor if sign > 0 else rail.half_turn(floor)
             with self.subTest(side=sign):
                 self.assertLess(side_floor.cut(frame).Volume, 1e-7)
-                # The circular 4.5 mm conservative head envelope clears the
-                # 1.5 mm roof corner by 0.495 mm nominally, before print errors.
+                # The circular 4.5 mm design head clears the continuous floor
+                # by 0.45 mm and the plain seating feet by at least 1.6 mm.
                 self.assertGreaterEqual(side_head.distToShape(frame)[0], 0.45 - 1e-7)
-                self.assertGreaterEqual(side_head.distToShape(bridge)[0], 0.45 - 1e-7)
+                self.assertGreaterEqual(side_head.distToShape(bridge)[0], 1.6 - 1e-7)
 
-    def test_open_tool_recess_keeps_ring_and_broad_cradle_seats(self):
-        from gondola.parts import rail, servo_bridge
+    def test_plain_connector_plate_keeps_broad_cradle_seats(self):
+        from gondola.parts import servo_bridge
         from gondola.validation.servo_module import bridge_joint_check
 
         bridge = self.doc.ServoDriveBridge.Shape
-        bar = Part.makeBox(
-            6.4,
+        centre = Part.makeBox(
+            32,
+            24,
             2,
-            2,
-            App.Vector(-3.2, 21, servo_bridge.RING_BOTTOM_Z),
+            App.Vector(-16, -12, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
         )
-        for shape in (bar, rail.half_turn(bar)):
-            self.assertLess(shape.cut(bridge).Volume, 1e-7)
+        self.assertLess(centre.cut(bridge).Volume, 1e-7)
         self.assertEqual(len(bridge.Solids), 1)
         result = bridge_joint_check(self.doc, self.module)
         self.assertTrue(result["passed"], result)

@@ -25,6 +25,8 @@ Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
   `references/rail_joint_review.md` explains the solid rail-head clamp,
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
+  `references/shape_simplification_review.md` records the optical portal and
+  paired-servo support simplification; preserve functional service openings.
 - `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
   and wiring reserves. `references/` retains primary evidence; preserve it.
 - `gondola/assembly.py` and `cad.py` define native hierarchy and controls;

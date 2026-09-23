@@ -318,6 +318,82 @@ class NativeGearedDriveTests(unittest.TestCase):
                         (obj.Name, bounds, radial_bound, travel),
                     )
 
+    def test_rear_servo_body_allowance_excludes_the_lower_ear(self):
+        from gondola.validation.propulsion import servo_mount_check
+
+        for prefix in ("Port", "Starboard"):
+            with self.subTest(side=prefix):
+                result = servo_mount_check(self.doc, prefix)
+                self.assertTrue(result["passed"], result)
+                allowance = result["rear_body_and_inward_lead_allowance"]
+                self.assertAlmostEqual(allowance["rear_body_bottom_z_mm"], -15)
+                self.assertAlmostEqual(allowance["servo_with_ears_bottom_z_mm"], -19)
+                self.assertGreaterEqual(allowance["rear_body_to_plate_gap_mm"], 5)
+                self.assertEqual(allowance["rear_body_section_mm"], [7.0, 20.0])
+                self.assertAlmostEqual(allowance["inward_planning_y_range_mm"][1], 14.0)
+                self.assertIn(
+                    "StarboardServoEarLowerNut", allowance["checked_physical_objects"]
+                )
+
+    def test_rear_servo_lead_allowance_detects_an_added_physical_obstacle(self):
+        from gondola.validation.propulsion import servo_mount_check
+
+        obstacle = self.doc.addObject("Part::Feature", "AddedServoLeadObstacle")
+        self.doc.PortServoMount.addObject(obstacle)
+        try:
+            obstacle.Shape = Part.makeBox(1, 1, 2, App.Vector(-0.5, 7, -2))
+            self.doc.recompute()
+            result = servo_mount_check(self.doc, "Port")
+            self.assertLess(result["servo_frame_intersection_mm3"], 1e-5)
+            self.assertTrue(all(row["passed"] for row in result["cases"]), result)
+            allowance = result["rear_body_and_inward_lead_allowance"]
+            self.assertFalse(result["passed"], result)
+            self.assertIn(
+                obstacle.Name,
+                {row["part"] for row in allowance["planning_volume_collisions"]},
+            )
+        finally:
+            self.doc.removeObject(obstacle.Name)
+            self.doc.recompute()
+
+    def test_rear_servo_allowance_rejects_a_clear_but_too_close_plate(self):
+        from gondola.parts import servo_bridge
+        from gondola.validation.propulsion import servo_mount_check
+
+        bridge = self.doc.ServoDriveBridge
+        original = bridge.Shape.copy()
+        before = servo_mount_check(self.doc, "Port")[
+            "rear_body_and_inward_lead_allowance"
+        ]
+        self.assertTrue(before["passed"], before)
+        patch = Part.makeBox(
+            7,
+            1,
+            0.5,
+            App.Vector(
+                -3.5,
+                servo_bridge.case_front_y() - 16.6 + 0.5,
+                before["plate_top_below_rear_body_z_mm"],
+            ),
+        )
+        patch.Placement = (
+            bridge.getGlobalPlacement()
+            .inverse()
+            .multiply(self.doc.PortServoMount.getGlobalPlacement())
+        )
+        try:
+            bridge.Shape = original.fuse(patch)
+            self.doc.recompute()
+            result = servo_mount_check(self.doc, "Port")
+            allowance = result["rear_body_and_inward_lead_allowance"]
+            self.assertEqual(allowance["planning_volume_collisions"], [])
+            self.assertLess(result["servo_frame_intersection_mm3"], 1e-5)
+            self.assertLess(allowance["rear_body_to_plate_gap_mm"], 5)
+            self.assertFalse(result["passed"], result)
+        finally:
+            bridge.Shape = original
+            self.doc.recompute()
+
     def test_gear_metrics_distinguish_driver_and_output_face_width(self):
         metrics = self.module["metrics"]["gear_drive"]
         self.assertNotIn("face_width_mm", metrics)

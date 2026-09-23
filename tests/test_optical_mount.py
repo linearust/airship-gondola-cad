@@ -68,6 +68,22 @@ class OpticalMountTests(unittest.TestCase):
         self.assertLess(abs(base.common(centre).Volume), 1e-5)
         self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 4)
 
+    def test_full_pivot_root_bears_on_the_straight_top_beam(self):
+        from gondola.parts import optical_mount, stack_interface
+
+        support = Part.makeBox(
+            optical_mount.EAR_THICKNESS,
+            2 * optical_mount.EAR_RADIUS,
+            0.2,
+            App.Vector(
+                -optical_mount.EAR_THICKNESS,
+                -optical_mount.EAR_RADIUS,
+                stack_interface.TOP_BEAM_THICKNESS - 0.2,
+            ),
+        )
+        self.assertLess(abs(support.cut(stack_interface.tower_shape()).Volume), 1e-5)
+        self.assertLess(abs(support.cut(optical_mount.base_shape()).Volume), 1e-5)
+
     def test_native_angles_clamp_independently_and_follow_the_host(self):
         from gondola.cad import world_shape
 

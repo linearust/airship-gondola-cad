@@ -1,0 +1,926 @@
+{
+  "revision": "AI",
+  "reviewed_on": "2026-09-23",
+  "previous_commit": "cd351ce8450c9c3920ac7b190ff907a9cf0f0635",
+  "previous_fixture_sha256": "9637e2bca7767c0bb6e3093bc32c37410d233c54d7c1dde5a4fe76d626313b82",
+  "previous_release_cad_sha256": "53c318adf76b7c0494525b3da273e3d9c3d85cdd221e834996e863cfafd5f159",
+  "approved_fixture_sha256": "994dc284ca93d16f63f7b539d33b53b1ab8c4ad9a54c1522647a69b1d8a754f6",
+  "scope": "Intentional shape simplification audited against all 117 retained AH shapes before replacing the pinned fixture. Fit prototype, not physical stiffness or manufacturing qualification.",
+  "intentional_geometry_changes": [
+    {
+      "object": "OpticalMountBase",
+      "local_shape": {
+        "difference_mm3": 1215.7870119269116,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 894.187011926902,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 1215.7870119269103,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 0.0,
+        "volume_difference_mm3": 894.1870119269051,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": false
+    },
+    {
+      "object": "PropulsionFixedFrame",
+      "local_shape": {
+        "difference_mm3": 335.32499999999993,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 180.67499999997744,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 335.3249999999999,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 2.0,
+        "volume_difference_mm3": 180.6749999999629,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    },
+    {
+      "object": "ServoDriveBridge",
+      "local_shape": {
+        "difference_mm3": 4067.438597190036,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 3.552713678800501e-15,
+        "volume_difference_mm3": 3199.5585970355396,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "world_shape": {
+        "difference_mm3": 4067.4385971422935,
+        "method": "BRep symmetric difference",
+        "bounds_difference_mm": 3.552713678800501e-15,
+        "volume_difference_mm3": 3199.5585970355387,
+        "closed_solid_identity_by_empty_cuts": false
+      },
+      "object_type_unchanged": true,
+      "world_placement_unchanged": true,
+      "solid_count_unchanged": true,
+      "procurement_and_scope_metadata_unchanged": true
+    }
+  ],
+  "unchanged_geometry_objects": [
+    "BatteryEquipmentModuleRailClampNut",
+    "BatteryEquipmentModuleRailClampScrew",
+    "BatteryMount",
+    "BearingSeatFitSample",
+    "CapacitorServiceReserve",
+    "ContinuousRail",
+    "ElectronicsEquipmentModuleRailClampNut",
+    "ElectronicsEquipmentModuleRailClampScrew",
+    "ElectronicsMount",
+    "FCWiringClearanceReserve",
+    "LR900NegativeXConnectorReserve",
+    "LR900PositiveXConnectorReserve",
+    "MTF02PConnectorReserve",
+    "MTF02POpticalClearanceReserve",
+    "MainPropulsionModuleRailClampNut",
+    "MainPropulsionModuleRailClampScrew",
+    "MaximumBatteryEnvelope",
+    "ModuleBatteryEnvelope",
+    "ModuleFCEnvelope",
+    "ModuleLR900Envelope",
+    "ModuleMTF02PEnvelope",
+    "ModulePASEnvelope",
+    "OpticalPitchBolt",
+    "OpticalPitchNut",
+    "OpticalRollBolt",
+    "OpticalRollBracket",
+    "OpticalRollNut",
+    "OpticalSensorTray",
+    "OpticalStackFootBolt0",
+    "OpticalStackFootBolt1",
+    "OpticalStackFootNut0",
+    "OpticalStackFootNut1",
+    "PASConnectorReserve",
+    "PortDriverGear",
+    "PortHornGearAdapter",
+    "PortHornGearClampBolt",
+    "PortHornGearClampNut",
+    "PortInputShaft",
+    "PortInputShaftClampBolt",
+    "PortInputShaftClampNut",
+    "PortMotor",
+    "PortMotorCarrier",
+    "PortOutputBearingNegative",
+    "PortOutputBearingPositive",
+    "PortOutputBearingSpacerNegative",
+    "PortOutputBearingSpacerPositive",
+    "PortOutputClampNegativeBolt",
+    "PortOutputClampNegativeNut",
+    "PortOutputClampPositiveBolt",
+    "PortOutputClampPositiveNut",
+    "PortOutputGear",
+    "PortOutputShaftNegative",
+    "PortOutputShaftPositive",
+    "PortPhaseLeadLoopReserve",
+    "PortPropellerDisk",
+    "PortServo",
+    "PortServoEarLowerBolt",
+    "PortServoEarLowerNut",
+    "PortServoEarUpperBolt",
+    "PortServoEarUpperNut",
+    "PortServoHorn",
+    "PortShaft",
+    "PortSweepBound",
+    "RailFitSample",
+    "ServoBridgePortBolt",
+    "ServoBridgePortNut",
+    "ServoBridgeStarboardBolt",
+    "ServoBridgeStarboardNut",
+    "ShoeFitSample",
+    "StarboardDriverGear",
+    "StarboardHornGearAdapter",
+    "StarboardHornGearClampBolt",
+    "StarboardHornGearClampNut",
+    "StarboardInputShaft",
+    "StarboardInputShaftClampBolt",
+    "StarboardInputShaftClampNut",
+    "StarboardMotor",
+    "StarboardMotorCarrier",
+    "StarboardOutputBearingNegative",
+    "StarboardOutputBearingPositive",
+    "StarboardOutputBearingSpacerNegative",
+    "StarboardOutputBearingSpacerPositive",
+    "StarboardOutputClampNegativeBolt",
+    "StarboardOutputClampNegativeNut",
+    "StarboardOutputClampPositiveBolt",
+    "StarboardOutputClampPositiveNut",
+    "StarboardOutputGear",
+    "StarboardOutputShaftNegative",
+    "StarboardOutputShaftPositive",
+    "StarboardPhaseLeadLoopReserve",
+    "StarboardPropellerDisk",
+    "StarboardServo",
+    "StarboardServoEarLowerBolt",
+    "StarboardServoEarLowerNut",
+    "StarboardServoEarUpperBolt",
+    "StarboardServoEarUpperNut",
+    "StarboardServoHorn",
+    "StarboardShaft",
+    "StarboardSweepBound",
+    "TapeWing0L",
+    "TapeWing0R",
+    "TapeWing1L",
+    "TapeWing1R",
+    "TapeWing2L",
+    "TapeWing2R",
+    "TapeWing3L",
+    "TapeWing3R",
+    "TapeWing4L",
+    "TapeWing4R",
+    "TapeWing5L",
+    "TapeWing5R",
+    "TapeWing6L",
+    "TapeWing6R",
+    "XT30ServiceReserve"
+  ],
+  "added_objects": [],
+  "removed_objects": [],
+  "placement_changes": {},
+  "registry_unchanged": true,
+  "expressions_unchanged": true,
+  "native_control_check": {
+    "cases": [
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "BatteryClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "PropulsionClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "PositiveY",
+        "result_y_mm": 0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "ElectronicsClampApproach",
+        "input": "NegativeY",
+        "result_y_mm": -0.45,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "PortPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -999,
+        "expected_bounded_angle_deg": -180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": -75,
+        "expected_bounded_angle_deg": -75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 75,
+        "expected_bounded_angle_deg": 75,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "StarboardPod",
+        "property": "Tilt",
+        "input": 999,
+        "expected_bounded_angle_deg": 180,
+        "other_pod_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "BatteryEquipmentModule",
+        "property": "RailPositionX",
+        "input": -72.0,
+        "result_x_mm": -72.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "MainPropulsionModule",
+        "property": "RailPositionX",
+        "input": 18.0,
+        "result_x_mm": 18.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "ElectronicsEquipmentModule",
+        "property": "RailPositionX",
+        "input": 108.0,
+        "result_x_mm": 108.0,
+        "other_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalRollStage",
+        "property": "Roll",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalRollStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -999,
+        "expected_bounded_angle_deg": -20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": -10,
+        "expected_bounded_angle_deg": -10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 0,
+        "expected_bounded_angle_deg": 0,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 10,
+        "expected_bounded_angle_deg": 10,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      },
+      {
+        "object": "OpticalPitchStage",
+        "property": "Pitch",
+        "input": 999,
+        "expected_bounded_angle_deg": 20,
+        "stage": "OpticalPitchStage",
+        "stage_local_placement_matches": true,
+        "stage_parent_matches": true,
+        "declared_limits_match": true,
+        "other_axis_and_modules_unchanged": true,
+        "passed": true
+      }
+    ],
+    "module_control_mapping_valid": true,
+    "expected_case_count": 29,
+    "passed": true
+  },
+  "native_contract_changes": {
+    "BatteryMount.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "BatteryMount.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "BatteryMount.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "BatteryMount.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "ElectronicsMount.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "ElectronicsMount.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "ElectronicsMount.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "ElectronicsMount.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalFlowModule.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalFlowModule.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "OpticalFlowModule.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "OpticalFlowModule.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "OpticalFlowModule.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalMountBase.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalMountBase.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "OpticalMountBase.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "OpticalMountBase.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "OpticalMountBase.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalRollBracket.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalSensorTray.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    }
+  },
+  "string_metadata_changes": {
+    "BatteryMount.MountContract.stack_interface.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "BatteryMount.MountContract.stack_interface.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "BatteryMount.MountContract.stack_interface.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "BatteryMount.MountContract.stack_interface.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "BatteryMount.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "BatteryMount.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "BatteryMount.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "BatteryMount.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "DesignRegistry.SourceFingerprint": {
+      "before": "ffe8ad3f9b20e76df8390684a315477bdcc118faa99270d9a4bf9d4e4870b00f",
+      "after": "6414e58739fbcec41fb7277200e03f8367ee316603efada8e546d7f3b38827c6"
+    },
+    "ElectronicsMount.MountContract.stack_interface.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "ElectronicsMount.MountContract.stack_interface.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "ElectronicsMount.MountContract.stack_interface.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "ElectronicsMount.MountContract.stack_interface.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "ElectronicsMount.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "ElectronicsMount.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "ElectronicsMount.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "ElectronicsMount.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalFlowModule.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalFlowModule.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "OpticalFlowModule.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "OpticalFlowModule.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "OpticalFlowModule.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalMountBase.Notes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "OpticalMountBase.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalMountBase.PrintNotes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "OpticalMountBase.StackInterfaceContract.fixed_load_leg_section_mm": {
+      "before": [
+        2.0,
+        6.0
+      ],
+      "after": [
+        2.0,
+        8.0
+      ]
+    },
+    "OpticalMountBase.StackInterfaceContract.load_path": {
+      "before": "Carrier tabs -> directly clamped broad tower feet -> rigid legs -> optical platform. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+      "after": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD."
+    },
+    "OpticalMountBase.StackInterfaceContract.top_beam_overhang_past_legs_mm": {
+      "before": null,
+      "after": 0.0
+    },
+    "OpticalMountBase.StackInterfaceContract.top_beam_section_mm": {
+      "before": null,
+      "after": [
+        3.0,
+        8.0
+      ]
+    },
+    "OpticalRollBracket.Notes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "OpticalRollBracket.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalRollBracket.PrintNotes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "OpticalSensorTray.Notes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "OpticalSensorTray.OpticalMountContract.standard_stack_interface": {
+      "before": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, one open tower with two directly clamped broad feet independently of FC dampers",
+      "after": "Two diagonal rigid legs at (-24, -24) and (24, 24) mm, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers"
+    },
+    "OpticalSensorTray.PrintNotes": {
+      "before": "PA12 SLS/MJF, printed separately. The base integrates its open support tower and two broad feet directly seated with ordinary M2x8 screws and M2 hex nuts; no spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+      "after": "PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a 3 mm-deep, 8 mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears and pivot post use M2x8 screws and hex nuts. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use."
+    },
+    "PropulsionFixedFrame.Notes": {
+      "before": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+      "after": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad rectangular seats for the removable paired servo bridge. The seats stand outside the rail screw head, leaving naturally open L-key access without tunnels or post cutouts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed."
+    },
+    "PropulsionFixedFrame.PrintNotes": {
+      "before": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+      "after": "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad rectangular seats for the removable paired servo bridge. The seats stand outside the rail screw head, leaving naturally open L-key access without tunnels or post cutouts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open \u00d86 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed."
+    },
+    "ServoDriveBridge.Notes": {
+      "before": "One paired bridge with straight 2 mm servo walls and an open connecting ring. Each cradle sits on its own broad frame seat; the ring joins them for handling. Two M2 mount pairs retain it against fixed X/Y datums. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
+      "after": "One paired bridge with straight 2 mm servo walls, a plain 39 by 52 by 2 mm connecting plate and two broad solid seating feet. The raised plate clears the rail-key elbow, while the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal body-underplate clearance exceeds 5 mm; actual servo lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws."
+    },
+    "ServoDriveBridge.PrintNotes": {
+      "before": "One paired bridge with straight 2 mm servo walls and an open connecting ring. Each cradle sits on its own broad frame seat; the ring joins them for handling. Two M2 mount pairs retain it against fixed X/Y datums. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
+      "after": "One paired bridge with straight 2 mm servo walls, a plain 39 by 52 by 2 mm connecting plate and two broad solid seating feet. The raised plate clears the rail-key elbow, while the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal body-underplate clearance exceeds 5 mm; actual servo lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws."
+    }
+  },
+  "hardware_inventory_unchanged": true,
+  "installed_printed_parts": 12,
+  "installed_hardware": 62,
+  "mass_estimate_g": {
+    "old_printed": 54.533625719939,
+    "new_printed": 58.85079053499104,
+    "printed_increase": 4.317164815052038,
+    "unchanged_hardware": 30.740834303120295,
+    "new_structure_hardware": 89.59162483811133,
+    "scope": "BRep volume at assumed density; not weighed parts or all-up mass."
+  },
+  "design_review": "references/shape_simplification_review.md",
+  "release_checks": {
+    "passed": true,
+    "source_fingerprint": "4ac948580e92699725da809b186049cfbdcc585eff49023572c2838b1228fe7a",
+    "saved_cad_sha256": "72b815ef3f5c6da54ad78f3979e12345d5d697c479ee6004479269a7847daa0a",
+    "approved_fixture_sha256": "994dc284ca93d16f63f7b539d33b53b1ab8c4ad9a54c1522647a69b1d8a754f6",
+    "pipeline": [
+      "build",
+      "preview",
+      "validate",
+      "compare",
+      "bundle"
+    ],
+    "pipeline_duration_seconds": {
+      "build": 11.5,
+      "preview": 42.6,
+      "validate": 570.6,
+      "compare": 10.4,
+      "bundle": 0.1
+    },
+    "reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "29388ba7cbaac5992493abbb229f2a32994c8b8a3d0592a3c6a18800e9b3d0c6"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "12bafd4eac164153f48093235d809a34c93ebdd2858a6f2c8240e0055f1f9940"
+      },
+      "gondola_equipment_validation.json": {
+        "passed": true,
+        "sha256": "c9397563745440605eb04e203f9908dd515fd312cd86efa35b5e22006ffc5d60"
+      },
+      "gondola_propulsion_validation.json": {
+        "passed": true,
+        "sha256": "8d7fed2448a91e95b7f262c4cf55ee9968021b53ff16e6fd1a6af30169cd44f5"
+      },
+      "gondola_rail_validation.json": {
+        "passed": true,
+        "sha256": "07df11d4aa2d2f87ed87ed24aea582d924241e2f2992d446f01ffd58fd7c9b9c"
+      },
+      "gondola_axial_float_review.json": {
+        "passed": true,
+        "sha256": "b72dca851937989f9e9725b0548cf7b5d6e85b948f30b251fd70234b9cdbf45c"
+      },
+      "preview_state.json": {
+        "passed": true,
+        "sha256": "eac88b8fa022b6c802179497ca9e4e04d3e2d8e5cb46f752226c329e8857ba78"
+      }
+    },
+    "archive_sha256": "c281674b0eb10fe0b590a6d1a6618e3956b3ba364541ab277ca4e4fb35e746c9",
+    "archive_members": 47,
+    "archive_crc_passed": true,
+    "static_checks": [
+      "ruff check",
+      "ruff format --check",
+      "compileall",
+      "git diff --check"
+    ],
+    "offline_unit_tests": {
+      "tests": 297,
+      "skipped_native_tests": 214,
+      "passed": true
+    },
+    "stage": "fit_prototype",
+    "physical_qualification_claimed": false
+  },
+  "integrated_shape_prototype_identity": {
+    "ServoDriveBridge": {
+      "old_minus_new_mm3": 0.0,
+      "new_minus_old_mm3": 0.0,
+      "volume_mm3": 6843.748528382101,
+      "faces": 50,
+      "thin_walls": []
+    },
+    "PropulsionFixedFrame": {
+      "old_minus_new_mm3": 0.0,
+      "new_minus_old_mm3": 0.0,
+      "volume_mm3": 15036.935638871415,
+      "faces": 118,
+      "thin_walls": []
+    }
+  },
+  "integrated_shape_prototype_identity_scope": "Both directional cuts compare the integrated final source against the independently checked AI prototype, not against AH.",
+  "visual_review": {
+    "passed": true,
+    "views": [
+      "assembly",
+      "propulsion",
+      "optical on battery host",
+      "optical on electronics host",
+      "print layout"
+    ],
+    "findings": "Flush optical beam ends and single plain paired-servo plate visible; no extra parts or fasteners; exported layout retains separate intentional module and coupons."
+  },
+  "native_unit_tests": {
+    "passed": true,
+    "tests": 297,
+    "skipped": 0,
+    "duration_seconds": 409.971,
+    "runtime": "FreeCAD 1.1.3 native Python"
+  },
+  "independent_review": {
+    "passed": true,
+    "scope": "Separate source/interface review and a second native audit against the pinned AI fixture confirmed only three changed shapes, 114 unchanged shapes, unchanged placements/registry/expressions and the recorded mass delta. Cart L-key wording corrected to distinguish propulsion short-arm and equipment long-arm use."
+  },
+  "viewer_check": {
+    "revision": "AI",
+    "visible": true,
+    "cad_hash_unchanged_after_opening": true
+  }
+}

@@ -261,7 +261,9 @@ def fixed_frame_shape():
             servo_bridge.frame_seats(),
         ]
     )
-    return _checked(servo_bridge.finish_frame(frame), "Common output-bearing frame")
+    return _checked(
+        servo_bridge.cut_mounting_holes(frame), "Common output-bearing frame"
+    )
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -605,15 +607,15 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "servo_bridge_pad",
             "ServoDriveBridge",
-            (15.5, 15, 8.69),
-            (15.5, 15, 10.71),
-            2.0,
+            (18.5, 15, 8.69),
+            (18.5, 15, 13.41),
+            4.7,
         ),
         (
-            "servo_bridge_ring",
+            "servo_bridge_connector_plate",
             "ServoDriveBridge",
-            (18.5, 0, 10.39),
-            (18.5, 0, 12.41),
+            (0, 0, 11.39),
+            (0, 0, 13.41),
             2.0,
         ),
         (
@@ -640,7 +642,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad local seats for the removable paired servo bridge. A bounded central service bay admits a short-arm L-key without piercing the bearing posts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
+        "Common integral rail shoe and four plain 9.6 by 4 mm output-bearing posts with continuous solid roots, and two broad rectangular seats for the removable paired servo bridge. The seats stand outside the rail screw head, leaving naturally open L-key access without tunnels or post cutouts. The 2 mm foot floor remains below the raised clamp head. One inside Y datum and one outside X stop locate the bridge; two M2 bolts clamp it. The selected 48:16 gear pair uses this frame. Actual printed seating, gear centre distance and creep remain unqualified. Inward-open Ø6 seats retain a 4 mm-long rigid guide and integral 1.5 mm outer shoulders. Stock flanged spacers and the assembled carrier limit inward bearing escape. Finish seats using the matching coupon and verify actual axial freedom, shield clearance and full bearing guidance; no bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -1054,7 +1056,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "One paired bridge with straight 2 mm servo walls and an open connecting ring. Each cradle sits on its own broad frame seat; the ring joins them for handling. Two M2 mount pairs retain it against fixed X/Y datums. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
+        "One paired bridge with straight 2 mm servo walls, a plain 39 by 52 by 2 mm connecting plate and two broad solid seating feet. The raised plate clears the rail-key elbow, while the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal body-underplate clearance exceeds 5 mm; actual servo lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings, loose spacers and motor carriers remain installed. Verify actual seating, centre distance and handling; do not force a warped bridge flat with its screws.",
         sku=drive.bridge_sku,
     )
     mount_hardware = []
@@ -1067,7 +1069,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
                 (
                     sign * servo_bridge.BOLT_X,
                     sign * servo_bridge.BOLT_Y,
-                    servo_bridge.PAD_TOP_Z,
+                    servo_bridge.MOUNT_BOLT_SEAT_Z,
                 ),
                 (0, 0, -1),
                 grip=servo_bridge.MOUNT_GRIP,

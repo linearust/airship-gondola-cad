@@ -83,9 +83,12 @@ must be regenerated from the complete current source and reviewed together; pass
 geometry checks never certifies the received hardware or flight readiness.
 
 The AH rail/head and bearing-post-root revision retains these purchase
-quantities. Its 1.5 mm L-key access uses the short arm; compare the supplied
-kit tool with the checked envelope in [rail joint review](rail_joint_review.md).
+quantities. Its 1.5 mm L-key access uses the short arm at the propulsion frame
+and the long arm at equipment carriers; compare the supplied kit tool with the
+checked envelope in [rail joint review](rail_joint_review.md).
 
-Current release changes are audited in `tests/fixtures/rev_ah_review.json`.
+The subsequent AI shape simplification preserves this purchase selection;
+see `references/shape_simplification_review.md`. Current release changes are
+audited in `tests/fixtures/rev_ai_review.json`.
 Earlier geometry and assembly instructions remain in Git history and the
 versioned fixture reviews; they are not current build instructions.
