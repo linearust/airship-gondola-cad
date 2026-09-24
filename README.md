@@ -1,226 +1,125 @@
-# AI agent operating contract
+# AI agent operating guide
 
-Start with [HANDOFF.md](HANDOFF.md) for the user's intent, decision priorities,
-latest selections and superseded instructions. This README defines the technical
-workflow; the handoff does not replace the source contracts or release evidence.
-Both documents are for the next AI agent, not an end-user assembly manual.
+Read [HANDOFF.md](HANDOFF.md) for user requirements, decision history and known
+limitations. This README covers repository navigation, edits and verification.
+Both files are for AI agents, not manufacturing or assembly instructions.
 
-Keep source contracts, native CAD metadata and generated artifacts consistent.
-Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
-Read the current revision from `contracts.design.DESIGN_REVISION` and its
-review in `tests/fixtures/`. Use CAD, exports and inspection material with
-matching revision, source and saved-CAD identities; historical packets do not
-establish the current layout or routing. Received-hardware fit, workshop horn
-preparation, balance and moving-wire behaviour require physical inspection and trials.
+## Establish the current state
 
-## Authorities
+1. Inspect Git status and the latest user request. Preserve unrelated edits and
+   any manually changed CAD that matters before regenerating output.
+2. Run `python3 -m gondola status` from the repository root. Read the selected
+   revision, profiles and unresolved interfaces in the source contracts below.
+3. Read the relevant retained evidence and revision review. Documentation and
+   source describe intended design; neither proves received-part fit. Resolve
+   contradictions explicitly instead of silently treating one as measured truth.
 
-- `gondola/contracts/` holds data independent of FreeCAD: `design.py` for scope,
-  decisions, inventory and unresolved interfaces; `equipment_interfaces.py` for
-  published device evidence; `hardware.py` for purchase specifications, shaft
-  preparation validation and shared CAD/BOM field names; `fasteners.py` for
-  shared nominal dimensions; `drive.py` for the finite gear configurations and
-  source-authoritative `SELECTED_DRIVE`.
-  Inspect project status with `python3 -m gondola status`.
-  `equipment_interfaces.flight_controller_contract()` owns the selected FC
-  identity, nominal interface and electrical evidence. Keep its native property,
-  equipment selection and reports synchronized. Read
-  `references/controller_selection_review.md` before changing FC power or mounting.
-  Preserve the conflicting official input-voltage claims until the supplied board
-  revision is confirmed; CAD fit does not verify the selected battery's compatibility.
-  Package damper length does not establish compressed stack height or wire clearance.
-- Read `references/drive_selection_review.md` before drivetrain changes or
-  purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
-  `references/kailash_gears_selected_evidence.md` retains its seller evidence.
-  `references/cart_adaptation_review.md` records cart choices and remaining
-  purchases, distinguishing owned and selected kits and the supplied-horn/
-  no-bearing-spacer decisions. Current build quantities belong to `contracts/design.py`.
-  `references/layout_and_wiring_review.md` explains the three independent rail
-  groups, rear FC placement, opposite battery carrier and movable optical stack.
-  `MODULE_STATIONS` owns fixed carrier orientations and starting positions;
-  local clamp direction must be transformed through each carrier's orientation.
-  FC installation and its wiring reserves retain their own orientation.
-  `references/retention_review.md` describes integral outer-ring bearing capture,
-  its process coupon and release path, and supplied-horn workshop preparation.
-  Preserve separate shaft grip and broad carrier/frame axial stops. Do not
-  restore purchased bearing spacers or the rejected oil-free bush.
-  The optical seats use direct M2 clamps; the archived
-  latch review records a superseded trial, not an assembly instruction.
-  `references/rail_joint_review.md` explains the solid rail-head clamp,
-  continuous bearing-post roots and short-arm L-key access. Keep wiring
-  outside those roots; do not restore long tool tunnels through them.
-  `references/shape_simplification_review.md` describes the optical portal,
-  open paired-servo support, shared FC/P-AS/LR support paths and current
-  adapter boundaries.
-  Preserve their locating faces, load paths and functional service openings.
-  The optical connecting post stays in the pitch-ear plane and above the roll nut's
-  rotation envelope; do not widen it into either fastener.
-  `references/rail_fit_review.md` distinguishes the matched T-head fit from
-  relieved nonlocating surfaces. Qualify the existing coupons before full prints;
-  do not claim raw powder-bed tolerance guarantees hand insertion or retention.
-- `gondola/parts/` builds printed parts, purchased hardware, equipment envelopes
-  and wiring reserves. `parts/servo_envelope.py` derives the selected X06 case,
-  ear and spline envelope from `contracts/equipment_interfaces.py`. Reuse its
-  oriented datums in the servo body, support and rear-wire checks; do not copy
-  their dimensions into independent literals. This is the selected X06 interface,
-  not a universal replacement-servo contract. `references/` retains primary
-  evidence; preserve it.
-- `gondola/assembly.py` and `cad.py` define native hierarchy and controls;
-  `print_export.py`, `procurement.py` and `mass_budget.py` define export accounting.
-- `gondola/validation/` and `tests/fixtures/` define regression checks;
-  `validation/manufacturing.py` owns wall measurements and process allowances;
-  `validation/wiring.py` owns reserve geometry and declared access margins.
-  `validation/propulsion_service.py` owns shared removal paths and retained
-  obstacles; `validation/servo_module.py` checks paired-module seating and removal.
-  These helpers must not import the coordinating `validation/propulsion.py`.
-  `config.py`, `provenance.py` and `bundle.py` enforce artifact identity.
-- `cli.py` dispatches commands; `freecad_runtime.py` manages the AppImage process.
+Later user decisions supersede this handoff. Current geometry is an implementation,
+not a permanent constraint. Do not restore historical choices just because an
+old reference, fixture or shopping list contains them.
 
-## Editing rules
+## Source map
 
-- Prioritize simple integral geometry, forgiving noncritical interfaces and few
-  purchased part types for this indoor LTA gondola; modest mass increases are
-  accepted when they simplify assembly. Lower stiffness than a sub-250 g multirotor is accepted;
-  this is not a strength qualification. First integrate parts without a necessary
-  separation, make them printable, then optimize shape. Prefer verified stock
-  components with few fastener variants and no unnecessary washers. Retained
-  assembly, motion and replacement interfaces are explained in `design.py`;
-  reassess those reasons rather than preserving the part count by default.
-  Apply its part-size ceiling before and after export rotation. Follow the
-  supplier's powder-bed guidance and agreed unfilled PA12 process/finish; do not assume
-  FDM support rules or an SLS/MJF process preference.
-- Existing geometry, shaft diameters and purchased-part selections are not
-  constraints. Redesign them when the complete assembly improves in mass,
-  simplicity, fit or serviceability. Compare complete torque/retention paths;
-  a lighter shaft or gear alone does not establish a better assembly.
-- Model only supported interfaces. Do not invent device holes, bearing planes,
-  thread depths, mounting kits, cable datums or electrical compatibility.
-  Preserve source discrepancies and explicit design allowances.
-- Check connector handling and wire reserves against both physical parts and
-  other reserved spaces. Keep sampled attitude checks distinct from continuous
-  bounds; nominal clearances do not verify actual plugs, latches or harnesses.
-  Motor leads move with the tilting carriers; servo-case leads remain stationary.
-  Connected propulsion-wire reservations are planning space, not an installed
-  harness or a flexible-wire sweep proof. Rebuild and recheck routing after rail
-  adjustment; preserve strain relief and the detachable servo module. Do not
-  infer cable cut lengths or bend limits from a neutral-pose straight distance.
-- Preserve the native geared input/output expressions and bounded, non-wrapping
-  tilt controls. Validate gear contact, coupled motion and bearing/fastener
-  retention together. Purchased gear profiles are reference geometry, never
-  printable replacements; shaft and bearing fits require physical trials.
-  Check continuous rotation envelopes near fasteners as well as sampled poses.
-  Include permitted axial travel in clearance and gear-face engagement budgets;
-  distinguish deliberate bearing, gear and axial-stop contact from collisions.
-- The selected plain-bore driver gears mount on short input stubs retained in
-  prepared printed adapters on the X06's supplied horns. Their actual geometry
-  is unmeasured: do not restore a separately purchased horn, its outline or
-  sourced tip-hole preparation. Export the adapter's undrilled `PrintBlankShape`,
-  not the illustrative faced/drilled assembly shape. Preserve the declared
-  facing/fastener envelope and temporary centering-jig contract. Transfer two
-  sound fastening sites while centered, then drill with both parts removed from
-  the servo. Qualify actual concentricity and bidirectional torque retention;
-  nominal bolt holes and the prototype jig do not prove either. Keep the original
-  spline and OEM screw, removing the adapter for screw service. Do not invent
-  a printed spline or restore
-  the former hollow journal for a 7 mm gear bore. Only output axes use external
-  bearings. One removable bridge carries both servos in a common central wall
-  and retains their complete input drives. A central seat supports that wall
-  directly; two outer mounting seats and fixed datums locate the module on the
-  common output-bearing frame. Replace the
-  bridge and the affected transmission parts for a ratio change; only the
-  selected ratio is currently supported. A different servo requires its own
-  verified interface. Check seated contact and the ordered module
-  removal path while retaining the output shafts, bearings and motor carriers.
-  Rebuild geometry, controls and BOM together.
-  Gear spacing remains fixed; optical mounting clearances do not authorize slotted
-  gear supports or an unsupported GUI ratio-only property.
-  Preserve each gear's catalogued bore in CAD and purchasing. Check actual mesh,
-  adapter concentricity/retention and servo output loading; printed nominal
-  dimensions are not guaranteed fits. Changing `SELECTED_DRIVE` requires the complete
-  fixture audit and release checks below.
-- M2 kit screws use explicit design head envelopes until measured. Do not label
-  them DIN912/A2 or infer their mass from the envelope as a measured value.
-  The rail hex-nut
-  seat requires its declared finished-fit range and coupon checks; raw printing
-  tolerance does not guarantee capture. Ordinary bolt tips must be checked
-  before pressing the rail; they are not certified DIN913 flat points.
-- Cut the selected nominal-3mm rod to the encoded preparation keys. Keep output
-  bearing journals round; full-length flats belong only on input stubs. Generic
-  selected bearings are not certified ISC parts; retained ISC evidence is a
-  dimensional comparison, not the purchased lot's mass or fit qualification.
-  `parts/bearing_retention.py` owns the integral outer-ring hooks, side pockets,
-  fixed cup and matched process coupon. Its released-arm shape is prescribed
-  kinematics, not elastic simulation. Check saved hook material, pockets, guide
-  engagement, shield clearance and removal-tool paths; preserve open pockets
-  when joining cups to posts. Coupon fitting and repeated physical retention/
-  release checks precede full-frame fabrication. No shield-contact substitute,
-  press-fit assumption or bearing preload closes an unverified retention path.
-- `contracts/optical_sensors.py` selects exactly one installed optical sensor.
-  MTF-02P remains the default; MTF-01P uses the same 18 x 12 mm adhesive tray.
-  Change `SELECTED_SENSOR_KEY` and rebuild CAD, reports and BOM together. A
-  persistent model change also needs the fixture transition audit below because
-  the purchased envelope and reservations differ. Never
-  add both sensor masses or treat `optical_sensor.apply_profile()` as a release
-  update. That function is only a temporary compatibility probe. Stable native
-  MTF02P object IDs now identify the one sensor slot; labels and `SensorModel`
-  identify the actual model. Both models on both hosts must pass motion, service
-  and optical screening. MTF-01P's connector exits the long edge (+Y), unlike
-  MTF-02P (+X); firmware yaw must be checked independently. See
-  `references/optical_sensor_compatibility.md`. Keep the existing printed kit;
-  do not add unused sensor holes or route ties across optical apertures.
-- `contracts/equipment_options.py` selects one navigation module and one onboard
-  radio. Keep the default P-AS/LR900-A until the source choice is changed; rebuild
-  CAD, reservations, BOM and wiring counts together. GPS alternatives share one
-  integral adhesive pad; retain P-AS holes and do not add dedicated GPS brackets.
-  LR24-F is ground equipment, with F-Mini in the air. Read the navigation/radio
-  compatibility references before changing profiles. Count a selected MG-F10
-  helix separately once; direct and remote SMA installation are both permitted.
-  Direct local +Z points away from the balloon/downward, so clearance does not
-  prove GNSS reception. Prefer a remote upward antenna when reception matters;
-  its off-gondola placement, support and cable remain unmodeled. Preserve unknown
-  antenna datums, tape contact, connector fits, RF performance and BEC headroom.
-- Change the complete optical kit's host through
-  `stack_interface.attach_to_host()` and its angles through
-  `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics
-  and service checks, including integral legs/feet and complete tower removal.
-  Seat both broad feet directly before tightening their M2 clamps. Clearance
-  holes allow assembly registration, not operating play; validate their full
-  registration envelope on both hosts. Check actual fastener bearing faces,
-  print flatness, clamp friction and PA12 creep. Reject rocking or slip before
-  accepting sensor alignment. Detach the host carrier for bench access to the
-  underside screws; the unmodeled balloon may obstruct an in-place tool.
-  Support the tower, remove both foot nuts and withdraw the screws downward
-  before lifting it. Reinstall the carrier, verify retention and re-trim. Positive sensor Z points away from the balloon;
-  consider loads in both axial directions. Keep reservations in the moving
-  sensor frame.
-- Passing geometry tests does not resolve physical qualification or change
-  `contracts.design.release_status()`. Keep estimated mass exclusions and
-  unresolved interfaces explicit in generated outputs. Unverified supplied-horn
-  material has no assumed density or mass; preserve null estimates and unknown
-  inventory rows. Report known subtotals without claiming physical mass savings
-  from removing unknown values from a sum.
-- Preserve the pinned fixture during refactors. Intentional geometry or native
-  contract changes require an old/new shape, placement, control and metadata
-  audit before updating the fixture and checksum. Never regenerate it merely
-  to pass comparison or add exceptions that conceal damage.
+| Concern | Primary repository location |
+| --- | --- |
+| Scope, revision, layout, manufacturing basis, inventory and unresolved interfaces | [design.py](gondola/contracts/design.py) |
+| Selected FC and published equipment interfaces | [equipment_interfaces.py](gondola/contracts/equipment_interfaces.py) |
+| Navigation/radio alternatives and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
+| Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
+| Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
+| Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
+| Checks, pinned regression baseline and artifact identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py), [bundle.py](gondola/bundle.py) |
+| Commands and FreeCAD runtime | [cli.py](gondola/cli.py), [freecad_runtime.py](gondola/freecad_runtime.py) |
 
-## Checks and release
+Read references according to the changed interface; their revision/date matters:
 
-Run from the repository root with Python 3.11+. Offline tests and GitHub CI skip
-FreeCAD-dependent tests. Native CAD checks use the Linux FreeCAD AppImage in
-`~/Applications` or `~/Downloads`; override with `FREECAD_APPIMAGE` or
-`--freecad-appimage PATH`. The reviewed kernel is FreeCAD 1.1.3; investigate
-geometry differences after version changes. Preview needs a graphical display.
+- Drive and purchasing: [selection](references/drive_selection_review.md),
+  [seller gear evidence](references/kailash_gears_selected_evidence.md),
+  [cart decisions](references/cart_adaptation_review.md),
+  [bearing retention and supplied-horn preparation](references/retention_review.md).
+- Structure and wiring: [layout](references/layout_and_wiring_review.md),
+  [rail joint](references/rail_joint_review.md), [rail fit](references/rail_fit_review.md),
+  [shape rationale](references/shape_simplification_review.md).
+- Electronics: [controller](references/controller_selection_review.md),
+  [navigation](references/navigation_module_compatibility.md),
+  [radio](references/radio_module_compatibility.md),
+  [optical sensor](references/optical_sensor_compatibility.md).
+
+Do not copy full dimension or purchase tables into this README. A source contract
+is the implementation's authority, while retained drawings support or qualify its
+inputs. Catalog claims, design allowances and physical measurements remain distinct.
+
+## Editing and verification boundaries
+
+- Keep geometry, native properties, motion controls, BOM and reservations consistent.
+  Use shared oriented datums, including the servo envelope, carrier orientation and
+  FC orientation. Transform local clamp/tool directions into the assembly frame.
+  Do not duplicate interface dimensions in unrelated geometry helpers.
+- Preserve the deliberately removable paired-servo/input-drive module. The current
+  gear spacing is fixed; another servo or ratio requires a complete interface and
+  mechanism review. Editing a saved ratio property does not regenerate gear teeth.
+  Check seating and the actual ordered removal path, not just separated end poses.
+- Preserve bounded tilt without endpoint wraparound. Check coupled gearing,
+  permitted axial travel, retained contact and continuous rotation bounds where
+  applicable. Label sampled checks as sampled; distinguish intentional bearing,
+  gear and stop contacts from unexpected interference.
+- The supplied horn remains unmeasured. Its prepared CAD shape is an example.
+  Export the adapter's undrilled `PrintBlankShape`, not that prepared example.
+  Follow the retained preparation contract for actual horn registration and
+  fastening sites; do not invent a spline, OEM screw specification or universal
+  horn compatibility. Keep shaft grip separate from axial/bearing retention.
+- Rail and bearing coupons address finished fit and retention. Nominal dimensions
+  and prescribed latch release motion do not establish insertion force, elastic
+  recovery, shield clearance, creep or fatigue. Do not close an unverified bearing
+  retention path by assuming press fit or adding the rejected shield-contact bush.
+- Apply the manufacturing size rule before and after print rotation. Check local
+  functional sections and powder-removal access. Supplier envelopes and minimum
+  walls are screening inputs, not proof of one-piece acceptance or finished fit.
+- Check cable/connector reservations against physical parts and other reservations.
+  Motor leads move; servo-case leads do not. A reserved loop or neutral straight-line
+  distance is not an installed harness, cut length or flexible-wire sweep proof.
+  Recheck routing, strain relief and service access after layout changes.
+- Select one device per navigation, radio and optical region. Persistent selection
+  changes require rebuilding all affected artifacts; temporary profile probes are
+  not released configurations. Some native IDs retain older device names: inspect
+  the selected model/profile properties and labels instead of inferring the device
+  from its object ID. Count alternative equipment only when selected.
+- Use `stack_interface.attach_to_host()` for optical-host changes and
+  `optical_mount.set_angles()` for its manual alignment. Verify both supported hosts,
+  sensor profiles, fields of view, registration allowances and service paths.
+  Sensor-to-tray adhesive and host-to-tower foot clamps are different interfaces.
+  Actual pointing stability, cable slack and firmware orientation remain checks.
+- Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
+  placement and adhesive contact. Missing mass is unknown, not zero. Geometric
+  success alone must not change `design.release_status()` to physical qualification.
+  Check its unresolved-interface list for unmodeled parts and load limits; a whole-
+  assembly check covers only the modeled geometry and declared bounds.
+
+The source fingerprint covers `gondola/**/*.py` and root `.FCMacro` files only.
+It excludes documentation, retained evidence, tests and Blender tools. Matching
+hashes are necessary for artifact identity but do not prove all supporting evidence
+is current. Reassess affected conclusions when that evidence changes.
+
+## Checks and generated outputs
+
+For wording-only changes, review accuracy, local links and `git diff --check`;
+do not regenerate CAD merely to update prose. If a documentation correction changes
+a design input or exposes an implementation error, assess and validate that change.
+
+For source changes, use Python 3.11+ from the repository root:
 
 ```sh
 uvx ruff==0.16.8 check gondola tests build_gondola.FCMacro preview_gondola.FCMacro
 uvx ruff==0.16.8 format --check gondola tests build_gondola.FCMacro preview_gondola.FCMacro
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q gondola
-python3 -m gondola status
 ```
 
-Run the native suite and confirm no tests are skipped:
+Offline tests skip FreeCAD-dependent cases. Before accepting changed CAD artifacts,
+run the native suite and confirm no skips. The runtime locates a Linux FreeCAD
+AppImage in `~/Applications` or `~/Downloads`; `FREECAD_APPIMAGE` overrides it.
+AR was reviewed with FreeCAD 1.1.3; investigate kernel-dependent differences when
+changing versions. Preview requires a graphical display.
 
 ```sh
 python3 - <<'PY_NATIVE'
@@ -239,7 +138,12 @@ with mounted_appimage(locate_appimage()) as mount:
 PY_NATIVE
 ```
 
-Freeze source edits before releasing. Run sequentially; stop on any failure:
+Preserve the pinned fixture during behavior-preserving refactors. Intentional
+geometry/native-contract changes require an independent old/new shape, placement,
+control and metadata review before updating the fixture and checksum in `config.py`.
+Do not regenerate the fixture merely to pass comparison or hide a failed check.
+
+Freeze source changes and run the artifact pipeline sequentially, stopping on failure:
 
 ```sh
 python3 -m gondola build
@@ -249,33 +153,30 @@ python3 -m gondola compare
 python3 -m gondola bundle
 ```
 
-Preview changes the saved CAD hash, so it precedes validation and comparison.
-Inspect assembly, print layout and optical views for both hosts. Preview must
-restore the configured host before saving. Reports and exports must match the
-current source and saved CAD; rebuild after source changes, never reuse earlier
-success reports. For alternate output paths, pass `--output-dir PATH` before
-every command consistently.
+Build/preview overwrite generated output. Preview saves display properties and
+changes the CAD hash, so it precedes validation/comparison. Inspect assembly,
+print layout and both optical-host views; restore the configured host before saving.
+Record final checks against that source and saved CAD in the revision review.
+For another directory, pass `--output-dir PATH` before every subcommand consistently;
+the CLI also accepts `--freecad-appimage PATH` before the subcommand.
 
-Export only manifest-listed print parts. Keep generated `build/`, archives,
-logs and temporary mounts out of Git. GUI entry points are
-`build_gondola.FCMacro` and `preview_gondola.FCMacro`.
+`build/gondola.FCStd` is the default generated assembly. The fixture selected by
+`config.py` is a regression comparison baseline, not an alternative manufacturing
+assembly. Export only manifest-listed print parts. `build/`, logs and temporary
+audit files are not committed and may be absent in another environment. Keep retained
+evidence and the revision review in Git; do not rely on `/tmp` as the sole record.
+GUI entry points are `build_gondola.FCMacro` and `preview_gondola.FCMacro`.
 
-## Blender review derivative
+## Blender derivative
 
-`tools/blender_review/` exports the validated saved assembly without modifying it.
-Run `python3 tools/blender_review/run.py --render-stills --open` with Blender 5.2
-installed. The default output is `build/blender_review/cad_review.blend` with
-independent scenes for tilt, gearing, axial travel, both optical hosts and bench
-servo-module removal. The builder shares meshes, not animated objects/actions;
-the verifier compares the evaluated Blender transforms with the sampled native
-poses. Preserve the source/CAD hashes and `verification.json` beside the review.
-`render_preview.py` runs inside Blender and accepts `--blend PATH --output PATH.mp4`
-and optional `--scene NAME`; it renders the saved timing without saving the model.
+After native validation, `python3 tools/blender_review/run.py --render-stills`
+generates `build/blender_review/cad_review.blend`; add `--open` when opening it is
+requested. The reviewed setup used Blender 5.2.2. Verify the derivative after tool
+or Blender changes, preserving its source/CAD identities and `verification.json`.
 
-This is prescribed rigid motion, not collision, dynamics, wire, friction or
-strength simulation. Follow native bounded angles and staged removal paths;
-do not imply host-transfer clearance or powered optical adjustment. Propeller
-disks are reference envelopes. The entire display is rotated together so the
-sensor viewing direction points down at neutral; CAD coordinates are unchanged.
-The Blender tools are outside the authoritative CAD source fingerprint; changes
-to them require regenerating and verifying the review, not promoting CAD fixtures.
+The verifier compares evaluated Blender transforms with sampled native poses.
+This is prescribed rigid motion, not collision, dynamics, wire, friction or strength
+simulation. Optical host transfer and powered alignment are not simulated.
+The display is rotated as a whole so neutral sensor aim points down; native CAD
+coordinates are unchanged. Blender-only edits do not by themselves justify promoting
+the CAD regression fixture.
