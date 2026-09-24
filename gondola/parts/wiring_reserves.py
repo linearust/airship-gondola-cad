@@ -13,7 +13,12 @@ import Part
 
 from gondola.contracts import equipment_interfaces as interfaces
 from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG
+from gondola.contracts.equipment_options import (
+    get_navigation_profile,
+    get_radio_profile,
+)
 
+from . import equipment_layout as layout
 from . import equipment_mounts as mounts
 
 V = App.Vector
@@ -100,8 +105,34 @@ def fc_underbody_reserve_shape():
     return _orient_fc_reserve(mounts.fc_wiring_reserve_shape())
 
 
-def reserve_shapes():
+def direct_antenna_reserve_shape(profile=None):
+    """Conservative direct-helix bound; never an invented exact antenna model.
+
+    Allow the helix centre anywhere over the body footprint. +Z is away from
+    the balloon, so this is a downward installation screen, not a sky-view or
+    outdoor reception qualification. Remote upward installation is unplaced.
+    """
+    profile = profile or get_navigation_profile()
+    antenna = profile.external_antenna
+    if antenna is None:
+        return None
+    length, width, height = profile.size_mm
+    x, y = layout.navigation_centre(profile)
+    size = (length + antenna.diameter_mm, width + antenna.diameter_mm)
+    return _box(
+        (*size, height + antenna.length_mm),
+        (
+            x - size[0] / 2,
+            y - size[1] / 2,
+            layout.navigation_bottom(profile),
+        ),
+    )
+
+
+def reserve_shapes(navigation_profile=None, radio_profile=None):
     """Return fresh local shapes in the electronics module's coordinate frame."""
+    navigation_profile = navigation_profile or get_navigation_profile()
+    radio_profile = radio_profile or get_radio_profile()
     core = mounts.fc_wiring_reserve_shape()
     fc = core.multiFuse(
         [_fc_peripheral_band(), _fc_exit_tube(-1), _fc_exit_tube(1)]
@@ -109,15 +140,15 @@ def reserve_shapes():
     fc = _orient_fc_reserve(fc)
     bottom = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
     lr_x, lr_y = mounts.LR_CENTRE_XY
-    lr_length, lr_width, lr_height = interfaces.LR_SIZE_MM
+    lr_length, lr_width, lr_height = radio_profile.size_mm
     lr_lane_size = (
         LR_CONNECTOR_TRAVEL_MM,
         lr_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
         lr_height + CONNECTOR_TOP_MARGIN_MM,
     )
     lr_lane_y = lr_y - lr_width / 2 - CONNECTOR_SIDE_MARGIN_MM
-    pas_x, pas_y = mounts.PAS_CENTRE_XY
-    pas_width = interfaces.DEVICE_CONNECTOR_EVIDENCE["PAS"]["connector_band_width_mm"]
+    navigation_x, navigation_y = layout.navigation_centre(navigation_profile)
+    navigation_width = navigation_profile.connector_band_width_mm
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
     xt30_cx, xt30_cy = XT30_ALLOCATION_CENTRE_XY_MM
     shapes = {
@@ -144,17 +175,22 @@ def reserve_shapes():
         ),
         "PASConnectorReserve": _box(
             (
-                pas_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
+                navigation_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
                 PAS_CONNECTOR_TRAVEL_MM,
-                interfaces.PAS_SIZE_MM[2] + CONNECTOR_TOP_MARGIN_MM,
+                navigation_profile.size_mm[2] + CONNECTOR_TOP_MARGIN_MM,
             ),
             (
-                pas_x - pas_width / 2 - CONNECTOR_SIDE_MARGIN_MM,
-                pas_y - interfaces.PAS_SIZE_MM[1] / 2 - PAS_CONNECTOR_TRAVEL_MM,
-                mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE,
+                navigation_x - navigation_width / 2 - CONNECTOR_SIDE_MARGIN_MM,
+                navigation_y
+                - navigation_profile.size_mm[1] / 2
+                - PAS_CONNECTOR_TRAVEL_MM,
+                layout.navigation_bottom(navigation_profile),
             ),
         ),
     }
+    antenna = direct_antenna_reserve_shape(navigation_profile)
+    if antenna is not None:
+        shapes["NavigationDirectAntennaReserve"] = antenna
     for name, shape in shapes.items():
         if not shape.isValid() or len(shape.Solids) != 1:
             raise RuntimeError("Wiring reservation is not one connected solid: " + name)
@@ -180,8 +216,10 @@ def device_connector_contract(key):
     }
 
 
-def reserve_contracts():
+def reserve_contracts(navigation_profile=None, radio_profile=None):
     """Attach measured evidence and explicitly unverified design allowances."""
+    navigation_profile = navigation_profile or get_navigation_profile()
+    radio_profile = radio_profile or get_radio_profile()
     fc = {
         **device_connector_contract("FC"),
         "operating_scope": "Connected peripheral housing and handling space, underbody corridor and two continuous exit turns. No individual port centre, exact plug or cable is modeled.",
@@ -212,7 +250,7 @@ def reserve_contracts():
             XT30_ALLOCATION_CENTRE_XY_MM
         ),
         "design_withdrawal_allowance_each_x_mm": XT30_WITHDRAWAL_ALLOWANCE_MM,
-        "operating_scope": "A 22x10x15mm body allocation beside the FC, opposite LR900-A, contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled.",
+        "operating_scope": "A 22x10x15mm body allocation beside the FC, opposite the radio region, contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled.",
         "withdrawal_scope": "Continuous 10mm extension at both local X ends. This is our pull/lead allowance, not a published withdrawal stroke or a proven retained pigtail.",
         "installed_connector_fit_verified": False,
         "withdrawal_stroke_verified": False,
@@ -220,31 +258,54 @@ def reserve_contracts():
         "complete_connected_harness_modeled": False,
     }
     lr = {
-        **device_connector_contract("LR"),
-        "edge_width_mm": interfaces.LR_SIZE_MM[1],
-        "edge_height_mm": interfaces.LR_SIZE_MM[2],
+        **device_connector_contract(radio_profile.interface_key),
+        "selected_model": radio_profile.key,
+        "edge_width_mm": radio_profile.size_mm[1],
+        "edge_height_mm": radio_profile.size_mm[2],
         "transverse_margin_each_side_mm": CONNECTOR_SIDE_MARGIN_MM,
         "top_service_margin_mm": CONNECTOR_TOP_MARGIN_MM,
         "design_outward_travel_mm": LR_CONNECTOR_TRAVEL_MM,
-        "operating_scope": "Reserve both complete ends of the long body axis; exact GH/USB/SMA coordinates and which installed end faces +X are unverified.",
-        "withdrawal_scope": f"Continuous {LR_CONNECTOR_TRAVEL_MM:g}mm end lanes include {CONNECTOR_SIDE_MARGIN_MM:g}mm transverse and {CONNECTOR_TOP_MARGIN_MM:g}mm top service margins beyond the body envelope. These are planning allowances, not a measured plug stroke, latch-access proof or antenna keepout. Actual SMA socket/antenna and USB plug dimensions remain required.",
+        "operating_scope": "Reserve both complete ends of the selected radio's long body axis. Actual UART, RF and any USB connector coordinates and which installed end faces +X remain unverified. The Mini has no USB; its IPEX1 mating/lead direction away from the populated face requires a separate physical check.",
+        "withdrawal_scope": f"Continuous {LR_CONNECTOR_TRAVEL_MM:g}mm end lanes include {CONNECTOR_SIDE_MARGIN_MM:g}mm transverse and {CONNECTOR_TOP_MARGIN_MM:g}mm top service margins beyond the body envelope. These are planning allowances, not a measured plug stroke, latch-access proof or antenna keepout. Check actual antenna, pigtail and selected plugs.",
     }
-    return {
+    contracts = {
         "FCWiringClearanceReserve": fc,
         "XT30ServiceReserve": xt30,
         "LR900NegativeXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "-X"},
         "LR900PositiveXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "+X"},
         "PASConnectorReserve": {
-            **device_connector_contract("PAS"),
+            **device_connector_contract(navigation_profile.interface_key),
+            "selected_model": navigation_profile.key,
             "outward_axis": "-Y",
-            "edge_width_mm": interfaces.DEVICE_CONNECTOR_EVIDENCE["PAS"][
-                "connector_band_width_mm"
-            ],
-            "edge_height_mm": interfaces.PAS_SIZE_MM[2],
+            "edge_width_mm": navigation_profile.connector_band_width_mm,
+            "edge_height_mm": navigation_profile.size_mm[2],
             "transverse_margin_each_side_mm": CONNECTOR_SIDE_MARGIN_MM,
             "top_service_margin_mm": CONNECTOR_TOP_MARGIN_MM,
             "design_outward_travel_mm": PAS_CONNECTOR_TRAVEL_MM,
-            "operating_scope": "Use the side-entry GH port at the documented connector end. Cover the entire 19mm central connector band because individual XYZ are unpublished.",
-            "withdrawal_scope": f"The continuous {PAS_CONNECTOR_TRAVEL_MM:g}mm lane adds {CONNECTOR_SIDE_MARGIN_MM:g}mm at both sides of the documented connector band and {CONNECTOR_TOP_MARGIN_MM:g}mm above the body envelope for service. These are planning allowances, not measured header coordinates, latch access or withdrawal stroke. The parallel top-entry alternative is not allocated here; use one port and verify the selected cable.",
+            "operating_scope": "Reserve the source-oriented -Y connector edge: P-AS uses the documented19mm central side-entry GH band; GPS alternatives use their whole short SH edge. Individual XYZ are unpublished. Verify physical board arrow and compass/firmware orientation after installation.",
+            "withdrawal_scope": f"The continuous {PAS_CONNECTOR_TRAVEL_MM:g}mm lane adds {CONNECTOR_SIDE_MARGIN_MM:g}mm at both sides of the documented connector band and {CONNECTOR_TOP_MARGIN_MM:g}mm above the body envelope for service. These are planning allowances, not measured header coordinates, latch access or withdrawal stroke."
+            + (
+                " The P-AS parallel top-entry alternative is not allocated here; use one port and verify the selected cable."
+                if navigation_profile.key == "PAS"
+                else " Verify the selected SH1.0-6P cable and its exact pin labels."
+            ),
         },
     }
+    if navigation_profile.external_antenna is not None:
+        contracts["NavigationDirectAntennaReserve"] = {
+            "device": navigation_profile.key + " direct external helix",
+            "source_url": navigation_profile.external_antenna.source,
+            "selected_model": navigation_profile.key,
+            "antenna_reference": navigation_profile.contract()["external_antenna"],
+            "direct_orientation": "+Z away from balloon; downward in flight",
+            "operating_scope": "Conservative whole-footprint direct-helix planning bound: allow the antenna centre anywhere over the module rectangle, expand each horizontal side by the published antenna radius, and span from the module bottom through59.3mm beyond its top. The body and its own connector lane intentionally overlap this uncertainty bound; unscrew the direct helix before SH connector service. This is not a measured SMA seating plane, exact installed antenna or support-strength qualification.",
+            "remote_installation_scope": "A remotely connected helix may face upward at a suitable reception location. Its mount, cable route/length, loss, bending, clearances and retention are unplaced and unqualified. No remote antenna position or extra printed bracket is invented.",
+            "reception_scope": "The modeled direct downward installation is a mechanical option only. Prefer appropriate upward sky view when outdoor GNSS reception matters; CAD clearance does not establish RF, compass or indoor GNSS performance.",
+            "installed_connector_fit_verified": False,
+            "installed_port_datums_verified": False,
+            "withdrawal_stroke_verified": False,
+            "wire_bend_radius_qualified": False,
+            "complete_connected_harness_modeled": False,
+            "antenna_retention_verified": False,
+        }
+    return contracts

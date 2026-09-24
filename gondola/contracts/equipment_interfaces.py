@@ -7,6 +7,7 @@ No PCB bearing plane, screw length or damper compression is inferred from photos
 from copy import deepcopy
 
 from .drive import GEARS
+from .equipment_options import NAVIGATION_PROFILES, RADIO_PROFILES
 from .optical_sensors import SENSOR_PROFILES
 
 FC_MODEL = "MicoAir743v2-AIO-45A"
@@ -67,16 +68,14 @@ def flight_controller_contract():
     }
 
 
-PAS_SOURCE = (
-    "https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf"
-)
-PAS_SIZE_MM = (27.0, 32.0, 7.0)
-PAS_HOLE_DIAMETER = 2.2
-PAS_HOLE_PITCH = 23.0
-PAS_HOLE_CENTRES = ((-11.5, -9.3), (11.5, -9.3))
+PAS_SOURCE = NAVIGATION_PROFILES["PAS"].source
+PAS_SIZE_MM = NAVIGATION_PROFILES["PAS"].size_mm
+PAS_HOLE_DIAMETER = NAVIGATION_PROFILES["PAS"].mounting_hole_diameter_mm
+PAS_HOLE_CENTRES = NAVIGATION_PROFILES["PAS"].mounting_hole_centres_mm
+PAS_HOLE_PITCH = PAS_HOLE_CENTRES[1][0] - PAS_HOLE_CENTRES[0][0]
 
-LR_SOURCE = "https://micoair.cn/zh/docs/telemetry/lr900/lr900-telemetry"
-LR_SIZE_MM = (29.5, 13.0, 9.0)
+LR_SOURCE = RADIO_PROFILES["LR900A"].source
+LR_SIZE_MM = RADIO_PROFILES["LR900A"].size_mm
 MTF02P_SOURCE = SENSOR_PROFILES["MTF02P"].source
 MTF02P_DIMENSION_IMAGE = SENSOR_PROFILES["MTF02P"].dimension_source
 MTF02P_PORT_IMAGE = SENSOR_PROFILES["MTF02P"].port_source
@@ -93,7 +92,7 @@ XT30U_MALE_DRAWING = (
 XT30U_MATED_DRAWING = (
     "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638924618397.png"
 )
-LR_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/669f74a433137-ed5c3462e6-6d69324222.webp"
+LR_PORT_IMAGE = RADIO_PROFILES["LR900A"].port_source
 SERVO_SOURCE = "https://kstservos.com/products/x06-v6-0-hv-micro-digital-metal-gear-glider-1-8kg-torque-servo-motor"
 X06_MANUFACTURER_SOURCE = "https://www.kstsz.com/kstsz_Product_2063755473.html"
 X06_DATASHEET_SOURCE = "https://cdn.shopify.com/s/files/1/0570/1766/3541/files/X06_V6.0_Technical_Specifcation.pdf?v=1700472290"
@@ -304,7 +303,12 @@ DEVICE_CONNECTOR_EVIDENCE = {
         "connection_limit": "Port family and pin count do not establish electrical compatibility. The DJI SH1.0-6P connector supplies 12 V; it is not a general 5 V sensor connector. Use the official device pinout before choosing a harness.",
     },
     "LR": {
-        "sources": [LR_SOURCE, LR_PORT_IMAGE],
+        "sources": [
+            LR_SOURCE,
+            RADIO_PROFILES["LR900A"].dimension_source,
+            LR_PORT_IMAGE,
+        ],
+        "retained_evidence": ["references/lr900_variant_dimensions.webp"],
         "documented_types": ["GH1.25-4P", "USB Type-C", "SMA"],
         "catalog_references": ["JST_GH_4P"],
         "documented_interfaces": "UART GH1.25-4P, USB Type-C and SMA antenna socket with external thread and female centre contact. The LR900-A body dimensions exclude the SMA socket.",
@@ -394,8 +398,9 @@ MOUNTING_EVIDENCE = {
         "installation": "Drawing frame: width X=27, length Y=32, antenna toward +Y. Keep the antenna region clear; no unprovided antenna keepout dimension is invented.",
     },
     "LR": {
-        "sources": [LR_SOURCE],
-        "verified": "LR900-A 29.5 x 13 x 9 mm excludes the SMA antenna socket; UART GH1.25-4P and USB Type-C.",
+        "sources": [LR_SOURCE, RADIO_PROFILES["LR900A"].dimension_source],
+        "retained_evidence": ["references/lr900_variant_dimensions.webp"],
+        "verified": "LR900-A 29.5 x 13 x 9 mm excludes the SMA antenna socket; published module mass 4 g; UART GH1.25-4P and USB Type-C.",
         "unknown": "No verified mounting-hole pattern, underside bearing plane, SMA socket/antenna envelope or plugged cable clearance.",
         "installation": "Insulating adhesive remains provisional; the LR900-F/P mechanical model is not evidence for the LR900-A.",
     },
@@ -415,4 +420,73 @@ MOUNTING_EVIDENCE = {
         "unknown": "No verified mounting-hole pattern, backside adhesive contact, exact optical origins or plugged cable clearance.",
         "installation": "Insulating adhesive remains provisional. Optical face points away from the balloon; match firmware rotation to the purchased unit.",
     },
+}
+
+
+def _profile_sources(profile):
+    return list(
+        dict.fromkeys((profile.source, profile.dimension_source, profile.port_source))
+    )
+
+
+for _key, _files in (
+    (
+        "MGA01",
+        ["references/micoair_gps_dimensions.webp", "references/micoair_gps_ports.webp"],
+    ),
+    ("MGF10A", ["references/mgf10a_dimensions.png", "references/mgf10a_ports.png"]),
+):
+    _profile = NAVIGATION_PROFILES[_key]
+    DEVICE_CONNECTOR_EVIDENCE[_key] = {
+        "sources": _profile_sources(_profile),
+        "retained_evidence": _files,
+        "documented_types": [_profile.connector_type],
+        "catalog_references": [_profile.connector_catalog_key],
+        "documented_interfaces": "One SH1.0-6P carries 5V, GND, UART GPS TX/RX and I2C compass SCL/SDA. Follow the selected module's pin labels; this is not a pin-number assignment.",
+        "orientation_evidence": "The manufacturer image locates the connector on the module edge. Reserve the full local -Y edge; exact header centre and PCB Z datums are unmeasured.",
+        "connector_band_width_mm": _profile.connector_band_width_mm,
+        "installed_port_centres_mm": None,
+        "installed_port_datums_verified": False,
+        "unknown": "Exact connector XYZ, plugged cable and bend dimensions, physical module orientation and installed compass calibration.",
+        "connection_limit": "Use the FC UART3/I2C 5V connector with verified pin mapping; do not reuse the P-AS four-pin UART cable or the FC's 12V DJI cable. Configure GPS and compass for the selected module; mechanical fit does not establish heading or GNSS performance.",
+    }
+    MOUNTING_EVIDENCE[_key] = {
+        "sources": _profile_sources(_profile),
+        "retained_evidence": _files,
+        "verified": (
+            "MG-A01 is sold as M10 Ultra: nominal 25 x 25 x 8 mm and 12 g. The older product page gives 7.8 mm height; retain the larger current drawing envelope. No confirmed mounting-hole pattern."
+            if _key == "MGA01"
+            else "Bare MG-F10-A body is 22 x 34 x 13.4 mm in the adopted drawing frame, 6 g without its external helix. Published four diameter 2 mm holes on 16 x 28 mm axes are intentionally unused. The separate nominal diameter 28 x 59.3 mm helix has published mass 15 g."
+        ),
+        "unknown": "Underside bearing/contact plane, compressed tape height, adhesive retention, installed antenna access, RF and compass performance; no GPS fastening stack is inferred.",
+        "installation": _profile.contract()["installation"]
+        + " "
+        + _profile.contract()["antenna_scope"],
+    }
+
+_mini = RADIO_PROFILES["LR24FMINI"]
+_mini_files = [
+    "references/lr24_specifications.webp",
+    "references/lr24_dimensions.webp",
+    "references/lr24f_mini_ports.webp",
+    "references/lr24f_mini_package.webp",
+]
+DEVICE_CONNECTOR_EVIDENCE[_mini.interface_key] = {
+    "sources": _profile_sources(_mini),
+    "retained_evidence": _mini_files,
+    "documented_types": [_mini.connector_type, _mini.antenna_connector],
+    "catalog_references": [_mini.connector_catalog_key],
+    "documented_interfaces": "SH1.0-4P UART with 3.3V logic; no USB. The official store table identifies IPEX1 RF connector, unlike the full-size LR24-F's SMA connector.",
+    "orientation_evidence": "SH sockets and the IPEX1 connector occupy opposite long-axis ends. Photos show two SH sockets but the manual documents one UART interface; do not infer independent UARTs or a second socket's function. Both complete ends have design access reserves because exact port datums are unmeasured.",
+    "installed_port_centres_mm": None,
+    "installed_port_datums_verified": False,
+    "unknown": "Exact port XYZ, underside components, IPEX mating space, pigtail bend radius and T-antenna dimensions/retention.",
+    "connection_limit": "SH1.0-4P is not the LR900-A's GH1.25-4P; verify pin labels and cross TX/RX. Use a 3.3V-logic USB-UART adapter for setup. Match the LR24 ground radio, antenna and settings; LR900 is a different radio family.",
+}
+MOUNTING_EVIDENCE[_mini.interface_key] = {
+    "sources": _profile_sources(_mini),
+    "retained_evidence": _mini_files,
+    "verified": "Nominal 24 x 18.2 x 5.8 mm module, 2.5 g, excluding the external antenna/pigtail. The side view confirms 5.8 mm height and underside components; no mounting holes are established.",
+    "unknown": "Actual rear support contact, compressed insulating adhesive, retention, antenna and connected-cable clearances.",
+    "installation": _mini.contract()["installation"],
 }

@@ -163,6 +163,17 @@ preparation, balance and moving-wire behaviour require physical inspection and t
   MTF-02P (+X); firmware yaw must be checked independently. See
   `references/optical_sensor_compatibility.md`. Keep the existing printed kit;
   do not add unused sensor holes or route ties across optical apertures.
+- `contracts/equipment_options.py` selects one navigation module and one onboard
+  radio. Keep the default P-AS/LR900-A until the source choice is changed; rebuild
+  CAD, reservations, BOM and wiring counts together. GPS alternatives share one
+  integral adhesive pad; retain P-AS holes and do not add dedicated GPS brackets.
+  LR24-F is ground equipment, with F-Mini in the air. Read the navigation/radio
+  compatibility references before changing profiles. Count a selected MG-F10
+  helix separately once; direct and remote SMA installation are both permitted.
+  Direct local +Z points away from the balloon/downward, so clearance does not
+  prove GNSS reception. Prefer a remote upward antenna when reception matters;
+  its off-gondola placement, support and cable remain unmodeled. Preserve unknown
+  antenna datums, tape contact, connector fits, RF performance and BEC headroom.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

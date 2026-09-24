@@ -117,10 +117,17 @@ def review(doc, registry):
             mounts.DECK_THICKNESS,
         ),
         (
-            "shared_fc_pas_spine_thickness",
+            "shared_fc_navigation_spine_thickness",
             "ElectronicsMount",
-            (30, 0, mounts.DECK_BOTTOM_Z - 0.01),
+            (30, 0, mounts.SUPPORT_FACE_Z - mounts.NAVIGATION_ARM_THICKNESS - 0.01),
             (30, 0, mounts.SUPPORT_FACE_Z + 0.01),
+            mounts.NAVIGATION_ARM_THICKNESS,
+        ),
+        (
+            "shared_fc_radio_spine_thickness",
+            "ElectronicsMount",
+            (0, 40, mounts.DECK_BOTTOM_Z - 0.01),
+            (0, 40, mounts.SUPPORT_FACE_Z + 0.01),
             mounts.DECK_THICKNESS,
         ),
         (
@@ -229,7 +236,11 @@ def review(doc, registry):
         "short_50mm_guidance_mm": 1.0,
         "equipment_mount_assessment": {
             "deck_mm": mounts.DECK_THICKNESS,
-            "load_path_arm_width_mm": mounts.ARM_WIDTH,
+            "navigation_arm_section_mm": [
+                mounts.NAVIGATION_ARM_WIDTH,
+                mounts.NAVIGATION_ARM_THICKNESS,
+            ],
+            "radio_arm_section_mm": [mounts.ARM_WIDTH, mounts.DECK_THICKNESS],
             "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
             "contracts": [
                 mounts.mount_contract(kind) for kind in ("battery", "electronics")

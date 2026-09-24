@@ -12,6 +12,33 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentMountShapeTests(unittest.TestCase):
+    def test_navigation_spine_clears_rail_in_both_clamped_lateral_poses(self):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import rail
+        from gondola.validation.geometry import intersection_volume
+
+        station = next(
+            s for s in MODULE_STATIONS if s.object_name == "ElectronicsEquipmentModule"
+        )
+        rail_shape = rail.rail_shape()
+        local = mounts.mount_shape("electronics")
+        # This section lies above the rail head but outside the mating shoe.
+        # Inspect the actual lower surface, not just the unchanged top plane.
+        section = local.common(Part.makeBox(10, 20, 8, App.Vector(25, -10, 5)))
+        for side in (-1, 1):
+            pose = App.Placement(
+                App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
+                App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+            )
+            body = local.copy()
+            body.Placement = pose.multiply(body.Placement)
+            probe = section.copy()
+            probe.Placement = pose.multiply(probe.Placement)
+            with self.subTest(clamped_side=side):
+                self.assertLess(intersection_volume(body, rail_shape), 1e-6)
+                self.assertGreaterEqual(probe.distToShape(rail_shape)[0], 0.8 - 1e-6)
+
     def test_common_x_spine_reaches_fc_and_pas_pads_without_a_second_branch(self):
         from gondola.parts import equipment_mounts as mounts
 
@@ -20,7 +47,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         self.assertEqual(len(shape.Solids), 1)
         start, end = mounts.ELECTRONICS_SUPPORT_SPINES[0]
         self.assertEqual(start, mounts.FC_HOLE_CENTRES[0])
-        self.assertEqual(end, mounts.PAS_HOLE_CENTRES[-1])
+        self.assertEqual(end, mounts.GPS_CENTRE_XY)
         self.assertEqual(start[1], 0)
         self.assertEqual({centre[1] for centre in mounts.PAS_HOLE_CENTRES}, {0})
         strip = Part.makeBox(
@@ -39,14 +66,28 @@ class EquipmentMountShapeTests(unittest.TestCase):
             )
         self.assertLess(abs(strip.cut(shape).Volume), 1e-6)
 
+    def test_gps_adhesive_pad_is_integral_and_not_pierced_by_pas_holes(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        pad = Part.makeBox(
+            *mounts.GPS_ADHESIVE_SIZE,
+            mounts.DECK_THICKNESS,
+            App.Vector(
+                mounts.GPS_CENTRE_XY[0] - mounts.GPS_ADHESIVE_SIZE[0] / 2,
+                mounts.GPS_CENTRE_XY[1] - mounts.GPS_ADHESIVE_SIZE[1] / 2,
+                mounts.DECK_BOTTOM_Z,
+            ),
+        )
+        self.assertLess(pad.cut(mounts.mount_shape("electronics")).Volume, 1e-6)
+
     def test_former_offset_pas_branch_is_absent(self):
         from gondola.parts import equipment_mounts as mounts
 
         # Outside the shoe and optical tabs, the former Y=-9.3 member ran
-        # through this complete 5 mm band. Keeping it would duplicate the
+        # through this 4 mm band outside the reinforced shared member. Keeping it would duplicate the
         # shared X spine even if all mounting holes were correctly relocated.
         clear = Part.makeBox(
-            12, 5, mounts.DECK_THICKNESS, App.Vector(26, -11.8, mounts.DECK_BOTTOM_Z)
+            12, 4, mounts.DECK_THICKNESS, App.Vector(26, -11.8, mounts.DECK_BOTTOM_Z)
         )
         shape = mounts.mount_shape("electronics")
         self.assertLess(abs(shape.common(clear).Volume), 1e-6)
@@ -59,16 +100,16 @@ class EquipmentMountShapeTests(unittest.TestCase):
         section = shape.common(
             Part.makeBox(
                 1,
-                10,
-                4,
-                App.Vector(29.5, -5, mounts.DECK_BOTTOM_Z - 1),
+                18,
+                5,
+                App.Vector(29.5, -9, mounts.DECK_BOTTOM_Z - 2),
             )
         )
-        self.assertAlmostEqual(section.Volume, 10, places=6)
-        self.assertAlmostEqual(section.BoundBox.YLength, 5, places=6)
-        self.assertAlmostEqual(section.BoundBox.ZLength, 2, places=6)
+        self.assertAlmostEqual(section.Volume, 42, places=6)
+        self.assertAlmostEqual(section.BoundBox.YLength, 14, places=6)
+        self.assertAlmostEqual(section.BoundBox.ZLength, 3, places=6)
         self.assertAlmostEqual(section.BoundBox.Center.y, 0, places=6)
-        self.assertAlmostEqual(section.BoundBox.ZMin, mounts.DECK_BOTTOM_Z, places=6)
+        self.assertAlmostEqual(section.BoundBox.ZMax, mounts.SUPPORT_FACE_Z, places=6)
         self.assertEqual(
             tuple(
                 (x - mounts.PAS_CENTRE_XY[0], y - mounts.PAS_CENTRE_XY[1])

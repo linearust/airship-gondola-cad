@@ -1279,6 +1279,8 @@ def detailed_propulsion_evidence(doc, source):
 
 
 def validate(source=None):
+    from .equipment_options import compatibility_check
+
     source = (
         Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
     )
@@ -1346,6 +1348,7 @@ def validate(source=None):
         report["neutral_assembly"] = neutral_check(objects, shapes)
         report["continuous_rail"] = rail_check(r, shapes)
         report["equipment_mounts"] = mounting_check(doc)
+        report["equipment_options"] = compatibility_check(doc)
         report["propulsion_wire_planning"] = propulsion_wiring.check(doc)
         report["purchased_hardware"] = hardware_check(r)
         report["assembly_inventory"] = {
@@ -1414,6 +1417,7 @@ def validate(source=None):
             "neutral_assembly",
             "continuous_rail",
             "equipment_mounts",
+            "equipment_options",
             "propulsion_wire_planning",
             "purchased_hardware",
             "assembly_inventory",

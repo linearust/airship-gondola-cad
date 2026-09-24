@@ -132,7 +132,10 @@ clearance and tool/removal-path checks.
 
 ## Shared equipment support
 
-The electronics carrier uses two straight, continuous 5 by 2 mm members.
+The electronics carrier uses two straight, continuous members. Revision AR
+extends the navigation member to the shared GPS adhesive pad and strengthens
+it to 14 by 3 mm; the radio member remains 5 by 2 mm. See
+`navigation_module_compatibility.md` for alternative module and antenna limits.
 The X member supports the FC mounting pads and extends through both P-AS
 mounting pads; the Y member supports the other FC pads and the LR900-A adhesive
 deck. This removes the P-AS arm that previously ran parallel to the FC arm at
@@ -143,7 +146,8 @@ The P-AS centre moves from (54, 0) to (54, 9.3) mm in the electronics carrier
 frame so its published off-centre hole row lies on Y=0. The complete device
 and its connector reservation move together. Its two holes remain 23 mm apart
 at X=42.5 and X=65.5; device orientation, support elevation and 6.5 mm mounting
-pads are retained. The FC axes and LR900-A location do not change. Do not
+pads are retained. The FC axes do not change. Revision AR moves the shared radio
+pad 3 mm farther along Y to retain the FC wiring gap with the wider F-Mini. Do not
 move P-AS closer to the FC: its current X position preserves the existing
 connector-handling allowance.
 

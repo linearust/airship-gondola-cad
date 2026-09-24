@@ -4,6 +4,7 @@ Part geometry belongs to gondola/parts; published interface dimensions belong to
 the other contract modules. Geometric test success never changes release status.
 """
 
+from collections import Counter
 from dataclasses import asdict, dataclass
 
 from .drive import SELECTED_DRIVE
@@ -15,13 +16,14 @@ from .equipment_interfaces import (
     X06_MANUFACTURER_SOURCE,
     flight_controller_contract,
 )
+from .equipment_options import get_navigation_profile, get_radio_profile
 from .fasteners import KIT_MATERIAL
 from .optical_sensors import get_sensor_profile
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AQ"
+DESIGN_REVISION = "AR"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -82,18 +84,28 @@ class EquipmentSelection:
     listed_unit_mass_g: float | None
 
 
-SELECTED_EQUIPMENT = (
-    EquipmentSelection(FC_MODEL, 1, FC_LISTED_MASS_G),
-    EquipmentSelection("Tattu 2S 450mAh 75C XT30 long pack", 1, None),
-    EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
-    EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
-    EquipmentSelection("KST X06 V6.0 regular mounting tabs", 2, 6.0),
-    EquipmentSelection(
-        "MicoAir " + get_sensor_profile().model, 1, get_sensor_profile().mass_g
-    ),
-    EquipmentSelection("LR900-A", 1, None),
-    EquipmentSelection("LinkTrack P-AS", 1, 3.45),
-)
+def equipment_selection(navigation_key=None, radio_key=None, sensor_key=None):
+    """Count one device per region and a selected external antenna once."""
+    navigation = get_navigation_profile(navigation_key)
+    radio = get_radio_profile(radio_key)
+    sensor = get_sensor_profile(sensor_key)
+    equipment = (
+        EquipmentSelection(FC_MODEL, 1, FC_LISTED_MASS_G),
+        EquipmentSelection("Tattu 2S 450mAh 75C XT30 long pack", 1, None),
+        EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
+        EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
+        EquipmentSelection("KST X06 V6.0 regular mounting tabs", 2, 6.0),
+        EquipmentSelection("MicoAir " + sensor.model, 1, sensor.mass_g),
+        EquipmentSelection(radio.model, 1, radio.mass_g),
+        EquipmentSelection(navigation.model, 1, navigation.mass_g),
+    )
+    if navigation.external_antenna:
+        antenna = navigation.external_antenna
+        equipment += (EquipmentSelection(antenna.model, 1, antenna.mass_g),)
+    return equipment
+
+
+SELECTED_EQUIPMENT = equipment_selection()
 SCOPED_LISTED_EQUIPMENT_MASS_G = round(
     sum(
         item.quantity * item.listed_unit_mass_g
@@ -129,7 +141,6 @@ EXCLUDED_EQUIPMENT = (
     "yaw_motor",
     "fins",
     "fin_servos",
-    "MG-A01 M10 Ultra",
     "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
@@ -175,56 +186,88 @@ EXPECTED_INVENTORY = {
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
-# Electronics turns to keep P-AS away from propulsion. Re-clock the square FC
+# Electronics turns to keep the navigation region away from propulsion. Re-clock the square FC
 # mounting pattern to retain the prior world-heading design basis; actual port
 # datums and the assembled flight-controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
     "layout": "Three independently positioned rail groups: propulsion near the rail centre, battery carrier on +X and FC/electronics on -X behind the neutral motors.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. No PSU connector or electrical supply change is specified here.",
-    "electronics": "Rotate the electronics carrier 180deg about Z so the P-AS support points away from propulsion. Rotate the FC a further 180deg relative to that carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. Exact board heading, ports and firmware orientation must be checked on the physical board.",
+    "electronics": "Rotate the electronics carrier 180deg about Z so the shared navigation support points away from propulsion. Retain P-AS mounting axes and use one integral adhesive pad for MG-A01 or MG-F10-A alternatives. Rotate the FC a further 180deg relative to that carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. Exact board heading, ports and firmware orientation must be checked on the physical board.",
     "optical": "Use one source-selected MTF-02P or MTF-01P on the unchanged adhesive tray of the transferable manually aligned stack, independent of the three mass groups. Either carrier provides the same structural anchors; host changes require renewed optical field-of-view and wiring checks.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
 }
 
+
 # These are bought wiring requirements, not additional modeled hardware/mass.
 # Stock pre-crimped pigtails may be joined after checking the actual pinouts.
-WIRING_PURCHASE_PLAN = {
-    "scope": "Three onboard UART harnesses; subtract cables already supplied with devices. Lengths and finished mass remain unmeasured.",
-    "uart_harnesses": [
-        {
-            "connection": "FC UART1 to LR900-A UART",
-            "quantity": 1,
-            "fc_connector": "SH1.0-6P UART1/UART6 port",
-            "device_connector": "GH1.25-4P",
+def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
+    """Derive connector ends from the mutually exclusive onboard choices."""
+    navigation = get_navigation_profile(navigation_key)
+    radio = get_radio_profile(radio_key)
+    sensor = get_sensor_profile(sensor_key)
+    gps_selected = navigation.key != "PAS"
+    return {
+        "scope": "Three selected onboard UART harnesses; the GPS alternative also carries I2C compass signals in its six-pin harness. Subtract cables already supplied with devices. Lengths and finished mass remain unmeasured; this is not a full vehicle harness list.",
+        "uart_harnesses": [
+            {
+                "connection": f"FC UART1 to {radio.model} UART",
+                "quantity": 1,
+                "fc_connector": "SH1.0-6P UART1/UART6 port",
+                "device_connector": radio.connector_type,
+            },
+            {
+                "connection": f"FC UART3{'/I2C' if gps_selected else ''} to {navigation.model}",
+                "quantity": 1,
+                "fc_connector": "SH1.0-6P UART3/I2C port",
+                "device_connector": navigation.connector_type,
+                "signal_scope": (
+                    "UART GPS TX/RX plus compass I2C SCL/SDA, 5V and GND"
+                    if gps_selected
+                    else "UART TX/RX, 5V and GND; use one P-AS parallel port only"
+                ),
+            },
+            {
+                "connection": f"FC UART4 to {sensor.model} UART; one optical sensor only",
+                "quantity": 1,
+                "fc_connector": "SH1.0-4P UART4 port",
+                "device_connector": "SH1.0-4P",
+            },
+        ],
+        "connector_ends_before_subtracting_included_cables": dict(
+            Counter(
+                (
+                    "SH1.0-6P",
+                    "SH1.0-6P",
+                    "SH1.0-4P",
+                    "SH1.0-4P",
+                    navigation.connector_type,
+                    radio.connector_type,
+                )
+            )
+        ),
+        "ground_radio": (
+            "Matching LR900-family ground radio with matching band, antenna and communication settings; not an onboard inventory row."
+            if radio.key == "LR900A"
+            else "LR24-F ground unit paired with LR24-F-Mini air unit, with matching settings and 2.4GHz antennas. The full-size F is not installed on the gondola; LR900 cannot be the other end of this LR24 link."
+        ),
+        "radio_power_reference": {
+            "maximum_average_w": radio.max_average_power_w,
+            "calculated_at_5v_a": radio.max_average_power_w / 5,
+            "scope": "Catalog maximum average reference, not measured peak demand or verified shared BEC headroom.",
         },
-        {
-            "connection": "FC UART3 to LinkTrack P-AS UART",
-            "quantity": 1,
-            "fc_connector": "SH1.0-6P UART3/I2C port",
-            "device_connector": "GH1.25-4P; use one of the two parallel ports",
-        },
-        {
-            "connection": f"FC UART4 to {get_sensor_profile().model} UART; one optical sensor only",
-            "quantity": 1,
-            "fc_connector": "SH1.0-4P UART4 port",
-            "device_connector": "SH1.0-4P",
-        },
-    ],
-    "connector_ends_before_subtracting_included_cables": {
-        "SH1.0-6P": 2,
-        "SH1.0-4P": 2,
-        "GH1.25-4P": 2,
-    },
-    "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
-    "stock_consumables": [
-        "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep tie heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips or assumed route through the bearing posts.",
-        "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
-        "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
-    ],
-    "seller_or_completed_harness_verified": False,
-    "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, OEM supplied X06 horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchase of bearing spacers or separate 0415.13 horns. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and prepared supplied-horn adapters. The centring jig and fit coupons are bench tools, not installed parts.",
-}
+        "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
+        "stock_consumables": [
+            "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep tie heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips or assumed route through the bearing posts.",
+            "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
+            "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
+        ],
+        "seller_or_completed_harness_verified": False,
+        "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, OEM supplied X06 horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchase of bearing spacers or separate 0415.13 horns. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and prepared supplied-horn adapters. The centring jig and fit coupons are bench tools, not installed parts.",
+    }
+
+
+WIRING_PURCHASE_PLAN = wiring_purchase_plan()
 
 
 @dataclass(frozen=True)
@@ -321,11 +364,15 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
-        "The cart selects a RadioMaster XR2 receiver; MG-A01 is explicitly excluded by the user. The heading-reference device remains unselected. Their mounting positions, antenna/interference clearances and harnesses are not represented by this CAD. Select and verify these interfaces separately; the scoped CAD equipment subtotal excludes them and the UART purchase plan is not a complete vehicle harness list.",
+        "The cart selects a RadioMaster XR2 receiver, whose installation and harness are not represented by this CAD. The P-AS baseline still needs a selected heading reference; GPS alternatives MG-A01/M10 Ultra and MG-F10-A include compasses requiring their I2C harness, physical orientation, calibration and power-wire interference checks. Mechanical support does not qualify heading or indoor/outdoor GNSS reception. The scoped inventory excludes unselected devices and the UART purchase plan is not a complete vehicle harness list.",
+    ),
+    UnresolvedInterface(
+        "alternative_equipment_installation",
+        "Install one navigation module, one radio and one optical sensor; rebuild CAD/BOM after changing source selections. Verify GPS and radio underside contact on the shared insulating-adhesive pads, actual connector insertion/bend space and retention. MG-F10-A allows a direct SMA helix or remote SMA connection; direct mounting on this underside carrier points away from the balloon and downward, so its conservative clearance screen is not a reception claim. Prefer a remote upward antenna location when GPS reception matters, including outdoors; its off-gondola location, cable and attachment are unmodeled. Verify support for the 15g helix and connector-tightening loads, or remote-cable strain relief. Check matching-family radio/ground hardware and the larger LR24-F-Mini power reference against the shared 5V supply. No antenna or adhesive strength is certified by a passing clearance check.",
     ),
     UnresolvedInterface(
         "finished_mass",
-        "Weigh the selected Tattu battery, onboard LR900-A, prints, drive hardware, wiring, connectors and adhesive. Unknown battery/radio masses are excluded from the known equipment subtotal, not assigned zero mass.",
+        "Weigh the selected battery, navigation and radio modules, optical sensor, antennas, prints, drive hardware, wiring, connectors and adhesive. The subtotal uses published device masses, including LR900-A 4g and a separate 15g MG-F10 helix only when that navigation profile is selected. Unmeasured battery mass is excluded, not assigned zero. Catalog mass is not an installed measurement.",
     ),
 )
 
@@ -347,7 +394,7 @@ def hardware_bom_scope():
         "scope": "modeled_mechanism_hardware_only",
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
-            "FC/P-AS mounting spacers, fasteners and FC dampers: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified.",
+            "FC mounting spacers/fasteners and dampers, plus P-AS mounting hardware only when P-AS is selected: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified. GPS alternatives use insulating adhesive, not additional GPS screws.",
             "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Supplied horns and modeled adapter hardware are included; no separate horn purchase is required.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
@@ -368,11 +415,13 @@ def project_status():
         "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "flight_controller": flight_controller_contract(),
+        "navigation": get_navigation_profile().contract(),
+        "radio": get_radio_profile().contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],
         "scoped_listed_equipment_mass_g": SCOPED_LISTED_EQUIPMENT_MASS_G,
-        "equipment_mass_scope": "Known listed device masses only; battery and radio are unmeasured. Excludes printed parts, drive hardware, wiring and other accessories; not an all-up mass or complete equipment subtotal.",
+        "equipment_mass_scope": "Published masses of selected devices only, plus the separate MG-F10 15g helix only when selected; alternatives and the ground radio are not double-counted. Battery mass remains unmeasured/excluded. Excludes printed parts, drive hardware, unspecified antennas, wiring and other accessories; not an all-up mass or measured installed subtotal.",
         "source_discrepancies": SOURCE_DISCREPANCIES,
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,

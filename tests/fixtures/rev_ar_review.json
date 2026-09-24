@@ -1,0 +1,750 @@
+{
+  "revision": "AR",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "3c6872b92e67876e8978e70e65e266ac8df0a671",
+  "source_fingerprint": "2e9d0902a8a47d5c9f6bdc2308da939e87d4dc6d9052231ec41031ca39863d84",
+  "approved_fixture_file": "tests/fixtures/rev_ar_geometry.FCStd",
+  "approved_fixture_sha256": "342a6f551200c81954eca714570243aa54fc2472a696a516561946a4472f0a6f",
+  "scope": "Interchangeable one-per-region navigation and onboard radio with shared integral support; existing optical models and independent servo module preserved.",
+  "intentional_changes": [
+    "Add source-selected P-AS, MG-A01 (M10 Ultra) and bare MG-F10-A navigation profiles, plus LR900-A and LR24-F-Mini onboard radio profiles. Preserve the default selections. LR24-F is ground equipment.",
+    "Extend the common navigation member to the GPS pad at carrier (100, 0) mm. The continuous 14 x 3 mm member and 18 x 18 mm adhesive pad add no printed part or fastener. Both optical hosts clear the conservative direct-helix envelope.",
+    "Move the shared radio pad and its installed body/end reservations 3 mm along carrier Y to centre Y=50 mm. The wider Mini must preserve the existing 2 mm FC wiring-reservation gap.",
+    "Check six mutually exclusive navigation/radio combinations against both optical sensors and both hosts, continuous field bounds, connector allowances, adhesive plan overlap and service. Exact port datums, rear contact and retention remain unqualified.",
+    "Permit direct and remote MG-F10 SMA arrangements. Direct +Z points downward and establishes mechanical clearance only. The remote upward antenna position, support and extension remain unmodeled. MG-A01 sky view is also unqualified.",
+    "The known default equipment subtotal changes from 33.032 to 37.032 g by including the manufacturer's LR900-A 4 g reference. This is not a physical mass increase. The selected MG-F10 body (6 g) and helix (15 g) are counted separately, once each. Connector, power and ground-radio differences remain explicit."
+  ],
+  "old_new_transition": {
+    "raw_audit": "/tmp/ar-transition-v3-audit-verified.json",
+    "raw_sha256": "4b16dd020d8e0a230e9228bf03d0cb55ec5d7237db0595fa6a7a7ababc1b05f9",
+    "typed_property_audit": "/tmp/ar-v3-typed-property-audit.json",
+    "typed_property_sha256": "41658af325844890d759683906d31e3544938825d53af2d59d50b6720763aa8f",
+    "candidate_path": "/tmp/ar-candidate-v3/gondola.FCStd",
+    "candidate_sha256": "342a6f551200c81954eca714570243aa54fc2472a696a516561946a4472f0a6f",
+    "candidate_source_fingerprint": "32565486f68481cedb3a42222e2df8e4fe1743677fee783e1d7cb72512ed9322",
+    "old_aq_sha256": "d63ad6124cb7ba07d456d1c152642eaa85883609727237a09e81bceedb3efbb7",
+    "geometry_scope_passed": true,
+    "physical_shapes_changed": [
+      "ElectronicsMount",
+      "LR900NegativeXConnectorReserve",
+      "LR900PositiveXConnectorReserve",
+      "ModuleLR900Envelope"
+    ],
+    "unchanged_other_shapes": 114,
+    "radio_shift_is_exact_rigid_translation": true,
+    "object_count_unchanged": 291,
+    "all_native_assembly_controls_unchanged": true,
+    "native_control_cases": 29,
+    "display_unchanged": true,
+    "all_typed_properties_reviewed": true,
+    "typed_property_checks": 328,
+    "print_placement_change_scope": "ElectronicsMount print placement shifts3mm in printY to re-zero enlarged bounds after radio pad moves3mm; printrotationandassemblyposesunchanged.",
+    "metadata_review": [
+      {
+        "section": "scalar_changes",
+        "path": "/BatteryMount/MountContract/navigation_arm_section_mm",
+        "classification": "Shared contract schema; navigation arm explicitly inapplicable to battery",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/CapacitorServiceReserve/Notes",
+        "classification": "Generalized adjacent-region wording; geometry unchanged",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/ReleaseStatus/unresolved_interfaces",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/ScopeExclusions",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/ScopedListedEquipmentMassGrams",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/SourceFingerprint",
+        "classification": "Source provenance refresh",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/ground_radio",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/radio_power_reference",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/scope",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/uart_harnesses/1/connection",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/uart_harnesses/1/device_connector",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/DesignRegistry/WiringPurchasePlan/uart_harnesses/1/signal_scope",
+        "classification": "Selected inventory, new alternatives, catalog LR9004g mass and installation limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountContract/continuous_adhesive_pads",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountContract/navigation_arm_section_mm",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountContract/shared_support_spines_xy_mm/0/1/0",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountContract/shared_support_spines_xy_mm/1/1/1",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountContract/support_path_scope",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/LR/retained_evidence",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/LR/sources",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/LR/verified",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/LR24FMINI",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/MGA01",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/MountingEvidence/MGF10A",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/Notes",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ElectronicsMount/PrintNotes",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/device_connector_evidence/retained_evidence",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/device_connector_evidence/sources",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/device_connector_evidence/retained_evidence",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/device_connector_evidence/sources",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/ConnectorEvidence/retained_evidence",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/ConnectorEvidence/sources",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/Label",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/MountingEvidence/retained_evidence",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/MountingEvidence/sources",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/MountingEvidence/verified",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/Notes",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/RadioModel",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModuleLR900Envelope/RadioProfile",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModulePASEnvelope/Label",
+        "classification": "Stable navigation slot identity, profile and nominal interface limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModulePASEnvelope/NavigationModel",
+        "classification": "Stable navigation slot identity, profile and nominal interface limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModulePASEnvelope/NavigationProfile",
+        "classification": "Stable navigation slot identity, profile and nominal interface limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/ModulePASEnvelope/Notes",
+        "classification": "Stable navigation slot identity, profile and nominal interface limits",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/PASConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/PASConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/PASConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "scalar_changes",
+        "path": "/XT30ServiceReserve/WiringContract/operating_scope",
+        "classification": "Generalized adjacent-region wording; geometry unchanged",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/BatteryMount/MountContract/navigation_arm_section_mm",
+        "classification": "Shared contract schema; navigation arm explicitly inapplicable to battery",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ElectronicsMount/MountContract/continuous_adhesive_pads",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ElectronicsMount/MountContract/navigation_arm_section_mm",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ElectronicsMount/MountContract/shared_support_spines_xy_mm/0/1/0",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ElectronicsMount/MountContract/shared_support_spines_xy_mm/1/1/1",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ElectronicsMount/MountContract/support_path_scope",
+        "classification": "Integral GPS adhesive pad at100mm, navigation14x3 support and radio3mmoutward relocation, with primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/device_connector_evidence/retained_evidence",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/device_connector_evidence/sources",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900NegativeXConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/device_connector_evidence/retained_evidence",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/device_connector_evidence/sources",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/LR900PositiveXConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ModuleLR900Envelope/ConnectorEvidence/retained_evidence",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ModuleLR900Envelope/ConnectorEvidence/sources",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ModuleLR900Envelope/RadioProfile",
+        "classification": "Stable radio slot identity, profile and retained primary evidence",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/ModulePASEnvelope/NavigationProfile",
+        "classification": "Stable navigation slot identity, profile and nominal interface limits",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/PASConnectorReserve/WiringContract/operating_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/PASConnectorReserve/WiringContract/selected_model",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/PASConnectorReserve/WiringContract/withdrawal_scope",
+        "classification": "Selected profile wiring and conservative connector-service scope",
+        "reviewed": true
+      },
+      {
+        "section": "interface_metadata_changes",
+        "path": "/XT30ServiceReserve/WiringContract/operating_scope",
+        "classification": "Generalized adjacent-region wording; geometry unchanged",
+        "reviewed": true
+      }
+    ],
+    "net_added_print_volume_mm3": 4161.9978342886725,
+    "mass_estimate_delta_g_at_1_01_g_cm3": 4.203617812631559,
+    "limits": "Independent read-only CAD transition review plus actual neutral rail/carrier closed-BRep overlap check. This does not replace full assembly, optical, wiring, manufacturing or release validation. No adhesive, strength or RF qualification. Rebind later candidates by exact hashes before fixture promotion.",
+    "passed": true,
+    "previous_candidate_path": "/tmp/ar-candidate-v2/gondola.FCStd",
+    "previous_candidate_shape_changes": [
+      "ElectronicsMount"
+    ],
+    "previous_candidate_geometry_scope_passed": true,
+    "neutral_rail_carrier_intersections": [
+      {
+        "document": "original_aq",
+        "rail_count": 1,
+        "overlaps": [
+          {
+            "rail": "ContinuousRail",
+            "intersection_mm3": 0.0
+          }
+        ],
+        "passed": true
+      },
+      {
+        "document": "candidate",
+        "rail_count": 1,
+        "overlaps": [
+          {
+            "rail": "ContinuousRail",
+            "intersection_mm3": 0.0
+          }
+        ],
+        "passed": true
+      },
+      {
+        "document": "previous_v2",
+        "rail_count": 1,
+        "overlaps": [
+          {
+            "rail": "ContinuousRail",
+            "intersection_mm3": 144.03254154105556
+          }
+        ],
+        "passed": false
+      }
+    ],
+    "v3_metadata_change_scope": "Relative to reviewed V2: source fingerprint, navigation member14x3mm and corresponding native notes/print notes. All other52scalar/24interface transition changes remain as reviewed."
+  },
+  "release_checks": {
+    "status": "PASS: frozen-source native CAD, full regressions, exports, independent artifact integrity and Blender; fit prototype only",
+    "production_released": false,
+    "static_checks": {
+      "ruff": "0.16.8 check/format PASS, 106 files",
+      "compileall": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "focused_tests": {
+      "count": 13,
+      "passed": true,
+      "seconds": 9.404,
+      "log_sha256": "2579ba4a4b27747e728bc823027279e6b033ffd361cae88c52102dd55868de79",
+      "scope": "Final manufacturing section probes and actual rail/carrier zero-overlap regressions."
+    },
+    "offline_tests": {
+      "count": 396,
+      "skipped": 293,
+      "passed": true,
+      "scope": "103 pure-Python cases; complete native suite separately verified",
+      "log_sha256": "1e31c681e2f90d2898d7b12b82bce56a9dbc4a8bfecdc47d6099cafc40fbb4de"
+    },
+    "native_tests": {
+      "passed": true,
+      "count": 396,
+      "seconds": 786.457,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "log_sha256": "82c9dea6a612a66077b0d5006268d7afeb39a2c6f226d88021b37321bb02a5d9"
+    },
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 12.367
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 43.076
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 835.413
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.3
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.165
+      }
+    ],
+    "native_cad_sha256": "635caf711ab46d4996adade0801d2c27f238731db542f403271803bafe2a9f8f",
+    "blender_review": {
+      "passed": true,
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "discrepancy_count": 0,
+      "cad_sha256": "635caf711ab46d4996adade0801d2c27f238731db542f403271803bafe2a9f8f",
+      "blend_sha256": "6c765b5c4b6609a3d994d91f7333f4b8def7f76cc74456ce1648b8f26e5d4375",
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed.",
+      "report_sha256": "b64b04f4b980c9cd06d14dc7cd92bcefc14022bfcd5758339b5618c818d327e0",
+      "verification_sha256": "c71cd5885588854163846d4d7f2fc78863bf0d07a017f4fab0f7a7b3128d680a",
+      "stills_visually_reviewed": 7,
+      "visual_scope": "All seven final stills inspected: assembly, independent tilt, gear/horn detail, axial-stop detail, both optical hosts and servo-module removal. Stills supplement native checks; they do not establish continuous collision, cable or load behavior.",
+      "still_sha256": {
+        "01_Assembly.png": "3808311ca4d75f39ac4df6c22a1c93986f7d64ed96ea6c4d7daf2f68d90c76f1",
+        "02_Independent_tilt.png": "5cd435bfa66e938cdffb865610a7718f22866119ced6ac3988ea6a91a12a3add",
+        "03_Gear_and_horn.png": "9e6292df7ed78b2fafb629b4e1d1714fcaba253eb5aa7513b311a5354afac5b3",
+        "04_Axial_allowance.png": "61b10df28ded2b2c1f68744785d1c73f1352f293569ffc0c8a7b5741e729f0c2",
+        "05_Optical_on_Battery.png": "b5e5d117e31a5b9c5263375842928a11ec573cfd85b3b9206d954f713774a6f6",
+        "06_Optical_on_FC.png": "178524b92b2794fa4204f5764272af6b7b5c733d1abf655bc910348669badd2a",
+        "07_Servo_module_removal.png": "6456a36ee4d82d191d69c167950c9b208113e64bb7cbb064c0de6d3579cbd6ca"
+      }
+    },
+    "final_integrity": {
+      "passed": true,
+      "checks_count": 243,
+      "scope": "Independent read-only final JSON, ZIP, native metadata and saved display audit. No geometry rebuild, full validation rerun or native save. All118 physical and reservation BReps, including the reviewed integral mount change and three radio translations, are bound transitively through the SHA256-pinned independent AQ-to-candidate review and completed candidate-to-final native comparison; no geometry Booleans are rerun here. Actual physical qualification remains pending.",
+      "artifact_sha256": {
+        "/home/h/cad/airship-gondola-cad/build/gondola.FCStd": "635caf711ab46d4996adade0801d2c27f238731db542f403271803bafe2a9f8f",
+        "/home/h/cad/airship-gondola-cad/tests/fixtures/rev_ar_geometry.FCStd": "342a6f551200c81954eca714570243aa54fc2472a696a516561946a4472f0a6f",
+        "/home/h/cad/airship-gondola-cad/build/gondola_metrics.json": "c33fafe3aad1ed5d16ac005e7f0b5facde0250bef425bedbcd7bbd858ea4fad4",
+        "/home/h/cad/airship-gondola-cad/build/gondola_validation.json": "3783888f1dcc199cc84c33cdc0a866d9c26e4d48f50e8fdd7a184fc19cae93f7",
+        "/home/h/cad/airship-gondola-cad/build/gondola_equipment_validation.json": "0d9a2b043331a312a62b07ce3ee62f7e73fd7d1229a4196ec1b4a73ae6dd8f6e",
+        "/home/h/cad/airship-gondola-cad/build/gondola_propulsion_validation.json": "077dd005099abc6fc57f7be8b8c9cc25b9dc26db06090b35539eef1bad497f79",
+        "/home/h/cad/airship-gondola-cad/build/gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+        "/home/h/cad/airship-gondola-cad/build/gondola_baseline_validation.json": "77fffb3fc0c01362d076c1cb141b5752eb15e3bccc7f1224a954e8140f46fe6d",
+        "/home/h/cad/airship-gondola-cad/build/preview_state.json": "48449f565712ceb918bda3caaa045bdbd915eda034252c645d2c36174d2468c5",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/print_manifest.json": "492279141bfc0e031c3231775d740a2c26c4bcd36dd970efcc88ed90a55e27b6",
+        "/home/h/cad/airship-gondola-cad/build/gondola_hardware_bom.json": "874f286008103062d822e374f94769ba4c7901e48ffd40ce7470334a1c96155f",
+        "/tmp/ar-native-tests-final.log": "82c9dea6a612a66077b0d5006268d7afeb39a2c6f226d88021b37321bb02a5d9",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/continuous_rail.stl": "c7348a3ad2b5992c54392c3a21e14ee71a2dc0a517cdef9df130c7b0ea0ef7fb",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/continuous_rail.step": "227b0294d4fa45d30009afde93461430578a3b11729975181d659ac13a8288b4",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/battery_mount.stl": "a4651c66898d5839a56b9f4dc0f94689dd3dc9eaa210291e3e24fa581c4c8d5b",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/battery_mount.step": "6bfb12328d1441d9a7bc6c703bbb87934110dbf69ebf8c0c61570058c8daedb8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/electronics_mount.stl": "ff6dd77f9d491591c39fec66bc18c2209ccc1c7eb70c02359e25a3d6c4118ccf",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/electronics_mount.step": "cc69d524ded1178e37744fab28da09d14b238fa124dc6883fcc01ab9779ba5d6",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/propulsion_fixed_frame.stl": "81cc256af366e746a43c546e04c9c992b53f9fdbb923aa762f9f624f6a2ca77d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/propulsion_fixed_frame.step": "f13e7a85aadd7b70cab298c494d1a481ad6d8e5e8ff6f33f587c1d7c4a5c0357",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/servo_drive_bridge48_t.stl": "7734a853d1c8bd0138cecaf9187b750b506613c4878b76d06a4fc49ff49f7bb3",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/servo_drive_bridge48_t.step": "0e0a42876189e6a8f0e01283d53b6a2898b5df4bc90b2559bb91c6c15a9b9c26",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/motor_carrier.stl": "88548221d9a51b54f569beab2e6615c7952b0371160939093574e441f52a9f8c",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/motor_carrier.step": "cbf435363e2bd489dabdf758c80d8b45609172f4aed37d799d35d2b80ecba539",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_gear_adapter_blank.stl": "483c5d80e7110a37019e32c91703c2a56cd824486babd72fefc498c745709b58",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_gear_adapter_blank.step": "be777b116f738a28f4147ca8a552f4050437b0544d0682013e55a62e35469e02",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_mount_base.stl": "2a5472ca3536de8857c87e0c4521701c69463199a0cd4f617fe03087694f4691",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_mount_base.step": "5ce976362671238321e20b3a8b31cda1df47a7da764c33583a93370559972252",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_roll_bracket.stl": "ac679375ddf4515c8e7ed33620cac2618ec1779e772599f87354f2f4a660beff",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_roll_bracket.step": "ade38cf542062496e34be53f3041ece70a4af52015710ccda561c53ad46c6398",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_sensor_tray.stl": "2960696b63d241587497f520d17f6afa8e36bff1f089cc8a38425e6daf728289",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_sensor_tray.step": "8e04b853cd1ef565d4ea3ff845189269bd6644111421db8fc239980c91568b49",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/rail_fit_sample.stl": "1695e6aae8b581d99f16698d795905b6bace6430da482d0725f20f3f0c46b7fb",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/rail_fit_sample.step": "f3de6dabf60c27cd9d6faa2d297bb2b190189f9856ec78246b23d03ce9f2062d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/shoe_fit_sample.stl": "b73f73a9a208687ea23632412bad9fc376d38773b7304ed9d4193169d95cb662",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/shoe_fit_sample.step": "0fe8ff47f1938f3016c9a4bcede31432e6dbefeb6ccaf938e9bbd45f37d73bf8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/bearing_seat_fit_sample.stl": "1a0211d2afdb2b4c7eda84eb7a78859b38f5e8d2d16ae12465e9898182814b88",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/bearing_seat_fit_sample.step": "ddb08ffb926165e0c4433c200ab2f70b61af7cd6ca56e3c5fe64a15c6c5cfb91",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_centering_jig.stl": "110659f052a4546e09957960b01ed9fc821e6538416ecb79f641fff3ad0fe088",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_centering_jig.step": "6453da69936177d107f2b9cbf4c4fc59564e39b8dde0786e71242fcd4ede584d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_preview.png": "b82251f6cb21b1cc8927655b72a1f7ab68689668da9bd2e725a4c23aa8092f08",
+        "/home/h/cad/airship-gondola-cad/build/gondola_top.png": "2e02f845b2a5b7231bf7a77ee483c522e761e40f15a17b848ad7c2e23d821c71",
+        "/home/h/cad/airship-gondola-cad/build/gondola_rail.png": "7f6c670fc3158cd46e30a3fc256527d66dd499b3aafce046e30539eed6d061c0",
+        "/home/h/cad/airship-gondola-cad/build/gondola_electronics.png": "f7d617d2a1da7a55f2ef7e360c54421c87425d12905ef03d7b8b40f93fb57945",
+        "/home/h/cad/airship-gondola-cad/build/gondola_wiring.png": "4d6f1e9c5ecc82036c7fdaca945905647630922c143ceb097e0de779579062c7",
+        "/home/h/cad/airship-gondola-cad/build/gondola_optical_stack.png": "62773f55666f9686d7980cdc102d5201979d8f28556bd3076c3a1449a7504288",
+        "/home/h/cad/airship-gondola-cad/build/gondola_optical_fc_stack.png": "3f43b818fa9042e80ddde9d5e369aa1d2b23ba53ab71d2bd66c6e9909c71b2e8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_propulsion.png": "eef348ce06f325e4f0c86bf426e8ebd6b16b9a255c0ea1358ea0d6de33023b72",
+        "/home/h/cad/airship-gondola-cad/build/gondola_printed_structure.png": "4aebadb14a58b27aa1c4a91011bad32e4969096f66b2ad83bb80322bd269070d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_detail.png": "64c3383f6915f07ab4bf95cf10bc72e137ce4d01c014a8b1e35b483da3f99276",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_section.png": "7a034333dba40d98d44c972bb41ff17631a616b7386fc20d96801deacf35ff62",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_opposite.png": "030f32bd4589e72c7d28c7289ced183679a3b0d9f3138da71dcf682f74edf29a",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts.png": "b998da2ac354fe15bbc0a1a9911b2cef4e724b412088b1c638e963c5892e5d5a",
+        "/tmp/ar-transition-v3-review.json": "712a27a35ae0d4a51944976378ea4259e3faebf7548364490fe4a520a3b7d207",
+        "/tmp/ar-transition-v3-audit-verified.json": "4b16dd020d8e0a230e9228bf03d0cb55ec5d7237db0595fa6a7a7ababc1b05f9",
+        "/tmp/ar-v3-typed-property-audit.json": "41658af325844890d759683906d31e3544938825d53af2d59d50b6720763aa8f",
+        "/tmp/ar-old-aq.FCStd": "d63ad6124cb7ba07d456d1c152642eaa85883609727237a09e81bceedb3efbb7",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts.zip": "4264afebb99191cceb9672eb6b97ee62ad56bf1f169673421e1b791254cb9d49"
+      },
+      "report_sha256": "b2b76bb732d04be5861ef33baeddc514f0d33a3a2b17da5e473446d2b33902b9"
+    }
+  },
+  "physical_limits": [
+    "Nominal envelopes and clearance reservations do not establish antenna reception, compass interference, plug/lead fit, adhesive retention or loaded printed-arm deflection.",
+    "Support the direct antenna connector while tightening and remove the antenna for adjacent connector/tower service. Inspect actual SMA seating and connector access.",
+    "The FC 45A model has conflicting official 2S input evidence. No electrical compatibility or flight qualification is inferred."
+  ],
+  "visual_review": {
+    "gondola_electronics.png": {
+      "passed": true,
+      "sha256": "f7d617d2a1da7a55f2ef7e360c54421c87425d12905ef03d7b8b40f93fb57945"
+    },
+    "gondola_print_parts.png": {
+      "passed": true,
+      "sha256": "b998da2ac354fe15bbc0a1a9911b2cef4e724b412088b1c638e963c5892e5d5a"
+    },
+    "gondola_optical_fc_stack.png": {
+      "passed": true,
+      "sha256": "3f43b818fa9042e80ddde9d5e369aa1d2b23ba53ab71d2bd66c6e9909c71b2e8"
+    },
+    "gondola_optical_stack.png": {
+      "passed": true,
+      "sha256": "62773f55666f9686d7980cdc102d5201979d8f28556bd3076c3a1449a7504288"
+    },
+    "gondola_preview.png": {
+      "passed": true,
+      "sha256": "b82251f6cb21b1cc8927655b72a1f7ab68689668da9bd2e725a4c23aa8092f08"
+    }
+  },
+  "visual_review_scope": "Final assembly, integral equipment carrier, print layout and both optical hosts inspected; nominal body blocks are not detailed supplied products or installed wiring.",
+  "equipment_comparison_visual_review": {
+    "passed": true,
+    "source_fingerprint": "2e9d0902a8a47d5c9f6bdc2308da939e87d4dc6d9052231ec41031ca39863d84",
+    "authoritative_cad_sha256_before": "635caf711ab46d4996adade0801d2c27f238731db542f403271803bafe2a9f8f",
+    "authoritative_cad_sha256_after": "635caf711ab46d4996adade0801d2c27f238731db542f403271803bafe2a9f8f",
+    "authoritative_cad_never_opened": true,
+    "disposable_documents_saved": false,
+    "images": [
+      "01_pas_lr900.png",
+      "02_mga01_mini.png",
+      "03_mgf10_direct_mini.png",
+      "04_mgf10_remote_mini.png"
+    ],
+    "scope": "Same final shared carrier and camera. Solid blocks are nominal device envelopes. Orange transparent volume is a conservative direct-antenna reserve, not an exact antenna. Remote antenna is not positioned or modeled. Optical stack shown on electronics host at neutral alignment.",
+    "image_sha256": {
+      "01_pas_lr900.png": "a098ba4d1d7e1768af9493551f6e11277bf020199fa33a54e19502efeda1a8cb",
+      "02_mga01_mini.png": "93be89fe6f24e5037f9474af1e10e01567e00bf373b38c42c050538ee4a07346",
+      "03_mgf10_direct_mini.png": "694588d200039a4b8a05baea2c4bd1e7fb66989a87fcf9546c979cb4d34d4286",
+      "04_mgf10_remote_mini.png": "914f951ebf733c3a13fb84dc574ac867aef332379cd8a7044c8fca08ca900677"
+    },
+    "visual_review": {
+      "images_checked": 4,
+      "passed": true,
+      "scope": "Inspected all four final14x3mm carrier renderings. Common camera preserved; nominal equipment blocks visible; direct antenna box labeled as clearance reserve; remote antenna explicitly not shown. No clipped carrier or annotation observed."
+    },
+    "render_state_sha256": "da5794f9200789bd781a6b1bec1649134634c7ac69ec1b814c4624525b07db1c"
+  }
+}

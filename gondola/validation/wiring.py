@@ -22,6 +22,7 @@ RESERVES = (
     "PASConnectorReserve",
     "MTF02PConnectorReserve",
 )
+DIRECT_ANTENNA_RESERVE = "NavigationDirectAntennaReserve"
 
 
 def _solid_shape_error(shape, validation_cache=None):
@@ -172,8 +173,23 @@ def reserve_checks(doc):
         row["object"]: row for row in propulsion_wiring_check(doc)["routes"]
     }
     validation_cache = {}
-    for name in RESERVES:
+    reserve_names = RESERVES + (
+        (DIRECT_ANTENNA_RESERVE,)
+        if DIRECT_ANTENNA_RESERVE in expected_shapes
+        or doc.getObject(DIRECT_ANTENNA_RESERVE) is not None
+        else ()
+    )
+    for name in reserve_names:
         obj = doc.getObject(name)
+        if name == DIRECT_ANTENNA_RESERVE and name not in expected_shapes:
+            checks.append(
+                {
+                    "object": name,
+                    "passed": False,
+                    "error": "Unexpected direct antenna for selected navigation profile",
+                }
+            )
+            continue
         if obj is None:
             checks.append({"object": name, "passed": False, "error": "missing"})
             continue
@@ -188,8 +204,11 @@ def reserve_checks(doc):
                 key: value
                 for key, value in physical_shapes_by_name.items()
                 if not (
-                    name == optical_sensor.FIELD_OBJECT
-                    and key == optical_sensor.SENSOR_OBJECT
+                    (
+                        name == optical_sensor.FIELD_OBJECT
+                        and key == optical_sensor.SENSOR_OBJECT
+                    )
+                    or (name == DIRECT_ANTENNA_RESERVE and key == "ModulePASEnvelope")
                 )
             },
             validation_cache=validation_cache,
@@ -273,6 +292,8 @@ def reserve_checks(doc):
                 "object": name,
                 "self_sensor_excluded_from_rear_plane_optical_screen": name
                 == optical_sensor.FIELD_OBJECT,
+                "own_navigation_body_inside_uncertain_antenna_seating_bound": name
+                == DIRECT_ANTENNA_RESERVE,
                 "role": str(obj.Role),
                 "in_clearance_registry": obj in registry.ClearanceVolumes,
                 "not_in_print_or_hardware_registry": obj not in registry.PrintedParts
@@ -306,8 +327,8 @@ def reserve_checks(doc):
             }
         )
     pairs = []
-    for index, name in enumerate(RESERVES):
-        for other_name in RESERVES[index + 1 :]:
+    for index, name in enumerate(reserve_names):
+        for other_name in reserve_names[index + 1 :]:
             first = reserve_shapes_by_name.get(name)
             second = reserve_shapes_by_name.get(other_name)
             measurement = measure_clearances(
@@ -336,6 +357,10 @@ def reserve_checks(doc):
                 optical_sensor.FIELD_OBJECT,
                 optical_sensor.CONNECTOR_OBJECT,
             }
+            antenna_service_overlap = {name, other_name} == {
+                DIRECT_ANTENNA_RESERVE,
+                "PASConnectorReserve",
+            }
             pairs.append(
                 {
                     "a": name,
@@ -343,10 +368,15 @@ def reserve_checks(doc):
                     "intersection_mm3": measurement.get("intersection_mm3"),
                     "intentional_fc_terminal_connection": connection,
                     "own_conservative_optical_connector_overlap": own_optical_screen,
+                    "remove_direct_antenna_before_navigation_connector_service": antenna_service_overlap,
                     "overlap_scope": (
                         "The rear-plane whole-footprint optical screen intentionally overbounds the sensor and its own edge lane. This is not a claim that an installed cable clears the actual apertures; inspect received lens/cable datums. Other reserves remain independent obstacles."
                         if own_optical_screen
-                        else None
+                        else (
+                            "Exact SMA position and seating plane are unknown; conservative direct-antenna bound overlaps its own signal lane. Remove helix before connector servicing. Simultaneous installed antenna/cable clearance remains unqualified."
+                            if antenna_service_overlap
+                            else None
+                        )
                     ),
                     **(
                         {"error": measurement["error"]}
@@ -355,6 +385,7 @@ def reserve_checks(doc):
                     ),
                     "passed": permitted_connection
                     or (own_optical_screen and "error" not in measurement)
+                    or (antenna_service_overlap and "error" not in measurement)
                     or (
                         measurement["passed"] and measurement["intersection_mm3"] < TOL
                     ),

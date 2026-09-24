@@ -256,6 +256,14 @@ class ExportIntegrityTests(unittest.TestCase):
             return result
 
         with (
+            patch.dict(
+                sys.modules,
+                {
+                    "gondola.validation.equipment_options": types.SimpleNamespace(
+                        compatibility_check=Mock(return_value={"passed": True})
+                    )
+                },
+            ),
             patch.object(
                 self.equipment.wiring_validation,
                 "reserve_checks",

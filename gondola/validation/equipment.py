@@ -22,7 +22,12 @@ from gondola.contracts.design import (
     WIRING_PURCHASE_PLAN,
     hardware_bom_scope,
 )
+from gondola.contracts.equipment_options import (
+    get_navigation_profile,
+    get_radio_profile,
+)
 from gondola.parts import equipment_envelopes as devices
+from gondola.parts import equipment_layout as layout
 from gondola.parts import equipment_mounts as mounts
 from gondola.parts import stack_interface
 from gondola.print_export import geometry_comparison
@@ -141,6 +146,8 @@ def mounting_check(doc):
     """
     from gondola.parts import wiring_reserves as wiring_clearances
 
+    from .equipment_options import adhesive_support_check
+
     registry = doc.DesignRegistry
     physical_objects = (
         list(registry.PrintedParts)
@@ -192,20 +199,25 @@ def mounting_check(doc):
     carrier_shape = local_shape(carrier)
     parent = doc.ElectronicsEquipmentModule
     mounting_rows = []
-    device_specs = (
+    navigation_profile = get_navigation_profile()
+    radio_profile = get_radio_profile()
+    device_specs = [
         (
             "ModuleFCEnvelope",
             mounts.FC_HOLE_CENTRES,
             interfaces.FC_HOLE_DIAMETER,
             devices.fc_envelope_shape,
         ),
-        (
-            "ModulePASEnvelope",
-            mounts.PAS_HOLE_CENTRES,
-            interfaces.PAS_HOLE_DIAMETER,
-            devices.pas_envelope_shape,
-        ),
-    )
+    ]
+    if navigation_profile.key == "PAS":
+        device_specs.append(
+            (
+                "ModulePASEnvelope",
+                mounts.PAS_HOLE_CENTRES,
+                interfaces.PAS_HOLE_DIAMETER,
+                devices.pas_envelope_shape,
+            ),
+        )
     for name, centres, device_hole_diameter, factory in device_specs:
         if name == "ModuleFCEnvelope":
             rotation = App.Rotation(App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
@@ -265,7 +277,7 @@ def mounting_check(doc):
             }
         )
     adhesive_rows = []
-    for mount_name, device_name, centre, size in (
+    adhesive_specs = [
         ("BatteryMount", "ModuleBatteryEnvelope", (0, 0), mounts.BATTERY_DECK_SIZE),
         (
             "ElectronicsMount",
@@ -273,47 +285,38 @@ def mounting_check(doc):
             mounts.LR_CENTRE_XY,
             mounts.LR_ADHESIVE_SIZE,
         ),
-    ):
+    ]
+    if navigation_profile.key != "PAS":
+        adhesive_specs.append(
+            (
+                "ElectronicsMount",
+                "ModulePASEnvelope",
+                mounts.GPS_CENTRE_XY,
+                mounts.GPS_ADHESIVE_SIZE,
+            )
+        )
+    for mount_name, device_name, centre, size in adhesive_specs:
         support = doc.getObject(mount_name)
         owner = support.getParentGeoFeatureGroup()
-        pad = Part.makeBox(
-            size[0],
-            size[1],
-            mounts.DECK_THICKNESS,
-            App.Vector(
-                centre[0] - size[0] / 2, centre[1] - size[1] / 2, mounts.DECK_BOTTOM_Z
-            ),
+        device_local = physical_shapes_by_name[device_name].copy()
+        device_local.Placement = (
+            owner.getGlobalPlacement().inverse().multiply(device_local.Placement)
         )
-        pad_world = _in_parent_frame(pad, owner)
-        missing = pad_world.cut(physical_shapes_by_name[mount_name]).Volume
-        pad_bounds = pad_world.optimalBoundingBox(False, False)
-        device_bounds = physical_shapes_by_name[device_name].optimalBoundingBox(
-            False, False
-        )
-        covered = all(
-            getattr(pad_bounds, axis + "Min")
-            >= getattr(device_bounds, axis + "Min") - TOL
-            and getattr(pad_bounds, axis + "Max")
-            <= getattr(device_bounds, axis + "Max") + TOL
-            for axis in ("X", "Y")
-        )
-        gap = device_bounds.ZMin - pad_bounds.ZMax
         adhesive_rows.append(
             {
                 "device": device_name,
-                "continuous_support_area_mm2": size[0] * size[1],
-                "missing_pad_material_mm3": missing,
-                "pad_within_device_plan_envelope": covered,
-                "adhesive_allowance_mm": gap,
-                "passed": missing < TOL
-                and covered
-                and abs(gap - mounts.ADHESIVE_ALLOWANCE) < TOL,
+                **adhesive_support_check(
+                    local_shape(support), device_local, centre, size
+                ),
             }
         )
     free_height_rows = []
     for name, expected_gap in (
         ("ModuleFCEnvelope", mounts.FC_WIRING_CLEARANCE),
-        ("ModulePASEnvelope", mounts.PAS_SERVICE_CLEARANCE),
+        (
+            "ModulePASEnvelope",
+            layout.navigation_bottom(navigation_profile) - mounts.SUPPORT_FACE_Z,
+        ),
     ):
         bounds = physical_shapes_by_name[name].optimalBoundingBox(False, False)
         support_top = (
@@ -327,10 +330,12 @@ def mounting_check(doc):
         dimensions = (
             interfaces.FC_SIZE_MM
             if name == "ModuleFCEnvelope"
-            else interfaces.PAS_SIZE_MM
+            else navigation_profile.size_mm
         )
         centre = (
-            mounts.FC_CENTRE_XY if name == "ModuleFCEnvelope" else mounts.PAS_CENTRE_XY
+            mounts.FC_CENTRE_XY
+            if name == "ModuleFCEnvelope"
+            else layout.navigation_centre(navigation_profile)
         )
         space = Part.makeBox(
             dimensions[0],
@@ -454,8 +459,8 @@ def mounting_check(doc):
     pending_metadata = []
     for name, key in (
         ("ModuleFCEnvelope", "FC"),
-        ("ModulePASEnvelope", "PAS"),
-        ("ModuleLR900Envelope", "LR"),
+        ("ModulePASEnvelope", navigation_profile.interface_key),
+        ("ModuleLR900Envelope", radio_profile.interface_key),
         ("ModuleMTF02PEnvelope", doc.OpticalFlowModule.SensorModel),
     ):
         obj = doc.getObject(name)
@@ -608,6 +613,8 @@ def hardware_check(doc, source):
 
 
 def validate(source=None):
+    from .equipment_options import compatibility_check
+
     fingerprint_before = source_fingerprint()
     source = (
         Path(source).resolve() if source else OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")
@@ -621,6 +628,7 @@ def validate(source=None):
         clearance_checks, reserve_pairs = wiring_validation.reserve_checks(doc)
         optical_report = mtf_sensor_check(doc)
         mounting_report = mounting_check(doc)
+        options_report = compatibility_check(doc)
         hardware_report = hardware_check(doc, source)
         try:
             wiring_plan_matches = (
@@ -656,6 +664,7 @@ def validate(source=None):
             "reserve_pair_checks": reserve_pairs,
             "mtf02p_sensor": optical_report,
             "equipment_mounts": mounting_report,
+            "equipment_options": options_report,
             "hardware": hardware_report,
             "native_wiring_purchase_plan_matches_contract": wiring_plan_matches,
             "reference_sources": reference_sources,
@@ -682,6 +691,7 @@ def validate(source=None):
         and report["hardware_bom_unchanged"]
         and optical_report["passed"]
         and mounting_report["passed"]
+        and options_report["passed"]
         and all(row["passed"] for row in clearance_checks)
         and all(row["passed"] for row in reserve_pairs)
         and hardware_report["passed"]

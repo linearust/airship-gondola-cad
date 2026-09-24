@@ -416,6 +416,8 @@ def procurement_and_scope_metadata(obj):
         "InstalledConnectorFitVerified",
         "ConnectorEvidence",
         "FlightControllerContract",
+        "NavigationProfile",
+        "RadioProfile",
         "WiringContract",
         "MountContract",
         "ModulePlacementContract",

@@ -15,18 +15,19 @@ from gondola.cad import (
 )
 from gondola.contracts import equipment_interfaces as interfaces
 from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG, NOTION_URL
+from gondola.contracts.equipment_options import (
+    get_navigation_profile,
+    get_radio_profile,
+)
 
+from . import equipment_layout as layout
 from . import equipment_mounts as mounts
 from . import wiring_reserves
 from .equipment_metadata import add_interface_metadata, create_wiring_reserve
 
 V = App.Vector
-LR_SOURCE = interfaces.LR_SOURCE
-PAS_SOURCE = interfaces.PAS_SOURCE
 BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-pack-with-xt30-plug-long-size-for-h-frame.html"
 FC_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
-PAS_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE
-LR_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
 CAPACITOR_RESERVE_CENTRE_XY = (42.0, 34.0)
 
 
@@ -44,34 +45,52 @@ def fc_envelope_shape():
     return shape
 
 
-def pas_envelope_shape():
-    """Use the source drawing frame: X width 27, Y length 32, antenna +Y."""
-    length, width, height = interfaces.PAS_SIZE_MM
-    x, y = mounts.PAS_CENTRE_XY
+def navigation_envelope_shape(profile=None):
+    """One selected device; only the confirmed P-AS mounting axes are cut."""
+    profile = profile or get_navigation_profile()
+    length, width, height = profile.size_mm
+    x, y = layout.navigation_centre(profile)
+    bottom = layout.navigation_bottom(profile)
     shape = Part.makeBox(
-        length, width, height, V(x - length / 2, y - width / 2, PAS_BOTTOM_Z)
+        length, width, height, V(x - length / 2, y - width / 2, bottom)
     )
-    for hx, hy in mounts.PAS_HOLE_CENTRES:
+    for hx, hy in layout.navigation_hole_centres(profile):
         shape = shape.cut(
             Part.makeCylinder(
-                interfaces.PAS_HOLE_DIAMETER / 2,
+                profile.mounting_hole_diameter_mm / 2,
                 height + 2,
-                V(hx, hy, PAS_BOTTOM_Z - 1),
+                V(hx, hy, bottom - 1),
             )
         )
     return shape
 
 
-def lr900_envelope_shape():
-    """The published LR900-A size excludes its SMA socket and antenna."""
-    length, width, height = interfaces.LR_SIZE_MM
+def radio_envelope_shape(profile=None):
+    """Selected radio body only; external RF connectors/antennas are separate."""
+    profile = profile or get_radio_profile()
+    length, width, height = profile.size_mm
     x, y = mounts.LR_CENTRE_XY
     return Part.makeBox(
-        length, width, height, V(x - length / 2, y - width / 2, LR_BOTTOM_Z)
+        length,
+        width,
+        height,
+        V(x - length / 2, y - width / 2, layout.radio_bottom()),
     )
 
 
+def pas_envelope_shape():
+    """Explicit legacy model helper; selected builds use the navigation slot."""
+    return navigation_envelope_shape(get_navigation_profile("PAS"))
+
+
+def lr900_envelope_shape():
+    """Explicit legacy model helper; selected builds use the radio slot."""
+    return radio_envelope_shape(get_radio_profile("LR900A"))
+
+
 def build_equipment(doc, battery_group, electronics_group):
+    navigation_profile = get_navigation_profile()
+    radio_profile = get_radio_profile()
     battery = doc.addObject("Part::Box", "ModuleBatteryEnvelope")
     battery_group.addObject(battery)
     battery.Label = "REFERENCE | provisional2S battery, long axisY"
@@ -166,36 +185,59 @@ def build_equipment(doc, battery_group, electronics_group):
         doc,
         electronics_group,
         "ModuleLR900Envelope",
-        "LR900-A on continuous adhesive pad",
-        lr900_envelope_shape(),
-        "Published29.5x13x9mm body excludes SMA antenna socket. Provisional1mm insulating adhesive allowance above the continuous carrier pad. No verified mounting-hole pattern. Actual underside contact, antenna, connector insertion and cable bend clearance remain unmeasured.",
-        LR_SOURCE,
+        radio_profile.model + " | interchangeable radio slot",
+        radio_envelope_shape(radio_profile),
+        radio_profile.contract()["installation"]
+        + " "
+        + radio_profile.contract()["dimension_scope"],
+        radio_profile.source,
     )
-    add_interface_metadata(radio, "LR")
-    pas = create_reference(
+    add_interface_metadata(radio, radio_profile.interface_key)
+    set_property(radio, "RadioModel", radio_profile.key)
+    set_property(
+        radio, "RadioProfile", json.dumps(radio_profile.contract(), sort_keys=True)
+    )
+    radio.setEditorMode("RadioModel", 1)
+    radio.setEditorMode("RadioProfile", 1)
+    navigation = create_reference(
         doc,
         electronics_group,
         "ModulePASEnvelope",
-        "LinkTrack P-AS | confirmed two M2 mounting axes",
-        pas_envelope_shape(),
-        "Official drawing frame X27xY32mm, antenna+Y; two diameter2.2mm holes spaced23mm,6.7mm from the connector-side edge. "
-        "The specification table lists7mm overall height while the mechanical drawing shows5.3mm; retain7mm conservatively. "
-        "Our4mm underbody service allowance is not a measured PCB bearing-plane height. Buy the spacer/fastener stack after checking actual PCB, antenna and GH1.25 connector access; no unverified mounting hardware is generated.",
-        PAS_SOURCE,
+        navigation_profile.model + " | interchangeable navigation slot",
+        navigation_envelope_shape(navigation_profile),
+        navigation_profile.contract()["installation"]
+        + " "
+        + navigation_profile.contract()["dimension_scope"],
+        navigation_profile.source,
     )
     add_interface_metadata(
-        pas, "PAS", mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_DIAMETER
+        navigation,
+        navigation_profile.interface_key,
+        layout.navigation_hole_centres(navigation_profile),
+        navigation_profile.mounting_hole_diameter_mm,
     )
+    set_property(navigation, "NavigationModel", navigation_profile.key)
     set_property(
-        pas, "PublishedMountHolePitch", interfaces.PAS_HOLE_PITCH, "App::PropertyLength"
+        navigation,
+        "NavigationProfile",
+        json.dumps(navigation_profile.contract(), sort_keys=True),
     )
+    navigation.setEditorMode("NavigationModel", 1)
+    navigation.setEditorMode("NavigationProfile", 1)
+    if navigation_profile.key == "PAS":
+        set_property(
+            navigation,
+            "PublishedMountHolePitch",
+            interfaces.PAS_HOLE_PITCH,
+            "App::PropertyLength",
+        )
     set_property(
-        pas,
+        navigation,
         "DesignUnderbodyClearance",
-        mounts.PAS_SERVICE_CLEARANCE,
+        layout.navigation_bottom(navigation_profile) - mounts.SUPPORT_FACE_Z,
         "App::PropertyLength",
     )
-    refs = [battery, fc_obj, radio, pas]
+    refs = [battery, fc_obj, radio, navigation]
     clearance = [max_pack]
     contracts = wiring_reserves.reserve_contracts()
     for name, shape in wiring_reserves.reserve_shapes().items():
@@ -217,8 +259,10 @@ def build_equipment(doc, battery_group, electronics_group):
         electronics_group,
         "CapacitorServiceReserve",
         "35V220uF capacitor reserve diameter10x16",
-        Part.makeCylinder(5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, LR_BOTTOM_Z)),
-        "Provisional space for the specified35V220uF capacitor, beside the translated P-AS device and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
+        Part.makeCylinder(
+            5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.radio_bottom())
+        ),
+        "Provisional space for the specified35V220uF capacitor, beside the interchangeable navigation region and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )
     capacitor.Role = "Clearance"

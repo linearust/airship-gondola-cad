@@ -1694,6 +1694,17 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                         row = measurements[feature]
                         self.assertEqual(row["sample_line_mm"], [start, end])
                         self.assertTrue(row["passed"], row)
+                navigation = measurements["shared_fc_navigation_spine_thickness"]
+                radio = measurements["shared_fc_radio_spine_thickness"]
+                self.assertAlmostEqual(navigation["measured_material_length_mm"], 3.0)
+                self.assertAlmostEqual(radio["measured_material_length_mm"], 2.0)
+                self.assertLess(
+                    navigation["sample_line_mm"][0][2],
+                    equipment_mounts.SUPPORT_FACE_Z - 3.0,
+                )
+                assessment = result["equipment_mount_assessment"]
+                self.assertEqual(assessment["navigation_arm_section_mm"], [14.0, 3.0])
+                self.assertEqual(assessment["radio_arm_section_mm"], [5.0, 2.0])
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

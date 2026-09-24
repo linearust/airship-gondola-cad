@@ -20,6 +20,8 @@ SUPPORT_FACE_Z = DECK_BOTTOM_Z + DECK_THICKNESS
 MOUNT_HOLE_DIAMETER = 2.6
 MOUNT_PAD_DIAMETER = 6.5
 ARM_WIDTH = 5.0
+NAVIGATION_ARM_WIDTH = 14.0
+NAVIGATION_ARM_THICKNESS = 3.0
 FC_CENTRE_XY = (0.0, 0.0)
 FC_ROTATION_DEG = -45.0
 FC_AXIS_OFFSET = interfaces.FC_HOLE_PITCH / math.sqrt(2)
@@ -36,9 +38,11 @@ PAS_CENTRE_XY = (54.0, -interfaces.PAS_HOLE_CENTRES[0][1])
 PAS_HOLE_CENTRES = tuple(
     (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
-LR_CENTRE_XY = (0.0, 47.0)
+LR_CENTRE_XY = (0.0, 50.0)
+GPS_CENTRE_XY = (100.0, 0.0)
+GPS_ADHESIVE_SIZE = (18.0, 18.0)
 ELECTRONICS_SUPPORT_SPINES = (
-    (FC_HOLE_CENTRES[0], PAS_HOLE_CENTRES[-1]),
+    (FC_HOLE_CENTRES[0], GPS_CENTRE_XY),
     (FC_HOLE_CENTRES[1], LR_CENTRE_XY),
 )
 LR_ADHESIVE_SIZE = (26.0, 10.0)
@@ -68,17 +72,18 @@ def _deck(size, centre):
     )
 
 
-def _arm(start, end):
+def _arm(start, end, width=ARM_WIDTH, thickness=DECK_THICKNESS):
     """A constant-width horizontal rib with rounded free ends."""
     dx, dy = end[0] - start[0], end[1] - start[1]
     length = math.hypot(dx, dy)
-    shape = box(length, ARM_WIDTH, DECK_THICKNESS, (0, -ARM_WIDTH / 2, DECK_BOTTOM_Z))
+    bottom = SUPPORT_FACE_Z - thickness
+    shape = box(length, width, thickness, (0, -width / 2, bottom))
     shape.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(dy, dx)))
     shape.translate(V(*start, 0))
     return union(
         [shape]
         + [
-            Part.makeCylinder(ARM_WIDTH / 2, DECK_THICKNESS, V(x, y, DECK_BOTTOM_Z))
+            Part.makeCylinder(width / 2, thickness, V(x, y, bottom))
             for x, y in (start, end)
         ]
     )
@@ -110,8 +115,16 @@ def mount_shape(kind):
         holes = ()
     elif kind == "electronics":
         pieces = [_deck((rail.SHOE_LENGTH, rail.SHOE_WIDTH), (0.0, 0.0))]
-        pieces += [_arm(start, end) for start, end in ELECTRONICS_SUPPORT_SPINES]
+        pieces.append(
+            _arm(
+                *ELECTRONICS_SUPPORT_SPINES[0],
+                width=NAVIGATION_ARM_WIDTH,
+                thickness=NAVIGATION_ARM_THICKNESS,
+            )
+        )
+        pieces.append(_arm(*ELECTRONICS_SUPPORT_SPINES[1]))
         pieces.append(_deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY))
+        pieces.append(_deck(GPS_ADHESIVE_SIZE, GPS_CENTRE_XY))
         holes = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
         pieces += [
             Part.makeCylinder(
@@ -127,8 +140,8 @@ def mount_shape(kind):
         shape = shape.cut(
             Part.makeCylinder(
                 MOUNT_HOLE_DIAMETER / 2,
-                DECK_THICKNESS + 2,
-                V(x, y, DECK_BOTTOM_Z - 1),
+                NAVIGATION_ARM_THICKNESS + 2,
+                V(x, y, SUPPORT_FACE_Z - NAVIGATION_ARM_THICKNESS - 1),
             )
         )
     shape = shape.removeSplitter()
@@ -153,20 +166,30 @@ def mount_contract(kind):
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
         "arm_width_mm": ARM_WIDTH,
+        "navigation_arm_section_mm": (
+            [NAVIGATION_ARM_WIDTH, NAVIGATION_ARM_THICKNESS]
+            if kind == "electronics"
+            else None
+        ),
         "shared_support_spines_xy_mm": (
             ELECTRONICS_SUPPORT_SPINES if kind == "electronics" else []
         ),
         "support_path_scope": (
-            "Two continuous orthogonal members share the FC mounting-pad paths with P-AS on X and LR900-A on Y. P-AS is translated as a complete device to align its published off-centre hole row; no new device hole or printed fastening interface is introduced."
+            "Two continuous orthogonal members share the FC mounting-pad paths with the navigation region on X and the radio region on Y. P-AS retains its confirmed mounting axes. One integral GPS adhesive pad extends the same X member to reserve room for either GPS body and the conservative directly attached MG-F10 helix envelope. Install only one navigation module and one onboard radio."
             if kind == "electronics"
             else "Continuous adhesive deck and integral rail shoe; the optical tower uses its separate structural anchors."
         ),
         "continuous_adhesive_pads": (
             [
                 {
-                    "device": "LR900-A",
+                    "device": "LR900-A or LR24-F-Mini",
                     "centre_xy_mm": LR_CENTRE_XY,
                     "size_mm": LR_ADHESIVE_SIZE,
+                },
+                {
+                    "device": "MG-A01 / M10 Ultra or MG-F10-A",
+                    "centre_xy_mm": GPS_CENTRE_XY,
+                    "size_mm": GPS_ADHESIVE_SIZE,
                 },
             ]
             if kind == "electronics"
@@ -193,7 +216,7 @@ def build_mount(doc, parent, kind):
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
         f"Continuous 16 x 52 x 2 mm battery adhesive deck with two integral structural stack clamp tabs at {STACK_ANCHOR_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
-        else "Six confirmed device XY mounting axes on 6.5 mm pads and 2.6 mm M2 clearance holes. Two straight 5 by 2 mm members share the FC supports with P-AS on X and LR900-A on Y. The complete P-AS device is translated to align its original hole row with the FC support; hole pitch, device orientation and support height are preserved. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+        else "Six confirmed FC/P-AS device XY mounting axes on 6.5 mm pads and 2.6 mm M2 clearance holes. Two straight members share the FC supports with navigation on X and radio on Y. The longer navigation member is 14 by 3 mm for the optional direct helix load; the radio member remains 5 by 2 mm. Their upper support face is unchanged. P-AS retains its original hole row and service height. GPS alternatives use one integral 18 by 18 mm insulating-adhesive pad farther along the same X member; LR900-A or LR24-F-Mini use the existing 26 by 10 mm pad. Check actual underside contact, retention and loaded deflection. Only one device per region; no extra brackets or GPS holes. Optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )
     obj = create_printed_part(
         doc,
