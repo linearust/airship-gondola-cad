@@ -14,6 +14,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, world_shape
+from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
     equipment_mounts,
     optical_mount,
@@ -72,10 +73,22 @@ def _native_structure_check(doc):
             "HoldingTorqueVerified",
             "SelfLevelling",
             "StackFitVerified",
+            "SensorModel",
+            "SupportedSensorModels",
         ),
         "OpticalRollStage": ("Roll", "MinimumAngle", "MaximumAngle"),
         "OpticalPitchStage": ("Pitch", "MinimumAngle", "MaximumAngle"),
     }
+    required.update(
+        {
+            name: ("Shape", "SensorModel", "SensorProfileContract")
+            for name in (
+                "ModuleMTF02PEnvelope",
+                "MTF02POpticalClearanceReserve",
+                "MTF02PConnectorReserve",
+            )
+        }
+    )
     required.update({name: () for name in stack_interface.SUPPORTED_HOSTS})
     required.update(
         {
@@ -122,13 +135,27 @@ def _source_evidence(doc):
     structure = _native_structure_check(doc)
     if not structure["passed"]:
         return {"native_structure": structure, "passed": False}
+    selected_profile = get_sensor_profile()
+    selected_model_matches = (
+        str(doc.OpticalFlowModule.SensorModel) == selected_profile.key
+    )
+    if not selected_model_matches:
+        return {
+            "native_structure": structure,
+            "saved_sensor_model": str(doc.OpticalFlowModule.SensorModel),
+            "source_selected_sensor_model": selected_profile.key,
+            "selected_model_matches_source": False,
+            "passed": False,
+        }
     expected_doc = App.newDocument("OpticalEvidenceReference")
     rows = []
     try:
         host = expected_doc.addObject("App::Part", "BatteryEquipmentModule")
         kit = optical_mount.build_optical_mount(expected_doc, host)
         stack_interface.attach_to_host(kit["group"], host)
-        refs, reserves = optical_sensor.build_sensor(expected_doc, kit["pitch_stage"])
+        refs, reserves = optical_sensor.build_sensor(
+            expected_doc, kit["pitch_stage"], selected_profile
+        )
         expected_doc.recompute()
         registry = doc.DesignRegistry
         inventory = {}
@@ -162,7 +189,7 @@ def _source_evidence(doc):
                     == expected.getParentGeoFeatureGroup().Name
                 )
                 metadata = {}
-                for name in (
+                metadata_names = {
                     "OpticalMountContract",
                     "StackInterfaceContract",
                     "MountingEvidence",
@@ -193,7 +220,15 @@ def _source_evidence(doc):
                     "InstalledConnectorFitVerified",
                     "InstalledOpticalFieldVerified",
                     "OpticalOriginsMeasured",
-                ):
+                }
+                # Sensor profiles carry source, dimensions and qualification scope.
+                # Bind every factory-created design property, not a stale shortlist.
+                metadata_names.update(
+                    name
+                    for name in expected.PropertiesList
+                    if expected.getGroupOfProperty(name) == "Design"
+                )
+                for name in sorted(metadata_names):
                     if name not in expected.PropertiesList:
                         continue
                     present = name in actual.PropertiesList
@@ -238,6 +273,8 @@ def _source_evidence(doc):
             and _json_equal(
                 group.StackInterfaceContract, kit["group"].StackInterfaceContract
             )
+            and str(group.SensorModel) == selected_profile.key
+            and list(group.SupportedSensorModels) == list(SENSOR_PROFILES)
             and not group.HoldingTorqueVerified
             and not group.SelfLevelling
             and not group.StackFitVerified
@@ -283,6 +320,9 @@ def _source_evidence(doc):
             )
         return {
             "native_structure": structure,
+            "saved_sensor_model": str(group.SensorModel),
+            "source_selected_sensor_model": selected_profile.key,
+            "selected_model_matches_source": selected_model_matches,
             "objects": rows,
             "registered_kit_inventory_matches_factory": inventory,
             "module_contract_and_registry": module_ok,
@@ -306,12 +346,13 @@ def _corners(shape):
     ]
 
 
-def _external_field_bound(group):
+def _external_field_bound(group, profile=None):
     """A broad circular cone containing every rectangular field orientation."""
+    profile = profile or optical_sensor.profile_for_document(group.Document)
     angle = math.radians(optical_mount.ANGLE_LIMIT_DEG)
     c, s = math.cos(angle), math.sin(angle)
-    half_x, half_y = (v / 2 for v in optical_sensor.SIZE_MM[:2])
-    front = optical_sensor.SENSOR_BOTTOM_Z + optical_sensor.SIZE_MM[2]
+    half_x, half_y = (v / 2 for v in profile.size_mm[:2])
+    front = optical_sensor.SENSOR_BOTTOM_Z + profile.optical_origin_min_z_mm
     offset = optical_mount.PITCH_PIVOT_OFFSET_Z
     z = (
         optical_mount.ROLL_PIVOT_Z
@@ -322,7 +363,7 @@ def _external_field_bound(group):
     )
     radius = offset + math.sqrt(half_x**2 + half_y**2 + front**2)
     angular_bound = math.acos(c * c) + math.atan(
-        math.sqrt(2) * math.tan(math.radians(optical_sensor.FLOW_FOV_DEG / 2))
+        math.sqrt(2) * math.tan(math.radians(profile.flow_fov_deg / 2))
     )
     height = optical_sensor.OPTICAL_RESERVE_LENGTH_MM
     bound = Part.makeCone(
@@ -623,7 +664,8 @@ def _tower_float_clearance_check(doc, host, obstacles):
     }
 
 
-def _host_checks(doc, host, physical, kit):
+def _host_checks(doc, host, physical, kit, *, profile=None):
+    profile = profile or optical_sensor.profile_for_document(doc)
     group = doc.OpticalFlowModule
     validation_cache = {}
     find_hits = partial(
@@ -643,7 +685,9 @@ def _host_checks(doc, host, physical, kit):
         if obj.Name not in rotor and not belongs_to_group(obj, group)
     }
     # Required named external reservations cannot disappear from the registry.
-    # The sensor's own connector/field share a designed boundary and are excluded.
+    # Own connector and whole-footprint field are design reservations, not lens
+    # or installed-plug datums; they are excluded from one another's obstacles.
+    # Their possible overlap does not qualify actual connected-harness optics.
     for name in RESERVES:
         if name in ("MTF02PConnectorReserve", "MTF02POpticalClearanceReserve"):
             continue
@@ -706,7 +750,7 @@ def _host_checks(doc, host, physical, kit):
         depth = max(
             inverse.multVec(point).z
             - optical_sensor.SENSOR_BOTTOM_Z
-            - optical_sensor.SIZE_MM[2]
+            - profile.optical_origin_min_z_mm
             for shape in obstacles.values()
             for point in _corners(shape)
         )
@@ -742,7 +786,7 @@ def _host_checks(doc, host, physical, kit):
             }
         )
     optical_mount.set_angles(doc, 0, 0)
-    bound, dimensions = _external_field_bound(group)
+    bound, dimensions = _external_field_bound(group, profile)
     bound_hits = find_hits(bound, external)
     bound_reserve_hits = find_hits(bound, reservations)
     pivot = group.getGlobalPlacement().multVec(V(0, 0, optical_mount.ROLL_PIVOT_Z))
@@ -755,7 +799,7 @@ def _host_checks(doc, host, physical, kit):
         )
         + optical_mount.PITCH_PIVOT_OFFSET_Z
         + optical_sensor.SENSOR_BOTTOM_Z
-        + optical_sensor.SIZE_MM[2]
+        + profile.optical_origin_min_z_mm
     )
     continuous = {
         **dimensions,
@@ -811,6 +855,7 @@ def _host_checks(doc, host, physical, kit):
         )
     return {
         "host": host.Name,
+        "sensor_model": profile.key,
         "both_complete_rotor_bounds_present": rotor_complete,
         "sampled_attitudes": rows,
         "maximum_sampled_forward_extent_mm": maximum_depth,
@@ -828,10 +873,36 @@ def _host_checks(doc, host, physical, kit):
     }
 
 
+def _saved_sensor_state(doc):
+    """Snapshot only properties the temporary profile switch may replace."""
+    state = {}
+    for name in (
+        "ModuleMTF02PEnvelope",
+        "MTF02POpticalClearanceReserve",
+        "MTF02PConnectorReserve",
+    ):
+        obj = doc.getObject(name)
+        properties = {"Shape", "Placement", "Label"} | {
+            key for key in obj.PropertiesList if obj.getGroupOfProperty(key) == "Design"
+        }
+        state[name] = {}
+        for key in properties:
+            value = getattr(obj, key)
+            state[name][key] = value.copy() if hasattr(value, "copy") else value
+    return state
+
+
+def _restore_sensor_state(doc, state):
+    for name, properties in state.items():
+        obj = doc.getObject(name)
+        for key, value in properties.items():
+            setattr(obj, key, value)
+
+
 def mtf_sensor_check(doc):
-    """Temporarily probe both hosts and restore all native changes; never save."""
+    """Probe both mutually exclusive sensors on both hosts; never save changes."""
     report = {
-        "scope": "Saved CAD geometry only. 25 sampled mechanism and connector-access attitudes per host; continuous conservative external optical bound. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
+        "scope": "Saved CAD geometry only. Each mutually exclusive sensor has 25 sampled mechanism and connector-access attitudes per host plus a continuous conservative external optical bound. One sensor is substituted in memory at a time; no simultaneous installation is claimed. No self-levelling, torque, strength, adhesive, real cable or calibrated optical qualification."
     }
     evidence = _source_evidence(doc)
     report["source_evidence"] = evidence
@@ -843,8 +914,14 @@ def mtf_sensor_check(doc):
     old_placement = group.Placement.copy()
     saved_properties = {
         name: getattr(group, name)
-        for name in ("StackHostName", "StackInterfaceContract", "StackFitVerified")
+        for name in (
+            "StackHostName",
+            "StackInterfaceContract",
+            "StackFitVerified",
+            "SensorModel",
+        )
     }
+    saved_sensor_state = _saved_sensor_state(doc)
     old_angles = (doc.OpticalRollStage.Roll.Value, doc.OpticalPitchStage.Pitch.Value)
     try:
         registry = doc.DesignRegistry
@@ -855,17 +932,28 @@ def mtf_sensor_check(doc):
             + list(registry.TapeReferences)
         )
         kit = [obj for obj in physical if belongs_to_group(obj, group)]
-        hosts = [
-            _host_checks(doc, doc.getObject(name), physical, kit)
-            for name in stack_interface.SUPPORTED_HOSTS
-        ]
-        report["hosts"] = hosts
+        alternatives = {}
+        for key, profile in SENSOR_PROFILES.items():
+            optical_sensor.apply_profile(doc, profile)
+            hosts = [
+                _host_checks(doc, doc.getObject(name), physical, kit, profile=profile)
+                for name in stack_interface.SUPPORTED_HOSTS
+            ]
+            alternatives[key] = {
+                "sensor_model": key,
+                "hosts": hosts,
+                "passed": all(row["passed"] for row in hosts),
+            }
+        report["selected_sensor_model"] = saved_properties["SensorModel"]
+        report["sensor_alternatives"] = alternatives
+        report["hosts"] = alternatives[saved_properties["SensorModel"]]["hosts"]
         report["service_prerequisite"] = (
             "Disconnect leads and bench-support the carrier after removing it from the rail; balloon clearance is not modeled. Support tower upright, remove both foot nuts and withdraw both screws downward; lift the complete tower along optical +Z before releasing/lifting the host device. Release device mounting hardware and adhesive separately. Both tower feet must be directly seated and clamped before use. No connected-harness removal claim."
         )
-        report["passed"] = all(row["passed"] for row in hosts)
+        report["passed"] = all(row["passed"] for row in alternatives.values())
         return report
     finally:
+        _restore_sensor_state(doc, saved_sensor_state)
         stack_interface.attach_to_host(group, old_host)
         group.Placement = old_placement
         for name, value in saved_properties.items():

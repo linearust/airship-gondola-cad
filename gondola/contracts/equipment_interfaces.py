@@ -5,6 +5,7 @@ No PCB bearing plane, screw length or damper compression is inferred from photos
 """
 
 from .drive import GEARS
+from .optical_sensors import SENSOR_PROFILES
 
 FC_SOURCE = "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual"
 FC_DIMENSION_SOURCE = "https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec5.webp"
@@ -24,14 +25,9 @@ PAS_HOLE_CENTRES = ((-11.5, -9.3), (11.5, -9.3))
 
 LR_SOURCE = "https://micoair.cn/zh/docs/telemetry/lr900/lr900-telemetry"
 LR_SIZE_MM = (29.5, 13.0, 9.0)
-MTF02P_SOURCE = "https://micoair.cn/zh/docs/sensors/sensors/mtf-02-02p-sensors"
-MTF02P_PRODUCT_SOURCE = "https://micoair.com/optical_range_sensor_mtf-02p/"
-MTF02P_DIMENSION_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/66f661b664e82-df0e9d69d2-971f59dd57.webp"
-MTF02P_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/66f66374dd95c-852bf87918-83cf12d631.webp"
-MTF02P_SIZE_MM = (21.6, 16.0, 6.5)
-MTF02P_MASS_G = 1.5
-MTF02P_FLOW_FOV_DEG = 42.0
-MTF02P_TOF_FOV_DEG = 2.0
+MTF02P_SOURCE = SENSOR_PROFILES["MTF02P"].source
+MTF02P_DIMENSION_IMAGE = SENSOR_PROFILES["MTF02P"].dimension_source
+MTF02P_PORT_IMAGE = SENSOR_PROFILES["MTF02P"].port_source
 
 JST_SH_SOURCE = "https://www.jst-mfg.com/product/pdf/eng/eSH.pdf"
 JST_GH_SOURCE = "https://www.jst-mfg.com/product/pdf/eng/eGH.pdf"
@@ -295,6 +291,25 @@ DEVICE_CONNECTOR_EVIDENCE = {
         "unknown": "Port Y/Z and header datum, plugged cable envelope, actual wire bend radius and installed sensor yaw.",
         "connection_limit": "Keep the cable outside the optical face and optical reservation. Match the official pinout and firmware orientation to the installed module.",
     },
+    "MTF01P": {
+        "sources": [
+            SENSOR_PROFILES["MTF01P"].source,
+            SENSOR_PROFILES["MTF01P"].dimension_source,
+            SENSOR_PROFILES["MTF01P"].port_source,
+        ],
+        "retained_evidence": [
+            "references/mtf01p_dimensions.webp",
+            "references/mtf01p_ports.webp",
+        ],
+        "documented_types": ["SH1.0-4P"],
+        "catalog_references": ["JST_SH_4P"],
+        "documented_interfaces": "One SH1.0-4P UART connector: GND,5V,Rx,Tx in the manufacturer pin photograph's orientation.",
+        "orientation_evidence": "Connector is on a long33.2mm edge. Model long dimension as X and this edge as+Y; verify actual firmware yaw independently. Whole edge is reserved because header datums are not dimensioned.",
+        "installed_port_centres_mm": None,
+        "installed_port_datums_verified": False,
+        "unknown": "Exact connector X/Z and header datum, plugged envelope, cable bend radius and installed sensor yaw.",
+        "connection_limit": "Use only one optical sensor. Verify actual pinout; keep cable and optional ties outside all three optical apertures and both manual pivots.",
+    },
     "SERVO": {
         "sources": [SERVO_SOURCE, X06_DATASHEET_SOURCE],
         "retained_evidence": ["references/kst_x06_v6_datasheet.pdf"],
@@ -327,6 +342,16 @@ MOUNTING_EVIDENCE = {
         "verified": "LR900-A 29.5 x 13 x 9 mm excludes the SMA antenna socket; UART GH1.25-4P and USB Type-C.",
         "unknown": "No verified mounting-hole pattern, underside bearing plane, SMA socket/antenna envelope or plugged cable clearance.",
         "installation": "Insulating adhesive remains provisional; the LR900-F/P mechanical model is not evidence for the LR900-A.",
+    },
+    "MTF01P": {
+        "sources": [
+            SENSOR_PROFILES["MTF01P"].source,
+            SENSOR_PROFILES["MTF01P"].dimension_source,
+            SENSOR_PROFILES["MTF01P"].port_source,
+        ],
+        "verified": "33.2x20.8x16.8mm,8g; four2.5mm mounting holes on24.3x12mm pattern; SH1.0-4P; optical-flow42deg, range1.5deg. Published maximum height includes raised optical tubes.",
+        "unknown": "Actual rear flatness/adhesive strength, lens origins, plugged cable clearance and retained pointing under load.",
+        "installation": "Existing18x12mm tray and insulating rear adhesive; published holes intentionally unused. Closed rear case supports this choice provisionally. No new printed adapter. Keep all optical openings free; match firmware rotation to the unit.",
     },
     "MTF02P": {
         "sources": [MTF02P_SOURCE, MTF02P_DIMENSION_IMAGE, MTF02P_PORT_IMAGE],

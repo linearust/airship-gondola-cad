@@ -159,9 +159,14 @@ def reserve_checks(doc):
         obj.Name: world_shape(obj) for obj in registry.ClearanceVolumes
     }
     expected_shapes = wiring.reserve_shapes()
-    expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape()
+    profile = optical_sensor.profile_for_document(doc)
+    expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape(
+        profile
+    )
     expected_contracts = wiring.reserve_contracts()
-    expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract()
+    expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract(
+        profile
+    )
     checks = []
     propulsion_routes = {
         row["object"]: row for row in propulsion_wiring_check(doc)["routes"]
@@ -178,7 +183,16 @@ def reserve_checks(doc):
             checks.append({"object": name, "error": error, "passed": False})
             continue
         measurements = measure_clearances(
-            shape, physical_shapes_by_name, validation_cache=validation_cache
+            shape,
+            {
+                key: value
+                for key, value in physical_shapes_by_name.items()
+                if not (
+                    name == optical_sensor.FIELD_OBJECT
+                    and key == optical_sensor.SENSOR_OBJECT
+                )
+            },
+            validation_cache=validation_cache,
         )
         physical_hits = _collision_hits(measurements)
         source_check = None
@@ -257,6 +271,8 @@ def reserve_checks(doc):
         checks.append(
             {
                 "object": name,
+                "self_sensor_excluded_from_rear_plane_optical_screen": name
+                == optical_sensor.FIELD_OBJECT,
                 "role": str(obj.Role),
                 "in_clearance_registry": obj in registry.ClearanceVolumes,
                 "not_in_print_or_hardware_registry": obj not in registry.PrintedParts
@@ -316,18 +332,29 @@ def reserve_checks(doc):
                 )
             else:
                 permitted_connection = False
+            own_optical_screen = {name, other_name} == {
+                optical_sensor.FIELD_OBJECT,
+                optical_sensor.CONNECTOR_OBJECT,
+            }
             pairs.append(
                 {
                     "a": name,
                     "b": other_name,
                     "intersection_mm3": measurement.get("intersection_mm3"),
                     "intentional_fc_terminal_connection": connection,
+                    "own_conservative_optical_connector_overlap": own_optical_screen,
+                    "overlap_scope": (
+                        "The rear-plane whole-footprint optical screen intentionally overbounds the sensor and its own edge lane. This is not a claim that an installed cable clears the actual apertures; inspect received lens/cable datums. Other reserves remain independent obstacles."
+                        if own_optical_screen
+                        else None
+                    ),
                     **(
                         {"error": measurement["error"]}
                         if "error" in measurement
                         else {}
                     ),
                     "passed": permitted_connection
+                    or (own_optical_screen and "error" not in measurement)
                     or (
                         measurement["passed"] and measurement["intersection_mm3"] < TOL
                     ),

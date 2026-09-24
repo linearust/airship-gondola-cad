@@ -1,5 +1,6 @@
 """Negative native-CAD regressions for the pinned adjustable optical stack."""
 
+import json
 import unittest
 from unittest.mock import patch
 
@@ -40,6 +41,12 @@ class OpticalClearanceTests(unittest.TestCase):
         pivot = self.doc.OpticalRollBolt
         mutations = (
             (sensor, "ListedMassGrams", 99.0),
+            (sensor, "SensorModel", "MTF01P"),
+            (sensor, "SensorProfileContract", "{}"),
+            (self.doc.MTF02PConnectorReserve, "SensorModel", "MTF01P"),
+            (self.doc.MTF02POpticalClearanceReserve, "SensorProfileContract", "{}"),
+            (self.doc.OpticalFlowModule, "SensorModel", "MTF01P"),
+            (self.doc.OpticalFlowModule, "SupportedSensorModels", ["MTF02P"]),
             (sensor, "OpticalDirection", App.Vector(1, 0, 0)),
             (sensor, "PlannedConnectorDirection", App.Vector(-1, 0, 0)),
             (sensor, "PublishedOpticalFlowFOV", 43.0),
@@ -200,7 +207,10 @@ class OpticalClearanceTests(unittest.TestCase):
         kit = [obj for obj in physical if belongs_to_group(obj, group)]
         reserve = self.doc.CapacitorServiceReserve
         inverse = reserve.getParentGeoFeatureGroup().getGlobalPlacement().inverse()
-        sensor_midpoint = optical_sensor.SENSOR_BOTTOM_Z + optical_sensor.SIZE_MM[2] / 2
+        sensor_midpoint = (
+            optical_sensor.SENSOR_BOTTOM_Z
+            + optical_sensor.profile_for_document(self.doc).size_mm[2] / 2
+        )
         for kind, local_point in (
             ("connector_intersection", App.Vector(20, 0, sensor_midpoint)),
             ("connector_gap", App.Vector(23.55, 0, sensor_midpoint)),
@@ -287,7 +297,7 @@ class OpticalClearanceTests(unittest.TestCase):
         for raises in (False, True):
             with self.subTest(raises=raises):
 
-                def late_failure(doc, probe_host, physical, kit):
+                def late_failure(doc, probe_host, physical, kit, *, profile=None):
                     stack_interface.attach_to_host(group, probe_host)
                     optical_mount.set_angles(doc, -20, 20)
                     if raises:
@@ -314,6 +324,181 @@ class OpticalClearanceTests(unittest.TestCase):
                 self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
                 for name, value in metadata.items():
                     self.assertEqual(getattr(group, name), value)
+
+    def assert_sensor_state_matches(self, before):
+        from gondola.validation.optical import _saved_sensor_state
+
+        after = _saved_sensor_state(self.doc)
+        self.assertEqual(set(before), set(after))
+        for name, properties in before.items():
+            self.assertEqual(set(properties), set(after[name]))
+            for key, expected in properties.items():
+                actual = after[name][key]
+                with self.subTest(object=name, property=key):
+                    if key == "Shape":
+                        self.assertLess(expected.cut(actual).Volume, 1e-7)
+                        self.assertLess(actual.cut(expected).Volume, 1e-7)
+                    elif key == "Placement":
+                        self.assertTrue(actual.isSame(expected, 1e-9))
+                    else:
+                        self.assertEqual(actual, expected)
+
+    def test_all_alternatives_visit_both_hosts_and_restore_exact_selected_state(self):
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import optical_mount, optical_sensor, stack_interface
+        from gondola.validation import optical
+
+        group = self.doc.OpticalFlowModule
+        host = self.doc.ElectronicsEquipmentModule
+        stack_interface.attach_to_host(group, host)
+        optical_mount.set_angles(self.doc, 13, -9)
+        before = optical._saved_sensor_state(self.doc)
+        object_names = {obj.Name for obj in self.doc.Objects}
+        selected = group.SensorModel
+        placements = group.Placement.copy()
+        registry_names = {
+            key: [obj.Name for obj in getattr(self.doc.DesignRegistry, key)]
+            for key in (
+                "PrintedParts",
+                "HardwareParts",
+                "ReferenceParts",
+                "ClearanceVolumes",
+            )
+        }
+        for fail_alternative in (False, True):
+            with self.subTest(fail_alternative=fail_alternative):
+                visited = []
+
+                def probe(doc, probe_host, physical, kit, *, profile):
+                    visited.append((profile.key, probe_host.Name))
+                    self.assertEqual(group.SensorModel, profile.key)
+                    self.assertEqual(optical_sensor.profile_for_document(doc), profile)
+                    self.assertEqual(
+                        json.loads(str(doc.ModuleMTF02PEnvelope.SensorProfileContract)),
+                        json.loads(json.dumps(profile.contract())),
+                    )
+                    self.assertAlmostEqual(
+                        doc.ModuleMTF02PEnvelope.Shape.BoundBox.ZLength,
+                        profile.size_mm[2],
+                    )
+                    self.assertEqual({obj.Name for obj in doc.Objects}, object_names)
+                    for key, names in registry_names.items():
+                        self.assertEqual(
+                            [obj.Name for obj in getattr(doc.DesignRegistry, key)],
+                            names,
+                        )
+                    stack_interface.attach_to_host(group, probe_host)
+                    optical_mount.set_angles(doc, -20, 20)
+                    return {
+                        "host": probe_host.Name,
+                        "sensor_model": profile.key,
+                        "passed": not (fail_alternative and profile.key == "MTF01P"),
+                    }
+
+                with patch.object(optical, "_host_checks", side_effect=probe):
+                    result = optical.mtf_sensor_check(self.doc)
+                self.assertEqual(
+                    visited,
+                    [
+                        (key, host_name)
+                        for key in SENSOR_PROFILES
+                        for host_name in stack_interface.SUPPORTED_HOSTS
+                    ],
+                )
+                self.assertEqual(result["passed"], not fail_alternative)
+                self.assertEqual(result["selected_sensor_model"], selected)
+                self.assertEqual(
+                    result["hosts"], result["sensor_alternatives"][selected]["hosts"]
+                )
+                self.assert_sensor_state_matches(before)
+                self.assertEqual(group.SensorModel, selected)
+                self.assertIs(group.getParentGeoFeatureGroup(), host)
+                self.assertTrue(group.Placement.isSame(placements, 1e-9))
+                self.assertEqual(self.doc.OpticalRollStage.Roll.Value, 13)
+                self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
+
+    def test_alternative_exception_restores_sensor_shapes_metadata_and_controls(self):
+        from gondola.parts import optical_mount, stack_interface
+        from gondola.validation import optical
+
+        group = self.doc.OpticalFlowModule
+        host = self.doc.ElectronicsEquipmentModule
+        stack_interface.attach_to_host(group, host)
+        optical_mount.set_angles(self.doc, 13, -9)
+        before = optical._saved_sensor_state(self.doc)
+        selected = group.SensorModel
+
+        def probe(doc, probe_host, physical, kit, *, profile):
+            stack_interface.attach_to_host(group, probe_host)
+            optical_mount.set_angles(doc, 20, -20)
+            if profile.key == "MTF01P":
+                raise RuntimeError("injected alternative failure")
+            return {"passed": True}
+
+        with patch.object(optical, "_host_checks", side_effect=probe):
+            with self.assertRaisesRegex(RuntimeError, "injected alternative"):
+                optical.mtf_sensor_check(self.doc)
+        self.assert_sensor_state_matches(before)
+        self.assertEqual(group.SensorModel, selected)
+        self.assertIs(group.getParentGeoFeatureGroup(), host)
+        self.assertEqual(self.doc.OpticalRollStage.Roll.Value, 13)
+        self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
+
+    def test_mtf01p_long_edge_connector_detects_external_obstruction(self):
+        from gondola.cad import belongs_to_group, world_shape
+        from gondola.contracts.optical_sensors import get_sensor_profile
+        from gondola.parts import optical_mount, optical_sensor
+        from gondola.validation import optical
+
+        profile = get_sensor_profile("MTF01P")
+        optical_sensor.apply_profile(self.doc, profile)
+        optical_mount.set_angles(self.doc, 0, 0)
+        registry = self.doc.DesignRegistry
+        physical = (
+            list(registry.PrintedParts)
+            + list(registry.HardwareParts)
+            + list(registry.ReferenceParts)
+            + list(registry.TapeReferences)
+        )
+        kit = [
+            obj for obj in physical if belongs_to_group(obj, self.doc.OpticalFlowModule)
+        ]
+        host = self.doc.BatteryEquipmentModule
+        point = self.doc.OpticalPitchStage.getGlobalPlacement().multVec(
+            App.Vector(
+                0, profile.size_mm[1] / 2 + 5, optical_sensor.SENSOR_BOTTOM_Z + 8
+            )
+        )
+        obstacle = Part.makeSphere(0.25, point)
+        self.assertGreater(
+            world_shape(self.doc.MTF02PConnectorReserve).common(obstacle).Volume, 0.06
+        )
+        self.assertTrue(
+            all(world_shape(obj).common(obstacle).Volume < 1e-7 for obj in physical)
+        )
+        reserve = self.doc.CapacitorServiceReserve
+        reserve.Shape = Part.makeSphere(
+            0.25,
+            reserve.getParentGeoFeatureGroup()
+            .getGlobalPlacement()
+            .inverse()
+            .multVec(point),
+        )
+        reserve.Placement = App.Placement()
+        with patch.object(optical, "ANGLES", (0,)):
+            result = optical._host_checks(
+                self.doc, host, physical, kit, profile=profile
+            )
+        self.assertFalse(result["passed"])
+        clearance = next(
+            row
+            for row in result["sampled_attitudes"][0][
+                "connector_reserved_space_clearances"
+            ]
+            if row["object"] == reserve.Name
+        )
+        self.assertFalse(clearance["passed"])
+        self.assertGreater(clearance["intersection_mm3"], 0.06)
 
     def test_continuous_field_bound_detects_a_small_external_obstruction(self):
         from gondola.validation.optical import _external_field_bound

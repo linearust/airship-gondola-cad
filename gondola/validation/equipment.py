@@ -448,7 +448,7 @@ def mounting_check(doc):
         ("ModuleFCEnvelope", "FC"),
         ("ModulePASEnvelope", "PAS"),
         ("ModuleLR900Envelope", "LR"),
-        ("ModuleMTF02PEnvelope", "MTF02P"),
+        ("ModuleMTF02PEnvelope", doc.OpticalFlowModule.SensorModel),
     ):
         obj = doc.getObject(name)
         documented = (

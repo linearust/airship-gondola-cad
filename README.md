@@ -143,6 +143,19 @@ preparation, balance and moving-wire behaviour require physical inspection and t
   when joining cups to posts. Coupon fitting and repeated physical retention/
   release checks precede full-frame fabrication. No shield-contact substitute,
   press-fit assumption or bearing preload closes an unverified retention path.
+- `contracts/optical_sensors.py` selects exactly one installed optical sensor.
+  MTF-02P remains the default; MTF-01P uses the same 18 x 12 mm adhesive tray.
+  Change `SELECTED_SENSOR_KEY` and rebuild CAD, reports and BOM together. A
+  persistent model change also needs the fixture transition audit below because
+  the purchased envelope and reservations differ. Never
+  add both sensor masses or treat `optical_sensor.apply_profile()` as a release
+  update. That function is only a temporary compatibility probe. Stable native
+  MTF02P object IDs now identify the one sensor slot; labels and `SensorModel`
+  identify the actual model. Both models on both hosts must pass motion, service
+  and optical screening. MTF-01P's connector exits the long edge (+Y), unlike
+  MTF-02P (+X); firmware yaw must be checked independently. See
+  `references/optical_sensor_compatibility.md`. Keep the existing printed kit;
+  do not add unused sensor holes or route ties across optical apertures.
 - Change the complete optical kit's host through
   `stack_interface.attach_to_host()` and its angles through
   `optical_mount.set_angles()`. Both supported hosts must pass clearance, optics

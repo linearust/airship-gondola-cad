@@ -25,7 +25,7 @@ generated BOM, not the cart pack counts.
 | MicoAir743v2 AIO35A, PX4 option | Selected FC/ESC. The option is not completed firmware or ground-power validation. |
 | Tattu 2S 450 mAh 75C, XT30 | Long-pack dimensions, leads and received mass still require inspection. |
 | XT30 lead, 35 V / 220 µF capacitor | Inspect actual envelope, polarity and strain relief. |
-| MTF-02P; LR900-A; XR2 Nano 2.4G | Selected sensor/radio/receiver. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
+| MTF-02P; LR900-A; XR2 Nano 2.4G | Selected sensor/radio/receiver. MTF-01P can replace MTF-02P on the same adhesive tray; install one only, as described in `optical_sensor_compatibility.md`. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
 
 The user will not purchase bearing spacers. AM uses direct frame-side capture
 of the ball-bearing outer rings; no HIROSUGI spacer, 3 x 5 x 3 mm oil-free bush,

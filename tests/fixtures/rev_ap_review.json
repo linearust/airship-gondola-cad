@@ -1,0 +1,192 @@
+{
+  "revision": "AP",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "3cfb4bc61a0292fd3692a7e6ba81ba058eac9fb1",
+  "source_fingerprint": "d2efa14d3ae802f2d37ec0ff266c248af0e7eea8c5ee71dd2a2ec5301fd9244a",
+  "approved_fixture_file": "tests/fixtures/rev_ap_geometry.FCStd",
+  "approved_fixture_sha256": "b36eb0b454b7c57c285d2cc8c3fcd77874b18015b0348432147df159eeaafb74",
+  "scope": "Mutually exclusive MTF-02P/MTF-01P on the same adhesive tray. No printed or hardware change, no physical adhesive/holding-torque qualification.",
+  "intentional_changes": [
+    "Centralize published optical sensor specifications in immutable profiles. One source key selects the installed device envelope, connection, listed mass and source evidence. Default remains MTF-02P.",
+    "Use MTF-01P33.2x20.8x16.8mm8g and long-edge+Y connector; retain MTF-02P21.6x16x6.5mm1.5g and short-edge+X. No dedicated sensor holes, bracket, tie slot or fastener is added.",
+    "Conservatively begin both whole-footprint42deg optical screens at the rear/body-bottom plane; maximum height is not assumed to be the flow aperture height. Own sensor and own broad connector lane intentionally intersect this proxy; all external parts/reservations remain obstacles. Actual connected cable visibility is unverified.",
+    "Validate each profile at25attitudes on each host plus continuous external optical bounds, native registration, attachment and service checks. Substitute the same three reference objects in memory and exactly restore shapes, metadata, host and angles afterward.",
+    "Retain MTF02P native object IDs as stable slot identities. Labels, SensorModel and SensorProfileContract identify the current source-selected device; the temporary apply_profile probe does not update the released BOM."
+  ],
+  "old_new_transition": {
+    "passed": true,
+    "report_sha256": "6b14157446d78a602c941f6ac4dc42043f2f897fd2cdbb1484261eb25107248f",
+    "candidate_source_fingerprint": "2a239cab54af827239be0204373427b6244d269c3c433d41376e6c02094a4c23",
+    "candidate_matches_later_source": false,
+    "candidate_source_limit": "Later source changes remove unused aliases and update validation only; final saved rebuild must independently match this reviewed fixture.",
+    "object_count": 291,
+    "shape_count": 118,
+    "physical_geometry_unchanged": true,
+    "print_and_coupon_count": 16,
+    "purchased_hardware_count": 62,
+    "physical_reference_count": 27,
+    "changed_shapes": [
+      "MTF02POpticalClearanceReserve"
+    ],
+    "native_controls_unchanged": true,
+    "registry_unchanged": true,
+    "expressions_unchanged": true,
+    "metadata_checks": {
+      "release_changes_only_optical_sensor_name": true,
+      "harness_one_optical_only_no_count_or_interface_change": true,
+      "all_prior_mounting_evidence_preserved": true,
+      "mtf01p_evidence_explicit_nominals": true,
+      "mtf01p_evidence_reuses_unqualified_adhesive": true,
+      "mtf01p_primary_sources_match_retained_evidence": true,
+      "three_identical_active_profile_contracts": true,
+      "active_profile_numerical_source_contract": true,
+      "no_invented_aperture_datums": true,
+      "profile_explicit_one_sensor_unchanged_tray": true,
+      "connector_contract_changes_only_scope_text": true,
+      "native_model_markers_default_to_02": true,
+      "supported_models_only_two": true,
+      "schema_only_expected_additions": true,
+      "native_vectors_preserved": true,
+      "saved_document_label_preserved": true,
+      "no_unreviewed_scalar_paths": true,
+      "interface_delta_only_connector_scope": true
+    },
+    "files_unchanged": true
+  },
+  "candidate_compatibility": {
+    "passed": true,
+    "report_sha256": "fcba96227a40d5cfddd8453275b64db2f480b3e9389c075433c09b08bdf066c9",
+    "profiles": [
+      "MTF02P",
+      "MTF01P"
+    ],
+    "hosts_per_profile": 2,
+    "sampled_attitudes_per_host": 25,
+    "external_continuous_optical_bound": true,
+    "reservation_checks": 10,
+    "reservation_pairs": 45
+  },
+  "release_checks": {
+    "status": "PASS: frozen-source native CAD, both sensor compatibility checks, full regressions, exports and Blender; fit prototype only",
+    "production_released": false,
+    "static_checks": {
+      "ruff": "0.16.8 check and format PASS,99files",
+      "compileall": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "focused_tests": {
+      "optical_validation": {
+        "count": 12,
+        "seconds": 43.635,
+        "passed": true,
+        "log_sha256": "af587f0b71d1babe31f8f02bb476a6233a725fe61838e8dbe583361c6b720b18"
+      },
+      "profiles": {
+        "count": 4,
+        "seconds": 0.077,
+        "passed": true,
+        "log_sha256": "31e0cfe035757026f3dcbea5f1e5a24b193322a4b2e26820dccf3d132b70bf61"
+      }
+    },
+    "offline_tests": {
+      "count": 371,
+      "skipped": 279,
+      "passed": true,
+      "scope": "92purePython cases; native suite required separately."
+    },
+    "native_tests": {
+      "passed": true,
+      "count": 371,
+      "seconds": 650.003,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "log_sha256": "e9b2151b877fd41dc9c82fa8fca19fea81f9429b475f1275d078f3f8232c7555"
+    },
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 12.322
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 43.431
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 712.997
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.609
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.162
+      }
+    ],
+    "native_cad_sha256": "86738ddc9a7a344382e5abad8ceae0b29fe0177a8aae1e8a284df61b10ba9e18",
+    "visual_review": {
+      "gondola_optical_stack.png": {
+        "passed": true,
+        "sha256": "2df3b5aab2e469092dfcbe056a150c413d2ffaa6b04f4f1ec98ac8cc8c8f8bbb",
+        "scope": "DefaultMTF02P on unchanged adhesive tray and complete battery-host stack; reservations hidden."
+      }
+    },
+    "final_integrity": {
+      "passed": true,
+      "checks_count": 108,
+      "report_sha256": "af7fb3d97b9d051b810dcd5ad8cff5278fdd56c87f9914aacf8153b7846eaf21",
+      "scope": "Independent read-only final JSON, ZIP, native metadata and saved display audit. No geometry rebuild, full validation rerun or native save. Existing physical BReps are compared directly with the pinned previous AO fixture. Actual physical qualification remains pending.",
+      "artifact_sha256": {
+        "build/gondola.FCStd": "86738ddc9a7a344382e5abad8ceae0b29fe0177a8aae1e8a284df61b10ba9e18",
+        "tests/fixtures/rev_ap_geometry.FCStd": "b36eb0b454b7c57c285d2cc8c3fcd77874b18015b0348432147df159eeaafb74",
+        "build/gondola_metrics.json": "132c4f749cb6328f802d56c117b1e7065fa56e0c273fdcd8c7ab61c93898f2be",
+        "build/gondola_validation.json": "2ff6c3a94f406dea4359df1f3a7adf6cce8220d4549ed5adc775becab2e10fdd",
+        "build/gondola_equipment_validation.json": "5b553bf3ad674936a07bcd647ebc2455c3798f92beec817b85cfb765dc79e4a4",
+        "build/gondola_propulsion_validation.json": "7997c5acba79ef7fe6a915d5c6ee9439316f02715e4c420f279a5768c41eee4e",
+        "build/gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+        "build/gondola_baseline_validation.json": "ca1a14bb4b5f9dfa8a1493f009c69f1a488cf92ab170e12b2f0b6f444902444f",
+        "build/preview_state.json": "5da5db664f7c91ce813e62c4675df9e282a8ea1019982d70afef8a4dbf3007ba",
+        "build/gondola_print_parts/print_manifest.json": "5523cf0843bada5563cc62ddd966b7c59f0ef91fe422dbc59608e4b2a26479b9",
+        "build/gondola_hardware_bom.json": "0e1359f255164da6811b3174b3f20b9473d922e4568a35167e2f97e3a5662525",
+        "build/gondola_print_parts.zip": "9f581e89f114cd432a668272776ddf4cb8559670bdbf5bbf67dc64d2a109d796"
+      }
+    },
+    "blender_review": {
+      "passed": true,
+      "report_sha256": "5b61b0e03ecd3a818e00015630c70dc2deaa0d0d6aa648598dcb39c2d54ba681",
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "visibility_checks": 138415,
+      "discrepancy_count": 0,
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed.",
+      "visual_review_status": "All seven final stills visually inspected; image legibility, intended scene framing and selected-model scope accepted.",
+      "stills_visually_reviewed": 7,
+      "source_and_cad_unchanged": true,
+      "artifact_sha256": {
+        "build/blender_review/cad_review.blend": "6c8f5b68d757a3129f1b3d9a38be26e3b10884d611a70783eb68de326b095c97",
+        "build/blender_review/cad_review.json": "74f3af3351ab21b00cd30f21c7cb8aa053036f887b85778bcc4cf0a6bdd2db8f",
+        "build/blender_review/verification.json": "05e6d35c1a953382bdd4ba7cb64348059772fa658dbed6690080190915251646",
+        "build/blender_review/stills/01_Assembly.png": "947a041038953e812bebd502120f9fc2a2fe872472a3499e4cd5f12fb298309b",
+        "build/blender_review/stills/02_Independent_tilt.png": "8a9eb0fa6773aa8d83393b8fb5862dd9b62ca5ea22d38f0442df9c5190c9fe80",
+        "build/blender_review/stills/03_Gear_and_horn.png": "e64bd67df6a007f9988d11eda0f2e0a34804bb080a4dc50b0861992f405f8064",
+        "build/blender_review/stills/04_Axial_allowance.png": "4e002070202b4e43e71b05b0889554a8b24408b0d66a5af7cf66ba9d55f115bd",
+        "build/blender_review/stills/05_Optical_on_Battery.png": "46a3696a40f751fcb852a807d474fc7fe7e29763030418f081cdc56d425d8c00",
+        "build/blender_review/stills/06_Optical_on_FC.png": "9553a2ada5961ef7e6c54ac4d4af45cb9e0809fe14d0e17d40ee11036b449795",
+        "build/blender_review/stills/07_Servo_module_removal.png": "2d6ae90abc0412e3725d534673d6bec5a8e55490fba03a0dba743bee8eb2f851"
+      },
+      "planning_wire_scope": "Selected MTF-02P installation only. Seven scenes show sampled prescribed rigid native CAD poses; alternative MTF-01P compatibility is separately checked in the equipment validation report. No physical or continuous-time collision, cable, adhesive or torque qualification is claimed."
+    }
+  },
+  "physical_limits": [
+    "Adhesive contact, rear flatness, actual cable routing, lens origins, firmware yaw and manual clamp retention remain to be checked physically.",
+    "MTF-01P adds6.5g nominal compared withMTF-02P; this is a published sensor-mass difference, not an all-up mass prediction. No new mount or fastener mass is introduced."
+  ]
+}

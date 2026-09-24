@@ -9,11 +9,12 @@ from dataclasses import asdict, dataclass
 from .drive import SELECTED_DRIVE
 from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
 from .fasteners import KIT_MATERIAL
+from .optical_sensors import get_sensor_profile
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AO"
+DESIGN_REVISION = "AP"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -80,7 +81,9 @@ SELECTED_EQUIPMENT = (
     EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
     EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
     EquipmentSelection("KST X06 V6.0 regular mounting tabs", 2, 6.0),
-    EquipmentSelection("MicoAir MTF-02P", 1, 1.5),
+    EquipmentSelection(
+        "MicoAir " + get_sensor_profile().model, 1, get_sensor_profile().mass_g
+    ),
     EquipmentSelection("LR900-A", 1, None),
     EquipmentSelection("LinkTrack P-AS", 1, 3.45),
 )
@@ -168,7 +171,7 @@ MODULE_LAYOUT_DECISION = {
     "layout": "Three independently positioned rail groups: propulsion near the rail centre, battery carrier on +X and FC/electronics on -X behind the neutral motors.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. No PSU connector or electrical supply change is specified here.",
     "electronics": "Rotate the electronics carrier 180deg about Z so the P-AS support points away from propulsion. Rotate the FC a further 180deg relative to that carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. Exact board heading, ports and firmware orientation must be checked on the physical board.",
-    "optical": "Keep MTF-02P on the transferable manually aligned stack, independent of the three mass groups. Either carrier provides the same structural anchors; host changes require renewed optical field-of-view and wiring checks.",
+    "optical": "Use one source-selected MTF-02P or MTF-01P on the unchanged adhesive tray of the transferable manually aligned stack, independent of the three mass groups. Either carrier provides the same structural anchors; host changes require renewed optical field-of-view and wiring checks.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
 }
 
@@ -190,7 +193,7 @@ WIRING_PURCHASE_PLAN = {
             "device_connector": "GH1.25-4P; use one of the two parallel ports",
         },
         {
-            "connection": "FC UART4 to MTF-02P UART",
+            "connection": f"FC UART4 to {get_sensor_profile().model} UART; one optical sensor only",
             "quantity": 1,
             "fc_connector": "SH1.0-4P UART4 port",
             "device_connector": "SH1.0-4P",
@@ -294,7 +297,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_sensor_installation",
-        "Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify MTF-02P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
+        "Manually align the independent optical stack to downward vertical at flight trim, lock both axes, then verify the selected MTF-02P/MTF-01P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
     ),
     UnresolvedInterface(
         "optical_stack_retention",
@@ -346,7 +349,7 @@ def project_status():
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Allow modest mass increases for simpler integral parts and forgiving noncritical envelopes. Preserve the intentionally removable paired-servo/input-gear module. Use simple clearance or short slots where they reduce fit risk without adding parts; retain functional locating, torque and bearing surfaces. Do not add elaborate adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
         "part_separation_reasons": PART_SEPARATION_REASONS,
-        "scope": f"Indoor LTA blimp gondola including MTF-02P: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
+        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
