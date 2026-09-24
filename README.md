@@ -1,5 +1,10 @@
 # AI agent operating contract
 
+Start with [HANDOFF.md](HANDOFF.md) for the user's intent, decision priorities,
+latest selections and superseded instructions. This README defines the technical
+workflow; the handoff does not replace the source contracts or release evidence.
+Both documents are for the next AI agent, not an end-user assembly manual.
+
 Keep source contracts, native CAD metadata and generated artifacts consistent.
 Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
 Read the current revision from `contracts.design.DESIGN_REVISION` and its

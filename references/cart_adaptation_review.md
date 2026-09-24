@@ -34,8 +34,15 @@ the selected bearing shield. Do not enlarge the assembly to accommodate it or
 accept shield contact as a thrust interface. See [retention](retention_review.md)
 for the process-coupon and assembly requirements.
 
-MG-A01, the ordinary servo Y harness, push-on retaining-ring kit and nylon M2
-standoff kit are outside this purchasing/design change. Other test equipment,
+MG-A01 was excluded from the original cart adaptation, but the later AR user
+decision adds MG-A01/M10 Ultra and bare MG-F10-A as alternatives to P-AS on the
+shared navigation support. It is no longer a blanket CAD exclusion; see
+[navigation compatibility](navigation_module_compatibility.md). The same later
+scope supports LR24-F-Mini in place of LR900-A, with LR24-F on the ground; see
+[radio compatibility](radio_module_compatibility.md).
+
+The ordinary servo Y harness, push-on retaining-ring kit and nylon M2
+standoff kit remain outside this purchasing/design change. Other test equipment,
 X500/Pixhawk hardware, furnishings and balloon experiments do not define
 gondola mounting interfaces. FC/P-AS support stacks remain separate unresolved
 interfaces; the bearing-spacer decision does not delete those requirements.
