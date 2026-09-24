@@ -55,8 +55,8 @@ from gondola.print_export import (
 from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
-from . import manufacturing
-from .baseline import module_control_bindings
+from . import manufacturing, propulsion_wiring
+from .baseline import module_clamp_pose, module_control_bindings
 from .equipment import mounting_check
 from .evidence import overlap_failures
 from .geometry import (
@@ -446,7 +446,23 @@ def module_service(registry, objects, shapes):
         return {"modules": [], "passed": False, "error": str(error)}
     service_rows, removed_names = [], set()
     sequence = module_removal_plan(module for _, module in bindings)
+    stations = {module.Name: station for station, module in bindings}
     for module, direction in sequence:
+        station = stations[module.Name]
+        approach = str(
+            getattr(registry.Document.AssemblySettings, station.clamp_control)
+        )
+        pose = module_clamp_pose(station, module, approach)
+        if not pose["passed"]:
+            service_rows.append(
+                {
+                    "module": module.Name,
+                    "native_clamp_pose": pose,
+                    "passed": False,
+                    "error": "Carrier pose does not match its local clamp approach",
+                }
+            )
+            continue
         members = [o for o in objects if belongs_to_group(o, module)]
         clamps = [o for o in registry.RailLocks if belongs_to_group(o, module)]
         screw = next(o for o in clamps if "Screw" in o.Name)
@@ -456,7 +472,7 @@ def module_service(registry, objects, shapes):
             for o in objects
             if o != screw and o.Name not in removed_names
         ]
-        side = 1 if module.Placement.Base.y > 0 else -1
+        side = pose["world_approach_side_y"]
         screw_release = path_checks(
             [(screw.Name, shapes[screw.Name])],
             fixed,
@@ -474,7 +490,7 @@ def module_service(registry, objects, shapes):
         )
         key_service = rail_key_service_check(
             {o.Name: shapes[o.Name] for o in objects if o.Name not in removed_names},
-            side=side,
+            side=pose["local_approach_side_y"],
             placement=module.getGlobalPlacement(),
             screw=shapes[screw.Name],
             screw_name=screw.Name,
@@ -550,6 +566,7 @@ def module_service(registry, objects, shapes):
         land_offset = min(phase_x, rail.LAND_PITCH - phase_x)
         row = {
             "module": module.Name,
+            "native_clamp_pose": pose,
             "removed_before_this_step": sorted(removed_names),
             "clamp_screw": screw.Name,
             "clamp_nut": nut.Name,
@@ -601,7 +618,6 @@ def bidirectional_service(doc, registry, objects):
     except (AttributeError, ValueError) as error:
         return {"passed": False, "error": str(error)}
     controls = [station.clamp_control for station, _ in bindings]
-    modules = [module for _, module in bindings]
     original = {name: str(getattr(doc.AssemblySettings, name)) for name in controls}
     combinations, services = [], []
     try:
@@ -614,23 +630,22 @@ def bidirectional_service(doc, registry, objects):
             shapes = {o.Name: world_shape(o) for o in objects}
             neutral = neutral_check(objects, shapes)
             poses = []
-            for module, choice in zip(modules, choices):
-                side = 1 if choice == "PositiveY" else -1
+            for (station, module), choice in zip(bindings, choices):
+                pose = module_clamp_pose(station, module, choice)
+                side = pose["local_approach_side_y"]
                 clamps = [o for o in registry.RailLocks if belongs_to_group(o, module)]
                 expected_rot = App.Rotation(V(0, 0, 1), 0 if side > 0 else 180)
                 poses.append(
                     {
                         "module": module.Name,
                         "control": choice,
+                        **pose,
                         "seated_y_mm": module.Placement.Base.y,
                         "hardware_rotation_matches": all(
                             o.Placement.Rotation.isSame(expected_rot, 1e-7)
                             for o in clamps
                         ),
-                        "passed": abs(
-                            module.Placement.Base.y - side * rail.CLAMP_SHIFT_Y
-                        )
-                        < TOL
+                        "passed": pose["passed"]
                         and len(clamps) == 2
                         and all(
                             o.Placement.Rotation.isSame(expected_rot, 1e-7)
@@ -1331,6 +1346,7 @@ def validate(source=None):
         report["neutral_assembly"] = neutral_check(objects, shapes)
         report["continuous_rail"] = rail_check(r, shapes)
         report["equipment_mounts"] = mounting_check(doc)
+        report["propulsion_wire_planning"] = propulsion_wiring.check(doc)
         report["purchased_hardware"] = hardware_check(r)
         report["assembly_inventory"] = {
             "installed_printed_parts": len(printed),
@@ -1398,6 +1414,7 @@ def validate(source=None):
             "neutral_assembly",
             "continuous_rail",
             "equipment_mounts",
+            "propulsion_wire_planning",
             "purchased_hardware",
             "assembly_inventory",
             "module_service",

@@ -1,0 +1,442 @@
+{
+  "revision": "AN",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "75c8735d7d26df8257d70de343e93a9e837604fa",
+  "scope": "Rearrange three independently positioned rail groups for rear motor wiring and variable battery trim. Preserve the deliberately removable servo/input-drive module, existing printed parts, hardware inventory and both optical stack hosts. Rigid geometry and reserved space only; no balance, installed-wire, strength or flight qualification.",
+  "source_fingerprint": "cd64cf98c7fa466c7a4b3194a192f917a09336c2b8e571e67a80bd5dde4922c1",
+  "previous_fixture_sha256": "2c3c83d21350e1764031be9ac3c85f0db7fe811f68cd63dc85e756f1e91b695e",
+  "previous_release_cad_sha256": "33dacf3b8c1588e230bc9c61a7b85fd542e4b71d4d80db5e01e5ded693a54808",
+  "approved_fixture_file": "tests/fixtures/rev_an_geometry.FCStd",
+  "approved_fixture_sha256": "ecb4b5c20c7a0414dd97756ef81bb18abcc4ece925a443d475ad3395dd3522ea",
+  "intentional_changes": [
+    "Keep propulsion at X0. Move the independent battery carrier from X-90 to X+90 and FC/electronics from X+90 to X-72. Electronics carrier yaw180 keeps the P-AS arm outboard. These are nominal starting positions, not a measured mass balance; re-trim for actual battery, empty carrier/external power and optical host.",
+    "Clock the FC180 relative to the reversed carrier, retaining the earlier global installation-heading basis. Rotate its underbody/peripheral reservations together. Verify physical board arrow/firmware and port datums independently of the symmetric CAD envelope. Existing8mm underbody allowance remains.",
+    "Map local clamp approaches through carrier yaw and correct local tool versus world translation handling. Check all8clamp combinations, actual native FC orientation and the existing ordered module-removal paths.",
+    "Move XT30 reservation beside the FC to carrier-local centre(0,-49), mating axisX; same22x10x15mm body allocation with10mm withdrawal allowance per end. This does not select a PSU connection or qualify received cables.",
+    "Replace isolated motor-loop rings by connected rear workspace-to-FC planning solids. A simpler3point, one-rounded-corner route clears both transferable optical-stack hosts and their registration bounds. It adds no physical part and does not model actual motor exit, moving cable, ties or harness deformation. Rail adjustment requires rerouting/regeneration and actual slack checks.",
+    "The continuous relative-motion certificate keeps its exact closed native-expression allowlist, now deriving carrier seating sign from each station orientation. Regression tests reject the old positive-first electronics expression and incorrect seating formulas on all three modules. Blender optical scene framing derives the selected host's current global position instead of the former ±90mm defaults."
+  ],
+  "pre_promotion_transition_audit": {
+    "passed": true,
+    "source_fingerprint_before_fixture_update": "274b36e258d58426098abdd0f24ae8189faa36ae7c3b9229df5677361259b273",
+    "candidate_cad_sha256": "ecb4b5c20c7a0414dd97756ef81bb18abcc4ece925a443d475ad3395dd3522ea",
+    "object_count": 291,
+    "shape_count": 118,
+    "all_registries_unchanged": true,
+    "objects_added": [],
+    "objects_removed": [],
+    "print_and_hardware_review": {
+      "reviewed_basis": "AN: three separate rail-mounted masses, battery opposite rear electronics; optical host flexibility; servo/output module separation preserved. This transition changes no physical printed or purchased shape/interface.",
+      "printed_and_coupon_shape_count": 16,
+      "all_print_local_geometry_blanks_orientations_unchanged": true,
+      "hardware_count_before": 62,
+      "hardware_count_after": 62,
+      "reference_count_before": 13,
+      "reference_count_after": 13,
+      "changed_local_breps": [
+        "PortPhaseLeadLoopReserve",
+        "StarboardPhaseLeadLoopReserve",
+        "XT30ServiceReserve"
+      ],
+      "expected_changed_local_breps": [
+        "PortPhaseLeadLoopReserve",
+        "StarboardPhaseLeadLoopReserve",
+        "XT30ServiceReserve"
+      ],
+      "reviewed_scalar_paths": [
+        "/BatteryEquipmentModule/ClampDirectionControl",
+        "/BatteryEquipmentModule/ModulePlacementContract",
+        "/BatteryEquipmentModule/RailPositionX",
+        "/DesignRegistry/SourceFingerprint",
+        "/ElectronicsEquipmentModule/ClampDirectionControl",
+        "/ElectronicsEquipmentModule/ModulePlacementContract",
+        "/ElectronicsEquipmentModule/RailPositionX",
+        "/FCWiringClearanceReserve/WiringContract",
+        "/MainPropulsionModule/ClampDirectionControl",
+        "/MainPropulsionModule/ModulePlacementContract",
+        "/ModuleFCEnvelope/InstallationHeadingScope",
+        "/ModuleFCEnvelope/InstallationYawInCarrier",
+        "/ModuleFCEnvelope/Notes",
+        "/PortPhaseLeadLoopReserve/CompleteHarnessModeled",
+        "/PortPhaseLeadLoopReserve/Label",
+        "/PortPhaseLeadLoopReserve/MovingWireSweepVerified",
+        "/PortPhaseLeadLoopReserve/Notes",
+        "/PortPhaseLeadLoopReserve/SourceURL",
+        "/PortPhaseLeadLoopReserve/WiringContract",
+        "/StarboardPhaseLeadLoopReserve/CompleteHarnessModeled",
+        "/StarboardPhaseLeadLoopReserve/Label",
+        "/StarboardPhaseLeadLoopReserve/MovingWireSweepVerified",
+        "/StarboardPhaseLeadLoopReserve/Notes",
+        "/StarboardPhaseLeadLoopReserve/SourceURL",
+        "/StarboardPhaseLeadLoopReserve/WiringContract",
+        "/XT30ServiceReserve/WiringContract"
+      ],
+      "unexpected_scalar_changes": [],
+      "unexpected_interface_changes": [],
+      "native_expression_change_matches_carrier_yaw": true,
+      "native_placement_changes_match_selected_layout": true,
+      "decoded_contract_checks": [
+        {
+          "object": "BatteryEquipmentModule",
+          "passed": true
+        },
+        {
+          "object": "MainPropulsionModule",
+          "passed": true
+        },
+        {
+          "object": "ElectronicsEquipmentModule",
+          "passed": true
+        },
+        {
+          "object": "FCWiringClearanceReserve",
+          "passed": true
+        },
+        {
+          "object": "XT30ServiceReserve",
+          "passed": true
+        },
+        {
+          "object": "PortPhaseLeadLoopReserve",
+          "passed": true
+        },
+        {
+          "object": "StarboardPhaseLeadLoopReserve",
+          "passed": true
+        }
+      ],
+      "fc_design_world_heading_preserved": true,
+      "prepreview_visibility_changes_deferred": 170,
+      "display_scope": "Candidate headless build has170 false-to-true Visibility defaults. These are reported and excluded only from physical/contract transition acceptance; final preview and release display must restore the intended hidden reserves/coupons. No final GUI/display identity claim."
+    },
+    "local_placement_changes": [
+      {
+        "name": "BatteryEquipmentModule",
+        "before": {
+          "position_mm": [
+            -90.0,
+            -0.1,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "after": {
+          "position_mm": [
+            90.0,
+            -0.1,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      {
+        "name": "ElectronicsEquipmentModule",
+        "before": {
+          "position_mm": [
+            90.0,
+            0.1,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "after": {
+          "position_mm": [
+            -72.0,
+            -0.1,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            1.0,
+            6.123233995736766e-17
+          ]
+        }
+      },
+      {
+        "name": "ModuleFCEnvelope",
+        "before": {
+          "position_mm": [
+            0.0,
+            0.0,
+            20.2
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            -0.3826834323650898,
+            0.9238795325112867
+          ]
+        },
+        "after": {
+          "position_mm": [
+            0.0,
+            0.0,
+            20.2
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            0.9238795325112867,
+            0.38268343236508984
+          ]
+        }
+      },
+      {
+        "name": "FCWiringClearanceReserve",
+        "before": {
+          "position_mm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "after": {
+          "position_mm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation_quaternion": [
+            0.0,
+            0.0,
+            1.0,
+            6.123233995736766e-17
+          ]
+        }
+      }
+    ],
+    "expression_changes": [
+      {
+        "path": "/ElectronicsEquipmentModule/1/1",
+        "before": "AssemblySettings.ElectronicsClampApproach == 0 ? 0.1 mm : -0.1 mm",
+        "after": "AssemblySettings.ElectronicsClampApproach == 0 ? -0.1 mm : 0.1 mm",
+        "kind": "changed"
+      }
+    ],
+    "native_control_cases": 29,
+    "native_controls_passed": true,
+    "unexpected_changes": [],
+    "read_only_files_and_source_unchanged": true,
+    "audit_sha256": "f49d94a2dee07d7a65725ebecdf749cd7257a7dfca2e956dc3ac3c2ea4055fa1"
+  },
+  "corrected_optical_host_interference": {
+    "first_candidate_failed": "Original diagonal Port planning corridor intersected the electronics-host tower leg by8.1915mm3 and its seated registration bound by33.3912mm3. The first pipeline/test run was stopped; no successful final-release claim is based on it.",
+    "correction": "Turn inward before reaching the optical tower; remove an unnecessary corner. Added regressions reproduce the old failure and check both hosts including seated registration envelopes.",
+    "independent_recheck_passed": true,
+    "source_fingerprint": "274b36e258d58426098abdd0f24ae8189faa36ae7c3b9229df5677361259b273",
+    "scope": "Read-only source fixture; replaces two wiring reservations in memory with current factory geometry and contracts for independent both-host audit. Never saves CAD.",
+    "seconds": 33.88657620199956,
+    "saved_file_unchanged": true,
+    "source_code_unchanged": true,
+    "audit_sha256": "98684aee536c7b1e9d075a30c44588a5b4449088e450d31f3faae11d27bd16b7"
+  },
+  "release_checks": {
+    "status": "passed: frozen CAD pipeline, clean native regression suite, independent artifact audit, Blender scenes and inspection packet",
+    "production_released": false,
+    "visual_review": {
+      "gondola_top.png": {
+        "passed": true,
+        "sha256": "bb3c4c827006556182df93efcd58f693f35be8a6d72238e333ff73df05e82676"
+      },
+      "gondola_preview.png": {
+        "passed": true,
+        "sha256": "bfec213bef1e775845a67c0a5bb7ced3c8e347eb40cd228f90ed8abc167b7123"
+      },
+      "gondola_print_parts.png": {
+        "passed": true,
+        "sha256": "f5f993a1c8e4b536c8f07ae20a19bdb9763ec7cf64d3d1bf6298ec165db2895c"
+      },
+      "gondola_wiring.png": {
+        "passed": true,
+        "sha256": "82abb9a99e5faf7965982add5b2de1ba366633d9510e0e52733ffa7825f686ac"
+      },
+      "gondola_optical_stack.png": {
+        "passed": true,
+        "sha256": "4f98b1cc8e8799a62877dae97bb8c93d13ad25f1cde343bdf7942c251955abcf"
+      },
+      "gondola_optical_fc_stack.png": {
+        "passed": true,
+        "sha256": "93c9b362cf59d79761dd8c78aadba8fa1b7b485ab61004e505760f167229d8b1"
+      }
+    },
+    "tests": {
+      "correction": "Test-only isolation: supply an empty propulsion-route result for the deliberately electronics-only RESERVES fixture and assert that boundary was called. Production validation, thresholds, geometry and source fingerprint remain unchanged; separate real-route regressions and full assembly validation retain propulsion coverage.",
+      "affected_native_rerun": {
+        "count": 19,
+        "seconds": 5.327,
+        "skipped": 0,
+        "passed": true
+      },
+      "final_test_case_coverage": "The final frozen source and all362 final test definitions passed in one complete native run with no skips. Earlier errors and focused corrections are retained separately.",
+      "offline": {
+        "count": 362,
+        "skipped": 272,
+        "passed": true,
+        "scope": "90 FreeCAD-independent tests; native tests skipped in ordinary Python."
+      },
+      "initial_failed_native_run": {
+        "count": 360,
+        "seconds": 609.862,
+        "skipped": 0,
+        "passed_cases": 357,
+        "errors": 3,
+        "error": "The isolated electronics reserve test fixture lacked the propulsion module required by the newly integrated route audit. The three errors occurred before the intended electronics assertions."
+      },
+      "native_full_run": {
+        "count": 362,
+        "seconds": 613.162,
+        "skipped": 0,
+        "errors": 0,
+        "failures": 0,
+        "passed": true,
+        "exit_code": 0,
+        "log_sha256": "1acbb9a940fdba2ecce4ed91aa17472036e39f37c21a2b4dd54a1ba843af906b"
+      }
+    },
+    "static_checks": {
+      "ruff_version": "0.16.8",
+      "ruff_check": "passed",
+      "ruff_format": "passed (105 files)",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    },
+    "native_cad_sha256": "cf21f6c0ff938a3ef355b171227da03651fccd70153637b304a8f683e9068946",
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 11.437
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 236.727
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 642.519
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.359
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.145
+      }
+    ],
+    "independent_integrity_audit": {
+      "passed": true,
+      "check_count": 83,
+      "scope": "Independent read-only final JSON, ZIP, native metadata and saved display audit. No geometry rebuild, full validation rerun or native save. Actual physical qualification remains pending.",
+      "audit_sha256": "c39d414abd1f32d201499cb1485244de11e9e6bbf0e7ed1d1d717c51b0ae265b",
+      "archive_entry_count": 49,
+      "archive_crc_valid": true,
+      "preview_image_count": 13,
+      "default_optical_host": "BatteryEquipmentModule",
+      "neutral_optical_angles_restored": true,
+      "reserves_and_coupons_hidden": true,
+      "physical_parts_visible": true
+    },
+    "artifact_sha256": {
+      "build/gondola.FCStd": "cf21f6c0ff938a3ef355b171227da03651fccd70153637b304a8f683e9068946",
+      "build/gondola_metrics.json": "6e8dee51fa25e3cae23e89ef895523b8b50cf2d3b2e0629308689b462d6a3e1a",
+      "build/gondola_validation.json": "6daad2f70e9188291c0e2117c009997f966aa6ad980aba99b8b0041a01abdcfb",
+      "build/gondola_equipment_validation.json": "5a8b426038169fc0d42dc66a3247768b5b5f3ac0ff241d479325156ffa6ebe9d",
+      "build/gondola_propulsion_validation.json": "766ba7f44e713ff5abe076c6097e8052213bf7eca09b4544f6d20ecb80fdc6d3",
+      "build/gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+      "build/gondola_baseline_validation.json": "c2756b743fd728a1e9e7901688b8a209308f75b4c265433a9643e871da602945",
+      "build/preview_state.json": "1b1762505b635f00f3fd2683b35a77677cf7b22bf77bcaa68f55c3b7ad16b351",
+      "build/gondola_hardware_bom.json": "e881e474f3dc0d597208c18c6452486a29d0835e06061942587beb9f01cff74d",
+      "build/gondola_print_parts/print_manifest.json": "afab949621da98a3b1f07c47d404102e0a675f9c977fc4e3edb634852a7e7c5b",
+      "build/gondola_print_parts.zip": "04f255a4a9362e44f530b3cb2c4f57691b4eb84d16918e96533c3d6af4b2240c"
+    },
+    "blender_review": {
+      "passed": true,
+      "audit_sha256": "c72f34106f9a145d82d6bd35fb27548f7b6b7a0740366f7468874dacc05ea19b",
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "visibility_checks": 138415,
+      "discrepancy_count": 0,
+      "visually_reviewed_stills": 7,
+      "cad_identity_verified_by_guard": true,
+      "source_and_cad_unchanged": true,
+      "scope": "Clearance reservations are excluded from Blender installed-part inventory. This derivative shows prescribed rigid CAD motion only. It does not model flexible wires, tie geometry or moving-harness behavior; the connected rear workspace-to-FC corridor remains static unqualified planning geometry in native CAD.",
+      "artifact_sha256": {
+        "build/blender_review/cad_review.blend": "39a714735222a3a6b50fdaff69a2d8c27e950e13474e709e9e53b51b4f84a808",
+        "build/blender_review/cad_review.json": "829cce0655545417d2762cd0050323f97692fb8b4e0d35410430dc3327e7e539",
+        "build/blender_review/verification.json": "e4c10b0be58ab92cd004c91e8911b0f1787933169ea4dfbf51047e5ddd0e2597"
+      }
+    },
+    "inspection_packet": {
+      "passed": true,
+      "revision": "AN",
+      "audit_sha256": "103d2a2a94d842aecd34715f466e3d3d4e5b7175f59fbeff257bfc4b821e66c0",
+      "pdf_pages": 34,
+      "criteria": 172,
+      "specimen_rows": 533,
+      "artifact_sha256": {
+        "output/pdf/gondola_inspection_AN.pdf": "efff93ad9123521e532adb1c203428a8c02033577be248fa104bab9a695b220f",
+        "output/inspection/rev_AN/outputs/gondola-inspection-an/gondola_inspection_AN.xlsx": "cb8dc0a07df5f326e4f3e1d19ede233235557229288936ec57879a0636cf6cf8",
+        "output/inspection/rev_AN/inspection_data.json": "eb8d976f03f61dd3e69a13b05aa65d7b6398956a8b08cee5f72fee9ed38b27e7"
+      },
+      "pdf_visual_qa": "All 34 pages reviewed; no clipping, overlap or layout defects observed.",
+      "workbook_visual_qa": "All 3 sheets, changed criteria requirements/notes, and source/method columns reviewed; no clipping or overlap observed.",
+      "workbook_numeric_formula_qa": "Blank, zero, text, inclusive lower/upper limits, out-of-bounds and export/reimport tested; no formula errors found. All temporary test inputs restored.",
+      "native_xlsx_qa": "533 specimen identities and values match; freeze panes, filters, dropdowns, all blank measurement/comment inputs and unreviewed states confirmed.",
+      "criteria_preservation": "All original 168 criteria and 527 specimen rows preserved; 4 layout/heading/trim criteria and 6 specimen rows added. No original numeric criteria changed.",
+      "prior_am_files_preserved": true,
+      "limits": "Inspection template for the validated CAD; no physical component measurement, mass balance, installation heading or flexible-wire qualification is implied."
+    }
+  },
+  "physical_limits": [
+    "Actual centre of gravity, battery-envelope alternatives and external-power tether loads remain unqualified.",
+    "Actual FC heading/firmware, connectors, damping and assembly fit need received-hardware inspection.",
+    "Connected reservation covers workspace-to-FC only; moving motor-exit segment, bend radius, lead cut length, strain-relief retention and fatigue are not verified.",
+    "Preserve all pre-existing horn, bearing, rail fit, optical pointing, PA12 material/process and flight-qualification limits."
+  ],
+  "motion_guard_review": {
+    "initial_pipeline_failure": "Only local_propulsion_evidence failed: the previous relative-motion allowlist rejected the intended electronics clamp Y-sign reversal. Other assembly checks and the equipment validation passed. No geometric failure or relaxed clearance threshold is implied.",
+    "correction": "Use station.transverse_sign with the existing exact expression allowlist; retain every other closed dependency constraint. No CAD geometry, native expression or fixture change.",
+    "focused_native_tests": {
+      "count": 20,
+      "seconds": 18.576,
+      "passed": true,
+      "skipped": 0
+    },
+    "saved_continuous_certificate": {
+      "passed": true,
+      "clearance_pairs": 3131,
+      "functional_interfaces": 8,
+      "expressions": 22,
+      "seconds": 10.979,
+      "audit_sha256": "ac7a351d0aad056c56357debf9030f899aff7c0621b20a5187465f8387448fd2"
+    }
+  }
+}

@@ -58,9 +58,10 @@ def _static_expression_contract(doc, spec):
     allowed = {}
     for station in MODULE_STATIONS:
         control = "AssemblySettings." + station.clamp_control
+        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
         allowed[station.object_name] = {
             "Placement.Base.x": "RailPositionX",
-            "Placement.Base.y": f"{control}==0?{rail.CLAMP_SHIFT_Y:g}mm:-{rail.CLAMP_SHIFT_Y:g}mm",
+            "Placement.Base.y": f"{control}==0?{shift:g}mm:{-shift:g}mm",
         }
         for suffix in ("Screw", "Nut"):
             allowed[station.object_name + "RailClamp" + suffix] = {

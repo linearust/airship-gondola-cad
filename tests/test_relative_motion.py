@@ -96,6 +96,52 @@ class RelativeRotationCertificateTests(unittest.TestCase):
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
+class NativeModuleExpressionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from gondola.config import BASELINE_FILE, BASELINE_SHA256
+        from gondola.contracts.drive import drive_for_document
+        from gondola.provenance import file_sha256
+
+        if file_sha256(BASELINE_FILE) != BASELINE_SHA256:
+            raise AssertionError("Frozen approved fixture hash changed")
+        cls.doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        cls.addClassCleanup(App.closeDocument, cls.doc.Name)
+        cls.spec = drive_for_document(cls.doc)
+
+    def test_current_fixture_carrier_formulas_have_exact_allowed_dependencies(self):
+        from gondola.validation.relative_motion import _static_expression_contract
+
+        result = _static_expression_contract(self.doc, self.spec)
+        self.assertTrue(result["passed"], result)
+        self.assertGreater(result["checked_expression_count"], 20)
+
+    def test_opposite_seating_formula_is_rejected_for_both_carrier_orientations(self):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import rail
+        from gondola.validation.relative_motion import _static_expression_contract
+
+        for station in MODULE_STATIONS:
+            module = self.doc.getObject(station.object_name)
+            expression = dict(module.ExpressionEngine)[".Placement.Base.y"]
+            control = "AssemblySettings." + station.clamp_control
+            wrong_shift = -station.transverse_sign * rail.CLAMP_SHIFT_Y
+            try:
+                with self.subTest(module=module.Name):
+                    # For the reversed electronics carrier this is precisely
+                    # the old, incorrectly positive-first world-Y formula.
+                    module.setExpression(
+                        "Placement.Base.y",
+                        f"{control} == 0 ? {wrong_shift:g} mm : {-wrong_shift:g} mm",
+                    )
+                    with self.assertRaisesRegex(ValueError, module.Name):
+                        _static_expression_contract(self.doc, self.spec)
+            finally:
+                module.setExpression("Placement.Base.y", expression)
+                self.doc.recompute()
+
+
+@unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeRelativeMotionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

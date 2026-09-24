@@ -15,7 +15,9 @@ from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, R
 from gondola.contracts import equipment_interfaces as interfaces
 from gondola.contracts.design import (
     EXPECTED_INVENTORY,
+    FC_INSTALLATION_LOCAL_YAW_DEG,
     HARDWARE_MATERIALS,
+    MODULE_STATIONS,
     PURCHASED_HARDWARE_QUANTITIES,
     WIRING_PURCHASE_PLAN,
     hardware_bom_scope,
@@ -54,6 +56,50 @@ def _in_parent_frame(shape, parent):
     result = shape.copy()
     result.Placement = parent.getGlobalPlacement().multiply(result.Placement)
     return result
+
+
+def fc_installation_check(doc):
+    """Check native orientation; the FC's symmetric solid cannot prove heading."""
+    board = doc.getObject("ModuleFCEnvelope")
+    parent = doc.getObject("ElectronicsEquipmentModule")
+    station = next(
+        station
+        for station in MODULE_STATIONS
+        if station.object_name == "ElectronicsEquipmentModule"
+    )
+    if board is None or parent is None:
+        return {"passed": False, "error": "Missing FC or electronics carrier"}
+    intended_local = App.Placement(
+        App.Vector(*mounts.FC_CENTRE_XY, devices.FC_BOTTOM_Z),
+        App.Rotation(
+            App.Vector(0, 0, 1),
+            mounts.FC_ROTATION_DEG + FC_INSTALLATION_LOCAL_YAW_DEG,
+        ),
+    )
+    native_pose_matches = board.Placement.isSame(intended_local, TOL)
+    expected_carrier_rotation = App.Rotation(App.Vector(0, 0, 1), station.yaw_deg)
+    carrier_rotation_matches = parent.Placement.Rotation.isSame(
+        expected_carrier_rotation, TOL
+    )
+    metadata_matches = (
+        "InstallationYawInCarrier" in board.PropertiesList
+        and abs(float(board.InstallationYawInCarrier) - FC_INSTALLATION_LOCAL_YAW_DEG)
+        < TOL
+    )
+    correct_parent = board.getParentGeoFeatureGroup() == parent
+    return {
+        "installation_turn_in_carrier_deg": FC_INSTALLATION_LOCAL_YAW_DEG,
+        "carrier_yaw_deg": station.yaw_deg,
+        "native_board_placement_matches": native_pose_matches,
+        "carrier_rotation_matches": carrier_rotation_matches,
+        "native_installation_marker_matches": metadata_matches,
+        "board_parent_matches": correct_parent,
+        "scope": "Native design orientation relative to the previous FC installation only. The square envelope cannot identify the physical board arrow; verify the received FC orientation and firmware configuration during assembly.",
+        "passed": native_pose_matches
+        and carrier_rotation_matches
+        and metadata_matches
+        and correct_parent,
+    }
 
 
 def mounting_pad_check(
@@ -322,7 +368,10 @@ def mounting_check(doc):
             for obj in physical_objects
             if intersection_volume(actual, physical_shapes_by_name[obj.Name]) > TOL
         ]
-        local_reserve = local_shape(reserve)
+        local_reserve = actual.copy()
+        local_reserve.Placement = (
+            parent.getGlobalPlacement().inverse().multiply(local_reserve.Placement)
+        )
         axis_distances = []
         for x, y in mounts.FC_HOLE_CENTRES:
             axis = Part.makeLine(
@@ -433,12 +482,14 @@ def mounting_check(doc):
             }
         )
     registered_names = {obj.Name for obj in registry.EquipmentMounts}
+    fc_installation = fc_installation_check(doc)
     return {
         "supports": support_rows,
         "confirmed_device_holes": mounting_rows,
         "continuous_adhesive_pads": adhesive_rows,
         "underbody_clearance": free_height_rows,
         "fc_wiring_corridor": wiring_report,
+        "fc_installation": fc_installation,
         "device_upward_service": service_rows,
         "native_mounting_evidence_matches_sources": evidence_matches,
         "pending_device_mounting_evidence": pending_metadata,
@@ -454,6 +505,7 @@ def mounting_check(doc):
             + service_rows
         )
         and wiring_report["passed"]
+        and fc_installation["passed"]
         and evidence_matches
         and all(row["passed"] for row in pending_metadata),
     }

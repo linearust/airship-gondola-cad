@@ -13,7 +13,7 @@ from .fasteners import KIT_MATERIAL
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AM"
+DESIGN_REVISION = "AN"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -160,6 +160,17 @@ EXPECTED_INVENTORY = {
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
+# Electronics turns to keep P-AS away from propulsion. Re-clock the square FC
+# mounting pattern to retain the prior world-heading design basis; actual port
+# datums and the assembled flight-controller orientation remain to be verified.
+FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
+MODULE_LAYOUT_DECISION = {
+    "layout": "Three independently positioned rail groups: propulsion near the rail centre, battery carrier on +X and FC/electronics on -X behind the neutral motors.",
+    "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. No PSU connector or electrical supply change is specified here.",
+    "electronics": "Rotate the electronics carrier 180deg about Z so the P-AS support points away from propulsion. Rotate the FC a further 180deg relative to that carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. Exact board heading, ports and firmware orientation must be checked on the physical board.",
+    "optical": "Keep MTF-02P on the transferable manually aligned stack, independent of the three mass groups. Either carrier provides the same structural anchors; host changes require renewed optical field-of-view and wiring checks.",
+    "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
+}
 
 # These are bought wiring requirements, not additional modeled hardware/mass.
 # Stock pre-crimped pigtails may be joined after checking the actual pinouts.
@@ -207,13 +218,23 @@ class ModuleStation:
     x_mm: float
     clamp_control: str
     default_approach: str
+    yaw_deg: int = 0
+
+    def __post_init__(self):
+        if self.yaw_deg not in (0, 180):
+            raise ValueError("Rail module orientation must be 0 or 180 degrees")
+
+    @property
+    def transverse_sign(self):
+        """Convert module-local transverse directions to the fixed rail frame."""
+        return 1 if self.yaw_deg == 0 else -1
 
 
 MODULE_STATIONS = (
-    ModuleStation("BatteryEquipmentModule", -90, "BatteryClampApproach", "NegativeY"),
+    ModuleStation("BatteryEquipmentModule", 90, "BatteryClampApproach", "NegativeY"),
     ModuleStation("MainPropulsionModule", 0, "PropulsionClampApproach", "PositiveY"),
     ModuleStation(
-        "ElectronicsEquipmentModule", 90, "ElectronicsClampApproach", "PositiveY"
+        "ElectronicsEquipmentModule", -72, "ElectronicsClampApproach", "PositiveY", 180
     ),
 )
 
@@ -339,6 +360,7 @@ def project_status():
         "optical_stack_host": OPTICAL_STACK_HOST,
         "optical_stack_scope": f"Common structural tower anchors at {STACK_ANCHOR_LOCATIONS} on battery and electronics carriers; two outboard M2 clamps seat broad integral feet directly on their host. An integral PA12 tower supports a manually locked two-axis optical head, independent of the FC soft-mount stack. Actual dimensions, clearance-hole registration bounds and fastener acceptance belong to parts/stack_interface.py. Physical retention/pointing qualification remains required.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
+        "module_layout_decision": MODULE_LAYOUT_DECISION,
         "notion_source": NOTION_URL,
         "notion_last_edited": NOTION_LAST_EDITED,
         "notion_source_scope": "The retained timestamp identifies the last reviewed live page. Its mechanical BOM, adjustable gear-spacing description and PETG fabrication baseline differ from the CAD. The user deferred document discussion until design review is complete; agree proposed changes before editing Notion. No document alignment is claimed.",

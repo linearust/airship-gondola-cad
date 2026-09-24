@@ -145,6 +145,8 @@ def _connector_geometry_check(actual, expected, hits):
 def reserve_checks(doc):
     from gondola.parts import wiring_reserves as wiring
 
+    from .propulsion_wiring import check as propulsion_wiring_check
+
     registry = doc.DesignRegistry
     physical_objects = (
         list(registry.PrintedParts)
@@ -161,6 +163,9 @@ def reserve_checks(doc):
     expected_contracts = wiring.reserve_contracts()
     expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract()
     checks = []
+    propulsion_routes = {
+        row["object"]: row for row in propulsion_wiring_check(doc)["routes"]
+    }
     validation_cache = {}
     for name in RESERVES:
         obj = doc.getObject(name)
@@ -180,6 +185,8 @@ def reserve_checks(doc):
         contract_matches = True
         source_url_matches = True
         fit_unverified = True
+        if name in propulsion_routes:
+            source_check = propulsion_routes[name]
         if name in expected_shapes:
             source_check = _connector_geometry_check(
                 shape,
@@ -293,18 +300,37 @@ def reserve_checks(doc):
                 measure_distance=False,
                 validation_cache=validation_cache,
             )[0]
+            route_name = next(
+                (item for item in (name, other_name) if item in propulsion_routes),
+                None,
+            )
+            connection = None
+            if route_name is not None and "FCWiringClearanceReserve" in (
+                name,
+                other_name,
+            ):
+                route = propulsion_routes[route_name]
+                connection = route.get("fc_terminal_connection")
+                permitted_connection = route["passed"] and bool(
+                    connection and connection["passed"]
+                )
+            else:
+                permitted_connection = False
             pairs.append(
                 {
                     "a": name,
                     "b": other_name,
                     "intersection_mm3": measurement.get("intersection_mm3"),
+                    "intentional_fc_terminal_connection": connection,
                     **(
                         {"error": measurement["error"]}
                         if "error" in measurement
                         else {}
                     ),
-                    "passed": measurement["passed"]
-                    and measurement["intersection_mm3"] < TOL,
+                    "passed": permitted_connection
+                    or (
+                        measurement["passed"] and measurement["intersection_mm3"] < TOL
+                    ),
                 }
             )
     return checks, pairs

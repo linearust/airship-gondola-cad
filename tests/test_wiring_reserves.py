@@ -67,10 +67,22 @@ class WiringReserveTests(unittest.TestCase):
         App.closeDocument(cls.doc.Name)
 
     def saved_reserve_results(self):
-        # This fixture isolates electronics; full assembly validation also tests
-        # the rotor sweeps and the propulsion lead planning reservations.
-        with patch.object(self.audit, "RESERVES", self.reserve_names):
-            return self.audit.reserve_checks(self.doc)
+        from gondola.validation import propulsion_wiring
+
+        # This fixture contains only electronics. Keep the absent propulsion
+        # subsystem outside this unit boundary; its real route geometry and
+        # terminal overlap are covered by test_propulsion_wiring and the full
+        # saved-assembly validation, without this mock or reduced inventory.
+        self.assertIsNone(self.doc.getObject("MainPropulsionModule"))
+        with (
+            patch.object(self.audit, "RESERVES", self.reserve_names),
+            patch.object(
+                propulsion_wiring, "check", return_value={"routes": []}
+            ) as routes,
+        ):
+            result = self.audit.reserve_checks(self.doc)
+        routes.assert_called_once_with(self.doc)
+        return result
 
     def test_nominal_reservations_are_connected_and_clear(self):
         checks, pairs = self.saved_reserve_results()
@@ -223,17 +235,30 @@ class WiringReserveTests(unittest.TestCase):
             obj.InstalledConnectorFitVerified = False
 
     def test_fc_reserve_contains_complete_core_and_both_continuous_turns(self):
-        from gondola.parts import equipment_mounts as mounts
-
         fc = self.expected["FCWiringClearanceReserve"]
-        self.assertLess(mounts.fc_wiring_reserve_shape().cut(fc).Volume, 1e-6)
+        self.assertLess(self.wiring.fc_underbody_reserve_shape().cut(fc).Volume, 1e-6)
         # Independently check endpoint and middle sections of both selected
         # turn paths; the generated whole union must remain one solid.
         for side in (-1, 1):
             turn_y = 14 if side < 0 else 4
-            section = Part.makeSphere(1.4, App.Vector(side * 29, turn_y, 16.2))
+            section = Part.makeSphere(1.4, App.Vector(-side * 29, -turn_y, 16.2))
             self.assertLess(section.cut(fc).Volume, 1e-6)
         self.assertEqual(len(fc.Solids), 1)
+
+    def test_xt30_is_beside_fc_with_continuous_fore_aft_access(self):
+        reserve = self.expected["XT30ServiceReserve"]
+        bounds = reserve.BoundBox
+        self.assertAlmostEqual(bounds.Center.x, 0)
+        self.assertAlmostEqual(bounds.Center.y, -49)
+        self.assertAlmostEqual(bounds.XLength, 42)
+        self.assertAlmostEqual(bounds.YLength, 10)
+        self.assertAlmostEqual(bounds.ZLength, 15)
+        self.assertEqual(
+            self.wiring.reserve_contracts()["XT30ServiceReserve"][
+                "selected_mating_axis"
+            ],
+            "X",
+        )
 
 
 if __name__ == "__main__":

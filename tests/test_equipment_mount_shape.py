@@ -49,5 +49,62 @@ class EquipmentMountShapeTests(unittest.TestCase):
         self.assertLess(abs(shape.common(clear).Volume), 1e-6)
 
 
+@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
+class FCInstallationTests(unittest.TestCase):
+    def setUp(self):
+        from gondola.cad import create_group
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts.equipment_envelopes import build_equipment
+
+        self.doc = App.newDocument("FCInstallationRegression")
+        self.addCleanup(App.closeDocument, self.doc.Name)
+        groups = {}
+        for station in MODULE_STATIONS:
+            group = create_group(self.doc, station.object_name, station.object_name)
+            group.Placement = App.Placement(
+                App.Vector(station.x_mm, 0, 0),
+                App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+            )
+            groups[station.object_name] = group
+        build_equipment(
+            self.doc,
+            groups["BatteryEquipmentModule"],
+            groups["ElectronicsEquipmentModule"],
+        )
+        self.doc.recompute()
+
+    def test_native_board_pose_preserves_heading_after_carrier_turn(self):
+        from gondola.validation.equipment import fc_installation_check
+
+        result = fc_installation_check(self.doc)
+        self.assertTrue(result["passed"], result)
+
+    def test_symmetric_board_solid_cannot_hide_reversed_installation(self):
+        from gondola.cad import world_shape
+        from gondola.print_export import geometry_comparison
+        from gondola.validation.equipment import fc_installation_check
+
+        board = self.doc.ModuleFCEnvelope
+        original = world_shape(board)
+        board.Placement.Rotation = App.Rotation(App.Vector(0, 0, 1), -45)
+        self.doc.recompute()
+        self.assertLess(
+            geometry_comparison(world_shape(board), original)["difference_mm3"],
+            1e-6,
+        )
+        result = fc_installation_check(self.doc)
+        self.assertFalse(result["native_board_placement_matches"])
+        self.assertFalse(result["passed"])
+
+    def test_wrong_parent_turn_or_native_orientation_marker_is_rejected(self):
+        from gondola.validation.equipment import fc_installation_check
+
+        self.doc.ModuleFCEnvelope.InstallationYawInCarrier = 0
+        self.assertFalse(fc_installation_check(self.doc)["passed"])
+        self.doc.ModuleFCEnvelope.InstallationYawInCarrier = 180
+        self.doc.ElectronicsEquipmentModule.Placement.Rotation = App.Rotation()
+        self.assertFalse(fc_installation_check(self.doc)["passed"])
+
+
 if __name__ == "__main__":
     unittest.main()

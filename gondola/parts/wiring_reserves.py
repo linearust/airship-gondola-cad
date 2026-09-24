@@ -12,6 +12,7 @@ import FreeCAD as App
 import Part
 
 from gondola.contracts import equipment_interfaces as interfaces
+from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG
 
 from . import equipment_mounts as mounts
 
@@ -35,9 +36,9 @@ MINIMUM_NEIGHBOUR_GAPS = {
         "CapacitorServiceReserve": 1.5,
     }
 }
-XT30_BODY_ALLOCATION_MM = (10.0, 22.0, 15.0)
+XT30_BODY_ALLOCATION_MM = (22.0, 10.0, 15.0)
 XT30_WITHDRAWAL_ALLOWANCE_MM = 10.0
-XT30_ALLOCATION_MIN_X_MM = -51.0
+XT30_ALLOCATION_CENTRE_XY_MM = (0.0, -49.0)
 
 
 def _box(size, origin):
@@ -89,12 +90,23 @@ def _fc_peripheral_band():
     return band
 
 
+def _orient_fc_reserve(shape):
+    shape.rotate(V(*mounts.FC_CENTRE_XY, 0), V(0, 0, 1), FC_INSTALLATION_LOCAL_YAW_DEG)
+    return shape
+
+
+def fc_underbody_reserve_shape():
+    """The underbody corridor in the selected electronics-local FC orientation."""
+    return _orient_fc_reserve(mounts.fc_wiring_reserve_shape())
+
+
 def reserve_shapes():
     """Return fresh local shapes in the electronics module's coordinate frame."""
     core = mounts.fc_wiring_reserve_shape()
     fc = core.multiFuse(
         [_fc_peripheral_band(), _fc_exit_tube(-1), _fc_exit_tube(1)]
     ).removeSplitter()
+    fc = _orient_fc_reserve(fc)
     bottom = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
     lr_x, lr_y = mounts.LR_CENTRE_XY
     lr_length, lr_width, lr_height = interfaces.LR_SIZE_MM
@@ -107,13 +119,14 @@ def reserve_shapes():
     pas_x, pas_y = mounts.PAS_CENTRE_XY
     pas_width = interfaces.DEVICE_CONNECTOR_EVIDENCE["PAS"]["connector_band_width_mm"]
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
+    xt30_cx, xt30_cy = XT30_ALLOCATION_CENTRE_XY_MM
     shapes = {
         "FCWiringClearanceReserve": fc,
         "XT30ServiceReserve": _box(
-            (xt30_x, xt30_y + 2 * XT30_WITHDRAWAL_ALLOWANCE_MM, xt30_z),
+            (xt30_x + 2 * XT30_WITHDRAWAL_ALLOWANCE_MM, xt30_y, xt30_z),
             (
-                XT30_ALLOCATION_MIN_X_MM,
-                -xt30_y / 2 - XT30_WITHDRAWAL_ALLOWANCE_MM,
+                xt30_cx - xt30_x / 2 - XT30_WITHDRAWAL_ALLOWANCE_MM,
+                xt30_cy - xt30_y / 2,
                 bottom,
             ),
         ),
@@ -176,6 +189,8 @@ def reserve_contracts():
         "peripheral_z_margin_mm": FC_PERIPHERAL_Z_MARGIN_MM,
         "underbody_height_mm": mounts.FC_WIRING_CLEARANCE,
         "underbody_corridor_width_mm": mounts.FC_WIRING_CORRIDOR_WIDTH,
+        "fc_installation_local_yaw_deg": FC_INSTALLATION_LOCAL_YAW_DEG,
+        "orientation_scope": "FC, underbody corridor and exit turns are clocked together180deg in the electronics carrier to retain the prior world-heading design basis. The square envelope does not establish the actual board arrow, firmware orientation or port coordinates.",
         "design_exit_bundle_diameter_mm": FC_EXIT_BUNDLE_DIAMETER_MM,
         "design_exit_centreline_bend_radius_mm": FC_EXIT_BEND_RADIUS_MM,
         "minimum_neighbour_gaps_mm": copy.deepcopy(
@@ -190,13 +205,15 @@ def reserve_contracts():
         "connector_catalog_evidence": copy.deepcopy(
             interfaces.CONNECTOR_EVIDENCE["AMASS_XT30U"]
         ),
-        "selected_mating_axis": "Y",
-        "maximum_mated_body_xyz_mm": [5.9, 20.6, 10.5],
+        "selected_mating_axis": "X",
+        "maximum_mated_body_xyz_mm": [20.6, 5.9, 10.5],
         "body_allocation_xyz_mm": list(XT30_BODY_ALLOCATION_MM),
-        "body_allocation_min_x_in_electronics_frame_mm": XT30_ALLOCATION_MIN_X_MM,
-        "design_withdrawal_allowance_each_y_mm": XT30_WITHDRAWAL_ALLOWANCE_MM,
-        "operating_scope": "A 10x22x15mm body allocation contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled.",
-        "withdrawal_scope": "Continuous 10mm extension at both Y ends. This is our pull/lead allowance, not a published withdrawal stroke or a proven retained pigtail.",
+        "body_allocation_centre_xy_in_electronics_frame_mm": list(
+            XT30_ALLOCATION_CENTRE_XY_MM
+        ),
+        "design_withdrawal_allowance_each_x_mm": XT30_WITHDRAWAL_ALLOWANCE_MM,
+        "operating_scope": "A 22x10x15mm body allocation beside the FC, opposite LR900-A, contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled.",
+        "withdrawal_scope": "Continuous 10mm extension at both local X ends. This is our pull/lead allowance, not a published withdrawal stroke or a proven retained pigtail.",
         "installed_connector_fit_verified": False,
         "withdrawal_stroke_verified": False,
         "wire_bend_radius_qualified": False,

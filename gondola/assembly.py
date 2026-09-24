@@ -1,13 +1,13 @@
 """Single flexible rail, over-wing tape and purchased metric hardware."""
 
 import json
+from dataclasses import asdict
 
 import FreeCAD as App
 import Part
 
 from gondola.cad import (
     create_group,
-    create_reference,
     set_print_category,
     set_print_sku,
     set_property,
@@ -80,6 +80,7 @@ def build_assembly():
         optical_mount,
         optical_sensor,
         propulsion,
+        propulsion_wiring,
         purchased_hardware,
         rail,
         stack_interface,
@@ -133,17 +134,24 @@ def build_assembly():
             "RailPositionNotes",
             f"Default land centre. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
         )
+        module.Placement.Rotation = App.Rotation(V(0, 0, 1), station.yaw_deg)
+        set_property(
+            module,
+            "ModulePlacementContract",
+            json.dumps(asdict(station), sort_keys=True),
+        )
         module.setExpression("Placement.Base.x", "RailPositionX")
+        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
         module.setExpression(
             "Placement.Base.y",
-            f"AssemblySettings.{clamp_control} == 0 ? {rail.CLAMP_SHIFT_Y:g} mm : -{rail.CLAMP_SHIFT_Y:g} mm",
+            f"AssemblySettings.{clamp_control} == 0 ? {shift:g} mm : {-shift:g} mm",
         )
         set_property(
             module,
             "ClampDirectionControl",
             "AssemblySettings."
             + clamp_control
-            + "; change before assembling. PositiveY nut loads+X, NegativeY nut loads-X.",
+            + "; module-local directions, before assembling. PositiveY nut loads local+X, NegativeY nut loads local-X. The module's fixed 0/180deg orientation maps these into the rail frame.",
         )
     mount_parts = [
         mounts.build_mount(doc, battery_module, "battery"),
@@ -172,23 +180,9 @@ def build_assembly():
     reference_parts += sensor_references + propulsion_module["references"]
     clearance_volumes += sensor_clearances
     clearance_volumes += propulsion_module["clearances"]
-    for sign, suffix in ((1, "Port"), (-1, "Starboard")):
-        obj = create_reference(
-            doc,
-            propulsion_module["group"],
-            suffix + "PhaseLeadLoopReserve",
-            "phase-lead slack-loop space outside rotor sweep",
-            Part.makeTorus(
-                8,
-                1.5,
-                V(-38, sign * propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z),
-                V(1, 0, 0),
-            ),
-            "Illustrative slack space behind the motor in its neutral pose, outside the full rotor bound. This isolated torus is not a connected cable route or a specified bend radius. Check actual lead exits, flexible silicone wires through bounded±180deg tilt, strain relief and current capacity. The two endpoints have different wire winding states: never wrap directly between them. Use purchased small nylon ties around existing frame arms, routing outside the solid bearing-post roots and clear of the local clamp tool bay. Do not clamp a moving loop taut or route wires through solid tilt shafts.",
-        )
-        obj.Role = "Clearance"
-        obj.Label = "RESERVE | " + suffix + " flexible motor-lead loop"
-        clearance_volumes.append(obj)
+    clearance_volumes += propulsion_wiring.build_reserves(
+        doc, propulsion_module["group"], electronics_module
+    )
     fit_coupons = rail.build_coupons(doc)
     fit_coupons["printed"] += propulsion.build_fit_coupons(doc)["printed"]
     printed_parts = (

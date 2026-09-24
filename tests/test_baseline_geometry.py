@@ -111,11 +111,14 @@ class ModuleControlMappingTests(unittest.TestCase):
                 "App::PropertyEnumeration",
             )
             module = create_group(doc, station.object_name, station.object_name)
+            module.Placement.Rotation = App.Rotation(
+                App.Vector(0, 0, 1), station.yaw_deg
+            )
             set_property(module, "RailPositionX", station.x_mm, "App::PropertyLength")
             module.setExpression("Placement.Base.x", "RailPositionX")
             module.setExpression(
                 "Placement.Base.y",
-                f"AssemblySettings.{station.clamp_control} == 0 ? {rail.CLAMP_SHIFT_Y:g}mm : -{rail.CLAMP_SHIFT_Y:g}mm",
+                f"AssemblySettings.{station.clamp_control} == 0 ? {station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm : {-station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm",
             )
             modules.append(module)
         pods = []
@@ -137,6 +140,43 @@ class ModuleControlMappingTests(unittest.TestCase):
         self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
         doc.OpticalRollStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
+
+    def test_rotated_carrier_reverses_clamp_offset_but_not_local_side(self):
+        from gondola.contracts.design import ModuleStation
+        from gondola.parts import rail
+        from gondola.validation.baseline import module_clamp_pose
+
+        for yaw in (0, 180):
+            station = ModuleStation("Test", -72, "Clamp", "PositiveY", yaw)
+            for approach, sign in (("PositiveY", 1), ("NegativeY", -1)):
+                with self.subTest(yaw=yaw, approach=approach):
+                    module = SimpleNamespace(
+                        Placement=App.Placement(
+                            App.Vector(
+                                -72,
+                                sign * station.transverse_sign * rail.CLAMP_SHIFT_Y,
+                                0,
+                            ),
+                            App.Rotation(App.Vector(0, 0, 1), yaw),
+                        )
+                    )
+                    result = module_clamp_pose(station, module, approach)
+                    self.assertTrue(result["passed"], result)
+                    self.assertEqual(result["local_approach_side_y"], sign)
+                    self.assertEqual(
+                        result["world_approach_side_y"], sign * station.transverse_sign
+                    )
+                    module.Placement.Base.y *= -1
+                    self.assertFalse(
+                        module_clamp_pose(station, module, approach)["passed"]
+                    )
+                    module.Placement.Base.y *= -1
+                    module.Placement.Rotation = App.Rotation(
+                        App.Vector(0, 0, 1), 180 - yaw
+                    )
+                    self.assertFalse(
+                        module_clamp_pose(station, module, approach)["passed"]
+                    )
 
     def test_shapeless_stack_and_rail_group_metadata_is_frozen_too(self):
         from gondola.cad import create_group, set_property

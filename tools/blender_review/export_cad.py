@@ -408,17 +408,21 @@ def export(cad_path, output):
             optical_mount.set_angles(doc, roll, pitch)
             return {}, set()
 
-        for number, host, x, label in (
-            (5, "BatteryEquipmentModule", -90, "Battery"),
-            (6, "ElectronicsEquipmentModule", 90, "FC"),
+        for number, host, label in (
+            (5, "BatteryEquipmentModule", "Battery"),
+            (6, "ElectronicsEquipmentModule", "FC"),
         ):
+            origin = doc.getObject(host).getGlobalPlacement().Base
             scene(
                 f"0{number} Optical on {label}",
                 f"OPTICAL MANUAL TRIM / {label.upper()} HOST",
                 "Manual roll and pitch +/-20 deg; loosen, align and retighten pivot joints. Not actuated or self-levelling. Alternate installed host, not a transfer path. Sensor local +Z is its viewing direction.",
                 289,
                 all_names,
-                [[x - 42, -40, 7], [x + 42, 40, 97]],
+                [
+                    [origin.x - 42, origin.y - 40, origin.z + 7],
+                    [origin.x + 42, origin.y + 40, origin.z + 97],
+                ],
                 [
                     (1, "Aligned"),
                     (37, "Roll +20"),

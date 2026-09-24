@@ -14,7 +14,7 @@ from gondola.cad import (
     set_property,
 )
 from gondola.contracts import equipment_interfaces as interfaces
-from gondola.contracts.design import NOTION_URL
+from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG, NOTION_URL
 
 from . import equipment_mounts as mounts
 from . import wiring_reserves
@@ -40,6 +40,7 @@ def fc_envelope_shape():
         )
     shape.rotate(V(), V(0, 0, 1), mounts.FC_ROTATION_DEG)
     shape.translate(V(*mounts.FC_CENTRE_XY, FC_BOTTOM_Z))
+    shape.rotate(V(*mounts.FC_CENTRE_XY, 0), V(0, 0, 1), FC_INSTALLATION_LOCAL_YAW_DEG)
     return shape
 
 
@@ -120,10 +121,10 @@ def build_equipment(doc, battery_group, electronics_group):
         "ModuleFCEnvelope",
         "MicoAir743v2-AIO-35A",
         fc_envelope_shape(),
-        "Published36x36x8mm envelope; confirmed25.5mm square hole pattern and diameter3mm, rotated-45deg. "
+        "Published36x36x8mm envelope; confirmed25.5mm square hole pattern and diameter3mm. The symmetric hole pattern is unchanged; FC installation is turned180deg relative to the electronics carrier to preserve the prior world-heading design basis after the carrier's180deg turn. "
         "Our carrier provides M2 clearance holes on these XY axes. The included four M2x7.5mm silicone dampening sleeves are purchased parts; their compressed geometry is not modeled. "
         "An8mm design allowance separates the component-envelope minimum from the carrier face, with an open-X wiring corridor. This is not a manufacturer-required spacer height or PCB bearing-plane location. "
-        "Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
+        "The square envelope does not identify the physical board arrow or exact port datums. Verify actual board heading and matching firmware orientation during assembly. Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
         FC_SOURCE,
     )
     add_interface_metadata(
@@ -137,6 +138,18 @@ def build_equipment(doc, battery_group, electronics_group):
     )
     set_property(fc_obj, "DimensionDrawingSource", interfaces.FC_DIMENSION_SOURCE)
     set_property(fc_obj, "IncludedDamperSource", interfaces.FC_PACKAGE_SOURCE)
+    set_property(
+        fc_obj,
+        "InstallationYawInCarrier",
+        FC_INSTALLATION_LOCAL_YAW_DEG,
+        "App::PropertyAngle",
+    )
+    fc_obj.setEditorMode("InstallationYawInCarrier", 1)
+    set_property(
+        fc_obj,
+        "InstallationHeadingScope",
+        "Design marker relative to the previous FC installation; the square CAD envelope cannot prove physical board orientation. Align the actual board arrow to the chosen vehicle heading and verify firmware orientation. No measured port frame or firmware alignment is claimed.",
+    )
     set_property(
         fc_obj,
         "DesignUnderbodyClearance",

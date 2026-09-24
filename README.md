@@ -2,11 +2,11 @@
 
 Keep source contracts, native CAD metadata and generated artifacts consistent.
 Do not duplicate dimensions, purchase quantities or manufacturer evidence here.
-AM bearing-retention and supplied-horn geometry passed the native validation
-and regression suite; its matching build, preview, comparison and bundle passed.
-Use only matching AM artifacts; AL inspection instructions
-are obsolete for those interfaces. Received-hardware fit and workshop horn
-preparation remain unqualified until physical inspection and trials pass.
+Read the current revision from `contracts.design.DESIGN_REVISION` and its
+review in `tests/fixtures/`. Use CAD, exports and inspection material with
+matching revision, source and saved-CAD identities; historical packets do not
+establish the current layout or routing. Received-hardware fit, workshop horn
+preparation, balance and moving-wire behaviour require physical inspection and trials.
 
 ## Authorities
 
@@ -23,6 +23,11 @@ preparation remain unqualified until physical inspection and trials pass.
   `references/cart_adaptation_review.md` records cart choices and remaining
   purchases, distinguishing owned and selected kits and the supplied-horn/
   no-bearing-spacer decisions. Current build quantities belong to `contracts/design.py`.
+  `references/layout_and_wiring_review.md` explains the three independent rail
+  groups, rear FC placement, opposite battery carrier and movable optical stack.
+  `MODULE_STATIONS` owns fixed carrier orientations and starting positions;
+  local clamp direction must be transformed through each carrier's orientation.
+  FC installation and its wiring reserves retain their own orientation.
   `references/retention_review.md` describes integral outer-ring bearing capture,
   its process coupon and release path, and supplied-horn workshop preparation.
   Preserve separate shaft grip and broad carrier/frame axial stops. Do not
@@ -81,6 +86,11 @@ preparation remain unqualified until physical inspection and trials pass.
 - Check connector handling and wire reserves against both physical parts and
   other reserved spaces. Keep sampled attitude checks distinct from continuous
   bounds; nominal clearances do not verify actual plugs, latches or harnesses.
+  Motor leads move with the tilting carriers; servo-case leads remain stationary.
+  Connected propulsion-wire reservations are planning space, not an installed
+  harness or a flexible-wire sweep proof. Rebuild and recheck routing after rail
+  adjustment; preserve strain relief and the detachable servo module. Do not
+  infer cable cut lengths or bend limits from a neutral-pose straight distance.
 - Preserve the native geared input/output expressions and bounded, non-wrapping
   tilt controls. Validate gear contact, coupled motion and bearing/fastener
   retention together. Purchased gear profiles are reference geometry, never
