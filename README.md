@@ -17,6 +17,13 @@ preparation, balance and moving-wire behaviour require physical inspection and t
   shared nominal dimensions; `drive.py` for the finite gear configurations and
   source-authoritative `SELECTED_DRIVE`.
   Inspect project status with `python3 -m gondola status`.
+  `equipment_interfaces.flight_controller_contract()` owns the selected FC
+  identity, nominal interface and electrical evidence. Keep its native property,
+  equipment selection and reports synchronized. Read
+  `references/controller_selection_review.md` before changing FC power or mounting.
+  Preserve the conflicting official input-voltage claims until the supplied board
+  revision is confirmed; CAD fit does not verify the selected battery's compatibility.
+  Package damper length does not establish compressed stack height or wire clearance.
 - Read `references/drive_selection_review.md` before drivetrain changes or
   purchasing. `SELECTED_DRIVE` identifies the selected 48T/16T mechanism;
   `references/kailash_gears_selected_evidence.md` retains its seller evidence.

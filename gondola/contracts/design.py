@@ -7,14 +7,21 @@ the other contract modules. Geometric test success never changes release status.
 from dataclasses import asdict, dataclass
 
 from .drive import SELECTED_DRIVE
-from .equipment_interfaces import X06_DATASHEET_SOURCE, X06_MANUFACTURER_SOURCE
+from .equipment_interfaces import (
+    FC_ELECTRICAL_EVIDENCE,
+    FC_LISTED_MASS_G,
+    FC_MODEL,
+    X06_DATASHEET_SOURCE,
+    X06_MANUFACTURER_SOURCE,
+    flight_controller_contract,
+)
 from .fasteners import KIT_MATERIAL
 from .optical_sensors import get_sensor_profile
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AP"
+DESIGN_REVISION = "AQ"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -76,7 +83,7 @@ class EquipmentSelection:
 
 
 SELECTED_EQUIPMENT = (
-    EquipmentSelection("MicoAir743v2 AIO35A", 1, 10.0),
+    EquipmentSelection(FC_MODEL, 1, FC_LISTED_MASS_G),
     EquipmentSelection("Tattu 2S 450mAh 75C XT30 long pack", 1, None),
     EquipmentSelection("Happymodel RS1102 10000KV", 2, 2.8),
     EquipmentSelection("Gemfan1610 40mm 2-blade CW/CCW", 2, 0.241),
@@ -97,6 +104,11 @@ SCOPED_LISTED_EQUIPMENT_MASS_G = round(
 )
 # Preserve conflicting primary evidence; do not silently tighten supplier tolerance.
 SOURCE_DISCREPANCIES = {
+    "fc_input_power": {
+        "input_claims": FC_ELECTRICAL_EVIDENCE["input_claims"],
+        "selected_battery_cells": 2,
+        "status": "Official 45A sources conflict on 2S support. Preserve the user's selected 45A AM32 board and existing 2S battery. Confirm the supplied board revision and manufacturer-approved input range before powering this combination; do not silently substitute a higher-voltage battery for the selected 2S propulsion system.",
+    },
     "servo_case_tolerance": {
         "manufacturer_drawing_plus_minus_mm": 0.2,
         "manufacturer_product_page_plus_minus_mm": 0.1,
@@ -252,6 +264,10 @@ class UnresolvedInterface:
 # Update only after obtaining the stated physical or supplier evidence.
 UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
+        "fc_input_power",
+        "Resolve the official 45A input-range conflict for the supplied board revision: manual/product text says 3-6S (10-27V), while the AM32-labeled port diagram says 2-6S (5.6-27V). The selected 2S battery and 45A board remain in the CAD, with electrical compatibility unverified. Obtain manufacturer confirmation before powering this combination. Do not automatically change battery voltage or assume the 2S RS1102 selection tolerates it. Verify actual AM32 firmware/output setup and the shared 5V/2A supply under installed loads; the 45A ESC label does not increase BEC capacity.",
+    ),
+    UnresolvedInterface(
         "motion_endpoints",
         f"Calibrate each X06 around nominal ±{180 / SELECTED_DRIVE.ratio:g}deg servo motion for the {SELECTED_DRIVE.driver.teeth}T-to-{SELECTED_DRIVE.output.teeth}T speed-increasing pair's opposite-sign ±180deg output target. Verify loaded travel and gear/horn clocking; small travel shortfall is acceptable, with no extra commanded travel margin required. Endpoints must be measured separately; programming cannot overcome a mechanical stop or inadequate torque. Never wrap endpoints or command continuous rotation.",
     ),
@@ -281,7 +297,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "electronic_mounting_stack",
-        "FC and P-AS hole XY are confirmed. Measure PCB bearing planes, supplied FC M2x7.5 silicone sleeve geometry, purchased spacer lengths and screw engagement. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.",
+        "FC and P-AS hole XY are confirmed. Measure PCB bearing planes, the selected 45A package's silicone dampers, purchased spacer lengths and screw engagement. Package damper length does not define the compressed mounting stack. Preserve at least the allocated 8mm FC underbody wiring clearance; no completed mounting stack is claimed.",
     ),
     UnresolvedInterface(
         "physical_retention",
@@ -351,6 +367,7 @@ def project_status():
         "part_separation_reasons": PART_SEPARATION_REASONS,
         "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
+        "flight_controller": flight_controller_contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
         "battery_attachment": "Adhesive hook-and-loop on a compact continuous deck; separate structural stack pads outside the adhesive footprint; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],

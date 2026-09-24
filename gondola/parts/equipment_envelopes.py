@@ -21,7 +21,6 @@ from . import wiring_reserves
 from .equipment_metadata import add_interface_metadata, create_wiring_reserve
 
 V = App.Vector
-FC_SOURCE = interfaces.FC_SOURCE
 LR_SOURCE = interfaces.LR_SOURCE
 PAS_SOURCE = interfaces.PAS_SOURCE
 BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-pack-with-xt30-plug-long-size-for-h-frame.html"
@@ -120,13 +119,13 @@ def build_equipment(doc, battery_group, electronics_group):
         doc,
         electronics_group,
         "ModuleFCEnvelope",
-        "MicoAir743v2-AIO-35A",
+        interfaces.FC_MODEL,
         fc_envelope_shape(),
-        "Published36x36x8mm envelope; confirmed25.5mm square hole pattern and diameter3mm. The symmetric hole pattern is unchanged; FC installation is turned180deg relative to the electronics carrier to preserve the prior world-heading design basis after the carrier's180deg turn. "
-        "Our carrier provides M2 clearance holes on these XY axes. The included four M2x7.5mm silicone dampening sleeves are purchased parts; their compressed geometry is not modeled. "
+        "Published envelope and hole dimensions are recorded in FlightControllerContract. The symmetric hole pattern is unchanged; FC installation is turned180deg relative to the electronics carrier to preserve the prior world-heading design basis after the carrier's180deg turn. "
+        "Our carrier provides M2 clearance holes on these XY axes. Use the selected 45A package's silicone dampers; see MountingEvidence. Their compressed geometry is not modeled. "
         "An8mm design allowance separates the component-envelope minimum from the carrier face, with an open-X wiring corridor. This is not a manufacturer-required spacer height or PCB bearing-plane location. "
         "The square envelope does not identify the physical board arrow or exact port datums. Verify actual board heading and matching firmware orientation during assembly. Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
-        FC_SOURCE,
+        interfaces.FC_SOURCE,
     )
     add_interface_metadata(
         fc_obj, "FC", mounts.FC_HOLE_CENTRES, interfaces.FC_HOLE_DIAMETER
@@ -137,8 +136,14 @@ def build_equipment(doc, battery_group, electronics_group):
         interfaces.FC_HOLE_PITCH,
         "App::PropertyLength",
     )
-    set_property(fc_obj, "DimensionDrawingSource", interfaces.FC_DIMENSION_SOURCE)
+    set_property(fc_obj, "SpecificationSource", interfaces.FC_SPECIFICATION_SOURCE)
     set_property(fc_obj, "IncludedDamperSource", interfaces.FC_PACKAGE_SOURCE)
+    set_property(
+        fc_obj,
+        "FlightControllerContract",
+        json.dumps(interfaces.flight_controller_contract(), sort_keys=True),
+    )
+    fc_obj.setEditorMode("FlightControllerContract", 1)
     set_property(
         fc_obj,
         "InstallationYawInCarrier",

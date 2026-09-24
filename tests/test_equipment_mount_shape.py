@@ -1,5 +1,6 @@
 """Shared FC/P-AS support and consistent native equipment mounting axes."""
 
+import json
 import unittest
 
 try:
@@ -138,6 +139,58 @@ class FCInstallationTests(unittest.TestCase):
 
         result = fc_installation_check(self.doc)
         self.assertTrue(result["passed"], result)
+
+    def test_unchanged_board_shape_cannot_hide_stale_controller_identity(self):
+        from gondola.contracts import equipment_interfaces as interfaces
+        from gondola.validation.baseline import procurement_and_scope_metadata
+        from gondola.validation.equipment import fc_installation_check
+
+        board = self.doc.ModuleFCEnvelope
+        self.assertIn(interfaces.FC_MODEL, board.Label)
+        original = board.Shape.copy()
+        contract = json.loads(json.dumps(interfaces.flight_controller_contract()))
+        self.assertIn("FlightControllerContract", procurement_and_scope_metadata(board))
+        contract["model"] = "MicoAir743v2-AIO-35A"
+        board.FlightControllerContract = json.dumps(contract)
+        result = fc_installation_check(self.doc)
+        self.assertFalse(result["native_flight_controller_contract_matches"])
+        self.assertFalse(result["passed"])
+        self.assertLess(abs(board.Shape.cut(original).Volume), 1e-6)
+        self.assertLess(abs(original.cut(board.Shape).Volume), 1e-6)
+
+    def test_missing_or_malformed_controller_contract_is_rejected(self):
+        from gondola.validation.equipment import fc_installation_check
+
+        board = self.doc.ModuleFCEnvelope
+        for value in ("{", "null", "[]"):
+            with self.subTest(value=value):
+                board.FlightControllerContract = value
+                self.assertFalse(fc_installation_check(self.doc)["passed"])
+        board.removeProperty("FlightControllerContract")
+        self.assertFalse(fc_installation_check(self.doc)["passed"])
+
+    def test_controller_firmware_or_input_evidence_cannot_silently_change(self):
+        from gondola.contracts import equipment_interfaces as interfaces
+        from gondola.validation.equipment import fc_installation_check
+
+        for mutation in ("firmware", "input_claim", "compatibility"):
+            with self.subTest(mutation=mutation):
+                contract = json.loads(
+                    json.dumps(interfaces.flight_controller_contract())
+                )
+                electrical = contract["electrical"]
+                if mutation == "firmware":
+                    electrical["esc_firmware"] = "Bluejay"
+                elif mutation == "input_claim":
+                    electrical["input_claims"]["manual_text"]["cells"] = [2, 6]
+                else:
+                    electrical["compatibility_status"] = "verified"
+                self.doc.ModuleFCEnvelope.FlightControllerContract = json.dumps(
+                    contract
+                )
+                result = fc_installation_check(self.doc)
+                self.assertFalse(result["native_flight_controller_contract_matches"])
+                self.assertFalse(result["passed"])
 
     def test_symmetric_board_solid_cannot_hide_reversed_installation(self):
         from gondola.cad import world_shape

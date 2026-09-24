@@ -59,7 +59,7 @@ def _in_parent_frame(shape, parent):
 
 
 def fc_installation_check(doc):
-    """Check native orientation; the FC's symmetric solid cannot prove heading."""
+    """Check FC identity and orientation beyond its symmetric reference solid."""
     board = doc.getObject("ModuleFCEnvelope")
     parent = doc.getObject("ElectronicsEquipmentModule")
     station = next(
@@ -86,6 +86,12 @@ def fc_installation_check(doc):
         and abs(float(board.InstallationYawInCarrier) - FC_INSTALLATION_LOCAL_YAW_DEG)
         < TOL
     )
+    try:
+        contract_matches = json.loads(
+            str(board.FlightControllerContract)
+        ) == json.loads(json.dumps(interfaces.flight_controller_contract()))
+    except (AttributeError, TypeError, ValueError):
+        contract_matches = False
     correct_parent = board.getParentGeoFeatureGroup() == parent
     return {
         "installation_turn_in_carrier_deg": FC_INSTALLATION_LOCAL_YAW_DEG,
@@ -93,11 +99,13 @@ def fc_installation_check(doc):
         "native_board_placement_matches": native_pose_matches,
         "carrier_rotation_matches": carrier_rotation_matches,
         "native_installation_marker_matches": metadata_matches,
+        "native_flight_controller_contract_matches": contract_matches,
         "board_parent_matches": correct_parent,
         "scope": "Native design orientation relative to the previous FC installation only. The square envelope cannot identify the physical board arrow; verify the received FC orientation and firmware configuration during assembly.",
         "passed": native_pose_matches
         and carrier_rotation_matches
         and metadata_matches
+        and contract_matches
         and correct_parent,
     }
 

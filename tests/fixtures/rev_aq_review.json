@@ -1,0 +1,183 @@
+{
+  "revision": "AQ",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "c509f72a6738f2b06b6ca8b9433afb5f9bc89d6f",
+  "source_fingerprint": "2a5947cdf042433ffeae03cb8486af7cd1e1c1003e7130c1c8d11056e7cbb4e6",
+  "approved_fixture_file": "tests/fixtures/rev_aq_geometry.FCStd",
+  "approved_fixture_sha256": "d63ad6124cb7ba07d456d1c152642eaa85883609727237a09e81bceedb3efbb7",
+  "scope": "Replace the selected35A Bluejay FC with MicoAir743v2-AIO-45A AM32. Metadata and evidence refactor; all nominal CAD geometry and installed quantities unchanged. Existing2S battery retained; actual revision input compatibility unresolved because official sources conflict.",
+  "intentional_changes": [
+    "One selected FC contract shares model, published dimensions and mass, AM32 identity and conflicting input evidence across native CAD, equipment selection and status. Native and baseline validation reject stale controller contracts despite identical BReps.",
+    "Replace35A references with actual45A manual/specifications/ports/package evidence. Correct supplied silicone dampers from7.5mm to6.6mm nominal; compressed stack and bolt length remain unverified.",
+    "Preserve36x36x8mm envelope,25.5mm hole pattern and diameter3mm,8mm underbody clearance and9mm peripheral service reservation. No inferred port datums, new support parts or fasteners.",
+    "Record official3-6S10-27V text and2-6S5.6-27V diagram plus2-6S specification image. Existing2S selection stays unchanged; manufacturer/revision clarification and power tests remain pending.",
+    "Remove the unused35A port asset and source alias; derive FC hole axes from the published pitch and use accurate SpecificationSource metadata rather than claiming a45A dimension drawing."
+  ],
+  "old_new_transition": {
+    "passed": true,
+    "report_sha256": "1847f478d6155212584d72388a510638170c43ff8526f0cc1392f6d11c528a32",
+    "old_fixture_sha256": "b36eb0b454b7c57c285d2cc8c3fcd77874b18015b0348432147df159eeaafb74",
+    "candidate_sha256": "d63ad6124cb7ba07d456d1c152642eaa85883609727237a09e81bceedb3efbb7",
+    "candidate_source_fingerprint": "3927d3612ae65b0c54a119c1f65157a3a84152dced9fc55cad1ea728d82e630c",
+    "final_source_difference": "Only config fixture path/hash changed after the independently reviewed candidate; final saved build requires full comparison.",
+    "object_count": 291,
+    "shape_count": 118,
+    "all_geometry_differences_mm3": 0,
+    "placements_registry_expressions_display_unchanged": true,
+    "native_control_cases_unchanged": 29,
+    "scalar_changes_individually_reviewed": 28,
+    "interface_changes_individually_reviewed": 11,
+    "checks_passed": 26
+  },
+  "release_checks": {
+    "status": "PASS: frozen-source native CAD, full regressions, exports, independent artifact integrity and Blender; fit prototype only",
+    "production_released": false,
+    "static_checks": {
+      "ruff": "0.16.8 check/format PASS,100files",
+      "compileall": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "focused_tests": {
+      "count": 12,
+      "passed": true,
+      "seconds": 1.002,
+      "log_sha256": "61c437ce4e716f97af5414d2445f29bca3dc4e1bbf39bc643d340aa7acc46f49"
+    },
+    "offline_tests": {
+      "count": 376,
+      "skipped": 282,
+      "passed": true,
+      "scope": "94 pure-Python cases; complete native suite separately verified",
+      "log_sha256": "85653246f5e9a854cd051580e76307f3c7b78c6f7506044c89f98fd8a2bc48f4"
+    },
+    "native_tests": {
+      "passed": true,
+      "count": 376,
+      "seconds": 654.955,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "log_sha256": "54e780352ccd1ca52fc2ac4adc236a9b7195848be3812296c1d1af0e0cb28431"
+    },
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 12.374
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 43.784
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 724.324
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.598
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.156
+      }
+    ],
+    "native_cad_sha256": "c98e5d44d0294211ddddfdcea689a41c72bd998851abe07cabab6a4c06e0c942",
+    "blender_review": {
+      "passed": true,
+      "report_sha256": "39203afd13daac9b723f10be87b09f2fe15541cfef96a0b247ca3b8c8b2e7b7c",
+      "verification_sha256": "3c577bbee74a9a5b25aab20b9faee6c86d1068b5fec7195b957973c67a858111",
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "discrepancy_count": 0,
+      "stills_visually_reviewed": 7,
+      "all_still_pixels_identical_to_reviewed_AP": true,
+      "cad_sha256": "c98e5d44d0294211ddddfdcea689a41c72bd998851abe07cabab6a4c06e0c942",
+      "blend_sha256": "5fdc959cf4a771ea1f2272bc26baf63eacc38818edb0cc68bdd3792ce4549070",
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+    },
+    "final_integrity": {
+      "passed": true,
+      "checks_count": 104,
+      "report_sha256": "6e14068fdf9d9d9074d7fc9616f531d8d809b72be4b02c18e01933b93bfc3120",
+      "scope": "Independent read-only final JSON, ZIP, native metadata and saved display audit. No geometry rebuild, full validation rerun or native save. All118 physical and reservation BReps are bound transitively through the SHA256-pinned independent AP-to-candidate review and completed candidate-to-final native comparison; no geometry Booleans are rerun here. Actual physical qualification remains pending.",
+      "artifact_sha256": {
+        "/home/h/cad/airship-gondola-cad/build/gondola.FCStd": "c98e5d44d0294211ddddfdcea689a41c72bd998851abe07cabab6a4c06e0c942",
+        "/home/h/cad/airship-gondola-cad/tests/fixtures/rev_aq_geometry.FCStd": "d63ad6124cb7ba07d456d1c152642eaa85883609727237a09e81bceedb3efbb7",
+        "/home/h/cad/airship-gondola-cad/build/gondola_metrics.json": "a5b3b61d0c2d07c09ea16c11a8cbed68e33cb4f6c0bc2a930da92ab9a01d2d36",
+        "/home/h/cad/airship-gondola-cad/build/gondola_validation.json": "caaa7201d60efd809101cba7e634186f9978fe2f332201026a2707073b74c86c",
+        "/home/h/cad/airship-gondola-cad/build/gondola_equipment_validation.json": "86d5c0af4ee17721859515a7caa3e0efd9c79709d0dc30387d12dc36f7f5dfa1",
+        "/home/h/cad/airship-gondola-cad/build/gondola_propulsion_validation.json": "dc67b54fc54f34fa586fe72133f10dee5543cc1fd2e1c494a3e0f57b47a233f2",
+        "/home/h/cad/airship-gondola-cad/build/gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+        "/home/h/cad/airship-gondola-cad/build/gondola_baseline_validation.json": "9d6ddcb7bf6527a9ff91bddbbc43e41b19607ab6e5926f4f6635c599547796fe",
+        "/home/h/cad/airship-gondola-cad/build/preview_state.json": "4de38936dac5fa3f0cd939178e0da6dfb7caeca70ccd5b7c5d326d86c757b4b8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/print_manifest.json": "9bf624a9ba5a4b1505fc69a19499df7a35584ef655c4b0f71fa566ef288ec771",
+        "/home/h/cad/airship-gondola-cad/build/gondola_hardware_bom.json": "1e13e932a2186b4d6e21844ed7111cad501e92e092c9de242c3f0173d453f2a5",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/continuous_rail.stl": "c7348a3ad2b5992c54392c3a21e14ee71a2dc0a517cdef9df130c7b0ea0ef7fb",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/continuous_rail.step": "322600677547ce50db187e9e0e9ee84389dbf1b1db118319f7993be25696bf52",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/battery_mount.stl": "a4651c66898d5839a56b9f4dc0f94689dd3dc9eaa210291e3e24fa581c4c8d5b",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/battery_mount.step": "fb7fd1b11360935958d5bfe748d5d0a9235890248a5247486ce34260e8998b77",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/electronics_mount.stl": "ef7807e7a31f672e572ed14cc9e9e56d5e1fe10153d4c37a2049af7b46937fed",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/electronics_mount.step": "e5ae27cb1c0aa49e51cb306ec7e22dbb0eb696fd23313851a185d049bab8a62f",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/propulsion_fixed_frame.stl": "81cc256af366e746a43c546e04c9c992b53f9fdbb923aa762f9f624f6a2ca77d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/propulsion_fixed_frame.step": "e83a67a1446e0e942e56348750c5511e27b46153ad77142dffc003155c252fac",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/servo_drive_bridge48_t.stl": "7734a853d1c8bd0138cecaf9187b750b506613c4878b76d06a4fc49ff49f7bb3",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/servo_drive_bridge48_t.step": "80e09c9cb3d46a6ff0a79336a055112e50827163607dfe0fe9111f5642552829",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/motor_carrier.stl": "88548221d9a51b54f569beab2e6615c7952b0371160939093574e441f52a9f8c",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/motor_carrier.step": "4eddefaf52293259065ecd5236cc872b1b1de509541b6f65fe9b1980cdcca426",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_gear_adapter_blank.stl": "483c5d80e7110a37019e32c91703c2a56cd824486babd72fefc498c745709b58",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_gear_adapter_blank.step": "322df3ee62b4ff263eb6e4b0b691b7df8444c6c27e228c4980967cca2d35177b",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_mount_base.stl": "2a5472ca3536de8857c87e0c4521701c69463199a0cd4f617fe03087694f4691",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_mount_base.step": "3d3ce961f3904502293c02c9a0a152b1f0fc4d61b6e93baea6034904f0db60d8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_roll_bracket.stl": "ac679375ddf4515c8e7ed33620cac2618ec1779e772599f87354f2f4a660beff",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_roll_bracket.step": "22760f1458471f9436f0a6c889e968a95e15ae41cbf4d5a59d6ee4b5517842ab",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_sensor_tray.stl": "2960696b63d241587497f520d17f6afa8e36bff1f089cc8a38425e6daf728289",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/optical_sensor_tray.step": "dbf075bd941bb7b948dbb8ff6ddd324cb5ba4f9a9eabe21d7d5a48e11697e1a6",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/rail_fit_sample.stl": "1695e6aae8b581d99f16698d795905b6bace6430da482d0725f20f3f0c46b7fb",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/rail_fit_sample.step": "2ac27da4fbd21c0b90deaa3060720af596dca02a013ce45ca089906e2231509d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/shoe_fit_sample.stl": "b73f73a9a208687ea23632412bad9fc376d38773b7304ed9d4193169d95cb662",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/shoe_fit_sample.step": "382765282b1f8c4b7bf6be6dcd3cabf5e86bfa30aae4662ea2d8cae182480cb8",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/bearing_seat_fit_sample.stl": "1a0211d2afdb2b4c7eda84eb7a78859b38f5e8d2d16ae12465e9898182814b88",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/bearing_seat_fit_sample.step": "21749b6cc57e62ef68809adf424b92f884e92aefc34faf15367574363ddf3e81",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_centering_jig.stl": "110659f052a4546e09957960b01ed9fc821e6538416ecb79f641fff3ad0fe088",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts/supplied_horn_centering_jig.step": "e98df84eb20c8a94647416c4866b5503c30280ead7d88d88bb16ceae4d26d1f5",
+        "/home/h/cad/airship-gondola-cad/build/gondola_preview.png": "0c21f4860654a98d27aaac6fefe6e655424345ed21db0e94aa4c56530ad498be",
+        "/home/h/cad/airship-gondola-cad/build/gondola_top.png": "71fdbaa31319b8f544c0f6cf0e4311e683e927b7360ff84c33861f26c7ef9b8e",
+        "/home/h/cad/airship-gondola-cad/build/gondola_rail.png": "2ce6b89fa25e2e6cc2af0e19e260d439d839a258b862655d0d07962d8dee69df",
+        "/home/h/cad/airship-gondola-cad/build/gondola_electronics.png": "13432fc34963bf56b38c26e3f959a17a801e9cf1ed8892a44ef34004ffbc73c9",
+        "/home/h/cad/airship-gondola-cad/build/gondola_wiring.png": "62f6d4f9bc0b6a72ffee74e3f38cae70079764feae6524e91e7ba813af6bdc1a",
+        "/home/h/cad/airship-gondola-cad/build/gondola_optical_stack.png": "82cc884311c362c6617b6f131892e254c8946146fc5a8a37b0166cd9fe20b05d",
+        "/home/h/cad/airship-gondola-cad/build/gondola_optical_fc_stack.png": "675a1b5ef9c58f318cc6fb80924587a9bbc5b416eb3b6a8b3ed7a89d88685969",
+        "/home/h/cad/airship-gondola-cad/build/gondola_propulsion.png": "f4016b5912a9cd21e6de55486e0735bacb7f1ed1ce4dbf0549e91e55062f0bfa",
+        "/home/h/cad/airship-gondola-cad/build/gondola_printed_structure.png": "4a3d2927becc4d3ba5a49560b378dbb9b35a16b209e6addaed13ad065c3a05a0",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_detail.png": "c848af138a354a0cd8522639b1d18861e5f529528d3ba8b008e2c7946e0d8175",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_section.png": "b4f348fb188f04e15437159ba2bae55517ac3335d74e9f67e830497cd920b705",
+        "/home/h/cad/airship-gondola-cad/build/gondola_attachment_opposite.png": "026f0e2bcd21d8f4f474999b5d9fcb68fcba18b6324e05957e8a379a16735c79",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts.png": "fe3db5bd8494f0b5e66f37d8d44cd533d75599da22b852eb7ee256ce8b570765",
+        "/tmp/aq-old-ap.FCStd": "b36eb0b454b7c57c285d2cc8c3fcd77874b18015b0348432147df159eeaafb74",
+        "/tmp/aq-transition-audit.json": "1847f478d6155212584d72388a510638170c43ff8526f0cc1392f6d11c528a32",
+        "/home/h/cad/airship-gondola-cad/build/gondola_print_parts.zip": "a68d9d5594a15a5edffdf2717bac9b2b57525472011c121349ecdacce5ed0d74"
+      }
+    }
+  },
+  "physical_limits": [
+    "Official source conflict does not establish2S incompatibility or2S compatibility for the received board. Preserve both claims until manufacturer/revision confirmation.",
+    "Nominal CAD fit does not qualify dampers, actual PCB bearing plane, fastener lengths, plugged cables, ventilation, current capacity or installed AM32 configuration."
+  ],
+  "visual_review": {
+    "gondola_electronics.png": {
+      "passed": true,
+      "sha256": "13432fc34963bf56b38c26e3f959a17a801e9cf1ed8892a44ef34004ffbc73c9"
+    },
+    "gondola_wiring.png": {
+      "passed": true,
+      "sha256": "62f6d4f9bc0b6a72ffee74e3f38cae70079764feae6524e91e7ba813af6bdc1a"
+    }
+  },
+  "visual_review_scope": "Published board envelope and existing open support/underbody reservations retained; images do not certify plugged hardware or an installed wire route."
+}

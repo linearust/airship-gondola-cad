@@ -4,16 +4,68 @@ Hole coordinates use the centre of each published mounting pattern/plan envelope
 No PCB bearing plane, screw length or damper compression is inferred from photos.
 """
 
+from copy import deepcopy
+
 from .drive import GEARS
 from .optical_sensors import SENSOR_PROFILES
 
-FC_SOURCE = "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-35a-manual"
-FC_DIMENSION_SOURCE = "https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec5.webp"
-FC_PACKAGE_SOURCE = "https://store.micoair.com/wp-content/uploads/2026/05/MicoAir743v2-AIO-35A_spec6.webp"
+FC_MODEL = "MicoAir743v2-AIO-45A"
+FC_LISTED_MASS_G = 10.0
+FC_ESC_FIRMWARE = "AM32"
+FC_SOURCE = "https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual"
+FC_PRODUCT_SOURCE = "https://micoair.com/flightcontroller_micoair743v2_aio_45a/"
+FC_SPECIFICATION_SOURCE = "https://store.micoair.com/wp-content/uploads/2025/03/H743V2-AIO_Specifications.webp"
+FC_PACKAGE_SOURCE = (
+    "https://store.micoair.com/wp-content/uploads/2025/03/H743V2-AIO_Package.webp"
+)
 FC_SIZE_MM = (36.0, 36.0, 8.0)
 FC_HOLE_PITCH = 25.5
 FC_HOLE_DIAMETER = 3.0
-FC_HOLE_CENTRES = tuple((x, y) for x in (-12.75, 12.75) for y in (-12.75, 12.75))
+FC_HOLE_CENTRES = tuple(
+    (x_sign * FC_HOLE_PITCH / 2, y_sign * FC_HOLE_PITCH / 2)
+    for x_sign in (-1, 1)
+    for y_sign in (-1, 1)
+)
+FC_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/67d99cd088539-3afa75c002-90182857a6.webp"
+FC_ELECTRICAL_EVIDENCE = {
+    "esc_firmware": FC_ESC_FIRMWARE,
+    "advertised_current_per_channel_a": 45,
+    "esc_channels": 4,
+    "bec_outputs": [
+        {"voltage_v": 5, "current_a": 2},
+        {"voltage_v": 12, "current_a": 2},
+    ],
+    "input_claims": {
+        "manual_text": {"cells": [3, 6], "voltage_v": [10, 27], "source": FC_SOURCE},
+        "port_diagram": {
+            "cells": [2, 6],
+            "voltage_v": [5.6, 27],
+            "source": FC_PORT_IMAGE,
+        },
+        "specification_image": {"cells": [2, 6], "source": FC_SPECIFICATION_SOURCE},
+    },
+    "compatibility_status": "unresolved_official_source_conflict",
+    "scope": "Official 45A text and AM32-labeled port diagram disagree on minimum battery voltage. Keep both claims; neither CAD fit nor the selected product title resolves the actual revision's 2S support. Current ratings are catalog values, not this assembly's tested current or shared BEC headroom. AM32 replaces the prior Bluejay selection; verify actual firmware, motor direction, DShot and any reversible-output settings independently.",
+}
+
+
+def flight_controller_contract():
+    """One selected board shared by native identity, inventory and verification."""
+    return {
+        "model": FC_MODEL,
+        "listed_mass_g": FC_LISTED_MASS_G,
+        "size_mm": FC_SIZE_MM,
+        "hole_pitch_mm": FC_HOLE_PITCH,
+        "hole_diameter_mm": FC_HOLE_DIAMETER,
+        "sources": [
+            FC_SOURCE,
+            FC_PRODUCT_SOURCE,
+            FC_SPECIFICATION_SOURCE,
+            FC_PORT_IMAGE,
+        ],
+        "electrical": deepcopy(FC_ELECTRICAL_EVIDENCE),
+    }
+
 
 PAS_SOURCE = (
     "https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf"
@@ -41,7 +93,6 @@ XT30U_MALE_DRAWING = (
 XT30U_MATED_DRAWING = (
     "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638924618397.png"
 )
-FC_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/09/micoair743-aio-35a-1-01-1-df3dbd14ac.webp"
 LR_PORT_IMAGE = "https://micoair.cn/api/media/file/docs/2026/07/669f74a433137-ed5c3462e6-6d69324222.webp"
 SERVO_SOURCE = "https://kstservos.com/products/x06-v6-0-hv-micro-digital-metal-gear-glider-1-8kg-torque-servo-motor"
 X06_MANUFACTURER_SOURCE = "https://www.kstsz.com/kstsz_Product_2063755473.html"
@@ -242,7 +293,7 @@ CONNECTOR_EVIDENCE = {
 DEVICE_CONNECTOR_EVIDENCE = {
     "FC": {
         "sources": [FC_SOURCE, FC_PORT_IMAGE],
-        "retained_evidence": ["references/micoair743v2_aio35a_ports.webp"],
+        "retained_evidence": ["references/micoair743v2_aio45a_ports.webp"],
         "documented_types": ["SH1.0-6P", "SH1.0-4P", "USB Type-C"],
         "catalog_references": ["JST_SH_6P", "JST_SH_4P"],
         "documented_interfaces": "Three SH1.0-6P connectors: UART3/I2C, UART1/UART6, and DJI O3/O4. One SH1.0-4P connector: UART4. USB Type-C and additional solder pads are identified.",
@@ -326,8 +377,13 @@ DEVICE_CONNECTOR_EVIDENCE = {
 
 MOUNTING_EVIDENCE = {
     "FC": {
-        "sources": [FC_SOURCE, FC_DIMENSION_SOURCE, FC_PACKAGE_SOURCE],
-        "verified": "25.5 x 25.5 mm hole pattern, diameter 3 mm; 45 degree installation; four included M2 x 7.5 mm silicone dampening sleeves.",
+        "sources": [FC_SOURCE, FC_SPECIFICATION_SOURCE, FC_PACKAGE_SOURCE],
+        "retained_evidence": [
+            "references/micoair743v2_aio45a_specifications.webp",
+            "references/micoair743v2_aio45a_package.webp",
+            "references/micoair743v2_aio45a_orientation.webp",
+        ],
+        "verified": f"{FC_HOLE_PITCH:g} x {FC_HOLE_PITCH:g} mm hole pattern, diameter {FC_HOLE_DIAMETER:g} mm; 45 degree installation; 45A package lists four M2 x 6.6 mm silicone dampening sleeves.",
         "unknown": "PCB thickness and bearing-plane elevation; sleeve outside/groove dimensions, compressed height and actual screw length. The 8 mm overall envelope does not define those interfaces.",
         "installation": "Use the purchased insulating dampers. Keep both sides and ESC MOS regions ventilated; do not cover them with foam, adhesive or wiring.",
     },
