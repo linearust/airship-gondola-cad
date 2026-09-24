@@ -38,7 +38,8 @@ preparation, balance and moving-wire behaviour require physical inspection and t
   continuous bearing-post roots and short-arm L-key access. Keep wiring
   outside those roots; do not restore long tool tunnels through them.
   `references/shape_simplification_review.md` describes the optical portal,
-  open paired-servo support, straight P-AS arm and current adapter boundaries.
+  open paired-servo support, shared FC/P-AS/LR support paths and current
+  adapter boundaries.
   Preserve their locating faces, load paths and functional service openings.
   The optical connecting post stays in the pitch-ear plane and above the roll nut's
   rotation envelope; do not widen it into either fastener.

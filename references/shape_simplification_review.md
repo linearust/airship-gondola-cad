@@ -1,4 +1,4 @@
-# Printed shape and support review — AM
+# Printed shape and support review — AO
 
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
@@ -130,14 +130,35 @@ nominal CAD example do not establish concentricity or loaded retention for the
 unmeasured supplied horn. Other prepared hole locations require renewed
 clearance and tool/removal-path checks.
 
-## Straight P-AS support
+## Shared equipment support
 
-One straight 5 by 2 mm arm now runs from the central rail shoe at (0, -9.3)
-to the existing P-AS holes at (42.5, -9.3) and (65.5, -9.3) mm in the mount
-frame. It replaces the former diagonal branch from the FC support. All device
-hole centres, support heights and wire reservations remain unchanged. This
-simplifies the load path and outline; actual loaded deflection remains
-unmeasured.
+The electronics carrier uses two straight, continuous 5 by 2 mm members.
+The X member supports the FC mounting pads and extends through both P-AS
+mounting pads; the Y member supports the other FC pads and the LR900-A adhesive
+deck. This removes the P-AS arm that previously ran parallel to the FC arm at
+Y=-9.3 mm. The small round ends of separate collinear arm primitives are also
+unnecessary in the generator; each shared member is built once.
+
+The P-AS centre moves from (54, 0) to (54, 9.3) mm in the electronics carrier
+frame so its published off-centre hole row lies on Y=0. The complete device
+and its connector reservation move together. Its two holes remain 23 mm apart
+at X=42.5 and X=65.5; device orientation, support elevation and 6.5 mm mounting
+pads are retained. The FC axes and LR900-A location do not change. Do not
+move P-AS closer to the FC: its current X position preserves the existing
+connector-handling allowance.
+
+The provisional capacitor reservation moves from (40, 22) to (42, 34) mm,
+retaining its diameter 10 mm, height 16 mm and Z elevation. Simply moving it
+to (40, 32) would clear installed parts but obstruct optical foot-nut removal.
+The selected location also preserves the checked tool and tower-removal paths.
+This is reserved space, not a new capacitor mount or verified antenna/lead
+installation.
+
+The optical diagonal supports carry the transferable tower independently of
+the FC dampers and do not duplicate either equipment member. Keep their broad
+seats and the battery's continuous adhesive contact area. The shared spine
+removes a redundant branch without thinner walls, a new joint or more
+fasteners. Actual loaded deflection and mounting-stack fit remain unmeasured.
 
 ## Other reviewed features
 
@@ -150,5 +171,5 @@ would obstruct assembly or remove retention, rather than simplify an equivalent
 assembly.
 
 The continuous bearing-post roots and solid rail clamping head from AH remain.
-Device supports retain verified mounting axes and the existing connector
-reservations. No new fastener family or printed separation is introduced.
+Device supports retain verified device-local hole patterns and full connector
+access allowances. No new fastener family or printed separation is introduced.

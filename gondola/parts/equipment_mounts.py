@@ -29,12 +29,18 @@ FC_HOLE_CENTRES = (
     (0.0, FC_AXIS_OFFSET),
     (FC_AXIS_OFFSET, 0.0),
 )
-PAS_CENTRE_XY = (54.0, 0.0)
+# Align the published off-centre hole row with the FC's X support. Moving the
+# complete device preserves its own hole/connector frame while removing a
+# second parallel printed arm.
+PAS_CENTRE_XY = (54.0, -interfaces.PAS_HOLE_CENTRES[0][1])
 PAS_HOLE_CENTRES = tuple(
     (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
-PAS_ARM_ROOT_XY = (0.0, PAS_HOLE_CENTRES[0][1])
 LR_CENTRE_XY = (0.0, 47.0)
+ELECTRONICS_SUPPORT_SPINES = (
+    (FC_HOLE_CENTRES[0], PAS_HOLE_CENTRES[-1]),
+    (FC_HOLE_CENTRES[1], LR_CENTRE_XY),
+)
 LR_ADHESIVE_SIZE = (26.0, 10.0)
 BATTERY_DECK_SIZE = (16.0, 52.0)
 BATTERY_PLACEMENT_CONTRACT = {
@@ -104,12 +110,8 @@ def mount_shape(kind):
         holes = ()
     elif kind == "electronics":
         pieces = [_deck((rail.SHOE_LENGTH, rail.SHOE_WIDTH), (0.0, 0.0))]
-        pieces += [_arm((0.0, 0.0), centre) for centre in FC_HOLE_CENTRES]
-        pieces += [
-            _arm((0.0, FC_AXIS_OFFSET), LR_CENTRE_XY),
-            _arm(PAS_ARM_ROOT_XY, PAS_HOLE_CENTRES[-1]),
-            _deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY),
-        ]
+        pieces += [_arm(start, end) for start, end in ELECTRONICS_SUPPORT_SPINES]
+        pieces.append(_deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY))
         holes = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
         pieces += [
             Part.makeCylinder(
@@ -151,8 +153,13 @@ def mount_contract(kind):
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
         "arm_width_mm": ARM_WIDTH,
-        "pas_straight_support_endpoints_xy_mm": (
-            [PAS_ARM_ROOT_XY, PAS_HOLE_CENTRES[-1]] if kind == "electronics" else []
+        "shared_support_spines_xy_mm": (
+            ELECTRONICS_SUPPORT_SPINES if kind == "electronics" else []
+        ),
+        "support_path_scope": (
+            "Two continuous orthogonal members share the FC mounting-pad paths with P-AS on X and LR900-A on Y. P-AS is translated as a complete device to align its published off-centre hole row; no new device hole or printed fastening interface is introduced."
+            if kind == "electronics"
+            else "Continuous adhesive deck and integral rail shoe; the optical tower uses its separate structural anchors."
         ),
         "continuous_adhesive_pads": (
             [
@@ -186,7 +193,7 @@ def build_mount(doc, parent, kind):
     notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
         f"Continuous 16 x 52 x 2 mm battery adhesive deck with two integral structural stack clamp tabs at {STACK_ANCHOR_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
         if kind == "battery"
-        else "Six confirmed device XY mounting axes on 6.5 mm pads, 2.6 mm M2 clearance holes and 5 mm connecting arms. One straight 5 by 2 mm arm joins the common rail shoe directly to both P-AS mounting pads without a diagonal elbow; device axes and support height remain unchanged. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+        else "Six confirmed device XY mounting axes on 6.5 mm pads and 2.6 mm M2 clearance holes. Two straight 5 by 2 mm members share the FC supports with P-AS on X and LR900-A on Y. The complete P-AS device is translated to align its original hole row with the FC support; hole pitch, device orientation and support height are preserved. One continuous insulating-adhesive pad for LR900-A; optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
     )
     obj = create_printed_part(
         doc,

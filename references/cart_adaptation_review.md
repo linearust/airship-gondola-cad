@@ -1,9 +1,10 @@
 # Selected cart and preparation work
 
 This records the user's selected parts and preparation decisions, not seller
-certification or a shopping list. AN retains the physical part interfaces
-introduced in AM and changes their rail layout and wire reservations; see
-`layout_and_wiring_review.md`. Use exports and inspection material matching the
+certification or a shopping list. The selected purchased interfaces are retained
+through the rail layout and shared equipment-support changes; see
+`layout_and_wiring_review.md` and `shape_simplification_review.md`.
+Use exports and inspection material matching the
 current saved CAD and source. This does not qualify the received parts or prepared horn.
 Current installed quantities belong to `gondola/contracts/design.py` and the matching
 generated BOM, not the cart pack counts.

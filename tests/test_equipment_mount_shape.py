@@ -1,4 +1,4 @@
-"""Load-path geometry of the straight P-AS support without relocated device axes."""
+"""Shared FC/P-AS support and consistent native equipment mounting axes."""
 
 import unittest
 
@@ -11,22 +11,24 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentMountShapeTests(unittest.TestCase):
-    def test_one_straight_full_thickness_member_reaches_both_pas_holes(self):
+    def test_common_x_spine_reaches_fc_and_pas_pads_without_a_second_branch(self):
         from gondola.parts import equipment_mounts as mounts
 
         shape = mounts.mount_shape("electronics")
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
-        x0, y = mounts.PAS_ARM_ROOT_XY
-        self.assertEqual(x0, 0)
-        self.assertEqual({centre[1] for centre in mounts.PAS_HOLE_CENTRES}, {y})
+        start, end = mounts.ELECTRONICS_SUPPORT_SPINES[0]
+        self.assertEqual(start, mounts.FC_HOLE_CENTRES[0])
+        self.assertEqual(end, mounts.PAS_HOLE_CENTRES[-1])
+        self.assertEqual(start[1], 0)
+        self.assertEqual({centre[1] for centre in mounts.PAS_HOLE_CENTRES}, {0})
         strip = Part.makeBox(
-            mounts.PAS_HOLE_CENTRES[-1][0] - x0,
+            end[0] - start[0],
             mounts.ARM_WIDTH,
             mounts.DECK_THICKNESS,
-            App.Vector(x0, y - mounts.ARM_WIDTH / 2, mounts.DECK_BOTTOM_Z),
+            App.Vector(start[0], -mounts.ARM_WIDTH / 2, mounts.DECK_BOTTOM_Z),
         )
-        for x, hole_y in mounts.PAS_HOLE_CENTRES:
+        for x, hole_y in mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES:
             strip = strip.cut(
                 Part.makeCylinder(
                     mounts.MOUNT_HOLE_DIAMETER / 2,
@@ -36,17 +38,47 @@ class EquipmentMountShapeTests(unittest.TestCase):
             )
         self.assertLess(abs(strip.cut(shape).Volume), 1e-6)
 
-    def test_former_diagonal_elbow_is_open_below_the_fc_edge(self):
+    def test_former_offset_pas_branch_is_absent(self):
         from gondola.parts import equipment_mounts as mounts
 
-        # This rectangle lies between the unchanged FC arm and straight P-AS
-        # arm. The former diagonal connection crossed it; an extra diagonal
-        # would preserve an unnecessary branch even if a straight arm existed.
+        # Outside the shoe and optical tabs, the former Y=-9.3 member ran
+        # through this complete 5 mm band. Keeping it would duplicate the
+        # shared X spine even if all mounting holes were correctly relocated.
         clear = Part.makeBox(
-            6, 2, mounts.DECK_THICKNESS, App.Vector(26, -4, mounts.DECK_BOTTOM_Z)
+            12, 5, mounts.DECK_THICKNESS, App.Vector(26, -11.8, mounts.DECK_BOTTOM_Z)
         )
         shape = mounts.mount_shape("electronics")
         self.assertLess(abs(shape.common(clear).Volume), 1e-6)
+
+    def test_shared_spine_preserves_full_profile_and_published_pas_pattern(self):
+        from gondola.contracts import equipment_interfaces as interfaces
+        from gondola.parts import equipment_mounts as mounts
+
+        shape = mounts.mount_shape("electronics")
+        section = shape.common(
+            Part.makeBox(
+                1,
+                10,
+                4,
+                App.Vector(29.5, -5, mounts.DECK_BOTTOM_Z - 1),
+            )
+        )
+        self.assertAlmostEqual(section.Volume, 10, places=6)
+        self.assertAlmostEqual(section.BoundBox.YLength, 5, places=6)
+        self.assertAlmostEqual(section.BoundBox.ZLength, 2, places=6)
+        self.assertAlmostEqual(section.BoundBox.Center.y, 0, places=6)
+        self.assertAlmostEqual(section.BoundBox.ZMin, mounts.DECK_BOTTOM_Z, places=6)
+        self.assertEqual(
+            tuple(
+                (x - mounts.PAS_CENTRE_XY[0], y - mounts.PAS_CENTRE_XY[1])
+                for x, y in mounts.PAS_HOLE_CENTRES
+            ),
+            interfaces.PAS_HOLE_CENTRES,
+        )
+        self.assertEqual(
+            mounts.PAS_HOLE_CENTRES[1][0] - mounts.PAS_HOLE_CENTRES[0][0],
+            interfaces.PAS_HOLE_PITCH,
+        )
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
@@ -55,6 +87,7 @@ class FCInstallationTests(unittest.TestCase):
         from gondola.cad import create_group
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts.equipment_envelopes import build_equipment
+        from gondola.parts.equipment_mounts import build_mount
 
         self.doc = App.newDocument("FCInstallationRegression")
         self.addCleanup(App.closeDocument, self.doc.Name)
@@ -66,12 +99,39 @@ class FCInstallationTests(unittest.TestCase):
                 App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
             )
             groups[station.object_name] = group
+        build_mount(self.doc, groups["ElectronicsEquipmentModule"], "electronics")
         build_equipment(
             self.doc,
             groups["BatteryEquipmentModule"],
             groups["ElectronicsEquipmentModule"],
         )
         self.doc.recompute()
+
+    def test_native_hole_axis_metadata_follows_shared_support(self):
+        from gondola.contracts import equipment_interfaces as interfaces
+        from gondola.parts import equipment_mounts as mounts
+
+        centres = mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES
+        self.assertEqual(
+            [
+                (point.x, point.y, point.z)
+                for point in self.doc.ElectronicsMount.MountHoleCentres
+            ],
+            [(x, y, mounts.DECK_BOTTOM_Z) for x, y in centres],
+        )
+        for name, expected in (
+            ("ModuleFCEnvelope", mounts.FC_HOLE_CENTRES),
+            (
+                "ModulePASEnvelope",
+                tuple((54 + x, y + 9.3) for x, y in interfaces.PAS_HOLE_CENTRES),
+            ),
+        ):
+            with self.subTest(device=name):
+                obj = self.doc.getObject(name)
+                self.assertEqual(
+                    [(point.x, point.y, point.z) for point in obj.VerifiedHoleAxesXY],
+                    [(x, y, 0) for x, y in expected],
+                )
 
     def test_native_board_pose_preserves_heading_after_carrier_turn(self):
         from gondola.validation.equipment import fc_installation_check

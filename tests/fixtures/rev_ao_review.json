@@ -1,0 +1,460 @@
+{
+  "revision": "AO",
+  "reviewed_on": "2026-09-24",
+  "previous_commit": "8feb00613465f48c503d4abc397f87070237f275",
+  "scope": "Consolidate redundant equipment support paths while retaining device-local purchased interfaces, the three rail groups, both optical hosts and the intentionally removable servo module. Geometric fit-prototype review, not physical stiffness or flight qualification.",
+  "source_fingerprint": "984da95d141781bf2d4965eeed18fc7f38ecf7e1fd5ffad3362e088495312a3d",
+  "previous_source_fingerprint": "cd64cf98c7fa466c7a4b3194a192f917a09336c2b8e571e67a80bd5dde4922c1",
+  "previous_release_cad_sha256": "cf21f6c0ff938a3ef355b171227da03651fccd70153637b304a8f683e9068946",
+  "previous_fixture_sha256": "ecb4b5c20c7a0414dd97756ef81bb18abcc4ece925a443d475ad3395dd3522ea",
+  "approved_fixture_file": "tests/fixtures/rev_ao_geometry.FCStd",
+  "approved_fixture_sha256": "bf3c09fb8deb869ea6d0e0a3d06a320ffa5ffa7552aab9132e2eb267e14dea51",
+  "intentional_changes": [
+    "Replace the separate parallel P-AS arm and collinear arm primitives with two continuous orthogonal 5 by 2 mm support spines. The X spine joins the FC and both P-AS mounting pads; the Y spine joins the other FC pads and LR900-A adhesive deck.",
+    "Translate the complete P-AS envelope and connector reservation by +9.3 mm in electronics-local Y. Its source-local off-centre hole row stays at -9.3 mm; carrier holes become (42.5,0) and (65.5,0). Preserve 23 mm pitch, original orientation, elevation, pad and hole sizes. Keep X54 to preserve FC connector handling space.",
+    "Move the provisional capacitor reservation centre from (40,22) to (42,34), retaining diameter10, height16 and bottom Z13.2. A nearer candidate at (40,32) obstructed optical foot-nut extraction and was rejected. No capacitor mount or qualified capacitor/antenna/wire installation is introduced.",
+    "Keep FC and LR poses, rail shoes, optical seats, module stations, all purchased parts, fastener counts and servo/output module separation unchanged. Optical diagonal supports and battery adhesive contact serve separate functions and are retained.",
+    "Update native mounting metadata and add focused regressions for the complete shared member, removal of the old offset branch, unchanged section/published hole pattern and correct native hole axes. Add an actual shared-spine thickness probe to manufacturing review."
+  ],
+  "pre_promotion_transition_audit": {
+    "passed": true,
+    "source_fingerprint": "17d8a68370e224cdd4377fbc487a047d8c4c74a6fcda57e4f6cdba5f52e78aad",
+    "object_count_before": 291,
+    "object_count_after": 291,
+    "shape_count_before": 118,
+    "shape_count_after": 118,
+    "objects_added": [],
+    "objects_removed": [],
+    "structure_changes": [],
+    "registry_equal": true,
+    "expressions_equal": true,
+    "native_controls_equal": true,
+    "local_placement_changes": [],
+    "unexpected_local_placement_changes": [],
+    "exact_reviewed_translations": [
+      {
+        "object": "CapacitorServiceReserve",
+        "translation_in_electronics_frame_mm": [
+          2.0,
+          12.0,
+          0.0
+        ],
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 7.105427357601002e-15,
+        "volume_difference_mm3": 2.2737367544323206e-13,
+        "closed_solid_identity_by_empty_cuts": false,
+        "passed": true
+      },
+      {
+        "object": "ModulePASEnvelope",
+        "translation_in_electronics_frame_mm": [
+          0,
+          9.3,
+          0
+        ],
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 3.552713678800501e-15,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false,
+        "passed": true
+      },
+      {
+        "object": "PASConnectorReserve",
+        "translation_in_electronics_frame_mm": [
+          0,
+          9.3,
+          0
+        ],
+        "difference_mm3": 0.0,
+        "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+        "bounds_difference_mm": 8.881784197001252e-16,
+        "volume_difference_mm3": 0.0,
+        "closed_solid_identity_by_empty_cuts": false,
+        "passed": true
+      }
+    ],
+    "all_other_shapes_unchanged": true,
+    "purchased_hardware_geometry_unchanged": true,
+    "purchased_hardware_count": 62,
+    "printed_and_coupon_count": 16,
+    "print_blank_and_orientation_preserved": true,
+    "changed_printed_shapes": [
+      "ElectronicsMount"
+    ],
+    "mount_statistics": {
+      "before": {
+        "volume_mm3": 5376.3859657001785,
+        "surface_area_mm2": 5712.7081685988305,
+        "faces": 95,
+        "edges": 273,
+        "vertices": 182,
+        "valid_single_solid": true,
+        "bounds_xyz_mm": [
+          -32.485281374238554,
+          68.75,
+          -32.48528137423859,
+          52.0,
+          2.2,
+          12.2
+        ]
+      },
+      "after": {
+        "volume_mm3": 5246.750387312998,
+        "surface_area_mm2": 5537.231801217856,
+        "faces": 96,
+        "edges": 274,
+        "vertices": 182,
+        "valid_single_solid": true,
+        "bounds_xyz_mm": [
+          -32.485281374238554,
+          68.75,
+          -32.48528137423859,
+          52.0,
+          2.2,
+          12.200000000000003
+        ]
+      },
+      "removed_material_mm3": 600.1250757220047,
+      "added_material_mm3": 470.4894973348089,
+      "net_saved_material_mm3": 129.63557838718043
+    },
+    "protected_interfaces": [
+      {
+        "feature": "FC pad and bore 1",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "bounds_difference_mm": 3.552713678800501e-15,
+          "volume_difference_mm3": 5.684341886080802e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "passed": true
+        },
+        "complete_annulus_missing_before_mm3": 0.0,
+        "complete_annulus_missing_after_mm3": 0.0,
+        "bore_obstruction_before_mm3": 0.0,
+        "bore_obstruction_after_mm3": 0.0,
+        "passed": true
+      },
+      {
+        "feature": "FC pad and bore 2",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "bounds_difference_mm": 3.552713678800501e-15,
+          "volume_difference_mm3": 6.394884621840902e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "passed": true
+        },
+        "complete_annulus_missing_before_mm3": 0.0,
+        "complete_annulus_missing_after_mm3": 0.0,
+        "bore_obstruction_before_mm3": 0.0,
+        "bore_obstruction_after_mm3": 0.0,
+        "passed": true
+      },
+      {
+        "feature": "FC pad and bore 3",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "bounds_difference_mm": 3.552713678800501e-15,
+          "volume_difference_mm3": 9.947598300641403e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "passed": true
+        },
+        "complete_annulus_missing_before_mm3": 0.0,
+        "complete_annulus_missing_after_mm3": 0.0,
+        "bore_obstruction_before_mm3": 0.0,
+        "bore_obstruction_after_mm3": 0.0,
+        "passed": true
+      },
+      {
+        "feature": "FC pad and bore 4",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "BRep symmetric difference",
+          "bounds_difference_mm": 3.552713678800501e-15,
+          "volume_difference_mm3": 8.526512829121202e-14,
+          "closed_solid_identity_by_empty_cuts": true,
+          "passed": true
+        },
+        "complete_annulus_missing_before_mm3": 0.0,
+        "complete_annulus_missing_after_mm3": 0.0,
+        "bore_obstruction_before_mm3": 0.0,
+        "bore_obstruction_after_mm3": 0.0,
+        "passed": true
+      },
+      {
+        "feature": "complete rail-shoe bounding region",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "BRep symmetric difference",
+          "bounds_difference_mm": 0.0,
+          "volume_difference_mm3": 9.094947017729282e-13,
+          "closed_solid_identity_by_empty_cuts": true,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "feature": "complete optical host seat 1",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "bounds_difference_mm": 0.0,
+          "volume_difference_mm3": 3.979039320256561e-13,
+          "closed_solid_identity_by_empty_cuts": false,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "feature": "complete optical host seat 2",
+        "comparison": {
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "bounds_difference_mm": 0.0,
+          "volume_difference_mm3": 3.694822225952521e-13,
+          "closed_solid_identity_by_empty_cuts": false,
+          "passed": true
+        },
+        "passed": true
+      }
+    ],
+    "native_vector_changes": [
+      {
+        "path": "/ElectronicsMount/MountHoleCentres/4/1",
+        "before": -9.3,
+        "after": 0.0,
+        "kind": "changed"
+      },
+      {
+        "path": "/ElectronicsMount/MountHoleCentres/5/1",
+        "before": -9.3,
+        "after": 0.0,
+        "kind": "changed"
+      },
+      {
+        "path": "/ModulePASEnvelope/VerifiedHoleAxesXY/0/1",
+        "before": -9.3,
+        "after": 0.0,
+        "kind": "changed"
+      },
+      {
+        "path": "/ModulePASEnvelope/VerifiedHoleAxesXY/1/1",
+        "before": -9.3,
+        "after": 0.0,
+        "kind": "changed"
+      }
+    ],
+    "native_vectors_match_reviewed_translation": true,
+    "unexpected_scalar_changes": [],
+    "unexpected_interface_metadata_changes": [],
+    "prepreview_visibility_changes_deferred": 170,
+    "display_scope": "Headless candidate false-to-true visibility defaults only are deferred to final preview. Final saved display and artifact identity must be checked separately; no GUI/display qualification here.",
+    "files_unchanged": true,
+    "source_unchanged": true,
+    "pinned_fixture_unchanged": true,
+    "audit_sha256": "d72069d5d43d6e7c96db3fb1c66a0a106d399b3f4bc1456c311475257a628878",
+    "native_control_count": 29,
+    "mount_volume_reduction_percent": 2.4112029756460704
+  },
+  "candidate_equipment_review": {
+    "passed": true,
+    "source_fingerprint": "17d8a68370e224cdd4377fbc487a047d8c4c74a6fcda57e4f6cdba5f52e78aad",
+    "cad_sha256": "bf3c09fb8deb869ea6d0e0a3d06a320ffa5ffa7552aab9132e2eb267e14dea51",
+    "report_sha256": "6f864d9fc4da12915bce5726f4e72a1716c47e91a7f2439a2eeee8953cea3f39",
+    "scope": "Saved candidate mounting pads, underbody access, device service, connector/reserve pairs and both optical hosts with sampled attitudes, continuous field/registration bounds and tower hardware/tool/removal checks.",
+    "source_and_cad_unchanged": true
+  },
+  "capacitor_candidate_review": {
+    "selected_centre_in_electronics_frame_mm": [
+      42,
+      34
+    ],
+    "minimum_selected_pas_body_gap_mm": 3.7,
+    "selected_optical_hardware_service_passed": true,
+    "candidate_audit_sha256": "38e1051a0ff110181714112d80227973eb4063e56e86a1d773998b79c65c17e6",
+    "service_audit_sha256": "cddf01cada3a2b809dfd7812fba47ecd85b3a3b9165eb7e1f9fc0f247f2741f6",
+    "scope": "Read-only in-memory candidates, before release. Final full assembly/equipment validation must independently confirm the selected saved geometry."
+  },
+  "release_checks": {
+    "status": "PASS: frozen native CAD, full regressions, exports and derivative review; geometric fit prototype only",
+    "production_released": false,
+    "static_checks": {
+      "ruff_version": "0.16.8",
+      "ruff_check": "passed",
+      "ruff_format": "passed (97 files)",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    },
+    "tests": {
+      "focused_native": {
+        "count": 9,
+        "passed": true,
+        "skipped": 0
+      },
+      "offline": {
+        "count": 364,
+        "seconds": 0.267,
+        "passed": true,
+        "skipped": 274,
+        "scope": "90 pure Python cases; FreeCAD cases run separately in the native suite."
+      },
+      "native_full_run": {
+        "count": 364,
+        "seconds": 612.593,
+        "skipped": 0,
+        "errors": 0,
+        "failures": 0,
+        "passed": true,
+        "exit_code": 0,
+        "log_sha256": "4387efa37b6bb92a681db1e14485137ad9370540f2dcb42ec800c7b98b2a1b23"
+      }
+    },
+    "visual_review": {
+      "gondola_electronics.png": {
+        "passed": true,
+        "sha256": "bc4bcaa91d41fc10b96188f4fc862301a385faa28c226a7cbc6cbf4ecd01c7ed"
+      },
+      "gondola_print_parts.png": {
+        "passed": true,
+        "sha256": "9aba399df974a771a49da1ebfcba194caa7b338642d04156498d1cc3103e073f"
+      },
+      "gondola_wiring.png": {
+        "passed": true,
+        "sha256": "97ffd2b115f061d80a5f7904f8d1c83fd1f8dd9e0cfe300a66b6b6af86210f77"
+      },
+      "gondola_top.png": {
+        "passed": true,
+        "sha256": "aba6dd94aab132186395ca05421d073791c8351d6d50fe1aad4b42ea0fdd7dd2"
+      },
+      "gondola_optical_stack.png": {
+        "passed": true,
+        "sha256": "ef80d6d4e533d80c212114c52a1035000b40411bb8962e72a7f2337a581c6988"
+      },
+      "gondola_optical_fc_stack.png": {
+        "passed": true,
+        "sha256": "f95e43a0a5a3dbb2625f478ef522bc68819c6c3a4be28d83d855c5c81d115491"
+      }
+    },
+    "support_comparison": {
+      "scope": "Same-scale cross-sections through the actual old and approved-candidate ElectronicsMount at carrier Z11.2 mm. The generated contours do not depict equipment, the underlying rail channel or the complete 3D part.",
+      "visually_reviewed": true,
+      "artifact_sha256": {
+        "output/review/rev_AO/support_sections.json": "f09c1882811fbbacd390ac8676bdcf72d9252c3f91a6b3cf5ee4e6155a3fbe28",
+        "output/review/rev_AO/support_comparison.png": "49e02aefcb3df4e9b2c518c67da2a8179c9c1313bd20e17169d40902fe659b2d",
+        "output/review/rev_AO/support_comparison.svg": "46323d7ef784cd2d5753eccb9731c075c76647e709d26457f5bf04a0ee907572"
+      }
+    },
+    "native_cad_sha256": "76765e8628b319115525a82f7225064ad1cc76e2e01fe5d990f8e1e064f80af8",
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 11.914
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 202.398
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 643.778
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.338
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.144
+      }
+    ],
+    "final_integrity": {
+      "passed": true,
+      "checks_count": 86,
+      "report_sha256": "a5a6d3dadf2462ed370ab38b2339043327565f5a38d47e1755778cf240ef9f9a",
+      "scope": "Independent read-only final JSON, ZIP, native metadata and saved display audit. No geometry rebuild, full validation rerun or native save. Actual physical qualification remains pending.",
+      "artifact_sha256": {
+        "build/gondola.FCStd": "76765e8628b319115525a82f7225064ad1cc76e2e01fe5d990f8e1e064f80af8",
+        "tests/fixtures/rev_ao_geometry.FCStd": "bf3c09fb8deb869ea6d0e0a3d06a320ffa5ffa7552aab9132e2eb267e14dea51",
+        "build/gondola_metrics.json": "edf6479c2a213926a1b969ba2ed09aa194cfe7189c6137fd77dbbcca79813041",
+        "build/gondola_validation.json": "9fa362513a5fed24a74e0d346843553b19d22514475fc1bef21539beb929d7c1",
+        "build/gondola_equipment_validation.json": "d037246f8753b540bd4b030ba8ccc27cc32b0a6589496995dea9ff720555174e",
+        "build/gondola_propulsion_validation.json": "b0e488e6844fb79a7c48eec52a7c20a82ffc0c6c54bdc93228e175a41c62eb56",
+        "build/gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+        "build/gondola_baseline_validation.json": "78af78839cae6a63c722c172c76873bf155b9cc3f32d7c374f05f7dae8512025",
+        "build/preview_state.json": "661313808463950e5059f6b4c02cdd58c3b7d0a8b743e2a4d2d6b4a34294ccfe",
+        "build/gondola_print_parts/print_manifest.json": "f33eec48ce73b668dc0b9e9c9b36ae010ea62683438cb19a8cea1127739bb421",
+        "build/gondola_hardware_bom.json": "9b7a34af226e1d6b7719163a29c08e4d8d502e3c9dbc55d80a7fa1526193d4c4",
+        "build/gondola_print_parts.zip": "f7dd4248838fe8e40078034e95535c7d9b6eb71e7ae6939187e83a1c7e194f85"
+      }
+    },
+    "blender_review": {
+      "passed": true,
+      "report_sha256": "62434f6588b76f9defadefd6a573373098927fc147977cb50be094b789ca8f24",
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 138415,
+      "visibility_checks": 138415,
+      "discrepancy_count": 0,
+      "stills_visually_reviewed": 7,
+      "source_and_cad_unchanged": true,
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed.",
+      "planning_wire_scope": "Clearance reservations are excluded from Blender installed-part inventory. This derivative shows prescribed rigid CAD motion only. It does not model flexible wires, tie geometry or moving-harness behavior; the connected rear workspace-to-FC corridor remains static unqualified planning geometry in native CAD.",
+      "artifact_sha256": {
+        "build/blender_review/cad_review.blend": "19c3f753698dc203af265b34f33d413656fc03e2cac3f38b1c97e41450e5e17d",
+        "build/blender_review/cad_review.json": "7eee7a84fc50950490b010f83f09318b90d5ba0750680eb38d3bbad74647b538",
+        "build/blender_review/verification.json": "cc5c2ffaff5edfb7d6bc7cdf41248e81d50f6821edb753be059e6c1da9138eb9",
+        "build/blender_review/stills/01_Assembly.png": "001ddc5c7a74304afc469fc019105aa5ecc6bd513458285dcc008cccd00a567c",
+        "build/blender_review/stills/02_Independent_tilt.png": "3ced22a0fb60e602af5391b5a0e13dfcf63b3bb4993f26ef28004d311f94b68a",
+        "build/blender_review/stills/03_Gear_and_horn.png": "17de4a1ee391c515ab869d22c3579b7aa272db63b4c2d2038f001d12d39d27c2",
+        "build/blender_review/stills/04_Axial_allowance.png": "be8f49377c642c4658288e9aee27baccaecf9902387249907e54e85e65ce3b9b",
+        "build/blender_review/stills/05_Optical_on_Battery.png": "bbdb310ef06424d16c5f00552c3c4737d67a63fa96c6c0a05ce23f7e3f8701ee",
+        "build/blender_review/stills/06_Optical_on_FC.png": "77dd6448b36df4a70e8c0d31190cb057326c65079ccb38734a7d141f2fb195fb",
+        "build/blender_review/stills/07_Servo_module_removal.png": "023a2940330efa6e5774b4dc198e8ed65053a7940d2b787820fda514c402f649"
+      }
+    },
+    "inspection_packet": {
+      "passed": true,
+      "report_sha256": "5d1d59038345bdd4af838029c881451d88960565b46e4df5194a5a3fa6ddae31",
+      "pdf_pages": 35,
+      "criteria": 172,
+      "specimen_rows": 533,
+      "modified_criteria": [
+        "E003",
+        "E017",
+        "E038",
+        "E040",
+        "E041",
+        "E042",
+        "E051",
+        "L002",
+        "P011"
+      ],
+      "prior_an_artifacts_preserved": true,
+      "pdf_visual_qa": "All 35 PDF pages reviewed via complete contact sheets, with full-size views of the new carrier diagram and affected criteria. No clipping, overlap or layout defects observed.",
+      "workbook_visual_qa": "All three sheets and changed criterion requirements/notes reviewed; no clipping or overlap observed.",
+      "workbook_calculation_qa": "Blank, zero, text, inclusive limits, out-of-bounds, human judgment prerequisites and export/reimport checked. Test inputs restored. No formula errors.",
+      "native_features_and_input_restoration": "PASS",
+      "artifact_sha256": {
+        "output/pdf/gondola_inspection_AO.pdf": "9c881c75cba75aeed2d662b13a63ebe91c59c809ffdaba253e6fc55567ac317c",
+        "output/inspection/rev_AO/outputs/gondola-inspection-ao/gondola_inspection_AO.xlsx": "1b24cda0277f6fc6f0363cba6862838570d1b64e25a9cfcf37770295b29a2aee",
+        "output/inspection/rev_AO/inspection_data.json": "2ff22a24956f492fc14a61e719e62d944051502bd08820689fe91ca77a1c3ffb"
+      },
+      "scope": "Template for validated CAD; no physical component measurement, mass balance, actual board heading, flexible wire or print strength qualification is implied."
+    }
+  },
+  "physical_limits": [
+    "Volume reduction is calculated from BRep geometry, not a weighed physical mass reduction. The changed joint adds one BRep face/edge; fewer redundant support paths do not mean fewer kernel faces.",
+    "Shared members retain 5 by 2 mm sections and complete mounting-pad annuli; strength, deflection, PA12 creep and received mounting-stack fit remain physically unqualified.",
+    "Actual P-AS antenna clearance, capacitor choice/retention/leads and installed connectors require inspection; the capacitor is only a reservation.",
+    "All prior rail fit, horn preparation, bearing retention, optical pointing, balance, moving-wire and flight qualification limits remain."
+  ]
+}

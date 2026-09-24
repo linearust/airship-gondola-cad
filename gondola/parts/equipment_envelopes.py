@@ -28,6 +28,7 @@ BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-
 FC_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
 PAS_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.PAS_SERVICE_CLEARANCE
 LR_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+CAPACITOR_RESERVE_CENTRE_XY = (42.0, 34.0)
 
 
 def fc_envelope_shape():
@@ -211,8 +212,8 @@ def build_equipment(doc, battery_group, electronics_group):
         electronics_group,
         "CapacitorServiceReserve",
         "35V220uF capacitor reserve diameter10x16",
-        Part.makeCylinder(5, 16, V(40, 22, 13.2)),
-        "Provisional space for the specified35V220uF capacitor, not a selected component or retaining mount. Insulation, leads, actual dimensions and retention remain to be selected; no printed attachment or invented hole is added.",
+        Part.makeCylinder(5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, LR_BOTTOM_Z)),
+        "Provisional space for the specified35V220uF capacitor, beside the translated P-AS device and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )
     capacitor.Role = "Clearance"

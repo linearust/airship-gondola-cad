@@ -117,6 +117,13 @@ def review(doc, registry):
             mounts.DECK_THICKNESS,
         ),
         (
+            "shared_fc_pas_spine_thickness",
+            "ElectronicsMount",
+            (30, 0, mounts.DECK_BOTTOM_Z - 0.01),
+            (30, 0, mounts.SUPPORT_FACE_Z + 0.01),
+            mounts.DECK_THICKNESS,
+        ),
+        (
             "central_servo_seat_over_nut_pocket",
             "PropulsionFixedFrame",
             (
