@@ -29,7 +29,7 @@ class EquipmentOptionShapeTests(unittest.TestCase):
             bounds = body.BoundBox
             self.assertAlmostEqual(bounds.Center.x, mounts.GPS_CENTRE_XY[0])
             self.assertAlmostEqual(bounds.Center.y, mounts.GPS_CENTRE_XY[1])
-            self.assertNotEqual(bounds.Center.y, mounts.PAS_CENTRE_XY[1])
+            self.assertEqual(bounds.Center.y, mounts.PAS_CENTRE_XY[1])
             self.assertAlmostEqual(
                 bounds.ZMin - mounts.SUPPORT_FACE_Z, mounts.ADHESIVE_ALLOWANCE
             )
@@ -47,8 +47,8 @@ class EquipmentOptionShapeTests(unittest.TestCase):
             with self.subTest(model=profile.key):
                 body = envelopes.radio_envelope_shape(profile)
                 reserves = wiring.reserve_shapes(radio_profile=profile)
-                negative = reserves["LR900NegativeXConnectorReserve"]
-                positive = reserves["LR900PositiveXConnectorReserve"]
+                negative = reserves["RadioNegativeXConnectorReserve"]
+                positive = reserves["RadioPositiveXConnectorReserve"]
                 for lane in (negative, positive):
                     self.assertLess(abs(lane.common(body).Volume), 1e-7)
                     self.assertAlmostEqual(lane.distToShape(body)[0], 0)
@@ -114,17 +114,20 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                 electronics = create_group(
                     doc, "ElectronicsEquipmentModule", "Electronics"
                 )
-                refs, reserves = envelopes.build_equipment(doc, battery, electronics)
+                accessory = create_group(doc, "AccessoryEquipmentModule", "Accessory")
+                refs, reserves = envelopes.build_equipment(
+                    doc, battery, electronics, accessory
+                )
                 doc.recompute()
                 self.assertEqual(len(refs), 4)
                 self.assertEqual(doc.ModulePASEnvelope.NavigationModel, "MGF10A")
-                self.assertEqual(doc.ModuleLR900Envelope.RadioModel, "LR24FMINI")
+                self.assertEqual(doc.ModuleRadioEnvelope.RadioModel, "LR24FMINI")
                 self.assertEqual(
                     json.loads(doc.ModulePASEnvelope.NavigationProfile)["key"],
                     "MGF10A",
                 )
                 self.assertEqual(
-                    json.loads(doc.ModuleLR900Envelope.RadioProfile)["key"],
+                    json.loads(doc.ModuleRadioEnvelope.RadioProfile)["key"],
                     "LR24FMINI",
                 )
                 self.assertNotIn(
@@ -132,7 +135,20 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                 )
                 self.assertIn(doc.NavigationDirectAntennaReserve, reserves)
                 self.assertNotIn(doc.NavigationDirectAntennaReserve, refs)
+                self.assertEqual(
+                    doc.ModulePASEnvelope.getParentGeoFeatureGroup(), accessory
+                )
+                self.assertEqual(
+                    doc.ModuleRadioEnvelope.getParentGeoFeatureGroup(), accessory
+                )
+                self.assertEqual(
+                    doc.FCWiringClearanceReserve.getParentGeoFeatureGroup(), electronics
+                )
+                self.assertEqual(
+                    doc.RadioNegativeXConnectorReserve.getParentGeoFeatureGroup(),
+                    accessory,
+                )
             finally:
                 App.closeDocument(doc.Name)
         self.assertEqual(options.get_navigation_profile().key, "PAS")
-        self.assertEqual(options.get_radio_profile().key, "LR900A")
+        self.assertEqual(options.get_radio_profile().key, "LR24FMINI")

@@ -28,7 +28,11 @@ class StackInterfaceTests(unittest.TestCase):
         cls.electronics.Placement.Base.x = 90
         for host, kind in ((cls.battery, "battery"), (cls.electronics, "electronics")):
             equipment_mounts.build_mount(cls.doc, host, kind)
-        equipment_envelopes.build_equipment(cls.doc, cls.battery, cls.electronics)
+        accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
+        accessory.Placement.Base.x = 180
+        equipment_envelopes.build_equipment(
+            cls.doc, cls.battery, cls.electronics, accessory
+        )
         cls.kit = optical_mount.build_optical_mount(cls.doc, cls.battery)
         cls.refs, cls.reserves = optical_sensor.build_sensor(
             cls.doc, cls.kit["pitch_stage"]

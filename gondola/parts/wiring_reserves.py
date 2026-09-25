@@ -27,13 +27,13 @@ FC_PERIPHERAL_Z_MARGIN_MM = 1.0
 FC_EXIT_BUNDLE_DIAMETER_MM = 3.0
 FC_EXIT_BEND_RADIUS_MM = 5.0
 PAS_CONNECTOR_TRAVEL_MM = 15.0
-LR_CONNECTOR_TRAVEL_MM = 15.0
+RADIO_CONNECTOR_TRAVEL_MM = 15.0
 CONNECTOR_SIDE_MARGIN_MM = 2.0
 CONNECTOR_TOP_MARGIN_MM = 2.0
 CONNECTOR_SERVICE_GAP_MM = 1.5
 MINIMUM_NEIGHBOUR_GAPS = {
     "FCWiringClearanceReserve": {
-        "ModuleLR900Envelope": 2.0,
+        "ModuleRadioEnvelope": 2.0,
         "ModulePASEnvelope": 2.0,
         "XT30ServiceReserve": 2.0,
         "MTF02POpticalClearanceReserve": 1.5,
@@ -44,6 +44,18 @@ MINIMUM_NEIGHBOUR_GAPS = {
 XT30_BODY_ALLOCATION_MM = (22.0, 10.0, 15.0)
 XT30_WITHDRAWAL_ALLOWANCE_MM = 10.0
 XT30_ALLOCATION_CENTRE_XY_MM = (0.0, -49.0)
+
+
+def parent_name(name):
+    """Resolve each reserve's local frame before assembly placement."""
+    if name in (
+        "PASConnectorReserve",
+        "RadioNegativeXConnectorReserve",
+        "RadioPositiveXConnectorReserve",
+        "NavigationDirectAntennaReserve",
+    ):
+        return "AccessoryEquipmentModule"
+    return "ElectronicsEquipmentModule"
 
 
 def _box(size, origin):
@@ -130,7 +142,7 @@ def direct_antenna_reserve_shape(profile=None):
 
 
 def reserve_shapes(navigation_profile=None, radio_profile=None):
-    """Return fresh local shapes in the electronics module's coordinate frame."""
+    """Return fresh shapes in each reserve's ``parent_name`` local frame."""
     navigation_profile = navigation_profile or get_navigation_profile()
     radio_profile = radio_profile or get_radio_profile()
     core = mounts.fc_wiring_reserve_shape()
@@ -139,14 +151,14 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
     ).removeSplitter()
     fc = _orient_fc_reserve(fc)
     bottom = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
-    lr_x, lr_y = mounts.LR_CENTRE_XY
-    lr_length, lr_width, lr_height = radio_profile.size_mm
-    lr_lane_size = (
-        LR_CONNECTOR_TRAVEL_MM,
-        lr_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
-        lr_height + CONNECTOR_TOP_MARGIN_MM,
+    radio_x, radio_y = mounts.RADIO_CENTRE_XY
+    radio_length, radio_width, radio_height = radio_profile.size_mm
+    radio_lane_size = (
+        RADIO_CONNECTOR_TRAVEL_MM,
+        radio_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
+        radio_height + CONNECTOR_TOP_MARGIN_MM,
     )
-    lr_lane_y = lr_y - lr_width / 2 - CONNECTOR_SIDE_MARGIN_MM
+    radio_lane_y = radio_y - radio_width / 2 - CONNECTOR_SIDE_MARGIN_MM
     navigation_x, navigation_y = layout.navigation_centre(navigation_profile)
     navigation_width = navigation_profile.connector_band_width_mm
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
@@ -161,17 +173,17 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
                 bottom,
             ),
         ),
-        "LR900NegativeXConnectorReserve": _box(
-            lr_lane_size,
+        "RadioNegativeXConnectorReserve": _box(
+            radio_lane_size,
             (
-                lr_x - lr_length / 2 - LR_CONNECTOR_TRAVEL_MM,
-                lr_lane_y,
+                radio_x - radio_length / 2 - RADIO_CONNECTOR_TRAVEL_MM,
+                radio_lane_y,
                 bottom,
             ),
         ),
-        "LR900PositiveXConnectorReserve": _box(
-            lr_lane_size,
-            (lr_x + lr_length / 2, lr_lane_y, bottom),
+        "RadioPositiveXConnectorReserve": _box(
+            radio_lane_size,
+            (radio_x + radio_length / 2, radio_lane_y, bottom),
         ),
         "PASConnectorReserve": _box(
             (
@@ -250,29 +262,35 @@ def reserve_contracts(navigation_profile=None, radio_profile=None):
             XT30_ALLOCATION_CENTRE_XY_MM
         ),
         "design_withdrawal_allowance_each_x_mm": XT30_WITHDRAWAL_ALLOWANCE_MM,
-        "operating_scope": "A 22x10x15mm body allocation beside the FC, opposite the radio region, contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled.",
+        "operating_scope": "A 22x10x15mm body allocation beside the FC on its carrier contains the catalog maximum mated envelope in the chosen orientation; soldered wires, insulation and mounting remain unmodeled. The radio and navigation module use a separate accessory carrier.",
         "withdrawal_scope": "Continuous 10mm extension at both local X ends. This is our pull/lead allowance, not a published withdrawal stroke or a proven retained pigtail.",
         "installed_connector_fit_verified": False,
         "withdrawal_stroke_verified": False,
         "wire_bend_radius_qualified": False,
         "complete_connected_harness_modeled": False,
     }
-    lr = {
+    radio = {
         **device_connector_contract(radio_profile.interface_key),
         "selected_model": radio_profile.key,
         "edge_width_mm": radio_profile.size_mm[1],
         "edge_height_mm": radio_profile.size_mm[2],
         "transverse_margin_each_side_mm": CONNECTOR_SIDE_MARGIN_MM,
         "top_service_margin_mm": CONNECTOR_TOP_MARGIN_MM,
-        "design_outward_travel_mm": LR_CONNECTOR_TRAVEL_MM,
-        "operating_scope": "Reserve both complete ends of the selected radio's long body axis. Actual UART, RF and any USB connector coordinates and which installed end faces +X remain unverified. The Mini has no USB; its IPEX1 mating/lead direction away from the populated face requires a separate physical check.",
-        "withdrawal_scope": f"Continuous {LR_CONNECTOR_TRAVEL_MM:g}mm end lanes include {CONNECTOR_SIDE_MARGIN_MM:g}mm transverse and {CONNECTOR_TOP_MARGIN_MM:g}mm top service margins beyond the body envelope. These are planning allowances, not a measured plug stroke, latch-access proof or antenna keepout. Check actual antenna, pigtail and selected plugs.",
+        "design_outward_travel_mm": RADIO_CONNECTOR_TRAVEL_MM,
+        "operating_scope": "Reserve both complete ends of the LR24-F-Mini long body axis on the accessory carrier. Actual UART and RF connector coordinates and which installed end faces +X remain unverified. The Mini has no USB; its IPEX1 mating/lead direction away from the populated face requires a separate physical check.",
+        "withdrawal_scope": f"Continuous {RADIO_CONNECTOR_TRAVEL_MM:g}mm end lanes include {CONNECTOR_SIDE_MARGIN_MM:g}mm transverse and {CONNECTOR_TOP_MARGIN_MM:g}mm top service margins beyond the body envelope. These are planning allowances, not a measured plug stroke, latch-access proof or antenna keepout. Check actual antenna, pigtail and selected plugs.",
     }
     contracts = {
         "FCWiringClearanceReserve": fc,
         "XT30ServiceReserve": xt30,
-        "LR900NegativeXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "-X"},
-        "LR900PositiveXConnectorReserve": {**copy.deepcopy(lr), "outward_axis": "+X"},
+        "RadioNegativeXConnectorReserve": {
+            **copy.deepcopy(radio),
+            "outward_axis": "-X",
+        },
+        "RadioPositiveXConnectorReserve": {
+            **copy.deepcopy(radio),
+            "outward_axis": "+X",
+        },
         "PASConnectorReserve": {
             **device_connector_contract(navigation_profile.interface_key),
             "selected_model": navigation_profile.key,

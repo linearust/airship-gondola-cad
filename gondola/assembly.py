@@ -62,7 +62,7 @@ def style_assembly(doc):
     for obj in registry.ReferenceParts:
         obj.ViewObject.ShapeColor = (
             (0.18, 0.48, 0.29)
-            if any(k in obj.Name for k in ("FC", "LR900", "PAS"))
+            if any(k in obj.Name for k in ("FC", "Radio", "PAS"))
             else (0.29, 0.34, 0.4)
         )
         if "Propeller" in obj.Name:
@@ -114,10 +114,20 @@ def build_assembly():
     electronics_module = create_group(
         doc,
         "ElectronicsEquipmentModule",
-        "Electronics | open carrier with confirmed mounting patterns",
+        "FC | compact carrier and optical-stack host",
+    )
+    accessory_module = create_group(
+        doc,
+        "AccessoryEquipmentModule",
+        "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
-    modules = [battery_module, propulsion_module["group"], electronics_module]
+    modules = [
+        battery_module,
+        propulsion_module["group"],
+        electronics_module,
+        accessory_module,
+    ]
     clamp_controls = [station.clamp_control for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS):
         x, clamp_control = station.x_mm, station.clamp_control
@@ -132,7 +142,7 @@ def build_assembly():
         set_property(
             module,
             "RailPositionNotes",
-            f"Default land centre. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
+            f"Default X={x:g}mm. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
         )
         module.Placement.Rotation = App.Rotation(V(0, 0, 1), station.yaw_deg)
         set_property(
@@ -156,6 +166,7 @@ def build_assembly():
     mount_parts = [
         mounts.build_mount(doc, battery_module, "battery"),
         mounts.build_mount(doc, electronics_module, "electronics"),
+        mounts.build_mount(doc, accessory_module, "accessory"),
     ]
     optical_assembly = optical_mount.build_optical_mount(
         doc, doc.getObject(OPTICAL_STACK_HOST)
@@ -172,7 +183,7 @@ def build_assembly():
         if "MotorCarrier" in obj.Name:
             set_print_sku(obj, "MotorCarrier")
     reference_parts, clearance_volumes = build_equipment(
-        doc, battery_module, electronics_module
+        doc, battery_module, electronics_module, accessory_module
     )
     sensor_references, sensor_clearances = optical_sensor.build_sensor(
         doc, optical_assembly["pitch_stage"]
@@ -285,7 +296,7 @@ def build_assembly():
         "rail_head_relief_gap_mm": rail.FLEX_GAP,
         "rail_land_pitch_mm": rail.LAND_PITCH,
         "equipment_mounts": {
-            kind: mounts.mount_contract(kind) for kind in ("battery", "electronics")
+            kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
         "optical_mount": optical_mount.mount_contract(),
         "optical_stack": stack_interface.interface_contract(),

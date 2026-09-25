@@ -23,7 +23,7 @@ from .optical_sensors import get_sensor_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AS"
+DESIGN_REVISION = "AT"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -66,6 +66,7 @@ MANUFACTURING_DECISION = {
 # Retained splits have assembly, motion or requested replacement functions.
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
+    "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits on its compact carrier. One separate simple carrier groups the selected navigation module and LR24-F-Mini, avoiding long branching supports from the FC mount. Both remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe; the added rail clamp is required for independent position retention. Installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
@@ -144,9 +145,9 @@ EXCLUDED_EQUIPMENT = (
     "servo Y harness (separate user project)",
 )
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 13,
+    "M2X8_BUTTON_HEAD": 14,
     "M2X6_BUTTON_HEAD": 2,
-    "M2_HEX_NUT": 15,
+    "M2_HEX_NUT": 16,
     "M1_6X8_PAN_HEAD_KIT": 4,
     "M1_6X4_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
@@ -177,26 +178,26 @@ HARDWARE_MATERIALS = {
 
 EXPECTED_INVENTORY = {
     "rails": 1,
-    "equipment_mounts": 2,
+    "equipment_mounts": 3,
     "tilting_propulsors": 2,
-    "installed_prints": 12,
+    "installed_prints": 13,
     "optical_mount_parts": 3,
     "fit_coupons": 3,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 13,
+    "unique_print_files": 14,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
-# Electronics turns to keep the navigation region away from propulsion. Re-clock the square FC
-# mounting pattern to retain the prior world-heading design basis; actual port
-# datums and the assembled flight-controller orientation remain to be verified.
+# Preserve the FC's previous world-heading basis in the 180-degree carrier.
+# Navigation and radio now use a separate accessory carrier; actual port datums
+# and assembled sensor/controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
-    "layout": "Three independently positioned rail groups: propulsion near the rail centre, battery carrier on +X and FC/electronics on -X behind the neutral motors.",
+    "layout": "Three mass regions use four independently positioned rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The electronics region comprises a compact FC carrier and a separate flat accessory carrier for one navigation module and LR24-F-Mini.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. No PSU connector or electrical supply change is specified here.",
-    "electronics": "Rotate the electronics carrier 180deg about Z so the shared navigation support points away from propulsion. Retain P-AS mounting axes and use one integral adhesive pad for MG-A01 or MG-F10-A alternatives. Rotate the FC a further 180deg relative to that carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. Exact board heading, ports and firmware orientation must be checked on the physical board.",
-    "optical": "Use one source-selected MTF-02P or MTF-01P on the unchanged adhesive tray of the transferable manually aligned stack, independent of the three mass groups. Either carrier provides the same structural anchors; host changes require renewed optical field-of-view and wiring checks.",
+    "electronics": "Place the compact FC carrier behind the neutral motors and the separate navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
+    "optical": "Use one source-selected MTF-02P or MTF-01P on the adhesive tray of the transferable manually aligned stack, independent of the three mass regions. Battery and FC carriers provide the structural stack anchors; the accessory carrier is not an optical-stack host. Host changes require renewed optical field-of-view and wiring checks.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
 }
 
@@ -248,11 +249,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
                 )
             )
         ),
-        "ground_radio": (
-            "Matching LR900-family ground radio with matching band, antenna and communication settings; not an onboard inventory row."
-            if radio.key == "LR900A"
-            else "LR24-F ground unit paired with LR24-F-Mini air unit, with matching settings and 2.4GHz antennas. The full-size F is not installed on the gondola; LR900 cannot be the other end of this LR24 link."
-        ),
+        "ground_radio": "LR24-F ground unit paired with the sole selected LR24-F-Mini air unit, with matching settings and 2.4GHz antennas. The full-size F is not installed on the gondola or included in onboard inventory.",
         "radio_power_reference": {
             "maximum_average_w": radio.max_average_power_w,
             "calculated_at_5v_a": radio.max_average_power_w / 5,
@@ -295,6 +292,9 @@ MODULE_STATIONS = (
     ModuleStation("MainPropulsionModule", 0, "PropulsionClampApproach", "PositiveY"),
     ModuleStation(
         "ElectronicsEquipmentModule", -72, "ElectronicsClampApproach", "PositiveY", 180
+    ),
+    ModuleStation(
+        "AccessoryEquipmentModule", -158, "AccessoryClampApproach", "PositiveY", 180
     ),
 )
 
@@ -370,11 +370,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "alternative_equipment_installation",
-        "Install one navigation module, one radio and one optical sensor; rebuild CAD/BOM after changing source selections. Verify GPS and radio underside contact on the shared insulating-adhesive pads, actual connector insertion/bend space and retention. MG-F10-A allows a direct SMA helix or remote SMA connection; direct mounting on this underside carrier points away from the balloon and downward, so its conservative clearance screen is not a reception claim. Prefer a remote upward antenna location when GPS reception matters, including outdoors; its off-gondola location, cable and attachment are unmodeled. Verify support for the 15g helix and connector-tightening loads, or remote-cable strain relief. Check matching-family radio/ground hardware and the larger LR24-F-Mini power reference against the shared 5V supply. No antenna or adhesive strength is certified by a passing clearance check.",
+        "Install one navigation module, LR24-F-Mini and one optical sensor; rebuild CAD/BOM after changing navigation or optical selections. Verify GPS and Mini underside contact on the accessory carrier's insulating adhesive, actual connector insertion/bend space and retention. MG-F10-A allows a direct SMA helix or remote SMA connection; direct mounting on this underside carrier points away from the balloon and downward, so its conservative clearance screen is not a reception claim. Prefer a remote upward antenna location when GPS reception matters, including outdoors; its off-gondola location, cable and attachment are unmodeled. Verify support for the 15g helix and connector-tightening loads, or remote-cable strain relief. Check LR24-F ground pairing and the Mini's 2W maximum-average reference against the shared 5V supply; peak demand and supply margin are unmeasured. No antenna or adhesive strength is certified by a passing clearance check.",
     ),
     UnresolvedInterface(
         "finished_mass",
-        "Weigh the selected battery, navigation and radio modules, optical sensor, antennas, prints, drive hardware, wiring, connectors and adhesive. The subtotal uses published device masses, including LR900-A 4g and a separate 15g MG-F10 helix only when that navigation profile is selected. Unmeasured battery mass is excluded, not assigned zero. Catalog mass is not an installed measurement.",
+        "Weigh the selected battery, navigation and radio modules, optical sensor, antennas, prints, drive hardware, wiring, connectors and adhesive. The subtotal uses published device masses, including LR24-F-Mini 2.5g and a separate 15g MG-F10 helix only when that navigation profile is selected. Unmeasured battery mass is excluded, not assigned zero. A changed catalog subtotal reflects the selected reference items, not measured physical weight reduction. Catalog mass is not an installed measurement.",
     ),
 )
 
@@ -414,7 +414,7 @@ def project_status():
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Allow modest mass increases for simpler integral parts and forgiving noncritical envelopes. Preserve the intentionally removable paired-servo/input-gear module. Use simple clearance or short slots where they reduce fit risk without adding parts; retain functional locating, torque and bearing surfaces. Do not add elaborate adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
         "part_separation_reasons": PART_SEPARATION_REASONS,
-        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, a compact battery mount and one open electronics carrier, sharing an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
+        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. The battery and FC carriers share an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "flight_controller": flight_controller_contract(),
         "navigation": get_navigation_profile().contract(),

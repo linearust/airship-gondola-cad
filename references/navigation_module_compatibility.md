@@ -1,6 +1,6 @@
 # Interchangeable navigation modules
 
-Reviewed 2026-09-24. The user selected one shared navigation location for
+Reviewed 2026-09-25 for AT. The user selected one shared navigation location for
 **LinkTrack P-AS, MicoAir MG-A01/M10 Ultra, or MG-F10 with an external helix**.
 These are alternatives, not three simultaneously installed devices. P-AS remains
 the default until a specific GPS is selected. Mechanical interchangeability does
@@ -52,13 +52,21 @@ can carry a tall 15 g antenna or connector-tightening loads.
 
 ## Shared carrier and antenna arrangements
 
-The same integral electronics carrier retains the two P-AS mounting axes and
-adds an 18 × 18 mm GPS adhesive face farther along its straight navigation
-member. The member is 14 mm wide and 3 mm thick, with its upper support plane
-unchanged; the radio member remains 5 × 2 mm. This modest reinforcement avoids a
-separate antenna bracket or extra fasteners. It is not a load or adhesive
-qualification. Check loaded deflection and support the SMA connector while
-attaching the antenna; do not use the printed arm as a tightening lever.
+AT replaces the long shared FC/navigation arm with one plain rail-mounted
+accessory plate for the selected navigation module and the onboard Mini radio.
+The plate includes the two confirmed P-AS mounting axes. GPS alternatives use
+an unpierced 18 × 14 mm adhesive allocation in the same navigation region; the
+P-AS holes lie outside this rectangle. These are mutually exclusive devices.
+The FC retains its own compact carrier and optical-stack anchors.
+
+The accessory plate's offset rail shoe places the navigation region outward
+from the FC. This spacing retains the conservative direct-helix reservation and
+both optical hosts; it is not arbitrary excess length. Moving the plate inward
+requires renewed optical, antenna, connector and service clearance checks.
+The 2 mm plain deck is supported directly by its integral shoe without a long
+narrow navigation branch. Loaded deflection and tape retention, especially with
+the 15 g helix, still require a prototype. Support the SMA socket while attaching
+its antenna; do not use the printed deck as a tightening lever.
 
 The user accepts both MG-F10 arrangements:
 

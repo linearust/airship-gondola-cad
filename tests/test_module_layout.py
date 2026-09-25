@@ -1,4 +1,4 @@
-"""Three independently trimmable mass groups and fixed module orientation."""
+"""Four simple carriers retain the three intended mass regions."""
 
 import unittest
 
@@ -13,12 +13,25 @@ from gondola.contracts.design import (
 class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
-        self.assertEqual(len(stations), 3)
+        self.assertEqual(len(stations), 4)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, 0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 90)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -72)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
+        self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -158)
+        self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         self.assertEqual(OPTICAL_STACK_HOST, "BatteryEquipmentModule")
+
+    def test_accessory_station_keeps_whole_shoe_on_the_end_land(self):
+        from gondola.contracts.design import RAIL_LENGTH_MM
+
+        accessory = next(
+            station
+            for station in MODULE_STATIONS
+            if station.object_name == "AccessoryEquipmentModule"
+        )
+        self.assertLessEqual(abs(accessory.x_mm) + 9, RAIL_LENGTH_MM / 2)
+        self.assertEqual(abs(accessory.x_mm - (-162)), 4)
 
     def test_transverse_clamp_direction_tracks_fixed_half_turn(self):
         forward = ModuleStation("Forward", 0, "Clamp", "PositiveY")

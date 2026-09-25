@@ -1687,6 +1687,8 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 equipment_mounts.build_mount(doc, host, "battery")
                 electronics = doc.addObject("App::Part", "ElectronicsEquipmentModule")
                 equipment_mounts.build_mount(doc, electronics, "electronics")
+                accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
+                equipment_mounts.build_mount(doc, accessory, "accessory")
                 optical_mount.build_optical_mount(doc, host)
                 doc.recompute()
                 doc.saveAs(str(path))
@@ -1711,17 +1713,19 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                         row = measurements[feature]
                         self.assertEqual(row["sample_line_mm"], [start, end])
                         self.assertTrue(row["passed"], row)
-                navigation = measurements["shared_fc_navigation_spine_thickness"]
-                radio = measurements["shared_fc_radio_spine_thickness"]
-                self.assertAlmostEqual(navigation["measured_material_length_mm"], 3.0)
-                self.assertAlmostEqual(radio["measured_material_length_mm"], 2.0)
-                self.assertLess(
-                    navigation["sample_line_mm"][0][2],
-                    equipment_mounts.SUPPORT_FACE_Z - 3.0,
-                )
+                for feature in (
+                    "fc_support_arm_thickness",
+                    "accessory_plate_thickness",
+                ):
+                    row = measurements[feature]
+                    self.assertAlmostEqual(row["measured_material_length_mm"], 2.0)
+                    self.assertLess(
+                        row["sample_line_mm"][0][2], equipment_mounts.DECK_BOTTOM_Z
+                    )
+                    self.assertTrue(row["passed"], row)
                 assessment = result["equipment_mount_assessment"]
-                self.assertEqual(assessment["navigation_arm_section_mm"], [14.0, 3.0])
-                self.assertEqual(assessment["radio_arm_section_mm"], [5.0, 2.0])
+                self.assertEqual(assessment["fc_support_arm_section_mm"], [5.0, 2.0])
+                self.assertEqual(assessment["accessory_deck_size_mm"], (34.0, 78.0))
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

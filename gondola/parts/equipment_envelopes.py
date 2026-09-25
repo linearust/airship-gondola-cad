@@ -69,7 +69,7 @@ def radio_envelope_shape(profile=None):
     """Selected radio body only; external RF connectors/antennas are separate."""
     profile = profile or get_radio_profile()
     length, width, height = profile.size_mm
-    x, y = mounts.LR_CENTRE_XY
+    x, y = mounts.RADIO_CENTRE_XY
     return Part.makeBox(
         length,
         width,
@@ -83,12 +83,7 @@ def pas_envelope_shape():
     return navigation_envelope_shape(get_navigation_profile("PAS"))
 
 
-def lr900_envelope_shape():
-    """Explicit legacy model helper; selected builds use the radio slot."""
-    return radio_envelope_shape(get_radio_profile("LR900A"))
-
-
-def build_equipment(doc, battery_group, electronics_group):
+def build_equipment(doc, battery_group, electronics_group, accessory_group):
     navigation_profile = get_navigation_profile()
     radio_profile = get_radio_profile()
     battery = doc.addObject("Part::Box", "ModuleBatteryEnvelope")
@@ -183,9 +178,9 @@ def build_equipment(doc, battery_group, electronics_group):
     )
     radio = create_reference(
         doc,
-        electronics_group,
-        "ModuleLR900Envelope",
-        radio_profile.model + " | interchangeable radio slot",
+        accessory_group,
+        "ModuleRadioEnvelope",
+        radio_profile.model + " | onboard radio",
         radio_envelope_shape(radio_profile),
         radio_profile.contract()["installation"]
         + " "
@@ -201,7 +196,7 @@ def build_equipment(doc, battery_group, electronics_group):
     radio.setEditorMode("RadioProfile", 1)
     navigation = create_reference(
         doc,
-        electronics_group,
+        accessory_group,
         "ModulePASEnvelope",
         navigation_profile.model + " | interchangeable navigation slot",
         navigation_envelope_shape(navigation_profile),
@@ -242,7 +237,9 @@ def build_equipment(doc, battery_group, electronics_group):
     contracts = wiring_reserves.reserve_contracts()
     for name, shape in wiring_reserves.reserve_shapes().items():
         contract = contracts[name]
-        reserve = create_wiring_reserve(doc, electronics_group, name, shape, contract)
+        reserve = create_wiring_reserve(
+            doc, doc.getObject(wiring_reserves.parent_name(name)), name, shape, contract
+        )
         if name == "FCWiringClearanceReserve":
             set_property(
                 reserve,
@@ -262,7 +259,7 @@ def build_equipment(doc, battery_group, electronics_group):
         Part.makeCylinder(
             5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.radio_bottom())
         ),
-        "Provisional space for the specified35V220uF capacitor, beside the interchangeable navigation region and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
+        "Provisional space for the specified35V220uF capacitor, near the FC and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )
     capacitor.Role = "Clearance"

@@ -74,8 +74,6 @@ PAS_HOLE_DIAMETER = NAVIGATION_PROFILES["PAS"].mounting_hole_diameter_mm
 PAS_HOLE_CENTRES = NAVIGATION_PROFILES["PAS"].mounting_hole_centres_mm
 PAS_HOLE_PITCH = PAS_HOLE_CENTRES[1][0] - PAS_HOLE_CENTRES[0][0]
 
-LR_SOURCE = RADIO_PROFILES["LR900A"].source
-LR_SIZE_MM = RADIO_PROFILES["LR900A"].size_mm
 MTF02P_SOURCE = SENSOR_PROFILES["MTF02P"].source
 MTF02P_DIMENSION_IMAGE = SENSOR_PROFILES["MTF02P"].dimension_source
 MTF02P_PORT_IMAGE = SENSOR_PROFILES["MTF02P"].port_source
@@ -92,7 +90,6 @@ XT30U_MALE_DRAWING = (
 XT30U_MATED_DRAWING = (
     "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638924618397.png"
 )
-LR_PORT_IMAGE = RADIO_PROFILES["LR900A"].port_source
 SERVO_SOURCE = "https://kstservos.com/products/x06-v6-0-hv-micro-digital-metal-gear-glider-1-8kg-torque-servo-motor"
 X06_MANUFACTURER_SOURCE = "https://www.kstsz.com/kstsz_Product_2063755473.html"
 X06_DATASHEET_SOURCE = "https://cdn.shopify.com/s/files/1/0570/1766/3541/files/X06_V6.0_Technical_Specifcation.pdf?v=1700472290"
@@ -321,22 +318,6 @@ DEVICE_CONNECTOR_EVIDENCE = {
         "unknown": "Individual port XYZ, exact header variants, plugged cable envelopes, wire bend radii and actual PCB bearing plane.",
         "connection_limit": "Port family and pin count do not establish electrical compatibility. The DJI SH1.0-6P connector supplies 12 V; it is not a general 5 V sensor connector. Use the official device pinout before choosing a harness.",
     },
-    "LR": {
-        "sources": [
-            LR_SOURCE,
-            RADIO_PROFILES["LR900A"].dimension_source,
-            LR_PORT_IMAGE,
-        ],
-        "retained_evidence": ["references/lr900_variant_dimensions.webp"],
-        "documented_types": ["GH1.25-4P", "USB Type-C", "SMA"],
-        "catalog_references": ["JST_GH_4P"],
-        "documented_interfaces": "UART GH1.25-4P, USB Type-C and SMA antenna socket with external thread and female centre contact. The LR900-A body dimensions exclude the SMA socket.",
-        "orientation_evidence": "The official LR900-A port image shows GH and SMA at opposite ends of the long board axis. It does not dimension their centres or register either end to the simplified CAD frame. LR900-F/P mechanical drawings are not LR900-A evidence.",
-        "installed_port_centres_mm": None,
-        "installed_port_datums_verified": False,
-        "unknown": "LR900-A connector XYZ, SMA socket/antenna dimensions, USB plug body and actual wire bend radii.",
-        "connection_limit": "Use the UART port for the FC connection. The manual identifies USB as a computer interface; same pin count as an SH connector does not make the connector families or cable pinouts interchangeable.",
-    },
     "PAS": {
         "sources": [PAS_SOURCE],
         "retained_evidence": ["references/linktrack_datasheet_v2_3_zh.pdf"],
@@ -416,13 +397,6 @@ MOUNTING_EVIDENCE = {
         "unknown": "PCB bearing-plane elevation and fastener length. Page 19 lists 7 mm overall height while Figure 42 shows 5.3 mm; the conservative 7 mm envelope is retained.",
         "installation": "Drawing frame: width X=27, length Y=32, antenna toward +Y. Keep the antenna region clear; no unprovided antenna keepout dimension is invented.",
     },
-    "LR": {
-        "sources": [LR_SOURCE, RADIO_PROFILES["LR900A"].dimension_source],
-        "retained_evidence": ["references/lr900_variant_dimensions.webp"],
-        "verified": "LR900-A 29.5 x 13 x 9 mm excludes the SMA antenna socket; published module mass 4 g; UART GH1.25-4P and USB Type-C.",
-        "unknown": "No verified mounting-hole pattern, underside bearing plane, SMA socket/antenna envelope or plugged cable clearance.",
-        "installation": "Insulating adhesive remains provisional; the LR900-F/P mechanical model is not evidence for the LR900-A.",
-    },
     "MTF01P": {
         "sources": [
             SENSOR_PROFILES["MTF01P"].source,
@@ -500,7 +474,7 @@ DEVICE_CONNECTOR_EVIDENCE[_mini.interface_key] = {
     "installed_port_centres_mm": None,
     "installed_port_datums_verified": False,
     "unknown": "Exact port XYZ, underside components, IPEX mating space, pigtail bend radius and T-antenna dimensions/retention.",
-    "connection_limit": "SH1.0-4P is not the LR900-A's GH1.25-4P; verify pin labels and cross TX/RX. Use a 3.3V-logic USB-UART adapter for setup. Match the LR24 ground radio, antenna and settings; LR900 is a different radio family.",
+    "connection_limit": "Use SH1.0-4P with the documented pin labels and crossed TX/RX; no harness pinout is inferred from housing shape. Use a 3.3V-logic USB-UART adapter for setup. Pair this onboard Mini with the LR24-F ground unit, matching antenna and communication settings.",
 }
 MOUNTING_EVIDENCE[_mini.interface_key] = {
     "sources": _profile_sources(_mini),

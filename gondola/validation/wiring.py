@@ -17,8 +17,8 @@ RESERVES = (
     "StarboardPhaseLeadLoopReserve",
     "MTF02POpticalClearanceReserve",
     "FCWiringClearanceReserve",
-    "LR900NegativeXConnectorReserve",
-    "LR900PositiveXConnectorReserve",
+    "RadioNegativeXConnectorReserve",
+    "RadioPositiveXConnectorReserve",
     "PASConnectorReserve",
     "MTF02PConnectorReserve",
 )
@@ -227,7 +227,7 @@ def reserve_checks(doc):
                     expected_shapes[name],
                     doc.OpticalPitchStage
                     if name == "MTF02PConnectorReserve"
-                    else doc.ElectronicsEquipmentModule,
+                    else doc.getObject(wiring.parent_name(name)),
                 ),
                 physical_hits,
             )

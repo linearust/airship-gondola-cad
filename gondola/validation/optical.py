@@ -833,7 +833,7 @@ def _host_checks(doc, host, physical, kit, *, profile=None):
         "ModuleBatteryEnvelope",
         "ModuleFCEnvelope",
         "ModulePASEnvelope",
-        "ModuleLR900Envelope",
+        "ModuleRadioEnvelope",
     ):
         device = doc.getObject(name)
         if device.getParentGeoFeatureGroup() != host:

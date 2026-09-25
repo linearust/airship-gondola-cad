@@ -25,7 +25,7 @@ generated BOM, not the cart pack counts.
 | MicoAir743v2-AIO-45A AM32 | Replaces the cart's former 35A Bluejay board by user decision. Same nominal mechanical interface; official 2S/3S input claims conflict. See [controller evidence](controller_selection_review.md). Firmware, power compatibility and the supplied mounting stack remain unverified. |
 | Tattu 2S 450 mAh 75C, XT30 | Long-pack dimensions, leads and received mass still require inspection. |
 | XT30 lead, 35 V / 220 µF capacitor | Inspect actual envelope, polarity and strain relief. |
-| MTF-02P; LR900-A; XR2 Nano 2.4G | Selected sensor/radio/receiver. MTF-01P can replace MTF-02P on the same adhesive tray; install one only, as described in `optical_sensor_compatibility.md`. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
+| MTF-02P; LR24-F-Mini; XR2 Nano 2.4G | Current sensor/radio/receiver selection; the earlier cart LR900-A is superseded. MTF-01P can replace MTF-02P on the same adhesive tray; install one only, as described in `optical_sensor_compatibility.md`. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
 
 The user will not purchase bearing spacers. AM uses direct frame-side capture
 of the ball-bearing outer rings; no HIROSUGI spacer, 3 x 5 x 3 mm oil-free bush,
@@ -38,7 +38,7 @@ MG-A01 was excluded from the original cart adaptation, but the later AR user
 decision adds MG-A01/M10 Ultra and bare MG-F10-A as alternatives to P-AS on the
 shared navigation support. It is no longer a blanket CAD exclusion; see
 [navigation compatibility](navigation_module_compatibility.md). The same later
-scope supports LR24-F-Mini in place of LR900-A, with LR24-F on the ground; see
+AT scope supports only LR24-F-Mini onboard, with LR24-F on the ground; see
 [radio compatibility](radio_module_compatibility.md).
 
 The ordinary servo Y harness, push-on retaining-ring kit and nylon M2

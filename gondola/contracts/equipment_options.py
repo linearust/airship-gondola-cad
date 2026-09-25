@@ -1,4 +1,4 @@
-"""Mutually exclusive navigation and radio choices on shared equipment supports.
+"""Navigation alternatives and the selected LR24-F-Mini onboard radio.
 
 Profiles describe nominal purchased equipment, not adhesive strength, RF
 performance or an installed antenna location. The parts layer owns placement.
@@ -75,9 +75,9 @@ class RadioProfile:
             **asdict(self),
             "region": "radio",
             "installation": "Install one onboard radio only on the existing insulating-adhesive support. Trim adhesive to supported contact, check actual underside components, heat dissipation and retention; no radio-specific printed pocket or mounting holes are inferred.",
-            "dimension_scope": "Nominal body envelope only. LR900-A excludes its SMA socket and antenna; LR24-F-Mini excludes the external antenna and flexible pigtail. Listed module masses are not complete installed radio-system masses.",
-            "connector_scope": "Both complete long-axis ends receive conservative access allowances; exact connector XYZ, IPEX cable mating space, plugged leads and bends remain unmeasured. GH1.25-4P and SH1.0-4P are different interfaces; verify the selected pin labels and cross TX/RX.",
-            "electrical_scope": "Published maximum average power is a reference, not a peak-current limit or proof of the FC's shared 5V capacity. LR900 and LR24 require matching-family ground equipment; the full-size LR24-F is ground equipment, not an additional onboard module.",
+            "dimension_scope": "Nominal LR24-F-Mini body envelope only, excluding the external antenna and flexible pigtail. The published module mass is not a measured installed radio-system mass.",
+            "connector_scope": "Both complete long-axis ends receive conservative access allowances; exact SH1.0-4P connector XYZ, IPEX1 cable mating space, plugged leads and bends remain unmeasured. Verify pin labels and cross TX/RX; equal pin count does not establish harness compatibility.",
+            "electrical_scope": "Published maximum average power is a reference, not a peak-current limit or proof of the FC's shared 5V capacity. Pair the onboard LR24-F-Mini with the selected LR24-F ground radio and matching communication settings; the full-size F is not an additional onboard module.",
             "retention_verified": False,
             "installed_port_datums_verified": False,
             "rf_performance_verified": False,
@@ -149,22 +149,6 @@ NAVIGATION_PROFILES = {
 }
 
 RADIO_PROFILES = {
-    "LR900A": RadioProfile(
-        key="LR900A",
-        model="LR900-A",
-        interface_key="LR",
-        size_mm=(29.5, 13.0, 9.0),
-        mass_g=4.0,
-        connector_type="GH1.25-4P",
-        connector_catalog_key="JST_GH_4P",
-        connector_axes=("-X", "+X"),
-        source="https://micoair.cn/zh/docs/telemetry/lr900/lr900-telemetry",
-        dimension_source="https://micoair.cn/api/media/file/docs/2026/07/684040d2a4f02-0f3856feb4-010837e548.webp",
-        port_source="https://micoair.cn/api/media/file/docs/2026/07/669f74a433137-ed5c3462e6-6d69324222.webp",
-        antenna_connector="SMA, external thread/female centre contact",
-        has_usb=True,
-        max_average_power_w=0.30,
-    ),
     "LR24FMINI": RadioProfile(
         key="LR24FMINI",
         model="LR24-F-Mini",
@@ -184,7 +168,7 @@ RADIO_PROFILES = {
 }
 
 SELECTED_NAVIGATION_KEY = "PAS"
-SELECTED_RADIO_KEY = "LR900A"
+SELECTED_RADIO_KEY = "LR24FMINI"
 
 
 def get_navigation_profile(key=None):

@@ -46,7 +46,7 @@ def color(obj, category, rail_names):
         return [0.64, 0.4, 0.82, 0.6]
     if "Propeller" in obj.Name:
         return [0.23, 0.54, 0.91, 0.22]
-    if any(key in obj.Name for key in ("FC", "LR900", "PAS")):
+    if any(key in obj.Name for key in ("FC", "Radio", "PAS")):
         return [0.18, 0.48, 0.29, 1]
     return [0.29, 0.34, 0.4, 1]
 

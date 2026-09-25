@@ -49,7 +49,7 @@ class NativeInterfaceTests(unittest.TestCase):
                     belongs_to_group(doc.PropulsionFixedFrame, doc.ServoDriveModule)
                 )
                 self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
-                self.assertEqual(len(doc.DesignRegistry.Modules), 3)
+                self.assertEqual(len(doc.DesignRegistry.Modules), 4)
                 self.assertEqual(
                     len(doc.DesignRegistry.PrintedParts),
                     EXPECTED_INVENTORY["installed_prints"],
@@ -162,17 +162,18 @@ class NativeInterfaceTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import mounting_pad_check
 
-        shape = mounts.mount_shape("electronics").copy()
-        for centre in mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES:
-            result = mounting_pad_check(
-                shape,
-                centre,
-                bottom=mounts.DECK_BOTTOM_Z,
-                thickness=mounts.DECK_THICKNESS,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
-            )
-            self.assertTrue(result["passed"], result)
+        for kind in ("electronics", "accessory"):
+            shape = mounts.mount_shape(kind).copy()
+            for centre in mounts.mount_hole_centres(kind):
+                result = mounting_pad_check(
+                    shape,
+                    centre,
+                    bottom=mounts.DECK_BOTTOM_Z,
+                    thickness=mounts.DECK_THICKNESS,
+                    hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                    pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                )
+                self.assertTrue(result["passed"], result)
 
     def test_partial_bearing_or_filled_bore_is_rejected(self):
         from gondola.parts import equipment_mounts as mounts

@@ -9,7 +9,6 @@ import Part
 
 from gondola.cad import box, create_printed_part, set_property, union
 from gondola.contracts import equipment_interfaces as interfaces
-from gondola.contracts.design import STACK_ANCHOR_LOCATIONS
 
 from . import rail, stack_interface
 
@@ -20,8 +19,6 @@ SUPPORT_FACE_Z = DECK_BOTTOM_Z + DECK_THICKNESS
 MOUNT_HOLE_DIAMETER = 2.6
 MOUNT_PAD_DIAMETER = 6.5
 ARM_WIDTH = 5.0
-NAVIGATION_ARM_WIDTH = 14.0
-NAVIGATION_ARM_THICKNESS = 3.0
 FC_CENTRE_XY = (0.0, 0.0)
 FC_ROTATION_DEG = -45.0
 FC_AXIS_OFFSET = interfaces.FC_HOLE_PITCH / math.sqrt(2)
@@ -31,21 +28,23 @@ FC_HOLE_CENTRES = (
     (0.0, FC_AXIS_OFFSET),
     (FC_AXIS_OFFSET, 0.0),
 )
-# Align the published off-centre hole row with the FC's X support. Moving the
-# complete device preserves its own hole/connector frame while removing a
-# second parallel printed arm.
-PAS_CENTRE_XY = (54.0, -interfaces.PAS_HOLE_CENTRES[0][1])
+# Navigation and the onboard radio share one plain accessory plate, independently
+# movable along the rail. These are accessory-local, not FC-carrier coordinates.
+NAVIGATION_CENTRE_XY = (14.0, -24.0)
+PAS_CENTRE_XY = GPS_CENTRE_XY = NAVIGATION_CENTRE_XY
 PAS_HOLE_CENTRES = tuple(
     (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
-LR_CENTRE_XY = (0.0, 50.0)
-GPS_CENTRE_XY = (100.0, 0.0)
-GPS_ADHESIVE_SIZE = (18.0, 18.0)
-ELECTRONICS_SUPPORT_SPINES = (
-    (FC_HOLE_CENTRES[0], GPS_CENTRE_XY),
-    (FC_HOLE_CENTRES[1], LR_CENTRE_XY),
-)
-LR_ADHESIVE_SIZE = (26.0, 10.0)
+RADIO_CENTRE_XY = (14.0, 24.0)
+GPS_ADHESIVE_SIZE = (18.0, 14.0)
+RADIO_ADHESIVE_SIZE = (22.0, 14.0)
+ACCESSORY_DECK_SIZE = (34.0, 78.0)
+ACCESSORY_DECK_CENTRE_XY = (14.0, -4.0)
+MOUNT_NAMES = {
+    "battery": "BatteryMount",
+    "electronics": "ElectronicsMount",
+    "accessory": "AccessoryMount",
+}
 BATTERY_DECK_SIZE = (16.0, 52.0)
 BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
@@ -108,40 +107,48 @@ def fc_wiring_reserve_shape():
     )
 
 
+def mount_hole_centres(kind):
+    if kind not in MOUNT_NAMES:
+        raise ValueError("Unknown equipment mount kind: " + str(kind))
+    return {
+        "battery": (),
+        "electronics": FC_HOLE_CENTRES,
+        "accessory": PAS_HOLE_CENTRES,
+    }[kind]
+
+
 @functools.lru_cache(None)
 def mount_shape(kind):
+    holes = mount_hole_centres(kind)
     if kind == "battery":
         pieces = [_deck(BATTERY_DECK_SIZE, (0.0, 0.0))]
-        holes = ()
     elif kind == "electronics":
         pieces = [_deck((rail.SHOE_LENGTH, rail.SHOE_WIDTH), (0.0, 0.0))]
-        pieces.append(
-            _arm(
-                *ELECTRONICS_SUPPORT_SPINES[0],
-                width=NAVIGATION_ARM_WIDTH,
-                thickness=NAVIGATION_ARM_THICKNESS,
+        pieces.extend(
+            _arm(start, end)
+            for start, end in (
+                (FC_HOLE_CENTRES[0], FC_HOLE_CENTRES[3]),
+                (FC_HOLE_CENTRES[1], FC_HOLE_CENTRES[2]),
             )
         )
-        pieces.append(_arm(*ELECTRONICS_SUPPORT_SPINES[1]))
-        pieces.append(_deck(LR_ADHESIVE_SIZE, LR_CENTRE_XY))
-        pieces.append(_deck(GPS_ADHESIVE_SIZE, GPS_CENTRE_XY))
-        holes = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
-        pieces += [
+        pieces.extend(
             Part.makeCylinder(
                 MOUNT_PAD_DIAMETER / 2, DECK_THICKNESS, V(x, y, DECK_BOTTOM_Z)
             )
             for x, y in holes
-        ]
+        )
     else:
-        raise ValueError("Unknown equipment mount kind: " + str(kind))
+        pieces = [_deck(ACCESSORY_DECK_SIZE, ACCESSORY_DECK_CENTRE_XY)]
     pieces.append(rail.shoe_shape())
-    shape = stack_interface.add_host_interface(union(pieces))
+    shape = union(pieces)
+    if kind != "accessory":
+        shape = stack_interface.add_host_interface(shape)
     for x, y in holes:
         shape = shape.cut(
             Part.makeCylinder(
                 MOUNT_HOLE_DIAMETER / 2,
-                NAVIGATION_ARM_THICKNESS + 2,
-                V(x, y, SUPPORT_FACE_Z - NAVIGATION_ARM_THICKNESS - 1),
+                DECK_THICKNESS + 2,
+                V(x, y, DECK_BOTTOM_Z - 1),
             )
         )
     shape = shape.removeSplitter()
@@ -151,72 +158,70 @@ def mount_shape(kind):
 
 
 def mount_contract(kind):
-    if kind not in ("battery", "electronics"):
-        raise ValueError("Unknown equipment mount kind: " + str(kind))
+    holes = mount_hole_centres(kind)
+    adhesive_pads = {
+        "battery": [
+            {
+                "device": "battery",
+                "centre_xy_mm": (0.0, 0.0),
+                "size_mm": BATTERY_DECK_SIZE,
+            }
+        ],
+        "electronics": [],
+        "accessory": [
+            {
+                "device": "LR24-F-Mini",
+                "centre_xy_mm": RADIO_CENTRE_XY,
+                "size_mm": RADIO_ADHESIVE_SIZE,
+            },
+            {
+                "device": "MG-A01 / M10 Ultra or MG-F10-A",
+                "centre_xy_mm": GPS_CENTRE_XY,
+                "size_mm": GPS_ADHESIVE_SIZE,
+            },
+        ],
+    }
+    scope = {
+        "battery": "Continuous adhesive deck and integral rail shoe; the optical tower uses separate structural anchors.",
+        "electronics": "Compact FC support cross, integral rail shoe and two structural optical-stack anchors. No navigation or radio extensions.",
+        "accessory": "One plain rectangular adhesive plate and integral rail shoe. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. No device pockets or separate radio/GPS branches. The radio and selected navigation device use separate regions. This plate is not an optical-stack host.",
+    }
     return {
         "kind": kind,
-        "stack_interface": stack_interface.interface_contract(),
+        "stack_interface": stack_interface.interface_contract()
+        if kind != "accessory"
+        else None,
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "deck_thickness_mm": DECK_THICKNESS,
         "support_face_z_mm": SUPPORT_FACE_Z,
         "integral_common_rail_shoe": True,
-        "mount_hole_centres_xy_mm": (
-            list(FC_HOLE_CENTRES + PAS_HOLE_CENTRES) if kind == "electronics" else []
-        ),
+        "mount_hole_centres_xy_mm": list(holes),
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
-        "arm_width_mm": ARM_WIDTH,
-        "navigation_arm_section_mm": (
-            [NAVIGATION_ARM_WIDTH, NAVIGATION_ARM_THICKNESS]
-            if kind == "electronics"
-            else None
-        ),
-        "shared_support_spines_xy_mm": (
-            ELECTRONICS_SUPPORT_SPINES if kind == "electronics" else []
-        ),
-        "support_path_scope": (
-            "Two continuous orthogonal members share the FC mounting-pad paths with the navigation region on X and the radio region on Y. P-AS retains its confirmed mounting axes. One integral GPS adhesive pad extends the same X member to reserve room for either GPS body and the conservative directly attached MG-F10 helix envelope. Install only one navigation module and one onboard radio."
-            if kind == "electronics"
-            else "Continuous adhesive deck and integral rail shoe; the optical tower uses its separate structural anchors."
-        ),
-        "continuous_adhesive_pads": (
-            [
-                {
-                    "device": "LR900-A or LR24-F-Mini",
-                    "centre_xy_mm": LR_CENTRE_XY,
-                    "size_mm": LR_ADHESIVE_SIZE,
-                },
-                {
-                    "device": "MG-A01 / M10 Ultra or MG-F10-A",
-                    "centre_xy_mm": GPS_CENTRE_XY,
-                    "size_mm": GPS_ADHESIVE_SIZE,
-                },
-            ]
-            if kind == "electronics"
-            else [
-                {
-                    "device": "battery",
-                    "centre_xy_mm": (0.0, 0.0),
-                    "size_mm": BATTERY_DECK_SIZE,
-                }
-            ]
-        ),
+        "arm_width_mm": ARM_WIDTH if kind == "electronics" else None,
+        "accessory_deck_size_mm": ACCESSORY_DECK_SIZE if kind == "accessory" else None,
+        "accessory_deck_centre_xy_mm": ACCESSORY_DECK_CENTRE_XY
+        if kind == "accessory"
+        else None,
+        "support_path_scope": scope[kind],
+        "continuous_adhesive_pads": adhesive_pads[kind],
         "fc_wiring_clearance_mm": FC_WIRING_CLEARANCE,
         "fc_wiring_corridor_width_mm": FC_WIRING_CORRIDOR_WIDTH,
         "fc_wiring_corridor_centre_y_mm": FC_WIRING_CORRIDOR_CENTRE_Y,
         "pas_service_clearance_mm": PAS_SERVICE_CLEARANCE,
         "hole_interface_scope": "Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.",
         "unresolved_mounting_stack": "Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.",
-        "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use.",
+        "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }
 
 
 def build_mount(doc, parent, kind):
-    name = {"battery": "BatteryMount", "electronics": "ElectronicsMount"}[kind]
-    notes = "One integral common rail shoe; PA12 SLS/MJF. " + (
-        f"Continuous 16 x 52 x 2 mm battery adhesive deck with two integral structural stack clamp tabs at {STACK_ANCHOR_LOCATIONS}; no holes through the battery contact area. Actual pack/adhesive retention remains to be checked."
-        if kind == "battery"
-        else "Six confirmed FC/P-AS device XY mounting axes on 6.5 mm pads and 2.6 mm M2 clearance holes. Two straight members share the FC supports with navigation on X and radio on Y. The longer navigation member is 14 by 3 mm for the optional direct helix load; the radio member remains 5 by 2 mm. Their upper support face is unchanged. P-AS retains its original hole row and service height. GPS alternatives use one integral 18 by 18 mm insulating-adhesive pad farther along the same X member; LR900-A or LR24-F-Mini use the existing 26 by 10 mm pad. Check actual underside contact, retention and loaded deflection. Only one device per region; no extra brackets or GPS holes. Optical flow has a separate adjustable module. Buy device fasteners, spacers and FC dampers; their unconfirmed assembled Z stack is not modeled."
+    name = MOUNT_NAMES[kind]
+    notes = (
+        "One integral common rail shoe; PA12 SLS/MJF. "
+        + mount_contract(kind)["support_path_scope"]
+        + " "
+        + mount_contract(kind)["clearance_scope"]
     )
     obj = create_printed_part(
         doc,
@@ -230,7 +235,8 @@ def build_mount(doc, parent, kind):
     set_property(obj, "Role", "Printed equipment carrier")
     set_property(obj, "PrintSKU", name)
     set_property(obj, "MountKind", kind)
-    stack_interface.annotate_interface(obj)
+    if kind != "accessory":
+        stack_interface.annotate_interface(obj)
     set_property(obj, "MountContract", json.dumps(mount_contract(kind), sort_keys=True))
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
     set_property(obj, "HalfTurnSymmetric", kind == "battery", "App::PropertyBool")
@@ -241,7 +247,7 @@ def build_mount(doc, parent, kind):
     set_property(
         obj, "SourceURL", interfaces.FC_SOURCE if kind == "electronics" else rail.SOURCE
     )
-    if kind == "electronics":
+    if kind in ("electronics", "accessory"):
         set_property(
             obj,
             "MountingEvidence",
@@ -250,7 +256,7 @@ def build_mount(doc, parent, kind):
         set_property(
             obj,
             "MountHoleCentres",
-            [V(x, y, DECK_BOTTOM_Z) for x, y in FC_HOLE_CENTRES + PAS_HOLE_CENTRES],
+            [V(x, y, DECK_BOTTOM_Z) for x, y in mount_hole_centres(kind)],
             "App::PropertyVectorList",
         )
         set_property(

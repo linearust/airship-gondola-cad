@@ -39,11 +39,11 @@ from .wiring import collision_hits, measure_clearances, named_gap_checks
 
 V = App.Vector
 TOL = 1e-5
-BODY_NAMES = ("ModulePASEnvelope", "ModuleLR900Envelope")
+BODY_NAMES = ("ModulePASEnvelope", "ModuleRadioEnvelope")
 OPTION_RESERVES = (
     "PASConnectorReserve",
-    "LR900NegativeXConnectorReserve",
-    "LR900PositiveXConnectorReserve",
+    "RadioNegativeXConnectorReserve",
+    "RadioPositiveXConnectorReserve",
     "NavigationDirectAntennaReserve",
 )
 
@@ -65,8 +65,8 @@ def _matches(first, second):
 def adhesive_support_check(support, body, centre, size):
     """Check intact printed pad and actual nominal plan overlap, not full coverage.
 
-    The shorter LR24 body covers 24 of the 26 mm pad length. That is valid support
-    with trimmed adhesive, not a reason to enlarge the purchased module envelope.
+    Adhesive contact may be smaller than the purchased module footprint. Check
+    the declared intact patch without enlarging the purchased module envelope.
     All shapes are expressed in the same carrier-local frame.
     """
     pad = Part.makeBox(
@@ -101,10 +101,10 @@ def adhesive_support_check(support, body, centre, size):
 
 def source_evidence(doc):
     """Reject stale option identities, source envelopes or saved access lanes."""
-    parent = doc.getObject("ElectronicsEquipmentModule")
+    parent = doc.getObject("AccessoryEquipmentModule")
     registry = doc.getObject("DesignRegistry")
     if parent is None or registry is None:
-        return {"passed": False, "error": "Missing electronics carrier or registry"}
+        return {"passed": False, "error": "Missing accessory carrier or registry"}
     rows = []
     for name, profile, factory, field in (
         (
@@ -342,12 +342,12 @@ def _optical_option_check(screens, obstacles, *, antenna=False, validation_cache
 
 
 def compatibility_check(doc):
-    """Screen all six navigation/radio combinations, never mutate or save CAD."""
+    """Screen every selected navigation/radio combination without saving CAD."""
     evidence = source_evidence(doc)
     if not evidence["passed"]:
         return {"source_evidence": evidence, "passed": False}
     registry = doc.DesignRegistry
-    parent = doc.ElectronicsEquipmentModule
+    parent = doc.AccessoryEquipmentModule
     placement = parent.getGlobalPlacement()
     physical = (
         list(registry.PrintedParts)
@@ -367,7 +367,7 @@ def compatibility_check(doc):
         if obj.Name not in OPTION_RESERVES
         and not belongs_to_group(obj, doc.OpticalFlowModule)
     }
-    support = local_shape(doc.ElectronicsMount)
+    support = local_shape(doc.AccessoryMount)
     screens = _optical_screens(doc)
     validation_cache = {}
     rows = []
@@ -431,8 +431,8 @@ def compatibility_check(doc):
                 **adhesive_support_check(
                     support,
                     local_bodies[BODY_NAMES[1]],
-                    mounts.LR_CENTRE_XY,
-                    mounts.LR_ADHESIVE_SIZE,
+                    mounts.RADIO_CENTRE_XY,
+                    mounts.RADIO_ADHESIVE_SIZE,
                 ),
             }
         ]
@@ -526,6 +526,8 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Six mutually exclusive navigation/radio combinations, both optical models and both hosts. Printed supports are shared; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads, remove direct antenna and release the complete optical tower before bare-device service.",
-        "passed": len(rows) == 6 and all(row["passed"] for row in rows),
+        "scope": "Three mutually exclusive navigation choices with the LR24-F-Mini air unit, both optical models and both hosts. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. The accessory plate is not an optical-stack host.",
+        "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
+        and bool(rows)
+        and all(row["passed"] for row in rows),
     }

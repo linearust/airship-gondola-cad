@@ -727,8 +727,8 @@ def equipment_scope_check(doc, registry, objects, shapes):
         "PortPhaseLeadLoopReserve",
         "StarboardPhaseLeadLoopReserve",
         "FCWiringClearanceReserve",
-        "LR900NegativeXConnectorReserve",
-        "LR900PositiveXConnectorReserve",
+        "RadioNegativeXConnectorReserve",
+        "RadioPositiveXConnectorReserve",
         "PASConnectorReserve",
         "MTF02PConnectorReserve",
     )

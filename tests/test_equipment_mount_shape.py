@@ -1,4 +1,4 @@
-"""Shared FC/P-AS support and consistent native equipment mounting axes."""
+"""Compact FC carrier, plain accessory carrier and native mounting axes."""
 
 import json
 import unittest
@@ -12,115 +12,121 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentMountShapeTests(unittest.TestCase):
-    def test_navigation_spine_clears_rail_in_both_clamped_lateral_poses(self):
+    def test_all_carriers_clear_the_rail_in_both_clamped_lateral_poses(self):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts as mounts
         from gondola.parts import rail
         from gondola.validation.geometry import intersection_volume
 
-        station = next(
-            s for s in MODULE_STATIONS if s.object_name == "ElectronicsEquipmentModule"
-        )
+        stations = {station.object_name: station for station in MODULE_STATIONS}
         rail_shape = rail.rail_shape()
-        local = mounts.mount_shape("electronics")
-        # This section lies above the rail head but outside the mating shoe.
-        # Inspect the actual lower surface, not just the unchanged top plane.
-        section = local.common(Part.makeBox(10, 20, 8, App.Vector(25, -10, 5)))
-        for side in (-1, 1):
-            pose = App.Placement(
-                App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
-                App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
-            )
-            body = local.copy()
-            body.Placement = pose.multiply(body.Placement)
-            probe = section.copy()
-            probe.Placement = pose.multiply(probe.Placement)
-            with self.subTest(clamped_side=side):
-                self.assertLess(intersection_volume(body, rail_shape), 1e-6)
-                self.assertGreaterEqual(probe.distToShape(rail_shape)[0], 0.8 - 1e-6)
+        for kind, name in (
+            ("electronics", "ElectronicsEquipmentModule"),
+            ("accessory", "AccessoryEquipmentModule"),
+        ):
+            station = stations[name]
+            for side in (-1, 1):
+                pose = App.Placement(
+                    App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
+                    App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+                )
+                body = mounts.mount_shape(kind).copy()
+                body.Placement = pose.multiply(body.Placement)
+                with self.subTest(kind=kind, clamped_side=side):
+                    self.assertLess(intersection_volume(body, rail_shape), 1e-6)
+        # The accessory plate is above the rail and supported by its integral shoe.
+        local = mounts.mount_shape("accessory")
+        plate = local.common(Part.makeBox(20, 10, 3, App.Vector(10, -5, 10)))
+        self.assertAlmostEqual(plate.BoundBox.ZMin, mounts.DECK_BOTTOM_Z)
+        self.assertGreaterEqual(plate.BoundBox.ZMin - rail.HEAD_TOP, 1.8 - 1e-6)
 
-    def test_common_x_spine_reaches_fc_and_pas_pads_without_a_second_branch(self):
+    def test_fc_carrier_is_compact_and_has_no_radio_or_navigation_tail(self):
         from gondola.parts import equipment_mounts as mounts
 
         shape = mounts.mount_shape("electronics")
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
-        start, end = mounts.ELECTRONICS_SUPPORT_SPINES[0]
-        self.assertEqual(start, mounts.FC_HOLE_CENTRES[0])
-        self.assertEqual(end, mounts.GPS_CENTRE_XY)
-        self.assertEqual(start[1], 0)
-        self.assertEqual({centre[1] for centre in mounts.PAS_HOLE_CENTRES}, {0})
-        strip = Part.makeBox(
-            end[0] - start[0],
-            mounts.ARM_WIDTH,
-            mounts.DECK_THICKNESS,
-            App.Vector(start[0], -mounts.ARM_WIDTH / 2, mounts.DECK_BOTTOM_Z),
+        self.assertLessEqual(shape.BoundBox.XLength, 66)
+        self.assertLessEqual(shape.BoundBox.YLength, 66)
+        for origin, size in (
+            ((35, -20, 0), (90, 40, 20)),
+            ((-15, 35, 0), (30, 40, 20)),
+        ):
+            region = Part.makeBox(*size, App.Vector(*origin))
+            self.assertLess(abs(shape.common(region).Volume), 1e-6)
+        self.assertEqual(
+            mounts.mount_hole_centres("electronics"), mounts.FC_HOLE_CENTRES
         )
-        for x, hole_y in mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES:
-            strip = strip.cut(
+
+    def test_accessory_is_plain_full_plate_with_only_confirmed_pas_holes(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        x, y = mounts.ACCESSORY_DECK_CENTRE_XY
+        width, length = mounts.ACCESSORY_DECK_SIZE
+        plate = Part.makeBox(
+            width,
+            length,
+            mounts.DECK_THICKNESS,
+            App.Vector(x - width / 2, y - length / 2, mounts.DECK_BOTTOM_Z),
+        )
+        for hx, hy in mounts.PAS_HOLE_CENTRES:
+            plate = plate.cut(
                 Part.makeCylinder(
                     mounts.MOUNT_HOLE_DIAMETER / 2,
                     mounts.DECK_THICKNESS + 2,
-                    App.Vector(x, hole_y, mounts.DECK_BOTTOM_Z - 1),
+                    App.Vector(hx, hy, mounts.DECK_BOTTOM_Z - 1),
                 )
             )
-        self.assertLess(abs(strip.cut(shape).Volume), 1e-6)
+        shape = mounts.mount_shape("accessory")
+        self.assertTrue(shape.isValid())
+        self.assertEqual(len(shape.Solids), 1)
+        self.assertLess(abs(plate.cut(shape).Volume), 1e-6)
+        self.assertEqual(
+            mounts.mount_hole_centres("accessory"), mounts.PAS_HOLE_CENTRES
+        )
+        self.assertIsNone(mounts.mount_contract("accessory")["stack_interface"])
 
-    def test_gps_adhesive_pad_is_integral_and_not_pierced_by_pas_holes(self):
+    def test_shared_adhesive_patches_are_intact_and_clear_pas_holes(self):
         from gondola.parts import equipment_mounts as mounts
 
-        pad = Part.makeBox(
-            *mounts.GPS_ADHESIVE_SIZE,
-            mounts.DECK_THICKNESS,
-            App.Vector(
-                mounts.GPS_CENTRE_XY[0] - mounts.GPS_ADHESIVE_SIZE[0] / 2,
-                mounts.GPS_CENTRE_XY[1] - mounts.GPS_ADHESIVE_SIZE[1] / 2,
-                mounts.DECK_BOTTOM_Z,
-            ),
-        )
-        self.assertLess(pad.cut(mounts.mount_shape("electronics")).Volume, 1e-6)
+        shape = mounts.mount_shape("accessory")
+        for centre, size in (
+            (mounts.GPS_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
+            (mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE),
+        ):
+            pad = Part.makeBox(
+                *size,
+                mounts.DECK_THICKNESS,
+                App.Vector(
+                    centre[0] - size[0] / 2,
+                    centre[1] - size[1] / 2,
+                    mounts.DECK_BOTTOM_Z,
+                ),
+            )
+            self.assertLess(abs(pad.cut(shape).Volume), 1e-6)
 
-    def test_former_offset_pas_branch_is_absent(self):
-        from gondola.parts import equipment_mounts as mounts
-
-        # Outside the shoe and optical tabs, the former Y=-9.3 member ran
-        # through this 4 mm band outside the reinforced shared member. Keeping it would duplicate the
-        # shared X spine even if all mounting holes were correctly relocated.
-        clear = Part.makeBox(
-            12, 4, mounts.DECK_THICKNESS, App.Vector(26, -11.8, mounts.DECK_BOTTOM_Z)
-        )
-        shape = mounts.mount_shape("electronics")
-        self.assertLess(abs(shape.common(clear).Volume), 1e-6)
-
-    def test_shared_spine_preserves_full_profile_and_published_pas_pattern(self):
+    def test_separate_carriers_preserve_fc_and_published_pas_hole_patterns(self):
         from gondola.contracts import equipment_interfaces as interfaces
         from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import mounting_pad_check
 
-        shape = mounts.mount_shape("electronics")
-        section = shape.common(
-            Part.makeBox(
-                1,
-                18,
-                5,
-                App.Vector(29.5, -9, mounts.DECK_BOTTOM_Z - 2),
-            )
-        )
-        self.assertAlmostEqual(section.Volume, 42, places=6)
-        self.assertAlmostEqual(section.BoundBox.YLength, 14, places=6)
-        self.assertAlmostEqual(section.BoundBox.ZLength, 3, places=6)
-        self.assertAlmostEqual(section.BoundBox.Center.y, 0, places=6)
-        self.assertAlmostEqual(section.BoundBox.ZMax, mounts.SUPPORT_FACE_Z, places=6)
-        self.assertEqual(
-            tuple(
-                (x - mounts.PAS_CENTRE_XY[0], y - mounts.PAS_CENTRE_XY[1])
-                for x, y in mounts.PAS_HOLE_CENTRES
-            ),
-            interfaces.PAS_HOLE_CENTRES,
-        )
-        self.assertEqual(
-            mounts.PAS_HOLE_CENTRES[1][0] - mounts.PAS_HOLE_CENTRES[0][0],
-            interfaces.PAS_HOLE_PITCH,
-        )
+        for kind in ("electronics", "accessory"):
+            shape = mounts.mount_shape(kind)
+            for centre in mounts.mount_hole_centres(kind):
+                check = mounting_pad_check(
+                    shape,
+                    centre,
+                    bottom=mounts.DECK_BOTTOM_Z,
+                    thickness=mounts.DECK_THICKNESS,
+                    hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                    pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                )
+                self.assertTrue(check["passed"], check)
+        for actual, expected in zip(
+            mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_CENTRES
+        ):
+            self.assertAlmostEqual(actual[0] - mounts.PAS_CENTRE_XY[0], expected[0])
+            self.assertAlmostEqual(actual[1] - mounts.PAS_CENTRE_XY[1], expected[1])
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
@@ -142,18 +148,19 @@ class FCInstallationTests(unittest.TestCase):
             )
             groups[station.object_name] = group
         build_mount(self.doc, groups["ElectronicsEquipmentModule"], "electronics")
+        build_mount(self.doc, groups["AccessoryEquipmentModule"], "accessory")
         build_equipment(
             self.doc,
             groups["BatteryEquipmentModule"],
             groups["ElectronicsEquipmentModule"],
+            groups["AccessoryEquipmentModule"],
         )
         self.doc.recompute()
 
     def test_native_hole_axis_metadata_follows_shared_support(self):
-        from gondola.contracts import equipment_interfaces as interfaces
         from gondola.parts import equipment_mounts as mounts
 
-        centres = mounts.FC_HOLE_CENTRES + mounts.PAS_HOLE_CENTRES
+        centres = mounts.FC_HOLE_CENTRES
         self.assertEqual(
             [
                 (point.x, point.y, point.z)
@@ -165,7 +172,7 @@ class FCInstallationTests(unittest.TestCase):
             ("ModuleFCEnvelope", mounts.FC_HOLE_CENTRES),
             (
                 "ModulePASEnvelope",
-                tuple((54 + x, y + 9.3) for x, y in interfaces.PAS_HOLE_CENTRES),
+                mounts.PAS_HOLE_CENTRES,
             ),
         ):
             with self.subTest(device=name):

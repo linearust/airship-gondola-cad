@@ -25,9 +25,11 @@ class BatteryPlacementTests(unittest.TestCase):
         cls.host.Placement.Base.x = -90
         electronics = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
         electronics.Placement.Base.x = 90
+        accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
+        accessory.Placement.Base.x = 180
         mount = equipment_mounts.build_mount(cls.doc, cls.host, "battery")
         references, _ = equipment_envelopes.build_equipment(
-            cls.doc, cls.host, electronics
+            cls.doc, cls.host, electronics, accessory
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
         stack_interface.attach_to_host(stack, cls.host)

@@ -1,0 +1,152 @@
+{
+  "revision": "AT",
+  "reviewed_on": "2026-09-25",
+  "previous_commit": "b3f3fc2003cbc08bbc2152da616a8694b57d7a7c",
+  "source_fingerprint": "0723e00d7bf688d477cb5bd691c740f992934e251a396e6cc53e87b4011a806a",
+  "approved_fixture_file": "tests/fixtures/rev_at_geometry.FCStd",
+  "approved_fixture_sha256": "b1085eacdac63585351da26c2a890faaaed59acd6a6287580d113ea534262b22",
+  "scope": "LR24-F-Mini only; compact FC carrier and one plain rail-mounted navigation/radio accessory plate. Deliberately removable servo/input module preserved.",
+  "intentional_changes": [
+    "Remove LR900-A profile, native identity, connector evidence and unreferenced dimension image. Select LR24-F-Mini onboard with LR24-F on ground; retain unknown installed antenna, wiring and adhesive interfaces.",
+    "ElectronicsMount retains only the FC support cross, integral rail shoe and optical-host anchors. Rail-axis length decreases from 141.4853 to 64.9706 mm; FC pose and 8 mm underside wiring reservation remain unchanged.",
+    "Add one 34x78x2 mm plain accessory deck with integral rail shoe and one ordinary M2x8/hex-nut rail clamp. Keep two confirmed P-AS mounting holes. GPS alternatives and Mini use uninterrupted 18x14 and 22x14 mm adhesive allocations, respectively; no model-shaped pockets or dedicated radio/GPS arms.",
+    "All navigation choices share accessory-local (14,-24) mm; Mini is at (14,24) mm. Default accessory station X=-158 mm, yaw180, preserves conservative direct-helix clearance for both optical hosts/sensors. This position is 4 mm from the -162 mm rail land centre, not a claim of +/-4 mm additional trim.",
+    "Separate FC and accessory local frames for references, reservations, native properties and validation. Four rail carriers still form propulsion/battery/electronics mass regions. Preserve 29 existing control responses and add three accessory controls.",
+    "13 installed printed parts, 3 coupons, 14 unique print exports and 60 modeled hardware items. Compared with AS this adds one integral plate/shoe and one standard clamp pair; no claim of reduced total material or part count."
+  ],
+  "independent_transition_audit": {
+    "file": "tests/fixtures/rev_at_audit.json.gz",
+    "compressed_sha256": "0be74b4fee7ffa67c0862228a7ea1d070d1b46260faa6a9c222ace1ac2c1b273",
+    "uncompressed_sha256": "3e97999d9d03eaaabdb024d82604423e83e23e0dbf5a319fc530ea10f63932a2",
+    "geometry_and_metadata_approved": true,
+    "scope": "AS committed fixture to AT candidate, full shape/native/metadata deltas and explicit canonical origin basis review. Original fixture available in previous Git commit. Candidate promoted only after independent approval; final build changes fingerprint for its configured fixture path/hash."
+  },
+  "physical_limits": [
+    "PA12 fit prototype only; printed flatness, loaded deflection, adhesion, connector installation, RF performance and physical qualification remain unverified.",
+    "Rail pads are short attachment wings around a raised sliding head, not a verified continuous flat electronics mounting face. The accessory plate supplies a geometric face; device underside components and heat dissipation still constrain actual tape contact.",
+    "MG-F10 direct helix downward mechanical envelope is not outdoor reception qualification. Remote upward antenna placement, cable and mounting remain unmodeled. Repositioning the accessory requires renewed clearance checks.",
+    "Retain FC input-voltage evidence conflict and unmeasured shared BEC headroom. Mini 2 W is maximum-average reference, not peak demand. FC/P-AS final mounting stacks and real cable lengths remain unresolved.",
+    "Extra accessory rail clamp uses the existing long-leg L-key service method. The short-leg insertion sweep collides with the plain deck and is not an accepted method."
+  ],
+  "final_verification": {
+    "status": "passed",
+    "pipeline": [
+      "build",
+      "preview",
+      "validate",
+      "compare",
+      "bundle"
+    ],
+    "source_fingerprint": "0723e00d7bf688d477cb5bd691c740f992934e251a396e6cc53e87b4011a806a",
+    "saved_cad_sha256": "ddc978495c307f6099c54be30a1a45c17a2d59b5461c7bff5fbe46e5e32dd7d7",
+    "reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "1514cef3bb92164272d6114ada1243c8f11aee3ebbe66fe2d21807d0f82e6c97"
+      },
+      "gondola_equipment_validation.json": {
+        "passed": true,
+        "sha256": "e22c9c65a184b9e89ab4300dffb34acca07dda49e6ba92b4a892eb1b9c9a1db4"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "2728b7865438f3ae6a2f8a2d6d7c1941acb33b2371928d9590d2d3af0638b0d2"
+      }
+    },
+    "print_bundle_sha256": "8275c59e915b9171da5638596b0f25271d746d24a4955491467f62553622fb8f",
+    "inventory": {
+      "installed_printed_parts": 13,
+      "fit_coupons": 3,
+      "unique_print_exports": 14,
+      "modeled_purchased_hardware": 60
+    },
+    "production_released": false
+  },
+  "visual_review": {
+    "gondola_preview.png": {
+      "passed": true,
+      "sha256": "e10edb9109873f07c46ba5ed6b298d821ed75975036233c0162e5f9e05a9bfbd"
+    },
+    "gondola_electronics.png": {
+      "passed": true,
+      "sha256": "99baf6f0d35649750bc30670deea965a7cc7bb92f1dd6d00dd291f32213f494d"
+    },
+    "gondola_print_parts.png": {
+      "passed": true,
+      "sha256": "eaa1958c53164d56f61917fb975d94b84be6d14f06285d9742ef763db0a27306"
+    },
+    "gondola_optical_stack.png": {
+      "passed": true,
+      "sha256": "f4e1bf99811c20d0363518bf59d8b23e8906311768e950c89f2f953be7211795"
+    },
+    "gondola_optical_fc_stack.png": {
+      "passed": true,
+      "sha256": "1972951756ec470455ced0883eb983ddf724cae9b435a0564ead42119f855e0d"
+    }
+  },
+  "visual_review_scope": "Full assembly, compact FC, plain accessory deck in assembly, print layout and both optical hosts inspected. Purchased-device solids are nominal envelopes; actual harnesses and adhesive retention are not modeled.",
+  "mass_comparison": {
+    "printed_volume_density_estimate_delta_g": 2.1378863425515107,
+    "structure_and_modeled_hardware_estimate_delta_g": 2.7194541337105136,
+    "current_printed_estimate_g": 71.65438862670526,
+    "scope": "BRep-volume estimates at assumed material densities, not weighed mass. The reference equipment subtotal changes by selecting Mini instead of LR900-A; this is not a measured weight reduction. Battery, wiring, antenna and unmodeled mounting items remain excluded."
+  },
+  "native_tests": {
+    "passed": true,
+    "tests": 396,
+    "skipped": 0,
+    "runtime_seconds": 793.354,
+    "freecad_version": "1.1.3",
+    "command": "FreeCAD bundled Python -m unittest discover -s tests -v",
+    "log_sha256": "fb2aa71f344cde279b4b26006d5bc63f434d0f929b1f097c87c86ffa26206048",
+    "verification_basis": "Full native suite followed by successful targeted rerun of two corrected test fixtures. CAD source remained unchanged; this is not a claim that the initial full run passed.",
+    "initial_full_suite": {
+      "passed": false,
+      "failures": 1,
+      "errors": 1,
+      "remaining_tests_passed": 394
+    },
+    "targeted_corrections": {
+      "passed": true,
+      "tests": 2,
+      "runtime_seconds": 7.933,
+      "log_sha256": "f474f45b31ca6e7ceada4fc9c543a824daa42c7ec2213c4fe5e602569d471938",
+      "changes": [
+        "Add AccessoryMount to the explicit expected saved inventory.",
+        "Include AccessoryMount in the manufacturing scratch document and assert new FC/plate probe names and 2 mm sections instead of removed navigation/radio arm sections."
+      ]
+    },
+    "fixture": "tests/fixtures/rev_at_geometry.FCStd",
+    "source_fingerprint": "0723e00d7bf688d477cb5bd691c740f992934e251a396e6cc53e87b4011a806a"
+  },
+  "static_checks": {
+    "ruff_check": true,
+    "ruff_format_check": true,
+    "compileall": true,
+    "local_document_links": true,
+    "blender_tool_tests": {
+      "passed": true,
+      "tests": 5,
+      "skipped": 0
+    }
+  },
+  "blender_review": {
+    "passed": true,
+    "scenes": 7,
+    "sampled_frames": 1782,
+    "matrix_checks": 135116,
+    "discrepancy_count": 0,
+    "verification_sha256": "b8ef270611c471befe2fd7ab74994a8cd16b8fd36a4e08b3661988e0fb6fbad9",
+    "blend_sha256": "1e33114d10dd1521d5b3f06180cc6dafb38ed8a50a61e0c945a11ba29cae9d52",
+    "parent_checked_current_source_and_cad_hashes": true,
+    "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+  },
+  "final_artifact_audit": {
+    "passed": true,
+    "checks": 252,
+    "unique_files_hashed": 61,
+    "failures": 0,
+    "retained_in": "tests/fixtures/rev_at_audit.json.gz",
+    "section": "final_artifacts"
+  }
+}

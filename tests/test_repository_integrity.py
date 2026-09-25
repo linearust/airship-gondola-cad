@@ -60,7 +60,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 check=True,
             )
             state = json.loads(result.stdout)
-            self.assertEqual(state["scoped_listed_equipment_mass_g"], 37.032)
+            self.assertEqual(state["scoped_listed_equipment_mass_g"], 35.532)
             self.assertEqual(state["inventory"], EXPECTED_INVENTORY)
             self.assertIn("yaw_motor", state["excluded_equipment"])
             self.assertFalse(state["production_released"])

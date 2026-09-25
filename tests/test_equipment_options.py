@@ -25,11 +25,13 @@ from gondola.contracts.optical_sensors import SENSOR_PROFILES
 
 
 class EquipmentOptionTests(unittest.TestCase):
-    def test_default_slots_preserve_pas_and_lr900a(self):
+    def test_default_navigation_and_sole_onboard_radio(self):
         self.assertEqual(get_navigation_profile().key, "PAS")
-        self.assertEqual(get_radio_profile().key, "LR900A")
+        self.assertEqual(get_radio_profile().key, "LR24FMINI")
         self.assertEqual(set(NAVIGATION_PROFILES), {"PAS", "MGA01", "MGF10A"})
-        self.assertEqual(set(RADIO_PROFILES), {"LR900A", "LR24FMINI"})
+        self.assertEqual(set(RADIO_PROFILES), {"LR24FMINI"})
+        self.assertNotIn("LR", DEVICE_CONNECTOR_EVIDENCE)
+        self.assertNotIn("LR", MOUNTING_EVIDENCE)
 
     def test_profiles_are_immutable_and_contracts_are_detached(self):
         for profile in (*NAVIGATION_PROFILES.values(), *RADIO_PROFILES.values()):
@@ -47,7 +49,7 @@ class EquipmentOptionTests(unittest.TestCase):
     def test_unknown_or_ground_models_cannot_be_selected_as_onboard(self):
         for getter, keys in (
             (get_navigation_profile, ("both", "MGF10C", "", [])),
-            (get_radio_profile, ("both", "LR24F", "LR900F", "", [])),
+            (get_radio_profile, ("both", "LR24F", "LR900A", "LR900F", "LR", "", [])),
         ):
             for key in keys:
                 with self.subTest(key=key), self.assertRaises(ValueError):
@@ -83,23 +85,22 @@ class EquipmentOptionTests(unittest.TestCase):
             self.assertEqual(profile.connector_band_width_mm, profile.size_mm[0])
             self.assertEqual(profile.connector_type, "SH1.0-6P")
 
-    def test_radio_alternatives_preserve_distinct_ports_and_power(self):
-        lr900 = get_radio_profile("LR900A")
-        mini = get_radio_profile("LR24FMINI")
-        self.assertEqual(lr900.connector_catalog_key, "JST_GH_4P")
+    def test_selected_mini_preserves_ports_power_and_mass_scope(self):
+        mini = get_radio_profile()
         self.assertEqual(mini.connector_catalog_key, "JST_SH_4P")
-        self.assertTrue(lr900.has_usb)
         self.assertFalse(mini.has_usb)
         self.assertEqual(mini.antenna_connector, "IPEX1")
-        self.assertEqual(mini.size_mm[2], 5.8)
+        self.assertEqual(mini.size_mm, (24.0, 18.2, 5.8))
+        self.assertEqual(mini.mass_g, 2.5)
         self.assertEqual(mini.supply_voltage_v, (4.5, 5.0))
         self.assertEqual(mini.uart_logic_v, 3.3)
-        self.assertAlmostEqual(
-            (mini.max_average_power_w - lr900.max_average_power_w) / 5, 0.34
-        )
+        self.assertEqual(mini.max_average_power_w, 2.0)
+        self.assertIn("not a peak-current limit", mini.contract()["electrical_scope"])
+        self.assertIn("not a measured installed", mini.contract()["dimension_scope"])
+        self.assertIn("LR24-F ground", mini.contract()["electrical_scope"])
 
     def test_each_supported_combination_counts_devices_and_helix_once(self):
-        self.assertEqual(SCOPED_LISTED_EQUIPMENT_MASS_G, 37.032)
+        self.assertEqual(SCOPED_LISTED_EQUIPMENT_MASS_G, 35.532)
         self.assertFalse(any("MG-A01" in item for item in EXCLUDED_EQUIPMENT))
         navigation_models = {profile.model for profile in NAVIGATION_PROFILES.values()}
         radio_models = {profile.model for profile in RADIO_PROFILES.values()}
@@ -150,7 +151,7 @@ class EquipmentOptionTests(unittest.TestCase):
         baseline = wiring_purchase_plan()
         self.assertEqual(
             baseline["connector_ends_before_subtracting_included_cables"],
-            {"SH1.0-6P": 2, "SH1.0-4P": 2, "GH1.25-4P": 2},
+            {"SH1.0-6P": 2, "SH1.0-4P": 3, "GH1.25-4P": 1},
         )
         gps_mini = wiring_purchase_plan("MGF10A", "LR24FMINI", "MTF01P")
         self.assertEqual(

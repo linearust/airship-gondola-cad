@@ -16,6 +16,7 @@ class WiringReserveTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from gondola.cad import create_group, set_property
+        from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
@@ -34,11 +35,21 @@ class WiringReserveTests(unittest.TestCase):
         )
         cls.doc = App.newDocument("WiringClearanceRegression")
         battery = create_group(cls.doc, "BatteryEquipmentModule", "Battery")
-        battery.Placement.Base.x = -180
         electronics = create_group(cls.doc, "ElectronicsEquipmentModule", "Electronics")
+        accessory = create_group(cls.doc, "AccessoryEquipmentModule", "Accessories")
+        for station in MODULE_STATIONS:
+            group = cls.doc.getObject(station.object_name)
+            if group is not None:
+                group.Placement = App.Placement(
+                    App.Vector(station.x_mm, 0, 0),
+                    App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+                )
         carrier = equipment_mounts.build_mount(cls.doc, electronics, "electronics")
+        accessory_carrier = equipment_mounts.build_mount(
+            cls.doc, accessory, "accessory"
+        )
         refs, reserves = equipment_envelopes.build_equipment(
-            cls.doc, battery, electronics
+            cls.doc, battery, electronics, accessory
         )
         optical = optical_mount.build_optical_mount(cls.doc, battery)
         stack_interface.attach_to_host(optical["group"], battery)
@@ -49,7 +60,7 @@ class WiringReserveTests(unittest.TestCase):
         reserves += sensor_reserves
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
-            "PrintedParts": [carrier] + optical["printed"],
+            "PrintedParts": [carrier, accessory_carrier] + optical["printed"],
             "HardwareParts": optical["hardware"],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
@@ -69,7 +80,7 @@ class WiringReserveTests(unittest.TestCase):
     def saved_reserve_results(self):
         from gondola.validation import propulsion_wiring
 
-        # This fixture contains only electronics. Keep the absent propulsion
+        # This fixture contains the equipment carriers. Keep the absent propulsion
         # subsystem outside this unit boundary; its real route geometry and
         # terminal overlap are covered by test_propulsion_wiring and the full
         # saved-assembly validation, without this mock or reduced inventory.
@@ -97,6 +108,27 @@ class WiringReserveTests(unittest.TestCase):
             self.assertFalse(contract["installed_connector_fit_verified"])
             self.assertFalse(contract["wire_bend_radius_qualified"])
             self.assertFalse(contract["complete_connected_harness_modeled"])
+
+    def test_navigation_and_radio_reservations_belong_to_accessory_carrier(self):
+        accessory_names = (
+            "PASConnectorReserve",
+            "RadioNegativeXConnectorReserve",
+            "RadioPositiveXConnectorReserve",
+            "NavigationDirectAntennaReserve",
+        )
+        for name in accessory_names:
+            self.assertEqual(self.wiring.parent_name(name), "AccessoryEquipmentModule")
+        for name in self.wiring.reserve_shapes():
+            parent = self.doc.getObject(self.wiring.parent_name(name))
+            self.assertIn(self.doc.getObject(name), parent.Group)
+        for name in (
+            "FCWiringClearanceReserve",
+            "XT30ServiceReserve",
+            "CapacitorServiceReserve",
+        ):
+            self.assertEqual(
+                self.wiring.parent_name(name), "ElectronicsEquipmentModule"
+            )
 
     def test_missing_and_shortened_lane_are_rejected(self):
         expected = self.expected["MTF02PConnectorReserve"]

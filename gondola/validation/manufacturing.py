@@ -117,17 +117,17 @@ def review(doc, registry):
             mounts.DECK_THICKNESS,
         ),
         (
-            "shared_fc_navigation_spine_thickness",
+            "fc_support_arm_thickness",
             "ElectronicsMount",
-            (30, 0, mounts.SUPPORT_FACE_Z - mounts.NAVIGATION_ARM_THICKNESS - 0.01),
-            (30, 0, mounts.SUPPORT_FACE_Z + 0.01),
-            mounts.NAVIGATION_ARM_THICKNESS,
+            (14, 0, mounts.DECK_BOTTOM_Z - 0.01),
+            (14, 0, mounts.SUPPORT_FACE_Z + 0.01),
+            mounts.DECK_THICKNESS,
         ),
         (
-            "shared_fc_radio_spine_thickness",
-            "ElectronicsMount",
-            (0, 40, mounts.DECK_BOTTOM_Z - 0.01),
-            (0, 40, mounts.SUPPORT_FACE_Z + 0.01),
+            "accessory_plate_thickness",
+            "AccessoryMount",
+            (14, -24, mounts.DECK_BOTTOM_Z - 0.01),
+            (14, -24, mounts.SUPPORT_FACE_Z + 0.01),
             mounts.DECK_THICKNESS,
         ),
         (
@@ -236,15 +236,10 @@ def review(doc, registry):
         "short_50mm_guidance_mm": 1.0,
         "equipment_mount_assessment": {
             "deck_mm": mounts.DECK_THICKNESS,
-            "navigation_arm_section_mm": [
-                mounts.NAVIGATION_ARM_WIDTH,
-                mounts.NAVIGATION_ARM_THICKNESS,
-            ],
-            "radio_arm_section_mm": [mounts.ARM_WIDTH, mounts.DECK_THICKNESS],
+            "fc_support_arm_section_mm": [mounts.ARM_WIDTH, mounts.DECK_THICKNESS],
+            "accessory_deck_size_mm": mounts.ACCESSORY_DECK_SIZE,
             "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
-            "contracts": [
-                mounts.mount_contract(kind) for kind in ("battery", "electronics")
-            ],
+            "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],
             "independent_optical_mount_contract": optical_mount.mount_contract(),
         },
         "rail_functional_flexure_exception": exception,

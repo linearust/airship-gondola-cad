@@ -1,10 +1,11 @@
-# Three-module layout and propulsion wiring — AN
+# Three mass regions and compact electronics carriers — AT
 
-Keep three independently positioned rail modules: central propulsion, a battery
-carrier on one side, and the FC plus the currently dimensioned ancillary
-electronics on the opposite side. The removable paired servo/input module
-remains separate from the output-bearing frame. Do not merge electronics into
-that replaceable servo bridge or add a tall FC stack merely to shorten leads.
+Keep three mass regions: central propulsion, battery on one side and electronics
+on the opposite side. AT uses two independently positioned carriers within the
+electronics region: the compact FC/optical-host carrier and one plain accessory
+plate for navigation plus the LR24-F-Mini. Four rail shoes do not imply four
+separate mass regions. The intentionally removable paired-servo module remains
+separate from the output-bearing frame.
 
 `contracts/design.py:MODULE_STATIONS` owns the initial locations and discrete
 carrier orientations. These are starting positions for physical trim, not a
@@ -18,7 +19,7 @@ There is no propulsion-frame optical host in this revision.
 In neutral, both main motors face +X and their rear side is -X. The previous
 FC on +X was on the opposite side from the rear motor-wire reservations.
 Move the electronics to -X and the battery to +X. Turn the electronics carrier
-so its P-AS arm extends outward instead of into the servos. Preserve the FC's
+to retain its existing optical-host orientation. Preserve the FC's
 intended global installation orientation independently of that carrier turn;
 the square mounting pattern permits it. The CAD envelope has no component
 markings, so verify the actual board arrow and firmware orientation at assembly.
@@ -31,9 +32,23 @@ reserves follow the FC orientation; ancillary-device reserves follow their
 own carrier. The XT30 body and unplugging space move to the side to avoid
 the servo module.
 
-The existing printed shapes, purchased hardware and integral rail shoes can
-serve this rearrangement. A central elevated FC would require new supports
-and additional service checks without a clear benefit over the rear placement.
+The former long navigation and radio branches are removed from ElectronicsMount.
+The accessory plate combines one flat deck and rail shoe, with no model-shaped
+pockets. Keep the confirmed P-AS holes; GPS and Mini use adhesive allocations.
+This adds one ordinary rail clamp pair. The plate starts near the aft rail end
+so the optional direct helix stays outside both optical sensors' screened fields
+of view even when the optical tower is on the FC carrier. The initial accessory
+shoe is 4 mm from its rail land centre; it is not a claim of ±4 mm free adjustment
+around that initial position. Recheck the land, whole shoe support and all
+clearances after moving any carrier.
+
+The rail's 32 mm wide pads are 14 mm long, with a raised central running head;
+the side wings carry attachment tape to the balloon. They are not a continuous
+flat 32 mm electronics mounting face. The plain accessory plate provides a
+known geometric adhesive face without covering the sliding head or using the
+balloon-contact underside. Actual device underside contact and adhesion remain
+unverified. A central elevated FC would require new supports and service checks
+without a demonstrated benefit over the retained rear position.
 
 ## Variable battery load
 
@@ -46,7 +61,7 @@ not select a PSU, certify electrical compatibility or account for cable/tether
 loads. Do not add guessed PSU connectors or enlarge the envelope by capacity.
 
 Actual battery, prints, hardware and harness masses are incomplete. Do not
-claim that the three modules have equal mass, that propulsion is always the
+claim that the three regions have equal mass, that propulsion is always the
 heaviest, or that symmetric spacing guarantees balance. Choose rail positions
 from measured mass and lever arms, then recheck all clearances and wiring.
 
@@ -77,5 +92,5 @@ wire route is safe.
 - [MicoAir 45A installation guidance](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual): board orientation, insulation/damping and ESC ventilation. See `controller_selection_review.md` for the unchanged nominal interface, changed included dampers and unresolved input-voltage evidence.
 - [igus cable installation guidance](https://www.igus.com/contentData/wpck/pdf/US_en/7_guidelines_for_continuousflex_cables.pdf): motion space, avoidance of tensile loading and strain relief. General principles; the cited cable-carrier system does not qualify this miniature free loop.
 
-Release evidence belongs to `tests/fixtures/rev_an_review.json` and matching
+Release evidence belongs to `tests/fixtures/rev_at_review.json` and matching
 generated validation reports. Physical qualification remains separate.

@@ -157,7 +157,7 @@ def mounting_check(doc):
     )
     physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
     support_rows = []
-    expected_supports = {"BatteryMount": "battery", "ElectronicsMount": "electronics"}
+    expected_supports = {name: kind for kind, name in mounts.MOUNT_NAMES.items()}
     for name, kind in expected_supports.items():
         obj = doc.getObject(name)
         if obj is None:
@@ -193,11 +193,12 @@ def mounting_check(doc):
                 and unverified_stack,
             }
         )
-    carrier = doc.getObject("ElectronicsMount")
-    if carrier is None:
+    carriers = {
+        "ModuleFCEnvelope": doc.getObject("ElectronicsMount"),
+        "ModulePASEnvelope": doc.getObject("AccessoryMount"),
+    }
+    if any(carrier is None for carrier in carriers.values()):
         return {"supports": support_rows, "passed": False}
-    carrier_shape = local_shape(carrier)
-    parent = doc.ElectronicsEquipmentModule
     mounting_rows = []
     navigation_profile = get_navigation_profile()
     radio_profile = get_radio_profile()
@@ -219,6 +220,9 @@ def mounting_check(doc):
             ),
         )
     for name, centres, device_hole_diameter, factory in device_specs:
+        carrier = carriers[name]
+        carrier_shape = local_shape(carrier)
+        parent = carrier.getParentGeoFeatureGroup()
         if name == "ModuleFCEnvelope":
             rotation = App.Rotation(App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
             published_hole_axes = [
@@ -270,9 +274,13 @@ def mounting_check(doc):
                 "confirmed_hole_count": len(centres),
                 "mount_axes_match_published_device_pattern": axes_match,
                 "device_source_comparison": comparison,
+                "carrier": carrier.Name,
+                "device_parent_matches_carrier": obj.getParentGeoFeatureGroup()
+                == parent,
                 "holes": holes,
                 "passed": axes_match
                 and _comparison_passed(comparison)
+                and obj.getParentGeoFeatureGroup() == parent
                 and all(row["passed"] for row in holes),
             }
         )
@@ -280,16 +288,16 @@ def mounting_check(doc):
     adhesive_specs = [
         ("BatteryMount", "ModuleBatteryEnvelope", (0, 0), mounts.BATTERY_DECK_SIZE),
         (
-            "ElectronicsMount",
-            "ModuleLR900Envelope",
-            mounts.LR_CENTRE_XY,
-            mounts.LR_ADHESIVE_SIZE,
+            "AccessoryMount",
+            "ModuleRadioEnvelope",
+            mounts.RADIO_CENTRE_XY,
+            mounts.RADIO_ADHESIVE_SIZE,
         ),
     ]
     if navigation_profile.key != "PAS":
         adhesive_specs.append(
             (
-                "ElectronicsMount",
+                "AccessoryMount",
                 "ModulePASEnvelope",
                 mounts.GPS_CENTRE_XY,
                 mounts.GPS_ADHESIVE_SIZE,
@@ -318,6 +326,7 @@ def mounting_check(doc):
             layout.navigation_bottom(navigation_profile) - mounts.SUPPORT_FACE_Z,
         ),
     ):
+        parent = carriers[name].getParentGeoFeatureGroup()
         bounds = physical_shapes_by_name[name].optimalBoundingBox(False, False)
         support_top = (
             parent.getGlobalPlacement()
@@ -367,6 +376,7 @@ def mounting_check(doc):
             }
         )
     reserve = doc.getObject("FCWiringClearanceReserve")
+    parent = doc.ElectronicsEquipmentModule
     wiring_report = {"passed": False, "error": "missing FC wiring corridor"}
     if reserve is not None:
         actual = world_shape(reserve)
@@ -416,7 +426,7 @@ def mounting_check(doc):
         "ModuleBatteryEnvelope",
         "ModuleFCEnvelope",
         "ModulePASEnvelope",
-        "ModuleLR900Envelope",
+        "ModuleRadioEnvelope",
     ):
         sweep, sweep_method = translation_sweep(
             physical_shapes_by_name[name], (0, 0, 32)
@@ -453,14 +463,15 @@ def mounting_check(doc):
                 "passed": not hits,
             }
         )
-    evidence_matches = (
+    evidence_matches = all(
         json.loads(str(carrier.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE
+        for carrier in carriers.values()
     )
     pending_metadata = []
     for name, key in (
         ("ModuleFCEnvelope", "FC"),
         ("ModulePASEnvelope", navigation_profile.interface_key),
-        ("ModuleLR900Envelope", radio_profile.interface_key),
+        ("ModuleRadioEnvelope", radio_profile.interface_key),
         ("ModuleMTF02PEnvelope", doc.OpticalFlowModule.SensorModel),
     ):
         obj = doc.getObject(name)
@@ -508,7 +519,7 @@ def mounting_check(doc):
         "pending_device_mounting_evidence": pending_metadata,
         "limits": "Printed XY mounting interfaces and reservations only. Purchase FC dampers and device mounting hardware after confirming PCB bearing planes, compressed damper heights and bolt/spacer lengths. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",
         "passed": registered_names == set(expected_supports)
-        and len(registry.EquipmentMounts) == 2
+        and len(registry.EquipmentMounts) == len(expected_supports)
         and all(
             row["passed"]
             for row in support_rows
@@ -639,7 +650,7 @@ def validate(source=None):
         reference_sources = {}
         for name in (
             "ModulePASEnvelope",
-            "ModuleLR900Envelope",
+            "ModuleRadioEnvelope",
             "ModuleMTF02PEnvelope",
         ):
             obj = doc.getObject(name)

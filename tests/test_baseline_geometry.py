@@ -251,7 +251,7 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(
             {obj.Name for obj in registry.EquipmentMounts},
-            {"BatteryMount", "ElectronicsMount"},
+            {"BatteryMount", "ElectronicsMount", "AccessoryMount"},
         )
         self.assertEqual(
             len(registry.EquipmentMounts), EXPECTED_INVENTORY["equipment_mounts"]

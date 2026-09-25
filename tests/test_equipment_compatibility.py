@@ -33,8 +33,8 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         changes = (
             (self.doc.ModulePASEnvelope, "NavigationModel", "MGA01"),
             (self.doc.ModulePASEnvelope, "NavigationProfile", "{}"),
-            (self.doc.ModuleLR900Envelope, "RadioModel", "LR24FMINI"),
-            (self.doc.ModuleLR900Envelope, "RadioProfile", "{}"),
+            (self.doc.ModuleRadioEnvelope, "RadioModel", "LR900A"),
+            (self.doc.ModuleRadioEnvelope, "RadioProfile", "{}"),
         )
         for obj, property_name, changed in changes:
             with self.subTest(property=property_name):
@@ -71,15 +71,15 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         from gondola.validation.equipment_options import adhesive_support_check
         from gondola.validation.geometry import local_shape
 
-        support = local_shape(self.doc.ElectronicsMount)
+        support = local_shape(self.doc.AccessoryMount)
         body = equipment_envelopes.radio_envelope_shape(get_radio_profile("LR24FMINI"))
         report = adhesive_support_check(
-            support, body, mounts.LR_CENTRE_XY, mounts.LR_ADHESIVE_SIZE
+            support, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
         )
         self.assertTrue(report["passed"])
-        self.assertAlmostEqual(report["continuous_support_area_mm2"], 260)
-        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 240)
-        x, y = mounts.LR_CENTRE_XY
+        self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
+        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
+        x, y = mounts.RADIO_CENTRE_XY
         damaged = support.cut(
             Part.makeBox(
                 2,
@@ -90,13 +90,13 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         )
         self.assertFalse(
             adhesive_support_check(
-                damaged, body, mounts.LR_CENTRE_XY, mounts.LR_ADHESIVE_SIZE
+                damaged, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
             )["passed"]
         )
         body.translate(App.Vector(8, 0, 0))
         self.assertFalse(
             adhesive_support_check(
-                support, body, mounts.LR_CENTRE_XY, mounts.LR_ADHESIVE_SIZE
+                support, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
             )["passed"]
         )
 
@@ -106,7 +106,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
 
         result = compatibility_check(self.doc)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["combinations"]), 6)
+        self.assertEqual(len(result["combinations"]), 3)
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
         # A physical object introduced midway along the actual lane must fail;

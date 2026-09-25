@@ -24,7 +24,7 @@ old reference, fixture or shopping list contains them.
 | --- | --- |
 | Scope, revision, layout, manufacturing basis, inventory and unresolved interfaces | [design.py](gondola/contracts/design.py) |
 | Selected FC and published equipment interfaces | [equipment_interfaces.py](gondola/contracts/equipment_interfaces.py) |
-| Navigation/radio alternatives and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
+| Navigation alternatives, selected radio and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
 | Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
 | Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
 | Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
@@ -82,11 +82,15 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   Motor leads move; servo-case leads do not. A reserved loop or neutral straight-line
   distance is not an installed harness, cut length or flexible-wire sweep proof.
   Recheck routing, strain relief and service access after layout changes.
-- Select one device per navigation, radio and optical region. Persistent selection
+- Select one navigation and optical device; the onboard radio is LR24-F-Mini only. Persistent selection
   changes require rebuilding all affected artifacts; temporary profile probes are
-  not released configurations. Some native IDs retain older device names: inspect
+  not released configurations. Navigation and optical native IDs retain older device names: inspect
   the selected model/profile properties and labels instead of inferring the device
   from its object ID. Count alternative equipment only when selected.
+- FC/optical-host and accessory carriers have separate local frames. Use
+  `wiring_reserves.parent_name()` for reservation ownership. The accessory plate
+  combines navigation and Mini support; it is not an optical-stack host. Do not
+  treat rail attachment wings as a verified flat electronics adhesive surface.
 - Use `stack_interface.attach_to_host()` for optical-host changes and
   `optical_mount.set_angles()` for its manual alignment. Verify both supported hosts,
   sensor profiles, fields of view, registration allowances and service paths.
