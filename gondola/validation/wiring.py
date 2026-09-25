@@ -218,18 +218,29 @@ def reserve_checks(doc):
         contract_matches = True
         source_url_matches = True
         fit_unverified = True
+        expected_parent_name = (
+            "OpticalPitchStage"
+            if name in ("MTF02PConnectorReserve", optical_sensor.FIELD_OBJECT)
+            else wiring.RESERVE_PARENTS.get(name)
+        )
+        expected_parent = (
+            doc.getObject(expected_parent_name) if expected_parent_name else None
+        )
+        actual_parent = obj.getParentGeoFeatureGroup()
+        parent_matches = expected_parent_name is None or (
+            expected_parent is not None and actual_parent == expected_parent
+        )
         if name in propulsion_routes:
             source_check = propulsion_routes[name]
         if name in expected_shapes:
-            source_check = _connector_geometry_check(
-                shape,
-                _in_parent_frame(
-                    expected_shapes[name],
-                    doc.OpticalPitchStage
-                    if name == "MTF02PConnectorReserve"
-                    else doc.getObject(wiring.parent_name(name)),
-                ),
-                physical_hits,
+            source_check = (
+                _connector_geometry_check(
+                    shape,
+                    _in_parent_frame(expected_shapes[name], expected_parent),
+                    physical_hits,
+                )
+                if expected_parent is not None
+                else {"passed": False, "error": "Missing declared reserve owner"}
             )
             try:
                 contract_matches = json.loads(str(obj.WiringContract)) == json.loads(
@@ -295,6 +306,9 @@ def reserve_checks(doc):
                 "own_navigation_body_inside_uncertain_antenna_seating_bound": name
                 == DIRECT_ANTENNA_RESERVE,
                 "role": str(obj.Role),
+                "expected_parent": expected_parent_name,
+                "actual_parent": actual_parent.Name if actual_parent else None,
+                "parent_matches": parent_matches,
                 "in_clearance_registry": obj in registry.ClearanceVolumes,
                 "not_in_print_or_hardware_registry": obj not in registry.PrintedParts
                 and obj not in registry.HardwareParts,
@@ -322,6 +336,7 @@ def reserve_checks(doc):
                 and contract_matches
                 and source_url_matches
                 and fit_unverified
+                and parent_matches
                 and all(row["passed"] for row in buffers)
                 and clearance_only,
             }

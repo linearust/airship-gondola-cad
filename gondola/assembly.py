@@ -122,17 +122,11 @@ def build_assembly():
         "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
-    modules = [
-        battery_module,
-        propulsion_module["group"],
-        electronics_module,
-        accessory_module,
-    ]
-    clamp_controls = [station.clamp_control for station in MODULE_STATIONS]
-    for module, station in zip(modules, MODULE_STATIONS):
+    modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
+    for module, station in zip(modules, MODULE_STATIONS, strict=True):
         x, clamp_control = station.x_mm, station.clamp_control
-        if module.Name != station.object_name:
-            raise RuntimeError("Module order disagrees with the design contract.")
+        if module is None:
+            raise RuntimeError("Missing rail module: " + station.object_name)
         set_property(
             module, "RailPositionX", x, "App::PropertyDistance", "Rail adjustment"
         )
@@ -175,9 +169,9 @@ def build_assembly():
         optical_assembly["group"], doc.getObject(OPTICAL_STACK_HOST)
     )
     rail_clamps = []
-    for module, key in zip(modules, clamp_controls):
+    for module, station in zip(modules, MODULE_STATIONS, strict=True):
         rail_clamps += rail.build_clamp_hardware(
-            doc, module, module.Name, "AssemblySettings." + key
+            doc, module, module.Name, "AssemblySettings." + station.clamp_control
         )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:

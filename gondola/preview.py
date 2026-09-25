@@ -83,7 +83,7 @@ def create_attachment_detail_document(side=1):
         return shape if side > 0 else rail.half_turn(shape)
 
     add_detail_object(
-        "PurchasedM2x6",
+        "PurchasedRailClamp",
         translated_shape(orient(rail.clamp_screw_shape()), y=side * rail.CLAMP_SHIFT_Y),
         (0.92, 0.64, 0.19),
     )

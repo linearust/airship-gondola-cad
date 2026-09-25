@@ -216,7 +216,7 @@ def mounting_check(doc):
                 "ModulePASEnvelope",
                 mounts.PAS_HOLE_CENTRES,
                 interfaces.PAS_HOLE_DIAMETER,
-                devices.pas_envelope_shape,
+                devices.navigation_envelope_shape,
             ),
         )
     for name, centres, device_hole_diameter, factory in device_specs:
@@ -232,7 +232,11 @@ def mounting_check(doc):
             ]
         else:
             published_hole_axes = [
-                App.Vector(x + mounts.PAS_CENTRE_XY[0], y + mounts.PAS_CENTRE_XY[1], 0)
+                App.Vector(
+                    x + mounts.NAVIGATION_CENTRE_XY[0],
+                    y + mounts.NAVIGATION_CENTRE_XY[1],
+                    0,
+                )
                 for x, y in interfaces.PAS_HOLE_CENTRES
             ]
         axes_match = len(centres) == len(published_hole_axes) and all(
@@ -299,7 +303,7 @@ def mounting_check(doc):
             (
                 "AccessoryMount",
                 "ModulePASEnvelope",
-                mounts.GPS_CENTRE_XY,
+                mounts.NAVIGATION_CENTRE_XY,
                 mounts.GPS_ADHESIVE_SIZE,
             )
         )
@@ -344,7 +348,7 @@ def mounting_check(doc):
         centre = (
             mounts.FC_CENTRE_XY
             if name == "ModuleFCEnvelope"
-            else layout.navigation_centre(navigation_profile)
+            else layout.navigation_centre()
         )
         space = Part.makeBox(
             dimensions[0],

@@ -130,6 +130,63 @@ class WiringReserveTests(unittest.TestCase):
                 self.wiring.parent_name(name), "ElectronicsEquipmentModule"
             )
 
+    def test_unknown_reservation_cannot_silently_use_the_fc_frame(self):
+        for name in (
+            "FCWiringClearanceReserv",
+            "LR900NegativeXConnectorReserve",
+            "",
+            None,
+            [],
+        ):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                self.wiring.parent_name(name)
+
+    def test_reparented_reserve_is_rejected_even_when_world_geometry_is_unchanged(self):
+        from gondola.cad import world_shape
+        from gondola.print_export import geometry_comparison
+
+        for name in (
+            "FCWiringClearanceReserve",
+            "XT30ServiceReserve",
+            "CapacitorServiceReserve",
+            "RadioNegativeXConnectorReserve",
+            "MTF02PConnectorReserve",
+        ):
+            obj = self.doc.getObject(name)
+            original_parent = obj.getParentGeoFeatureGroup()
+            original_placement = App.Placement(obj.Placement)
+            global_placement = obj.getGlobalPlacement()
+            original_shape = world_shape(obj)
+            wrong_parent = (
+                self.doc.AccessoryEquipmentModule
+                if original_parent != self.doc.AccessoryEquipmentModule
+                else self.doc.ElectronicsEquipmentModule
+            )
+            with self.subTest(reserve=name):
+                try:
+                    wrong_parent.addObject(obj)
+                    obj.Placement = (
+                        wrong_parent.getGlobalPlacement()
+                        .inverse()
+                        .multiply(global_placement)
+                    )
+                    self.doc.recompute()
+                    comparison = geometry_comparison(world_shape(obj), original_shape)
+                    self.assertLess(comparison["difference_mm3"], 1e-6)
+                    self.assertLess(comparison["bounds_difference_mm"], 1e-6)
+                    checks, _ = self.saved_reserve_results()
+                    result = next(row for row in checks if row["object"] == name)
+                    self.assertFalse(result["parent_matches"])
+                    self.assertEqual(result["expected_parent"], original_parent.Name)
+                    self.assertEqual(result["actual_parent"], wrong_parent.Name)
+                    if name in self.expected:
+                        self.assertTrue(result["connector_geometry"]["passed"])
+                    self.assertFalse(result["passed"])
+                finally:
+                    original_parent.addObject(obj)
+                    obj.Placement = original_placement
+                    self.doc.recompute()
+
     def test_missing_and_shortened_lane_are_rejected(self):
         expected = self.expected["MTF02PConnectorReserve"]
         self.assertFalse(

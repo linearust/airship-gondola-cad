@@ -27,9 +27,8 @@ class EquipmentOptionShapeTests(unittest.TestCase):
             self.assertTrue(body.isValid())
             self.assertEqual(len(body.Solids), 1)
             bounds = body.BoundBox
-            self.assertAlmostEqual(bounds.Center.x, mounts.GPS_CENTRE_XY[0])
-            self.assertAlmostEqual(bounds.Center.y, mounts.GPS_CENTRE_XY[1])
-            self.assertEqual(bounds.Center.y, mounts.PAS_CENTRE_XY[1])
+            self.assertAlmostEqual(bounds.Center.x, mounts.NAVIGATION_CENTRE_XY[0])
+            self.assertAlmostEqual(bounds.Center.y, mounts.NAVIGATION_CENTRE_XY[1])
             self.assertAlmostEqual(
                 bounds.ZMin - mounts.SUPPORT_FACE_Z, mounts.ADHESIVE_ALLOWANCE
             )

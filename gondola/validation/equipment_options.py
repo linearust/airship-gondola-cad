@@ -40,11 +40,10 @@ from .wiring import collision_hits, measure_clearances, named_gap_checks
 V = App.Vector
 TOL = 1e-5
 BODY_NAMES = ("ModulePASEnvelope", "ModuleRadioEnvelope")
-OPTION_RESERVES = (
-    "PASConnectorReserve",
-    "RadioNegativeXConnectorReserve",
-    "RadioPositiveXConnectorReserve",
-    "NavigationDirectAntennaReserve",
+OPTION_RESERVES = tuple(
+    name
+    for name, parent in wiring_reserves.RESERVE_PARENTS.items()
+    if parent == "AccessoryEquipmentModule"
 )
 
 
@@ -443,7 +442,7 @@ def compatibility_check(doc):
                     **adhesive_support_check(
                         support,
                         local_bodies[BODY_NAMES[0]],
-                        mounts.GPS_CENTRE_XY,
+                        mounts.NAVIGATION_CENTRE_XY,
                         mounts.GPS_ADHESIVE_SIZE,
                     ),
                 }

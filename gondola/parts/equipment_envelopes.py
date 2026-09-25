@@ -49,7 +49,7 @@ def navigation_envelope_shape(profile=None):
     """One selected device; only the confirmed P-AS mounting axes are cut."""
     profile = profile or get_navigation_profile()
     length, width, height = profile.size_mm
-    x, y = layout.navigation_centre(profile)
+    x, y = layout.navigation_centre()
     bottom = layout.navigation_bottom(profile)
     shape = Part.makeBox(
         length, width, height, V(x - length / 2, y - width / 2, bottom)
@@ -74,13 +74,8 @@ def radio_envelope_shape(profile=None):
         length,
         width,
         height,
-        V(x - length / 2, y - width / 2, layout.radio_bottom()),
+        V(x - length / 2, y - width / 2, layout.adhesive_bottom()),
     )
-
-
-def pas_envelope_shape():
-    """Explicit legacy model helper; selected builds use the navigation slot."""
-    return navigation_envelope_shape(get_navigation_profile("PAS"))
 
 
 def build_equipment(doc, battery_group, electronics_group, accessory_group):
@@ -93,7 +88,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
     for name, value in [
         ("CentreX", 0),
         ("CentreY", 0),
-        ("BottomZ", mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE),
+        ("BottomZ", layout.adhesive_bottom()),
     ]:
         set_property(battery, name, value, "App::PropertyDistance")
     set_property(battery, "InPlaneRotation", 90, "App::PropertyAngle")
@@ -257,7 +252,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
         "CapacitorServiceReserve",
         "35V220uF capacitor reserve diameter10x16",
         Part.makeCylinder(
-            5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.radio_bottom())
+            5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.adhesive_bottom())
         ),
         "Provisional space for the specified35V220uF capacitor, near the FC and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,

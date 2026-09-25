@@ -91,7 +91,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
         shape = mounts.mount_shape("accessory")
         for centre, size in (
-            (mounts.GPS_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
+            (mounts.NAVIGATION_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
             (mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE),
         ):
             pad = Part.makeBox(
@@ -125,8 +125,12 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for actual, expected in zip(
             mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_CENTRES
         ):
-            self.assertAlmostEqual(actual[0] - mounts.PAS_CENTRE_XY[0], expected[0])
-            self.assertAlmostEqual(actual[1] - mounts.PAS_CENTRE_XY[1], expected[1])
+            self.assertAlmostEqual(
+                actual[0] - mounts.NAVIGATION_CENTRE_XY[0], expected[0]
+            )
+            self.assertAlmostEqual(
+                actual[1] - mounts.NAVIGATION_CENTRE_XY[1], expected[1]
+            )
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")

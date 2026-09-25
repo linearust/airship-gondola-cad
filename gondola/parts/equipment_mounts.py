@@ -31,9 +31,9 @@ FC_HOLE_CENTRES = (
 # Navigation and the onboard radio share one plain accessory plate, independently
 # movable along the rail. These are accessory-local, not FC-carrier coordinates.
 NAVIGATION_CENTRE_XY = (14.0, -24.0)
-PAS_CENTRE_XY = GPS_CENTRE_XY = NAVIGATION_CENTRE_XY
 PAS_HOLE_CENTRES = tuple(
-    (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
+    (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
+    for x, y in interfaces.PAS_HOLE_CENTRES
 )
 RADIO_CENTRE_XY = (14.0, 24.0)
 GPS_ADHESIVE_SIZE = (18.0, 14.0)
@@ -176,7 +176,7 @@ def mount_contract(kind):
             },
             {
                 "device": "MG-A01 / M10 Ultra or MG-F10-A",
-                "centre_xy_mm": GPS_CENTRE_XY,
+                "centre_xy_mm": NAVIGATION_CENTRE_XY,
                 "size_mm": GPS_ADHESIVE_SIZE,
             },
         ],
@@ -216,12 +216,13 @@ def mount_contract(kind):
 
 
 def build_mount(doc, parent, kind):
+    contract = mount_contract(kind)
     name = MOUNT_NAMES[kind]
     notes = (
         "One integral common rail shoe; PA12 SLS/MJF. "
-        + mount_contract(kind)["support_path_scope"]
+        + contract["support_path_scope"]
         + " "
-        + mount_contract(kind)["clearance_scope"]
+        + contract["clearance_scope"]
     )
     obj = create_printed_part(
         doc,
@@ -237,7 +238,7 @@ def build_mount(doc, parent, kind):
     set_property(obj, "MountKind", kind)
     if kind != "accessory":
         stack_interface.annotate_interface(obj)
-    set_property(obj, "MountContract", json.dumps(mount_contract(kind), sort_keys=True))
+    set_property(obj, "MountContract", json.dumps(contract, sort_keys=True))
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
     set_property(obj, "HalfTurnSymmetric", kind == "battery", "App::PropertyBool")
     set_property(obj, "PrintSupportsRequired", False, "App::PropertyBool", "Printing")

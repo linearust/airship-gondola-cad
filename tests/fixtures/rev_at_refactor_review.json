@@ -1,0 +1,160 @@
+{
+  "revision": "AT",
+  "reviewed_on": "2026-09-25",
+  "scope": "Behavior-preserving equipment layout/assembly refactor, stricter reserve ownership validation and fresh GUI macro execution. No physical geometry redesign.",
+  "previous_commit": "1950de3f3a6361a9add69a74f6212a30cdc048ec",
+  "source_fingerprint": "f901a8ba42cdcbb2d3334f46d27c9ea51a4eb7e3431fdb9311a696045f0aad8e",
+  "saved_cad_sha256": "1f56a71d5a1ecd436bc5f5645edcbad565698c20e7be0ebae1083fccbf887ef8",
+  "fixture": "tests/fixtures/rev_at_geometry.FCStd",
+  "fixture_sha256": "b1085eacdac63585351da26c2a890faaaed59acd6a6287580d113ea534262b22",
+  "fixture_unchanged": true,
+  "changes": [
+    "Use one navigation placement datum for all mutually exclusive navigation modules and one common nominal adhesive elevation; remove duplicate PAS/GPS centre aliases and the redundant PAS envelope wrapper.",
+    "Resolve assembly modules and clamp controls from the existing station contract, removing a second positional module/control list. Compute each mount contract once per build.",
+    "Declare equipment reserve owners explicitly and reject unknown names. Reuse this mapping in alternative-equipment checks. Verify saved reserve parent groups, including optical reserves, so unchanged world geometry cannot conceal attachment to the wrong movable carrier.",
+    "GUI macros discard the local gondola package and generated local bytecode before imports. Repeated runs use current source, including same-size edits with unchanged timestamps. Keep existing native documents intact; bind preview callbacks to their original callable and close flag.",
+    "Rename the preview rail-clamp object to avoid its stale M2x6 name. Update AI operating notes for module ownership and GUI reload behavior."
+  ],
+  "physical_review": {
+    "decision": "Preserve AT geometry. Remaining slots, openings and separation have clamp, bearing retention, tool access, rotation, rail flexibility or requested servo replacement functions.",
+    "mass_budget_identical": true,
+    "printed_mass_estimate_delta_g": 0.0,
+    "structure_and_hardware_mass_estimate_delta_g": 0.0,
+    "scope": "Identical CAD-volume/density estimates, not measured mass. No new strength, adhesive or fit qualification."
+  },
+  "verification": {
+    "native_suite": {
+      "passed": true,
+      "tests": 402,
+      "skipped": 0,
+      "source_fingerprint": "f901a8ba42cdcbb2d3334f46d27c9ea51a4eb7e3431fdb9311a696045f0aad8e",
+      "freecad_version": "1.1.3",
+      "single_all_passing_full_suite_run": false,
+      "verification_basis": "Full discovery run ended with exit 143 (consistent with SIGTERM, sender unknown), without recorded test failures. Retain 231 explicitly completed passing test IDs, then run every remaining discovered ID in seven bounded native batches. Exact set coverage checked against all 402 discovered test IDs; no omissions or skips. The interrupted run is not claimed as passing.",
+      "initial_run": {
+        "completed": false,
+        "exit_code": 143,
+        "explicit_passing_test_count": 231,
+        "log_sha256": "375abf57b60b254633489c31a3ecddd7b154eddbff367b0debc4fddad687b3b6"
+      },
+      "completion_batches": [
+        {
+          "batch": 0,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 166.221,
+          "log_sha256": "4c84c9d459c6ef7858beafaa2934b95797e1743e4ac0b09943c70da63d62eace"
+        },
+        {
+          "batch": 1,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 299.035,
+          "log_sha256": "3513e2b201a65b52288ba9fbbb6401b32baf95bf1147624a3ee1d1e83ce677ba"
+        },
+        {
+          "batch": 2,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 38.752,
+          "log_sha256": "dc4f159b95ee62eb3a01cfbfbc5aea6d02900574b22646fc90b72ac52c389673"
+        },
+        {
+          "batch": 3,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 22.713,
+          "log_sha256": "0857442d67b605f38b4b8d6f03e68a523d776a60bee3d77affa5f79cf62a0b72"
+        },
+        {
+          "batch": 4,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 28.536,
+          "log_sha256": "963aef44fb845b842e7260efa3f97f15a1b0fb6ab871c064c1f7ea5a79f2fa36"
+        },
+        {
+          "batch": 5,
+          "tests": 25,
+          "passed": true,
+          "runtime_seconds": 8.809,
+          "log_sha256": "cbb78eba1c1137ea0389ba8c625340633b04167c80c924164ea7bc6fc80672aa"
+        },
+        {
+          "batch": 6,
+          "tests": 21,
+          "passed": true,
+          "runtime_seconds": 13.522,
+          "log_sha256": "0555c37003bc67409d8164c07f13cd0151ed66397bd91c5c76adfbcacdc33f56"
+        }
+      ]
+    },
+    "targeted_ownership_tests": {
+      "passed": true,
+      "tests": 17,
+      "log_sha256": "5ec6f1e74f2ddf37b1937068496a2f97801a515a291749dbc308ba1826b98757"
+    },
+    "static_checks": {
+      "ruff_check": true,
+      "ruff_format_check": true,
+      "compileall": true,
+      "git_diff_check": true,
+      "local_document_links": true
+    },
+    "pipeline": [
+      "build",
+      "preview",
+      "validate",
+      "compare",
+      "bundle"
+    ],
+    "reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "8981139437c61f8328d8aad14d60fd32a45c671796dd6a6101be87174f900386"
+      },
+      "gondola_equipment_validation.json": {
+        "passed": true,
+        "sha256": "dfb0590db408e5126d44ceba4b1da4e8e0597e03ffc7d94ed71a17f128131bc7"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "aff6ab8b775414c7ab3f225ecccadf40b248844d6f26e937757d54f6d2211abc"
+      }
+    },
+    "shape_count": 116,
+    "native_control_cases": 32,
+    "native_expressions_unchanged": true,
+    "native_interface_metadata_unchanged": true,
+    "print_bundle_sha256": "7da73015d5b406df186b082fc8fdcccd03b6a9919b1153a1cd5ece42d038cb4f",
+    "blender": {
+      "passed": true,
+      "scenes": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 135116,
+      "discrepancy_count": 0,
+      "verification_sha256": "fac460f594a4382e31e0daa586b3b4de287dfc95587311bfd6eb5ce17baf742b",
+      "blend_sha256": "01b58870efdc034a6df361b5fca586ab4282cba3043cc976753f69accf9b8928",
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+    },
+    "independent_artifact_audit": {
+      "passed": true,
+      "checks": 274,
+      "unique_files_hashed": 119
+    }
+  },
+  "visual_review": {
+    "gondola_preview.png": "57c160bf3d34524959544b679df5d1fc9aa881234e644edd00979d6eb4782ba4",
+    "gondola_electronics.png": "3da80bdaa3aecef90b48413f1a4c9ad393e1d8a11e3675287542019697aaa718",
+    "gondola_print_parts.png": "82a5fc81c48e8f9708f00c9e44a9be85fcbbd55ef7eac296ce8be878a1fc99db",
+    "gondola_optical_stack.png": "1cca5ff366b443bd51998620be510dcaae17fede8e783e49f308345bca1e79f0",
+    "gondola_optical_fc_stack.png": "7f4c35de49cc99f843bf2e96606aaa4b181240a9d03debb922b7641e040f4dd3"
+  },
+  "retained_evidence": {
+    "file": "tests/fixtures/rev_at_refactor_audit.json.gz",
+    "compressed_sha256": "a2ed454f049b721c8c3e66db9adf9187f966919b6f9d627fa58c15be0eafdf4f",
+    "uncompressed_sha256": "57e487cfbc10c36b91ea1e47872d11244dfa1b5425b78e532ee9078072aef95e"
+  },
+  "production_released": false,
+  "limitations": "Existing unresolved hardware, power, adhesive, fit, moving-wire, antenna, strength and flight checks remain open. Blender checks prescribed sampled rigid transforms, not physical dynamics or wire behavior. See HANDOFF.md and the unchanged release contract."
+}

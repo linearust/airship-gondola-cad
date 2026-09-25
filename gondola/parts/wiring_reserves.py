@@ -44,18 +44,23 @@ MINIMUM_NEIGHBOUR_GAPS = {
 XT30_BODY_ALLOCATION_MM = (22.0, 10.0, 15.0)
 XT30_WITHDRAWAL_ALLOWANCE_MM = 10.0
 XT30_ALLOCATION_CENTRE_XY_MM = (0.0, -49.0)
+RESERVE_PARENTS = {
+    "PASConnectorReserve": "AccessoryEquipmentModule",
+    "RadioNegativeXConnectorReserve": "AccessoryEquipmentModule",
+    "RadioPositiveXConnectorReserve": "AccessoryEquipmentModule",
+    "NavigationDirectAntennaReserve": "AccessoryEquipmentModule",
+    "FCWiringClearanceReserve": "ElectronicsEquipmentModule",
+    "XT30ServiceReserve": "ElectronicsEquipmentModule",
+    "CapacitorServiceReserve": "ElectronicsEquipmentModule",
+}
 
 
 def parent_name(name):
     """Resolve each reserve's local frame before assembly placement."""
-    if name in (
-        "PASConnectorReserve",
-        "RadioNegativeXConnectorReserve",
-        "RadioPositiveXConnectorReserve",
-        "NavigationDirectAntennaReserve",
-    ):
-        return "AccessoryEquipmentModule"
-    return "ElectronicsEquipmentModule"
+    try:
+        return RESERVE_PARENTS[name]
+    except (KeyError, TypeError) as error:
+        raise ValueError(f"Unknown equipment reserve: {name!r}") from error
 
 
 def _box(size, origin):
@@ -129,7 +134,7 @@ def direct_antenna_reserve_shape(profile=None):
     if antenna is None:
         return None
     length, width, height = profile.size_mm
-    x, y = layout.navigation_centre(profile)
+    x, y = layout.navigation_centre()
     size = (length + antenna.diameter_mm, width + antenna.diameter_mm)
     return _box(
         (*size, height + antenna.length_mm),
@@ -150,7 +155,7 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
         [_fc_peripheral_band(), _fc_exit_tube(-1), _fc_exit_tube(1)]
     ).removeSplitter()
     fc = _orient_fc_reserve(fc)
-    bottom = mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+    bottom = layout.adhesive_bottom()
     radio_x, radio_y = mounts.RADIO_CENTRE_XY
     radio_length, radio_width, radio_height = radio_profile.size_mm
     radio_lane_size = (
@@ -159,7 +164,7 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
         radio_height + CONNECTOR_TOP_MARGIN_MM,
     )
     radio_lane_y = radio_y - radio_width / 2 - CONNECTOR_SIDE_MARGIN_MM
-    navigation_x, navigation_y = layout.navigation_centre(navigation_profile)
+    navigation_x, navigation_y = layout.navigation_centre()
     navigation_width = navigation_profile.connector_band_width_mm
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
     xt30_cx, xt30_cy = XT30_ALLOCATION_CENTRE_XY_MM
