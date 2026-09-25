@@ -297,9 +297,9 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_second_horn_fastener_cannot_be_declared_fixed(self):
-        # Both prepared horn joints rotate with the input. Keeping an object
+        # Both factory-threaded horn joints rotate with the input. Keeping an object
         # in the inventory while silently changing its motion group is unsafe.
-        nut = self.doc.PortHornGearClampFarNut
+        nut = self.doc.PortHornGearClampFarBolt
         parent = nut.getParentGeoFeatureGroup()
         placement = App.Placement(nut.Placement)
         try:

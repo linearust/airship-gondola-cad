@@ -58,32 +58,32 @@ class ContinuousServiceTests(unittest.TestCase):
                 abs(translated_shape(moving, x=distance).cut(swept).Volume), 1e-7
             )
 
-    def test_horn_nut_exit_checks_the_space_between_clear_endpoints(self):
+    def test_horn_screw_exit_checks_the_space_between_clear_endpoints(self):
         from gondola.cad import translated_shape
         from gondola.parts import purchased_hardware as hardware
         from gondola.validation.propulsion import _horn_clamp_service_check
 
-        bolt = hardware.servo_screw_shape().copy()
-        nut = translated_shape(hardware.servo_nut_shape(), z=5.2)
-        baseline = _horn_clamp_service_check(bolt, nut, {}, (1, 0, 0))
+        bolt = hardware.servo_screw_shape(4).copy()
+        baseline = _horn_clamp_service_check(bolt, {}, (0, 0, -1))
         self.assertTrue(baseline["passed"], baseline)
         self.assertAlmostEqual(baseline["measured_head_envelope_diameter_mm"], 3.5)
         self.assertAlmostEqual(baseline["measured_head_envelope_height_mm"], 1.6)
-        self.assertEqual(len(baseline["nut_axial_removal"]["segments"]), 2)
-        obstacle = Part.makeBox(0.1, 0.2, 0.2, App.Vector(12.5, -0.1, 8.3))
-        for offset in ((0, 0, 0), (0, 0, 3), (25, 0, 3)):
+        # The narrow side witness touches only the moving head, midway through
+        # withdrawal, while both end poses are clear.
+        obstacle = Part.makeBox(0.1, 0.1, 0.1, App.Vector(1.65, -0.05, -3.0))
+        for offset in ((0, 0, 0), (0, 0, -4.2)):
             self.assertLess(
-                translated_shape(nut, *offset).common(obstacle).Volume, 1e-7
+                translated_shape(bolt, *offset).common(obstacle).Volume, 1e-7
             )
         result = _horn_clamp_service_check(
-            bolt, nut, {"intermediate_obstacle": obstacle}, (1, 0, 0)
+            bolt, {"intermediate_obstacle": obstacle}, (0, 0, -1)
         )
         self.assertFalse(result["passed"], result)
         self.assertGreater(
-            result["nut_axial_removal"]["segments"][1]["intersection_mm3"][
+            result["bolt_axial_withdrawal"]["segments"][0]["intersection_mm3"][
                 "intermediate_obstacle"
             ],
-            0.001,
+            0.0001,
         )
 
     def test_invalid_displacement_is_rejected(self):
@@ -406,7 +406,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                     servo_bridge.case_front_y() - 16.7,
                 )
                 self.assertAlmostEqual(allowance["inward_planning_volume_mm"][1], 13.9)
-                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 20)
+                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 16)
                 self.assertIn(
                     "StarboardServoEarLowerNut", allowance["checked_physical_objects"]
                 )
@@ -1067,8 +1067,6 @@ class SelectedGearDriveTests(unittest.TestCase):
                 "HornGearAdapter",
                 "HornGearClampNearBolt",
                 "HornGearClampFarBolt",
-                "HornGearClampNearNut",
-                "HornGearClampFarNut",
                 "ServoEarLowerBolt",
                 "ServoEarLowerNut",
                 "ServoEarUpperBolt",
@@ -1080,7 +1078,10 @@ class SelectedGearDriveTests(unittest.TestCase):
         from gondola.cad import translated_shape, world_shape
         from gondola.parts import servo_bridge
         from gondola.validation.geometry import intersection_volume
-        from gondola.validation.propulsion import servo_module_service_check
+        from gondola.validation.propulsion import (
+            input_drive_service_check,
+            servo_module_service_check,
+        )
 
         doc, module = self.configurations["48_16"]
         spec = DRIVE_CONFIGURATIONS["48_16"]
@@ -1112,6 +1113,10 @@ class SelectedGearDriveTests(unittest.TestCase):
                 row for row in result["part_paths"] if row["part"] == "PortServo"
             )
             self.assertFalse(servo_path["passed"], servo_path)
+            bench = input_drive_service_check(doc, with_obstacle, "Port")
+            self.assertFalse(bench["passed"], bench)
+            self.assertFalse(bench["module_removal_passed"])
+            self.assertEqual(bench["required_prior_check"], "servo_module_service")
         finally:
             doc.removeObject(witness.Name)
             doc.recompute()
@@ -1237,7 +1242,6 @@ class SelectedGearDriveTests(unittest.TestCase):
                             prefix + suffix
                             for suffix in (
                                 "HornGearAdapter",
-                                "DriverGear",
                                 "InputShaft",
                                 "InputShaftClampBolt",
                                 "InputShaftClampNut",
@@ -1248,6 +1252,10 @@ class SelectedGearDriveTests(unittest.TestCase):
                         result["removed_output_gear"], prefix + "OutputGear"
                     )
                     self.assertTrue(result["output_gear_removal"]["passed"])
+                    self.assertEqual(
+                        result["removed_driver_gear"], prefix + "DriverGear"
+                    )
+                    self.assertTrue(result["driver_gear_removal"]["passed"])
                     self.assertTrue(result["adapter_clamp_release"]["passed"])
                     clamp_release = result["adapter_clamp_release"]
                     self.assertEqual(clamp_release["release_order"], ["Far", "Near"])
@@ -1255,15 +1263,14 @@ class SelectedGearDriveTests(unittest.TestCase):
                     self.assertIn(
                         prefix + "HornGearClampNearBolt", far["retained_parts"]
                     )
-                    self.assertIn(
-                        prefix + "HornGearClampNearNut", far["retained_parts"]
-                    )
-                    for kind in ("Bolt", "Nut"):
+                    for kind in ("Bolt",):
                         name = prefix + "HornGearClampFar" + kind
                         self.assertIn(name, near["removed_prior_parts"])
                         self.assertNotIn(name, near["retained_parts"])
                     for joint in (far, near):
-                        self.assertEqual(len(joint["nut_axial_removal"]["segments"]), 2)
+                        self.assertEqual(
+                            len(joint["bolt_axial_withdrawal"]["segments"]), 1
+                        )
                         self.assertAlmostEqual(
                             joint["measured_head_envelope_diameter_mm"], 3.5
                         )
@@ -1273,12 +1280,13 @@ class SelectedGearDriveTests(unittest.TestCase):
                     self.assertEqual(
                         set(result["released_fasteners"]),
                         {
-                            prefix + "HornGearClamp" + position + kind
+                            prefix + "HornGearClamp" + position + "Bolt"
                             for position in ("Near", "Far")
-                            for kind in ("Bolt", "Nut")
                         },
                     )
-                    case_service = servo_case_service_check(doc, module, prefix)
+                    case_service = servo_case_service_check(
+                        doc, module, prefix, prior_service=result
+                    )
                     self.assertTrue(case_service["passed"], case_service)
                     self.assertEqual(
                         set(case_service["moving_parts"]),
@@ -1295,18 +1303,22 @@ class SelectedGearDriveTests(unittest.TestCase):
                     self.assertEqual(
                         case_service["required_prior_check"], "input_drive_service"
                     )
-                    retained = (
-                        {
-                            prefix + "Output" + part + side
-                            for part in ("Shaft", "Bearing")
-                            for side in ("Negative", "Positive")
-                        }
-                        | {"PropulsionFixedFrame", "ServoDriveBridge"}
-                        | {
-                            "ServoBridge" + side + kind
-                            for side in ("Port", "Starboard")
-                            for kind in ("Bolt", "Nut")
-                        }
+                    retained = {"ServoDriveBridge"} | {
+                        ("Starboard" if prefix == "Port" else "Port") + suffix
+                        for suffix in (
+                            "Servo",
+                            "ServoHorn",
+                            "DriverGear",
+                            "HornGearAdapter",
+                            "InputShaft",
+                        )
+                    }
+                    self.assertEqual(
+                        result["required_prior_check"], "servo_module_service"
+                    )
+                    self.assertTrue(result["module_removal_passed"])
+                    self.assertIn(
+                        "PropulsionFixedFrame", result["separated_fixed_parts"]
                     )
                     for service in (result, case_service):
                         self.assertTrue(retained.issubset(service["retained_parts"]))
@@ -1408,7 +1420,7 @@ class SelectedGearDriveTests(unittest.TestCase):
             "PortInputShaft",
             "PortInputShaftClampBolt",
             "PortInputShaftClampNut",
-            "PortHornGearClampNearNut",
+            "PortHornGearClampNearBolt",
             "PortServoHorn",
             "PortHornGearAdapter",
             "PortOutputShaftPositive",
@@ -1606,9 +1618,10 @@ class SelectedGearDriveTests(unittest.TestCase):
                 App.Vector(36, 0.45, 2), App.Rotation(App.Vector(1, 2, 3), 13)
             )
             doc.recompute()
-            for check in (bridge_joint_check, servo_module_service_check):
-                result = check(doc, module_parts)
-                self.assertTrue(result["passed"], result)
+            result = bridge_joint_check(doc, module_parts)
+            self.assertTrue(result["passed"], result)
+            module_release = servo_module_service_check(doc, module_parts)
+            self.assertTrue(module_release["passed"], module_release)
             for prefix in ("Port", "Starboard"):
                 for check in (
                     fixed_servo_datum_check,
@@ -1617,10 +1630,14 @@ class SelectedGearDriveTests(unittest.TestCase):
                     with self.subTest(pod=prefix, check=check.__name__):
                         result = check(doc, prefix)
                         self.assertTrue(result["passed"], result)
-                case_service = servo_case_service_check(doc, module_parts, prefix)
-                self.assertTrue(case_service["passed"], case_service)
-                service = input_drive_service_check(doc, module_parts, prefix)
+                service = input_drive_service_check(
+                    doc, module_parts, prefix, module_release=module_release
+                )
                 self.assertTrue(service["passed"], service)
+                case_service = servo_case_service_check(
+                    doc, module_parts, prefix, prior_service=service
+                )
+                self.assertTrue(case_service["passed"], case_service)
         finally:
             module.Placement = original
             doc.recompute()

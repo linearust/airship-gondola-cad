@@ -1,0 +1,148 @@
+{
+  "revision": "AS",
+  "reviewed_on": "2026-09-25",
+  "previous_commit": "a842b0e792ef60081719e90a8d1e32742a723a4a",
+  "source_fingerprint": "649c5d97d2536a5943ba0d1835a310c6ead31e3cbf2ec4a2b2e1917728f76cb9",
+  "approved_fixture_file": "tests/fixtures/rev_as_geometry.FCStd",
+  "approved_fixture_sha256": "6205f34231fcdb19167bacd7fa00eb01dd25b4a1c3eb67a4279f10e0d1100b8a",
+  "scope": "Selected purchased 15T/4.0 mm metal horn, factory M1.6 attachment, one-piece open root register and assembly clearance; removable paired drive module preserved.",
+  "intentional_changes": [
+    "Use the user-selected horn and confirmed three M1.6 threads. First/third holes attach with two front M1.6x4 screws per side. The 12.2 mm third position is inferred from the seller drawing; outer slot permits +/-0.4 mm radial position adjustment before tightening.",
+    "Integral open C root saddle has nominal 0.15 mm radial clearance. The saddle bounds assembly movement without automatic centring; do not force one-sided contact or leave fasteners loose during operation.",
+    "Remove four horn nuts and the temporary centring jig. Export finished adapters rather than machining blanks. Keep 12 installed printed parts; fit coupons reduce from 4 to 3; modeled hardware reduces from 62 to 58.",
+    "Fill obsolete rear screwdriver scallops in ServoDriveBridge. Input shaft, gear plane, output system, rail and equipment geometry remain unchanged.",
+    "Correct service sequence: first remove both output gears and paired servo module; remove input gear and horn screws on bench. Retain the other module parts as obstacles and require successful whole-module removal before bench paths can pass."
+  ],
+  "independent_transition_audit": {
+    "file": "tests/fixtures/rev_as_audit.json.gz",
+    "compressed_sha256": "5e6e1b0b3df6fe088b75bfe05d0d16075221a5e1f21a71cf951fdee0b24ef2d5",
+    "uncompressed_sha256": "69cd4020aca22e0d19dc86d2286d1b782b60aae8aa9defd1fd4068503099e87e",
+    "geometry_and_metadata_approved": true,
+    "scope": "Chained AR fixture to first AS candidate to final AS candidate; full differences and classifications retained. Prior AR geometry remains available in the previous Git commit, not as a second active fixture. The archive also retains the final artifact integrity audit."
+  },
+  "physical_limits": [
+    "X06 compatibility is a user-accepted premise, not a measured fit. All three M1.6 threads are user-confirmed.",
+    "Horn 3.5 mm total axial envelope, spline recess, installed seating, rounded tip and root concentricity remain unmeasured. Seller dimensions establish front outline and 1.6 mm arm thickness only.",
+    "Nominal M1.6x4 grip 2.6 mm, engagement 1.4 mm and rear clearance 0.2 mm require actual screws and useful threads. Minimum flat under-head diameter 3.0 mm and maximum head envelope 3.5 mm are design acceptance limits, not PA12 bearing-strength proof.",
+    "No input support bearing is added. Raw PA12 fit, printed shaft socket, gear runout, servo radial loading, clamping torque, creep and installed wire motion remain unqualified."
+  ],
+  "final_verification": {
+    "status": "passed",
+    "pipeline": [
+      "build",
+      "preview",
+      "validate",
+      "compare",
+      "bundle"
+    ],
+    "source_fingerprint": "649c5d97d2536a5943ba0d1835a310c6ead31e3cbf2ec4a2b2e1917728f76cb9",
+    "saved_cad_sha256": "fed20f8f413348e2722b47e5bed9097a272459ce7c278bcd09362a9eb82fc059",
+    "reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "82cff93ea70004c57b58a134b3728cb0e080dae8a6d911296b1adabeeb0fb5b0"
+      },
+      "gondola_equipment_validation.json": {
+        "passed": true,
+        "sha256": "48af32751884e723b1c68ad8f80c9308e0d51d21e8cdc16f3703e9655a53ace7"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "ec41d2e9c1b9ff0e7af37a2fb0153d99275cfa10f6e3946cb1fac3d2f9abdc79"
+      }
+    },
+    "print_bundle_sha256": "11a23e6b5e687ece7ff3c583a0a3d7520c1bbcd6125e60da593f9c1398fd017e",
+    "inventory": {
+      "installed_printed_parts": 12,
+      "fit_coupons": 3,
+      "unique_print_exports": 13,
+      "modeled_purchased_hardware": 58
+    },
+    "production_released": false
+  },
+  "visual_review": {
+    "gondola_preview.png": {
+      "passed": true,
+      "sha256": "cf2cd0fc62c981316f7c65e23595bdd656367b72ab4bc0ddd102a52a1ac65886"
+    },
+    "gondola_print_parts.png": {
+      "passed": true,
+      "sha256": "8a8c57dcecdf03eb4ec4783aba153d3e40c19fab7fde5a750e405679584b175c"
+    },
+    "gondola_propulsion.png": {
+      "passed": true,
+      "sha256": "dcf3c2249c1aacd7cbd5b345f99b3a1b6cb98f58d72f10c99d1b42421f01f8b0"
+    },
+    "gondola_optical_stack.png": {
+      "passed": true,
+      "sha256": "8b390d1e44135dd4a4715b20c8307397aa7cb18e714cd070fe6bb7dc85d4f455"
+    },
+    "gondola_optical_fc_stack.png": {
+      "passed": true,
+      "sha256": "167fa17ee31cbac0162590fca9479f20012241a9e62577c42a8a1a1f08ff5989"
+    }
+  },
+  "visual_review_scope": "Final full assembly, propulsion, print layout and both optical hosts inspected. Purchased-device shapes and horn axial details remain qualified nominal envelopes; actual leads are not modeled.",
+  "mass_comparison": {
+    "printed_volume_density_estimate_delta_g": 0.10522154984556664,
+    "current_printed_estimate_g": 69.51650228415374,
+    "scope": "Installed printed BRep at assumed PA12 density; not measured. New horn aluminium-envelope estimate replaces previously unknown horn mass, so hardware subtotal change is not a physical mass comparison."
+  },
+  "focused_native_verification": {
+    "passed": true,
+    "tests": 31,
+    "skipped": 0,
+    "runtime_seconds": 323.585,
+    "scope": "Factory-threaded horn, saved mirrored coupling, minimum head lands, ordered module/drive/servo service and dependent failure propagation. Followed by full native suite on the promoted AS fixture."
+  },
+  "native_tests": {
+    "passed": true,
+    "tests": 394,
+    "skipped": 0,
+    "runtime_seconds": 894.751,
+    "freecad_version": "1.1.3",
+    "command": "FreeCAD bundled Python -m unittest discover -s tests -v",
+    "log_sha256": "0ed4a45efd410d43cdc5268ff68d6eb50e8db9a67d8b661f212076540288a377",
+    "fixture": "tests/fixtures/rev_as_geometry.FCStd",
+    "source_fingerprint": "649c5d97d2536a5943ba0d1835a310c6ead31e3cbf2ec4a2b2e1917728f76cb9"
+  },
+  "static_checks": {
+    "ruff_check": true,
+    "ruff_format_check": true,
+    "compileall": true,
+    "local_document_links": true,
+    "blender_tool_tests": {
+      "passed": true,
+      "tests": 5,
+      "skipped": 0
+    }
+  },
+  "blender_review": {
+    "passed": true,
+    "scenes": 7,
+    "sampled_frames": 1782,
+    "matrix_checks": 132155,
+    "discrepancy_count": 0,
+    "verification_sha256": "cb315283572443442862e8e894070d4ed33b934a224ebd70e69d5276c8b2900b",
+    "blend_sha256": "19363bc16195b92aa995866fceca29214012ec50487099953a5698f8ff0aa382",
+    "parent_checked_current_source_and_cad_hashes": true,
+    "visually_reviewed_stills": [
+      "02_Independent_tilt.png",
+      "03_Gear_and_horn.png",
+      "07_Servo_module_removal.png"
+    ],
+    "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+  },
+  "freecad_view": {
+    "opened_current_revision": "AS",
+    "saved_by_launcher": false
+  },
+  "final_artifact_audit": {
+    "passed": true,
+    "checks": 226,
+    "unique_files_hashed": 52,
+    "failures": 0,
+    "retained_in": "tests/fixtures/rev_as_audit.json.gz",
+    "section": "final_artifacts"
+  }
+}

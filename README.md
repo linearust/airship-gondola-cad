@@ -36,7 +36,7 @@ Read references according to the changed interface; their revision/date matters:
 - Drive and purchasing: [selection](references/drive_selection_review.md),
   [seller gear evidence](references/kailash_gears_selected_evidence.md),
   [cart decisions](references/cart_adaptation_review.md),
-  [bearing retention and supplied-horn preparation](references/retention_review.md).
+  [bearing retention and purchased-horn coupling](references/retention_review.md).
 - Structure and wiring: [layout](references/layout_and_wiring_review.md),
   [rail joint](references/rail_joint_review.md), [rail fit](references/rail_fit_review.md),
   [shape rationale](references/shape_simplification_review.md).
@@ -63,11 +63,14 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   permitted axial travel, retained contact and continuous rotation bounds where
   applicable. Label sampled checks as sampled; distinguish intentional bearing,
   gear and stop contacts from unexpected interference.
-- The supplied horn remains unmeasured. Its prepared CAD shape is an example.
-  Export the adapter's undrilled `PrintBlankShape`, not that prepared example.
-  Follow the retained preparation contract for actual horn registration and
-  fastening sites; do not invent a spline, OEM screw specification or universal
-  horn compatibility. Keep shaft grip separate from axial/bearing retention.
+- The [selected purchased horn](references/retention_review.md#selected-replacement-horn--2026-09-25)
+  uses factory M1.6 threads, an integral open root saddle and round/slot assembly
+  clearance. Export the installed adapter solid; no horn-drilling blank or jig
+  remains. Preserve user-accepted X06 compatibility and confirmed threads.
+  Missing axial seating/root concentricity remain explicit prototype envelopes.
+  Adjustment is before tightening, not intentional operating looseness. Recheck
+  front screw and gear removal paths when changing the coupling. Keep shaft
+  grip separate from axial/bearing retention.
 - Rail and bearing coupons address finished fit and retention. Nominal dimensions
   and prescribed latch release motion do not establish insertion force, elastic
   recovery, shield clearance, creep or fatigue. Do not close an unverified bearing
@@ -118,7 +121,7 @@ python3 -m compileall -q gondola
 Offline tests skip FreeCAD-dependent cases. Before accepting changed CAD artifacts,
 run the native suite and confirm no skips. The runtime locates a Linux FreeCAD
 AppImage in `~/Applications` or `~/Downloads`; `FREECAD_APPIMAGE` overrides it.
-AR was reviewed with FreeCAD 1.1.3; investigate kernel-dependent differences when
+The reviewed runtime is FreeCAD 1.1.3; investigate kernel-dependent differences when
 changing versions. Preview requires a graphical display.
 
 ```sh

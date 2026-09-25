@@ -1,9 +1,8 @@
-"""Saved machining examples cannot masquerade as measured supplied-horn fits."""
+"""Saved factory-horn geometry must not masquerade as physically measured fit."""
 
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -33,7 +32,9 @@ class HornRegistrationTests(unittest.TestCase):
         App.closeDocument(cls.doc.Name)
         cls.directory.cleanup()
 
-    def test_saved_examples_follow_both_drives_without_claiming_physical_fit(self):
+    def test_saved_factory_joints_follow_both_drives_without_claiming_physical_fit(
+        self,
+    ):
         from gondola.validation.horn_coupling import horn_registration_check
 
         module = self.doc.MainPropulsionModule
@@ -53,31 +54,41 @@ class HornRegistrationTests(unittest.TestCase):
                         self.assertTrue(result["passed"], result)
                         self.assertFalse(result["physical_concentricity_verified"])
                         self.assertTrue(
-                            result["supplied_horn_measurement_explicitly_unknown"]
+                            result["purchased_horn_measurement_explicitly_unknown"]
                         )
                         self.assertEqual(len(result["joints"]), 2)
-                        self.assertEqual(len(result["jig_working_range"]), 3)
+                        self.assertEqual(len(result["register_directional_stops"]), 3)
+                        self.assertFalse(result["obsolete_horn_parts"])
                 finally:
                     pod.Tilt = original
         finally:
             module.Placement = placement
             self.doc.recompute()
 
-    def test_prepared_holes_cannot_silently_become_the_print_blank(self):
+    def test_changed_export_cannot_restore_an_undrilled_print_blank(self):
+        from gondola.parts import servo_coupling as c
         from gondola.validation.horn_coupling import horn_registration_check
 
         obj = self.doc.PortHornGearAdapter
-        original = obj.PrintBlankShape.copy()
+        self.assertFalse(hasattr(obj, "PrintBlankShape"))
         try:
-            obj.PrintBlankShape = obj.Shape.copy()
+            obj.addProperty(
+                "Part::PropertyPartShape", "PrintBlankShape", "Manufacturing"
+            )
+            plug = Part.makeCylinder(
+                1.1,
+                2,
+                App.Vector(6.6, c.HORN_BOTTOM_Y + c.HORN_HEIGHT, 0),
+                App.Vector(0, 1, 0),
+            )
+            obj.PrintBlankShape = obj.Shape.fuse(plug)
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
-            self.assertGreater(result["print_blank_difference_mm3"], 100)
-            self.assertLess(result["material_removed_by_preparation_mm3"], 1e-7)
+            self.assertGreater(result["print_export_difference_mm3"], 1)
         finally:
-            obj.PrintBlankShape = original
+            obj.removeProperty("PrintBlankShape")
 
-    def test_shifted_prepared_axis_is_rejected(self):
+    def test_shifted_adapter_axis_is_rejected(self):
         from gondola.validation.horn_coupling import horn_registration_check
 
         obj = self.doc.PortHornGearAdapter
@@ -87,110 +98,71 @@ class HornRegistrationTests(unittest.TestCase):
             self.doc.recompute()
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
-            self.assertGreater(result["prepared_example_difference_mm3"], 1)
+            self.assertGreater(result["adapter_difference_mm3"], 1)
         finally:
             obj.Placement = original
             self.doc.recompute()
 
-    def test_a_missing_second_installed_joint_does_not_pass(self):
+    def test_missing_second_installed_screw_does_not_pass(self):
         from gondola.validation.horn_coupling import horn_registration_check
 
         obj = self.doc.PortHornGearClampFarBolt
         original = obj.Shape.copy()
         try:
             obj.Shape = self.doc.PortHornGearClampNearBolt.Shape.copy()
-            self.doc.recompute()
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
-            # Exact second-hole geometry alone cannot stand in for its bolt.
-            far = result["joints"][1]
-            self.assertTrue(far["prepared_passage_blockage_mm3"] < 1e-7)
-        finally:
-            obj.Shape = original
-            self.doc.recompute()
-
-    def test_jig_nose_offset_is_rejected_in_saved_geometry(self):
-        from gondola.parts import servo_coupling as c
-        from gondola.validation.horn_coupling import horn_registration_check
-
-        obj = self.doc.HornCenteringJig
-        original = obj.Shape.copy()
-        try:
-            cutter = Part.makeBox(10, c.JIG_GUIDE_START_Y, 10, App.Vector(-5, 0, -5))
-            nose = original.common(cutter)
-            body = original.cut(cutter)
-            nose.translate(App.Vector(0.2, 0, 0))
-            obj.Shape = body.fuse(nose).removeSplitter()
-            self.assertTrue(obj.Shape.isValid())
-            self.assertEqual(len(obj.Shape.Solids), 1)
-            result = horn_registration_check(self.doc, "Port")
-            self.assertFalse(result["passed"], result)
-            self.assertGreater(result["jig_difference_mm3"], 0.1)
-            self.assertTrue(
-                any(not row["passed"] for row in result["jig_working_range"])
+            self.assertGreater(
+                result["joints"][1]["nominal_fastener_difference_mm3"], 1
             )
         finally:
             obj.Shape = original
 
-    def test_jig_checks_follow_declared_working_range_and_reject_an_oversize_entry(
-        self,
-    ):
-        from gondola.parts import servo_coupling as c
-        from gondola.validation.horn_coupling import horn_registration_check
-
-        for limits, expected, passed in (
-            ((0.9, 1.5), (0.9, 1.2, 1.5), True),
-            ((0.8, 2.0), (0.8, 1.4, 2.0), False),
-        ):
-            with (
-                self.subTest(limits=limits),
-                patch.object(c, "JIG_ACCEPTED_ENTRY_DIAMETERS", limits),
-            ):
-                result = horn_registration_check(self.doc, "Port")
-                self.assertEqual(result["passed"], passed, result)
-                for row, diameter in zip(result["jig_working_range"], expected):
-                    self.assertAlmostEqual(row["synthetic_entry_diameter_mm"], diameter)
-                if not passed:
-                    self.assertFalse(result["jig_working_range"][-1]["passed"])
-
-    def test_filled_guide_passage_is_rejected(self):
+    def test_removed_root_register_is_detected(self):
         from gondola.parts import servo_coupling as c
         from gondola.validation.horn_coupling import horn_registration_check
 
         obj = self.doc.PortHornGearAdapter
         original = obj.Shape.copy()
         try:
-            plug = Part.makeCylinder(
-                1.3,
-                1.5,
-                App.Vector(0, c.HORN_BOTTOM_Y + c.OEM_HEAD_CAVITY_TOP_Y, 0),
-                App.Vector(0, 1, 0),
+            cutter = Part.makeBox(
+                20,
+                c.REGISTER_ENGAGEMENT + 0.1,
+                20,
+                App.Vector(-10, c.HORN_BOTTOM_Y + c.BODY_BACK_Y - 0.1, -10),
             )
-            obj.Shape = original.fuse(plug).removeSplitter()
+            obj.Shape = original.cut(cutter).removeSplitter()
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
-            self.assertGreater(result["material_added_by_preparation_mm3"], 1)
             self.assertTrue(
-                any(
-                    row["adapter_overlap_mm3"] > 0.1
-                    for row in result["jig_working_range"]
-                )
+                all(not row["passed"] for row in result["register_directional_stops"])
             )
         finally:
             obj.Shape = original
 
-    def test_source_example_cannot_be_marked_as_measured_purchased_horn(self):
+    def test_unmeasured_purchased_horn_cannot_be_marked_as_measured(self):
         from gondola.validation.horn_coupling import horn_registration_check
 
         obj = self.doc.PortServoHorn
-        original = obj.SuppliedHornMeasured
+        original = obj.PurchasedHornMeasured
         try:
-            obj.SuppliedHornMeasured = True
+            obj.PurchasedHornMeasured = True
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
             self.assertFalse(result["physical_concentricity_verified"])
         finally:
-            obj.SuppliedHornMeasured = original
+            obj.PurchasedHornMeasured = original
+
+    def test_unapproved_extra_horn_nut_is_detected(self):
+        from gondola.validation.horn_coupling import horn_registration_check
+
+        self.doc.addObject("Part::Feature", "PortHornGearClampNearNut")
+        try:
+            result = horn_registration_check(self.doc, "Port")
+            self.assertFalse(result["passed"], result)
+            self.assertIn("PortHornGearClampNearNut", result["obsolete_horn_parts"])
+        finally:
+            self.doc.removeObject("PortHornGearClampNearNut")
 
 
 if __name__ == "__main__":

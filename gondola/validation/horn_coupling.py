@@ -1,8 +1,8 @@
-"""Saved nominal machining-example checks, never a supplied-horn fit certificate.
+"""Selected factory-threaded horn and nominal integral-register evidence.
 
-The purchased horn has no measured drawing. These checks deliberately distinguish
-an undrilled print blank, a machined illustrative assembly and a removable bench
-centring tool. Physical registration and final assembled runout remain required.
+A PASS establishes the saved geometry, thread engagement envelopes and limited
+registration function. It cannot certify purchased root concentricity, the axial
+proxy, printed fit, preload, retention or physical gear runout.
 """
 
 import FreeCAD as App
@@ -32,7 +32,6 @@ def _difference(first, second):
 
 
 def _plane_contact(first, second, y):
-    # Compare actual saved bearing regions on an ample explicit joint plane.
     plane = Part.Face(
         Part.makePolygon(
             [
@@ -45,194 +44,170 @@ def _plane_contact(first, second, y):
 
 
 def horn_registration_check(doc, prefix):
-    """Verify the saved preparation example and its removable centring aid.
-
-    PASS means the declared nominal geometry agrees and has an intelligible
-    assembly/registration route. It does not mean the user's unmeasured horn
-    fits, a printed nose is a precision centre, or the assembled axis is true.
-    """
+    """Verify front screws, no horn nuts/jig, and a directional root register."""
     names = (
         "ServoHorn",
         "HornGearAdapter",
         "HornGearClampNearBolt",
-        "HornGearClampNearNut",
         "HornGearClampFarBolt",
-        "HornGearClampFarNut",
     )
-    missing = [prefix + name for name in names if doc.getObject(prefix + name) is None]
-    if doc.getObject(prefix + "InputDrive") is None:
-        missing.append(prefix + "InputDrive")
-    if doc.getObject("HornCenteringJig") is None:
-        missing.append("HornCenteringJig")
+    missing = [
+        prefix + name
+        for name in (*names, "InputDrive")
+        if doc.getObject(prefix + name) is None
+    ]
     if missing:
         return {
             "passed": False,
             "missing_objects": missing,
             "physical_concentricity_verified": False,
         }
+    obsolete = [
+        name
+        for name in (
+            "HornCenteringJig",
+            prefix + "HornGearClampNearNut",
+            prefix + "HornGearClampFarNut",
+        )
+        if doc.getObject(name) is not None
+    ]
     inverse = coupling_frame(doc, prefix).inverse()
     shapes = {}
     for suffix in names:
-        obj = doc.getObject(prefix + suffix)
-        shape = world_shape(obj)
+        shape = world_shape(doc.getObject(prefix + suffix))
         shape.Placement = inverse.multiply(shape.Placement)
         shapes[suffix] = shape
     horn, adapter = shapes["ServoHorn"], shapes["HornGearAdapter"]
-    adapter_obj = doc.getObject(prefix + "HornGearAdapter")
-    if not hasattr(adapter_obj, "PrintBlankShape"):
-        return {
-            "passed": False,
-            "error": "Saved undrilled print blank is missing",
-            "physical_concentricity_verified": False,
-        }
-    blank = adapter_obj.PrintBlankShape.copy()
-    blank.Placement = (
-        inverse.multiply(adapter_obj.getGlobalPlacement())
-        .multiply(adapter_obj.Placement.inverse())
-        .multiply(blank.Placement)
-    )
-    blank_difference = _difference(blank, coupling.adapter_blank_shape())
-    example_difference = _difference(adapter, coupling.adapter_shape())
+    adapter_difference = _difference(adapter, coupling.adapter_shape())
     horn_difference = _difference(horn, coupling.horn_shape())
-    material_added = abs(adapter.cut(blank).Volume)
-    preparation_removed = abs(blank.cut(adapter).Volume)
+    adapter_obj = doc.getObject(prefix + "HornGearAdapter")
+    # Printing a different undrilled blank would silently restore hand-transfer
+    # preparation even when the assembly drawing looks correctly finished.
+    export_difference = 0.0
+    if hasattr(adapter_obj, "PrintBlankShape"):
+        exported = adapter_obj.PrintBlankShape.copy()
+        exported.Placement = (
+            inverse.multiply(adapter_obj.getGlobalPlacement())
+            .multiply(adapter_obj.Placement.inverse())
+            .multiply(exported.Placement)
+        )
+        export_difference = _difference(exported, adapter)
     rows = []
-    for label, (x, z), diameter in zip(
-        ("Near", "Far"),
-        coupling.HORN_BOLT_CENTRES,
-        coupling.HORN_ADAPTER_HOLE_DIAMETERS,
-    ):
+    for label, (x, z) in zip(("Near", "Far"), coupling.HORN_BOLT_CENTRES):
+        bolt = shapes["HornGearClamp" + label + "Bolt"]
+        expected = hardware.servo_screw_shape(coupling.HORN_CLAMP_LENGTH).copy()
+        expected.Placement = App.Placement(
+            V(x, coupling.FASTENER_SEAT_Y, z),
+            App.Rotation(V(0, 0, 1), V(*coupling.BOLT_DIRECTION)),
+        )
+        difference = _difference(bolt, expected)
         passage = Part.makeCylinder(
-            diameter / 2,
-            coupling.PLATE_FRONT_Y - coupling.HORN_BLADE_BOTTOM,
+            coupling.HORN_CLAMP_THREAD_DIAMETER / 2,
+            coupling.FASTENER_SEAT_Y - coupling.HORN_BLADE_BOTTOM,
             V(x, coupling.HORN_BLADE_BOTTOM, z),
             V(0, 1, 0),
         )
-        bolt = shapes["HornGearClamp" + label + "Bolt"]
-        nut = shapes["HornGearClamp" + label + "Nut"]
-        expected_bolt = hardware.servo_screw_shape().copy()
-        expected_bolt.Placement = App.Placement(
-            V(x, coupling.HORN_BLADE_BOTTOM, z),
-            App.Rotation(V(0, 0, 1), V(*coupling.BOLT_DIRECTION)),
-        )
-        expected_nut = hardware.servo_nut_shape().copy()
-        expected_nut.Placement = App.Placement(
-            V(x, coupling.NUT_SEAT_Y, z),
-            App.Rotation(V(0, 0, 1), V(*coupling.BOLT_DIRECTION)),
-        )
-        fastener_difference = _difference(bolt, expected_bolt) + _difference(
-            nut, expected_nut
-        )
-        head_contact = _plane_contact(horn, bolt, coupling.HORN_BLADE_BOTTOM)
-        nut_contact = _plane_contact(adapter, nut, coupling.NUT_SEAT_Y)
         blocked = horn.common(passage).Volume + adapter.common(passage).Volume
-        blank_stock = blank.common(passage).Volume
-        collisions = sum(
-            a.common(b).Volume
-            for a, b in ((bolt, horn), (bolt, adapter), (nut, horn), (nut, adapter))
+        contact = _plane_contact(adapter, bolt, coupling.FASTENER_SEAT_Y)
+        tip = bolt.BoundBox.YMin
+        engagement = max(
+            0.0, coupling.HORN_HEIGHT - max(tip, coupling.HORN_BLADE_BOTTOM)
         )
-        turns = []
-        for angle in (-3, 3):
-            moved = horn.copy()
-            moved.rotate(V(), V(0, 1, 0), angle)
-            penetration = moved.common(bolt).Volume
-            turns.append(
+        rear_clearance = tip - coupling.HORN_BLADE_BOTTOM
+        overlap = bolt.common(adapter).Volume + bolt.common(horn).Volume
+        support = []
+        allowance = coupling.HORN_ADAPTER_SLOT_ALLOWANCE if label == "Far" else 0.0
+        for offset in (-allowance, 0.0, allowance) if allowance else (0.0,):
+            # A minimum accepted flat under-head land, separate from the larger
+            # maximum kit-head envelope used for interference and tool checks.
+            land = Part.makeCylinder(
+                coupling.HORN_MIN_HEAD_BEARING_DIAMETER / 2,
+                0.1,
+                V(x + offset, coupling.FASTENER_SEAT_Y, z),
+                V(0, 1, 0),
+            )
+            area = _plane_contact(adapter, land, coupling.FASTENER_SEAT_Y)
+            support.append(
                 {
-                    "rotation_deg": angle,
-                    "bolt_probe_penetration_mm3": penetration,
-                    "passed": penetration > TOL,
+                    "radial_offset_mm": offset,
+                    "flat_bearing_contact_mm2": area,
+                    "passed": area >= 1.0,
                 }
             )
         rows.append(
             {
                 "joint": label,
-                "nominal_fastener_difference_mm3": fastener_difference,
-                "example_hole_diameter_mm": diameter,
-                "prepared_passage_blockage_mm3": blocked,
-                "print_blank_stock_at_hole_mm3": blank_stock,
-                "head_to_horn_contact_mm2": head_contact,
-                "nut_to_adapter_contact_mm2": nut_contact,
-                "nominal_overlap_mm3": collisions,
-                "gross_rotation_stops": turns,
-                "passed": fastener_difference < TOL
+                "nominal_fastener_difference_mm3": difference,
+                "factory_thread_passage_blockage_mm3": blocked,
+                "head_to_adapter_contact_mm2": contact,
+                "nominal_thread_engagement_mm": engagement,
+                "nominal_tip_to_horn_back_mm": rear_clearance,
+                "nominal_overlap_mm3": overlap,
+                "separate_nut_required": False,
+                "minimum_flat_head_bearing_diameter_mm": coupling.HORN_MIN_HEAD_BEARING_DIAMETER,
+                "minimum_head_support": support,
+                "passed": difference < TOL
                 and blocked < TOL
-                and blank_stock > 1
-                and head_contact > 1
-                and nut_contact > 1
-                and collisions < TOL
-                and all(row["passed"] for row in turns),
+                and contact > 1
+                and all(item["passed"] for item in support)
+                and engagement >= 1.0
+                and rear_clearance >= 0.1 - TOL
+                and overlap < TOL,
             }
         )
-    jig = doc.getObject("HornCenteringJig").Shape.copy()
-    jig.Placement = App.Placement()
-    jig_difference = _difference(jig, coupling.centering_jig_shape())
-    jig_rows = []
-    lower_entry, upper_entry = coupling.JIG_ACCEPTED_ENTRY_DIAMETERS
-    for diameter in (lower_entry, (lower_entry + upper_entry) / 2, upper_entry):
-        cone_station = (
-            coupling.JIG_NOSE_START_Y
-            + (diameter - coupling.JIG_NOSE_TIP_DIAMETER)
-            / (coupling.JIG_NOSE_BASE_DIAMETER - coupling.JIG_NOSE_TIP_DIAMETER)
-            * coupling.JIG_NOSE_LENGTH
+    # The open +X C seat constrains the back and sides. It deliberately does
+    # not claim full circumferential self-centering or zero translational play.
+    collar = adapter.common(
+        Part.makeBox(
+            20,
+            coupling.HORN_HEIGHT - coupling.BODY_BACK_Y,
+            20,
+            V(-10, coupling.BODY_BACK_Y, -10),
         )
-        offset = coupling.JIG_REFERENCE_ENTRY_Y - cone_station
-        placed = jig.copy()
-        placed.translate(V(0, offset, 0))
-        overlap = placed.common(adapter).Volume
-        # A synthetic circular entrance is a tool working-range test only; it
-        # deliberately models neither OEM threads nor an asserted real bore.
-        annulus = Part.makeCylinder(
-            2.2, 0.5, V(0, coupling.JIG_REFERENCE_ENTRY_Y - 0.5, 0), V(0, 1, 0)
-        ).cut(
-            Part.makeCylinder(
-                diameter / 2,
-                0.7,
-                V(0, coupling.JIG_REFERENCE_ENTRY_Y - 0.6, 0),
-                V(0, 1, 0),
-            )
-        )
-        aperture_overlap = placed.common(annulus).Volume
-        seated_gap = placed.distToShape(annulus)[0]
-        guide_overlap = min(
-            coupling.JIG_GUIDE_START_Y + offset + coupling.JIG_GUIDE_LENGTH,
-            coupling.GEAR_START_Y,
-        ) - max(coupling.JIG_GUIDE_START_Y + offset, coupling.SHAFT_START_Y)
-        jig_rows.append(
+    )
+    register_rows = []
+    for direction in ((-1, 0), (0, -1), (0, 1)):
+        moved = horn.copy()
+        moved.translate(V(direction[0] * 0.25, 0, direction[1] * 0.25))
+        penetration = moved.common(collar).Volume
+        register_rows.append(
             {
-                "synthetic_entry_diameter_mm": diameter,
-                "axial_offset_mm": offset,
-                "adapter_overlap_mm3": overlap,
-                "synthetic_entry_overlap_mm3": aperture_overlap,
-                "entry_seating_gap_mm": seated_gap,
-                "guide_engagement_mm": guide_overlap,
-                "passed": overlap < TOL
-                and aperture_overlap < TOL
-                and seated_gap < TOL
-                and guide_overlap >= 6.5,
+                "horn_offset_xz_mm": [value * 0.25 for value in direction],
+                "register_probe_penetration_mm3": penetration,
+                "passed": penetration > TOL,
             }
         )
-    physical_unknown = not bool(
-        getattr(doc.getObject(prefix + "ServoHorn"), "SuppliedHornMeasured", True)
+    seating = _plane_contact(horn, adapter, coupling.HORN_HEIGHT)
+    horn_obj = doc.getObject(prefix + "ServoHorn")
+    measured = bool(getattr(horn_obj, "PurchasedHornMeasured", True))
+    axial_unknown = not bool(getattr(horn_obj, "AxialSeatingMeasured", True))
+    compatibility_accepted = bool(getattr(horn_obj, "X06CompatibilityAccepted", False))
+    factory_threads_confirmed = bool(
+        getattr(horn_obj, "FactoryM1_6ThreadsConfirmed", False)
     )
     return {
         "pod": prefix,
-        "print_blank_difference_mm3": blank_difference,
-        "prepared_example_difference_mm3": example_difference,
-        "illustrative_horn_difference_mm3": horn_difference,
-        "material_added_by_preparation_mm3": material_added,
-        "material_removed_by_preparation_mm3": preparation_removed,
+        "adapter_difference_mm3": adapter_difference,
+        "selected_horn_difference_mm3": horn_difference,
+        "print_export_difference_mm3": export_difference,
+        "obsolete_horn_parts": obsolete,
         "joints": rows,
-        "jig_difference_mm3": jig_difference,
-        "jig_working_range": jig_rows,
-        "supplied_horn_measurement_explicitly_unknown": physical_unknown,
+        "register_directional_stops": register_rows,
+        "horn_to_adapter_seating_area_mm2": seating,
+        "purchased_horn_measurement_explicitly_unknown": not measured,
         "physical_concentricity_verified": False,
-        "scope": "Saved nominal prepared example and undrilled blank, with two fitted-in-place attachment holes and a removable prototype centring jig. The small jig tip and close-fit near hole require finishing/measurement; their printed or machined accuracy is not certified. Synthetic screw-entry tests do not prove an OEM entry dimension, thread fit or actual concentricity. Measure the actual supplied horn, preserve its spline/centre-screw seat, retain paired drilling registration, and verify final stub/gear runout, motion and clamp retention after reinstallation. Working-envelope alternatives require renewed checks; this PASS is not physical fit or flight qualification.",
-        "passed": blank_difference < TOL
-        and example_difference < TOL
+        "axial_seating_explicitly_unmeasured": axial_unknown,
+        "x06_compatibility_accepted": compatibility_accepted,
+        "factory_m1_6_threads_confirmed": factory_threads_confirmed,
+        "scope": "Selected 15T/4 mm horn under the user's X06 compatibility premise; all three M1.6 threads are user-confirmed. Two factory-threaded joints avoid hand-transfer drilling and horn nuts. The open C register bounds the root at the rear and sides; it is not a precision full-circle pilot. Root width does not certify a concentric cylindrical surface, hub height remains an axial proxy, outer-hole pitch is inferred and accommodated by a slot. Finish and inspect the actual seating/register, thread engagement and gear runout before operation. No fit, tightening torque, friction retention or strength qualification is claimed.",
+        "passed": adapter_difference < TOL
         and horn_difference < TOL
-        and material_added < TOL
-        and preparation_removed > 1
-        and jig_difference < TOL
-        and physical_unknown
-        and all(row["passed"] for row in rows + jig_rows),
+        and export_difference < TOL
+        and not obsolete
+        and not measured
+        and axial_unknown
+        and compatibility_accepted
+        and factory_threads_confirmed
+        and seating > 1
+        and all(row["passed"] for row in rows + register_rows),
     }

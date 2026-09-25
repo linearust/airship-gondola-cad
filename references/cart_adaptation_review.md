@@ -5,7 +5,7 @@ certification or a shopping list. The selected purchased interfaces are retained
 through the rail layout and shared equipment-support changes; see
 `layout_and_wiring_review.md` and `shape_simplification_review.md`.
 Use exports and inspection material matching the
-current saved CAD and source. This does not qualify the received parts or prepared horn.
+current saved CAD and source. This does not qualify the received parts or horn coupling.
 Current installed quantities belong to `gondola/contracts/design.py` and the matching
 generated BOM, not the cart pack counts.
 
@@ -18,7 +18,7 @@ generated BOM, not the cart pack counts.
 | Owned GH1.25 and selected SH1.0 connector kits | Subtract supplied cables before preparing harnesses. Connector families do not establish pin order or voltage. |
 | Gemfan 1610, 1.5 mm bore | Two main propellers, one CW and one CCW. Match the actual RS1102 shaft. |
 | RS1102 10000KV | Two main motors in this CAD; aft motor and spares are outside gondola scope. |
-| KST X06 V6.0, regular mounting tabs | Two tilt servos. Use their supplied horns and original spline screws; fin servos and spares are outside this CAD. |
+| KST X06 V6.0, regular mounting tabs | Two tilt servos; fin servos and spares are outside this CAD. AS uses the [selected 15T/4.0 mm purchased horn](retention_review.md#selected-replacement-horn--2026-09-25). |
 | Generic 3 x 6 x 2.5 mm ball bearings | Four installed. Actual race lands, shields, internal play, fit, material and mass remain unverified. Do not identify the received lot as NSK/ISC MR63ZZ. |
 | Selected nominal Ø3 mm 304 rods | Prepare the six shafts below. The user accepts replacing unsuitable stock with precision shafts; nominal size does not establish a fit tolerance. |
 | Kailash 48T / 3 mm and 16T / `3mm3` | Two pairs installed. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md); do not restore the old MISUMI/POM assumptions. |
@@ -75,12 +75,13 @@ The M1.6 Phillips screws have their own declared head envelope in
 must fit the receiving joint. Their use does not establish OEM motor screw
 depth or the supplied horn's central retaining-screw specification.
 
-The supplied-horn adapter is a workshop-prepared blank, not a part that assumes
-the purchased horn has the old KST 0415.13 outline or a 13.2 mm tip hole. Retain
-the genuine spline and OEM screw. Check actual horn geometry and complete the
-centred, two-hole preparation described in [retention](retention_review.md).
-There is no separate horn purchase requirement. Its material and mass remain
-unknown; a null mass is not a zero-mass part or a demonstrated mass saving.
+AS uses the selected purchased 15T/4.0 mm horn with its three user-confirmed
+M1.6 threads. Two M1.6x4 screws per horn replace the old through-bolts/nuts;
+servo-ear screws/nuts remain. Use factory holes and the adapter's assembly
+allowance, then tighten and verify runout. There is no hand-drilled horn,
+prepared blank or centring jig. Follow [retention](retention_review.md).
+Actual horn mass is unmeasured; any aluminium-envelope estimate is not a
+measured weight or a demonstrated mass saving.
 
 Still establish from the received parts:
 

@@ -338,7 +338,7 @@ def unresolved_scope(doc):
         obj is not None
         and obj in registry.HardwareParts
         and obj not in registry.PrintedParts
-        and str(getattr(obj, "HardwareSKU", "")) == "KST_X06_SUPPLIED_HORN"
+        and str(getattr(obj, "HardwareSKU", "")) == "ALI_PTK_15T_4MM_HORN"
         for obj in horns
     )
     mtf = doc.getObject("ModuleMTF02PEnvelope")
@@ -436,7 +436,10 @@ def procurement_and_scope_metadata(obj):
         "GearConfiguration",
         "DriveContract",
         "AfterPrintPreparation",
-        "SuppliedHornMeasured",
+        "PurchasedHornMeasured",
+        "AxialSeatingMeasured",
+        "X06CompatibilityAccepted",
+        "FactoryM1_6ThreadsConfirmed",
     )
     values = {}
     for name in fields:

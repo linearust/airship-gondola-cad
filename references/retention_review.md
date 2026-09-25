@@ -1,12 +1,84 @@
-# Retention and assembly — AM
+# Retention and assembly — AS
 
-This describes the AM geometry after the native old/new audit, validation and
-regression checks, with the matching build/preview/compare/bundle pipeline
-complete. Generated artifacts carry the CAD hash and source
-fingerprint. AL exports and inspection instructions do not describe the changed
-bearing and horn interfaces.
+AS replaces the manually prepared supplied-horn coupling with a purchased
+factory-threaded horn and an integral locating saddle. Output bearing retention
+is unchanged from AM/AR. Source contracts and the AS revision review define the
+implemented geometry and verification; older blank/jig instructions do not apply.
 Nominal geometry is not qualification of received hardware, PA12 fit, friction,
 spring force, creep, fatigue or strength.
+
+## Selected replacement horn — 2026-09-25
+
+- [AliExpress item 1005012006498403](https://www.aliexpress.com/item/1005012006498403.html),
+  option **15T Single 4.0mm**, replaces the supplied horn. The saved title says
+  PTK, but does not establish a manufacturer's exact SKU.
+- X06 V6 compatibility is the user's accepted design premise. All three M1.6
+  threaded arm holes are user-confirmed. Do not repeatedly request either
+  confirmation; revisit compatibility only if concrete contrary evidence arises.
+  An accepted premise is not a completed physical fit test.
+- The [retained seller drawing](selected_15t_4mm_horn_drawing.png) gives overall
+  length 18.2 mm, root width 6.1 mm, arm thickness 1.6 mm, first hole at 6.6 mm
+  and the next interval 2.8 mm. Third-hole position 12.2 mm is inferred from
+  the pictured equal pitch. The outer adapter slot accommodates +/-0.4 mm
+  radial variation of that nominal position. The first two holes are too close
+  for the accepted 3.5 mm screw-head envelopes on a common seating plane.
+- Hub height, installed axial seating and root concentricity are not supplied.
+  The 3.5 mm total height and smooth spline/OEM-head spaces are explicit CAD
+  fit-prototype envelopes, not newly verified product dimensions.
+
+## Factory-hole coupling and assembly allowance
+
+`parts/servo_coupling.py:assembly_contract()` owns the dimensions and limitations.
+The exported adapter is the installed solid, with preprinted mounting passages;
+there is no separate machining blank, horn-drilling jig or horn attachment nut.
+
+A shallow open C-saddle references the horn root. Its nominal 0.15 mm radial
+clearance and 1.5 mm engagement refer to the drawn front outline, not a precision
+hub tolerance. Keep the nominal axes centred before tightening; forcing the
+root against one side of its clearance would introduce eccentricity. The saddle
+limits rearward/lateral displacement, not automatic centring in all directions
+or misalignment absorption during operation. The arm's long sides stay open.
+
+The near clearance hole is 2.2 mm; the outer round-ended opening is 2.2 mm wide
+and 3.0 mm long. These permit relative hole-position adjustment before tightening.
+Both M1.6x4 screws enter the existing horn threads from the gear side, through
+counterbored head seats. Nominal grip is 2.6 mm, engagement 1.4 mm and rear tip
+clearance 0.2 mm. Require at least a 3.0 mm flat under-head bearing diameter
+within the 3.5 mm maximum head envelope. This is a geometric acceptance, not
+proven PA12 bearing strength. The outer head recess opens to the plate edge
+to remove a thin rim while retaining a 1.6 mm lower end web. Actual screw length,
+head, thread chamfers and aluminium thread strength still need checking. Do not
+leave the screws loose to create compliance.
+
+The nominal Ø3x18 input stub, 8 mm D socket and selected gear axial plane stay
+unchanged to preserve output-shaft engagement and gear-face alignment. The former
+jig passage is removed, leaving a full 1.5 mm shaft-stop floor. The M2 radial
+shaft clamp and gear M3 set screw remain separate torque/retention interfaces.
+The original central spline screw remains; its actual head/seat is not fabricated.
+
+### Assembly and service
+
+1. Fit the bought horn to X06 using its appropriate original central screw.
+   Confirm actual seating against the declared axial envelope without forcing it.
+2. Offer the finished adapter to the root and flat face. Use its round hole and
+   outer slot to fit the factory threads, without drilling the horn or forcing
+   the alignment with the screws. Dress interfering print surfaces as needed.
+3. Tighten both M1.6x4 screws and fit the metal input stub and gears. Check
+   engagement, thread retention, axis runout and free mesh over the permitted
+   travel. The saddle and hole allowance are assembly aids, not zero-backlash
+   or loaded-strength certification.
+4. For front screw access, first remove both small output gears and the paired
+   servo/input-drive module using its validated removal sequence. On the bench,
+   withdraw the large input gear before removing the two horn screws; release
+   the adapter axially, then move it clear. A straight input-gear withdrawal
+   while the servo module remains in the gondola is obstructed. The source
+   validation defines the full paths and retained module obstacles; actual
+   set-screw tools, wiring and fingers remain physical checks.
+
+The paired servo/input-drive module stays removable from the output frame.
+Front screw access makes the old rear tool scallops unnecessary; AS restores
+solid side columns in the servo bridge. The input gear still cantilevers from
+the servo: physical radial-load capability has not been established.
 
 ## Output bearings: integral outer-ring capture
 
@@ -77,68 +149,3 @@ complete hooks, guide overlap, continuous axial passage in the explicit release
 pose and neighboring frame/hardware clearance. Refilled pockets or missing
 hooks must fail. A passing path does not replace the process coupon or actual
 assembly trial.
-
-## Supplied X06 horn and prepared adapter
-
-Use the horn supplied with the selected X06 and its original central screw.
-There is no separate KST 0415.13 purchase or inherited tip-hole modification.
-The supplied horn's outline, material, holes and axial seating are unmeasured.
-Its model is an illustrative prepared specimen; it is not a purchased drawing.
-
-The printable adapter is an undrilled machining blank. The assembly's two-hole,
-faced adapter is only the prepared example. Export `PrintBlankShape` for the
-adapter and retain the native prepared shape for assembly-motion checks. The
-centering jig is a separate temporary bench coupon, removed before installing
-the metal input stub; it is not flight hardware or an added input bearing.
-
-`parts/servo_coupling.py:machining_contract()` defines the current working
-envelope and the example separately. Its facing range retains at least 3 mm of
-plate in the horn-contact area outside the central hole and hub relief. The
-perforated socket-stop floor is a separate 1.5 mm feature, not a 3 mm plate
-measurement. Horn-local Y0 lies 0.2 mm gearward of the servo-case front face;
-do not substitute the horn back face as that datum. Actual arm thickness must
-also leave clearance for both rear Phillips heads. The near hole is fitted closely to the measured M1.6 shank; Ø1.7 is the
-CAD example, not a delivered tolerance. The second Ø1.8 example hole provides
-assembly allowance. Neither clearance hole proves concentricity, zero backlash
-or sufficient torque capacity. If the measured horn lacks two sound fastening
-sites, revise the blank rather than cutting into its spline/root or an existing
-hole. Arbitrary arm and round-disc compatibility is not claimed. The machining
-area is not a service-clearance certification over every possible hole location:
-locations other than the checked X8/X12 example require renewed collision and
-tool/removal-path checks.
-
-### Workshop preparation and service
-
-1. On an unpowered bench, inspect the genuine horn and its installed seating.
-   Temporarily remove only its OEM central screw. Face the blank to the actual
-   arm while preserving the gear seating datum and socket-stop floor.
-2. Finish the jig's D guide to the same socket. Lightly seat its soft conical
-   nose on a measured, circular screw-entry feature concentric with the output.
-   Do not force the nose into threads. The small printed tip is a prototype:
-   supplier agreement, finishing, seating and damage inspection are required.
-3. Hold the centered horn/blank relationship with temporary bench clamps and
-   transfer two suitable hole locations. Remove the parts from the servo while
-   preserving that registration in the fixture. Drill the supported pair,
-   deburr and clean away chips; never drill into the servo.
-4. Remove the adapter/jig and reinstall the genuine horn with its OEM central
-   screw. Attach the prepared adapter with both rear M1.6 screws and front nuts.
-   Remove the jig permanently before fitting the input stub and gear.
-5. Check actual stub/gear runout through the permitted motion without forcing
-   the servo's internal gear train.
-   Align before final tightening and check mesh, both torque directions and
-   drift again. No numerical runout, torque, creep or fatigue acceptance has
-   been qualified by this CAD exercise.
-
-For adapter removal, withdraw the small output gear first. Fully remove the
-Far nut, then its bolt, before fully removing the Near nut and then its bolt.
-The next pair remains installed until the preceding pair is removed. For
-central-screw service, remove the input gear, metal stub and adapter as required
-before using the proper tool on the original screw. The axial guide opening
-serves the jig stem; it is not a claim that an unknown OEM screw head can be
-inserted through the finished socket. No side-insertion shortcut is assumed.
-
-The input remains a nominal Ø3 x 18 mm 304 stub with a full-length flat, retained
-by the adapter's radial M2 clamp facing horn-local negative Z and the gear's
-actual M3 set screw. Preserve
-separate axial retention and torque transfer. Geometry checks of the example
-do not certify the user's unmeasured horn, drilling setup or finished coupling.

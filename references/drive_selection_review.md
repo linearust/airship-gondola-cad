@@ -19,13 +19,14 @@ Their source selection is not an assertion about physical fit or strength.
 - Reference centre distance is 16 mm. Printed axis positions, actual backlash,
   free rotation and output loading require checks with the received gears.
 - Both bores remain 3 mm; neither is a directly compatible X06 spline.
-  Use the supplied X06 horn, preserving its genuine spline and OEM screw.
-  The printed adapter is an undrilled blank prepared against the actual horn
-  with the temporary centring jig; the displayed two-hole assembly is an
-  example, not the received horn geometry. Follow the
-  [preparation and retention contract](retention_review.md) before machining.
-  Neither a separate 0415.13 horn nor its former tip-hole modification is
-  required. The short nominal-3mm input stub preserves the selected gear bore.
+  AS uses the selected **15T Single 4.0mm** purchased horn, with user-accepted
+  X06 V6 compatibility and three user-confirmed M1.6 threaded arm holes. See
+  the [coupling contract](retention_review.md). The printed adapter's open root
+  saddle and round/slot clearances permit adjustment before tightening two
+  front M1.6x4 screws; no horn drilling, attachment nuts or centring jig remain.
+  The nominal-3mm input stub and gear axial plane are retained. The KST 0415.13
+  is an earlier alternative, not the selected purchase. Actual axial seating,
+  concentricity and loaded operation remain unverified.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
   dimensional design; do not report POM materials or assert weight reduction.

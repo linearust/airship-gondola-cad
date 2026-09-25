@@ -42,10 +42,9 @@ cradles merge into one continuous upright with two 8 by 21 mm case windows,
 and clamp each case; the case windows are clearance features, not press fits.
 Allowing the manufacturer's case-size tolerance of ±0.2 mm and a printed-window
 size allowance of ±0.3 mm leaves 0.5 mm minimum total size-only clearance in
-each window direction. The outside walls include open-edge access reliefs for
-the prepared horn fasteners; the nominal 3 mm wall does not describe the
-minimum at those local reliefs. Keep the checked example fastener locations
-and ordered service path from [the retention review](retention_review.md).
+each window direction. AS restores solid 3 mm outside walls: the purchased
+horn's front screws no longer need rear tool reliefs. Preserve the ordered
+module removal and bench service path from [the retention review](retention_review.md).
 Actual positions, flatness and lead exit still need inspection.
 
 The common upright stands on a 26.8 by 22 by 2 mm central plate. Two broad
@@ -107,73 +106,27 @@ new printed walls or fasteners; the opposite gear face overlap and actual M3
 set-screw position still limit usable adjustment. A different gear thickness
 requires measured engagement and renewed collision checks, not an assumption
 of universal compatibility. Finish the input D socket against the actual stub.
-The supplied horn has no assumed outline-fitting register; its prepared
-adapter and temporary jig require the actual fit and runout checks in
+The AS purchased-horn adapter has an open root saddle and factory-hole
+round/slot allowance; actual fit and runout checks remain required in
 [the retention review](retention_review.md). Device holes and optical foot holes
 retain assembly clearance for relative hole-position errors; their tightened
 face contacts, rather than loose-hole diameters, provide the operating seat.
 Connector reserves, optical visibility and moving-part separation are not
 unnecessary play and must not be reduced to achieve a snug mechanical fit.
 
-## Supplied-horn adapter
+## AS purchased-horn adapter
 
-AM replaces the earlier purchased-horn root register, tip stop and single
-through-bolt layout. The current printed part is a plain machining blank
-without assumed horn attachment holes. Its illustrative prepared assembly and
-the temporary bench jig are distinct from the exported blank. Preserve the
-socket floor, gear datum and material needed for the actual two fastening
-sites; do not restore the former horn-outline-fitting surfaces.
+The [selected 15T/4.0 mm horn](retention_review.md#selected-replacement-horn--2026-09-25)
+uses two factory M1.6 threads. One printed adapter supplies an open root saddle,
+flat seat and round/short-slot clearance. Both screws enter from the gear side;
+there is no rear cap, enclosing arm shell, horn attachment nut or centring jig.
 
-Preparation and service belong to [the retention review](retention_review.md)
-and `parts/servo_coupling.py:machining_contract()`. The small jig, hole fits and
-nominal CAD example do not establish concentricity or loaded retention for the
-unmeasured supplied horn. Other prepared hole locations require renewed
-clearance and tool/removal-path checks.
+The selected first/third hole spacing accommodates the accepted screw heads;
+the outer slot tolerates the inferred third position. Adjustment occurs before
+tightening, not through an intentionally loose running joint. Root and axial
+fit remain prototype assumptions, not certified purchased dimensions.
 
-## Shared equipment support
-
-The electronics carrier uses two straight, continuous members. Revision AR
-extends the navigation member to the shared GPS adhesive pad and strengthens
-it to 14 by 3 mm; the radio member remains 5 by 2 mm. See
-`navigation_module_compatibility.md` for alternative module and antenna limits.
-The X member supports the FC mounting pads and extends through both P-AS
-mounting pads; the Y member supports the other FC pads and the LR900-A adhesive
-deck. This removes the P-AS arm that previously ran parallel to the FC arm at
-Y=-9.3 mm. The small round ends of separate collinear arm primitives are also
-unnecessary in the generator; each shared member is built once.
-
-The P-AS centre moves from (54, 0) to (54, 9.3) mm in the electronics carrier
-frame so its published off-centre hole row lies on Y=0. The complete device
-and its connector reservation move together. Its two holes remain 23 mm apart
-at X=42.5 and X=65.5; device orientation, support elevation and 6.5 mm mounting
-pads are retained. The FC axes do not change. Revision AR moves the shared radio
-pad 3 mm farther along Y to retain the FC wiring gap with the wider F-Mini. Do not
-move P-AS closer to the FC: its current X position preserves the existing
-connector-handling allowance.
-
-The provisional capacitor reservation moves from (40, 22) to (42, 34) mm,
-retaining its diameter 10 mm, height 16 mm and Z elevation. Simply moving it
-to (40, 32) would clear installed parts but obstruct optical foot-nut removal.
-The selected location also preserves the checked tool and tower-removal paths.
-This is reserved space, not a new capacitor mount or verified antenna/lead
-installation.
-
-The optical diagonal supports carry the transferable tower independently of
-the FC dampers and do not duplicate either equipment member. Keep their broad
-seats and the battery's continuous adhesive contact area. The shared spine
-removes a redundant branch without thinner walls, a new joint or more
-fasteners. Actual loaded deflection and mounting-stack fit remain unmeasured.
-
-## Other reviewed features
-
-The horn adapter retains its prepared metal stub and admits the radial nut.
-Motor-carrier split slots grip the shafts; carrier end flanges and frame stops
-limit rotor travel. Separate integral frame hooks and shoulders retain the
-bearing outer rings. These are distinct retention paths, described in
-[the retention review](retention_review.md), and remain functional. Filling them
-would obstruct assembly or remove retention, rather than simplify an equivalent
-assembly.
-
-The continuous bearing-post roots and solid rail clamping head from AH remain.
-Device supports retain verified device-local hole patterns and full connector
-access allowances. No new fastener family or printed separation is introduced.
+The servo bridge's former rear screwdriver scallops are filled because these
+screws now withdraw forward. Its side columns become simpler and continuous.
+The source service checks first remove the paired module, then withdraw the
+input gear on the bench before front screw access. Keep the paired servo/input-drive module separable from the output frame.

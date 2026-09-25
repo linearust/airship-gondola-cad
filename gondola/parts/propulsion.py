@@ -409,11 +409,11 @@ def _print(doc, parent, name, shape, notes, rotation=None, sku=None):
 
 
 def build_fit_coupons(doc):
-    """Production bearing capture and a bench-only horn centring tool."""
+    """Production bearing-capture coupon; no horn-drilling jig is needed."""
     group = create_group(
         doc,
         "BearingFitCoupons",
-        "Print first | releasable bearing capture and supplied-horn preparation",
+        "Print first | releasable bearing capture",
     )
     cup = _print(
         doc,
@@ -427,17 +427,7 @@ def build_fit_coupons(doc):
         "No bearing spacer or press-fit retention is assumed. Kinematic release "
         "clearance does not establish insertion force, fatigue or creep.",
     )
-    jig = _print(
-        doc,
-        group,
-        "HornCenteringJig",
-        servo_coupling.centering_jig_shape(),
-        "Temporary supplied-horn centring tool, not installed hardware. "
-        "Follow the preparation protocol; verify actual centre engagement and "
-        "finished coaxial runout. No spline or retaining thread is printed.",
-        sku="SuppliedHornCenteringJig",
-    )
-    return {"group": group, "printed": [cup, jig]}
+    return {"group": group, "printed": [cup]}
 
 
 def _build_coupling(doc, parent, prefix, sign):
@@ -455,59 +445,52 @@ def _build_coupling(doc, parent, prefix, sign):
         prefix + "ServoHorn",
         positioned(coupling.horn_shape()),
         coupling.HORN_SKU,
-        "Original supplied X06 horn: shown as an explicitly unmeasured preparation example. Keep its genuine spline and OEM centre screw. Verify actual shape, seating and material against the documented machining envelope; do not buy a 0415.13 horn or copy its former hole positions.",
+        "Selected 15T Single 4.0mm purchased horn. X06 V6 compatibility is the user-accepted premise; all three M1.6 factory threads are user-confirmed. Retain the genuine X06 spline screw. Seller front dimensions are modeled; hub height, root concentricity and installed axial seating remain prototype envelopes.",
         coupling.HORN_SOURCE,
         coupling.HORN_MATERIAL,
     )
-    set_property(horn, "SuppliedHornMeasured", False, "App::PropertyBool")
+    set_property(horn, "AxialSeatingMeasured", False, "App::PropertyBool")
+    set_property(horn, "PurchasedHornMeasured", False, "App::PropertyBool")
+    set_property(horn, "X06CompatibilityAccepted", True, "App::PropertyBool")
+    set_property(horn, "FactoryM1_6ThreadsConfirmed", True, "App::PropertyBool")
     set_property(
         horn,
         "ManufacturingRoute",
-        "Included with X06; locally prepare after centring; never print",
+        "Purchased selected metal horn; use factory M1.6 threads, no horn drilling; never print",
     )
     adapter = _print(
         doc,
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One-piece supplied-horn adapter. Exported print is an undrilled machining blank; assembly depicts one permitted prepared example. Prepare the seating face and two attachment holes with the actual horn using the temporary centring jig. Keep the genuine spline, centre screw seat and the shaft stop intact. Verify assembled runout, safe edges, retention, fastener clearance and actual horn thickness before powering.",
+        "One-piece adapter with an open root saddle, preprinted round clearance and short outer slot. Centre within the root-seat clearance before tightening the two front M1.6x4 screws into factory threads; do not force the root to one side. No horn nuts, drilled horn, separate cap or centring jig. Fit-prototype axial envelope and actual root fit must be checked; no deliberate operating looseness. Export this installed solid.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
-        sku="SuppliedHornGearAdapterBlank",
+        sku="FactoryHoleHornGearAdapter",
     )
-    adapter.addProperty("Part::PropertyPartShape", "PrintBlankShape", "Manufacturing")
-    adapter.PrintBlankShape = positioned(coupling.adapter_blank_shape())
     set_property(
         adapter,
         "AfterPrintPreparation",
-        "Face and drill to the received supplied horn using the centring jig. Assembly Shape is a prepared example; PrintBlankShape is the manufacturing blank.",
+        "Deburr and finish the shaft socket/root seat as needed. Use the existing horn threads; no manual hole transfer. Align with both screws loose, tighten both, then inspect runout, mesh, thread grip and case clearance.",
     )
     printed = [adapter]
     hardware = [horn]
     rotation = App.Rotation(V(0, 0, 1), V(*coupling.BOLT_DIRECTION))
     for location, positions in zip(("Near", "Far"), coupling.fastener_positions()):
-        for kind, anchor in positions.items():
-            shape = (
-                purchased_hardware.servo_screw_shape()
-                if kind == "screw"
-                else purchased_hardware.servo_nut_shape()
-            ).copy()
-            shape.Placement = App.Placement(V(*anchor), rotation)
-            hardware.append(
-                _buy(
-                    doc,
-                    parent,
-                    prefix
-                    + "HornGearClamp"
-                    + location
-                    + ("Bolt" if kind == "screw" else "Nut"),
-                    positioned(shape),
-                    "M1_6X8_PAN_HEAD_KIT" if kind == "screw" else "M1_6_HEX_NUT_DIN934",
-                    "M1.6 through-fastener in a prepared-example position. Drill to the actual supplied horn after coaxial registration; preserve safe material around holes. Kit head is an acceptance envelope, not measured geometry. Keep the OEM centre screw and inspect both-direction torque retention and tip clearance.",
-                    SERVO_SCREW_SOURCE if kind == "screw" else SERVO_NUT_SOURCE,
-                    SERVO_SCREW_MATERIAL,
-                    threaded=True,
-                )
+        shape = purchased_hardware.servo_screw_shape(coupling.HORN_CLAMP_LENGTH).copy()
+        shape.Placement = App.Placement(V(*positions["screw"]), rotation)
+        hardware.append(
+            _buy(
+                doc,
+                parent,
+                prefix + "HornGearClamp" + location + "Bolt",
+                positioned(shape),
+                "M1_6X4_PAN_HEAD_KIT",
+                "M1.6x4 from the gear side into the existing horn thread. Nominal 2.6 mm adapter grip, 1.4 mm engagement and 0.2 mm rear clearance; no nut. The clearance hole/outer slot allows assembly adjustment before tightening. Check actual head, useful threads, length and runout; do not leave the joint loose.",
+                SERVO_SCREW_SOURCE,
+                SERVO_SCREW_MATERIAL,
+                threaded=True,
             )
+        )
     hardware.append(
         _buy(
             doc,
@@ -568,13 +551,11 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         ]
         + [
             (
-                f"{prefix}_horn_service_ligament",
+                f"{prefix}_servo_bridge_sidewall",
                 "ServoDriveBridge",
                 (sign * (x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01), y, z),
                 (sign * (x + servo_bridge.CRADLE_WIDTH / 2 + 0.01), y, z),
-                servo_coupling.HORN_BOLT_CENTRES[0][0]
-                - servo_bridge.HORN_SERVICE_RADIUS
-                - servo_bridge.CASE_WINDOW_WIDTH / 2,
+                servo_bridge.SIDE_WALL,
             )
             for prefix, sign in (("port", 1), ("starboard", -1))
         ]

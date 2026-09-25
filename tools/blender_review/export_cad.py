@@ -53,15 +53,15 @@ def color(obj, category, rail_names):
 
 def representation(obj):
     """Describe the installed proxy without substituting manufacturing stock."""
-    if hasattr(obj, "SuppliedHornMeasured") and not obj.SuppliedHornMeasured:
-        return "Unmeasured supplied X06 horn; locally prepared example, not purchased dimensions or verified material."
-    if hasattr(obj, "PrintBlankShape"):
-        return "Prepared assembly example only; the manufacturing print uses a separate undrilled blank."
+    if getattr(obj, "HardwareSKU", "") == "ALI_PTK_15T_4MM_HORN":
+        return "Selected 15T Single 4.0mm metal horn; seller front dimensions and user-confirmed M1.6 threads, with unmeasured axial seating and hub geometry."
+    if getattr(obj, "Name", "").endswith("HornGearAdapter"):
+        return "Installed factory-hole adapter with provisional C-shaped locating seat; printed geometry does not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
 
 
 def review_objects(registry):
-    """Installed leaves only: no fit samples, centring jig or clearance solids."""
+    """Installed leaves only: no fit samples or clearance solids."""
     objects = [obj for category in CATEGORIES for obj in getattr(registry, category)]
     names = [obj.Name for obj in objects]
     if len(set(names)) != len(names):
@@ -93,19 +93,18 @@ def check_review_basis(doc, report):
         adapter = doc.getObject(prefix + "HornGearAdapter")
         if (
             horn is None
-            or getattr(horn, "SuppliedHornMeasured", True)
+            or getattr(horn, "HardwareSKU", "") != "ALI_PTK_15T_4MM_HORN"
             or adapter is None
-            or not hasattr(adapter, "PrintBlankShape")
+            or hasattr(adapter, "PrintBlankShape")
         ):
             raise RuntimeError(
-                "Update review captions for changed horn/preparation evidence."
+                "Update review captions for changed purchased-horn evidence."
             )
         for position in ("Near", "Far"):
-            for kind in ("Bolt", "Nut"):
-                if doc.getObject(prefix + "HornGearClamp" + position + kind) is None:
-                    raise RuntimeError(
-                        "Expected both prepared-example horn fastening pairs."
-                    )
+            if doc.getObject(prefix + "HornGearClamp" + position + "Bolt") is None:
+                raise RuntimeError("Expected both factory-hole horn attachment screws.")
+            if doc.getObject(prefix + "HornGearClamp" + position + "Nut") is not None:
+                raise RuntimeError("Update review captions for returned horn nuts.")
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
@@ -279,7 +278,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks are swept envelopes. Supplied horns and machined adapters are unmeasured preparation examples. Bench centring jig and print blanks are not installed parts.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Selected metal horns use factory M1.6 threads and printed locating adapters. Horn seating, final fit and assembled runout remain physically unverified.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -339,7 +338,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Supplied horn and paired-drilled adapter are preparation examples, not measured purchased fits or print blanks. Reference teeth; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Selected metal horn uses factory M1.6 threads and an adjustable-before-tightening printed adapter; axial seating and received-part fit remain unverified. Reference teeth; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -492,7 +491,7 @@ def export(cad_path, output):
                 "fps": 24,
                 "part_count": len(parts),
                 "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
-                "installed_representation": "Prepared assembly examples are displayed; undrilled PrintBlankShape stock and the bench-only centring jig are excluded.",
+                "installed_representation": "Installed factory-hole horn adapters and purchased metal-horn envelopes are displayed; fit samples and clearance reservations are excluded. Missing horn seating data remains provisional.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(report_path),

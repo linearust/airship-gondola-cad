@@ -163,8 +163,9 @@ def manufacturing_shape(obj):
     """Saved machining blank where declared, otherwise the installed solid.
 
     A blank may add stock, never remove material from the prepared example.
-    Keep this distinction in the saved CAD so independent export validation
-    does not silently manufacture an unmeasured supplied-horn hole pattern.
+    Retain support for saved legacy blanks so independent export validation
+    cannot silently confuse machining stock with an installed part. Current
+    factory-hole horn adapters export their installed shape directly.
     """
     if not hasattr(obj, "PrintBlankShape"):
         return obj.Shape.copy()

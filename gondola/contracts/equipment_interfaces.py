@@ -109,7 +109,7 @@ X06_OUTPUT_FROM_CASE_END_MM = 5.0
 X06_EAR_TOP_FROM_CASE_TOP_MM = 3.7
 X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM = 4.7
 X06_SPLINE_DIAMETER_MM = 3.90
-HORN_SOURCE = "https://www.aliexpress.com/item/1005010458484391.html"
+HORN_SOURCE = "https://www.aliexpress.com/item/1005012006498403.html"
 SHAFT_SOURCE = "https://www.aliexpress.com/item/1005007648646117.html"
 BEARING_SOURCE = "https://www.aliexpress.com/item/1005007668446060.html"
 BEARING_REFERENCE_SOURCE = (
@@ -139,12 +139,31 @@ PROPULSION_EVIDENCE = {
         "listed_mass_g": 6.0,
         "listed_mass_tolerance_percent": 10,
         "scope": "KST-authored May 2023 drawing obtained through the distributor. Regular-tab X06 V6.0, not X06H or X06N. Ear thickness is the 4.7 minus 3.7 mm drawing datum difference. Published case tolerance is not a fit allowance. Spline major diameter does not establish horn geometry or a retaining screw thread.",
-        "unknown": "Supplied plastic horn dimensions and OEM retaining screw; supplied horn seating, loaded travel and permissible external gear load.",
+        "unknown": "OEM retaining screw dimensions, selected replacement horn installed seating, loaded travel and permissible external gear load.",
     },
-    "KST_X06_SUPPLIED_HORN": {
+    "ALI_PTK_15T_4MM_HORN": {
         "sources": [HORN_SOURCE],
-        "retained_evidence": "references/cart_adaptation_review.md",
-        "scope": "User-selected original supplied horn and OEM centre screw. Shape, installed seating, hole pattern, material and mass are not established. CAD depicts an explicitly bounded fit/preparation example; verify the actual supplied horn before manufacture and assembly.",
+        "retained_evidence": [
+            "references/selected_15t_4mm_horn_drawing.png",
+            "references/retention_review.md",
+        ],
+        "selected_option": "15T Single 4.0mm",
+        "spline_teeth": 15,
+        "nominal_spline_diameter_mm": 4.0,
+        "overall_length_mm": 18.2,
+        "root_width_mm": 6.1,
+        "arm_thickness_mm": 1.6,
+        "first_hole_radius_mm": 6.6,
+        "first_to_second_hole_pitch_mm": 2.8,
+        "selected_attachment_radii_mm": [6.6, 12.2],
+        "outer_attachment_radius_basis": "12.2 mm is inferred by repeating the one dimensioned 2.8 mm interval; the third-hole position is not independently dimensioned.",
+        "outer_attachment_slot_radial_allowance_mm": 0.4,
+        "threaded_hole_count": 3,
+        "thread": "M1.6",
+        "compatibility_basis": "User accepts KST X06 V6 compatibility as the design premise unless concrete contrary evidence appears. This is not physical fit verification.",
+        "thread_basis": "User confirms all three factory arm holes are M1.6 threaded. Use first and third holes without drilling the purchased horn; adjacent 2.8 mm centres would overlap the selected maximum 3.5 mm screw-head envelopes. The outer adapter hole has a design radial capsule allowance of +/-0.4 mm around the inferred 12.2 mm location.",
+        "scope": "Seller drawing supports the named dimensions. PTK in the saved title and this project purchase key are not a certified manufacturer part number. Aluminium is a seller claim; actual alloy, mass and geometric tolerances are unverified.",
+        "unknown": "Hub height, spline seating depth, hub outer diameter and concentricity, installed face plane, centre screw seat and third-hole position are not fully dimensioned. The 6.1 mm root width is not a specified precision locating diameter. The C-shaped adapter seat follows the 6.1 mm front outline with a nominal 0.15 mm radial fit allowance; this is a prototype locating interface, not a certified hub diameter. The 3.5 mm axial horn envelope remains a provisional clearance proxy until checked on received hardware.",
     },
     "selected_gears": {
         "sources": [gear.item_url for gear in GEARS.values()],

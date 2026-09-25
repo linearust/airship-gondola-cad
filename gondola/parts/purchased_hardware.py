@@ -69,14 +69,14 @@ def screw_shape(length=CLAMP_SCREW_LENGTH):
 
 
 @functools.lru_cache(None)
-def servo_screw_shape():
+def servo_screw_shape(length=fasteners.SERVO_SCREW_LENGTH):
     """M1.6 kit head acceptance envelope; actual Phillips recess is unmodeled."""
     head = Part.makeCylinder(
         fasteners.SERVO_SCREW_HEAD_DIAMETER / 2,
         fasteners.SERVO_SCREW_HEAD_HEIGHT,
         V(0, 0, -fasteners.SERVO_SCREW_HEAD_HEIGHT),
     )
-    shank = Part.makeCylinder(0.8, fasteners.SERVO_SCREW_LENGTH)
+    shank = Part.makeCylinder(0.8, length)
     return head.fuse(shank).removeSplitter()
 
 

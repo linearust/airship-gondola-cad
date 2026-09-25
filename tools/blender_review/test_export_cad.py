@@ -16,13 +16,14 @@ class ExportContractTests(unittest.TestCase):
         objects = {}
         for prefix in ("Port", "Starboard"):
             objects[prefix + "Pod"] = SimpleNamespace(MinimumTilt=-180, MaximumTilt=180)
-            objects[prefix + "ServoHorn"] = SimpleNamespace(SuppliedHornMeasured=False)
+            objects[prefix + "ServoHorn"] = SimpleNamespace(
+                HardwareSKU="ALI_PTK_15T_4MM_HORN"
+            )
             objects[prefix + "HornGearAdapter"] = SimpleNamespace(
-                PrintBlankShape=object()
+                Name=prefix + "HornGearAdapter"
             )
             for position in ("Near", "Far"):
-                for kind in ("Bolt", "Nut"):
-                    objects[prefix + "HornGearClamp" + position + kind] = object()
+                objects[prefix + "HornGearClamp" + position + "Bolt"] = object()
         service = {
             "part_paths": [{"waypoints_mm": [[0, 0, 0], [0, 0, 0.5], [80, 0, 0.5]]}],
             "output_gear_removal": [
@@ -52,27 +53,32 @@ class ExportContractTests(unittest.TestCase):
         }
         return SimpleNamespace(getObject=objects.get), objects, report
 
-    def test_current_two_pair_examples_are_supported(self):
+    def test_current_factory_hole_fastening_is_supported(self):
         doc, objects, report = self.basis()
         check_review_basis(doc, report)
-        self.assertIn("Unmeasured", representation(objects["PortServoHorn"]))
+        self.assertIn("metal horn", representation(objects["PortServoHorn"]))
         self.assertIn(
-            "Prepared assembly example", representation(objects["PortHornGearAdapter"])
+            "provisional C-shaped locating seat",
+            representation(objects["PortHornGearAdapter"]),
         )
-        self.assertIn("undrilled blank", representation(objects["PortHornGearAdapter"]))
+        self.assertNotIn("undrilled", representation(objects["PortHornGearAdapter"]))
 
-    def test_missing_pair_or_changed_horn_evidence_cannot_reuse_captions(self):
+    def test_missing_screw_or_changed_horn_cannot_reuse_captions(self):
         doc, objects, report = self.basis()
         del objects["PortHornGearClampNearBolt"]
-        with self.assertRaisesRegex(RuntimeError, "both prepared-example"):
+        with self.assertRaisesRegex(RuntimeError, "both factory-hole"):
             check_review_basis(doc, report)
         doc, objects, report = self.basis()
-        objects["PortServoHorn"].SuppliedHornMeasured = True
-        with self.assertRaisesRegex(RuntimeError, "horn/preparation"):
+        objects["PortServoHorn"].HardwareSKU = "KST_X06_SUPPLIED_HORN"
+        with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
             check_review_basis(doc, report)
         doc, objects, report = self.basis()
-        del objects["PortHornGearAdapter"].PrintBlankShape
-        with self.assertRaisesRegex(RuntimeError, "horn/preparation"):
+        objects["PortHornGearAdapter"].PrintBlankShape = object()
+        with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
+            check_review_basis(doc, report)
+        doc, objects, report = self.basis()
+        objects["PortHornGearClampNearNut"] = object()
+        with self.assertRaisesRegex(RuntimeError, "returned horn nuts"):
             check_review_basis(doc, report)
 
     def test_changed_motion_cannot_reuse_presentation_poses(self):
@@ -83,21 +89,21 @@ class ExportContractTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "removal paths"):
             check_review_basis(doc, report)
 
-    def test_bench_jig_and_clearance_proxies_cannot_enter_installed_review(self):
-        body, jig, reserve = [
+    def test_fit_samples_and_clearance_proxies_cannot_enter_installed_review(self):
+        body, coupon, reserve = [
             SimpleNamespace(Name=name)
-            for name in ("PortHornGearAdapter", "HornCenteringJig", "WireReserve")
+            for name in ("PortHornGearAdapter", "BearingCupCoupon", "WireReserve")
         ]
         registry = SimpleNamespace(
             PrintedParts=[body],
             HardwareParts=[],
             ReferenceParts=[],
             TapeReferences=[],
-            FitCoupons=[jig],
+            FitCoupons=[coupon],
             ClearanceVolumes=[reserve],
         )
         self.assertEqual(review_objects(registry), [body])
-        for leaked in (jig, reserve):
+        for leaked in (coupon, reserve):
             registry.ReferenceParts = [leaked]
             with self.assertRaisesRegex(RuntimeError, "bench fit sample or clearance"):
                 review_objects(registry)

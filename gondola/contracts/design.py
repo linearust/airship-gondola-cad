@@ -23,7 +23,7 @@ from .optical_sensors import get_sensor_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AR"
+DESIGN_REVISION = "AS"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -70,7 +70,7 @@ PART_SEPARATION_REASONS = {
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
-    "horn_and_adapter": "Use each X06 supplied horn with its genuine spline and OEM centre screw. A one-piece flat adapter blank is locally prepared with the actual horn using the centring jig and documented machining zone. The displayed prepared horn is an acceptance example, not measured supplied hardware. Do not reproduce a spline or assume the old 0415.13 outline. Preserve coaxial registration and gear plane, adequate edge distances and two-way torque retention. Original screw access and the ordered coupling removal path remain required. No separate rear strap or permanent alignment jig.",
+    "horn_and_adapter": "Use the selected AliExpress 15T Single 4.0mm aluminium horn with the X06 OEM centre retaining screw. Its first and third factory M1.6 holes attach to one printed adapter with two screws, without horn drilling or separate horn nuts. An outer radial capsule allows +/-0.4 mm around the inferred third-hole position; the first two holes are too close for the selected maximum screw heads. A permanent C-shaped seat based on the 6.1 mm front outline and a flat face reduce dependence on screw-hole clearance; this outline is not a certified hub diameter, and locating surface fit and runout remain physical acceptance checks. Keep spline manufacture in the purchased horn. Preserve gear alignment, original centre-screw access and the ordered coupling removal path; no separate rear strap or bench centring jig.",
     "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base is one open rectangular portal with its top beam flush with the two legs; broad feet clamp directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
 }
 
@@ -147,15 +147,16 @@ PURCHASED_HARDWARE_QUANTITIES = {
     "M2X8_BUTTON_HEAD": 13,
     "M2X6_BUTTON_HEAD": 2,
     "M2_HEX_NUT": 15,
-    "M1_6X8_PAN_HEAD_KIT": 8,
-    "M1_6_HEX_NUT_DIN934": 8,
+    "M1_6X8_PAN_HEAD_KIT": 4,
+    "M1_6X4_PAN_HEAD_KIT": 4,
+    "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "BEARING_3X6X2_5": 4,
     "SS304_CUT3_L24_FLAT5_A0": 2,
     "SS304_CUT3_L14": 2,
     "SS304_CUT3_L18_FLAT18_A0": 2,
-    "KST_X06_SUPPLIED_HORN": 2,
+    "ALI_PTK_15T_4MM_HORN": 2,
 }
 
 HARDWARE_MATERIALS = {
@@ -163,6 +164,7 @@ HARDWARE_MATERIALS = {
     "M2X6_BUTTON_HEAD": KIT_MATERIAL,
     "M2_HEX_NUT": KIT_MATERIAL,
     "M1_6X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
+    "M1_6X4_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
     "M1_6_HEX_NUT_DIN934": "304 stainless steel (seller claim)",
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
@@ -170,7 +172,7 @@ HARDWARE_MATERIALS = {
     "SS304_CUT3_L24_FLAT5_A0": "304 stainless steel (seller claim)",
     "SS304_CUT3_L14": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
-    "KST_X06_SUPPLIED_HORN": "Supplied horn material unverified",
+    "ALI_PTK_15T_4MM_HORN": "Aluminium alloy (grade unspecified)",
 }
 
 EXPECTED_INVENTORY = {
@@ -179,10 +181,10 @@ EXPECTED_INVENTORY = {
     "tilting_propulsors": 2,
     "installed_prints": 12,
     "optical_mount_parts": 3,
-    "fit_coupons": 4,
+    "fit_coupons": 3,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 14,
+    "unique_print_files": 13,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -263,7 +265,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
         "seller_or_completed_harness_verified": False,
-        "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, OEM supplied X06 horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchase of bearing spacers or separate 0415.13 horns. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and prepared supplied-horn adapters. The centring jig and fit coupons are bench tools, not installed parts.",
+        "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, selected 15T Single 4.0mm metal horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchased bearing spacers, 0415.13 horns or separate horn attachment nuts. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and factory-hole horn adapters. Fit coupons are bench tools, not installed parts; the superseded horn-drilling blank and centring jig are not needed.",
     }
 
 
@@ -328,7 +330,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the actual supplied X06 horn against the adapter preparation envelope. Keep its spline and OEM screw intact. Centre the horn and adapter with the bench jig, prepare attachment holes only in sound material with sufficient edge distance, then verify assembled runout and loaded retention in both directions. The displayed horn and fastener arrangement are a preparation example, not a measured part. Verify actual blade thickness, installed height, screw-head protrusion, safe nut engagement and OEM screw access. The D-socket and nominal-3mm 304 stub retain the original gear bore and gear plane. Direct gear loading, PA12 creep and servo output radial-load capacity remain unqualified.",
+        "Fit the selected 15T Single 4.0mm metal horn to the X06 and its OEM centre screw. The user accepts spline compatibility as a design premise and confirms all three M1.6 arm threads; do not reopen those questions without contrary evidence. Verify unprovided hub/seat dimensions, actual locating fit, flat seating, centre-screw retention and assembled runout. Use the first factory hole at 6.6 mm and third at inferred 12.2 mm, accepting +/-0.4 mm radial slot travel at the outer hole without drilling the horn. Verify that actual hole spacing fits this range and that screw heads clear each other. Check the selected M1.6x4 screw engagement and backside protrusion throughout motion; the nominal 2.6 mm adapter grip leaves 1.4 mm horn engagement and 0.2 mm rear clearance on the 1.6 mm arm. The 3.5 mm horn axial proxy is not a published installed seating dimension. The permanent locating interface reduces reliance on clearance-hole alignment but raw PA12 tolerance and the unqualified horn locating surface do not establish precision or torque retention. The D-socket and nominal-3mm 304 stub still require physical fit and two-way loaded grip checks. No extra input bearing is selected; direct gear loading, PA12 creep and servo output radial-load capacity remain unqualified.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -395,7 +397,7 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC mounting spacers/fasteners and dampers, plus P-AS mounting hardware only when P-AS is selected: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified. GPS alternatives use insulating adhesive, not additional GPS screws.",
-            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Supplied horns and modeled adapter hardware are included; no separate horn purchase is required.",
+            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Two separately purchased 15T Single 4.0mm metal horns and their modeled M1.6 adapter screws are included.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
         ],

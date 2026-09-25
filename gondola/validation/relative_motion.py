@@ -22,8 +22,6 @@ def _input_drive_membership(parts):
         "HornGearAdapter",
         "HornGearClampNearBolt",
         "HornGearClampFarBolt",
-        "HornGearClampNearNut",
-        "HornGearClampFarNut",
         "InputShaft",
         "InputShaftClampBolt",
         "InputShaftClampNut",

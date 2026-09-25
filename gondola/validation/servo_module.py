@@ -142,8 +142,6 @@ def servo_module_service_check(doc, module):
             "HornGearAdapter",
             "HornGearClampNearBolt",
             "HornGearClampFarBolt",
-            "HornGearClampNearNut",
-            "HornGearClampFarNut",
             "ServoEarLowerBolt",
             "ServoEarLowerNut",
             "ServoEarUpperBolt",
