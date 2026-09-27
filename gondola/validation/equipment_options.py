@@ -209,28 +209,26 @@ def _optical_screens(doc):
         for name in stack_interface.SUPPORTED_HOSTS:
             hosts[name] = temporary.addObject("App::Part", name)
             hosts[name].Placement = doc.getObject(name).getGlobalPlacement()
+            kind = next(
+                kind
+                for kind, part in mounts.MOUNT_NAMES.items()
+                if part == stack_interface.SUPPORTED_HOSTS[name]
+            )
+            mounts.build_mount(temporary, hosts[name], kind)
         kit = optical_mount.build_optical_mount(temporary, next(iter(hosts.values())))
         physical = kit["printed"] + kit["hardware"]
         for name, host in hosts.items():
             stack_interface.attach_to_host(kit["group"], host)
             placement = kit["group"].getGlobalPlacement()
-            service = [
-                (tool, _placed(shape, placement))
-                for tool, shape in stack_interface.clamp_tool_reservations()
-            ]
-            for index in range(2):
-                for kind, z in (("Bolt", -12), ("Nut", 4)):
-                    obj = temporary.getObject(f"OpticalStackFoot{kind}{index}")
-                    swept, _ = translation_sweep(
-                        world_shape(obj), tuple(placement.Rotation.multVec(V(0, 0, z)))
-                    )
-                    service.append((obj.Name + "Removal", swept))
             for profile in SENSOR_PROFILES.values():
                 poses = []
                 for roll, pitch in itertools.product(ANGLES, repeat=2):
                     optical_mount.set_angles(temporary, roll, pitch)
                     pitch_placement = kit["pitch_stage"].getGlobalPlacement()
                     shapes = {obj.Name: world_shape(obj) for obj in physical}
+                    shapes["IntegralOpticalCarrier"] = world_shape(
+                        stack_interface.host_print(kit["group"])
+                    )
                     shapes["ModuleMTF02PEnvelope"] = _placed(
                         optical_sensor.envelope_shape(profile), pitch_placement
                     )
@@ -251,8 +249,16 @@ def _optical_screens(doc):
                     )
                 optical_mount.set_angles(temporary, 0, 0)
                 bound, _ = _external_field_bound(kit["group"], profile)
-                tower_sweep, _ = translation_sweep(
-                    Part.makeCompound([world_shape(obj) for obj in physical]),
+                # Pivot fasteners are released first. Only the movable head
+                # and sensor lift; the portal stays fused to its carrier.
+                neutral_sensor = _placed(
+                    optical_sensor.envelope_shape(profile),
+                    kit["pitch_stage"].getGlobalPlacement(),
+                )
+                head_sweep, _ = translation_sweep(
+                    Part.makeCompound(
+                        [world_shape(obj) for obj in kit["printed"]] + [neutral_sensor]
+                    ),
                     tuple(placement.Rotation.multVec(V(0, 0, 32))),
                 )
                 screens.append(
@@ -261,7 +267,7 @@ def _optical_screens(doc):
                         "sensor": profile.key,
                         "poses": poses,
                         "continuous_field": bound,
-                        "service": service + [("CompleteTowerLift", tower_sweep)],
+                        "service": [("ReleasedMovingHeadLift", head_sweep)],
                     }
                 )
         return screens
@@ -378,11 +384,6 @@ def compatibility_check(doc):
         and not belongs_to_group(obj, doc.OpticalFlowModule)
     }
     support = local_shape(doc.AccessoryMount)
-    bench_fixed = {
-        obj.Name: fixed[obj.Name]
-        for obj in physical
-        if obj.Name in fixed and belongs_to_group(obj, parent)
-    }
     screens = _optical_screens(doc)
     validation_cache = {}
     rows = []
@@ -448,7 +449,7 @@ def compatibility_check(doc):
                     local_bodies[BODY_NAMES[1]],
                     mounts.RADIO_CENTRE_XY,
                     mounts.RADIO_ADHESIVE_SIZE,
-                    face="bottom",
+                    face="top",
                 ),
             }
         ]
@@ -466,8 +467,7 @@ def compatibility_check(doc):
             )
         service = []
         for name, shape in bodies.items():
-            detached_carrier = name == "ModuleRadioEnvelope"
-            service_fixed = bench_fixed if detached_carrier else fixed
+            service_fixed = fixed
             local_travel = V(*layout.device_removal_vector(name))
             world_travel = placement.Rotation.multVec(local_travel)
             sweep, method = translation_sweep(shape, tuple(world_travel))
@@ -488,14 +488,12 @@ def compatibility_check(doc):
                     "device": name,
                     "local_removal_vector_mm": tuple(local_travel),
                     "world_removal_vector_mm": tuple(world_travel),
-                    "bench_access_required": detached_carrier,
-                    "service_collision_scope": "Detached carrier assembly only"
-                    if detached_carrier
-                    else "Installed assembly after declared tower release",
+                    "bench_access_required": False,
+                    "service_collision_scope": "Installed assembly; integral carriers retained",
                     "off_carrier_parts_excluded_for_bench_service": sorted(
                         set(fixed) - set(service_fixed)
                     ),
-                    "prerequisite": "Disconnect leads and release retention. For the underside radio, detach the carrier from the rail for bench access; in-place underside access is not qualified.",
+                    "prerequisite": "Disconnect leads and release retention; lift the bare device from the outer support face. Integral carriers and all other mounted parts remain. No connected-harness service is claimed.",
                     "method": method,
                     "collisions": collisions,
                     "passed": not collisions,
@@ -541,7 +539,7 @@ def compatibility_check(doc):
                 "body_and_connector_collisions": hits,
                 "neighbour_clearance_buffers": buffers,
                 "adhesive_supports": support_rows,
-                "bare_device_service_after_tower_release": service,
+                "bare_device_service": service,
                 "optical_compatibility": optical,
                 "direct_antenna": antenna,
                 "passed": not hits
@@ -554,7 +552,7 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit, both optical models and both hosts. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. The accessory plate is not an optical-stack host.",
+        "scope": "Three mutually exclusive navigation choices with the LR24-F-Mini on the same outer face, both optical models and both integral carrier variants. One accessory plate supports navigation and radio. Integral portals remain fixed; only movable optical heads can be released. This audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. The accessory plate is not an optical host.",
         "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
         and bool(rows)
         and all(row["passed"] for row in rows),

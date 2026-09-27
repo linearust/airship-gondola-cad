@@ -6,6 +6,11 @@ It covers the 91 product rows actually present in the supplied HTML; the page's
 or proof that the complete live cart was captured. Unrelated stock and spare
 quantities do not define additional installed devices.
 
+That saved-cart review predates the AZ carbon-adapter decision. The later selected
+[5PCS carbon adapter](stock_stack_adapter_review.md) has its own retained evidence;
+one board is installed in the default AZ assembly. Its supplied screw/nut package
+quantities remain unconfirmed and do not replace the current generated BOM.
+
 This records the user's selected parts and preparation decisions, not seller
 certification or a shopping list. The selected purchased interfaces are retained
 through the rail layout and shared equipment-support changes; see
@@ -20,6 +25,7 @@ generated BOM, not the cart pack counts.
 | Selection | Design treatment |
 | --- | --- |
 | Owned M2 482-piece black-steel button-head kit | Eight lengths and hex nuts cover the modeled M2 joints. Do not request another purchase. Measure the actual heads/nuts against the declared design envelopes. |
+| 30×30×1 mm carbon FPV adapter, 25.5/20/16 mm patterns, selected 5PCS | One installed at the FC. The printed saddle uses two opposite 16 mm holes; FC studs use 25.5 mm. Received hole clearance, cutout contact and insulation require inspection; spare boards do not imply additional installed stacks. |
 | Selected M1.4/M1.6 Phillips kit, assorted lengths | Use received screws after checking head envelope, usable engagement and tool access. Do not ask for the length inventory again or identify this kit as DIN84 slotted screws. |
 | Owned GH1.25 and selected SH1.0 connector kits | Subtract supplied cables before preparing harnesses. Connector families do not establish pin order or voltage. |
 | Gemfan 1610, 1.5 mm bore | Two main propellers, one CW and one CCW. Match the actual RS1102 shaft. |
@@ -69,8 +75,11 @@ keys and the final CAD remain authoritative if the interfaces change.
 
 ## Fasteners and preparation
 
-The mechanism uses M2 button-head screws of 8 mm and 6 mm length with one M2
-hex-nut family. The short radial shaft joints use the 6 mm screws. No washer
+The current assembly models M2 button-head screws of 8 mm, 6 mm and 20 mm length
+with one M2 hex-nut family. The short radial shaft joints and lower carbon
+retention use 6 mm screws. Four nominal M2×20 FC-axis screws and their intermediate
+nuts fasten independently to the carbon; the complete FC damping and upper
+retention stack remains unresolved. No washer
 is required by the modeled stacks. The Ø4.5 x 2 mm M2 head cylinder is a design
 acceptance envelope, not a measured or published kit dimension. Inspect actual
 head bearing faces, nut capture and rail contact; qualify the finished rail

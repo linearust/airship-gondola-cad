@@ -1,119 +1,119 @@
-# Three mass regions and universal electronics carriers — AX
+# Equipment layout and wiring — purchased-adapter redesign
 
-Keep three mass regions: central propulsion, battery on one side and electronics
-on the opposite side. Two independently positioned carriers occupy the
-electronics region: the FC/optical-host carrier and one carrier for navigation
-plus the LR24-F-Mini. Battery, FC and navigation now use three copies of the same
-printed shape and hole layout. Four rail shoes do not imply four
-separate mass regions. The intentionally removable paired-servo module remains
-separate from the output-bearing frame.
+This reference describes the current intended architecture. Exact stations,
+orientations and quantities belong to
+[design.py](../gondola/contracts/design.py); matching generated reports establish
+geometric test status. Older AX identical-carrier and underside-radio results
+are historical and do not validate this revision.
 
-`contracts/design.py:MODULE_STATIONS` owns the initial locations and discrete
-carrier orientations. These are starting positions for physical trim, not a
-measured centre-of-gravity result. The optical tower remains transferable
-between the battery and electronics carriers through the existing structural
-stack interface; its load does not pass through the battery or FC dampers.
-There is no propulsion-frame optical host in this revision.
+## Layout and supported interfaces
 
-## Placement rationale
+Keep the three functional mass regions: central propulsion, battery on +X, and
+FC plus other electronics on -X. In neutral the motor backs face -X, bringing the
+FC toward the lead exits. The separate accessory carrier groups the selected
+navigation device and Mini in that electronics region. These are initial design
+positions, not a measured centre of gravity or a claim of equal regional mass.
+Preserve the intentional separation of the paired servo/input-drive module from
+the propulsion/output-bearing frame.
 
-In neutral, both main motors face +X and their rear side is -X. Keep the
-electronics on -X and the battery on +X. The electronics carrier is turned
-180° about Z to retain the existing optical-host orientation. Preserve the FC's
-intended global installation orientation independently of this carrier turn;
-the square mounting pattern permits it. The CAD envelope has no component
-markings, so verify the actual board arrow and firmware orientation at assembly.
+The FC uses the bought carbon adapter on a small raised saddle. Its 25.5 mm axes
+are on the carbon; two opposed 16 mm axes secure the carbon to the printed saddle.
+Four printed pads support that plane. Rigid clamps remain independent of FC
+soft mounting. The carbon is conductive, its undimensioned cutouts remain
+unmodeled, and its full square envelope does not prove bearing material. See the
+[purchased-part review](stock_stack_adapter_review.md). The 8 mm lowest-component
+wiring allowance is not a verified PCB bearing plane or complete damper stack.
 
-AX retains the AW initial FC carrier station at X = -54 mm, with navigation
-at -158 mm. The earlier move from X = -72 mm increased separation from the centred navigation
-and optional direct helix, and brings the FC closer to the neutral motor-lead
-exits. The new shoe position coincides with a rail land centre. These are initial
-placement choices; optical-field, service and wiring clearance checks still apply,
-and the positions do not establish mass balance or installed cable lengths.
+Battery and accessory use smaller continuous insulating decks with the same
+rail shoe. Their roles do not require identical plate outlines or redundant hole
+patterns. Navigation and Mini share the accessory's outer face with distinct
+adhesive regions and connector paths; there is no inverted radio, separate radio
+tab or long navigation branch. Exact geometry is in
+[equipment_mounts.py](../gondola/parts/equipment_mounts.py) and
+[equipment_layout.py](../gondola/parts/equipment_layout.py).
 
-Carrier yaw reverses the world direction of its local rail clamp. Apply the
-matching transverse seating offset and transform tool access in the correct
-frame. The selected 0/180-degree carrier orientations are design choices, not
-an arbitrary user-adjustable yaw joint. FC underbody and peripheral wiring
-reserves follow the FC orientation; ancillary-device reserves follow their
-own carrier. The XT30 body and unplugging space move to the side to avoid
-the servo module.
+The optical fixed support is integral with the selected battery or FC carrier.
+Changing host requires the corresponding carrier variant and transfer of the
+movable sensor head, followed by recalibration. Its load does not use the FC
+PCB or battery as a structural support. There is no propulsion or accessory
+optical host. Optional power similarly replaces a low carrier with an integral
+variant; optical and power structures cannot share one host.
 
-The shared carrier combines a 54 × 74 mm deck with 3 mm plan-view corner radii
-and an integral rail shoe, with no projecting tab or model-shaped pockets.
-The plate outline is symmetric, while holes and clamp orientations retain their
-functional datums. Every instance has the same confirmed
-FC/P-AS axes, standard square patterns and six expansion bores. The navigation
-instance places P-AS or one GPS at its centre, and the Mini at (-15,28) mm on the
-opposite plate face, beside the rail shoe. It needs no radio-specific plate. See
-[common carrier rationale](universal_carrier_review.md) for the hole and support
-boundaries. The Mini's X offset leaves rail-clamp hex-key access and clears the
-diagonal stack-foot bolt from its connector lane without changing the plate outline. Its ordinary rail clamp
-permits independent positioning. The navigation carrier starts near the aft
-rail end to separate the optional helix
-from the optical hosts; recalculate the field-of-view and connector checks after
-layout changes rather than reusing older results. The initial accessory
-shoe is 4 mm from its rail land centre; it is not a claim of ±4 mm free adjustment
-around that initial position. Recheck the land, whole shoe support and all
-clearances after moving any carrier.
+## Near-end accessory station and trim
 
-The rail's 32 mm wide pads are 14 mm long, with a raised central running head;
-the side wings carry attachment tape to the balloon. They are not a continuous
-flat 32 mm electronics mounting face. The common carrier provides a
-known geometric adhesive face without covering the sliding head or using the
-rail's balloon-contact underside. The Mini uses the carrier's face toward the
-balloon, outside the shoe. Its body starts 4.6 mm from the Z = 0 reference plane
-and its inverted connector reserve starts 2.6 mm from that plane. Neither
-dimension proves clearance to the actual balloon or installed plug. The actual
-device contact, strap path and adhesion remain unverified. Remove the carrier
-and service the Mini on a bench; do not assume access while attached to the
-balloon. All three carrier structural datums remain centred at (0,0), but
-the navigation instance remains excluded as an optical host. The same physical
-print does not clear the equipment attached to it from the optical field.
+The selected accessory centre is X = **-159 mm**. Its 18 mm shoe spans
+**-168 to -150 mm** on the nominal -170 to +170 mm rail, leaving **2 mm** at the
+nearest end. Only that much additional outward travel preserves full shoe
+engagement. This is a local geometric limit, not a promise of broad adjustment,
+a physical end stop or a holding-force qualification.
 
-## Variable battery load
+Its clamp lies 3 mm from the nearest solid rail-land centre. Do not move it to
+an arbitrary point between lands: the rejected -152 mm trial had acceptable
+optical separation but put the clamp 8 mm from a land centre. Inward movement
+also requires renewed direct-helix, optical-field, connector and service checks.
+Do not interpret the allowable land offset as symmetric free travel around the
+chosen initial station.
 
-Retain the separate battery carrier and its geometric adjustment. The modeled
-pack and declared maximum envelope remain the dimensioned baseline, not a
-promise that every capacity fits. Different packs require actual dimensions,
-adhesive retention and renewed clearance/trim checks. An empty carrier may be
-used for a separately engineered external-power setup; this layout change does
-not select a PSU, certify electrical compatibility or account for cable/tether
-loads. Do not add guessed PSU connectors or enlarge the envelope by capacity.
+The upper accessory deck projects 7 mm beyond the rail end. It does not mate
+with that end; the complete shoe provides engagement. An optional upper power
+structure may extend farther while using the same supported shoe. Check each
+printed part against the 340 mm size limit, rather than confusing overall
+assembly overhang with a single-part manufacturing dimension. Actual load,
+stiffness, print distortion and creep still need physical assessment.
 
-Actual battery, prints, hardware and harness masses are incomplete. Do not
-claim that the three regions have equal mass, that propulsion is always the
-heaviest, or that symmetric spacing guarantees balance. Choose rail positions
-from measured mass and lever arms, then recheck all clearances and wiring.
+The [retained station review](stock_stack_adapter/accessory_station_review.json)
+separates nominal service evidence, rejected intermediate probes and subsequent
+verification. It is not a production-release declaration. Use final matching
+reports for the accepted arrangement and optional power geometry.
 
-## Wire management boundary
+## Frames, attachment and service
 
-Motor leads move with the tilting carrier; servo cases and their leads stay
-stationary. Keep motor strain relief on a suitable carrier feature, a free
-flexible transition outside the rotor/gear sweep, and stationary-side strain
-relief before the FC solder joints. Prefer existing broad printed members and
-small bought ties; do not fasten to bearing hooks, shafts, gears or across the
-servo-module removal path. A stationary electronics carrier can anchor the
-downstream portion without a needless detour to the low propulsion-frame foot.
+The selected carrier yaw reverses its local clamp approach in world coordinates.
+Preserve the corresponding transverse seating offset and transform tool paths in
+the actual parent frame. A 0/180-degree installation choice is not an adjustable
+yaw joint. The square FC pattern also does not establish board heading: verify
+the physical arrow and firmware orientation independently of carrier yaw.
 
-The connected CAD reservations describe available loop workspace and a route
-toward the FC. They do not establish the motor's unpublished lead-exit datum,
-an installed tie, cable length, bend radius, or the flexible cable's changing
-shape. Fixed routing must be revised after rail adjustment. Moving-wire
-clearance, rubbing, tension, twist and fatigue need the actual harness through
-the entire bounded travel and independent opposite motor poses. Equal rigid
-poses at -180 and +180 degrees do not make those winding states interchangeable.
+The rail's tape wings attach the rail to the balloon. They are interrupted by a
+raised running head and are not a continuous flat electronics mounting surface.
+The role decks provide defined insulating contact away from that mating profile.
+Declared adhesive patches, body envelopes and connector reserves do not qualify
+actual backside contact, compressed tape, strap pressure or installed cables.
 
-Retain FC underside access, insulating/damping hardware and ESC ventilation.
-Do not use a short direct line in the neutral pose as evidence that a moving
-wire route is safe.
+Release the rail clamp and use the checked end-removal sequence before servicing
+a detached carrier. The integral optical support stays present during staged FC
+or battery extraction: remove the movable optical head when required, release
+device retention, lift enough to clear it, then translate through the open side.
+The bought FC plate and rigid clamps remain installed. A straight lift through
+the fixed beam is not an alternative. The low accessory permits outward bare
+navigation/radio removal; the optional power variant has a different lateral
+bench-service path below its fixed deck. Disconnect leads first in either case.
 
-## Primary references
+## Battery changes and wire management
 
-- [MicoAir 45A installation guidance](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual): board orientation, insulation/damping and ESC ventilation. See `controller_selection_review.md` for the unchanged nominal interface, changed included dampers and unresolved input-voltage evidence.
-- [igus cable installation guidance](https://www.igus.com/contentData/wpck/pdf/US_en/7_guidelines_for_continuousflex_cables.pdf): motion space, avoidance of tensile loading and strain relief. General principles; the cited cable-carrier system does not qualify this miniature free loop.
+Keep the declared battery envelope and placement allowance. Another capacity or
+PSU arrangement needs actual dimensions, retention, wiring and renewed trim
+checks. An empty battery carrier does not qualify tether loading or select a
+power architecture by itself. Actual pack, print, hardware and harness masses
+remain incomplete; choose final stations from measured masses and lever arms.
 
-Current geometric evidence belongs to `tests/fixtures/rev_ax_review.json` and
-matching generated validation reports. Until those checks are complete, this
-reference describes the intended layout and its limits, not a passed release.
-Physical qualification remains separate.
+Motor leads move with the tilting carriers; servo cases and their leads remain
+stationary. Provide motor-side strain relief, a free transition outside the
+rotor/gear motion, and stationary strain relief before FC solder joints. Use
+suitable existing broad members and bought ties, avoiding bearing latches,
+shafts, gears and the servo-module removal path. Retain FC underside access,
+insulation/damping and ESC ventilation.
+
+The [propulsion wiring model](../gondola/parts/propulsion_wiring.py) and
+[wiring reservations](../gondola/parts/wiring_reserves.py) describe connected
+planning space. They do not establish unpublished lead exits, a completed tie,
+actual cable length, bend radius or the flexible loop's changing shape. Recheck
+routes after rail adjustment. Test rubbing, tension, twist and fatigue with the
+actual harness through both bounded endpoints and independent opposite motor
+poses. Identical rigid poses at -180 and +180 degrees do not have identical wire
+winding. A short neutral line is not evidence of safe moving-wire behavior.
+
+## Source references
+
+- [MicoAir 45A installation guidance](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual): board orientation, damping, insulation and ESC ventilation. The [controller review](controller_selection_review.md) preserves the input-range conflict and unverified received hardware.
+- [igus cable installation guidance](https://www.igus.com/contentData/wpck/pdf/US_en/7_guidelines_for_continuousflex_cables.pdf): general motion-space, strain-relief and tension principles. That cable-carrier system does not qualify this miniature free loop.

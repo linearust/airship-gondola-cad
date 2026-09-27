@@ -59,6 +59,30 @@ class TranslationSweepTests(unittest.TestCase):
         swept, _ = translation_sweep(Part.makeBox(1, 1, 1), (2, 1, 0))
         self.assert_same_volume(swept, expected)
 
+    def test_rotated_box_tangent_faces_do_not_create_degenerate_prisms(self):
+        import math
+
+        from gondola.validation.geometry import translation_sweep
+
+        body = Part.makeBox(35.5, 35.5, 8, App.Vector(-17.75, -17.75, 31.8))
+        body.rotate(App.Vector(), App.Vector(0, 0, 1), 225)
+        body.translate(App.Vector(90, 0, 0))
+        expected = Part.makeBox(
+            35.5,
+            35.5 + 60 * math.sqrt(2),
+            8,
+            App.Vector(-17.75, -17.75 - 60 * math.sqrt(2), 31.8),
+        )
+        expected.rotate(App.Vector(), App.Vector(0, 0, 1), 225)
+        expected.translate(App.Vector(90, 0, 0))
+        swept, method = translation_sweep(body, (-60, 60, 0))
+        self.assertIn("face-prism", method)
+        self.assert_same_volume(swept, expected)
+        for fraction in (0, 0.17, 0.5, 0.91, 1):
+            interior = body.copy()
+            interior.translate(App.Vector(-60 * fraction, 60 * fraction, 0))
+            self.assertLess(abs(interior.cut(swept).Volume), 1e-7)
+
     def test_disconnected_solids_merge_only_where_their_paths_overlap(self):
         from gondola.validation.geometry import translation_sweep
 

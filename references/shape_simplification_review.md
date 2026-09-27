@@ -1,5 +1,11 @@
 # Printed shape and support review — AO
 
+Historical AO review. Later revisions replace the equipment carriers and optical
+foot joint; AZ integrates the fixed portal into its selected carrier. Do not apply
+the old host seats, feet or registration procedure below to the current design.
+Use [the current layout review](layout_and_wiring_review.md) and source contracts
+for present geometry and assembly paths.
+
 The design preference is simple, integrated, inspectable geometry. A modest
 mass increase is accepted where it removes narrow branches or complicated
 local reliefs. Broader sections are geometric improvements, not a measured

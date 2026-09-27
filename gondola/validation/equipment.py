@@ -14,6 +14,7 @@ from gondola.cad import (
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, REPO_ROOT
 from gondola.contracts import equipment_interfaces as interfaces
+from gondola.contracts import stack_adapter as adapter_specification
 from gondola.contracts.design import (
     EXPECTED_INVENTORY,
     FC_INSTALLATION_LOCAL_YAW_DEG,
@@ -30,7 +31,7 @@ from gondola.contracts.equipment_options import (
 from gondola.parts import equipment_envelopes as devices
 from gondola.parts import equipment_layout as layout
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import stack_interface
+from gondola.parts import stack_interface, stock_adapter
 from gondola.print_export import geometry_comparison
 from gondola.procurement import (
     PURCHASE_METADATA_FIELDS,
@@ -138,51 +139,282 @@ def mounting_pad_check(
     }
 
 
-def carrier_bore_checks(shape):
-    """Inspect every physical plate hole, including unused alternative patterns."""
-    groups = {
-        "shared_device_holes": [
-            mounting_pad_check(
+def carrier_bore_checks(shape, kind):
+    """Inspect each role's actual printed bores and full bearing annuli."""
+    rows = [
+        {
+            **row,
+            **mounting_pad_check(
                 shape,
-                centre,
-                bottom=mounts.DECK_BOTTOM_Z,
-                thickness=mounts.DECK_THICKNESS,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                row["centre_xy_mm"],
+                bottom=mounts.carrier_plate_bottom(kind),
+                thickness=mounts.carrier_plate_thickness(kind),
+                hole_diameter=row["diameter_mm"],
+                pad_diameter=row["pad_diameter_mm"],
+            ),
+        }
+        for row in mounts.carrier_hole_rows(kind)
+    ]
+    contact_pads = []
+    if kind == "electronics":
+        for centre in stock_adapter.SADDLE_PAD_CENTRES:
+            if centre in stock_adapter.SADDLE_FIX_CENTRES:
+                continue
+            required = Part.makeCylinder(
+                stock_adapter.SADDLE_PAD_DIAMETER_MM / 2,
+                stock_adapter.SADDLE_THICKNESS_MM,
+                App.Vector(*centre, stock_adapter.SADDLE_BOTTOM_Z),
             )
-            for centre in mounts.COMMON_DEVICE_HOLE_CENTRES
-        ],
-    }
-    for name, holes in (
-        ("standard_mounting_holes", mounts.standard_hole_rows("electronics")),
-        ("expansion_mounting_holes", mounts.expansion_hole_rows()),
-    ):
-        groups[name] = [
-            {
-                **row,
-                **mounting_pad_check(
-                    shape,
-                    row["centre_xy_mm"],
-                    bottom=mounts.DECK_BOTTOM_Z,
-                    thickness=mounts.DECK_THICKNESS,
-                    hole_diameter=row["diameter_mm"],
-                    pad_diameter=row["diameter_mm"] + 3.0,
-                ),
-            }
-            for row in holes
-        ]
+            missing = abs(required.cut(shape).Volume)
+            contact_pads.append(
+                {
+                    "centre_xy_mm": centre,
+                    "missing_printed_pad_mm3": missing,
+                    "passed": missing < TOL,
+                }
+            )
     return {
-        **groups,
-        "physical_plate_hole_count": sum(len(rows) for rows in groups.values()),
-        "passed": all(row["passed"] for rows in groups.values() for row in rows),
+        "kind": kind,
+        "holes": rows,
+        "unbolted_printed_contact_pads": contact_pads,
+        "physical_plate_hole_count": len(rows),
+        "scope": "Role-specific printed holes and contact pads only. Purchased carbon holes and uncertain carbon bearing footprints are checked separately.",
+        "passed": all(row["passed"] for row in rows + contact_pads),
+    }
+
+
+def stock_adapter_check(doc):
+    """Check the bought envelope and rigid clamp without certifying its cutouts."""
+    registry = doc.DesignRegistry
+    parent = doc.getObject("ElectronicsEquipmentModule")
+    if parent is None:
+        return {"passed": False, "error": "Missing electronics carrier"}
+    expected = stock_adapter.hardware_shapes()
+    skus = {
+        stock_adapter.PLATE_OBJECT_NAME: adapter_specification.PART_SKU,
+        **{row["name"]: row["sku"] for row in stock_adapter.lower_hardware_rows()},
+    }
+    rows = []
+    local_shapes = {}
+    for name, shape in expected.items():
+        obj = doc.getObject(name)
+        if obj is None:
+            rows.append(
+                {"object": name, "passed": False, "error": "Missing clamp part"}
+            )
+            continue
+        actual = world_shape(obj)
+        comparison = geometry_comparison(actual, _in_parent_frame(shape, parent))
+        local_shapes[name] = actual.copy()
+        local_shapes[name].Placement = (
+            parent.getGlobalPlacement().inverse().multiply(local_shapes[name].Placement)
+        )
+        rows.append(
+            {
+                "object": name,
+                "expected_sku": skus[name],
+                "source_comparison": comparison,
+                "passed": _comparison_passed(comparison)
+                and obj.getParentGeoFeatureGroup() == parent
+                and obj in registry.HardwareParts
+                and obj not in registry.PrintedParts
+                and not bool(getattr(obj, "PrintPart", False))
+                and str(getattr(obj, "HardwareSKU", "")) == skus[name],
+            }
+        )
+    plate = doc.getObject(stock_adapter.PLATE_OBJECT_NAME)
+    metadata_matches = False
+    if plate is not None:
+        try:
+            metadata_matches = (
+                json.loads(plate.StockAdapterContract)
+                == json.loads(json.dumps(stock_adapter.mounting_contract()))
+                and abs(
+                    float(plate.ReferenceMassGrams)
+                    - adapter_specification.LISTED_MASS_G
+                )
+                < TOL
+                and "ExactContourModeled" in plate.PropertiesList
+                and not plate.ExactContourModeled
+                and "PhysicalFitVerified" in plate.PropertiesList
+                and not plate.PhysicalFitVerified
+            )
+        except (AttributeError, TypeError, ValueError):
+            metadata_matches = False
+    bore_rows = []
+    if stock_adapter.PLATE_OBJECT_NAME in local_shapes:
+        actual_plate = local_shapes[stock_adapter.PLATE_OBJECT_NAME]
+        for pitch in adapter_specification.SQUARE_PITCHES_MM:
+            for x, y in adapter_specification.hole_centres(
+                pitch, adapter_specification.COMMON_ROTATION_DEG
+            ):
+                probe = Part.makeCylinder(
+                    adapter_specification.HOLE_DIAMETER_MM / 2,
+                    adapter_specification.THICKNESS_MM,
+                    App.Vector(x, y, stock_adapter.PLATE_BOTTOM_Z),
+                )
+                obstruction = intersection_volume(actual_plate, probe)
+                bore_rows.append(
+                    {
+                        "pitch_mm": pitch,
+                        "centre_xy_mm": (x, y),
+                        "obstruction_mm3": obstruction,
+                        "passed": obstruction < TOL,
+                    }
+                )
+    clamp_rows = []
+    board = doc.getObject("ModuleFCEnvelope")
+    if board is not None:
+        board_shape = world_shape(board)
+        board_shape.Placement = (
+            parent.getGlobalPlacement().inverse().multiply(board_shape.Placement)
+        )
+        for name in stock_adapter.NUT_OBJECT_NAMES:
+            if name not in local_shapes:
+                continue
+            bounds = local_shapes[name].BoundBox
+            seating_gap = bounds.ZMin - stock_adapter.PLATE_TOP_Z
+            fc_gap = board_shape.BoundBox.ZMin - bounds.ZMax
+            clamp_rows.append(
+                {
+                    "nut": name,
+                    "nominal_plate_seating_gap_mm": seating_gap,
+                    "gap_to_fc_component_envelope_mm": fc_gap,
+                    "passed": abs(seating_gap) < TOL and fc_gap > TOL,
+                }
+            )
+    saddle_clamp_rows = []
+    for name in stock_adapter.SADDLE_NUT_OBJECT_NAMES:
+        if name not in local_shapes:
+            continue
+        bounds = local_shapes[name].BoundBox
+        seating_gap = stock_adapter.SADDLE_BOTTOM_Z - bounds.ZMax
+        saddle_clamp_rows.append(
+            {
+                "nut": name,
+                "nominal_saddle_seating_gap_mm": seating_gap,
+                "passed": abs(seating_gap) < TOL,
+            }
+        )
+    passed = (
+        len(rows) == 13
+        and all(row["passed"] for row in rows)
+        and metadata_matches
+        and len(bore_rows) == 12
+        and all(row["passed"] for row in bore_rows)
+        and len(clamp_rows) == 4
+        and all(row["passed"] for row in clamp_rows)
+        and len(saddle_clamp_rows) == 2
+        and all(row["passed"] for row in saddle_clamp_rows)
+    )
+    return {
+        "purchased_parts": rows,
+        "native_contract_reference_mass_and_uncertainty_match": metadata_matches,
+        "nominal_purchased_bores": bore_rows,
+        "independent_lower_clamp": clamp_rows,
+        "carbon_to_saddle_clamp": saddle_clamp_rows,
+        "allowed_underbody_clamp_fasteners": [
+            row["name"] for row in stock_adapter.lower_hardware_rows()
+        ]
+        if passed
+        else [],
+        "exact_carbon_contact_qualified": False,
+        "scope": "One bought plate and twelve rigid fasteners in two independent joints. The filled plate outline is a conservative envelope, not proof of laminate material under each saddle/nut. Source-verified fasteners may occupy their exact clamp columns; the wire corridor must remain unobstructed. No PCB bearing plane, damper compression, upper retention or physical fit is inferred.",
+        "passed": passed,
+    }
+
+
+def device_service_check(doc, name, physical_objects, physical_shapes_by_name):
+    """Sweep every successive service segment with the integral host retained."""
+    obj = doc.getObject(name)
+    parent = obj.getParentGeoFeatureGroup()
+    stack = doc.getObject("OpticalFlowModule")
+    release_head = stack is not None and stack.getParentGeoFeatureGroup() == parent
+    removed = {
+        other.Name
+        for other in physical_objects
+        if release_head and stack_interface.is_removable_head_part(other, stack)
+    }
+    detached = name in ("ModuleFCEnvelope", "ModuleBatteryEnvelope")
+    excluded = {
+        other.Name
+        for other in physical_objects
+        if detached and not belongs_to_group(other, parent)
+    }
+    local_segments = (
+        stack_interface.device_removal_segments(name)
+        if detached
+        else (layout.device_removal_vector(name),)
+    )
+    actual_body = physical_shapes_by_name[name]
+    proxy = (
+        stack_interface.device_removal_shape(obj) if detached else actual_body.copy()
+    )
+    outside_proxy = abs(actual_body.cut(proxy).Volume)
+    moving = actual_body.copy() if name == "ModuleFCEnvelope" else proxy.copy()
+    # This reserve is an alternative size of the same battery, not a second pack.
+    alternative_references = (
+        {"MaximumBatteryEnvelope"} if name == "ModuleBatteryEnvelope" else set()
+    )
+    segments = []
+    all_hits = set()
+    for index, local_vector in enumerate(local_segments):
+        world_vector = parent.getGlobalPlacement().Rotation.multVec(
+            App.Vector(*local_vector)
+        )
+        swept, method = translation_sweep(moving, tuple(world_vector))
+        hits = [
+            other.Name
+            for other in physical_objects
+            if other.Name != name
+            and other.Name not in removed
+            and other.Name not in excluded
+            and other.Name not in alternative_references
+            and intersection_volume(swept, physical_shapes_by_name[other.Name]) > TOL
+        ]
+        all_hits.update(hits)
+        segments.append(
+            {
+                "index": index,
+                "local_vector_mm": tuple(local_vector),
+                "world_vector_mm": tuple(world_vector),
+                "method": method,
+                "collisions": hits,
+                "passed": not hits,
+            }
+        )
+        proxy.translate(world_vector)
+        moving = proxy.copy()
+    return {
+        "device": name,
+        "local_removal_vector_mm": tuple(local_segments[0])
+        if len(local_segments) == 1
+        else None,
+        "local_removal_segments_mm": [tuple(vector) for vector in local_segments],
+        "segments": segments,
+        "actual_device_outside_service_proxy_mm3": outside_proxy,
+        "alternative_same_device_reserves_excluded": sorted(alternative_references),
+        "bench_access_required": detached,
+        "service_collision_scope": "Detached carrier assembly with integral portal retained"
+        if detached
+        else "Installed assembly",
+        "off_carrier_parts_excluded_for_bench_service": sorted(excluded),
+        "optical_head_must_be_removed_first": release_head,
+        "complete_optical_tower_removed": False,
+        "integral_carrier_remains_obstacle": True,
+        "temporarily_removed_head_parts": sorted(removed),
+        "prerequisite": "Disconnect leads and release device retention. For FC/battery, detach the whole carrier from the rail and work on a bench; remove the movable optical head if this is its host, but retain the complete fused carrier/portal and the carbon lower clamp. Lift then translate through the open side along the declared ordered segments. Whole-carrier rail removal is a separate check. Navigation and radio lift from their outer support face. Bare-device paths do not qualify a connected harness.",
+        "collisions": sorted(all_hits),
+        "passed": not all_hits and outside_proxy < TOL,
     }
 
 
 def mounting_check(doc):
     """Inspect saved supports, confirmed XY axes, free space and removal paths.
 
-    Pending device fasteners, PCB bearing planes and compressed dampers are not
-    modeled. These tests prove the printed interfaces and explicit reservations;
+    The bought plate and independent lower clamp are modeled. Upper device
+    retention, PCB bearing planes and compressed dampers remain unresolved.
+    These tests prove the printed interfaces and explicit reservations;
     they do not claim a completed, retained equipment assembly.
     """
     from gondola.parts import wiring_reserves as wiring_clearances
@@ -197,22 +429,33 @@ def mounting_check(doc):
         + list(registry.TapeReferences)
     )
     physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
+    stock_report = stock_adapter_check(doc)
     support_rows = []
     expected_supports = {name: kind for kind, name in mounts.MOUNT_NAMES.items()}
-    shared_reference = doc.getObject("BatteryMount")
+    optical_group = doc.getObject("OpticalFlowModule")
+    optical_parent = (
+        optical_group.getParentGeoFeatureGroup() if optical_group is not None else None
+    )
     for name, kind in expected_supports.items():
         obj = doc.getObject(name)
         if obj is None:
             support_rows.append({"object": name, "passed": False, "error": "missing"})
             continue
         shape = local_shape(obj)
-        comparison = geometry_comparison(shape, mounts.mount_shape(kind))
+        has_optical = obj.getParentGeoFeatureGroup() == optical_parent
+        expected_shape = stack_interface.carrier_shape(kind, has_optical)
+        comparison = geometry_comparison(shape, expected_shape)
         expected_contract = json.loads(json.dumps(mounts.mount_contract(kind)))
         try:
             contract_matches = json.loads(obj.MountContract) == expected_contract
         except (AttributeError, ValueError, TypeError):
             contract_matches = False
-        no_posts = abs(shape.BoundBox.ZMax - mounts.SUPPORT_FACE_Z) < TOL
+        variant_matches = (
+            str(getattr(obj, "PrintSKU", ""))
+            == stack_interface.carrier_print_sku(kind, has_optical)
+            and str(getattr(obj, "MountKind", "")) == kind
+            and bool(getattr(obj, "IntegralOpticalSupport", False)) == has_optical
+        )
         unverified_stack = "MountingStackVerified" in obj.PropertiesList and not bool(
             obj.MountingStackVerified
         )
@@ -221,21 +464,10 @@ def mounting_check(doc):
                 obj.StackInterfaceContract
             ) == json.loads(json.dumps(stack_interface.interface_contract(name)))
         except (AttributeError, ValueError, TypeError):
-            stack_contract_matches = False
-        bores = carrier_bore_checks(shape)
-        shared_comparison = (
-            geometry_comparison(shape, local_shape(shared_reference))
-            if shared_reference is not None
-            else None
-        )
-        shared_print_matches = (
-            shared_comparison is not None
-            and _comparison_passed(shared_comparison)
-            and str(getattr(obj, "PrintSKU", "")) == mounts.COMMON_PRINT_SKU
-            and str(getattr(obj, "MountKind", "")) == kind
-            and "HalfTurnSymmetric" in obj.PropertiesList
-            and not bool(obj.HalfTurnSymmetric)
-        )
+            stack_contract_matches = (
+                not has_optical and "StackInterfaceContract" not in obj.PropertiesList
+            )
+        bores = carrier_bore_checks(shape, kind)
         support_rows.append(
             {
                 "object": name,
@@ -243,11 +475,10 @@ def mounting_check(doc):
                 "source_comparison": comparison,
                 "contract_matches": contract_matches,
                 "single_valid_solid": shape.isValid() and len(shape.Solids) == 1,
-                "no_unverified_device_posts_above_support_face": no_posts,
+                "integral_optical_carrier_selected": has_optical,
+                "role_and_integral_variant_metadata_matches": variant_matches,
                 "mounting_stack_remains_unverified": unverified_stack,
                 "structural_stack_contract_matches": stack_contract_matches,
-                "shared_print_comparison": shared_comparison,
-                "shared_print_geometry_and_metadata_match": shared_print_matches,
                 "physical_plate_holes": bores,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
@@ -255,15 +486,14 @@ def mounting_check(doc):
                 and len(shape.Solids) == 1
                 and _comparison_passed(comparison)
                 and contract_matches
-                and no_posts
+                and variant_matches
                 and unverified_stack
                 and stack_contract_matches
-                and shared_print_matches
                 and bores["passed"],
             }
         )
     carriers = {
-        "ModuleFCEnvelope": doc.getObject("ElectronicsMount"),
+        "ModuleFCEnvelope": doc.getObject(stock_adapter.PLATE_OBJECT_NAME),
         "ModulePASEnvelope": doc.getObject("AccessoryMount"),
     }
     if any(carrier is None for carrier in carriers.values()):
@@ -283,7 +513,7 @@ def mounting_check(doc):
         device_specs.append(
             (
                 "ModulePASEnvelope",
-                mounts.PAS_HOLE_CENTRES,
+                mounts.mount_hole_centres("accessory"),
                 interfaces.PAS_HOLE_DIAMETER,
                 devices.navigation_envelope_shape,
             ),
@@ -322,14 +552,30 @@ def mounting_check(doc):
         bounds = body.optimalBoundingBox(False, False)
         holes = []
         for centre in centres:
-            pad = mounting_pad_check(
-                carrier_shape,
-                centre,
-                bottom=mounts.DECK_BOTTOM_Z,
-                thickness=mounts.DECK_THICKNESS,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
-            )
+            if name == "ModuleFCEnvelope":
+                bore = Part.makeCylinder(
+                    adapter_specification.HOLE_DIAMETER_MM / 2,
+                    adapter_specification.THICKNESS_MM,
+                    App.Vector(*centre, stock_adapter.PLATE_BOTTOM_Z),
+                )
+                blocked = intersection_volume(carrier_shape, bore)
+                pad = {
+                    "centre_xy_mm": centre,
+                    "purchased_hole_diameter_mm": adapter_specification.HOLE_DIAMETER_MM,
+                    "purchased_bore_obstruction_mm3": blocked,
+                    "bearing_contact_qualified": False,
+                    "scope": "Nominal bought-plate bore alignment only; actual carbon cutouts and laminate support are unmeasured.",
+                    "passed": blocked < TOL,
+                }
+            else:
+                pad = mounting_pad_check(
+                    carrier_shape,
+                    centre,
+                    bottom=mounts.carrier_plate_bottom("accessory"),
+                    thickness=mounts.carrier_plate_thickness("accessory"),
+                    hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                    pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                )
             world_axis = parent.getGlobalPlacement().multVec(App.Vector(*centre, 0))
             axis_probe = Part.makeCylinder(
                 device_hole_diameter / 2,
@@ -368,7 +614,7 @@ def mounting_check(doc):
             "ModuleRadioEnvelope",
             mounts.RADIO_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
-            "bottom",
+            "top",
         ),
     ]
     if navigation_profile.key != "PAS":
@@ -406,10 +652,13 @@ def mounting_check(doc):
     ):
         parent = carriers[name].getParentGeoFeatureGroup()
         bounds = physical_shapes_by_name[name].optimalBoundingBox(False, False)
+        support_face = (
+            mounts.FC_SUPPORT_FACE_Z
+            if name == "ModuleFCEnvelope"
+            else mounts.SUPPORT_FACE_Z
+        )
         support_top = (
-            parent.getGlobalPlacement()
-            .multVec(App.Vector(0, 0, mounts.SUPPORT_FACE_Z))
-            .z
+            parent.getGlobalPlacement().multVec(App.Vector(0, 0, support_face)).z
         )
         gap = bounds.ZMin - support_top
         # Preserve the complete device rectangle in its actual rotated frame;
@@ -428,12 +677,17 @@ def mounting_check(doc):
             dimensions[0],
             dimensions[1],
             expected_gap,
-            App.Vector(-dimensions[0] / 2, -dimensions[1] / 2, mounts.SUPPORT_FACE_Z),
+            App.Vector(-dimensions[0] / 2, -dimensions[1] / 2, support_face),
         )
         if name == "ModuleFCEnvelope":
             space.rotate(App.Vector(), App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
         space.translate(App.Vector(*centre, 0))
         space = _in_parent_frame(space, parent)
+        axis_hardware = (
+            set(stock_report.get("allowed_underbody_clamp_fasteners", ()))
+            if name == "ModuleFCEnvelope"
+            else set()
+        )
         hits = [
             {
                 "object": other.Name,
@@ -442,7 +696,8 @@ def mounting_check(doc):
                 ),
             }
             for other in physical_objects
-            if intersection_volume(space, physical_shapes_by_name[other.Name]) > TOL
+            if other.Name not in axis_hardware
+            and intersection_volume(space, physical_shapes_by_name[other.Name]) > TOL
         ]
         free_height_rows.append(
             {
@@ -450,6 +705,7 @@ def mounting_check(doc):
                 "measured_underbody_gap_mm": gap,
                 "required_underbody_gap_mm": expected_gap,
                 "full_underbody_reservation_collisions": hits,
+                "source_verified_fasteners_in_clamp_columns": sorted(axis_hardware),
                 "passed": abs(gap - expected_gap) < TOL and not hits,
             }
         )
@@ -476,8 +732,8 @@ def mounting_check(doc):
         axis_distances = []
         for x, y in mounts.FC_HOLE_CENTRES:
             axis = Part.makeLine(
-                App.Vector(x, y, mounts.SUPPORT_FACE_Z),
-                App.Vector(x, y, mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE),
+                App.Vector(x, y, mounts.FC_SUPPORT_FACE_Z),
+                App.Vector(x, y, mounts.FC_SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE),
             )
             distance = local_reserve.distToShape(axis)[0]
             axis_distances.append(
@@ -499,68 +755,28 @@ def mounting_check(doc):
             and not hits
             and all(row["passed"] for row in axis_distances),
         }
-    service_rows = []
-    for name in (
-        "ModuleBatteryEnvelope",
-        "ModuleFCEnvelope",
-        "ModulePASEnvelope",
-        "ModuleRadioEnvelope",
-    ):
-        optical_group = doc.getObject("OpticalFlowModule")
-        device_parent = doc.getObject(name).getParentGeoFeatureGroup()
-        local_travel = App.Vector(*layout.device_removal_vector(name))
-        world_travel = device_parent.getGlobalPlacement().Rotation.multVec(local_travel)
-        sweep, sweep_method = translation_sweep(
-            physical_shapes_by_name[name], tuple(world_travel)
+    service_rows = [
+        device_service_check(doc, name, physical_objects, physical_shapes_by_name)
+        for name in (
+            "ModuleBatteryEnvelope",
+            "ModuleFCEnvelope",
+            "ModulePASEnvelope",
+            "ModuleRadioEnvelope",
         )
-        release_head = (
-            optical_group is not None
-            and optical_group.getParentGeoFeatureGroup() == device_parent
-        )
-        removed_head_names = {
-            obj.Name
-            for obj in physical_objects
-            if release_head
-            and stack_interface.is_removable_head_part(obj, optical_group)
-        }
-        detached_carrier = name == "ModuleRadioEnvelope"
-        off_carrier_names = {
-            obj.Name
-            for obj in physical_objects
-            if detached_carrier and not belongs_to_group(obj, device_parent)
-        }
-        hits = [
-            obj.Name
-            for obj in physical_objects
-            if obj.Name != name
-            and obj.Name not in removed_head_names
-            and obj.Name not in off_carrier_names
-            and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
-        ]
-        service_rows.append(
-            {
-                "device": name,
-                "local_removal_vector_mm": tuple(local_travel),
-                "world_removal_vector_mm": tuple(world_travel),
-                "bench_access_required": release_head or detached_carrier,
-                "service_collision_scope": "Detached carrier assembly only"
-                if detached_carrier
-                else "Installed assembly after declared tower release",
-                "off_carrier_parts_excluded_for_bench_service": sorted(
-                    off_carrier_names
-                ),
-                "optical_head_must_be_removed_first": release_head,
-                "complete_optical_tower_removed": release_head,
-                "temporarily_removed_head_parts": sorted(removed_head_names),
-                "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. When this carrier hosts the optical stack, detach the carrier for bench access, support the tower, remove both foot nuts and withdraw both foot screws downward before lifting the complete tower along optical+Z. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
-                "collisions": hits,
-                "passed": not hits,
-            }
-        )
+    ]
+    integral_carrier_identity = (
+        optical_group is not None
+        and optical_parent is not None
+        and optical_parent.Name in stack_interface.SUPPORTED_HOSTS
+        and getattr(optical_group, "IntegratedCarrierName", "")
+        == stack_interface.SUPPORTED_HOSTS[optical_parent.Name]
+        and doc.getObject("OpticalMountBase") is None
+        and not any(obj.Name.startswith("OpticalStackFoot") for obj in doc.Objects)
+    )
     evidence_matches = all(
-        json.loads(str(carrier.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE
-        for carrier in carriers.values()
+        json.loads(str(doc.getObject(name).MountingEvidence))
+        == interfaces.MOUNTING_EVIDENCE
+        for name in ("ElectronicsMount", "AccessoryMount")
     )
     pending_metadata = []
     for name, key in (
@@ -604,15 +820,17 @@ def mounting_check(doc):
     fc_installation = fc_installation_check(doc)
     return {
         "supports": support_rows,
+        "bought_fc_adapter": stock_report,
         "confirmed_device_holes": mounting_rows,
         "continuous_adhesive_pads": adhesive_rows,
         "underbody_clearance": free_height_rows,
         "fc_wiring_corridor": wiring_report,
         "fc_installation": fc_installation,
         "device_service": service_rows,
+        "one_piece_optical_host_identity": integral_carrier_identity,
         "native_mounting_evidence_matches_sources": evidence_matches,
         "pending_device_mounting_evidence": pending_metadata,
-        "limits": "Printed XY mounting interfaces and reservations only. Purchase FC dampers and device mounting hardware after confirming PCB bearing planes, compressed damper heights and bolt/spacer lengths. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",
+        "limits": "Printed interfaces, nominal bought carbon envelope and independent rigid lower clamp only. Confirm upper FC retention, insulation, PCB bearing planes and compressed damper heights before completing assembly. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",
         "passed": registered_names == set(expected_supports)
         and len(registry.EquipmentMounts) == len(expected_supports)
         and all(
@@ -623,6 +841,8 @@ def mounting_check(doc):
             + free_height_rows
             + service_rows
         )
+        and integral_carrier_identity
+        and stock_report["passed"]
         and wiring_report["passed"]
         and fc_installation["passed"]
         and evidence_matches

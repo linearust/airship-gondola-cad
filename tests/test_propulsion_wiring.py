@@ -177,12 +177,12 @@ class PropulsionWiringTests(unittest.TestCase):
             App.Placement(App.Vector(0, 0, stack_interface.STACK_TOP_Z), App.Rotation())
         )
         obstacles = {"OpticalMountBase": optical_mount.base_shape()}
-        obstacles.update(dict(stack_interface.rigid_float_component_bounds()))
+        obstacles.update(dict(stack_interface.structural_component_shapes()))
         for shape in obstacles.values():
             shape.Placement = tower_placement.multiply(shape.Placement)
         return obstacles
 
-    def test_both_optical_hosts_leave_registration_margin(self):
+    def test_both_optical_hosts_leave_fixed_support_margin(self):
         from gondola.cad import world_shape
 
         hosts = {
@@ -216,7 +216,9 @@ class PropulsionWiringTests(unittest.TestCase):
         shape.Placement = prop.multiply(shape.Placement)
         obstacles = self._optical_host_obstacles(electronics)
         self.assertGreater(shape.common(obstacles["OpticalMountBase"]).Volume, 8)
-        self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 30)
+        # The integral portal has a different leg section; the historical
+        # route must still cause substantial positive interference.
+        self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 1)
 
     def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
         from gondola.cad import world_shape

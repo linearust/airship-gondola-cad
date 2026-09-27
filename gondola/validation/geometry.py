@@ -55,7 +55,7 @@ def translation_sweep(shape, displacement):
         surface = face.Surface
         name = type(surface).__name__
         if name == "Plane":
-            if face.normalAt(0, 0).dot(vector) > 0:
+            if face.normalAt(0, 0).dot(vector) > 1e-12 * vector.Length:
                 leading_faces.append(face)
             continue
         if (

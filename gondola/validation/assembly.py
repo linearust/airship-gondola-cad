@@ -901,43 +901,46 @@ def battery_check(doc, objects):
     swept_hits = [
         name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
     ]
-    tower_names = {"OpticalMountBase"}
-    tower_gaps = [
-        {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
-        for name, shape in obstacles
-        if name in tower_names
-    ]
-    from gondola.parts import stack_interface
+    from gondola.parts import optical_mount, stack_interface
 
-    float_rows = []
-    tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
-    if tower is not None:
-        for component, envelope in stack_interface.rigid_float_component_bounds():
-            envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
-            gap = swept.distToShape(envelope)[0]
-            float_rows.append(
-                {
-                    "component": component,
-                    "minimum_gap_mm": gap,
-                    "passed": gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
-                }
-            )
+    fixed_support = optical_mount.base_shape()
+    fixed_support.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
+        fixed_support.Placement
+    )
+    support_name = stack_interface.SUPPORTED_HOSTS[doc.OpticalFlowModule.StackHostName]
+    actual_support = next((obj for obj in objects if obj.Name == support_name), None)
+    support_present = (
+        actual_support is not None
+        and abs(fixed_support.cut(world_shape(actual_support)).Volume) < TOL
+    )
+    tower_gap = swept.distToShape(fixed_support)[0]
+    component_rows = []
+    for component, envelope in stack_interface.structural_component_shapes():
+        envelope.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
+            envelope.Placement
+        )
+        gap = swept.distToShape(envelope)[0]
+        component_rows.append(
+            {
+                "component": component,
+                "minimum_gap_mm": gap,
+                "passed": gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
+            }
+        )
     continuous = {
         "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
-        "stack_tower_gaps": tower_gaps,
-        "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Continuous conservative component bounds over the coupled XY/yaw registration permitted by both clearance-hole pairs. No axial play is added: both broad feet must seat and be clamped before operation. Physical pointing stability and clamp friction require verification.",
+        "integral_support_minimum_gap_mm": tower_gap,
+        "integral_support_present": support_present,
+        "integral_support_components": component_rows,
+        "support_scope": "Fixed integral support, no separate foot registration or operating float. Actual print distortion remains unqualified.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
-        "passed": not swept_hits
-        and len(float_rows) == 4
-        and all(row["passed"] for row in float_rows)
-        and {row["object"] for row in tower_gaps} == tower_names
-        and all(
-            row["minimum_gap_mm"] >= contract["minimum_stack_tower_gap_mm"] - TOL
-            for row in tower_gaps
-        ),
+        "passed": support_present
+        and not swept_hits
+        and len(component_rows) == 6
+        and all(row["passed"] for row in component_rows)
+        and tower_gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
     }
     rows = []
     try:

@@ -68,10 +68,37 @@ class OpticalClearanceTests(unittest.TestCase):
                     setattr(obj, name, original)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_changed_foot_hardware_geometry_or_hierarchy_is_rejected(self):
+    def test_carrier_pose_mismatch_cannot_pass_fixed_support_evidence(self):
+        from gondola.parts import stack_interface
+        from gondola.validation.optical import _source_evidence, tower_attachment_check
+
+        group = self.doc.OpticalFlowModule
+        original_host = group.getParentGeoFeatureGroup()
+        try:
+            for host_name in stack_interface.SUPPORTED_HOSTS:
+                host = self.doc.getObject(host_name)
+                stack_interface.attach_to_host(group, host)
+                carrier = stack_interface.host_print(group)
+                original = carrier.Placement.copy()
+                try:
+                    carrier.Placement.Base.x += 0.2
+                    self.doc.recompute()
+                    self.assertFalse(_source_evidence(self.doc)["passed"])
+                    attachment = tower_attachment_check(self.doc, host)
+                    self.assertFalse(attachment["passed"], attachment)
+                    self.assertGreater(
+                        attachment["fixed_support_missing_from_actual_carrier_mm3"], 0.1
+                    )
+                finally:
+                    carrier.Placement = original
+            self.assertTrue(_source_evidence(self.doc)["passed"])
+        finally:
+            stack_interface.attach_to_host(group, original_host)
+
+    def test_changed_pivot_hardware_geometry_or_hierarchy_is_rejected(self):
         from gondola.validation.optical import _source_evidence
 
-        bolt = self.doc.OpticalStackFootBolt0
+        bolt = self.doc.OpticalRollBolt
         shape = bolt.Shape.copy()
         parent = bolt.getParentGeoFeatureGroup()
         try:
@@ -150,7 +177,9 @@ class OpticalClearanceTests(unittest.TestCase):
         optical_mount.set_angles(self.doc, 13, -9)
         placement = group.Placement.copy()
         for changed_parent in (None, unsupported):
-            with self.subTest(parent=changed_parent):
+            with self.subTest(
+                parent=changed_parent.Name if changed_parent is not None else None
+            ):
                 host.removeObject(group)
                 if changed_parent is not None:
                     changed_parent.addObject(group)
@@ -170,6 +199,8 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertEqual(self.doc.OpticalRollStage.Roll.Value, 13)
                     self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
                 finally:
+                    if changed_parent is not None:
+                        changed_parent.removeObject(group)
                     stack_interface.attach_to_host(group, host)
 
     def test_missing_host_support_or_native_metadata_returns_a_failed_report(self):

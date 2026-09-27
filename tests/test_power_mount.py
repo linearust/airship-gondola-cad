@@ -1,7 +1,6 @@
 """Optional power-platform fit, registration and unsupported installation guards."""
 
 import json
-import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,62 +15,32 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class PowerMountTests(unittest.TestCase):
-    def test_one_piece_flat_deck_and_true_through_holes(self):
+    def test_integral_variants_support_both_board_contact_areas(self):
+        from gondola.parts import equipment_mounts, stack_interface
         from gondola.parts import power_mount as p
 
-        shape = p.platform_shape()
-        self.assertTrue(shape.isValid())
-        self.assertEqual(len(shape.Solids), 1)
-        from gondola.parts import stack_interface
-
-        for pattern in p.platform_contract()["standard_mounting"]["patterns"]:
-            points = pattern["centres_xy_mm"]
-            self.assertAlmostEqual(
-                (App.Vector(*points[0], 0) - App.Vector(*points[1], 0)).Length,
-                pattern["pitch_mm"],
-            )
-        for row, hole, outer in zip(
-            p.standard_hole_rows(),
-            stack_interface.board_hole_shapes(
-                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2
-            ),
-            stack_interface.board_hole_shapes(
-                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2, border=1.5
-            ),
-            strict=True,
-        ):
-            self.assertLess(shape.common(hole).Volume, 1e-6)
-            self.assertLess(outer.cut(hole).cut(shape).Volume, 1e-6)
-            self.assertEqual(
-                row["diameter_mm"], 2.6 if row["fastener"] == "M2" else 3.6
-            )
-        from gondola.parts import equipment_mounts
-
-        self.assertEqual(p.DECK_SIZE_MM, equipment_mounts.COMMON_DECK_SIZE)
-        self.assertEqual(
-            p.platform_contract()["common_plate"],
-            equipment_mounts.common_plate_contract(),
-        )
-        holes = equipment_mounts.common_plate_hole_shapes(p.DECK_BOTTOM_Z, 2)
-        self.assertEqual(len(holes), 20)
-        for hole in holes:
-            self.assertLess(shape.common(hole).Volume, 1e-6)
-        # The symmetric plate ends and usable deck regions remain solid. There are
-        # no cable-tie slots; straps wrap the existing outline.
-        for x, y in (
-            (-20, -14.5),
-            (-20, 14.5),
-            (20, -14.5),
-            (20, 14.5),
-            (25, -5),
-            (25, 5),
-            (0, -34),
-            (0, 34),
-        ):
-            region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
-            self.assertLess(region.cut(shape).Volume, 1e-6)
-        bounds = shape.BoundBox
-        self.assertLessEqual(max(bounds.XLength, bounds.YLength, bounds.ZLength), 340)
+        for host, part_name in stack_interface.MECHANICAL_HOSTS.items():
+            with self.subTest(host=host):
+                shape = p.platform_shape(host)
+                self.assertTrue(shape.isValid())
+                self.assertEqual(len(shape.Solids), 1)
+                self.assertLess(p.deck_shape().cut(shape).Volume, 1e-6)
+                kind = next(
+                    k for k, v in equipment_mounts.MOUNT_NAMES.items() if v == part_name
+                )
+                lower = equipment_mounts.mount_shape(kind).copy()
+                lower.translate(App.Vector(0, 0, -stack_interface.STACK_TOP_Z))
+                self.assertLess(lower.cut(shape).Volume, 1e-6)
+                self.assertGreater(shape.Volume, lower.Volume + p.deck_shape().Volume)
+                self.assertEqual(p.platform_contract()["attachment_hardware_added"], 0)
+                self.assertLessEqual(
+                    max(
+                        shape.BoundBox.XLength,
+                        shape.BoundBox.YLength,
+                        shape.BoundBox.ZLength,
+                    ),
+                    340,
+                )
 
     def test_regulator_bodies_and_connection_lanes_do_not_intersect_deck(self):
         from gondola.parts import power_mount as p
@@ -96,11 +65,25 @@ class PowerMountTests(unittest.TestCase):
                         1e-6,
                     )
                 self.assertEqual(
-                    sum(name.startswith("PowerFoot") for name in physical), 4
+                    sum(name.startswith("PowerFoot") for name in physical), 0
                 )
                 self.assertNotIn("TetherDepartureReserve", reserves)
         with self.assertRaises(ValueError):
             p.local_shapes("BATTERY")
+
+    def test_accessory_power_keeps_both_radio_connector_lanes_open(self):
+        from gondola.parts import power_mount, stack_interface, wiring_reserves
+
+        platform = power_mount.platform_shape("AccessoryEquipmentModule").copy()
+        platform.translate(App.Vector(0, 0, stack_interface.STACK_TOP_Z))
+        lanes = wiring_reserves.reserve_shapes()
+        for name in (
+            "RadioNegativeXConnectorReserve",
+            "RadioPositiveXConnectorReserve",
+        ):
+            with self.subTest(connector=name):
+                self.assertLess(platform.common(lanes[name]).Volume, 1e-6)
+                self.assertGreater(platform.distToShape(lanes[name])[0], 0.9)
 
     def test_host_translation_and_occupied_optical_rejection(self):
         from gondola.parts import power_mount as p
@@ -129,23 +112,6 @@ class PowerMountTests(unittest.TestCase):
                 p.host_placement(doc, "PropulsionModule")
         finally:
             App.closeDocument(doc.Name)
-
-    def test_analytic_xy_bound_contains_extreme_translated_rotated_board(self):
-        from gondola.parts import power_mount, stack_interface
-        from gondola.power_export import _xy_registration_bound
-
-        board = power_mount.local_shapes()[0]["PowerModule0"]
-        bound = _xy_registration_bound(board)
-        g = stack_interface.MAX_RADIAL_FLOAT
-        radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
-        angle = math.degrees(2 * math.asin(g / (2 * radius)))
-        # Sanity-check the continuous analytic enclosure, not a sampled proof.
-        for yaw in (-angle, 0, angle):
-            for x, y in ((g, 0), (-g, 0), (0, g), (0, -g)):
-                moved = board.copy()
-                moved.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
-                moved.translate(App.Vector(x, y, 0))
-                self.assertLess(moved.cut(bound).Volume, 1e-6)
 
     def test_saved_audit_rejects_body_alternative_host_and_source_changes(self):
         from gondola.cad import set_property
@@ -181,9 +147,7 @@ class PowerMountTests(unittest.TestCase):
                         App.Vector(station.x_mm, 0, 0),
                         App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                     )
-                    obj = doc.addObject("Part::Feature", name)
-                    obj.Shape = equipment_mounts.mount_shape(kind)
-                    host.addObject(obj)
+                    obj = equipment_mounts.build_mount(doc, host, kind)
                     mounts.append(obj)
                 optical = doc.addObject("App::Part", "OpticalFlowModule")
                 stack_interface.attach_to_host(optical, doc.BatteryEquipmentModule)
@@ -260,6 +224,21 @@ class PowerMountTests(unittest.TestCase):
             optional.recompute()
             optional.save()
             App.closeDocument(optional.Name)
+            # A modified main carrier must be rejected before the alternate
+            # host probe can replace it with a fresh, apparently valid shape.
+            changed_main = App.openDocument(str(source))
+            changed_main.AccessoryMount.Shape = Part.makeBox(100, 100, 100)
+            changed_main.recompute()
+            changed_path = out / "modified_main.FCStd"
+            changed_main.saveAs(str(changed_path))
+            App.closeDocument(changed_main.Name)
+            changed_hash = file_sha256(changed_path)
+            changed_carrier = audit_power_options(changed_path, out)
+            self.assertFalse(changed_carrier["passed"])
+            self.assertFalse(changed_carrier["main_carriers_match"])
+            self.assertTrue(changed_carrier["read_only_artifacts"])
+            self.assertEqual(changed_hash, file_sha256(changed_path))
+
             optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
             optional.PowerModule0.Shape = Part.makeBox(100, 100, 100)
             optional.recompute()

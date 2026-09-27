@@ -227,12 +227,15 @@ def render_previews(close_after=False):
             active, pose, suffix, scope, w, h = jobs[i]
             App.setActiveDocument(active.Name)
             if active == doc:
-                stack_interface.attach_to_host(
-                    doc.OpticalFlowModule,
+                requested_host = (
                     alternative_stack_host
                     if scope == "optical_alternate"
-                    else default_stack_host,
+                    else default_stack_host
                 )
+                if doc.OpticalFlowModule.getParentGeoFeatureGroup() != requested_host:
+                    stack_interface.attach_to_host(
+                        doc.OpticalFlowModule, requested_host
+                    )
                 style_assembly(doc)
                 for o in allparts:
                     if scope == "rail":
@@ -300,7 +303,10 @@ def render_previews(close_after=False):
                 str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_opposite.FCStd"))
             )
             App.setActiveDocument(doc.Name)
-            stack_interface.attach_to_host(doc.OpticalFlowModule, default_stack_host)
+            if doc.OpticalFlowModule.getParentGeoFeatureGroup() != default_stack_host:
+                stack_interface.attach_to_host(
+                    doc.OpticalFlowModule, default_stack_host
+                )
             style_assembly(doc)
             Gui.activeDocument().activeView().viewAxonometric()
             Gui.updateGui()

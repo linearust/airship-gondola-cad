@@ -1,0 +1,132 @@
+{
+  "revision": "AZ",
+  "reviewed_on": "2026-09-27",
+  "previous_commit": "2aa2ec7235af6dbf2fae86d0547838baee705ba9",
+  "superseded_unverified_ay_checkpoint": "c38f854",
+  "scope": "Redesign equipment carriers around the selected bought carbon FPV adapter, simplify fixed optical and optional power supports, preserve intentionally separate propulsion/servo drive.",
+  "intentional_changes": [
+    "Bought30x30x1mm carbon adapter supports FC25.5mm axes from a compact raised16mm saddle; two M2x6 lower fasteners and four independent M2x20 FC studs/nuts. Exact undimensioned cutouts are not invented. Seller0.72g mass is independent of clearance-envelope volume.",
+    "Three role-specific integral rail carriers replace identical54x74mm plates. Continuous battery and navigation/radio adhesive support avoids duplicating perforated carbon with unnecessary insulating plates.",
+    "FC lowest-component allowance remains8mm above carbon; actual PCB, dampers, spacers and upper retention remain unverified.",
+    "Fixed optical portal and roll support fuse into selected carrier. Remove separate OpticalMountBase and its two foot screw/nut pairs. Transfer moving head by exchanging low/portal carrier variants; fixed portal remains during staged device extraction.",
+    "Accessory station−159mm provides clearance to direct MG-F10 helix for both optical sensors/hosts and keeps its18mm shoe2mm inside rail. Only2mm nominal outward trim remains; full deck may overhang the rail.",
+    "Optional power uses one integral replacement carrier with unperforated40x56mm deck. Accessory portal rotates−45deg to clear radio connectors; other host portals keep their original diagonal. No attachment hardware added.",
+    "Retain340mm rail, functional rail coupling, propulsion/output bearing frame and separately replaceable paired servo/input module. 65 protected physical objects and coupons are independently compared.",
+    "Fix numerical tangent-face classification in diagonal translation sweeps and exact low-carrier metadata restoration after optical host round trips. Preview avoids unnecessary carrier reconstruction for an unchanged host."
+  ],
+  "important_design_iterations": [
+    "Flat shared25.5mm saddle rejected because carbon would be mechanically redundant; raised16mm support makes the purchased plate structural.",
+    "M2x8 lower screws replaced by M2x6 to retain nominal2.9mm rail clearance.",
+    "Accessory−126 blocked conservative direct-helix optical field on FC-host optical configurations;−152 cleared optics but failed rail clamp-land placement.−159 passes both.",
+    "The first accessory placement probe was invalidated because native X expression reset the test translation. Subsequent probe clears the disposable expression and asserts actual−159 after recompute.",
+    "Diagonal optional accessory power portal blocked Mini connector lane. Host-specific−45deg portal preserves a simple one-piece shape and clears that lane.",
+    "Initial preview timed out while reconstructing integral carriers for every unchanged view. Source now changes carrier variants only when switching hosts; final preview must complete with fresh bound evidence.",
+    "Final native tests exposed the raised FC terminal entry overlapping the wiring band outside its unchanged R8 exception. Midpoint shifted from(-42,±12,40)to(-40,±12,42)mm; full saved-CAD probe cleared both optical hosts with2.839832mm minimum portal gap and zero outside-terminal overlap. Production clearance thresholds were unchanged. The earlier incomplete native/pipeline attempts are superseded, not accepted passes."
+  ],
+  "physical_limits": [
+    "CAD fit prototype, not manufacturing/flight release. Carbon cutout contact, laminate strength and received dimensions unverified.",
+    "PA12 print fit, rail flexure/retention/creep, optical pointing and adhesive loads require physical qualification.",
+    "Actual FC soft-mount stack, motor/servo wires, gear set screws, shaft fits, fastener engagement, hardware mass, electrical power and RF behavior remain unresolved as declared in source.",
+    "Mass comparison concerns modeled prints/hardware only, includes newly modeled FC retention and seller carbon reference; not measured or all-up mass."
+  ],
+  "final_verification": {
+    "status": "CAD prototype verification passed; physical qualification remains unresolved",
+    "native_suite": {
+      "passed": true,
+      "modules": 46,
+      "tests": 448,
+      "skips": 0,
+      "exact_discovery_execution_match": true,
+      "before_after_hashes_identical": true,
+      "retained_evidence": "tests/fixtures/rev_az_native_tests.json.gz",
+      "summary_sha256": "287e63d5c22b1e9252074b1d6149cd41cee41e5b38e549a671d21fd437d757de"
+    },
+    "pipeline": {
+      "passed": true,
+      "stages": [
+        {
+          "stage": "build",
+          "exit_code": 0,
+          "wall_seconds": 13.119,
+          "source_unchanged": true,
+          "log_sha256": "01ecdeb53038c1662ddf50f64878b2a4c4be151e725eb5876c63338565d57a4f"
+        },
+        {
+          "stage": "preview",
+          "exit_code": 0,
+          "wall_seconds": 226.977,
+          "source_unchanged": true,
+          "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
+        },
+        {
+          "stage": "validate",
+          "exit_code": 0,
+          "wall_seconds": 860.941,
+          "source_unchanged": true,
+          "log_sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70"
+        },
+        {
+          "stage": "compare",
+          "exit_code": 0,
+          "wall_seconds": 10.636,
+          "source_unchanged": true,
+          "log_sha256": "2b7dfcd62c0c3fa0bfe5377358ab25f70d48821381d29f3a01b9b53e439f6dd5"
+        },
+        {
+          "stage": "bundle",
+          "exit_code": 0,
+          "wall_seconds": 0.197,
+          "source_unchanged": true,
+          "log_sha256": "0ca3f1115474f0ff744a9755300bf494f568b85e81b091ae29a528d910c0b232"
+        }
+      ],
+      "full_logs": "tests/fixtures/rev_az_artifact_audit.json.gz"
+    },
+    "static_checks": {
+      "ruff_lint": "passed",
+      "ruff_format": "112 files unchanged",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    },
+    "artifact_audit": {
+      "passed": true,
+      "review": "tests/fixtures/rev_az_artifact_review.json",
+      "full_evidence": "tests/fixtures/rev_az_artifact_audit.json.gz",
+      "native_sha256": "5c0dc7dbaab1e1344a10c455be3d127dac5fd1e557ed5a90acc9467afbc7d927"
+    }
+  },
+  "baseline_lineage": {
+    "previous_AX": "613ea62f0f077afdc2df8865c4d657ba4a3b5e09f7d4446166a1e39ad7db938a",
+    "first_AZ_candidate": "664f7fdce2eec176cd5445f8b5267cb3af2f6559bebb4651a9107a2eafe32117",
+    "corrected_AZ_candidate": "4b4e5cb665fa2e001027a5ddd3e0d79b09876e66a7c6674088ec6098baa7e67c",
+    "corrected_pre_pin_source": "2fcfaaa4f933f0990ab08d32f6835c425ce311d8207934feddd371777593a4ff",
+    "final_post_pin_source": "efe07f793fb72a5185f4b9fade6f8e704f19e80d997a13d5bb6e7c2f0378ed69",
+    "pin_review": "Bounded saved-file review:281 unaffected shape records unchanged; only two wire reserves and their aggregate changed. Paired route contracts changed only the intermediate point; no source clearance threshold changed."
+  },
+  "source_fingerprint_final": "efe07f793fb72a5185f4b9fade6f8e704f19e80d997a13d5bb6e7c2f0378ed69",
+  "production_released": false,
+  "modeled_structure_and_hardware_mass_g": {
+    "AX": 122.335627,
+    "AZ": 112.113003,
+    "difference": -10.222624,
+    "not_measured_or_all_up": true,
+    "printed_only_AX": 86.805111,
+    "printed_only_AZ": 72.45111
+  },
+  "evidence": [
+    "references/stock_stack_adapter/product_evidence.json",
+    "references/stock_stack_adapter/transition_audit.json.gz",
+    "references/stock_stack_adapter/wire_delta_review.json.gz",
+    "references/stock_stack_adapter/verification_history.json.gz",
+    "references/stock_stack_adapter/design_probes.json.gz",
+    "tests/fixtures/rev_az_native_tests.json.gz",
+    "tests/fixtures/rev_az_artifact_review.json",
+    "tests/fixtures/rev_az_artifact_audit.json.gz",
+    "tests/fixtures/rev_az_audit_tools.json.gz"
+  ],
+  "freecad_display": {
+    "path": "build/gondola.FCStd",
+    "method": "FreeCAD AppImage --single-instance with explicit saved file; FreeCAD 1.1.3 window observed. No GUI save performed.",
+    "file_sha256": "5c0dc7dbaab1e1344a10c455be3d127dac5fd1e557ed5a90acc9467afbc7d927"
+  }
+}

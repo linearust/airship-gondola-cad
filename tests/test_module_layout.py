@@ -18,11 +18,11 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 90)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -54)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
-        self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -158)
+        self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -159)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         self.assertEqual(OPTICAL_STACK_HOST, "BatteryEquipmentModule")
 
-    def test_accessory_station_keeps_whole_shoe_on_the_end_land(self):
+    def test_accessory_station_retains_shoe_engagement_and_clamp_land(self):
         from gondola.contracts.design import RAIL_LENGTH_MM
 
         accessory = next(
@@ -30,8 +30,11 @@ class ModuleLayoutTests(unittest.TestCase):
             for station in MODULE_STATIONS
             if station.object_name == "AccessoryEquipmentModule"
         )
-        self.assertLessEqual(abs(accessory.x_mm) + 9, RAIL_LENGTH_MM / 2)
-        self.assertEqual(abs(accessory.x_mm - (-162)), 4)
+        # The 18 mm shoe stays inside the rail. Only the clamp axis must
+        # fall within the qualified +/-4 mm region of an 18 mm-pitch land.
+        self.assertGreaterEqual(RAIL_LENGTH_MM / 2 - abs(accessory.x_mm) - 9, 2)
+        phase = accessory.x_mm % 18
+        self.assertLessEqual(min(phase, 18 - phase), 4)
 
     def test_transverse_clamp_direction_tracks_fixed_half_turn(self):
         forward = ModuleStation("Forward", 0, "Clamp", "PositiveY")

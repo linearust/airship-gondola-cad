@@ -95,7 +95,7 @@ class ModuleControlMappingTests(unittest.TestCase):
     def test_actual_manual_stages_are_bounded_and_independent(self):
         from gondola.cad import create_group, set_property
         from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import rail
+        from gondola.parts import equipment_mounts, rail
         from gondola.parts.optical_mount import build_optical_mount
         from gondola.validation.baseline import control_behavior
 
@@ -133,6 +133,7 @@ class ModuleControlMappingTests(unittest.TestCase):
         registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         set_property(registry, "Modules", modules, "App::PropertyLinkListGlobal")
         set_property(registry, "TiltingPods", pods, "App::PropertyLinkListGlobal")
+        equipment_mounts.build_mount(doc, doc.BatteryEquipmentModule, "battery")
         build_optical_mount(doc, doc.BatteryEquipmentModule)
         doc.recompute()
         result = control_behavior(doc)
@@ -258,7 +259,7 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(
             {obj.Name for obj in getattr(registry, "OpticalMountParts", [])},
-            {"OpticalMountBase", "OpticalRollBracket", "OpticalSensorTray"},
+            {"OpticalRollBracket", "OpticalSensorTray"},
         )
         self.assertTrue(
             {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(

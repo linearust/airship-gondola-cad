@@ -1,6 +1,7 @@
-"""Standard-stack, manually clamped roll/pitch optical sensor support.
+"""Integral-carrier, manually clamped roll/pitch optical sensor support.
 
-The three PA12 parts print separately. Two ordinary M2 fastener stacks clamp
+The fixed portal is integrated into its selected rail carrier. Two movable PA12
+parts print separately. Two ordinary M2 fastener stacks clamp
 plain contact faces; the native angle limits are planning controls, not physical
 stops, self-levelling, or a qualified friction/holding-torque specification.
 """
@@ -47,8 +48,8 @@ def _finished(shape, name):
     return shape
 
 
-def base_shape():
-    """Integral rectangular portal and a fully supported negative-X roll ear."""
+def roll_support_shape():
+    """Fixed roll ear and post, in portal-top coordinates."""
     ear = _cylinder(
         EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
     )
@@ -64,9 +65,23 @@ def base_shape():
         (-EAR_THICKNESS - 1, 0, ROLL_PIVOT_Z),
         (1, 0, 0),
     )
+    return _finished(union([ear, post]).cut(bore), "fixed roll support")
+
+
+def base_shape():
+    """Portal and fixed roll support; a construction shape, never a separate print."""
     return _finished(
-        union([stack_interface.tower_shape(), ear, post]).cut(bore), "base"
+        union([stack_interface.tower_shape(), roll_support_shape()]), "integral support"
     )
+
+
+def fixed_base_shape(doc):
+    """World-space support subset of the actual integrated carrier."""
+    shape = base_shape()
+    shape.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
+        shape.Placement
+    )
+    return shape
 
 
 def roll_bracket_shape():
@@ -121,8 +136,10 @@ def mount_contract():
         "physical_angle_stops_modeled": False,
         "self_levelling": False,
         "holding_torque_verified": False,
-        "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers",
+        "integral_common_rail_shoe": True,
+        "separate_fixed_base_print": False,
+        "movable_print_count": 2,
+        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by straight upper and lower beams; portal and selected carrier form one printed solid independently of FC dampers",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -141,7 +158,7 @@ def mount_contract():
         - purchased_hardware.HEX_NUT_HEIGHT,
         "minimum_nominal_pivot_wall_mm": EAR_THICKNESS,
         "fastener_fit_scope": "Nominal screw projection is 2.4 mm beyond a 1.6 mm nut. Two ears each 0.3 mm thicker leave 1.8 mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
-        "assembly": "Print all three parts separately; the base integrates its rigid support legs and broad clamped feet. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
+        "assembly": "Print the selected integral portal/carrier and two movable head parts. No separate base or foot hardware. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
         "adjustment": "Support the sensor, hold the hex nut with a small wrench or pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
     }
@@ -195,7 +212,7 @@ def build_optical_mount(doc, parent):
     group = create_group(
         doc,
         "OpticalFlowModule",
-        "Optical flow | standard-stack manual roll/pitch mount",
+        "Optical flow | integral-carrier manual roll/pitch mount",
     )
     parent.addObject(group)
     group.Placement.Base.z = stack_interface.STACK_TOP_Z
@@ -239,30 +256,27 @@ def build_optical_mount(doc, parent):
             f"min(MaximumAngle; max(MinimumAngle; {key}))",
         )
     printed = []
-    for parent, name, shape in (
-        (group, "OpticalMountBase", base_shape()),
+    for part_parent, name, shape in (
         (roll, "OpticalRollBracket", roll_bracket_shape()),
         (pitch, "OpticalSensorTray", sensor_tray_shape()),
     ):
         obj = create_printed_part(
             doc,
-            parent,
+            part_parent,
             name,
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            f"PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a {stack_interface.TOP_BEAM_THICKNESS:g} mm-deep, {stack_interface.LEG_WIDTH:g} mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears use M2x8 screws and hex nuts; their one {ROLL_POST_WIDTH:g} by {EAR_THICKNESS:g} mm connecting beam starts {ROLL_POST_BOTTOM_Z:g} mm above the roll axis to clear its nut. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            f"PA12 SLS/MJF, printed separately from the integral carrier/portal. Plain 2 mm friction ears use M2x8 screws and hex nuts; their {ROLL_POST_WIDTH:g} by {EAR_THICKNESS:g} mm connecting post starts {ROLL_POST_BOTTOM_Z:g} mm above the roll axis to clear its nut. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, stiffness, adhesive contact and angle retention before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
         set_property(obj, "PrintProcess", "PA12 SLS or MJF")
         set_property(obj, "HoldingTorqueVerified", False, "App::PropertyBool")
-        if name == "OpticalMountBase":
-            stack_interface.annotate_interface(obj)
         printed.append(obj)
     hardware = _pivot_hardware(doc, group, "OpticalRoll", "X", ROLL_PIVOT_Z)
     hardware += _pivot_hardware(doc, roll, "OpticalPitch", "Y", PITCH_PIVOT_OFFSET_Z)
-    hardware += stack_interface.build_stack_hardware(doc, group)
+    stack_interface.attach_to_host(group, parent)
     doc.recompute()
     return {
         "group": group,
@@ -270,7 +284,7 @@ def build_optical_mount(doc, parent):
         "pitch_stage": pitch,
         "printed": printed,
         "hardware": hardware,
-        "base": printed[0],
+        "base": stack_interface.host_print(group),
     }
 
 

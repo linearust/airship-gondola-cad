@@ -16,7 +16,6 @@ class BatteryPlacementTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
-            optical_mount,
             stack_interface,
         )
 
@@ -33,11 +32,8 @@ class BatteryPlacementTests(unittest.TestCase):
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
         stack_interface.attach_to_host(stack, cls.host)
-        base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
-        stack.addObject(base)
-        base.Shape = optical_mount.base_shape()
         cls.battery = cls.doc.ModuleBatteryEnvelope
-        cls.objects = [mount, base, *references]
+        cls.objects = [mount, *references]
         cls.doc.recompute()
 
     @classmethod
@@ -57,25 +53,14 @@ class BatteryPlacementTests(unittest.TestCase):
         result = self.check()
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), 18)
-        floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
-        self.assertEqual(len(floats), 4)
-        self.assertTrue(all(row["passed"] for row in floats), floats)
+        components = result["continuous_translation"]["integral_support_components"]
+        self.assertEqual(len(components), 6)
+        self.assertTrue(all(row["passed"] for row in components), components)
         self.assertEqual(
-            result["continuous_translation"]["local_size_mm"], [28, 74, 17]
-        )
-        self.assertEqual(
-            {
-                row["object"]
-                for row in result["continuous_translation"]["stack_tower_gaps"]
-            },
-            {"OpticalMountBase"},
+            result["continuous_translation"]["local_size_mm"], [20, 68, 17]
         )
         self.assertGreater(
-            min(
-                row["minimum_gap_mm"]
-                for row in result["continuous_translation"]["stack_tower_gaps"]
-            ),
-            1.5,
+            result["continuous_translation"]["integral_support_minimum_gap_mm"], 1.5
         )
         self.assertEqual(
             before,
@@ -125,30 +110,25 @@ class BatteryPlacementTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_tower_gap_fails_before_geometric_contact(self):
-        tower = self.doc.OpticalMountBase
-        before = App.Placement(tower.Placement)
-        # Move the complete base until its closest foot/leg enters the declared
-        # reserve, but stop short of contact with the continuous pack envelope.
-        result = self.check()
-        gap = result["continuous_translation"]["stack_tower_gaps"][0]["minimum_gap_mm"]
-        tower.Placement.Base.x += gap - 0.5
-        self.doc.recompute()
-        try:
+        from unittest.mock import patch
+
+        from gondola.parts import stack_interface
+
+        # A narrower candidate portal remains separate from every pack pose but
+        # loses the promised1.5mm continuous edge margin. No collision bypass.
+        with patch.object(stack_interface, "ANCHOR_CENTRES", ((-15, -15), (15, 15))):
+            stack_interface.attach_to_host(self.doc.OpticalFlowModule, self.host)
             result = self.check()
-            self.assertTrue(all(row["passed"] for row in result["cases"]))
-            self.assertFalse(result["passed"])
             continuous = result["continuous_translation"]
             self.assertEqual(continuous["collisions"], [])
-            gap = continuous["stack_tower_gaps"][0]["minimum_gap_mm"]
-            self.assertGreater(gap, 0)
-            self.assertLess(gap, continuous["required_stack_tower_gap_mm"])
-        finally:
-            tower.Placement = before
-            self.doc.recompute()
+            self.assertGreater(continuous["integral_support_minimum_gap_mm"], 0)
+            self.assertLess(
+                continuous["integral_support_minimum_gap_mm"],
+                continuous["required_stack_tower_gap_mm"],
+            )
+            self.assertFalse(result["passed"])
+        stack_interface.attach_to_host(self.doc.OpticalFlowModule, self.host)
 
-    def test_missing_tower_cannot_pass_clearance_check(self):
-        result = self.check(
-            [obj for obj in self.objects if obj.Name != "OpticalMountBase"]
-        )
+    def test_missing_integral_carrier_cannot_pass_clearance_check(self):
+        result = self.check([obj for obj in self.objects if obj.Name != "BatteryMount"])
         self.assertFalse(result["passed"])
-        self.assertEqual(result["continuous_translation"]["stack_tower_gaps"], [])

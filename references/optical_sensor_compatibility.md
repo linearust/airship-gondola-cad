@@ -2,8 +2,11 @@
 
 Use exactly one MicoAir MTF-02P or MTF-01P on the existing manual roll/pitch
 optical stack. MTF-02P remains the default. The sensor choice does not add a
-second sensor, printed part or mounting fastener. The complete stack remains
-transferable between the battery and electronics carriers.
+second sensor, printed part or mounting fastener. In AZ the fixed portal is
+integral with its rail carrier. To change between battery and electronics hosts,
+exchange the low/portal carrier variants and transfer the two movable head parts;
+the complete tower does not detach from its carrier. Recheck both pointing axes
+and the selected sensor's field after transfer.
 
 ## Published interfaces
 

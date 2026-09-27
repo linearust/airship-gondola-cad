@@ -1689,7 +1689,10 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 equipment_mounts.build_mount(doc, electronics, "electronics")
                 accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
                 equipment_mounts.build_mount(doc, accessory, "accessory")
-                optical_mount.build_optical_mount(doc, host)
+                from gondola.parts import stack_interface
+
+                optical = optical_mount.build_optical_mount(doc, host)
+                stack_interface.attach_to_host(optical["group"], host)
                 doc.recompute()
                 doc.saveAs(str(path))
             finally:
@@ -1720,14 +1723,18 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                     row = measurements[feature]
                     self.assertAlmostEqual(row["measured_material_length_mm"], 2.0)
                     self.assertLess(
-                        row["sample_line_mm"][0][2], equipment_mounts.DECK_BOTTOM_Z
+                        row["sample_line_mm"][0][2],
+                        equipment_mounts.FC_SADDLE_BOTTOM_Z
+                        if feature == "fc_support_deck_thickness"
+                        else equipment_mounts.DECK_BOTTOM_Z,
                     )
                     self.assertTrue(row["passed"], row)
                 assessment = result["equipment_mount_assessment"]
                 self.assertEqual(
-                    assessment["fc_support_deck_size_mm"], [54.0, 74.0, 2.0]
+                    assessment["fc_support_deck_size_mm"],
+                    [*equipment_mounts.ELECTRONICS_DECK_SIZE, 2.0],
                 )
-                self.assertEqual(assessment["accessory_deck_size_mm"], (54.0, 74.0))
+                self.assertEqual(assessment["accessory_deck_size_mm"], (36.0, 66.0))
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

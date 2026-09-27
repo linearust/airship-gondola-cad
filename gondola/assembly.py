@@ -58,7 +58,9 @@ def style_assembly(doc):
             (0.72, 0.78, 0.8) if obj in registry.RailSegments else (0.31, 0.66, 0.76)
         )
     for obj in registry.HardwareParts:
-        obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
+        obj.ViewObject.ShapeColor = (
+            (0.18, 0.20, 0.22) if obj.Name == "StockFCAdapter" else (0.92, 0.64, 0.19)
+        )
         obj.ViewObject.LineColor = (0.35, 0.24, 0.07)
     for obj in registry.ReferenceParts:
         obj.ViewObject.ShapeColor = (
@@ -85,6 +87,7 @@ def build_assembly():
         purchased_hardware,
         rail,
         stack_interface,
+        stock_adapter,
     )
     from gondola.print_export import export_print_parts
     from gondola.procurement import export_hardware_bom
@@ -163,6 +166,7 @@ def build_assembly():
         mounts.build_mount(doc, electronics_module, "electronics"),
         mounts.build_mount(doc, accessory_module, "accessory"),
     ]
+    carbon_installation = stock_adapter.build_stock_adapter(doc, electronics_module)
     optical_assembly = optical_mount.build_optical_mount(
         doc, doc.getObject(OPTICAL_STACK_HOST)
     )
@@ -201,6 +205,7 @@ def build_assembly():
         rail_clamps
         + propulsion_module.get("hardware", [])
         + optical_assembly["hardware"]
+        + carbon_installation["hardware"]
     )
     for objects, category in [
         (rail_assembly["printed"], "Rail"),

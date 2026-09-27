@@ -9,6 +9,9 @@ instructions below for the current model; current authority is
 `gondola/parts/stack_interface.py` and `gondola/contracts/design.py`. All sections
 below describe the AD design, including its former horn backstraps, bearing
 caps and coupons; none are current purchase or assembly instructions.
+AZ subsequently removes the separate optical foot joint entirely by integrating
+the fixed portal with its selected carrier; see
+[the current layout review](layout_and_wiring_review.md).
 
 The user requested structural joints in place of bolts where tightening is not
 essential, while preserving simple integral parts. Two optical tower-foot

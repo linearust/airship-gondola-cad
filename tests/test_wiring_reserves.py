@@ -44,6 +44,7 @@ class WiringReserveTests(unittest.TestCase):
                     App.Vector(station.x_mm, 0, 0),
                     App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                 )
+        battery_carrier = equipment_mounts.build_mount(cls.doc, battery, "battery")
         carrier = equipment_mounts.build_mount(cls.doc, electronics, "electronics")
         accessory_carrier = equipment_mounts.build_mount(
             cls.doc, accessory, "accessory"
@@ -60,7 +61,8 @@ class WiringReserveTests(unittest.TestCase):
         reserves += sensor_reserves
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
-            "PrintedParts": [carrier, accessory_carrier] + optical["printed"],
+            "PrintedParts": [battery_carrier, carrier, accessory_carrier]
+            + optical["printed"],
             "HardwareParts": optical["hardware"],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
@@ -141,24 +143,28 @@ class WiringReserveTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 self.wiring.parent_name(name)
 
-    def test_radio_body_and_connector_lanes_use_the_same_underside_face(self):
+    def test_radio_body_and_connector_lanes_use_the_same_outer_face(self):
         from gondola.parts import equipment_envelopes, equipment_mounts
 
         body = equipment_envelopes.radio_envelope_shape()
         expected_top = (
-            equipment_mounts.DECK_BOTTOM_Z - equipment_mounts.ADHESIVE_ALLOWANCE
+            equipment_mounts.SUPPORT_FACE_Z + equipment_mounts.ADHESIVE_ALLOWANCE
         )
-        self.assertAlmostEqual(body.BoundBox.ZMax, expected_top)
-        self.assertAlmostEqual(body.BoundBox.YMin, 28 - 18.2 / 2)
-        self.assertAlmostEqual(body.BoundBox.YMax, 28 + 18.2 / 2)
+        self.assertAlmostEqual(body.BoundBox.ZMin, expected_top)
+        self.assertAlmostEqual(
+            body.BoundBox.YMin, equipment_mounts.RADIO_CENTRE_XY[1] - 18.2 / 2
+        )
+        self.assertAlmostEqual(
+            body.BoundBox.YMax, equipment_mounts.RADIO_CENTRE_XY[1] + 18.2 / 2
+        )
         for name in (
             "RadioNegativeXConnectorReserve",
             "RadioPositiveXConnectorReserve",
         ):
             lane = self.expected[name]
             with self.subTest(lane=name):
-                self.assertAlmostEqual(lane.BoundBox.ZMax, expected_top)
-                self.assertLess(lane.BoundBox.ZMin, body.BoundBox.ZMin)
+                self.assertAlmostEqual(lane.BoundBox.ZMin, expected_top)
+                self.assertGreater(lane.BoundBox.ZMax, body.BoundBox.ZMax)
                 self.assertLess(lane.common(body).Volume, 1e-6)
                 self.assertLess(
                     lane.common(equipment_mounts.mount_shape("accessory")).Volume,

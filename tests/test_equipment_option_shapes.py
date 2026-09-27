@@ -20,7 +20,9 @@ class EquipmentOptionShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         pas = options.get_navigation_profile("PAS")
-        self.assertEqual(layout.navigation_hole_centres(pas), mounts.PAS_HOLE_CENTRES)
+        self.assertEqual(
+            layout.navigation_hole_centres(pas), mounts.mount_hole_centres("accessory")
+        )
         for key in ("MGA01", "MGF10A"):
             profile = options.get_navigation_profile(key)
             body = envelopes.navigation_envelope_shape(profile)

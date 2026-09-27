@@ -19,7 +19,6 @@ from gondola.parts import (
     equipment_mounts,
     optical_mount,
     optical_sensor,
-    purchased_hardware,
     stack_interface,
     wiring_reserves,
 )
@@ -70,6 +69,7 @@ def _native_structure_check(doc):
             "OpticalMountContract",
             "StackInterfaceContract",
             "StackHostName",
+            "IntegratedCarrierName",
             "HoldingTorqueVerified",
             "SelfLevelling",
             "StackFitVerified",
@@ -92,7 +92,7 @@ def _native_structure_check(doc):
     required.update({name: () for name in stack_interface.SUPPORTED_HOSTS})
     required.update(
         {
-            name: ("Shape", "StackInterfaceContract", "StackFitVerified")
+            name: ("Shape", "IntegralOpticalSupport", "PrintSKU")
             for name in stack_interface.SUPPORTED_HOSTS.values()
         }
     )
@@ -151,6 +151,7 @@ def _source_evidence(doc):
     rows = []
     try:
         host = expected_doc.addObject("App::Part", "BatteryEquipmentModule")
+        equipment_mounts.build_mount(expected_doc, host, "battery")
         kit = optical_mount.build_optical_mount(expected_doc, host)
         stack_interface.attach_to_host(kit["group"], host)
         refs, reserves = optical_sensor.build_sensor(
@@ -280,6 +281,9 @@ def _source_evidence(doc):
             and not group.StackFitVerified
             and group.getParentGeoFeatureGroup().Name in stack_interface.SUPPORTED_HOSTS
             and group.StackHostName == group.getParentGeoFeatureGroup().Name
+            and group.IntegratedCarrierName == stack_interface.host_print(group).Name
+            and doc.getObject("OpticalMountBase") is None
+            and not any(o.Name.startswith("OpticalStackFoot") for o in doc.Objects)
             and _same_placement(group.Placement, kit["group"].Placement)
             and {obj.Name for obj in registry.OpticalMountParts}
             == {obj.Name for obj in kit["printed"]}
@@ -304,18 +308,32 @@ def _source_evidence(doc):
         ):
             obj = doc.getObject(name)
             comparison, ok = _matches(
-                local_shape(obj), equipment_mounts.mount_shape(kind)
+                local_shape(obj),
+                stack_interface.carrier_shape(
+                    kind, obj == stack_interface.host_print(group)
+                ),
             )
-            contract_ok = _json_equal(
-                obj.StackInterfaceContract,
-                json.dumps(stack_interface.interface_contract()),
+            selected = obj == stack_interface.host_print(group)
+            contract_ok = (
+                obj.IntegralOpticalSupport == selected
+                and obj.PrintSKU == stack_interface.carrier_print_sku(kind, selected)
             )
+            if selected:
+                contract_ok = contract_ok and _json_equal(
+                    obj.StackInterfaceContract,
+                    json.dumps(stack_interface.interface_contract()),
+                )
             host_rows.append(
                 {
                     "object": name,
                     "source_comparison": comparison,
                     "interface_contract_matches": contract_ok,
-                    "passed": ok and contract_ok and not obj.StackFitVerified,
+                    "carrier_local_placement_matches": _same_placement(
+                        obj.Placement, App.Placement()
+                    ),
+                    "passed": ok
+                    and contract_ok
+                    and _same_placement(obj.Placement, App.Placement()),
                 }
             )
         return {
@@ -379,84 +397,49 @@ def _external_field_bound(group, profile=None):
 
 
 def tower_attachment_check(doc, host):
-    """Inspect saved contact faces, bolt engagement and washerless bearing seats."""
-    base = world_shape(doc.OpticalMountBase)
-    carrier = world_shape(doc.getObject(stack_interface.SUPPORTED_HOSTS[host.Name]))
-    placement = doc.OpticalFlowModule.getGlobalPlacement()
-    axial = placement.Rotation.multVec(V(0, 0, 1))
+    """Require the complete integral print, actual root overlap and one solid."""
+    carrier = doc.getObject(stack_interface.SUPPORTED_HOSTS[host.Name])
+    kind = next(
+        k for k, name in equipment_mounts.MOUNT_NAMES.items() if name == carrier.Name
+    )
+    expected = stack_interface.carrier_shape(kind, True)
+    comparison, matches = _matches(local_shape(carrier), expected)
+    missing_world_support = abs(
+        optical_mount.fixed_base_shape(doc).cut(world_shape(carrier)).Volume
+    )
+    local_pose_matches = _same_placement(carrier.Placement, App.Placement())
     rows = []
-    for index, (x, y) in enumerate(stack_interface.ANCHOR_CENTRES):
-        radius = math.hypot(x, y)
-        clip = Part.makeBox(
-            18, 14, 4, V(radius - 5, -7, -stack_interface.TOWER_HEIGHT - 1)
-        )
-        clip.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(y, x)))
-        clip.Placement = placement.multiply(clip.Placement)
-        foot = base.common(clip)
-        down = foot.copy()
-        down.translate(axial * -0.1)
-        seat_area = intersection_volume(down, carrier) / 0.1
-        bolt_obj, nut_obj = (
-            doc.getObject(f"OpticalStackFoot{kind}{index}") for kind in ("Bolt", "Nut")
-        )
-        if bolt_obj is None or nut_obj is None:
-            rows.append(
-                {"foot": index, "passed": False, "error": "missing clamp hardware"}
-            )
+    low = equipment_mounts.mount_shape(kind)
+    for name, root in stack_interface.structural_component_shapes():
+        if not name.startswith("root_arm_"):
             continue
-        bolt, nut = world_shape(bolt_obj), world_shape(nut_obj)
-        shifted_bolt, shifted_nut = bolt.copy(), nut.copy()
-        shifted_bolt.translate(axial * 0.1)
-        shifted_nut.translate(axial * -0.1)
-        head_area = intersection_volume(shifted_bolt, carrier) / 0.1
-        nut_area = intersection_volume(shifted_nut, base) / 0.1
-        cx, cy = stack_interface.CLAMP_CENTRES[index]
-        nut_z = -stack_interface.TOWER_HEIGHT + stack_interface.FOOT_THICKNESS
-        core = Part.makeCylinder(0.8, 1.6, V(cx, cy, nut_z))
-        core.Placement = placement.multiply(core.Placement)
-        missing_core = abs(core.cut(bolt).Volume)
-        bolt_local = bolt.copy()
-        bolt_local.Placement = placement.inverse().multiply(bolt_local.Placement)
-        projection = bolt_local.BoundBox.ZMax - (nut_z + 1.6)
-        overlaps = sum(
-            intersection_volume(a, b)
-            for a, b in (
-                (bolt, carrier),
-                (bolt, base),
-                (nut, carrier),
-                (nut, base),
-                (bolt, nut),
-            )
-        )
+        root.translate(V(0, 0, stack_interface.STACK_TOP_Z))
+        overlap = intersection_volume(low, root)
+        missing = abs(root.cut(local_shape(carrier)).Volume)
         rows.append(
             {
-                "foot": index,
-                "direct_seat_contact_area_mm2": seat_area,
-                "nominal_head_bearing_area_mm2": head_area,
-                "nominal_nut_bearing_area_mm2": nut_area,
-                "full_nut_core_missing_mm3": missing_core,
-                "nominal_tip_projection_mm": projection,
-                "hardware_overlap_mm3": overlaps,
-                "passed": seat_area > 75
-                and head_area > 10
-                and nut_area > 8
-                and missing_core < TOL
-                and abs(projection - 2.4) < TOL
-                and overlaps < TOL,
+                "root": name,
+                "carrier_overlap_mm3": overlap,
+                "missing_root_mm3": missing,
+                "passed": overlap > 1 and missing < TOL,
             }
         )
-    fit = stack_interface.clamp_fit_contract()
-    overlap = intersection_volume(base, carrier)
     return {
-        "nominal_seated_overlap_mm3": overlap,
-        "direct_clamped_seats": rows,
-        "clamp_fit": fit,
-        "scope": "Saved broad seating faces touch with no designed axial gap; both M2 clamps must be tightened. Actual flat head bearing diameter >=3.5 mm, screw crest >=1.8 mm and printed holes <=2.9 mm are acceptance limits, not measured kit dimensions. Concentric radial-land figures do not guarantee all-around contact under permitted screw eccentricity. Check actual bearing without edge tipping. Clamp friction, print flatness, vibration retention and PA12 creep need physical qualification. No pad or spring preload substitutes for the seats.",
-        "passed": overlap < TOL
+        "source_comparison": comparison,
+        "fixed_support_missing_from_actual_carrier_mm3": missing_world_support,
+        "carrier_local_placement_matches": local_pose_matches,
+        "integral_roots": rows,
+        "carrier": carrier.Name,
+        "valid_single_solid": carrier.Shape.isValid()
+        and len(carrier.Shape.Solids) == 1,
+        "scope": "Exact source-matching carrier and overlapping lower root arms; no detachable foot interface or registration float. Material continuity does not qualify print strength, creep or pointing stiffness.",
+        "passed": matches
+        and local_pose_matches
+        and missing_world_support < TOL
+        and carrier.Shape.isValid()
+        and len(carrier.Shape.Solids) == 1
         and len(rows) == 2
-        and all(row["passed"] for row in rows)
-        and fit["tip_projection_with_both_prints_0_3mm_thicker_mm"] > 1.5
-        and fit["concentric_flat_head_radial_land_at_maximum_hole_mm"] >= 0.29,
+        and all(row["passed"] for row in rows),
     }
 
 
@@ -473,7 +456,7 @@ def _bench_service_obstacles(doc, fixed):
         "ContinuousRailSystem",
         "TapeAttachmentReference",
         "MainPropulsionModule",
-        *stack_interface.SUPPORTED_HOSTS,
+        *stack_interface.MECHANICAL_HOSTS,
     )
     separated = (
         [
@@ -486,6 +469,8 @@ def _bench_service_obstacles(doc, fixed):
     )
     retained, removed = {}, []
     for name, shape in fixed.items():
+        if name == "MaximumBatteryEnvelope":
+            continue
         obj = doc.getObject(name)
         # A host descendant takes precedence even if a corrupted hierarchy
         # places another named assembly beneath the current carrier.
@@ -511,156 +496,206 @@ def _bench_service_obstacles(doc, fixed):
                 obj.isDerivedFrom("Part::Feature")
                 and belongs_to_group(obj, host)
                 and not belongs_to_group(obj, stack)
+                and obj.Name != "MaximumBatteryEnvelope"
             ):
                 retained.setdefault(obj.Name, world_shape(obj))
     return retained, {
         "host": host.Name if host is not None else None,
         "valid_supported_host": valid_host,
-        "required_prior_step": "Disconnect external leads and remove the complete carrier from the rail using the separately audited module-removal sequence; support carrier on a bench before accessing optical foot fasteners.",
+        "required_prior_step": "Disconnect external leads and remove the complete carrier from the rail using the separately audited module-removal sequence; support carrier on a bench before releasing the moving optical head or extracting the host device.",
         "retained_obstacles": sorted(retained),
         "removed_nonhost_objects": sorted(removed, key=lambda row: row["object"]),
         "scope": "Only descendants of explicitly identified separate vehicle assemblies are absent on the bench. Current-host equipment, wires, carrier hardware and unknown obstacles remain. This filtering applies only to bench service; installed motion, registration, optical field and connector audits retain the whole vehicle.",
     }
 
 
-def _tower_service_check(doc, fixed, kit):
-    """Access both clamps, withdraw screws downward, then lift the upright tower."""
+def _head_service_check(doc, fixed, kit):
+    """Release the roll-axis pair and slide/lift only the moving optical head."""
     find_hits = partial(collision_hits, tolerance=TOL, validation_cache={})
+    fixed, frame = _bench_service_obstacles(doc, fixed)
     placement = doc.OpticalFlowModule.getGlobalPlacement()
-    fixed, bench_frame = _bench_service_obstacles(doc, fixed)
-    printed = {
-        obj.Name: world_shape(obj) for obj in kit if getattr(obj, "PrintPart", False)
-    }
-    access = []
-    for name, local in stack_interface.clamp_tool_reservations():
-        local.Placement = placement.multiply(local.Placement)
-        hits = find_hits(local, {**fixed, **printed})
-        access.append({"tool": name, "access_collisions": hits, "passed": not hits})
-    removal = []
-    removal_obstacles = {**fixed, **printed}
-    for index in range(2):
-        bolt = doc.getObject(f"OpticalStackFootBolt{index}")
-        nut = doc.getObject(f"OpticalStackFootNut{index}")
-        for obj, local_vector in ((bolt, V(0, 0, -12)), (nut, V(0, 0, 4))):
-            shape = world_shape(obj)
-            vector = placement.Rotation.multVec(local_vector)
-            sweep, method = translation_sweep(shape, tuple(vector))
-            hits = find_hits(sweep, removal_obstacles)
-            removal.append(
+    roll_pair = {"OpticalRollBolt", "OpticalRollNut"}
+    head = [obj for obj in kit if obj.Name not in roll_pair]
+    rows = []
+    for name, vector in (
+        ("OpticalRollNut", (6, 0, 0)),
+        ("OpticalRollBolt", (-12, 0, 0)),
+    ):
+        obj = doc.getObject(name)
+        shape = world_shape(obj)
+        direction = placement.Rotation.multVec(V(*vector))
+        sweep, method = translation_sweep(shape, tuple(direction))
+        obstacles = {**fixed, **{o.Name: world_shape(o) for o in head}}
+        hits = find_hits(sweep, obstacles)
+        rows.append(
+            {
+                "object": name,
+                "step": "release roll-axis hardware",
+                "method": method,
+                "collisions": hits,
+                "passed": not hits,
+            }
+        )
+    for obj in head:
+        shape = world_shape(obj)
+        uncontained = 0.0
+        if obj.Name == "OpticalRollBracket":
+            # Bound individual ears/post; one whole box incorrectly fills the
+            # empty negative-X region beside the fixed first-axis ear.
+            shape = (
+                Part.makeCylinder(
+                    optical_mount.EAR_RADIUS,
+                    optical_mount.EAR_THICKNESS,
+                    V(),
+                    V(1, 0, 0),
+                )
+                .fuse(
+                    Part.makeBox(
+                        optical_mount.ROLL_POST_WIDTH,
+                        optical_mount.EAR_THICKNESS,
+                        optical_mount.PITCH_PIVOT_OFFSET_Z
+                        - optical_mount.ROLL_POST_BOTTOM_Z,
+                        V(
+                            0,
+                            -optical_mount.EAR_THICKNESS,
+                            optical_mount.ROLL_POST_BOTTOM_Z,
+                        ),
+                    )
+                )
+                .fuse(
+                    Part.makeBox(
+                        2 * optical_mount.EAR_RADIUS,
+                        optical_mount.EAR_THICKNESS,
+                        2 * optical_mount.EAR_RADIUS,
+                        V(
+                            -optical_mount.EAR_RADIUS,
+                            -optical_mount.EAR_THICKNESS,
+                            optical_mount.PITCH_PIVOT_OFFSET_Z
+                            - optical_mount.EAR_RADIUS,
+                        ),
+                    )
+                )
+                .removeSplitter()
+            )
+            shape.Placement = obj.getGlobalPlacement().multiply(shape.Placement)
+            uncontained = abs(world_shape(obj).cut(shape).Volume)
+        for vector in ((4, 0, 0), (0, 0, 40)):
+            direction = placement.Rotation.multVec(V(*vector))
+            sweep, method = translation_sweep(shape, tuple(direction))
+            hits = find_hits(sweep, fixed)
+            rows.append(
                 {
                     "object": obj.Name,
-                    "travel_mm": vector.Length,
+                    "step_vector_in_head_frame_mm": vector,
+                    "method": method,
+                    "proxy_uncontained_mm3": uncontained,
+                    "collisions": hits,
+                    "passed": not hits and uncontained < TOL,
+                }
+            )
+            shape.translate(direction)
+    neutral = (
+        abs(doc.OpticalRollStage.Roll.Value) < TOL
+        and abs(doc.OpticalPitchStage.Pitch.Value) < TOL
+    )
+    return {
+        "bench_service_frame": frame,
+        "neutral_manual_axes": neutral,
+        "moving_head_release": rows,
+        "scope": "Bench-supported carrier, disconnected sensor lead and both manual axes returned to zero. Remove roll nut and withdraw roll screw; translate head 4 mm toward +X away from fixed ear, then lift40 mm. Fixed portal/carrier remains installed. Tool hand clearance and physical print friction require bench confirmation.",
+        "passed": frame["valid_supported_host"]
+        and neutral
+        and bool(rows)
+        and all(r["passed"] for r in rows),
+    }
+
+
+def _integral_support_clearance_check(doc, host, obstacles):
+    """Inspect exact integrated support with all installed external obstacles."""
+    find_hits = partial(collision_hits, tolerance=TOL, validation_cache={})
+    external = {
+        n: s
+        for n, s in obstacles.items()
+        if n != stack_interface.SUPPORTED_HOSTS[host.Name]
+    }
+    support = optical_mount.fixed_base_shape(doc)
+    hits = find_hits(support, external)
+    gaps = {}
+    for name in ("FCWiringClearanceReserve", "CapacitorServiceReserve"):
+        target = external.get(name)
+        gaps[name] = support.distToShape(target)[0] if target is not None else None
+    return {
+        "collisions": hits,
+        "minimum_required_gap_mm": 1.5,
+        "named_gaps_mm": gaps,
+        "scope": "Actual fixed portal and roll support, excluding intentional root/carrier union. Whole installed vehicle and reservations retained. No detachable-joint registration exists.",
+        "passed": not hits
+        and all(g is not None and g >= 1.5 - TOL for g in gaps.values()),
+    }
+
+
+def _device_service_check(doc, host, fixed):
+    """Ordered continuous bare-device bench extraction; portal stays an obstacle."""
+    fixed, frame = _bench_service_obstacles(doc, fixed)
+    find_hits = partial(collision_hits, tolerance=TOL, validation_cache={})
+    rows = []
+    for name in ("ModuleBatteryEnvelope", "ModuleFCEnvelope"):
+        device = doc.getObject(name)
+        if device is None or device.getParentGeoFeatureGroup() != host:
+            continue
+        # Fastener release and detached leads are prerequisites; their support
+        # bodies and the actual carrier remain. The side extraction takes place
+        # above the unchanged FC bolt tips, not through the standoffs. Keep
+        # actual through-holes during axial lift so retained studs stay clear;
+        # only the subsequent side step uses the filled conservative body.
+        obstacles = {
+            n: s
+            for n, s in fixed.items()
+            if n != name
+            and n
+            not in {
+                "FCWiringClearanceReserve",
+                "BatteryStrapReserve",
+                "BatteryConnectorReserve",
+                "FCConnectorReserve",
+                "BatteryAdhesiveReference",
+            }
+        }
+        shape = stack_interface.device_removal_shape(device)
+        uncontained = abs(world_shape(device).cut(shape).Volume)
+        actual = world_shape(device)
+        segments = []
+        for index, vector in enumerate(stack_interface.device_removal_segments(name)):
+            direction = host.getGlobalPlacement().Rotation.multVec(V(*vector))
+            moving = actual if name == "ModuleFCEnvelope" and index == 0 else shape
+            sweep, method = translation_sweep(moving, tuple(direction))
+            hits = find_hits(sweep, obstacles)
+            segments.append(
+                {
+                    "carrier_frame_vector_mm": vector,
                     "method": method,
                     "collisions": hits,
                     "passed": not hits,
                 }
             )
-        cx, cy = stack_interface.CLAMP_CENTRES[index]
-        radial = V(cx, cy, 0)
-        radial.normalize()
-        # Fill only the nut bore for a planar convex sweep; the general
-        # transverse-cylinder fallback fills unrelated corners along this
-        # diagonal path and falsely reaches the capacitor reservation.
-        raised_nut = purchased_hardware.hex_prism(
-            purchased_hardware.HEX_NUT_AF, purchased_hardware.HEX_NUT_HEIGHT
-        )
-        raised_nut.Placement = nut.getGlobalPlacement()
-        uncontained_nut = abs(world_shape(nut).cut(raised_nut).Volume)
-        raised_nut.translate(placement.Rotation.multVec(V(0, 0, 4)))
-        vector = placement.Rotation.multVec(radial * 10)
-        sweep, method = translation_sweep(raised_nut, tuple(vector))
-        hits = find_hits(sweep, removal_obstacles)
-        removal.append(
-            {
-                "object": nut.Name,
-                "outboard_travel_after_unthreading_mm": 10,
-                "conservative_proxy_uncontained_mm3": uncontained_nut,
-                "method": method,
-                "collisions": hits,
-                "passed": not hits and uncontained_nut < TOL,
-            }
-        )
-    lift = []
-    for obj in kit:
-        if obj.Name.startswith("OpticalStackFoot"):
-            continue
-        vector = placement.Rotation.multVec(V(0, 0, 40))
-        shape = world_shape(obj)
-        uncontained = 0.0
-        if obj.Name == "OpticalMountBase":
-            # A roll-axis cylinder is transverse to extraction; avoid the generic
-            # whole-shape box that would fill the tower's deliberately open centre.
-            proxy = stack_interface.tower_shape().fuse(
-                Part.makeBox(
-                    optical_mount.EAR_THICKNESS,
-                    2 * optical_mount.EAR_RADIUS,
-                    optical_mount.ROLL_PIVOT_Z + optical_mount.EAR_RADIUS,
-                    V(-optical_mount.EAR_THICKNESS, -optical_mount.EAR_RADIUS, 0),
-                )
-            )
-            proxy.Placement = placement
-            uncontained = abs(shape.cut(proxy).Volume)
-            shape = proxy
-        sweep, method = translation_sweep(shape, tuple(vector))
-        hits = find_hits(sweep, fixed)
-        lift.append(
-            {
-                "object": obj.Name,
-                "upward_travel_mm": 40,
-                "conservative_proxy_uncontained_mm3": uncontained,
-                "method": method,
-                "collisions": hits,
-                "passed": not hits and uncontained < TOL,
-            }
-        )
-    return {
-        "bench_service_frame": bench_frame,
-        "clamp_tool_access": access,
-        "clamp_hardware_removal": removal,
-        "whole_tower_lift": lift,
-        "scope": "Disconnect leads, remove the carrier from the rail and support it on a bench. The unmodeled balloon may obstruct underside tools; on-balloon access is not claimed. Support tower upright. Hold exposed nuts from outboard, operate 1.5 mm keys from below, remove both nuts and withdraw both screws downward, then lift the complete tower 40 mm along optical +Z. Tool access volumes are design envelopes, not measured tools. Loosened tower is a non-operating service state; arbitrary tilted extraction is not certified.",
-        "passed": bench_frame["valid_supported_host"]
-        and len(access) == 4
-        and len(removal) == 6
-        and bool(lift)
-        and all(row["passed"] for row in access + removal + lift),
-    }
-
-
-def _tower_float_clearance_check(doc, host, obstacles):
-    """Bound seated registration before tightening; no operating axial free gap."""
-    find_hits = partial(collision_hits, tolerance=TOL, validation_cache={})
-    rows = []
-    placement = doc.OpticalMountBase.getGlobalPlacement()
-    external = {
-        name: shape
-        for name, shape in obstacles.items()
-        if name != stack_interface.SUPPORTED_HOSTS[host.Name]
-    }
-    for name, shape in stack_interface.rigid_float_component_bounds():
-        shape.Placement = placement.multiply(shape.Placement)
-        hits = find_hits(shape, external)
-        wire = external.get("FCWiringClearanceReserve")
-        wire_gap = shape.distToShape(wire)[0] if wire is not None else None
-        capacitor = external.get("CapacitorServiceReserve")
-        capacitor_gap = (
-            shape.distToShape(capacitor)[0] if capacitor is not None else None
-        )
+            shape.translate(direction)
+            actual.translate(direction)
         rows.append(
             {
-                "component": name,
-                "collisions": hits,
-                "fc_wiring_gap_mm": wire_gap,
-                "capacitor_service_gap_mm": capacitor_gap,
-                "passed": not hits
-                and (wire_gap is None or wire_gap >= 1.5 - TOL)
-                and (capacitor_gap is None or capacitor_gap >= 1.5 - TOL),
+                "device": name,
+                "segments": segments,
+                "portal_remains": True,
+                "proxy_uncontained_mm3": uncontained,
+                "passed": uncontained < TOL and all(row["passed"] for row in segments),
             }
         )
     return {
-        "component_bounds": rows,
-        "scope": "Continuous conservative bounds for seated XY/yaw registration through both pairs of clearance holes. Intended host contacts excluded; all other physical objects and named external reservations checked. Both feet must be directly seated and both clamps tightened before optical use; unclamped tilted operation is not allowed.",
-        "passed": len(rows) == 4 and all(row["passed"] for row in rows),
+        "bench_service_frame": frame,
+        "devices": rows,
+        "scope": "Remove movable optical head; disconnect leads, release device hold-down hardware/adhesive. FC lifts12 mm, battery lifts5 mm, then each travels diagonally through the open portal side. Integral carrier stays on the bench. No connected-harness extraction claim.",
+        "passed": frame["valid_supported_host"]
+        and bool(rows)
+        and all(r["passed"] for r in rows),
     }
 
 
@@ -811,48 +846,12 @@ def _host_checks(doc, host, physical, kit, *, profile=None):
         and not bound_reserve_hits
         and depth_bound <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
     }
-    float_clearance = _tower_float_clearance_check(
+    support_clearance = _integral_support_clearance_check(
         doc, host, {**external, **reservations}
     )
     attachment = tower_attachment_check(doc, host)
-    tower_service = _tower_service_check(
-        doc,
-        {
-            **external,
-            **reservations,
-        },
-        kit,
-    )
-    service = []
-    retained = [
-        obj
-        for obj in physical
-        if not stack_interface.is_removable_head_part(obj, group)
-    ]
-    for name in (
-        "ModuleBatteryEnvelope",
-        "ModuleFCEnvelope",
-        "ModulePASEnvelope",
-        "ModuleRadioEnvelope",
-    ):
-        device = doc.getObject(name)
-        if device.getParentGeoFeatureGroup() != host:
-            continue
-        sweep, method = translation_sweep(world_shape(device), (0, 0, 32))
-        hits = find_hits(
-            sweep, {obj.Name: world_shape(obj) for obj in retained if obj != device}
-        )
-        service.append(
-            {
-                "device": name,
-                "upward_travel_mm": 32,
-                "method": method,
-                "complete_tower_removed": True,
-                "tower_foot_fasteners_removed": True,
-                "collisions": hits,
-                "passed": not hits,
-            }
-        )
+    head_service = _head_service_check(doc, {**external, **reservations}, kit)
+    service = _device_service_check(doc, host, external)
     return {
         "host": host.Name,
         "sensor_model": profile.key,
@@ -862,14 +861,15 @@ def _host_checks(doc, host, physical, kit, *, profile=None):
         "continuous_external_optical_bound": continuous,
         "bare_device_removal_after_head_release": service,
         "integral_tower_attachment": attachment,
-        "seated_clamp_registration_clearance": float_clearance,
-        "integral_tower_service": tower_service,
+        "integral_support_clearance": support_clearance,
+        "moving_head_service": head_service,
         "passed": rotor_complete
-        and all(row["passed"] for row in rows + service)
+        and all(row["passed"] for row in rows)
+        and service["passed"]
         and continuous["passed"]
         and attachment["passed"]
-        and float_clearance["passed"]
-        and tower_service["passed"],
+        and support_clearance["passed"]
+        and head_service["passed"],
     }
 
 
@@ -948,7 +948,7 @@ def mtf_sensor_check(doc):
         report["sensor_alternatives"] = alternatives
         report["hosts"] = alternatives[saved_properties["SensorModel"]]["hosts"]
         report["service_prerequisite"] = (
-            "Disconnect leads and bench-support the carrier after removing it from the rail; balloon clearance is not modeled. Support tower upright, remove both foot nuts and withdraw both screws downward; lift the complete tower along optical +Z before releasing/lifting the host device. Release device mounting hardware and adhesive separately. Both tower feet must be directly seated and clamped before use. No connected-harness removal claim."
+            "Disconnect leads and remove complete carrier from rail using its independent service sequence. Bench-support the carrier, remove only the movable optical head, release device hold-down hardware/adhesive, then use its ordered upward/sideways extraction path. Integral portal stays with carrier. No connected-harness or on-balloon service claim."
         )
         report["passed"] = all(row["passed"] for row in alternatives.values())
         return report

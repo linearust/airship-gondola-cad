@@ -1,0 +1,176 @@
+{
+  "scope": "Nominal accessory station review, independent of production geometry author. Reviewer contributed equipment validation code; this is not independent validation implementation or final release approval. Saved older candidate was repositioned read-only in memory with its X expression explicitly removed and actualX asserted\u2212159.",
+  "candidate_sha256_before": "a147b7d54a0a20c9cddfb698d050e61724d86fe160b3e6ea5a6600cb5306b5de",
+  "candidate_sha256_after": "a147b7d54a0a20c9cddfb698d050e61724d86fe160b3e6ea5a6600cb5306b5de",
+  "candidate_unchanged": true,
+  "source_fingerprint_at_probe_start": "1e5fcfbc0b465702a6258751e23c254fe4cd5802a895ae3def1ffb022efd2adf",
+  "actual_station_x_mm": -159.0,
+  "nominal_geometry": {
+    "station_x": -159.0,
+    "rail_x": [
+      -170.0,
+      170.0
+    ],
+    "shoe_x": [
+      -168.0,
+      -150.0
+    ],
+    "full_shoe_end_margin_mm": 2.0,
+    "deck_x": [
+      -177.0,
+      -141.0
+    ],
+    "deck_overhang_mm": 7.0,
+    "clamp_land_offset_mm": 3.0,
+    "plate_rail_collision_mm3": 0.0
+  },
+  "rail_service": [
+    {
+      "approach": "PositiveY",
+      "passed": true,
+      "clamp_land_centre_offset_mm": 3.0,
+      "shoe_fully_past_rail_end": {
+        "actual_capture_material_x_bounds_mm": [
+          -190.0,
+          -172.0
+        ],
+        "rail_x_bounds_mm": [
+          -170.0,
+          170.0
+        ],
+        "axial_clearance_before_lifting_mm": 2.0,
+        "required_clearance_mm": 2.0,
+        "passed": true
+      },
+      "required_checks": {
+        "screw_release_three_turns": true,
+        "nut_insertion_before_screw": true,
+        "continuous_l_key_service": true,
+        "recentering_after_loosening": true,
+        "end_slide": true,
+        "lift_after_end_exit": true
+      }
+    },
+    {
+      "approach": "NegativeY",
+      "passed": true,
+      "clamp_land_centre_offset_mm": 3.0,
+      "shoe_fully_past_rail_end": {
+        "actual_capture_material_x_bounds_mm": [
+          -190.0,
+          -172.0
+        ],
+        "rail_x_bounds_mm": [
+          -170.0,
+          170.0
+        ],
+        "axial_clearance_before_lifting_mm": 2.0,
+        "required_clearance_mm": 2.0,
+        "passed": true
+      },
+      "required_checks": {
+        "screw_release_three_turns": true,
+        "nut_insertion_before_screw": true,
+        "continuous_l_key_service": true,
+        "recentering_after_loosening": true,
+        "end_slide": true,
+        "lift_after_end_exit": true
+      }
+    }
+  ],
+  "power_edge_geometry": {
+    "complete_print_x": [
+      -186.25269119345813,
+      -131.74730880654187
+    ],
+    "complete_print_size": [
+      54.50538238691627,
+      66.00000000000001,
+      48.099999999999994
+    ],
+    "top_deck_x": [
+      -179.0,
+      -139.0
+    ],
+    "top_deck_overhang_mm": 9.0,
+    "complete_print_rail_overlap_mm3": 0.0,
+    "scope": "Upper integral roots/portal and deck may overhang the rail end; the unchanged full shoe carries the joint. This is geometric support, not a strength or creep qualification."
+  },
+  "station_geometry_and_service_passed": true,
+  "full_pipeline_passed": false,
+  "not_a_release_qualification": true,
+  "limits": [
+    "Only2mm nominal further outward travel preserves full18mm shoe engagement; no broad outwardtrim is qualified. The7mm upperdeck overhang is not a mating dimension.",
+    "Inwardtrim must respect the solid clamp lands and directhelix optical clearance; actualprint,friction,retention,toolfit andcreep require physical checks.",
+    "Rail endsliding and lifting use the existing sampled baremodule path; theLkey working/reindex/removal checks are continuous finite envelopes. All other assemblies remain present.",
+    "Optional power upperdeck overhangs9mm andouterportal/root extends17.253mm past nominalrailend; completeprint54.505\u00d766\u00d748.1mm remains below340mm. This does not certify bending strength."
+  ],
+  "known_failures_at_probe": [
+    "Wholemounting report rejected stale oldcandidate MountContract metadata; allsupportsource solids andgeometric mounting checks passed. Regeneratedcandidate required.",
+    "Optionalpower accessory variant intersects radio negativeX connector reserve124.3019478538402mm\u00b3; separate correction andfullrevalidation required."
+  ],
+  "resolved_invalid_probe": {
+    "reason": "An earlier attempt changedBase.x without clearing nativeexpression; recompute restored\u2212126. Those servicepasses were explicitly rejected as\u2212159 evidence.",
+    "invalid_result_sha256": "870fb3f147cbc03d6f15f65398af203cc47a112d63e19494ede87160bca486ef"
+  },
+  "evidence": {
+    "raw_report": "accessory_station_probe.json.gz",
+    "uncompressed_report_sha256": "bd546d897d60a68814ab1dbc34008e4705969116224ca00ee3b539d3e45eb918",
+    "helper_sha256": "6df9c5c3e03e9be76d78a605489704759bf377e2111f78fcc5b7cae0b832b778",
+    "log_sha256": "ccf4807d2ed5f1cd59dd0bb474af41cc3d7d90f164f01bc7e408ffe633d3855a"
+  },
+  "subsequent_diagnostics": {
+    "in_memory_station_compatibility": {
+      "actual_station_x_mm": -159,
+      "all_three_navigation_combinations_passed": true,
+      "both_sensors_and_hosts": [
+        {
+          "host": "BatteryEquipmentModule",
+          "sensor": "MTF02P",
+          "minimum_direct_helix_field_gap_mm": 90.99146590594853,
+          "passed": true
+        },
+        {
+          "host": "BatteryEquipmentModule",
+          "sensor": "MTF01P",
+          "minimum_direct_helix_field_gap_mm": 85.66967022690251,
+          "passed": true
+        },
+        {
+          "host": "ElectronicsEquipmentModule",
+          "sensor": "MTF02P",
+          "minimum_direct_helix_field_gap_mm": 11.485106416755302,
+          "passed": true
+        },
+        {
+          "host": "ElectronicsEquipmentModule",
+          "sensor": "MTF01P",
+          "minimum_direct_helix_field_gap_mm": 6.163310737709306,
+          "passed": true
+        }
+      ],
+      "report_sha256": "c2d36a8cb2b8f61dbc3cf7a4733b56ed8bfac043a28fb2d47c09546d5b4dfe8f"
+    },
+    "rebuilt_candidate_compatibility_tests": {
+      "candidate_sha256": "daf68c96c03dbd86c1a7d3096b2cdca5f689debf04b2f890726802839290ea6d",
+      "candidate_unchanged": true,
+      "test_count": 5,
+      "test_failures": 0,
+      "test_errors": 0,
+      "accepted_frozen_source_binding": false,
+      "reason": "The complete module passed but its binding guard correctly rejected final acceptance because global source changed during testing. Full suite must rerun after final pin.",
+      "source_before": "2aa4ad22024a6d058a9224240b6b56ff4a852fb0e6f904114a11038430645908",
+      "source_after": "9250bb7dac91614adc35f37cc7e871ec5caa8b859f91d04b5ddbab7f65ae0bf2"
+    },
+    "power_correction": {
+      "reported_by_geometry_owner": true,
+      "report": "/tmp/az_power_final_probe.json",
+      "source_fingerprint": "faac9223848c6964093a05de8d4bc621fb65470c08fb6705eb7c441befa7324e",
+      "correction": "Accessory-only portal rotates to opposed X legs; other hosts retain diagonal orientation. Geometry owner reports both optical-host screens, both rail-key approaches and lower-device service passed. Final persisted-artifact pipeline still required."
+    }
+  },
+  "final_verification": {
+    "status": "pending final native suite and artifact pipeline",
+    "full_pipeline_passed": false
+  }
+}

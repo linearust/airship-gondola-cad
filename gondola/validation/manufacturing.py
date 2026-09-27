@@ -119,8 +119,8 @@ def review(doc, registry):
         (
             "fc_support_deck_thickness",
             "ElectronicsMount",
-            (14, 0, mounts.DECK_BOTTOM_Z - 0.01),
-            (14, 0, mounts.SUPPORT_FACE_Z + 0.01),
+            (8, 0, mounts.FC_SADDLE_BOTTOM_Z - 0.01),
+            (8, 0, mounts.FC_SADDLE_BOTTOM_Z + mounts.FC_SADDLE_THICKNESS + 0.01),
             mounts.DECK_THICKNESS,
         ),
         (
@@ -160,9 +160,9 @@ def review(doc, registry):
         ),
         (
             "optical_base_pivot_wall",
-            "OpticalMountBase",
-            (-optical_mount.EAR_THICKNESS - 0.01, 0, 4),
-            (0.01, 0, 4),
+            stack_interface.SUPPORTED_HOSTS[doc.OpticalFlowModule.StackHostName],
+            (-optical_mount.EAR_THICKNESS - 0.01, 0, stack_interface.STACK_TOP_Z + 4),
+            (0.01, 0, stack_interface.STACK_TOP_Z + 4),
             optical_mount.EAR_THICKNESS,
         ),
         (
@@ -187,7 +187,7 @@ def review(doc, registry):
             optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
         ),
     ]
-    analytic.extend(stack_interface.manufacturing_wall_probes())
+    analytic.extend(stack_interface.manufacturing_wall_probes(doc))
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
         (probe, True)
@@ -241,7 +241,12 @@ def review(doc, registry):
                 mounts.DECK_THICKNESS,
             ],
             "accessory_deck_size_mm": mounts.ACCESSORY_DECK_SIZE,
-            "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
+            "hole_pad_diameters_mm": {
+                kind: sorted(
+                    {row["pad_diameter_mm"] for row in mounts.carrier_hole_rows(kind)}
+                )
+                for kind in mounts.MOUNT_NAMES
+            },
             "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],
             "independent_optical_mount_contract": optical_mount.mount_contract(),
         },

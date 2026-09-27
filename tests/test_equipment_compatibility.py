@@ -78,10 +78,10 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             body,
             mounts.RADIO_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
-            face="bottom",
+            face="top",
         )
         self.assertTrue(report["passed"])
-        self.assertEqual(report["support_face"], "bottom")
+        self.assertEqual(report["support_face"], "top")
         self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
         self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
         x, y = mounts.RADIO_CENTRE_XY
@@ -99,7 +99,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 body,
                 mounts.RADIO_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
-                face="bottom",
+                face="top",
             )["passed"]
         )
         body.translate(App.Vector(8, 0, 0))
@@ -109,7 +109,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 body,
                 mounts.RADIO_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
-                face="bottom",
+                face="top",
             )["passed"]
         )
 
@@ -123,19 +123,18 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
             services = {
-                service["device"]: service
-                for service in row["bare_device_service_after_tower_release"]
+                service["device"]: service for service in row["bare_device_service"]
             }
             self.assertEqual(
                 services["ModuleRadioEnvelope"]["local_removal_vector_mm"],
-                (0.0, 0.0, -32.0),
+                (0.0, 0.0, 32.0),
             )
-            self.assertTrue(services["ModuleRadioEnvelope"]["bench_access_required"])
-            self.assertIn(
-                "TapeWing0L",
+            self.assertFalse(services["ModuleRadioEnvelope"]["bench_access_required"])
+            self.assertEqual(
                 services["ModuleRadioEnvelope"][
                     "off_carrier_parts_excluded_for_bench_service"
                 ],
+                [],
             )
             self.assertEqual(
                 services["ModulePASEnvelope"]["local_removal_vector_mm"],
@@ -169,7 +168,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_detached_radio_service_still_rejects_an_attached_carrier_obstacle(self):
+    def test_installed_radio_service_rejects_a_carrier_obstacle(self):
         from gondola.parts import equipment_envelopes
         from gondola.validation.equipment import mounting_check
 
@@ -181,7 +180,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             2,
             2,
             2,
-            App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMin - 12),
+            App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMax + 4),
         )
         original = list(self.doc.DesignRegistry.ReferenceParts)
         try:
@@ -192,14 +191,14 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 for row in result["device_service"]
                 if row["device"] == "ModuleRadioEnvelope"
             )
-            self.assertTrue(service["bench_access_required"])
+            self.assertFalse(service["bench_access_required"])
             self.assertFalse(service["passed"])
             self.assertIn(blocker.Name, service["collisions"])
             self.assertNotIn(
                 blocker.Name, service["off_carrier_parts_excluded_for_bench_service"]
             )
-            self.assertIn(
-                "TapeWing0L", service["off_carrier_parts_excluded_for_bench_service"]
+            self.assertEqual(
+                service["off_carrier_parts_excluded_for_bench_service"], []
             )
         finally:
             self.doc.DesignRegistry.ReferenceParts = original

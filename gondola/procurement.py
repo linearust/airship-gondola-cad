@@ -10,6 +10,7 @@ from .contracts.hardware import PROCUREMENT_FIELDS
 from .provenance import source_fingerprint
 
 HARDWARE_MATERIAL_CODES = {
+    "Carbon fibre composite (seller claim)": "CarbonComposite",
     "A2 stainless steel": "A2",
     "304 stainless steel (seller claim)": "SS304",
     "Supplied horn material unverified": "UnverifiedHorn",

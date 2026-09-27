@@ -37,7 +37,6 @@ MINIMUM_NEIGHBOUR_GAPS = {
         "ModulePASEnvelope": 2.0,
         "XT30ServiceReserve": 2.0,
         "MTF02POpticalClearanceReserve": 1.5,
-        "OpticalMountBase": 1.5,
         "CapacitorServiceReserve": 1.5,
     }
 }
@@ -70,7 +69,7 @@ def _box(size, origin):
 def _fc_exit_tube(side):
     """A C1 continuous quarter-turn around each end of the underbody corridor."""
     y = mounts.FC_WIRING_CORRIDOR_CENTRE_Y
-    z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE / 2
+    z = mounts.FC_SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE / 2
     radius = FC_EXIT_BEND_RADIUS_MM
     turn = -side
     start, bend_start = V(side * 20, y, z), V(side * 24, y, z)
@@ -96,7 +95,7 @@ def _fc_exit_tube(side):
 
 def _fc_peripheral_band():
     length, width, height = interfaces.FC_SIZE_MM
-    bottom = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
+    bottom = mounts.FC_SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
     depth, margin = FC_PERIPHERAL_DEPTH_MM, FC_PERIPHERAL_Z_MARGIN_MM
     outer = _box(
         (length + 2 * depth, width + 2 * depth, height + 2 * margin),

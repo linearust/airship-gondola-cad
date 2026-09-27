@@ -27,7 +27,7 @@ from .equipment_metadata import add_interface_metadata, create_wiring_reserve
 
 V = App.Vector
 BATTERY_SOURCE = "https://genstattu.com/tattu-450mah-7-4v-75c-2s1p-lipo-battery-pack-with-xt30-plug-long-size-for-h-frame.html"
-FC_BOTTOM_Z = mounts.SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
+FC_BOTTOM_Z = mounts.FC_SUPPORT_FACE_Z + mounts.FC_WIRING_CLEARANCE
 CAPACITOR_RESERVE_CENTRE_XY = (42.0, 34.0)
 
 
@@ -102,7 +102,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
     set_property(
         battery,
         "Notes",
-        "Plain battery carrier with three declared continuous adhesive regions around its spare standard mounting holes; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the integral optical tower clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
+        "Compact continuous battery carrier with a declared14x54mm adhesive region and1mm nominal adhesive allowance. Geometric centre adjustment is limited to +/-1mm X andY to keep the integral optical tower clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
     set_property(
@@ -248,7 +248,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
         Part.makeCylinder(
             5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.adhesive_bottom())
         ),
-        "Provisional space for the specified35V220uF capacitor, near the FC and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
+        "Provisional space for the specified35V220uF capacitor, near the FC and clear of the fixed optical support. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )
     capacitor.Role = "Clearance"

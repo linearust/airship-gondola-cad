@@ -1,7 +1,7 @@
 # Selected onboard telemetry radio: LR24-F-Mini
 
 The onboard radio is **LR24-F-Mini only**, paired with **LR24-F on the ground**.
-The user's AT decision removes LR900-A support. Do not restore it as an alternate
+The selected scope excludes LR900-A. Do not restore it as an alternate
 profile, add a full-size F bracket, or count the ground unit as onboard mass.
 
 ## Manufacturer interface
@@ -23,69 +23,59 @@ The Mini height and IPEX1 identification come from the store table and side view
 the manual's general SMA statement does not describe the bare Mini board.
 Published module mass excludes the separately fitted antenna, harness and adhesive.
 
-## Attachment and wiring limits
+## Attachment and wiring limits — current design
 
-AX removes the projecting landing tab. The three rail carriers use the same
-54 × 74 × 2 mm rounded rectangular plate and hole layout. The accessory instance
-uses the opposite plate face for the Mini, beside the rail shoe. There is no
-separate radio plate, pocket, bracket or radio-specific fastening pattern.
-See [universal carrier rationale](universal_carrier_review.md).
+The Mini shares one compact insulating accessory carrier with the selected
+navigation module. Both occupy the outer face, away from the rail and balloon;
+there is no separate radio plate, projecting tab, pocket or radio-specific bolt
+pattern. Current body placement, adhesive allocation and carrier geometry belong
+to [equipment_layout.py](../gondola/parts/equipment_layout.py) and
+[equipment_mounts.py](../gondola/parts/equipment_mounts.py). The Mini and navigation
+occupy opposite ends of that face, with separate connector reservations.
 
-The modeled Mini is centred at accessory-local (-15, 28) mm, with its long axis
-along X and its populated face directed toward local -Z, toward the balloon.
-A 22 × 14 mm nominal insulating-adhesive allocation at the same centre fits
-between the plate holes and its edge. The body slightly overhangs the plate edge
-and rounded corner; the complete adhesive allocation remains supported. This is a design
-allocation, not a measured bearing face or a minimum required adhesive area.
-The Mini underside photograph shows
-components. Trim compliant insulating adhesive to actual supported contact and
-verify component pressure, heat dissipation and retention. Velcro or ties may
-wrap the existing plate without dedicated slots, keeping the populated board,
-ports and antenna connection clear.
+The previous AX identical 54×74 mm carriers, inverted Mini at (-15,28),
+underside Z offsets and stack-foot clearance argument are superseded. They do
+not describe the current installation. The shared interface is now the rail
+coupling, not a requirement that all role carriers have identical decks.
 
-The -15 mm X shift leaves access for the rail-clamp hex key and avoids the diagonal
-stack-foot bolt beside the connector lane. Both rail-clamp approaches and the
-structural joint's permitted seating movement must be checked; nominal body
-separation alone is insufficient. The plate outline and
-common holes remain unchanged by this radio placement choice.
+A continuous nominal insulating-adhesive allocation supports the Mini. Its
+underside photograph shows components: trim compliant adhesive to the actual
+contact, avoiding pressure on solder, components and the antenna connector.
+The modeled body and supported patch do not qualify contact area, heat dissipation
+or retention. Velcro or ties can wrap existing structure without dedicated slots.
+Keep the populated face, sockets and antenna connection accessible.
 
-The reference body occupies local Z = 4.6 to 10.4 mm, leaving a nominal 1 mm
-adhesive allowance to the plate's Z = 11.4 mm face. Its connector reservations
-extend toward -Z to 2.6 mm. These offsets are measured from the Z = 0 rail
-reference plane, **not** from the actual balloon surface. Envelope curvature,
-tape build-up, IPEX plug height, installed leads and strap pressure remain
-unverified. Attach, unplug and service the Mini on the removed carrier at a
-bench; this arrangement does not establish on-balloon connector access.
+Preserve clearance at both ends of the Mini's long axis. The current end lanes
+and allowance above the populated face are prototype design reservations, not
+manufacturer connector dimensions or measured cable bend radii. The SH sockets
+and IPEX1 connector lie at opposite ends; the cable mates away from the populated
+face. Exact port XYZ, installed plug height and final wire direction remain
+unmeasured. Two photographed SH sockets do not establish independent UARTs or
+the function of an undocumented socket.
 
-Preserve access at both ends of the board's X axis. Current 15 mm connector lanes
-are prototype design allowances, not manufacturer connector dimensions or
-verified cable bend radii. The SH sockets
-and IPEX1 connector occupy opposite long-axis ends, and the IPEX1 cable mates away
-from the populated face. The 2 mm design allowance beyond that face follows
-the inverted installation toward -Z. Exact port XYZ and installed plug
-orientation remain unmeasured. The photograph shows two SH sockets while the manual documents one
-UART interface; do not infer independent UARTs or the other socket's function.
+For the low carrier, bare-device removal is outward from the same outer face
+after disconnecting leads and releasing adhesive/retention. Retain other mounted
+parts in that interference check. The optional integral power variant has a fixed
+upper deck, so its lower radio requires the separate detached-carrier lateral
+service path. Neither path certifies a connected harness or practical hand access.
+Inspect the actual installation instead of inferring access from a body-only gap.
 
-The Mini and its two end-lane reservations sit on the opposite face from the
-navigation module and its conservative direct MG-F10 helix reservation. The
-old same-face Y-gap argument no longer applies. Recheck the inverted body,
-connector lanes, rail attachment wings and clamp seating allowance together;
-the plate alone is not the complete neighboring geometry. These checks do not
-verify the actual antenna seating datum, flexible pigtail or installed cables.
-The optional power platform and a direct MG-F10 helix still cannot
-occupy the same accessory host; use another host or the remote-antenna option.
+The current source screens navigation alternatives, both connector ends, rail
+clamps, propulsion and optical fields together. The accessory-host power variant
+uses a different portal orientation to preserve the Mini lanes. A direct MG-F10
+helix and that power structure still conflict; use a permitted alternative or
+remote antenna. Consult the matching power and equipment reports after changes.
 
-Route and retain the flexible antenna separately, clear of the propeller sweep
-and optical field. Antenna dimensions, the final mounting location and pigtail
-bend limits are not established by the retained package image. No extra antenna
-holder or completed harness is implied by the body envelope.
+Route and retain the flexible radio antenna separately, clear of propellers and
+sensor view. Its final mounting location, pigtail bend limits and installed
+connector datum are not established by the package photograph. No extra antenna
+holder or completed harness is implied by the reference body.
 
 Follow the Mini's pin labels, cross TX/RX and connect common ground. The FC's
-UART1/6 SH1.0-6P connection needs the corresponding verified SH1.0-4P Mini end;
-connector count alone is not a pinout. The 2 W maximum-average reference does not
-prove adequate shared FC 5 V BEC headroom or bound transient demand. Match the
-LR24-F ground unit's communication settings and antenna. Mechanical fit does not
-qualify the RF link.
+UART1/6 SH1.0-6P connection needs the verified SH1.0-4P Mini end; connector count
+alone is not a pinout. The 2 W maximum-average reference does not prove shared
+FC 5 V headroom or bound transient demand. Match the ground LR24-F settings and
+antenna. Mechanical fit does not qualify electrical capacity or the RF link.
 
 ## Retained primary evidence
 

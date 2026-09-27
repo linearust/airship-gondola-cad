@@ -66,14 +66,14 @@ def route_points(sign, propulsion_placement, electronics_placement):
         App.Placement(V(), App.Rotation(V(0, 0, 1), FC_INSTALLATION_LOCAL_YAW_DEG))
     )
     endpoint = propulsion_placement.inverse().multVec(
-        board_frame.multVec(V(24, sign * 10, equipment_mounts.SUPPORT_FACE_Z + 12))
+        board_frame.multVec(V(24, sign * 10, equipment_mounts.FC_SUPPORT_FACE_Z + 12))
     )
     return [
         (WORKSPACE_X_MM, sign * propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z),
         # Come inward above the FC band before descending into its final entry.
-        # This fixed planning waypoint clears the centred FC-host tower, including
-        # its seated registration bounds; moving either module requires rechecking.
-        (-40.0, sign * 12.0, 39.0),
+        # Keep the final FC-band entry inside its existing terminal region while
+        # clearing either fixed optical portal; module moves require rechecking.
+        (-40.0, sign * 12.0, 42.0),
         (endpoint.x, endpoint.y, endpoint.z),
     ]
 

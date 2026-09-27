@@ -164,14 +164,14 @@ class NativeInterfaceTests(unittest.TestCase):
 
         for kind in ("electronics", "accessory"):
             shape = mounts.mount_shape(kind).copy()
-            for centre in mounts.mount_hole_centres(kind):
+            for row in mounts.carrier_hole_rows(kind):
                 result = mounting_pad_check(
                     shape,
-                    centre,
-                    bottom=mounts.DECK_BOTTOM_Z,
-                    thickness=mounts.DECK_THICKNESS,
-                    hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                    pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                    row["centre_xy_mm"],
+                    bottom=mounts.carrier_plate_bottom(kind),
+                    thickness=mounts.carrier_plate_thickness(kind),
+                    hole_diameter=row["diameter_mm"],
+                    pad_diameter=row["pad_diameter_mm"],
                 )
                 self.assertTrue(result["passed"], result)
 
@@ -180,12 +180,29 @@ class NativeInterfaceTests(unittest.TestCase):
         from gondola.validation.equipment import mounting_pad_check
 
         shape = mounts.mount_shape("electronics").copy()
-        centre = mounts.FC_HOLE_CENTRES[0]
+        row = mounts.carrier_hole_rows("electronics")[0]
+        centre = row["centre_xy_mm"]
         x, y = centre
-        bottom, thickness = mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
-        missing_edge = shape.cut(
-            Part.makeBox(1, 1, thickness + 2, App.Vector(x - 3.3, y - 0.5, bottom - 1))
+        bottom = mounts.carrier_plate_bottom("electronics")
+        thickness = mounts.carrier_plate_thickness("electronics")
+        self.assertTrue(
+            mounting_pad_check(
+                shape,
+                centre,
+                bottom=bottom,
+                thickness=thickness,
+                hole_diameter=row["diameter_mm"],
+                pad_diameter=row["pad_diameter_mm"],
+            )["passed"]
         )
+        edge_cut = Part.makeBox(
+            1,
+            1,
+            thickness + 2,
+            App.Vector(x - row["pad_diameter_mm"] / 2, y - 0.5, bottom - 1),
+        )
+        self.assertGreater(abs(shape.common(edge_cut).Volume), 0.1)
+        missing_edge = shape.cut(edge_cut)
         blocked_bore = shape.fuse(
             Part.makeCylinder(0.4, thickness, App.Vector(x, y, bottom))
         )
@@ -195,8 +212,8 @@ class NativeInterfaceTests(unittest.TestCase):
                 centre,
                 bottom=bottom,
                 thickness=thickness,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                hole_diameter=row["diameter_mm"],
+                pad_diameter=row["pad_diameter_mm"],
             )
             self.assertFalse(result["passed"], result)
 

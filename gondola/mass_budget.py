@@ -7,6 +7,7 @@ from .contracts.design import SCOPED_LISTED_EQUIPMENT_MASS_G, SELECTED_EQUIPMENT
 from .procurement import hardware_material_code
 
 DENSITIES_G_CM3 = {
+    "CarbonComposite": None,
     "PA12": 1.01,
     "A2": 7.9,
     "SS304": 7.9,
@@ -153,8 +154,8 @@ def mass_budget(printed, hardware):
         "is_all_up_flight_mass": False,
         "modeled_hardware_mass_complete": not unknown_hardware,
         "complete_device_mounting_hardware_included": False,
-        "device_mounting_hardware_scope": "X06 ear screws/nuts, purchased metal horns and four horn attachment screws are included in the modeled inventory. Two front nuts per KST horn are included only when that profile is selected; selected brass nuts use the generic copper-alloy density assumption, not measured product mass. Horn mass uses its simplified envelope and assumed aluminium density. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
-        "comparison_limit": "Horn alloy, detailed hub geometry and actual mass remain unverified. Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only; changing which parts have unknown mass can change the accounted subtotal without reducing physical mass. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
+        "device_mounting_hardware_scope": "X06 ear screws/nuts, purchased metal horns and four horn attachment screws are included in the modeled inventory. Two front nuts per KST horn are included only when that profile is selected; selected brass nuts use the generic copper-alloy density assumption, not measured product mass. Horn mass uses its simplified envelope and assumed aluminium density. Carbon plate, its lower retention and nominal FC-axis bolts/intermediate nuts are included. The actual upper FC damping/retention and P-AS fastening stacks, plus OEM motor/horn retaining screws, remain unmodeled.",
+        "comparison_limit": "Horn alloy, detailed hub geometry and actual mass remain unverified. Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only; changing which parts have unknown mass can change the accounted subtotal without reducing physical mass. Remaining upper FC/P-AS spacers, dampers and fastening hardware are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
                 "density_g_cm3": DENSITIES_G_CM3["PA12"],
