@@ -1,6 +1,8 @@
 # Selected controller: MicoAir743v2-AIO-45A
 
-Reviewed 2026-09-24. The user replaced the 35A Bluejay board with the H743V2
+Reviewed 2026-09-24; the official product/manual text was rechecked on
+2026-09-27 and still states 3–6S / 10–27 V. The retained official 2S image
+evidence does not resolve the received revision. The user replaced the 35A Bluejay board with the H743V2
 AIO 45A AM32 board. This is a component selection and CAD interface review,
 not confirmation that the selected battery powers every supplied board revision.
 

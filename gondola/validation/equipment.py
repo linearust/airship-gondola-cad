@@ -180,22 +180,22 @@ def mounting_check(doc):
             ) == json.loads(json.dumps(stack_interface.interface_contract(name)))
         except (AttributeError, ValueError, TypeError):
             stack_contract_matches = False
-        slot_rows = []
-        slots = mounts.generic_slot_shapes(
+        standard_rows = []
+        holes = mounts.standard_hole_shapes(
             kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
         )
-        lands = mounts.generic_slot_shapes(
+        lands = mounts.standard_hole_shapes(
             kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
         )
-        for centre, slot, outer in zip(
-            mounts.GENERIC_SLOT_CENTRES[kind], slots, lands, strict=True
+        for row, hole, outer in zip(
+            mounts.standard_hole_rows(kind), holes, lands, strict=True
         ):
-            obstruction = intersection_volume(shape, slot)
-            missing_land = outer.cut(slot).cut(shape).Volume
-            slot_rows.append(
+            obstruction = intersection_volume(shape, hole)
+            missing_land = outer.cut(hole).cut(shape).Volume
+            standard_rows.append(
                 {
-                    "centre_xy_mm": centre,
-                    "slot_obstruction_mm3": obstruction,
+                    **row,
+                    "hole_obstruction_mm3": obstruction,
                     "missing_full_thickness_1p5mm_land_mm3": missing_land,
                     "passed": obstruction < TOL and missing_land < TOL,
                 }
@@ -210,7 +210,7 @@ def mounting_check(doc):
                 "no_unverified_device_posts_above_support_face": no_posts,
                 "mounting_stack_remains_unverified": unverified_stack,
                 "structural_stack_contract_matches": stack_contract_matches,
-                "generic_fastening_slots": slot_rows,
+                "standard_mounting_holes": standard_rows,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()
@@ -220,7 +220,7 @@ def mounting_check(doc):
                 and no_posts
                 and unverified_stack
                 and stack_contract_matches
-                and all(row["passed"] for row in slot_rows),
+                and all(row["passed"] for row in standard_rows),
             }
         )
     carriers = {
@@ -320,7 +320,10 @@ def mounting_check(doc):
         )
     adhesive_rows = []
     adhesive_specs = [
-        ("BatteryMount", "ModuleBatteryEnvelope", (0, 0), mounts.BATTERY_DECK_SIZE),
+        *(
+            ("BatteryMount", "ModuleBatteryEnvelope", centre, size)
+            for centre, size in mounts.BATTERY_ADHESIVE_REGIONS
+        ),
         (
             "AccessoryMount",
             "ModuleRadioEnvelope",

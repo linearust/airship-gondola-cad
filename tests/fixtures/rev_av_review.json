@@ -1,0 +1,144 @@
+{
+  "revision": "AV",
+  "reviewed_on": "2026-09-27",
+  "previous_commit": "cb81ddff59f09b932fb64c596579589734aa6cd3",
+  "scope": "Remove dedicated tie features; standardize spare board-hole patterns; provide normal screw-head/rail clearance; use one BEC8V\u2192SVPDB5V cascade; review saved cart options without requiring unrelated/spare removals.",
+  "intentional_changes": [
+    "Common20mmM2 future-module pattern on three carriers and optional power platform; FC/power also30.5mmM3. Preserve confirmed device holes and separate project structural tower feet.",
+    "Plain rectangular decks replace tie tabs/slots. Battery retains three documented continuous adhesive regions. Optical tray stays an uninterrupted functional adhesive exception.",
+    "Raise equipment support deck1.2mm with one integral central support bridge, giving1mm nominal clearance between modeled2mm M2 heads and rail. Derive equipment, wiring and optical/power elevation; propulsion and rail mating geometry unchanged.",
+    "Optional tether topology is24V\u2192oneBEC12S-PRO8V\u2192FC/main and SVPDBinput8V\u2192servo5V; shared upstream5A includes conversion losses. Remove active dualBEC configuration and unsupported fixed tether-trajectory reserve.",
+    "Record saved cart selected variants, distinguish cart units from pack counts, preserve known deferredM3screws and ownedM2/GHstock. OptionalM1.4nuts are sellerbrass, with genericcopper-alloy density estimate; horn hardware summary is profile-aware."
+  ],
+  "source_fingerprint_pre_pin": "a908e3762c197a7cce5d66c6534013501ebaf77806ca0a33cb55ac60ec602852",
+  "final_verification": {
+    "status": "passed",
+    "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+    "native_tests": {
+      "modules": 45,
+      "tests": 439,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "passed": true,
+      "superseded_test_failure": "One old absolute Z probe at16.2mm in test_wiring_reserves was updated to the actual FC-envelope bottom minus4mm, preserving the midpoint requirement in the8mm wiring clearance. The failed13-test attempt and corrected13-test rerun are retained separately; production geometry/source did not change. Other passing modules were not repeated."
+    },
+    "artifact_pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 12.747,
+        "log": "/tmp/av-final-build.log",
+        "log_sha256": "b645befb8fcf977ef3f1f89b79459bf1d45df504e1c13623c7c9bd661e096782",
+        "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+        "source_unchanged": true
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 45.293,
+        "log": "/tmp/av-final-preview.log",
+        "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf",
+        "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+        "source_unchanged": true
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 919.795,
+        "log": "/tmp/av-final-validate.log",
+        "log_sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70",
+        "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+        "source_unchanged": true
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.478,
+        "log": "/tmp/av-final-compare.log",
+        "log_sha256": "0aadd498fe0fa1a97b5dae47a13f04deafd8f5556603c3afdac27b6f5db86627",
+        "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+        "source_unchanged": true
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.199,
+        "log": "/tmp/av-final-bundle.log",
+        "log_sha256": "f2f77aeab2b0237f0b1c97369b04573834e82fd3ed9f549f63c8a4e93fe70c46",
+        "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+        "source_unchanged": true
+      }
+    ],
+    "baseline": {
+      "passed": true,
+      "shape_count": 116,
+      "fixture_sha256": "f0ee355bcf028b0c4f1692756e2d5547445dc016019dcd1a3084d730bfac04c4",
+      "native_controls_passed": true
+    },
+    "blender": {
+      "passed": true,
+      "sampled_frames": 1782,
+      "matrix_checks": 135116,
+      "discrepancy_count": 0,
+      "scope": "Sampled rigid transforms match native poses; not dynamics, collision, wire-flexibility, thermal or load simulation."
+    },
+    "static_checks": {
+      "ruff": "passed",
+      "format": "passed",
+      "changed_doc_links": "passed",
+      "git_diff_check": "passed"
+    },
+    "independent_artifact_audit_passed": true
+  },
+  "evidence": {
+    "cart": "references/cart_review_2026_09_27.json",
+    "transition_review": "tests/fixtures/rev_av_transition_review.json",
+    "transition_audit": "tests/fixtures/rev_av_transition_audit.json.gz",
+    "final_artifact_review": "tests/fixtures/rev_av_artifact_review.json",
+    "final_artifact_audit": "tests/fixtures/rev_av_artifact_audit.json.gz",
+    "final_artifact_review_sha256": "b8d8ed62d0091c0949393fec8af1cf3df2e5916ae2b5f0cbd68ad37fc6b173ea",
+    "final_artifact_audit_sha256": "b171f8445433b281086ac542fafd26460ac0c53c40179c94b5711730c23e324f"
+  },
+  "physical_limits": [
+    "Current FC input-voltage sources conflict for2S/8V; received revision compatibility, current/thermal margin and actual wiring remain unresolved.",
+    "Spare standard hole patterns do not qualify arbitrary future devices or simultaneous installation in occupied bays. Device mounting stacks, fastener length, printed fit/strength and strap retention still require physical checks.",
+    "No fixed or load-rated tether guide/anchor is designed. Strap route, cable length/gauge, voltage drop and propeller/FOV clearance require actual installation review.",
+    "Mass values are nominal BRep/density estimates, not measured printed or all-up mass."
+  ],
+  "production_released": false,
+  "fixture_promotion": {
+    "independent_reviewer": "/root/au_horn",
+    "approved_main_candidate_sha256": "f0ee355bcf028b0c4f1692756e2d5547445dc016019dcd1a3084d730bfac04c4",
+    "approved_optional_candidate_sha256": "c703c8e6e4954498689fb0deafa1cef5e6d19629bbdd9fcd2c5edffe49398c07",
+    "basis": "Independent old/new native BRep, placement, hierarchy, metadata and control audit completed before promotion. Retained transition record follows.",
+    "fixture": "tests/fixtures/rev_av_geometry.FCStd"
+  },
+  "source_fingerprint_final": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c",
+  "visual_review": {
+    "reviewer": "root",
+    "images_inspected": [
+      "gondola_preview.png",
+      "gondola_electronics.png",
+      "gondola_print_parts.png",
+      "gondola_power_options.png",
+      "gondola_optical_stack.png",
+      "gondola_optical_fc_stack.png",
+      "blender_review/stills/01_Assembly.png"
+    ],
+    "finding": "Rendered assemblies and print layout are legible. Carrier decks are simple flat shapes; optional display shows one BEC and one SVPDB, and both optical-host views remain visible. Screenshot inspection does not replace numeric clearance or physical fit checks."
+  },
+  "modeled_print_mass": {
+    "density_assumption_g_cm3": 1.01,
+    "AU_g": 72.63629645036826,
+    "AV_g": 77.47395060486033,
+    "change_g": 4.837654154492071,
+    "scope": "Modeled baseline PA12 print volume times assumed density; not measured final mass. Optional power platform is excluded."
+  },
+  "saved_artifacts": {
+    "build/gondola.FCStd": "efb80cfcb89bcb867a96046535e721e755a18d9377bb0e239589ba7d74098cd6",
+    "build/gondola_power_options.FCStd": "758dee32f279394a85170d2b6fa092ced945d5e86a03b38bf20363e1e75904ac",
+    "build/gondola_print_parts.zip": "77d38419bd76b42a31a0d68fa8ef02c97265ff59a6ba2a7855e819f6cb8f7749",
+    "build/blender_review/cad_review.blend": "5d8dad561fc9669ca33ae05e012513461a4f81d93bf24fe6c717ca9dfabd685c"
+  }
+}

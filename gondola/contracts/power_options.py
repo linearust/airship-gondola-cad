@@ -1,7 +1,7 @@
 """Optional supply boards; their mechanical provision is not power qualification.
 
-One BEC12S-PRO has one selectable output. Exact 8 V main and 5.2 V servo
-rails require two regulators, not two connections to the same module.
+The tether option uses one BEC12S-PRO at 8 V, feeding the main input and
+one SVPDB-8S at 5 V. All downstream loads share the upstream BEC capacity.
 Published body heights exclude unmeasured solder, headers, plugs and insulation.
 """
 
@@ -40,7 +40,7 @@ class PowerModuleProfile:
             "mounting_hole_centres_mm": (),
             "mounting_hole_diameter_mm": None,
             "dimension_scope": "Published long-side X, width Y and bare-module Z envelope. Terminal axes are conservative end-band orientations in that normalized frame, not measured solder-pad or header XYZ. Fitted headers, plugs, solder, insulation and compliant support add unmeasured height.",
-            "attachment": "Use the common insulating support with adhesive/ties clear of hot components and terminals. The visible electrical plated holes are not mounting holes. No board-specific screw pattern is inferred.",
+            "attachment": "Use the common insulating support with adhesive clear of hot components and terminals. The visible electrical plated holes are not mounting holes. No board-specific screw pattern is inferred.",
             "electrical_scope": "One selectable output per board. Catalog current is not an installed thermal limit or validated load budget. Verify polarity, output selection and voltage before connecting equipment; these modules have no reverse-input protection.",
             "thermal_scope": "Keep the populated side exposed to cooling air and inspect the received underside before applying insulation or adhesive. No installation-specific derating, touch temperature or adhesive temperature qualification is available.",
             "retention_verified": False,
@@ -88,6 +88,7 @@ class RegulatorBranch:
     module_key: str
     output_voltage_v: float
     load: str
+    upstream_branch_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -97,38 +98,85 @@ class PowerPlan:
     nominal_input_voltage_v: float
     branches: tuple[RegulatorBranch, ...]
 
+    def __post_init__(self):
+        for index, branch in enumerate(self.branches):
+            upstream = branch.upstream_branch_index
+            if upstream is not None and (
+                type(upstream) is not int or not 0 <= upstream < index
+            ):
+                raise ValueError("A regulator may only draw from an earlier branch")
+            profile = POWER_MODULE_PROFILES[branch.module_key]
+            input_v = self.branch_input_voltage_v(index)
+            low, high = profile.input_voltage_v
+            if not low <= input_v <= high:
+                raise ValueError("Regulator input outside its published range")
+            if branch.output_voltage_v not in profile.output_choices_v:
+                raise ValueError("Unsupported regulator output setting")
+            if branch.output_voltage_v >= input_v:
+                raise ValueError("These plans require a stepped-down regulated output")
+
+    def branch_input_voltage_v(self, index):
+        upstream = self.branches[index].upstream_branch_index
+        return (
+            self.nominal_input_voltage_v
+            if upstream is None
+            else self.branches[upstream].output_voltage_v
+        )
+
     def contract(self):
         counts = Counter(branch.module_key for branch in self.branches)
         return {
             **asdict(self),
+            "branches": [
+                {
+                    **asdict(branch),
+                    "input_voltage_v": self.branch_input_voltage_v(index),
+                    "input_from": (
+                        "source"
+                        if branch.upstream_branch_index is None
+                        else f"branch[{branch.upstream_branch_index}].output"
+                    ),
+                }
+                for index, branch in enumerate(self.branches)
+            ],
             "regulator_quantities": dict(counts),
             "listed_regulator_mass_g": sum(
                 POWER_MODULE_PROFILES[key].mass_g * count
                 for key, count in counts.items()
             ),
-            "branch_topology": "Each listed regulator receives the source directly; listed outputs are separate positive rails with common ground. No output paralleling or regulator cascade is specified.",
+            "branch_topology": "Each branch input follows its explicit input_from/upstream_branch_index. The upstream output supplies its direct loads and every downstream regulator input. Different regulated output positives remain separate; grounds are common.",
+            "current_limits": [
+                {
+                    "branch_index": index,
+                    "published_continuous_output_current_a": POWER_MODULE_PROFILES[
+                        branch.module_key
+                    ].published_continuous_current_a,
+                    "nominal_voltage_times_published_current_w": branch.output_voltage_v
+                    * POWER_MODULE_PROFILES[
+                        branch.module_key
+                    ].published_continuous_current_a,
+                    "downstream_branch_indices": [
+                        child_index
+                        for child_index, child in enumerate(self.branches)
+                        if child.upstream_branch_index == index
+                    ],
+                    "scope": "Shared output limit for direct loads plus downstream input current, including conversion loss. Ratings at different rails do not add. Voltage times catalog current is not a qualified installed power budget; startup, transient and thermal margin remain unmeasured.",
+                }
+                for index, branch in enumerate(self.branches)
+            ],
             "qualification": "Optional integration plan only. Board fit does not establish motor/startup current, tether loss, protection, cooling, FC input compatibility or a completed wiring harness.",
         }
 
 
 POWER_PLANS = {
     "BATTERY": PowerPlan("BATTERY", "Existing standard 2S LiPo", 7.4, ()),
-    "TETHER_DUAL_BEC": PowerPlan(
-        "TETHER_DUAL_BEC",
-        "External 24 V DC PSU",
-        24.0,
-        (
-            RegulatorBranch("BEC12S_PRO", 8.0, "FC VBAT and propulsion"),
-            RegulatorBranch("BEC12S_PRO", 5.2, "Servo positive rail only"),
-        ),
-    ),
     "TETHER_BEC_SVPDB": PowerPlan(
         "TETHER_BEC_SVPDB",
         "External 24 V DC PSU",
         24.0,
         (
-            RegulatorBranch("BEC12S_PRO", 8.0, "FC VBAT and propulsion"),
-            RegulatorBranch("SVPDB_8S", 5.0, "Servo positive rail only"),
+            RegulatorBranch("BEC12S_PRO", 8.0, "FC VBAT and propulsion; SVPDB input"),
+            RegulatorBranch("SVPDB_8S", 5.0, "Servo positive rail only", 0),
         ),
     ),
     "BATTERY_SVPDB": PowerPlan(
@@ -139,6 +187,10 @@ POWER_PLANS = {
     ),
 }
 SELECTED_POWER_PLAN_KEY = "BATTERY"
+DEFAULT_OPTIONAL_POWER_PLAN_KEY = "TETHER_BEC_SVPDB"
+OPTIONAL_POWER_PLAN_KEYS = tuple(
+    key for key, plan in POWER_PLANS.items() if plan.branches
+)
 
 
 def get_power_module_profile(key):
@@ -159,16 +211,18 @@ def get_power_plan(key=None):
 def power_option_contract():
     return {
         "selected_plan": get_power_plan().contract(),
+        "default_optional_plan": DEFAULT_OPTIONAL_POWER_PLAN_KEY,
         "modules": {
             key: profile.contract() for key, profile in POWER_MODULE_PROFILES.items()
         },
         "optional_plans": {key: plan.contract() for key, plan in POWER_PLANS.items()},
         "connection_limits": (
-            "A BEC12S-PRO cannot produce 8 V and 5.2 V simultaneously; exact dual rails use two separate modules fed from 24 V in parallel.",
-            "SVPDB-8S offers 5, 6, 7.2 or 8.2 V, not 5.2 V. The optional SVPDB servo plan deliberately uses its default 5 V setting.",
-            "Keep servo-positive wires off the FC 5 V rail when using an external servo regulator. Share ground and preserve separate control signals. Do not feed the LR24-F-Mini or other 5 V peripherals from the 5.2 V servo rail.",
+            "Selected optional tether topology: 24 V PSU -> one BEC12S-PRO set to 8 V -> FC/main input and SVPDB-8S input in parallel; the SVPDB default 5 V output supplies servo positives. This cascade is an integration inference from manufacturer voltage ranges, not a qualified complete system.",
+            "Set the BEC12S-PRO from its shipping default 5.2 V to 8 V and measure the unloaded output before connecting loads. Leave SVPDB-8S at its default 5 V. Exact 5.2 V servo power is not required by this plan.",
+            "The BEC's published 5 A output at 8 V is shared by main loads and SVPDB input. I_BEC8 = I_main8 + (5*I_servo5)/(8*eta_SVPDB), with eta including conversion losses and not assigned a verified value. At the SVPDB's published 4 A output, its input needs more than the ideal 2.5 A at 8 V. Peak ratings are not continuous or guaranteed simultaneous margin.",
+            "Keep servo-positive wires off the FC 5 V rail when using SVPDB. Share ground and preserve individual control signals. F-Mini and other peripherals stay on the FC's appropriate supply. Never join the two regulated 5 V output positives, even though their nominal voltages match.",
             "Battery and tether are mutually exclusive supply choices here; no automatic changeover, charging or parallel battery/PSU operation is designed.",
             "The selected FC's published input-range conflict is unresolved for both existing 2S operation and an 8 V tether output. Preserve the selected board, but do not claim those supply combinations qualified.",
-            "Tether guidance supports local routing and strain relief only. It does not establish whole-tether load capacity, cable rating, loss, anchor retention or freedom from all propeller/optical interference during flight.",
+            "There is no dedicated tether guide or rated anchor. Secure the incoming lead to suitable existing structure before the PCB terminals. Whole-tether load capacity, cable rating, loss, strain relief and freedom from propeller/optical interference during flight remain installation checks.",
         ),
     }

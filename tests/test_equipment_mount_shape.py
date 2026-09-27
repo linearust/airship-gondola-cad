@@ -58,7 +58,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             mounts.mount_hole_centres("electronics"), mounts.FC_HOLE_CENTRES
         )
 
-    def test_accessory_keeps_full_deck_with_pas_holes_and_generic_slots(self):
+    def test_accessory_keeps_full_deck_with_confirmed_and_standard_holes(self):
         from gondola.parts import equipment_mounts as mounts
 
         x, y = mounts.ACCESSORY_DECK_CENTRE_XY
@@ -77,7 +77,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     App.Vector(hx, hy, mounts.DECK_BOTTOM_Z - 1),
                 )
             )
-        for slot in mounts.generic_slot_shapes("accessory"):
+        for slot in mounts.standard_hole_shapes("accessory"):
             plate = plate.cut(slot)
         shape = mounts.mount_shape("accessory")
         self.assertTrue(shape.isValid())
@@ -93,16 +93,16 @@ class EquipmentMountShapeTests(unittest.TestCase):
             (0.0, 16.5),
         )
 
-    def test_generic_slots_have_unobstructed_bores_and_full_edge_lands(self):
+    def test_standard_holes_have_open_bores_and_full_edge_lands(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.parts import rail
 
         for kind in mounts.MOUNT_NAMES:
             shape = mounts.mount_shape(kind)
-            slots = mounts.generic_slot_shapes(
+            slots = mounts.standard_hole_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
             )
-            lands = mounts.generic_slot_shapes(
+            lands = mounts.standard_hole_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
             )
             for slot, outer in zip(slots, lands, strict=True):
@@ -111,19 +111,68 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     self.assertLess(abs(outer.cut(slot).cut(shape).Volume), 1e-6)
                     self.assertLess(abs(slot.common(rail.shoe_shape()).Volume), 1e-6)
 
-    def test_battery_generic_tabs_preserve_the_whole_adhesive_deck(self):
+    def test_battery_keeps_three_continuous_adhesive_regions(self):
         from gondola.parts import equipment_mounts as mounts
 
-        patch = Part.makeBox(
-            *mounts.BATTERY_DECK_SIZE,
-            mounts.DECK_THICKNESS,
-            App.Vector(
-                -mounts.BATTERY_DECK_SIZE[0] / 2,
-                -mounts.BATTERY_DECK_SIZE[1] / 2,
-                mounts.DECK_BOTTOM_Z,
-            ),
+        for centre, size in mounts.BATTERY_ADHESIVE_REGIONS:
+            patch = Part.makeBox(
+                *size,
+                mounts.DECK_THICKNESS,
+                App.Vector(
+                    centre[0] - size[0] / 2,
+                    centre[1] - size[1] / 2,
+                    mounts.DECK_BOTTOM_Z,
+                ),
+            )
+            self.assertLess(abs(patch.cut(mounts.mount_shape("battery")).Volume), 1e-6)
+
+    def test_every_carrier_has_a_real_20mm_m2_square_and_no_tie_contract(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        for kind in mounts.MOUNT_NAMES:
+            contract = mounts.mount_contract(kind)
+            self.assertNotIn("generic_fastening", contract)
+            patterns = contract["standard_mounting"]["patterns"]
+            common = next(row for row in patterns if row["pitch_mm"] == 20.0)
+            self.assertEqual(common["fastener"], "M2")
+            self.assertEqual(common["clearance_diameter_mm"], 2.6)
+            points = [App.Vector(*xy, 0) for xy in common["centres_xy_mm"]]
+            for i in range(4):
+                self.assertAlmostEqual((points[i] - points[(i + 1) % 4]).Length, 20.0)
+                self.assertAlmostEqual(
+                    (points[i] - points[(i + 2) % 4]).Length ** 2, 800.0
+                )
+        large = mounts.mount_contract("electronics")["standard_mounting"]["patterns"][1]
+        self.assertEqual(
+            (large["pitch_mm"], large["fastener"], large["clearance_diameter_mm"]),
+            (30.5, "M3", 3.6),
         )
-        self.assertLess(abs(patch.cut(mounts.mount_shape("battery")).Volume), 1e-6)
+
+    def test_ordinary_m2_heads_fit_spare_holes_without_touching_shoe_or_rail(self):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import purchased_hardware, rail
+
+        stations = {row.object_name: row for row in MODULE_STATIONS}
+        for kind in mounts.MOUNT_NAMES:
+            station = stations[kind.capitalize() + "EquipmentModule"]
+            carrier = mounts.mount_shape(kind)
+            for row in mounts.standard_hole_rows(kind):
+                if row["fastener"] != "M2":
+                    continue
+                screw = purchased_hardware.screw_shape(8)
+                screw.translate(App.Vector(*row["centre_xy_mm"], mounts.DECK_BOTTOM_Z))
+                self.assertLess(screw.common(carrier).Volume, 1e-6)
+                for side in (-1, 1):
+                    placed = screw.copy()
+                    placed.Placement = App.Placement(
+                        App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
+                        App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+                    ).multiply(placed.Placement)
+                    with self.subTest(kind=kind, hole=row, approach=side):
+                        self.assertGreaterEqual(
+                            placed.distToShape(rail.rail_shape())[0], 1.0 - 1e-6
+                        )
 
     def test_shared_adhesive_patches_are_intact_and_clear_pas_holes(self):
         from gondola.parts import equipment_mounts as mounts
@@ -199,6 +248,24 @@ class FCInstallationTests(unittest.TestCase):
             groups["AccessoryEquipmentModule"],
         )
         self.doc.recompute()
+
+    def test_both_battery_references_follow_the_same_raised_deck_datum(self):
+        from gondola.cad import world_shape
+        from gondola.parts import equipment_layout, equipment_mounts
+
+        for name in ("ModuleBatteryEnvelope", "MaximumBatteryEnvelope"):
+            obj = self.doc.getObject(name)
+            group = obj.getParentGeoFeatureGroup()
+            expected = (
+                group.getGlobalPlacement()
+                .multVec(App.Vector(0, 0, equipment_layout.adhesive_bottom()))
+                .z
+            )
+            self.assertAlmostEqual(world_shape(obj).BoundBox.ZMin, expected)
+        self.assertAlmostEqual(
+            self.doc.ModuleBatteryEnvelope.BottomZ.Value,
+            equipment_mounts.SUPPORT_FACE_Z + equipment_mounts.ADHESIVE_ALLOWANCE,
+        )
 
     def test_native_hole_axis_metadata_follows_shared_support(self):
         from gondola.parts import equipment_mounts as mounts

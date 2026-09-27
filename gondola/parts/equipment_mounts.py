@@ -18,7 +18,6 @@ DECK_THICKNESS = stack_interface.DECK_THICKNESS
 SUPPORT_FACE_Z = DECK_BOTTOM_Z + DECK_THICKNESS
 MOUNT_HOLE_DIAMETER = 2.6
 MOUNT_PAD_DIAMETER = 6.5
-ARM_WIDTH = 5.0
 FC_CENTRE_XY = (0.0, 0.0)
 FC_ROTATION_DEG = -45.0
 FC_AXIS_OFFSET = interfaces.FC_HOLE_PITCH / math.sqrt(2)
@@ -38,21 +37,32 @@ PAS_HOLE_CENTRES = tuple(
 RADIO_CENTRE_XY = (14.0, 21.0)
 GPS_ADHESIVE_SIZE = (18.0, 14.0)
 RADIO_ADHESIVE_SIZE = (22.0, 14.0)
-ACCESSORY_DECK_SIZE = (34.0, 78.0)
+ACCESSORY_DECK_SIZE = (36.0, 78.0)
 ACCESSORY_DECK_CENTRE_XY = (14.0, -4.0)
 MOUNT_NAMES = {
     "battery": "BatteryMount",
     "electronics": "ElectronicsMount",
     "accessory": "AccessoryMount",
 }
-GENERIC_SLOT_WIDTH = 2.6
-GENERIC_SLOT_LENGTH = 6.0
-GENERIC_SLOT_CENTRES = {
-    "battery": tuple((x, y) for x in (-12.0, 12.0) for y in (-16.0, 16.0)),
-    "electronics": ((0.0, -25.0), (0.0, 25.0)),
-    "accessory": tuple((x, y) for x in (0.0, 28.0) for y in (-24.0, 21.0)),
+BATTERY_DECK_SIZE = (34.0, 52.0)
+ELECTRONICS_DECK_SIZE = (44.0, 44.0)
+# Two bores cross the original battery tape strip. Three uninterrupted patches
+# retain useful adhesive contact without disguising those standard holes.
+BATTERY_ADHESIVE_REGIONS = (
+    ((0.0, 0.0), (16.0, 20.0)),
+    ((0.0, -21.0), (16.0, 10.0)),
+    ((0.0, 21.0), (16.0, 10.0)),
+)
+STANDARD_PATTERNS = {
+    "battery": ((20.0, 35.0),),
+    "electronics": ((20.0, 35.0), (30.5, 0.0)),
+    "accessory": ((20.0, 35.0),),
 }
-BATTERY_DECK_SIZE = (16.0, 52.0)
+STANDARD_PATTERN_DATUM = {
+    "battery": (0.0, 0.0),
+    "electronics": (0.0, 0.0),
+    "accessory": (15.0, -24.0),
+}
 BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
     "centre_y_limit_mm": 4.0,
@@ -75,23 +85,6 @@ def _deck(size, centre):
         size[1],
         DECK_THICKNESS,
         (centre[0] - size[0] / 2, centre[1] - size[1] / 2, DECK_BOTTOM_Z),
-    )
-
-
-def _arm(start, end, width=ARM_WIDTH, thickness=DECK_THICKNESS):
-    """A constant-width horizontal rib with rounded free ends."""
-    dx, dy = end[0] - start[0], end[1] - start[1]
-    length = math.hypot(dx, dy)
-    bottom = SUPPORT_FACE_Z - thickness
-    shape = box(length, width, thickness, (0, -width / 2, bottom))
-    shape.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(dy, dx)))
-    shape.translate(V(*start, 0))
-    return union(
-        [shape]
-        + [
-            Part.makeCylinder(width / 2, thickness, V(x, y, bottom))
-            for x, y in (start, end)
-        ]
     )
 
 
@@ -124,70 +117,42 @@ def mount_hole_centres(kind):
     }[kind]
 
 
-def generic_slot_shapes(
-    kind, bottom=DECK_BOTTOM_Z - 1, depth=DECK_THICKNESS + 2, *, border=0.0
-):
-    """Closed round-ended M2/tie slots; border expands the footprint for checks."""
+def standard_hole_rows(kind):
     if kind not in MOUNT_NAMES:
         raise ValueError("Unknown equipment mount kind: " + str(kind))
-    radius = GENERIC_SLOT_WIDTH / 2 + border
-    straight = GENERIC_SLOT_LENGTH - GENERIC_SLOT_WIDTH
-    return [
-        union(
-            [
-                box(
-                    2 * radius, straight, depth, (x - radius, y - straight / 2, bottom)
-                ),
-                Part.makeCylinder(radius, depth, V(x, y - straight / 2, bottom)),
-                Part.makeCylinder(radius, depth, V(x, y + straight / 2, bottom)),
-            ]
-        )
-        for x, y in GENERIC_SLOT_CENTRES[kind]
-    ]
+    return stack_interface.board_hole_rows(
+        STANDARD_PATTERNS[kind], STANDARD_PATTERN_DATUM[kind]
+    )
 
 
-def generic_fastening_contract(kind):
-    return {
-        "slot_centres_xy_mm": GENERIC_SLOT_CENTRES[kind],
-        "slot_width_mm": GENERIC_SLOT_WIDTH,
-        "slot_overall_length_mm": GENERIC_SLOT_LENGTH,
-        "slot_long_axis": "carrier local Y",
-        "minimum_full_thickness_edge_land_mm": 1.5,
-        "scope": "Rounded through-slots provide optional M2 fastening or small-tie routes. A nominal strap width up to 2.5 mm is conditional on the finished opening freely admitting the strap in its chosen orientation; use a narrower strap or lightly finish the opening if needed, never wedge it into the carrier. They are project fastening points, not an invented device hole pattern. Use the intact adhesive patches or confirmed device holes as appropriate; no requirement to use every feature simultaneously. Check the chosen head, nut, strap path and device underside before assembly; straps must not load connectors or components. No ties or extra fasteners are counted as installed hardware solely because slots exist.",
-    }
+def standard_hole_shapes(
+    kind, bottom=DECK_BOTTOM_Z - 1, depth=DECK_THICKNESS + 2, *, border=0.0
+):
+    return stack_interface.board_hole_shapes(
+        standard_hole_rows(kind), bottom, depth, border=border
+    )
 
 
 @functools.lru_cache(None)
 def mount_shape(kind):
     holes = mount_hole_centres(kind)
-    if kind == "battery":
-        pieces = [_deck(BATTERY_DECK_SIZE, (0.0, 0.0))]
-    elif kind == "electronics":
-        pieces = [_deck((rail.SHOE_LENGTH, rail.SHOE_WIDTH), (0.0, 0.0))]
-        pieces.extend(
-            _arm(start, end)
-            for start, end in (
-                (FC_HOLE_CENTRES[0], FC_HOLE_CENTRES[3]),
-                (FC_HOLE_CENTRES[1], FC_HOLE_CENTRES[2]),
-            )
-        )
-        pieces.extend(
-            Part.makeCylinder(
-                MOUNT_PAD_DIAMETER / 2, DECK_THICKNESS, V(x, y, DECK_BOTTOM_Z)
-            )
-            for x, y in holes
-        )
-    else:
-        pieces = [_deck(ACCESSORY_DECK_SIZE, ACCESSORY_DECK_CENTRE_XY)]
-    if kind == "battery":
-        pieces.extend(
-            _deck((10.0, 10.0), centre) for centre in GENERIC_SLOT_CENTRES[kind]
-        )
-    elif kind == "electronics":
-        pieces.extend(
-            _deck((6.6, 11.0), centre) for centre in GENERIC_SLOT_CENTRES[kind]
-        )
+    size, centre = {
+        "battery": (BATTERY_DECK_SIZE, (0.0, 0.0)),
+        "electronics": (ELECTRONICS_DECK_SIZE, (0.0, 0.0)),
+        "accessory": (ACCESSORY_DECK_SIZE, ACCESSORY_DECK_CENTRE_XY),
+    }[kind]
+    pieces = [_deck(size, centre)]
     pieces.append(rail.shoe_shape())
+    # Raise only equipment decks. The rail mating shape and propulsion shoe stay
+    # unchanged; a plain solid bridge joins the existing shoe top to the deck.
+    pieces.append(
+        box(
+            rail.SHOE_LENGTH,
+            rail.SHOE_WIDTH,
+            DECK_BOTTOM_Z - rail.TOP_Z + 0.2,
+            (-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.TOP_Z - 0.1),
+        )
+    )
     shape = union(pieces)
     shape = stack_interface.add_host_interface(shape, MOUNT_NAMES[kind])
     for x, y in holes:
@@ -198,8 +163,8 @@ def mount_shape(kind):
                 V(x, y, DECK_BOTTOM_Z - 1),
             )
         )
-    for slot in generic_slot_shapes(kind):
-        shape = shape.cut(slot)
+    for hole in standard_hole_shapes(kind):
+        shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Equipment mount is not one valid solid: " + kind)
@@ -212,9 +177,10 @@ def mount_contract(kind):
         "battery": [
             {
                 "device": "battery",
-                "centre_xy_mm": (0.0, 0.0),
-                "size_mm": BATTERY_DECK_SIZE,
+                "centre_xy_mm": centre,
+                "size_mm": size,
             }
+            for centre, size in BATTERY_ADHESIVE_REGIONS
         ],
         "electronics": [],
         "accessory": [
@@ -231,22 +197,28 @@ def mount_contract(kind):
         ],
     }
     scope = {
-        "battery": "Continuous adhesive deck and integral rail shoe; the optical tower uses separate structural anchors.",
-        "electronics": "Compact FC support cross, integral rail shoe and two structural optical-stack anchors. No navigation or radio extensions.",
-        "accessory": "One rectangular adhesive plate and integral rail shoe. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. The radio and selected navigation device use separate regions. The common structural attachment is shifted +16.5 mm local Y to clear the Mini; only separately validated optional power platforms may use it. This plate is not an optical-stack host.",
+        "battery": "One plain rectangular deck and integral rail shoe, with a centred 20 mm M2 pattern. Two standard holes interrupt the old tape strip; three declared continuous adhesive regions remain. The optical tower uses separate structural anchors.",
+        "electronics": "One flat square deck, confirmed FC holes, common 20 mm M2 and 30.5 mm M3 patterns, integral rail shoe and separate structural tower anchors. No navigation or radio extensions.",
+        "accessory": "One rectangular plate and integral rail shoe, with a 20 mm M2 pattern in the navigation bay. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. The radio and selected navigation device use separate regions. The common structural attachment is shifted +16.5 mm local Y to clear the Mini; only separately validated optional power platforms may use it. This plate is not an optical-stack host.",
     }
     return {
         "kind": kind,
         "stack_interface": stack_interface.interface_contract(MOUNT_NAMES[kind]),
-        "generic_fastening": generic_fastening_contract(kind),
+        "standard_mounting": stack_interface.board_pattern_contract(
+            STANDARD_PATTERNS[kind], STANDARD_PATTERN_DATUM[kind]
+        ),
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "deck_thickness_mm": DECK_THICKNESS,
         "support_face_z_mm": SUPPORT_FACE_Z,
         "integral_common_rail_shoe": True,
+        "deck_underside_to_rail_head_mm": DECK_BOTTOM_Z - rail.HEAD_TOP,
+        "future_fastener_scope": "The deck underside is 3 mm above the rail head: a nominal 2 mm head leaves 1 mm vertical clearance. Hole pitch alone does not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; generic holes are not installed BOM items.",
         "mount_hole_centres_xy_mm": list(holes),
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
-        "arm_width_mm": ARM_WIDTH if kind == "electronics" else None,
+        "electronics_deck_size_mm": ELECTRONICS_DECK_SIZE
+        if kind == "electronics"
+        else None,
         "accessory_deck_size_mm": ACCESSORY_DECK_SIZE if kind == "accessory" else None,
         "accessory_deck_centre_xy_mm": ACCESSORY_DECK_CENTRE_XY
         if kind == "accessory"
@@ -257,7 +229,7 @@ def mount_contract(kind):
         "fc_wiring_corridor_width_mm": FC_WIRING_CORRIDOR_WIDTH,
         "fc_wiring_corridor_centre_y_mm": FC_WIRING_CORRIDOR_CENTRE_Y,
         "pas_service_clearance_mm": PAS_SERVICE_CLEARANCE,
-        "hole_interface_scope": "Verified device XY axes only. Printed diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.",
+        "hole_interface_scope": "Device-specific holes preserve verified XY axes; the separate standard_mounting contract defines additional common patterns. Diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. No printed threads or device posts.",
         "unresolved_mounting_stack": "Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.",
         "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }

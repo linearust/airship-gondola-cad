@@ -1,0 +1,157 @@
+{
+  "all_previews_nonblank_and_byte_bound": true,
+  "authorship": {
+    "agent": "Codex subagent /root/au_power",
+    "role": "Independent read-only final artifact identity and saved-display-state reviewer; also author of optional power source and selected validation corrections. Not third-party or physical certification."
+  },
+  "blender_supplement": {
+    "blend_sha256": "5d8dad561fc9669ca33ae05e012513461a4f81d93bf24fe6c717ca9dfabd685c",
+    "current_saved_CAD_hash_checked_independently_here": true,
+    "discrepancy_count": 0,
+    "input_json_sha256": "61bed2d6a529e462a28df3b2dc7c86ec7ada44ff4660578e7ab1dfc46ca9dab0",
+    "matrix_checks": 135116,
+    "sampled_frames": 1782,
+    "scope": "Sampled derivative transformation/visibility verification only, not collision, physics or continuous interpolation. The Blender verifier reports source_cad_hash_checked=false; this separate artifact review checks the current native CAD SHA against its recorded CAD identity. Full matrices and blend bytes are identified by hash, not embedded.",
+    "source_cad_hash_checked_by_blender": false,
+    "verification_sha256": "63d3c6288aa0dc5e0bd68e0943a27f84a69fd785d23f6f73d1dce4842de11079"
+  },
+  "bundle": {
+    "crc_and_exact_inventory_and_bytes_passed": true,
+    "entry_count": 55,
+    "file": "build/gondola_print_parts.zip",
+    "sha256": "77d38419bd76b42a31a0d68fa8ef02c97265ff59a6ba2a7855e819f6cb8f7749"
+  },
+  "cart_review_sha256": "cfc001e156ece2c2c1b519d89f8e79dc40939c88fa09aca9dcd8cb1df2af63f8",
+  "completed_pipeline": {
+    "file": "/tmp/av-final-pipeline.json",
+    "full_logs_retained_in_audit": true,
+    "sha256": "84b6fd5a535e8dd3cca2acd9fadc78acd0a8e1115f5a7729df7fffe40b024d0c",
+    "stages": [
+      {
+        "exit_code": 0,
+        "path": "/tmp/av-final-build.log",
+        "seconds": 12.747,
+        "sha256": "b645befb8fcf977ef3f1f89b79459bf1d45df504e1c13623c7c9bd661e096782"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/av-final-preview.log",
+        "seconds": 45.293,
+        "sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/av-final-validate.log",
+        "seconds": 919.795,
+        "sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/av-final-compare.log",
+        "seconds": 10.478,
+        "sha256": "0aadd498fe0fa1a97b5dae47a13f04deafd8f5556603c3afdac27b6f5db86627"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/av-final-bundle.log",
+        "seconds": 0.199,
+        "sha256": "f2f77aeab2b0237f0b1c97369b04573834e82fd3ed9f549f63c8a4e93fe70c46"
+      }
+    ]
+  },
+  "fixture_file": "tests/fixtures/rev_av_geometry.FCStd",
+  "fixture_sha256": "f0ee355bcf028b0c4f1692756e2d5547445dc016019dcd1a3084d730bfac04c4",
+  "limits": [
+    "Passing checks establish source/artifact identity and the declared nominal CAD envelope checks, not production or flight release.",
+    "Eight nominal functional interfaces in the mechanism remain separately classified; physical manufacturing fits, motion under load, wire behavior and actual interfaces remain qualified only by future bench checks.",
+    "Optional power exports remain separate from baseline quantities. Direct MG-F10 antenna with accessory power stack is screened as incompatible; use another permitted arrangement.",
+    "Historical controlled KST alternative geometry evidence remains in rev_au_kst_review.json. AV retains the source-selected mixed-metal pair; current optional KST nuts use the seller brass claim and an explicitly assumed density."
+  ],
+  "main_cad_sha256": "efb80cfcb89bcb867a96046535e721e755a18d9377bb0e239589ba7d74098cd6",
+  "native_counts": {
+    "fit_coupon_quantity": 3,
+    "hardware_items": 60,
+    "installed_prints": 13,
+    "unique_print_files": 14
+  },
+  "native_test_evidence": {
+    "all_passed_and_exact_coverage": true,
+    "full_logs_retained_in_audit": true,
+    "index_sha256": "97aa3968a8640e8181348c938a6f978407920463777a9fb36dfac50fe9d3c6d4",
+    "totals": {
+      "errors": 0,
+      "failures": 0,
+      "skips": 0,
+      "tests": 439
+    }
+  },
+  "optional_cad_sha256": "758dee32f279394a85170d2b6fa092ced945d5e86a03b38bf20363e1e75904ac",
+  "optional_inventory": {
+    "M2_hex_nuts": 2,
+    "M2x8_screws": 2,
+    "actual_branch_inputs_v": [
+      24,
+      8
+    ],
+    "actual_branch_outputs_v": [
+      8,
+      5
+    ],
+    "all_four_artifact_hashes": {
+      "gondola_power_options.FCStd": "758dee32f279394a85170d2b6fa092ced945d5e86a03b38bf20363e1e75904ac",
+      "gondola_power_options.json": "988a8b69a0f206dd44a48b0c0b503afcb937730e27c58d1d2e3c8e27e37e8854",
+      "optional_power_mount.step": "67bf5fccf85dacbb651ddcf8d760f3bfbfad907e16f707cea69f1aab56d43eb9",
+      "optional_power_mount.stl": "7301f23cc06c605999141a586491406177681163a7eedd98ed55759318798c93"
+    },
+    "both_optical_host_screens_passed": true,
+    "illustrated_BEC12S_PRO_units": 1,
+    "illustrated_SVPDB_8S_units": 1,
+    "included_in_default": false,
+    "no_tether_route_model": true,
+    "one_piece_print_quantity": 1,
+    "saved_cascade_contract_matches": true,
+    "saved_visibility": {
+      "AssemblyContext": false,
+      "PowerModule0": true,
+      "PowerModule1": true,
+      "PowerOptionModule": true,
+      "PowerPlatform": true
+    }
+  },
+  "passed": true,
+  "preview_image_count": 14,
+  "production_released": false,
+  "read_only_inputs_unchanged": true,
+  "release_stage": "fit_prototype",
+  "reports": {
+    "gondola_baseline_validation.json": {
+      "passed": true,
+      "sha256": "4c408276c54c5f3a181f9551dfa234b14c05fcb42abfeb1c2b8c4605dbe2736e"
+    },
+    "gondola_equipment_validation.json": {
+      "passed": true,
+      "sha256": "e74979581fc35a274339e8fb2bfda427192c116b0c1799fae18d1dad4a9900fc"
+    },
+    "gondola_power_validation.json": {
+      "passed": true,
+      "sha256": "182e7d5cd5ae89b571a1f47a503e3ecb29898da69e8341aa3a1f7dde7400aa5a"
+    },
+    "gondola_propulsion_validation.json": {
+      "passed": true,
+      "sha256": "77e09796e91bcb588dd321ba8e2a41a0db1eacad48ff2806ac74ec4021313ea5"
+    },
+    "gondola_validation.json": {
+      "passed": true,
+      "sha256": "abfae0dadd31f8949f2852a8ec5eff4817119596b7b6561413d0362a5d1a2e56"
+    }
+  },
+  "retained_audit": {
+    "compressed_sha256": "b171f8445433b281086ac542fafd26460ac0c53c40179c94b5711730c23e324f",
+    "file": "tests/fixtures/rev_av_artifact_audit.json.gz",
+    "uncompressed_sha256": "944d023bb275e6b04eacc4d76eebbe0ad89dc6c3fac923612724f6a6bef63fa4"
+  },
+  "reviewed_at_utc": "2026-09-27T08:22:06.280442+00:00",
+  "revision": "AV",
+  "scope": "Byte identity and logical consistency of the completed final native/print/preview/reports/BOM/ZIP pipeline. No geometry regeneration, physical fit, thermal, electrical or load qualification. The source-bound native geometry reports are retained in full.",
+  "source_fingerprint": "d3105eeca5d6146872c1eb12015c80ba78373dbe07926602f1e77ec6350d143c"
+}

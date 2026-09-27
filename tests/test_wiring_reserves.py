@@ -328,9 +328,12 @@ class WiringReserveTests(unittest.TestCase):
         self.assertLess(self.wiring.fc_underbody_reserve_shape().cut(fc).Volume, 1e-6)
         # Independently check endpoint and middle sections of both selected
         # turn paths; the generated whole union must remain one solid.
+        # Probe halfway through the required 8 mm space below the actual FC
+        # envelope, rather than retaining an obsolete absolute deck elevation.
+        section_z = self.doc.ModuleFCEnvelope.Shape.BoundBox.ZMin - 4.0
         for side in (-1, 1):
             turn_y = 14 if side < 0 else 4
-            section = Part.makeSphere(1.4, App.Vector(-side * 29, -turn_y, 16.2))
+            section = Part.makeSphere(1.4, App.Vector(-side * 29, -turn_y, section_z))
             self.assertLess(section.cut(fc).Volume, 1e-6)
         self.assertEqual(len(fc.Solids), 1)
 

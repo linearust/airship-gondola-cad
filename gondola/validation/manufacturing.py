@@ -117,7 +117,7 @@ def review(doc, registry):
             mounts.DECK_THICKNESS,
         ),
         (
-            "fc_support_arm_thickness",
+            "fc_support_deck_thickness",
             "ElectronicsMount",
             (14, 0, mounts.DECK_BOTTOM_Z - 0.01),
             (14, 0, mounts.SUPPORT_FACE_Z + 0.01),
@@ -236,7 +236,10 @@ def review(doc, registry):
         "short_50mm_guidance_mm": 1.0,
         "equipment_mount_assessment": {
             "deck_mm": mounts.DECK_THICKNESS,
-            "fc_support_arm_section_mm": [mounts.ARM_WIDTH, mounts.DECK_THICKNESS],
+            "fc_support_deck_size_mm": [
+                *mounts.ELECTRONICS_DECK_SIZE,
+                mounts.DECK_THICKNESS,
+            ],
             "accessory_deck_size_mm": mounts.ACCESSORY_DECK_SIZE,
             "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
             "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],

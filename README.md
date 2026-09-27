@@ -105,16 +105,25 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
 - Common mechanical stack spacing does not certify every payload/host pairing.
   The accessory datum is shifted to clear the Mini. Optical and power towers
   cannot share one host at the same time. Keep baseline mass/BOM separate from
-  optional power exports. One BEC12S-PRO has one selectable output; exact
-  8 V/5.2 V needs two units. The SVPDB alternative supplies 5 V. Neither board
-  has a confirmed mechanical hole pattern: use insulating contact and ties,
+  optional power exports. The tether option uses one BEC12S-PRO at 8 V,
+  feeding both FC/main power and the SVPDB-8S input; the latter supplies 5 V
+  to servos. All downstream demand shares the upstream BEC's 5 A output
+  rating, including conversion losses; installed load/thermal margin is unknown.
+  Neither board has a confirmed mechanical hole pattern: use insulating contact
+  and straps wrapped around the existing structure,
   preserving electrical pads, cooling and connector access. General plate holes
   are project fastening provisions, not evidence of device-specific compatibility.
   Keep the small optical tray as an uninterrupted adhesive pad: both supported
   sensors lack a confirmed mounting pattern, and unverified straps near their
   apertures/connectors would defeat the moving head's optical function.
-  Local tether reservations do not certify cable tension, full-cable motion or
-  installation electrical/thermal performance.
+  External straps do not establish the tether's installed route or rated anchor.
+  Tether motion/loads and installation electrical/thermal performance remain unverified.
+- Omit dedicated cable-tie holes, slots and tie-only tabs. The user wraps Velcro
+  and ties around existing members. Common spare module-hole patterns are a
+  separate requested feature: retain confirmed device holes and record each
+  standard pattern's pitch, bore and local datum. Spare holes do not imply
+  simultaneous devices, a selected fastener stack or verified adhesive retention.
+  Current non-use alone is not a reason to delete these requested spare patterns.
 - Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
   placement and adhesive contact. Missing mass is unknown, not zero. Geometric
   success alone must not change `design.release_status()` to physical qualification.
@@ -192,7 +201,7 @@ assembly. Export only manifest-listed print parts. `build/`, logs and temporary
 audit files are not committed and may be absent in another environment. Keep retained
 evidence and the revision review in Git; do not rely on `/tmp` as the sole record.
 The same build also writes `build/gondola_power_options.FCStd` and its separate
-optional platform STL/STEP/manifest. This document illustrates two BEC units on
+optional platform STL/STEP/manifest. This document illustrates one BEC and one SVPDB on
 the accessory carrier, with hidden main-assembly context. It is not the default
 battery installation. The validator audits these files without regenerating them;
 the bundle places them under `optional_power/`. Optional boards, platform and

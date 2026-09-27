@@ -28,7 +28,7 @@ ANCHOR_CENTRES = STACK_ANCHOR_CENTRES
 ARM_WIDTH = 5.0
 DECK_THICKNESS = 2.0
 TOP_BEAM_THICKNESS = 3.0
-HOST_DECK_BOTTOM_Z = 10.2
+HOST_DECK_BOTTOM_Z = 11.4
 HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
 TOWER_HEIGHT = 32.0
 STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
@@ -65,6 +65,77 @@ MECHANICAL_HOSTS = {
 }
 HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
 HOST_ORIGINS_XY["AccessoryEquipmentModule"] = (0.0, 16.5)
+
+# Common board spacings are separate from the two-point structural tower joint.
+# Clearance diameters are our PA12 design choices, not OEM PCB hole diameters.
+BOARD_PATTERNS = {
+    20.0: {
+        "fastener": "M2",
+        "clearance_diameter_mm": 2.6,
+        "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/",
+        "evidence": "Manufacturer lists 20 x 20 mm and M2/M3 screw or grommet compatibility; this carrier supports the M2 option only.",
+    },
+    30.5: {
+        "fastener": "M3",
+        "clearance_diameter_mm": 3.6,
+        "source": "https://www.mateksys.com/?portfolio=f405-std",
+        "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs.",
+    },
+}
+
+
+def board_pattern_contract(patterns, centre=(0.0, 0.0)):
+    """Common square pitches with an explicit carrier-local datum and rotation."""
+    rows = []
+    for pitch, rotation in patterns:
+        spec = BOARD_PATTERNS[pitch]
+        angle = math.radians(rotation)
+        axes = tuple(
+            (
+                centre[0] + x * math.cos(angle) - y * math.sin(angle),
+                centre[1] + x * math.sin(angle) + y * math.cos(angle),
+            )
+            for x, y in (
+                (-pitch / 2, -pitch / 2),
+                (pitch / 2, -pitch / 2),
+                (pitch / 2, pitch / 2),
+                (-pitch / 2, pitch / 2),
+            )
+        )
+        rows.append(
+            {"pitch_mm": pitch, "rotation_deg": rotation, "centres_xy_mm": axes, **spec}
+        )
+    return {
+        "datum_xy_mm": centre,
+        "patterns": rows,
+        "minimum_full_thickness_land_mm": 1.5,
+        "scope": "Common board pitches for future alternative installations, not a universal board or connector fit. Use M2 on the 20 mm pattern and M3 on the 30.5 mm pattern. Printed holes are clearance bores, without threads or installed hardware. Choose purchased spacers and screw lengths after checking the actual device, insulation, underside access and wiring. These board patterns do not replace the separate structural tower attachment or qualify another device in an occupied bay.",
+    }
+
+
+def board_hole_rows(patterns, centre=(0.0, 0.0)):
+    return [
+        {
+            "pitch_mm": row["pitch_mm"],
+            "fastener": row["fastener"],
+            "diameter_mm": row["clearance_diameter_mm"],
+            "centre_xy_mm": axis,
+        }
+        for row in board_pattern_contract(patterns, centre)["patterns"]
+        for axis in row["centres_xy_mm"]
+    ]
+
+
+def board_hole_shapes(rows, bottom, depth, *, border=0.0):
+    """Round bores or their surrounding land probes; never cable-tie slots."""
+    return [
+        Part.makeCylinder(
+            row["diameter_mm"] / 2 + border,
+            depth,
+            V(*row["centre_xy_mm"], bottom),
+        )
+        for row in rows
+    ]
 
 
 def host_origin_xy(host_name=None):

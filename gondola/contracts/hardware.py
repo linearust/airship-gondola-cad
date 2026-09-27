@@ -64,9 +64,9 @@ PROCUREMENT_SPECS = {
     },
     "METAL_15T_4MM_HORN_6_98": {
         "search_query": "15T 4mm metal servo horn 6.98mm M1.6",
-        "candidate_url": "",
+        "candidate_url": "https://www.aliexpress.com/item/1005007542540944.html",
         "requirements": "Second user-drawn 15T/4 mm horn; first radius 6.98 mm, next pitch 3 mm, 6.25 mm root and 18.2 mm length. Select this exact geometry and existing M1.6 threads. Use first and third holes in the same universal printed adapter, two M1.6x5 screws and no nuts. Check actual spline seating and X06 OEM centre screw.",
-        "evidence_notes": "No seller URL supplied. references/metal_15t_4mm_horn_6_98_drawing.png is the retained source. Third radius12.98 repeats the dimensioned3mm pitch. Blade1.6mm and axial height3.5mm are provisional envelopes, not dimensions in this drawing. No mass or finished concentricity is established.",
+        "evidence_notes": "The 2026-09-27 cart selects15T X4pcs4mm from item1005007542540944; its exact front outline is not established by the cart text. references/metal_15t_4mm_horn_6_98_drawing.png remains the dimensional input. Third radius12.98 repeats the dimensioned3mm pitch. Blade1.6mm and axial height3.5mm are provisional envelopes, not dimensions in this drawing. No mass or finished concentricity is established.",
     },
     "KST_0415_13_HORN": {
         "search_query": "KST 0415.13 aluminium horn 15T 4mm",
@@ -82,9 +82,9 @@ PROCUREMENT_SPECS = {
     },
     "M1_4_HEX_NUT_DIN934": {
         "search_query": "M1.4 DIN934 nut 3mm AF 1.2mm",
-        "candidate_url": "https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf",
+        "candidate_url": "https://www.aliexpress.com/item/32977174437.html",
         "requirements": "Two per optional KST0415.13 horn only, on flat front of adapter. NominalM1.4x0.3,DIN934 AF3.0mm,height1.2mm. Require AF2.9..3.0,height<=1.2mm and full thread engagement. Hold with fine parallel pliers/open tool from arm end. No separate nut for the two M1.6-threaded horn choices.",
-        "evidence_notes": "Fastenal's dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95. This is not selection or certification of the user's actual nut lot/material. Grade and physical handling remain unverified.",
+        "evidence_notes": "The 2026-09-27 cart selects100pcs M1.4 brass from item32977174437. Seller material is brass, not304 steel; grade and received dimensions remain unverified. The separate Fastenal DIN934 dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95 as CAD acceptance dimensions, not certification of this seller lot.",
     },
     "M1_6X5_PAN_HEAD_KIT": {
         "search_query": "M1.6x5 Phillips pan head stainless screw",

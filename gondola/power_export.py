@@ -17,12 +17,16 @@ import Part
 from .cad import create_group, create_reference, set_property, world_shape
 from .config import ARTIFACT_STEM, OUTPUT_DIR
 from .contracts.power_options import (
+    OPTIONAL_POWER_PLAN_KEYS,
+    get_power_plan,
+    power_option_contract,
+)
+from .contracts.power_options import (
     POWER_ARTIFACT_NAMES as ARTIFACT_NAMES,
 )
 from .contracts.power_options import (
     POWER_VALIDATION_NAME as REPORT_NAME,
 )
-from .contracts.power_options import get_power_plan, power_option_contract
 from .mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
 from .parts import power_mount, stack_interface
 from .print_export import (
@@ -36,7 +40,7 @@ from .print_export import (
 from .provenance import file_sha256, source_fingerprint
 from .validation.geometry import intersection_volume
 
-OPTIONAL_PLANS = ("TETHER_DUAL_BEC", "TETHER_BEC_SVPDB", "BATTERY_SVPDB")
+OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
 
 
@@ -85,16 +89,6 @@ def _internal_collisions(physical, reserves):
             conflicts.append(
                 {"first": name, "second": other, "intersection_mm3": volume}
             )
-    conflicts.extend(
-        _collisions(
-            {"TetherDepartureReserve": reserves["TetherDepartureReserve"]},
-            {
-                name: shape
-                for name, shape in reserves.items()
-                if name != "TetherDepartureReserve"
-            },
-        )
-    )
     return conflicts
 
 
@@ -144,7 +138,7 @@ def _registration_bounds(plan_key):
         {
             name: _xy_registration_bound(shape)
             for name, shape in {**physical, **reserves}.items()
-            if name.startswith("PowerModule") or name == "TetherDepartureReserve"
+            if name.startswith("PowerModule")
         }
     )
     return result
@@ -273,8 +267,9 @@ def screen_configurations(main_doc):
         "source_selected_navigation": get_navigation_profile().key,
         "navigation_compatibility_probes": navigation_rows,
         "seated_registration_scope": "Continuous conservative XY/yaw bounds from the shared two-hole clearance contract, with no axial lift. Cylindrical fasteners use expanded radial bounds; legs use existing analytical component bounds; flat deck, devices and reservations use XY boxes enlarged by the sum of maximum translation and maximum rotational point displacement. Any bound intersection rejects the configuration rather than proving actual collision. The host's intended foot seating is excluded only from this float pass, not from the nominal check.",
-        "scope": "Exact nominal optional bodies, local terminal/top allowances and nominal 50 mm tether departure allowance versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. Intentional mating contact has zero volume; positive interference rejects a configuration. Free tether trajectory, tie retention, cooling and electrical operation are not qualified.",
-        "passed": default["permitted"] and len(rows) == 9,
+        "scope": "Exact nominal optional bodies and local terminal/top allowances versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. Intentional mating contact has zero volume; positive interference rejects a configuration. No tether route or guide is modeled; tether clearance/retention, cooling and electrical operation are not qualified.",
+        "passed": default["permitted"]
+        and len(rows) == len(stack_interface.MECHANICAL_HOSTS) * len(OPTIONAL_PLANS),
     }
 
 
@@ -405,6 +400,9 @@ def audit_power_options(source=None, output_dir=None):
         report["option_contract_matches"] = json.loads(
             group.PowerPlatformContract
         ) == json.loads(json.dumps(power_mount.platform_contract()))
+        report["power_plan_contract_matches"] = json.loads(
+            group.PowerPlanContract
+        ) == json.loads(json.dumps(get_power_plan(power_mount.DEFAULT_PLAN).contract()))
         report["native_shape_checks"] = {
             name: option.getObject(name) is not None
             and option.getObject(name).getParentGeoFeatureGroup() == group
@@ -497,6 +495,7 @@ def audit_power_options(source=None, output_dir=None):
                     "option_source_matches",
                     "option_selection_matches",
                     "option_contract_matches",
+                    "power_plan_contract_matches",
                     "native_inventory_matches",
                     "context_names_unique",
                     "complete_shape_inventory_matches",

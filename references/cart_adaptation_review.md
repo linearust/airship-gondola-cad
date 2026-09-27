@@ -1,5 +1,11 @@
 # Selected cart and preparation work
 
+Latest saved-cart review: [2026-09-27 selected options and findings](cart_review_2026_09_27.json).
+It covers the 91 product rows actually present in the supplied HTML; the page's
+92-item header does not reconcile to those rows. This is not a live-stock check
+or proof that the complete live cart was captured. Unrelated stock and spare
+quantities do not define additional installed devices.
+
 This records the user's selected parts and preparation decisions, not seller
 certification or a shopping list. The selected purchased interfaces are retained
 through the rail layout and shared equipment-support changes; see
@@ -18,7 +24,7 @@ generated BOM, not the cart pack counts.
 | Owned GH1.25 and selected SH1.0 connector kits | Subtract supplied cables before preparing harnesses. Connector families do not establish pin order or voltage. |
 | Gemfan 1610, 1.5 mm bore | Two main propellers, one CW and one CCW. Match the actual RS1102 shaft. |
 | RS1102 10000KV | Two main motors in this CAD; aft motor and spares are outside gondola scope. |
-| KST X06 V6.0, regular mounting tabs | Two tilt servos; fin servos and spares are outside this CAD. AS uses the [selected 15T/4.0 mm purchased horn](retention_review.md#selected-replacement-horn--2026-09-25). |
+| KST X06 V6.0, regular mounting tabs | Two tilt servos; fin servos and spares are outside this CAD. The [three-horn interface](servo_horn_compatibility.md) accepts the retained purchased profiles; default selection is one of each threaded metal variant. |
 | Generic 3 x 6 x 2.5 mm ball bearings | Four installed. Actual race lands, shields, internal play, fit, material and mass remain unverified. Do not identify the received lot as NSK/ISC MR63ZZ. |
 | Selected nominal Ø3 mm 304 rods | Prepare the six shafts below. The user accepts replacing unsuitable stock with precision shafts; nominal size does not establish a fit tolerance. |
 | Kailash 48T / 3 mm and 16T / `3mm3` | Two pairs installed. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md); do not restore the old MISUMI/POM assumptions. |
@@ -27,7 +33,7 @@ generated BOM, not the cart pack counts.
 | XT30 lead, 35 V / 220 µF capacitor | Inspect actual envelope, polarity and strain relief. |
 | MTF-02P; LR24-F-Mini; XR2 Nano 2.4G | Current sensor/radio/receiver selection; the earlier cart LR900-A is superseded. MTF-01P can replace MTF-02P on the same adhesive tray; install one only, as described in `optical_sensor_compatibility.md`. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
 
-The user will not purchase bearing spacers. AM uses direct frame-side capture
+The user will not purchase bearing spacers. The current design uses direct frame-side capture
 of the ball-bearing outer rings; no HIROSUGI spacer, 3 x 5 x 3 mm oil-free bush,
 ordinary washer or push-on shaft ring replaces it. The rejected bush touches
 the selected bearing shield. Do not enlarge the assembly to accommodate it or
@@ -75,28 +81,32 @@ The M1.6 Phillips screws have their own declared head envelope in
 must fit the receiving joint. Their use does not establish OEM motor screw
 depth or the supplied horn's central retaining-screw specification.
 
-AS uses the selected purchased 15T/4.0 mm horn with its three user-confirmed
-M1.6 threads. Two M1.6x4 screws per horn replace the old through-bolts/nuts;
-servo-ear screws/nuts remain. Use factory holes and the adapter's assembly
-allowance, then tighten and verify runout. There is no hand-drilled horn,
-prepared blank or centring jig. Follow [retention](retention_review.md).
-Actual horn mass is unmeasured; any aluminium-envelope estimate is not a
-measured weight or a demonstrated mass saving.
+The current common adapter supports three 15T/4.0 mm horn profiles. Each threaded
+metal horn uses two M1.6×5 screws in factory holes; the former M1.6×4 selection is
+superseded. The KST alternative needs its two existing end pilots enlarged to
+Ø1.5 mm, M1.4×6 screws from behind and M1.4 front nuts. Servo-ear screws and
+M1.6 nuts are separate joints. Use the selected per-side profile's hardware and
+preparation; see [three-horn compatibility](servo_horn_compatibility.md). Slots
+permit alignment before tightening, not running slip. Actual horn mass,
+thread/head fit and loaded coupling retention remain unverified.
 
 Still establish from the received parts:
 
 - Four M3 gear set screws: supplied contents, lengths, points, projection and
-  the 48T screw-axis position are unverified.
+  the 48T screw-axis position are unverified. The user already accepted buying
+  these later; do not present that deferred item as a newly discovered blocker.
 - Motor M1.4 screw engagement, FC damping/insulation and fastening stacks,
   P-AS support/fastening stacks and finished harnesses. Use owned/supplied
   hardware first; only identified shortfalls justify purchases.
-- LinkTrack P-AS and compatible ground equipment: this cart does not establish
-  their purchase. Subtract already-owned equipment before ordering.
+- The current saved cart includes MG-F10 and M10 Ultra navigation alternatives.
+  P-AS is not a missing required purchase when using one of them; the CAD's
+  default P-AS reference is not a demand to purchase all supported alternatives.
+  Ground equipment and a complete installed antenna/tether harness are outside
+  the evidence of nominal onboard product selections.
 
 The checked rail L-key envelope remains a tool compatibility requirement;
 compare the supplied tool with [rail access](rail_joint_review.md). Geometry
 checks do not certify received hardware, printed spring recovery or flight
-readiness. The AM fixture was updated after the native old/new geometry and
-metadata audit. Future changes require a new audit and regenerated release
-artifacts from one frozen source. Earlier assembly methods belong to Git history,
+readiness. Intentional geometry changes require a new native old/new audit
+and regenerated artifacts from one frozen source. Earlier assembly methods belong to Git history,
 not current instructions.

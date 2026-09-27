@@ -27,21 +27,49 @@ datums. Do not derive a precise header height or clearance from photographs.
 
 ## Power choices and boundaries
 
-**One BEC12S-PRO cannot supply 8 V and 5.2 V simultaneously.** For the requested
-exact voltages, use two units fed independently from the 24 V source: one set to
-8 V for the main input, one at 5.2 V for the servo rail. Connecting their output
-positives together is not permitted. Common ground remains required.
+The selected optional tether arrangement is:
 
-An optional second arrangement uses one BEC at 8 V and one SVPDB at **5 V**, also
-fed independently from the 24 V source. This is a different servo voltage from
-5.2 V; the SVPDB does not offer a 5.2 V setting. The SVPDB can also derive its
-default 5 V servo supply directly from the existing 2S battery. The CAD does not
-require either optional board during ordinary battery operation.
+```text
+24 V PSU -> BEC12S-PRO set to 8 V -> FC VBAT / propulsion input
+                                -> SVPDB-8S input -> 5 V servo-positive rail
+```
+
+Purchase **one BEC12S-PRO and one SVPDB-8S** for this option: the published board
+masses total **9 g**, excluding wiring, connectors, insulation and the platform.
+The two destinations share the BEC's 8 V output in parallel; the SVPDB receives
+**8 V**, not the tether's 24 V. This cascade is our integration choice inferred
+from the published input/output ranges, not a manufacturer-tested complete vehicle.
+The BEC ships at 5.2 V: change its selection to 8 V and measure it before
+connecting equipment. Leave the SVPDB at its default 5 V. Earlier advice requiring
+two BEC12S-PRO boards assumed an exact 5.2 V servo rail; that assumption is no
+longer part of the design. No second BEC12S-PRO is required for these selected rails.
+
+The BEC's published **5 A at 8 V is shared by all main loads and the SVPDB input**.
+The SVPDB's 4 A rating is at its own output; it does not add another 4 A to the
+8 V supply. At positive load, with `eta` the SVPDB's total conversion efficiency:
+
+```text
+I_BEC_8V = I_main_8V + (5 V * I_servo_5V) / (8 V * eta)
+```
+
+No measured `eta` is assigned. If the servo rail supplies its catalog 4 A, that
+is 20 W, requiring **more than 2.5 A at 8 V** after losses. Thus **less than 2.5 A**
+of the upstream catalog limit remains for main loads, even before installation
+derating or reserve. These are power-balance limits, not measured motor demand.
+The 9 A/7 A peak figures are not a continuous or guaranteed simultaneous budget.
+Measure combined startup/stall transients, voltage sag and heating before accepting
+the installed supply. A servo overload can disturb the common 8 V rail and FC.
+
+For battery operation, one optional SVPDB may instead take its input directly from
+the existing 2S battery and supply servos at 5 V. Basic battery operation still
+adds neither optional board to the installed inventory. No hardware modification
+can be inferred from merely viewing the separate optional CAD.
 
 When servo power comes from a separate regulator, disconnect servo-positive wires
 from the FC 5 V rail. Keep grounds common and route each servo signal separately.
-The F-Mini and other 5 V peripherals remain on their suitable supply, not the
-5.2 V servo rail. Battery and tether are alternative inputs: no automatic switching,
+The F-Mini and other peripherals remain on the FC's appropriate supply. Never join
+the FC and SVPDB 5 V output positives, despite their matching nominal voltages.
+Battery and tether are alternative inputs: no automatic switching,
 battery charging or simultaneous battery/PSU connection is designed.
 
 The [selected FC input-range conflict](controller_selection_review.md) applies to
@@ -59,14 +87,16 @@ compatibility.
 The optional one-piece **PowerPlatform** combines a 64 × 64 × 2 mm open deck
 with the common structural tower. Its complete printed height is 35 mm. Two
 M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
-board pockets or separate tower legs are needed. It can hold two BECs or a
-BEC/SVPDB pair, while a single SVPDB leaves one bay available. The installed
+board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
+while a single SVPDB leaves one bay available. The installed
 battery baseline does not include this optional print, its fasteners or regulators.
 
-The plate adds project-selected Ø2.6 mm holes on 20 and 30.5 mm square patterns,
-rotated 45° to avoid the tower beam, plus tie slots beside each board bay. Those
-patterns deliberately use M2 clearance; they are not a claim that all commercial
-boards using those pitches take M2 screws. The two existing optical host carriers
+The plate adds a **20 × 20 mm M2 pattern (Ø2.6 mm clearance)** and a
+**30.5 × 30.5 mm M3 pattern (Ø3.6 mm clearance)**, both rotated 35° to clear the
+tower beam. They are general mounting patterns, not either Matek board's mounting
+holes. Dedicated board tie slots and tether holes have been removed; adhesive or
+a removable strap around existing structure provides simple attachment options.
+The two existing optical host carriers
 and the accessory carrier share the structural foot interface. One carrier cannot
 hold the optical tower and power tower simultaneously; move the optical tower to
 the other supported optical host first. The accessory carrier is a power host,
@@ -77,21 +107,18 @@ already allowed remote antenna installation or place the power platform on an
 unoccupied battery/FC host. This is an explicit excluded combination, not a reason
 to remove the antenna clearance reservation.
 
-Use an open universal insulating support with tape/tie options. Inspect the actual
+Use the open insulating support with suitable adhesive or a removable strap. Inspect the actual
 underside before fixing the board, avoid pressure on components or solder joints,
 and leave the populated side exposed to air. Neither electrical solder pads nor
 generic stack holes in the printed support imply a verified board bolt pattern.
 Reserve accessible board ends and extra height for the chosen connection method;
 these are design allowances, not measured connector envelopes.
 
-A local tether guide is a strain-relief and routing provision only. Tie the incoming
-lead to the structural carrier before the soldered board connection, keep its
-free path outside moving propulsion and sensor view, and verify the installed
-lead under expected pulling direction and slack. The guide does not establish a
-whole-aircraft tether anchor load or a guaranteed free-hanging cable trajectory.
-The deck's single tie pair locates a local attachment point. The nominal 4 mm
-cable envelope extending 50 mm along local +Z is a departure allowance to check,
-not a 50 mm physical guide that forces the real cable to remain straight.
+There is no dedicated tether guide, retention hole or modeled cable trajectory.
+Secure the incoming lead around suitable existing structure before its soldered
+board connection, keep its free path outside moving propulsion and sensor view,
+and verify pulling direction and slack after installation. The CAD does not
+establish tether clearance, an aircraft anchor load or a strain-relief rating.
 
 The separate `gondola_power_options.FCStd`, `optional_power_mount.stl/.step`,
 `gondola_power_options.json` and `gondola_power_validation.json` are generated

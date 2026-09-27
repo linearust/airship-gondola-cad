@@ -26,7 +26,7 @@ from .servo_horns import profile as horn_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AU"
+DESIGN_REVISION = "AV"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -192,7 +192,7 @@ HARDWARE_MATERIALS = {
     "METAL_15T_4MM_HORN_6_98": "Aluminium alloy (grade unspecified)",
     "KST_0415_13_HORN": "Aluminium alloy (grade unspecified)",
     "M1_4X6_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
-    "M1_4_HEX_NUT_DIN934": "Material unselected; dimensions per DIN934 reference",
+    "M1_4_HEX_NUT_DIN934": "Brass (seller claim; grade unspecified)",
 }
 
 EXPECTED_INVENTORY = {
@@ -276,7 +276,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
         },
         "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
         "stock_consumables": [
-            "Small nylon cable ties, strap width at most2.5mm, around existing frame arms; quantity after routing. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep tie heads outside moving parts and do not pull the phase-wire loop taut. No printed cable clips or assumed route through the bearing posts.",
+            "Hook-and-loop straps or small cable ties wrap existing frame members; select width and quantity after routing, without dedicated printed tie holes. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep strap buckles and tie heads outside moving parts and do not pull the phase-wire loop taut. No assumed route through the bearing posts.",
             "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
@@ -353,7 +353,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
-        "BEC12S-PRO has one selectable output: use two units for separate 8 V main and 5.2 V servo rails. SVPDB-8S optionally supplies 5 V, not 5.2 V. Check the received board underside, insulation, headers, plug heights, tie contact, heat rejection and current before installing. Keep outputs separate with common ground; prevent servo backfeed into FC 5 V and do not feed 5 V peripherals from 5.2 V. The FC input-voltage conflict also applies to 8 V. Power and optical stacks cannot occupy the same host simultaneously. Tether slots guide a local cable segment only: actual cable gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
+        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The FC input-voltage conflict also applies to 8 V. Power and optical stacks cannot occupy the same host simultaneously. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",

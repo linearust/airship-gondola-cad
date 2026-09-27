@@ -124,7 +124,7 @@ def route_contract(sign, propulsion_placement, electronics_placement):
         },
         "fixed_attachment_candidate": {
             "object": "ElectronicsMount",
-            "region": "Existing open carrier arm before FC entry, leaving the eight-mm underbody corridor and board damping free.",
+            "region": "Existing carrier edge before FC entry; wrap the plate without obstructing the eight-mm underbody corridor, standard holes or board damping.",
             "qualification": "This candidate fixes the FC end to the stationary electronics carrier. It does not claim a separate proven tie on the propulsion frame. Retain slack between independently sliding modules; actual tie fit and load path need a bench check.",
         },
         "servo_leads": "Servo bodies remain fixed. Retain rear case exit allowance and a service loop before the FC; disconnect their leads before removing the deliberately separate servo bridge. No connector or full servo cable route is modeled.",

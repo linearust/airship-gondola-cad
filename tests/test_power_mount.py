@@ -22,16 +22,40 @@ class PowerMountTests(unittest.TestCase):
         shape = p.platform_shape()
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
-        for pitch in p.GENERIC_STACK_PITCHES_MM:
-            points = p.generic_hole_centres(pitch)
+        from gondola.parts import stack_interface
+
+        for pattern in p.platform_contract()["standard_mounting"]["patterns"]:
+            points = pattern["centres_xy_mm"]
             self.assertAlmostEqual(
-                (App.Vector(*points[0], 0) - App.Vector(*points[1], 0)).Length, pitch
+                (App.Vector(*points[0], 0) - App.Vector(*points[1], 0)).Length,
+                pattern["pitch_mm"],
             )
-            for x, y in points:
-                probe = Part.makeCylinder(
-                    p.GENERIC_HOLE_DIAMETER_MM / 2 - 0.05, 4, App.Vector(x, y, 0)
-                )
-                self.assertLess(shape.common(probe).Volume, 1e-6)
+        for row, hole, outer in zip(
+            p.standard_hole_rows(),
+            stack_interface.board_hole_shapes(
+                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2
+            ),
+            stack_interface.board_hole_shapes(
+                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2, border=1.5
+            ),
+            strict=True,
+        ):
+            self.assertLess(shape.common(hole).Volume, 1e-6)
+            self.assertLess(outer.cut(hole).cut(shape).Volume, 1e-6)
+            self.assertEqual(
+                row["diameter_mm"], 2.6 if row["fastener"] == "M2" else 3.6
+            )
+        # The previous board/tether tie apertures are now plain plate material.
+        for x, y in (
+            (-20, -14.5),
+            (-20, 14.5),
+            (20, -14.5),
+            (20, 14.5),
+            (27, -5),
+            (27, 5),
+        ):
+            region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
+            self.assertLess(region.cut(shape).Volume, 1e-6)
         bounds = shape.BoundBox
         self.assertLessEqual(max(bounds.XLength, bounds.YLength, bounds.ZLength), 65)
 
@@ -39,7 +63,7 @@ class PowerMountTests(unittest.TestCase):
         from gondola.parts import power_mount as p
         from gondola.power_export import _internal_collisions
 
-        for plan in ("TETHER_DUAL_BEC", "TETHER_BEC_SVPDB", "BATTERY_SVPDB"):
+        for plan in ("TETHER_BEC_SVPDB", "BATTERY_SVPDB"):
             with self.subTest(plan=plan):
                 physical, reserves = p.local_shapes(plan)
                 self.assertEqual(_internal_collisions(physical, reserves), [])
@@ -60,6 +84,7 @@ class PowerMountTests(unittest.TestCase):
                 self.assertEqual(
                     sum(name.startswith("PowerFoot") for name in physical), 4
                 )
+                self.assertNotIn("TetherDepartureReserve", reserves)
         with self.assertRaises(ValueError):
             p.local_shapes("BATTERY")
 
@@ -206,6 +231,21 @@ class PowerMountTests(unittest.TestCase):
             self.assertFalse(changed_source["source_code_unchanged"])
             self.assertTrue(changed_source["alternate_optical_hosts_passed"])
             self.assertTrue(changed_source["read_only_artifacts"])
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            original_plan = optional.PowerOptionModule.PowerPlanContract
+            optional.PowerOptionModule.PowerPlanContract = "{}"
+            optional.recompute()
+            optional.save()
+            App.closeDocument(optional.Name)
+            rejected_plan = audit_power_options(source, out)
+            self.assertFalse(rejected_plan["passed"])
+            self.assertFalse(rejected_plan["power_plan_contract_matches"])
+            self.assertTrue(all(rejected_plan["native_shape_checks"].values()))
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            optional.PowerOptionModule.PowerPlanContract = original_plan
+            optional.recompute()
+            optional.save()
+            App.closeDocument(optional.Name)
             optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
             optional.PowerModule0.Shape = Part.makeBox(100, 100, 100)
             optional.recompute()

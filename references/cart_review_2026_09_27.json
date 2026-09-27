@@ -1,0 +1,366 @@
+{
+  "reviewed_on": "2026-09-27",
+  "revision": "AV",
+  "source": {
+    "file": "/home/h/Downloads/쇼핑 카트.html",
+    "mtime": "2026-09-27 16:36:02.752386893 +0900",
+    "bytes": 953461,
+    "sha256": "d21e76ad0a6dec97b5661f9b835e08786fd73b9afefa8bab37f07bedf132c3c9",
+    "visible_header_count": 92,
+    "parsed_product_rows": 91,
+    "cart_quantity_sum_not_physical_part_count": 108,
+    "scope_limit": "All91 serialized product rows in this saved HTML were parsed. The header92 discrepancy remains unexplained; coverage is limited to the saved rows, not guaranteed completeness of the live cart. Quantity refers to saved input value, while pack quantity is separate option text.",
+    "counter_reconciliation": {
+      "header": 92,
+      "cart_product_nodes": 91,
+      "title_links": 91,
+      "quantity_controls": 91,
+      "all_rows_selected_label": "unselect product on all91 row checkboxes",
+      "sum_of_saved_quantity_input_values": 108,
+      "hidden_or_unavailable_extra_product_row_found": false,
+      "embedded_or_companion_item_payload_found": false,
+      "interpretation": "Header92 is not equal to either parsed row count91 or saved quantity-input sum108. Saved HTML contains no identifiable92nd hidden/unavailable row and no item-data payload explaining the counter. It cannot be established whether the header was stale, used another counting convention, or an item had not been rendered when saved. All91 serialized rows were reviewed; a claim that the entire live cart was completely captured is unsupported."
+    }
+  },
+  "privacy": "Only CAD-related product options, quantities and unresolved purchase findings retained. No account/address/payment/order data, tracking URLs, raw HTML or unrelated shopping rows included.",
+  "user_owned_or_waived": [
+    "Metal M2 screw/nut kit owned",
+    "GH1.25 kit owned",
+    "Assorted M1.4/M1.6 screw lengths accepted",
+    "NominalØ3 rod tolerance evidence deferred; precision replacement later if required",
+    "Y servo harness and unrelated generic gears excluded",
+    "No bearing spacers required"
+  ],
+  "selected_related_rows": [
+    {
+      "title": "2PCS PTK 메탈 서보 혼 25T 15T CNC 알루미늄 스티어링 암 (후타바 RC 오프로드 버기 트럭 기어 변속 업그레이드 부품용)",
+      "product_id": "1005012006498403",
+      "url": "https://www.aliexpress.com/item/1005012006498403.html",
+      "variant": "15T Single 4.0mm",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "MATEK BEC12S-PRO 9-55V ~ 5V/8V/12V-5A 전압 조정기 BEC 전원 모듈 과전류 보호 RC FPV 드론용 자체 복구 기능",
+      "product_id": "1005012139409949",
+      "url": "https://www.aliexpress.com/item/1005012139409949.html",
+      "variant": "Matek BEC12S-PRO",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "MicoAir 광학 흐름 및 Lidar 센서 MTF-01P Ardupilot/PX4/INAV와 호환 가능",
+      "product_id": "1005007701321403",
+      "url": "https://www.aliexpress.com/item/1005007701321403.html",
+      "variant": "PX4/China Mainland",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "MG-F10 듀얼 밴드 GNSS 모듈, 나침반 포함, 드론용 IST8310 MicoAir Tech MG-F10, L1 + L5",
+      "product_id": "1005007870560061",
+      "url": "https://www.aliexpress.com/item/1005007870560061.html",
+      "variant": "MG-F10",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "Pixhawk/Ardupilot/PX4용 LR24 2.4G 10KM LoRa 무선 원격 측정 장치",
+      "product_id": "1005006772663165",
+      "url": "https://www.aliexpress.com/item/1005006772663165.html",
+      "variant": "LR24-F-F-Mini",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "MicoAir H743V2 AIO 45A AM32 2-6S 25.5×25.5 FC&ESC 올인원",
+      "product_id": "1005010404423678",
+      "url": "https://www.aliexpress.com/item/1005010404423678.html",
+      "variant": "PX4",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "KST X06 V6.0 1.8Kgf.cm 0.07초 HV 디지털 코어리스 메탈 기어 마이크로 DC 서보 모터 RC 글라이더 장난감 액세서리용",
+      "product_id": "1005010458484391",
+      "url": "https://www.aliexpress.com/item/1005010458484391.html",
+      "variant": "China Mainland",
+      "cart_quantity": "6",
+      "stock_label": []
+    },
+    {
+      "title": "SH1.0-듀퐁2.54 JST 커넥터 듀퐁 커넥터 키트 JST-SH 1.0mm & 듀퐁 2.54mm 케이블 1/2/3/4/5/6/7/8/9/10P (SH-듀퐁)",
+      "product_id": "1005007247777489",
+      "url": "https://www.aliexpress.com/item/1005007247777489.html",
+      "variant": null,
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "304 스테인레스 스틸 막대 1mm 2mm 3mm 4mm 5mm 6mm 8mm 선형 샤프트 9mm 10mm M8 10.5mm D 프린터 부품 200mm 300mm 400mm 500mm",
+      "product_id": "1005007648646117",
+      "url": "https://www.aliexpress.com/item/1005007648646117.html",
+      "variant": "100mm/3mm",
+      "cart_quantity": "2",
+      "stock_label": []
+    },
+    {
+      "title": "알루미늄 합금 정밀 기어 0.5 모듈 32-130 톱니 모델, 기기 DIY용 저토크 경량 직선 기어",
+      "product_id": "1005011637445325",
+      "url": "https://www.aliexpress.com/item/1005011637445325.html",
+      "variant": "3mm/48 Teeth",
+      "cart_quantity": "3",
+      "stock_label": []
+    },
+    {
+      "title": "M0.5 구리 기어 스텝 16-30 120톱니 금속 소형 모터 샤프트 휠 키웨이 기어 부품 (3-8mm 샤프트용)",
+      "product_id": "1005013121105173",
+      "url": "https://www.aliexpress.com/item/1005013121105173.html",
+      "variant": "16개 치아/3mm3",
+      "cart_quantity": "3",
+      "stock_label": []
+    },
+    {
+      "title": "Radiomaster XR2 Nano 2.4G ELRS 수신기 (타워 안테나 및 WiFi 포함), FPV 드론용 LR1121 송수신기, 장거리",
+      "product_id": "1005009297303558",
+      "url": "https://www.aliexpress.com/item/1005009297303558.html",
+      "variant": "XR2 Nano 2.4G",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "TATTU 450/850mAh 45C/75C 2S/3S/4S 리포 배터리 XT30 플러그 RC FPV 레이싱 쿼드콥터용",
+      "product_id": "1005011861263060",
+      "url": "https://www.aliexpress.com/item/1005011861263060.html",
+      "variant": "2S 450mah 75c",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "MG-A01 M10 GPS 25mm 표준 크기(나침반 포함) QMC5883L 모듈(FPV/레이싱 드론/로봇/보트용)",
+      "product_id": "1005005592023005",
+      "url": "https://www.aliexpress.com/item/1005005592023005.html",
+      "variant": "M10 Ultra",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "4PCS HappyModel RS1102 1102 10000KV 13500KV 2S 브러시리스 모터 9N12P Mobula7 O4 마이크로 RC FPV 레이싱 무인기 용 1.5mm 샤프트",
+      "product_id": "1005009083593470",
+      "url": "https://www.aliexpress.com/item/1005009083593470.html",
+      "variant": "4PCS 10000KV",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "PTK 서보 25T 금속 로커 암 15T 합금 서보 로커 항공기 모델 자동차 모델 액세서리",
+      "product_id": "1005007542540944",
+      "url": "https://www.aliexpress.com/item/1005007542540944.html",
+      "variant": "15T X4pcs 4 mm",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "커넥터 소켓 2.54mm 피치 스트립 1X/2/3/4/5/6/8/10/40 핀 단일 행 직각 수 핀 헤더 3P/4P/6P/8P/20P/40Pin",
+      "product_id": "1005007569841697",
+      "url": "https://www.aliexpress.com/item/1005007569841697.html",
+      "variant": "6Pin/10PCS/남성 삽입",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "커넥터 소켓 2.54mm 피치 스트립 1X/2/3/4/5/6/8/10/40 핀 단일 행 직각 수 핀 헤더 3P/4P/6P/8P/20P/40Pin",
+      "product_id": "1005007569841697",
+      "url": "https://www.aliexpress.com/item/1005007569841697.html",
+      "variant": "8Pin/10PCS/남성 삽입",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "Matek SVPDB-8S 서보 PDB 4A BEC 5.5-36V ~ 5-8.2V 5V/6V/7.2V/8.2V RC 고정익 FPV 드론용 서보 분배 보드",
+      "product_id": "1005012786485544",
+      "url": "https://www.aliexpress.com/item/1005012786485544.html",
+      "variant": "5 pieces/플러그 없음",
+      "cart_quantity": "1",
+      "stock_label": [
+        "2개 남음"
+      ]
+    },
+    {
+      "title": "HZYUEGOU M1 M1.2 M1.4 M1.6 M2 M2.5 M3 M3.5 M4 M5 M6 M8 M10 M12 M16 M20 M24 DIN934 304 스테인리스 스틸 육각 너트",
+      "product_id": "32977174437",
+      "url": "https://www.aliexpress.com/item/32977174437.html",
+      "variant": "10pcs M1.6",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "HZYUEGOU M1 M1.2 M1.4 M1.6 M2 M2.5 M3 M3.5 M4 M5 M6 M8 M10 M12 M16 M20 M24 DIN934 304 스테인리스 스틸 육각 너트",
+      "product_id": "32977174437",
+      "url": "https://www.aliexpress.com/item/32977174437.html",
+      "variant": "100pcs M1.4 brass",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "4 쌍 Gemfan 1610 드론 프로펠러 1.6x10 40MM 2 블레이드 1mm 1.5mm CCW/CW RC FPV 레이싱 프리 스타일 드론 Mobula7 교체",
+      "product_id": "1005008571500350",
+      "url": "https://www.aliexpress.com/item/1005008571500350.html",
+      "variant": "4Pairs Blue 1.5mm",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "500/320pcs 304 스테인레스 스틸 크로스 라운드 팬 헤드 필립스 기계 나사 버튼 헤드 캡 크로스 볼트 M1 M1.2 M1.4 M1.6 M2.5 M3",
+      "product_id": "1005006265286201",
+      "url": "https://www.aliexpress.com/item/1005006265286201.html",
+      "variant": "(500Pcs)  M1.4 M1.6",
+      "cart_quantity": "1",
+      "stock_label": []
+    },
+    {
+      "title": "MicoAir 광학 흐름 및 범위 센서 MTF-02P Ardupilot/PX4/INAV와 호환 가능",
+      "product_id": "1005007883248524",
+      "url": "https://www.aliexpress.com/item/1005007883248524.html",
+      "variant": null,
+      "cart_quantity": "1",
+      "stock_label": [
+        "9개 남음"
+      ]
+    },
+    {
+      "title": "SH1.0MM JST 1mm 케이블 커넥터 키트 JST 수컷 헤더 3P-12P 28AWG 단자 포함 GPS 레이싱 드론 와이어용",
+      "product_id": "1005010598459009",
+      "url": "https://www.aliexpress.com/item/1005010598459009.html",
+      "variant": null,
+      "cart_quantity": "1",
+      "stock_label": [
+        "0개 남음"
+      ]
+    },
+    {
+      "title": "2개입 304 스테인리스 스틸 솔리드 원형 라운드 로드 선반 바 스톡 모듬 DIY 공예 도구 직경 2mm 3mm 4mm 5mm 6mm 8mm",
+      "product_id": "1005009347568195",
+      "url": "https://www.aliexpress.com/item/1005009347568195.html",
+      "variant": "200mm/3mm 2pcs",
+      "cart_quantity": "1",
+      "stock_label": [
+        "품절 임박"
+      ]
+    },
+    {
+      "title": "10/50pcs 소형 베어링 2mm 3mm 4mm 5mm 6mm 7mm 8mm 9mm 10mm 보어 3x7x3 5x10x4 5x11x4 8x22x7 10x15x4 MM 미니어처 베어링",
+      "product_id": "1005007668446060",
+      "url": "https://www.aliexpress.com/item/1005007668446060.html",
+      "variant": "China Mainland/3x6x2.5mm/10개",
+      "cart_quantity": "1",
+      "stock_label": [
+        "6개 남음"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "status": "correct_selected_quantity",
+      "item": "BEC12S-PRO",
+      "evidence": "1005012139409949; variant Matek BEC12S-PRO; cart quantity1",
+      "assessment": "One regulator matches the new user-selected 8V main supply plus a separate SVPDB5V servo supply. No second BEC should be demanded for the superseded5.2V plan."
+    },
+    {
+      "status": "excess_pack_quantity",
+      "item": "SVPDB-8S",
+      "evidence": "1005012786485544; variant5 pieces/플러그 없음; cart quantity1",
+      "assessment": "Five boards are selected. Only one board is needed for the selected power option; extra four are spares if intentional. No plugs are included. Cart separately contains2.54mm6-pin/8-pin male header stock; exact orientation/height/contact method remains a wiring-build choice."
+    },
+    {
+      "status": "not_visible_in_cart_not_proof_unowned",
+      "item": "Adhesive, hook-and-loop, optional ties and insulating attachment consumables",
+      "evidence": "No explicit adhesive tape, hook-and-loop, narrow cable-tie or heat-shrink product row found.1005005221573556 variants15/20/25mm are nylon webbing, not adhesive hook-and-loop.",
+      "assessment": "Latest user instruction removes tie holes. Do not assess purchases against superseded2.5mm tie-slot geometry or require straps to pass holes. Rail attachment, sensor/module insulation and battery retention still need suitable adhesive/hook-and-loop or an actual chosen attachment method; ties are optional where the chosen routing uses them. These supplies are not visible in the saved cart, which does not prove they are unowned."
+    },
+    {
+      "status": "known_deferred_requirement",
+      "item": "Four M3 gear set screws",
+      "evidence": "No separate M3 grub/set-screw product row found. White nylonM3 ordinary-screw/standoff kits do not substitute. Current gear evidence does not establish supplied screws.",
+      "assessment": "Previously accepted later purchase remains valid. Four are needed for the two48T and two16T gears, unless supplied with those gears; length/tip/protrusion to be selected against real hubs."
+    },
+    {
+      "status": "optional_unused_item_still_visible",
+      "item": "3x5x3mm oil-free bushes",
+      "evidence": "1005012562501908; variant3x5x3mm/5pcs; cart quantity1",
+      "assessment": "Current CAD intentionally uses no bearing spacer/bush. Do not install these as bearing spacers; if for another purpose ignore this row. This is not a missing required item."
+    },
+    {
+      "status": "new_material_evidence_optional",
+      "item": "M1.4 nuts",
+      "evidence": "32977174437; variant100pcs M1.4 brass; quantity1",
+      "assessment": "M1.4 nuts are now present and seller option says brass, not304 stainless. Required only for the optional prepared KST0415.13 route, not the two threaded metal horns. AF2.9–3.0mm and height<=1.2mm remain receiving checks; geometry is not certified by thread size alone."
+    },
+    {
+      "status": "enough_nominal_horns_but_outline_not_proven_by_cart",
+      "item": "Two4mm15T horn choices",
+      "evidence": "1005012006498403 option15T Single4.0mm qty1;1005007542540944 option15T X4pcs4mm qty1",
+      "assessment": "Do not claim only one usable horn is purchased: second row explicitly provides four nominal15T/4mm horns. Cart text does not independently tie that row to one of the retained front-outline drawings or establish blade thickness. Use received outline/profile and declared screw/head envelopes; do not infer KST0415.13 as a selected cart item."
+    },
+    {
+      "status": "supported_alternatives_not_missing",
+      "item": "Navigation/optical selection",
+      "evidence": "MG-F10 and M10 Ultra both present; MTF-01P PX4 and MTF-02P both present. P-AS absent.",
+      "assessment": "Navigation and optical models are mutually exclusive supported choices. P-AS is not an additional required purchase when one of the selected GPS modules is installed. Rebuild selected CAD/BOM for actual choice; do not stack both GPS or both optical devices merely because both are in cart."
+    },
+    {
+      "status": "retained_unresolved_interface",
+      "item": "FC mounting and input voltage",
+      "evidence": "1005010404423678 PX4 H743V2 AIO45A AM32 selected;2S450mAh battery selected. Existing manufacturer review records conflicting2S/8V input evidence and unmeasured compressed damper stack.",
+      "assessment": "Correct model selected; no replacement is requested. Received mounting stack must maintain8mm underbody wiring clearance. Existing2S/8V electrical uncertainty remains, not a newly discovered cart option error."
+    },
+    {
+      "status": "not_established_by_cart",
+      "item": "Remote MG-F10 antenna cable and antenna inclusion",
+      "evidence": "1005007870560061 variantMG-F10 does not list antenna bundle details. No explicit SMA extension/coax row found.",
+      "assessment": "Do not assert missing antenna without package evidence. A remote-antenna installation needs its own correct SMA cable/attachment; this remains optional and has not been established by cart. Direct and remote configurations have different clearance implications."
+    },
+    {
+      "status": "wiring_stock_not_complete_pinout",
+      "item": "Headers, capacitors, power adapters,22AWG wire",
+      "evidence": "Several selectable XT30/XT60 and capacitor variants,2.54mm headers, SH1.0 wiring, servo extensions and22AWG silicone/FEP stock are present.",
+      "assessment": "No need to demand GH1.25 stock again; user owns it. General Dupont leads are not by themselves a locked flight power harness. Use the explicit35V220uF XT30 selection for known nominal capacitor stock; unlabelled A/CR885 options cannot establish polarity/voltage or a specific topology. The16V3300uF receiver capacitor belongs only on a compatible low-voltage rail, never the24V tether input."
+    },
+    {
+      "status": "not_visible_in_cart_not_proof_unowned",
+      "item": "Dedicated24V external PSU",
+      "evidence": "All91 saved product rows checked. No bench power supply, AC/DC24V supply or other dedicated24V source was found. BEC12S-PRO and SVPDB-8S are downstream regulators, not the external PSU.",
+      "assessment": "External24V source is not established by this cart. If already owned, no extra purchase is implied; otherwise the tethered setup still needs a suitably rated supply."
+    },
+    {
+      "status": "raw_wire_present_complete_tether_not_established",
+      "item": "Complete tether cable and termination",
+      "evidence": "1005012819095627 Black/22AWG/10m and Red/22AWG/10m, eachcartqty1;1005007604315564 22AWG/5x10M,cartqty1. Several10cm16AWG XT30/XT60 leads and100–500mm servo extensions are stock interconnects. No explicitly selected complete long tether assembly or rated two-conductor tether product found.",
+      "assessment": "The cart supplies raw22AWG wire from which a tether could be made; it does not establish that a suitable complete tether is selected. Installed length, current, voltage drop, terminations and mechanical load relief remain unspecified. Do not declare22AWG unsuitable solely from the spool length, and do not interpret10m wire stock as a confirmed10m operating tether."
+    },
+    {
+      "status": "saved_availability_warning_checkout_unverified",
+      "item": "SH1.0 connector kit1005010598459009",
+      "evidence": "Saved row visibly says0개 남음 and its quantity-increase button has comet-v2-input-number-btn-disabled. Current quantity1 remains selected; normal cart-product activity_cart_product class, checked checkbox, no disabled checkbox/input, no invalidText shown, no cart-product-wrap-group-invalid ancestor. No invalid product groups occur anywhere in the saved page.",
+      "assessment": "This is a real saved zero-remaining warning, so do not count delivery as assured. However saved markup does not establish that the selected one kit is rejected at checkout or that live stock is zero. The front-end uses a lowStockTip/waistSealText caption and max(current, serverMax) for the quantity control; without the serverMax payload its meaning cannot be resolved as total stock versus additional-quantity limit. Treat availability as unconfirmed, not a proven missing/unbuyable part. The FC package has SH1.0 harnesses per retained manufacturer evidence, and the separate SH1.0-to-Dupont kit1005007247777489 is also selected without this warning, so the cart does not show a categorical lack of SH1.0 wiring. Existing owned GH1.25 stock need not be questioned again.",
+      "supporting_saved_assets": [
+        "/home/h/Downloads/쇼핑 카트.html",
+        "/home/h/Downloads/쇼핑 카트_files/index(9).js"
+      ],
+      "scope": "Read-only saved-page evidence; no live inventory or checkout assertion."
+    }
+  ],
+  "scope": "Review of saved cart evidence against gondola interfaces and the selected optional power topology. Cart quantities and pack contents differ from installed quantities; alternatives/spares need not be removed. Does not certify received dimensions, seller stock, complete harnesses or all ground equipment."
+}

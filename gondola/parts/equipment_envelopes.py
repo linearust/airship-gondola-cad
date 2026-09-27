@@ -106,7 +106,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
     set_property(
         battery,
         "Notes",
-        "Dedicated continuous 16x52mm adhesive deck; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the integral optical tower and locating tongues clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
+        "Plain battery carrier with three declared continuous adhesive regions around its spare standard mounting holes; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the integral optical tower clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
     set_property(
@@ -119,11 +119,9 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
         battery_group,
         "MaximumBatteryEnvelope",
         "max reference66x18x17",
-        Part.makeBox(18, 66, 17, V(-9, -33, 11)),
+        Part.makeBox(18, 66, 17, V(-9, -33, layout.adhesive_bottom())),
         "Maximum prior450mAh reference size only;450–2000mAh is not a physical size guarantee.",
     )
-    # Preserve the device's local frame separately from its mounting elevation.
-    max_pack.Placement.Base.z = 2.2
     fc_obj = create_reference(
         doc,
         electronics_group,

@@ -324,7 +324,7 @@ class StackInterfaceTests(unittest.TestCase):
         datum = s.host_origin_xy("AccessoryMount")
         platform = s.platform_shape()
         platform.translate(App.Vector(*datum, s.HOST_DECK_BOTTOM_Z))
-        for slot in equipment_mounts.generic_slot_shapes("accessory"):
+        for slot in equipment_mounts.standard_hole_shapes("accessory"):
             platform = platform.cut(slot)
         self.assertLess(abs(platform.cut(support).Volume), 1e-6)
         for x, y in s.CLAMP_CENTRES:
