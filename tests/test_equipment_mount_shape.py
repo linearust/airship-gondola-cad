@@ -1,4 +1,4 @@
-"""Compact FC carrier, plain accessory carrier and native mounting axes."""
+"""Identical universal carriers with audited holes, contact pads and device axes."""
 
 import json
 import unittest
@@ -21,6 +21,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         stations = {station.object_name: station for station in MODULE_STATIONS}
         rail_shape = rail.rail_shape()
         for kind, name in (
+            ("battery", "BatteryEquipmentModule"),
             ("electronics", "ElectronicsEquipmentModule"),
             ("accessory", "AccessoryEquipmentModule"),
         ):
@@ -40,57 +41,69 @@ class EquipmentMountShapeTests(unittest.TestCase):
         self.assertAlmostEqual(plate.BoundBox.ZMin, mounts.DECK_BOTTOM_Z)
         self.assertGreaterEqual(plate.BoundBox.ZMin - rail.HEAD_TOP, 1.8 - 1e-6)
 
-    def test_fc_carrier_is_compact_and_has_no_radio_or_navigation_tail(self):
+    def test_every_carrier_is_the_same_single_solid_with_a_plain_utility_tab(self):
         from gondola.parts import equipment_mounts as mounts
+        from gondola.print_export import geometry_comparison
 
-        shape = mounts.mount_shape("electronics")
-        self.assertTrue(shape.isValid())
-        self.assertEqual(len(shape.Solids), 1)
-        self.assertLessEqual(shape.BoundBox.XLength, 66)
-        self.assertLessEqual(shape.BoundBox.YLength, 66)
-        for origin, size in (
-            ((35, -20, 0), (90, 40, 20)),
-            ((-15, 35, 0), (30, 40, 20)),
+        reference = mounts.mount_shape("battery")
+        for kind in mounts.MOUNT_NAMES:
+            shape = mounts.mount_shape(kind)
+            with self.subTest(kind=kind):
+                self.assertTrue(shape.isValid())
+                self.assertEqual(len(shape.Solids), 1)
+                comparison = geometry_comparison(shape, reference)
+                self.assertLess(comparison["difference_mm3"], 1e-6)
+                self.assertLess(comparison["bounds_difference_mm"], 1e-6)
+                self.assertEqual(
+                    mounts.mount_contract(kind)["shared_print_sku"],
+                    "UniversalEquipmentCarrier",
+                )
+                self.assertEqual(
+                    mounts.mount_contract(kind)["stack_interface"][
+                        "carrier_datum_xy_mm"
+                    ],
+                    (0.0, 0.0),
+                )
+                # The complete unperforated utility extension joins the deck;
+                # it is not a separate radio part or a set of thin attachment tabs.
+                tab = Part.makeBox(22, 27, 2, App.Vector(-11, 27, mounts.DECK_BOTTOM_Z))
+                self.assertLess(abs(tab.cut(shape).Volume), 1e-6)
+                self.assertLessEqual(shape.BoundBox.XLength, 66)
+                self.assertLessEqual(shape.BoundBox.YLength, 87)
+                rotated = shape.copy()
+                rotated.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+                self.assertGreater(abs(rotated.cut(shape).Volume), 100)
+
+    def test_all_roles_keep_a_full_common_deck_and_all_shared_holes(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import stack_interface
+
+        self.assertEqual(mounts.COMMON_DECK_SIZE, (54.0, 54.0))
+        self.assertEqual(len(mounts.common_plate_hole_shapes(0, 2)), 20)
+        plate = Part.makeBox(
+            54, 54, mounts.DECK_THICKNESS, App.Vector(-27, -27, mounts.DECK_BOTTOM_Z)
+        )
+        for hole in mounts.common_plate_hole_shapes(
+            mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
         ):
-            region = Part.makeBox(*size, App.Vector(*origin))
-            self.assertLess(abs(shape.common(region).Volume), 1e-6)
+            plate = plate.cut(hole)
+        # The two existing structural clamp axes cross the square's corners.
+        for x, y in stack_interface.CLAMP_CENTRES:
+            plate = plate.cut(
+                Part.makeCylinder(
+                    stack_interface.CLAMP_HOLE_DIAMETER / 2,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(x, y, mounts.DECK_BOTTOM_Z),
+                )
+            )
+        for kind in mounts.MOUNT_NAMES:
+            self.assertLess(abs(plate.cut(mounts.mount_shape(kind)).Volume), 1e-6)
+        self.assertEqual(mounts.mount_hole_centres("battery"), ())
         self.assertEqual(
             mounts.mount_hole_centres("electronics"), mounts.FC_HOLE_CENTRES
         )
-
-    def test_accessory_keeps_full_deck_with_confirmed_and_standard_holes(self):
-        from gondola.parts import equipment_mounts as mounts
-
-        x, y = mounts.ACCESSORY_DECK_CENTRE_XY
-        width, length = mounts.ACCESSORY_DECK_SIZE
-        plate = Part.makeBox(
-            width,
-            length,
-            mounts.DECK_THICKNESS,
-            App.Vector(x - width / 2, y - length / 2, mounts.DECK_BOTTOM_Z),
-        )
-        for hx, hy in mounts.PAS_HOLE_CENTRES:
-            plate = plate.cut(
-                Part.makeCylinder(
-                    mounts.MOUNT_HOLE_DIAMETER / 2,
-                    mounts.DECK_THICKNESS + 2,
-                    App.Vector(hx, hy, mounts.DECK_BOTTOM_Z - 1),
-                )
-            )
-        for slot in mounts.standard_hole_shapes("accessory"):
-            plate = plate.cut(slot)
-        shape = mounts.mount_shape("accessory")
-        self.assertTrue(shape.isValid())
-        self.assertEqual(len(shape.Solids), 1)
-        self.assertLess(abs(plate.cut(shape).Volume), 1e-6)
         self.assertEqual(
             mounts.mount_hole_centres("accessory"), mounts.PAS_HOLE_CENTRES
-        )
-        self.assertEqual(
-            mounts.mount_contract("accessory")["stack_interface"][
-                "carrier_datum_xy_mm"
-            ],
-            (0.0, 16.5),
         )
 
     def test_standard_holes_have_open_bores_and_full_edge_lands(self):
@@ -101,9 +114,13 @@ class EquipmentMountShapeTests(unittest.TestCase):
             shape = mounts.mount_shape(kind)
             slots = mounts.standard_hole_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
+            ) + mounts.expansion_hole_shapes(
+                mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
             )
             lands = mounts.standard_hole_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
+            ) + mounts.expansion_hole_shapes(
+                mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
             )
             for slot, outer in zip(slots, lands, strict=True):
                 with self.subTest(kind=kind, centre=slot.BoundBox.Center):
@@ -133,6 +150,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             contract = mounts.mount_contract(kind)
             self.assertNotIn("generic_fastening", contract)
             patterns = contract["standard_mounting"]["patterns"]
+            self.assertEqual(len(patterns), 2)
             common = next(row for row in patterns if row["pitch_mm"] == 20.0)
             self.assertEqual(common["fastener"], "M2")
             self.assertEqual(common["clearance_diameter_mm"], 2.6)
@@ -142,11 +160,12 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 self.assertAlmostEqual(
                     (points[i] - points[(i + 2) % 4]).Length ** 2, 800.0
                 )
-        large = mounts.mount_contract("electronics")["standard_mounting"]["patterns"][1]
-        self.assertEqual(
-            (large["pitch_mm"], large["fastener"], large["clearance_diameter_mm"]),
-            (30.5, "M3", 3.6),
-        )
+            large = patterns[1]
+            self.assertEqual(
+                (large["pitch_mm"], large["fastener"], large["clearance_diameter_mm"]),
+                (30.5, "M3", 3.6),
+            )
+            self.assertEqual(contract["standard_mounting"]["datum_xy_mm"], (0.0, 0.0))
 
     def test_ordinary_m2_heads_fit_spare_holes_without_touching_shoe_or_rail(self):
         from gondola.contracts.design import MODULE_STATIONS
@@ -157,7 +176,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for kind in mounts.MOUNT_NAMES:
             station = stations[kind.capitalize() + "EquipmentModule"]
             carrier = mounts.mount_shape(kind)
-            for row in mounts.standard_hole_rows(kind):
+            for row in mounts.standard_hole_rows(kind) + mounts.expansion_hole_rows():
                 if row["fastener"] != "M2":
                     continue
                 screw = purchased_hardware.screw_shape(8)
@@ -193,14 +212,14 @@ class EquipmentMountShapeTests(unittest.TestCase):
             )
             self.assertLess(abs(pad.cut(shape).Volume), 1e-6)
 
-    def test_separate_carriers_preserve_fc_and_published_pas_hole_patterns(self):
+    def test_every_carrier_preserves_fc_and_published_pas_hole_patterns(self):
         from gondola.contracts import equipment_interfaces as interfaces
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import mounting_pad_check
 
-        for kind in ("electronics", "accessory"):
+        for kind in mounts.MOUNT_NAMES:
             shape = mounts.mount_shape(kind)
-            for centre in mounts.mount_hole_centres(kind):
+            for centre in mounts.COMMON_DEVICE_HOLE_CENTRES:
                 check = mounting_pad_check(
                     shape,
                     centre,
@@ -219,6 +238,45 @@ class EquipmentMountShapeTests(unittest.TestCase):
             self.assertAlmostEqual(
                 actual[1] - mounts.NAVIGATION_CENTRE_XY[1], expected[1]
             )
+
+    def test_expansion_rows_have_ten_mm_pitch_without_an_industry_standard_claim(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        rows = mounts.expansion_hole_rows()
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(
+            {row["centre_xy_mm"] for row in rows},
+            {(x, y) for x in (-23.0, 23.0) for y in (-10.0, 0.0, 10.0)},
+        )
+        contract = mounts.expansion_contract()
+        self.assertFalse(contract["industry_standard_claimed"])
+        self.assertEqual(contract["within_row_pitch_mm"], 10.0)
+        self.assertEqual(contract["row_spacing_mm"], 46.0)
+
+    def test_unused_device_or_expansion_hole_blockage_and_missing_land_fail_audit(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import carrier_bore_checks
+
+        original = mounts.mount_shape("battery")
+        report = carrier_bore_checks(original)
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["physical_plate_hole_count"], 20)
+        for centre in (mounts.PAS_HOLE_CENTRES[0], mounts.EXPANSION_HOLE_CENTRES[0]):
+            with self.subTest(centre=centre):
+                obstruction = Part.makeCylinder(
+                    0.4,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(*centre, mounts.DECK_BOTTOM_Z),
+                )
+                self.assertFalse(
+                    carrier_bore_checks(original.fuse(obstruction))["passed"]
+                )
+                notch = Part.makeCylinder(
+                    0.2,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(centre[0] + 2, centre[1], mounts.DECK_BOTTOM_Z),
+                )
+                self.assertFalse(carrier_bore_checks(original.cut(notch))["passed"])
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
@@ -239,8 +297,8 @@ class FCInstallationTests(unittest.TestCase):
                 App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
             )
             groups[station.object_name] = group
-        build_mount(self.doc, groups["ElectronicsEquipmentModule"], "electronics")
-        build_mount(self.doc, groups["AccessoryEquipmentModule"], "accessory")
+        for kind in ("battery", "electronics", "accessory"):
+            build_mount(self.doc, groups[kind.capitalize() + "EquipmentModule"], kind)
         build_equipment(
             self.doc,
             groups["BatteryEquipmentModule"],
@@ -248,6 +306,21 @@ class FCInstallationTests(unittest.TestCase):
             groups["AccessoryEquipmentModule"],
         )
         self.doc.recompute()
+
+    def test_print_metadata_uses_one_sku_without_claiming_half_turn_symmetry(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        for kind, name in mounts.MOUNT_NAMES.items():
+            obj = self.doc.getObject(name)
+            self.assertEqual(obj.PrintSKU, "UniversalEquipmentCarrier")
+            self.assertEqual(obj.MountKind, kind)
+            self.assertFalse(obj.HalfTurnSymmetric)
+            contract = json.loads(obj.MountContract)
+            self.assertEqual(len(contract["physical_device_hole_centres_xy_mm"]), 6)
+            self.assertEqual(
+                contract["mount_hole_centres_xy_mm"],
+                [list(xy) for xy in mounts.mount_hole_centres(kind)],
+            )
 
     def test_both_battery_references_follow_the_same_raised_deck_datum(self):
         from gondola.cad import world_shape

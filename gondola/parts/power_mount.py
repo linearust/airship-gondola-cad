@@ -18,17 +18,18 @@ from gondola.contracts.power_options import (
     get_power_plan,
 )
 
+from . import equipment_mounts as mounts
 from . import purchased_hardware, stack_interface
 
 V = App.Vector
-DECK_SIZE_MM = (64.0, 64.0)
+DECK_SIZE_MM = mounts.COMMON_DECK_SIZE
 DECK_THICKNESS_MM = 2.0
 SUPPORT_Z = stack_interface.TOP_BEAM_THICKNESS
 DECK_BOTTOM_Z = SUPPORT_Z - DECK_THICKNESS_MM
 INSULATION_ALLOWANCE_MM = 1.0
 BODY_BOTTOM_Z = SUPPORT_Z + INSULATION_ALLOWANCE_MM
-BAY_CENTRES = ((0.0, -14.5), (0.0, 14.5))
-STANDARD_PATTERNS = ((20.0, 35.0), (30.5, 35.0))
+BAY_CENTRES = ((0.0, -13.0), (0.0, 13.0))
+STANDARD_PATTERNS = mounts.COMMON_STANDARD_PATTERNS
 TERMINAL_TRAVEL_MM = 15.0
 CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
 DEFAULT_HOST = "AccessoryEquipmentModule"
@@ -42,6 +43,8 @@ def standard_hole_rows():
 def platform_contract():
     return {
         "optional_only": True,
+        "common_plate": mounts.common_plate_contract(),
+        "expansion_mounting": mounts.expansion_contract(),
         "deck_size_mm": (*DECK_SIZE_MM, DECK_THICKNESS_MM),
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "support_z_mm": SUPPORT_Z,
@@ -59,10 +62,8 @@ def platform_contract():
 
 @functools.lru_cache(None)
 def platform_shape():
-    shape = stack_interface.tower_shape().fuse(
-        box(*DECK_SIZE_MM, DECK_THICKNESS_MM, (-32, -32, DECK_BOTTOM_Z))
-    )
-    for hole in stack_interface.board_hole_shapes(standard_hole_rows(), -1, 5):
+    shape = stack_interface.tower_shape().fuse(mounts.common_plate_shape(DECK_BOTTOM_Z))
+    for hole in mounts.common_plate_hole_shapes(-1, 5):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:

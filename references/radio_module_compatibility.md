@@ -25,21 +25,35 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-Use the existing open insulating-adhesive support when the selected envelope,
-contact and cable-reservation checks pass. Its geometry and position belong to
-`gondola/parts/equipment_mounts.py` and `equipment_layout.py`; this reference does
-not prescribe a competing fixed pad dimension. No verified mounting-hole pattern
-is used. The Mini underside photograph shows components, so a nominal plan overlap
-does not prove a flat bearing face. Trim compliant insulating adhesive to actual
-supported contact and verify component pressure, heat dissipation and retention.
+AW removes the long navigation/radio-specific plate. The three rail carriers use
+the same printed shape and hole layout. Each has a straight general-purpose
+landing tab; the accessory instance uses this tab for the Mini. There is no
+separate radio plate, pocket, bracket or radio-specific fastening pattern.
+See [universal carrier rationale](universal_carrier_review.md).
 
-Keep the long board axis aligned with the radio support and preserve access at
-both ends. Current 15 mm connector lanes are prototype design allowances, not
-manufacturer connector dimensions or verified cable bend radii. The SH sockets
+The modeled Mini is centred at accessory-local (0, 47) mm, with its long axis
+along X. A 22 × 14 mm nominal insulating-adhesive allocation fits on the tab;
+the body overhangs it. This is a design allocation, not a measured bearing face
+or a minimum required adhesive area. The Mini underside photograph shows
+components. Trim compliant insulating adhesive to actual supported contact and
+verify component pressure, heat dissipation and retention. Velcro or ties may
+wrap the existing tab without dedicated slots, keeping the populated board,
+ports and antenna connection clear.
+
+Preserve access at both ends of the board's X axis. Current 15 mm connector lanes
+are prototype design allowances, not manufacturer connector dimensions or
+verified cable bend radii. The SH sockets
 and IPEX1 connector occupy opposite long-axis ends, and the IPEX1 cable mates away
 from the populated face. Exact port XYZ and installed plug orientation remain
 unmeasured. The photograph shows two SH sockets while the manual documents one
 UART interface; do not infer independent UARTs or the other socket's function.
+
+The nearest modeled connector-lane edge is Y = 35.9 mm. The conservative direct
+MG-F10 helix reservation reaches Y = 31 mm after centring navigation on the
+common carrier, leaving a nominal 4.9 mm separation. This computed separation
+does not verify the actual antenna seating datum, flexible pigtail or installed
+cables. The optional power platform and a direct MG-F10 helix still cannot
+occupy the same accessory host; use another host or the remote-antenna option.
 
 Route and retain the flexible antenna separately, clear of the propeller sweep
 and optical field. Antenna dimensions, the final mounting location and pigtail

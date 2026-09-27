@@ -64,7 +64,6 @@ MECHANICAL_HOSTS = {
     "AccessoryEquipmentModule": "AccessoryMount",
 }
 HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
-HOST_ORIGINS_XY["AccessoryEquipmentModule"] = (0.0, 16.5)
 
 # Common board spacings are separate from the two-point structural tower joint.
 # Clearance diameters are our PA12 design choices, not OEM PCB hole diameters.
@@ -209,7 +208,7 @@ def interface_contract(host_name=None):
         "mechanical_hosts": dict(MECHANICAL_HOSTS),
         "carrier_datum_xy_mm": host_origin_xy(host_name),
         "mechanical_host_datums_xy_mm": dict(HOST_ORIGINS_XY),
-        "accessory_scope": "The accessory carrier has the same attachment geometry at local (0,16.5) mm for a separately validated optional power platform. It is not an optical host: its installed direct GPS antenna can obstruct the optical field. A shared hole pattern alone does not qualify simultaneous equipment, wiring, tool access or tether loads.",
+        "accessory_scope": "The accessory carrier has the same attachment geometry at the common local (0,0) mm datum for a separately validated optional power platform. It is not an optical host: its installed direct GPS antenna can obstruct the optical field. A shared hole pattern alone does not qualify simultaneous equipment, wiring, tool access or tether loads.",
         "load_path": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
         "clamp_fit": clamp_fit_contract(),
     }

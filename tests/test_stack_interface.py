@@ -315,17 +315,21 @@ class StackInterfaceTests(unittest.TestCase):
 
         self.assertIn("AccessoryEquipmentModule", s.MECHANICAL_HOSTS)
         self.assertNotIn("AccessoryEquipmentModule", s.SUPPORTED_HOSTS)
-        self.assertEqual(s.host_origin_xy("AccessoryMount"), (0.0, 16.5))
+        self.assertEqual(s.host_origin_xy("AccessoryMount"), (0.0, 0.0))
         self.assertEqual(
             s.host_placement("AccessoryEquipmentModule").Base,
-            App.Vector(0, 16.5, s.HOST_SUPPORT_Z),
+            App.Vector(0, 0, s.HOST_SUPPORT_Z),
         )
+        for host in s.MECHANICAL_HOSTS:
+            self.assertEqual(s.host_origin_xy(host), (0.0, 0.0))
         support = equipment_mounts.mount_shape("accessory")
         datum = s.host_origin_xy("AccessoryMount")
         platform = s.platform_shape()
         platform.translate(App.Vector(*datum, s.HOST_DECK_BOTTOM_Z))
-        for slot in equipment_mounts.standard_hole_shapes("accessory"):
-            platform = platform.cut(slot)
+        for hole in equipment_mounts.common_plate_hole_shapes(
+            s.HOST_DECK_BOTTOM_Z, s.DECK_THICKNESS
+        ):
+            platform = platform.cut(hole)
         self.assertLess(abs(platform.cut(support).Volume), 1e-6)
         for x, y in s.CLAMP_CENTRES:
             hole = Part.makeCylinder(

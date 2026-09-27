@@ -40,6 +40,7 @@ Read references according to the changed interface; their revision/date matters:
   [bearing retention](references/retention_review.md),
   [three-horn compatibility](references/servo_horn_compatibility.md).
 - Structure and wiring: [layout](references/layout_and_wiring_review.md),
+  [universal carriers](references/universal_carrier_review.md),
   [rail joint](references/rail_joint_review.md), [rail fit](references/rail_fit_review.md),
   [shape rationale](references/shape_simplification_review.md).
 - Electronics: [controller](references/controller_selection_review.md),
@@ -90,10 +91,16 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   native IDs retain older device names: inspect the selected model/profile
   properties and labels instead of inferring the device from its object ID.
   Count alternative equipment only when selected.
-- FC/optical-host and accessory carriers have separate local frames. Use
-  `wiring_reserves.parent_name()` for reservation ownership. The accessory plate
-  combines navigation and Mini support; its shifted common interface accepts an
-  optional power stack, but is not a qualified optical-stack host. Do not
+- Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`,
+  including the same plate, utility tab, holes, rail shoe and centred structural
+  datum. Preserve identical local shape even though instance names, equipment and
+  rail placements differ. The optional power tower uses the same plate template,
+  with its different support beneath it; it is a separate print.
+- FC/optical-host and accessory instances have separate local frames. Use
+  `wiring_reserves.parent_name()` for reservation ownership. The accessory instance
+  carries navigation at its centre and the Mini on its generic straight tab.
+  Its common interface accepts an optional power stack, but is not a qualified
+  optical-stack host. Do not
   treat rail attachment wings as a verified flat electronics adhesive surface.
   A reservation must belong to its declared carrier even when its world position
   happens to match: rail adjustment would otherwise move it with the wrong module.
@@ -103,7 +110,7 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   Sensor-to-tray adhesive and host-to-tower foot clamps are different interfaces.
   Actual pointing stability, cable slack and firmware orientation remain checks.
 - Common mechanical stack spacing does not certify every payload/host pairing.
-  The accessory datum is shifted to clear the Mini. Optical and power towers
+  All carrier stack datums are local (0, 0). Optical and power towers
   cannot share one host at the same time. Keep baseline mass/BOM separate from
   optional power exports. The tether option uses one BEC12S-PRO at 8 V,
   feeding both FC/main power and the SVPDB-8S input; the latter supplies 5 V
@@ -113,9 +120,9 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   and straps wrapped around the existing structure,
   preserving electrical pads, cooling and connector access. General plate holes
   are project fastening provisions, not evidence of device-specific compatibility.
-  Keep the small optical tray as an uninterrupted adhesive pad: both supported
-  sensors lack a confirmed mounting pattern, and unverified straps near their
-  apertures/connectors would defeat the moving head's optical function.
+  Keep the small optical tray as an uninterrupted adhesive pad. MTF-02P has no
+  confirmed mounting pattern; MTF-01P's published holes are deliberately unused.
+  Unverified straps near their apertures/connectors can obstruct the moving head.
   External straps do not establish the tether's installed route or rated anchor.
   Tether motion/loads and installation electrical/thermal performance remain unverified.
 - Omit dedicated cable-tie holes, slots and tie-only tabs. The user wraps Velcro
@@ -124,6 +131,10 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   standard pattern's pitch, bore and local datum. Spare holes do not imply
   simultaneous devices, a selected fastener stack or verified adhesive retention.
   Current non-use alone is not a reason to delete these requested spare patterns.
+  The shared template has 20 device/standard/expansion bores; two additional
+  structural foot-clamp bores belong to the tower joint. Preserve solid adhesive
+  patches and hole lands. The project's 10 mm-pitch expansion rows are not an
+  industry PCB standard, and a nearby FC damper may obstruct a populated hole.
 - Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
   placement and adhesive contact. Missing mass is unknown, not zero. Geometric
   success alone must not change `design.release_status()` to physical qualification.

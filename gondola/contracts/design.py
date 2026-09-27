@@ -26,7 +26,7 @@ from .servo_horns import profile as horn_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AV"
+DESIGN_REVISION = "AW"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -69,7 +69,7 @@ MANUFACTURING_DECISION = {
 # Retained splits have assembly, motion or requested replacement functions.
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
-    "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits on its compact carrier. One separate simple carrier groups the selected navigation module and LR24-F-Mini, avoiding long branching supports from the FC mount. Both remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe; the added rail clamp is required for independent position retention. Installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
+    "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits. Battery, FC and navigation use three identical universal carriers with shared holes, utility tab and centred stack datum. The navigation carrier groups the selected navigation module and LR24-F-Mini on that same generic print. The FC and navigation carriers remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe; the added rail clamp is required for independent position retention. Installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
@@ -204,7 +204,7 @@ EXPECTED_INVENTORY = {
     "fit_coupons": 3,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 14,
+    "unique_print_files": 12,
 }
 
 OPTICAL_STACK_HOST = "BatteryEquipmentModule"
@@ -213,9 +213,9 @@ OPTICAL_STACK_HOST = "BatteryEquipmentModule"
 # and assembled sensor/controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
-    "layout": "Three mass regions use four independently positioned rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The electronics region comprises a compact FC carrier and a separate flat accessory carrier for one navigation module and LR24-F-Mini.",
+    "layout": "Three mass regions use four independently positioned rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The electronics region comprises independent FC and navigation carriers of the same universal print used by the battery; the Mini uses the generic utility tab.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
-    "electronics": "Place the compact FC carrier behind the neutral motors and the separate navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
+    "electronics": "Place the universal FC carrier behind the neutral motors and the identical navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
     "optical": "Use one source-selected MTF-02P or MTF-01P on the adhesive tray of the transferable manually aligned stack, independent of the three mass regions. Battery and FC carriers provide the structural stack anchors; the accessory carrier is not an optical-stack host. Host changes require renewed optical field-of-view and wiring checks.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
 }
@@ -310,7 +310,7 @@ MODULE_STATIONS = (
     ModuleStation("BatteryEquipmentModule", 90, "BatteryClampApproach", "NegativeY"),
     ModuleStation("MainPropulsionModule", 0, "PropulsionClampApproach", "PositiveY"),
     ModuleStation(
-        "ElectronicsEquipmentModule", -72, "ElectronicsClampApproach", "PositiveY", 180
+        "ElectronicsEquipmentModule", -54, "ElectronicsClampApproach", "PositiveY", 180
     ),
     ModuleStation(
         "AccessoryEquipmentModule", -158, "AccessoryClampApproach", "PositiveY", 180

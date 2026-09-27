@@ -28,7 +28,7 @@ from .contracts.power_options import (
     POWER_VALIDATION_NAME as REPORT_NAME,
 )
 from .mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
-from .parts import power_mount, stack_interface
+from .parts import equipment_mounts, power_mount, stack_interface
 from .print_export import (
     geometry_comparison,
     mesh_checks,
@@ -38,7 +38,7 @@ from .print_export import (
     print_solid_comparison,
 )
 from .provenance import file_sha256, source_fingerprint
-from .validation.geometry import intersection_volume
+from .validation.geometry import compare_mesh_surfaces, intersection_volume
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
@@ -128,11 +128,7 @@ def _registration_bounds(plan_key):
         }
     )
     result["PowerDeck"] = _xy_registration_bound(
-        Part.makeBox(
-            *power_mount.DECK_SIZE_MM,
-            power_mount.DECK_THICKNESS_MM,
-            App.Vector(-32, -32, power_mount.DECK_BOTTOM_Z),
-        )
+        equipment_mounts.common_plate_shape(power_mount.DECK_BOTTOM_Z)
     )
     result.update(
         {
@@ -330,13 +326,19 @@ def export_power_options(main_doc, output_dir=None):
                 obj.ViewObject.Visibility = False
         set_property(doc.PowerOptionModule, "SourceFingerprint", source_fingerprint())
         doc.recompute()
+        # Derive manufacturing files from the persisted BRep. Saving/reopening
+        # can change floating extrema or planar triangulation without changing
+        # the solid; the native artifact, not its pre-save state, is authoritative.
+        native_path = out / ARTIFACT_NAMES[0]
+        doc.saveAs(str(native_path))
+        App.closeDocument(doc.Name)
+        doc = App.openDocument(str(native_path))
         shape = print_shape(doc.PowerPlatform)
         mesh_from_shape(shape).write(str(out / ARTIFACT_NAMES[1]))
         shape.exportStep(str(out / ARTIFACT_NAMES[2]))
         (out / ARTIFACT_NAMES[3]).write_text(
             json.dumps(_manifest(doc), indent=2) + "\n"
         )
-        doc.saveAs(str(out / ARTIFACT_NAMES[0]))
         # Only validation against the final saved main CAD claims report success.
         return {"artifacts": list(ARTIFACT_NAMES), "optional_only": True}
     finally:
@@ -348,19 +350,6 @@ def _same_shape(first, second):
     return all(
         result[key] < TOL
         for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
-
-
-def _mesh_signature(mesh):
-    points, triangles = mesh.Topology
-    return sorted(
-        tuple(
-            sorted(
-                tuple(round(float(value), 6) for value in points[index])
-                for index in triangle
-            )
-        )
-        for triangle in triangles
     )
 
 
@@ -449,9 +438,12 @@ def audit_power_options(source=None, output_dir=None):
         report["step_comparison"] = print_solid_comparison(expected_print, step, TOL)
         mesh = Mesh.Mesh(str(out / ARTIFACT_NAMES[1]))
         report["mesh_checks"] = mesh_checks(expected_print, mesh)
-        report["mesh_matches_native_tessellation"] = _mesh_signature(
-            mesh
-        ) == _mesh_signature(mesh_from_shape(expected_print))
+        report["mesh_surface_comparison"] = compare_mesh_surfaces(
+            mesh, mesh_from_shape(expected_print)
+        )
+        report["mesh_matches_native_tessellation"] = report["mesh_surface_comparison"][
+            "passed"
+        ]
         report["configuration_screen"] = screen_configurations(main)
         report["alternate_optical_host_screens"] = []
         optical = main.getObject("OpticalFlowModule")

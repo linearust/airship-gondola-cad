@@ -1,4 +1,4 @@
-"""Minimal equipment carriers with one integral common rail shoe each."""
+"""One universal plate/rail-shoe print, installed in three equipment roles."""
 
 import functools
 import json
@@ -27,42 +27,40 @@ FC_HOLE_CENTRES = (
     (0.0, FC_AXIS_OFFSET),
     (FC_AXIS_OFFSET, 0.0),
 )
-# Navigation and the onboard radio share one plain accessory plate, independently
-# movable along the rail. These are accessory-local, not FC-carrier coordinates.
-NAVIGATION_CENTRE_XY = (14.0, -24.0)
-PAS_HOLE_CENTRES = tuple(
-    (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
-    for x, y in interfaces.PAS_HOLE_CENTRES
-)
-RADIO_CENTRE_XY = (14.0, 21.0)
+# All three carriers use the same local mechanical datum and physical print.
+# Equipment selection/placement is role-specific; the spare bores are not.
+COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
+COMMON_DECK_SIZE = (54.0, 54.0)
+UTILITY_TAB_SIZE = (22.0, 30.0)
+UTILITY_TAB_CENTRE_XY = (0.0, 39.0)
+NAVIGATION_CENTRE_XY = (0.0, 0.0)
+PAS_HOLE_CENTRES = interfaces.PAS_HOLE_CENTRES
+COMMON_DEVICE_HOLE_CENTRES = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
+RADIO_CENTRE_XY = (0.0, 47.0)
 GPS_ADHESIVE_SIZE = (18.0, 14.0)
 RADIO_ADHESIVE_SIZE = (22.0, 14.0)
-ACCESSORY_DECK_SIZE = (36.0, 78.0)
-ACCESSORY_DECK_CENTRE_XY = (14.0, -4.0)
+ACCESSORY_DECK_SIZE = COMMON_DECK_SIZE
+ACCESSORY_DECK_CENTRE_XY = (0.0, 0.0)
+BATTERY_DECK_SIZE = COMMON_DECK_SIZE
+ELECTRONICS_DECK_SIZE = COMMON_DECK_SIZE
 MOUNT_NAMES = {
     "battery": "BatteryMount",
     "electronics": "ElectronicsMount",
     "accessory": "AccessoryMount",
 }
-BATTERY_DECK_SIZE = (34.0, 52.0)
-ELECTRONICS_DECK_SIZE = (44.0, 44.0)
-# Two bores cross the original battery tape strip. Three uninterrupted patches
-# retain useful adhesive contact without disguising those standard holes.
+# Shared device holes interrupt the former full-length tape strip; keep explicit
+# continuous contact regions clear of every bore, including future-use holes.
 BATTERY_ADHESIVE_REGIONS = (
     ((0.0, 0.0), (16.0, 20.0)),
-    ((0.0, -21.0), (16.0, 10.0)),
-    ((0.0, 21.0), (16.0, 10.0)),
+    ((0.0, -23.0), (16.0, 6.0)),
+    ((0.0, 23.0), (16.0, 6.0)),
 )
-STANDARD_PATTERNS = {
-    "battery": ((20.0, 35.0),),
-    "electronics": ((20.0, 35.0), (30.5, 0.0)),
-    "accessory": ((20.0, 35.0),),
-}
-STANDARD_PATTERN_DATUM = {
-    "battery": (0.0, 0.0),
-    "electronics": (0.0, 0.0),
-    "accessory": (15.0, -24.0),
-}
+COMMON_STANDARD_PATTERNS = ((20.0, 35.0), (30.5, 0.0))
+STANDARD_PATTERNS = dict.fromkeys(MOUNT_NAMES, COMMON_STANDARD_PATTERNS)
+STANDARD_PATTERN_DATUM = dict.fromkeys(MOUNT_NAMES, (0.0, 0.0))
+EXPANSION_HOLE_CENTRES = tuple(
+    (x, y) for x in (-23.0, 23.0) for y in (-10.0, 0.0, 10.0)
+)
 BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
     "centre_y_limit_mm": 4.0,
@@ -77,15 +75,6 @@ FC_WIRING_CORRIDOR_CENTRE_Y = 9.0
 PAS_SERVICE_CLEARANCE = 4.0
 ADHESIVE_ALLOWANCE = 1.0
 PRINT_ROTATION = App.Rotation(V(1, 0, 0), 180)
-
-
-def _deck(size, centre):
-    return box(
-        size[0],
-        size[1],
-        DECK_THICKNESS,
-        (centre[0] - size[0] / 2, centre[1] - size[1] / 2, DECK_BOTTOM_Z),
-    )
 
 
 def fc_wiring_reserve_shape():
@@ -133,18 +122,88 @@ def standard_hole_shapes(
     )
 
 
+def expansion_hole_rows():
+    return [
+        {"centre_xy_mm": centre, "diameter_mm": MOUNT_HOLE_DIAMETER, "fastener": "M2"}
+        for centre in EXPANSION_HOLE_CENTRES
+    ]
+
+
+def expansion_hole_shapes(
+    bottom=DECK_BOTTOM_Z - 1, depth=DECK_THICKNESS + 2, *, border=0.0
+):
+    return stack_interface.board_hole_shapes(
+        expansion_hole_rows(), bottom, depth, border=border
+    )
+
+
+def common_plate_hole_shapes(bottom, depth):
+    """All twenty bores, shared by every carrier and the optional upper deck."""
+    return (
+        [
+            Part.makeCylinder(MOUNT_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
+            for x, y in COMMON_DEVICE_HOLE_CENTRES
+        ]
+        + standard_hole_shapes("electronics", bottom, depth)
+        + expansion_hole_shapes(bottom, depth)
+    )
+
+
+def expansion_contract():
+    return {
+        "industry_standard_claimed": False,
+        "row_spacing_mm": 46.0,
+        "within_row_pitch_mm": 10.0,
+        "hole_centres_xy_mm": EXPANSION_HOLE_CENTRES,
+        "fastener": "M2",
+        "clearance_diameter_mm": MOUNT_HOLE_DIAMETER,
+        "scope": "Six spare holes for future small attachments or purchased spacers. This is a project expansion row, not an industry PCB pattern. Installed hardware and occupied device bodies may prevent simultaneous use of neighboring holes. No adapter, arbitrary extension load or spacer height is qualified merely by these bores.",
+    }
+
+
+def common_plate_contract():
+    return {
+        "deck_size_mm": (*COMMON_DECK_SIZE, DECK_THICKNESS),
+        "deck_centre_xy_mm": (0.0, 0.0),
+        "utility_tab_size_mm": UTILITY_TAB_SIZE,
+        "utility_tab_centre_xy_mm": UTILITY_TAB_CENTRE_XY,
+        "fc_hole_centres_xy_mm": FC_HOLE_CENTRES,
+        "pas_hole_centres_xy_mm": PAS_HOLE_CENTRES,
+        "device_bore_diameter_mm": MOUNT_HOLE_DIAMETER,
+        "standard_mounting": stack_interface.board_pattern_contract(
+            COMMON_STANDARD_PATTERNS
+        ),
+        "expansion": expansion_contract(),
+        "common_bore_count": 20,
+        "scope": "One common plate outline and twenty-hole template. The three rail carriers are identical physical prints, including the utility tab, rail shoe and structural tower datum. The optional power deck uses the same plate template on its integral tower. FC/P-AS mounting patterns and common board patterns are alternative uses, not permission to populate overlapping equipment simultaneously. Optical sensor tray remains an uninterrupted adhesive surface.",
+        "utility_tab_scope": "A plain general-purpose 22 x 30 mm landing, not a radio pocket or dedicated tie route. On the navigation carrier, the Mini uses a 22 x 14 mm adhesive/contact patch; its body overhangs that patch and its external antenna is unmodeled. Other carriers leave the tab available; actual attached devices, strap routes, wiring and extension loads need their own check.",
+    }
+
+
+def common_plate_shape(bottom=DECK_BOTTOM_Z):
+    """Same simple plate outline and holes, independent of rail or tower support."""
+    pieces = [
+        box(
+            *size,
+            DECK_THICKNESS,
+            (centre[0] - size[0] / 2, centre[1] - size[1] / 2, bottom),
+        )
+        for size, centre in (
+            (COMMON_DECK_SIZE, (0.0, 0.0)),
+            (UTILITY_TAB_SIZE, UTILITY_TAB_CENTRE_XY),
+        )
+    ]
+    shape = union(pieces)
+    for hole in common_plate_hole_shapes(bottom - 1, DECK_THICKNESS + 2):
+        shape = shape.cut(hole)
+    return shape.removeSplitter()
+
+
 @functools.lru_cache(None)
 def mount_shape(kind):
-    holes = mount_hole_centres(kind)
-    size, centre = {
-        "battery": (BATTERY_DECK_SIZE, (0.0, 0.0)),
-        "electronics": (ELECTRONICS_DECK_SIZE, (0.0, 0.0)),
-        "accessory": (ACCESSORY_DECK_SIZE, ACCESSORY_DECK_CENTRE_XY),
-    }[kind]
-    pieces = [_deck(size, centre)]
-    pieces.append(rail.shoe_shape())
-    # Raise only equipment decks. The rail mating shape and propulsion shoe stay
-    # unchanged; a plain solid bridge joins the existing shoe top to the deck.
+    if kind not in MOUNT_NAMES:
+        raise ValueError("Unknown equipment mount kind: " + str(kind))
+    pieces = [common_plate_shape(), rail.shoe_shape()]
     pieces.append(
         box(
             rail.SHOE_LENGTH,
@@ -153,17 +212,9 @@ def mount_shape(kind):
             (-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.TOP_Z - 0.1),
         )
     )
-    shape = union(pieces)
-    shape = stack_interface.add_host_interface(shape, MOUNT_NAMES[kind])
-    for x, y in holes:
-        shape = shape.cut(
-            Part.makeCylinder(
-                MOUNT_HOLE_DIAMETER / 2,
-                DECK_THICKNESS + 2,
-                V(x, y, DECK_BOTTOM_Z - 1),
-            )
-        )
-    for hole in standard_hole_shapes(kind):
+    shape = stack_interface.add_host_interface(union(pieces), MOUNT_NAMES[kind])
+    # Cut again through any supporting member sharing a plate-hole position.
+    for hole in common_plate_hole_shapes(DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
@@ -197,12 +248,16 @@ def mount_contract(kind):
         ],
     }
     scope = {
-        "battery": "One plain rectangular deck and integral rail shoe, with a centred 20 mm M2 pattern. Two standard holes interrupt the old tape strip; three declared continuous adhesive regions remain. The optical tower uses separate structural anchors.",
-        "electronics": "One flat square deck, confirmed FC holes, common 20 mm M2 and 30.5 mm M3 patterns, integral rail shoe and separate structural tower anchors. No navigation or radio extensions.",
-        "accessory": "One rectangular plate and integral rail shoe, with a 20 mm M2 pattern in the navigation bay. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. The radio and selected navigation device use separate regions. The common structural attachment is shifted +16.5 mm local Y to clear the Mini; only separately validated optional power platforms may use it. This plate is not an optical-stack host.",
+        "battery": "Universal carrier in battery role. Three declared continuous adhesive regions remain between common holes; the structural tower datum is shared with FC/navigation carriers.",
+        "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same spare patterns and utility tab exist on every carrier.",
+        "accessory": "Universal carrier in navigation role. Centred P-AS mounting axes or mutually exclusive taped GPS alternatives use the main deck. The Mini uses the same general-purpose straight tab present on all carriers, with no separate radio plate. The centred common tower datum accepts a separately screened optional power platform; this carrier is not an optical host.",
     }
     return {
         "kind": kind,
+        "shared_print_sku": COMMON_PRINT_SKU,
+        "common_plate": common_plate_contract(),
+        "expansion_mounting": expansion_contract(),
+        "physical_device_hole_centres_xy_mm": COMMON_DEVICE_HOLE_CENTRES,
         "stack_interface": stack_interface.interface_contract(MOUNT_NAMES[kind]),
         "standard_mounting": stack_interface.board_pattern_contract(
             STANDARD_PATTERNS[kind], STANDARD_PATTERN_DATUM[kind]
@@ -239,27 +294,29 @@ def build_mount(doc, parent, kind):
     contract = mount_contract(kind)
     name = MOUNT_NAMES[kind]
     notes = (
-        "One integral common rail shoe; PA12 SLS/MJF. "
-        + contract["support_path_scope"]
-        + " "
-        + contract["clearance_scope"]
+        "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
+        "Common 54 mm square deck, plain utility tab, twenty shared device/standard/expansion holes, "
+        "integral rail shoe and centred structural tower interface. Choose the occupied role at assembly. "
+        "Preserve the declared adhesive patches; spare bores do not qualify arbitrary simultaneous devices. "
+        "No dedicated tie holes, separate radio plate, printed device spacers or added fasteners. "
+        "Printed fit, clamping, adhesive retention, wiring, extension loads and actual device stacks remain unverified."
     )
     obj = create_printed_part(
         doc,
         parent,
         name,
-        "PRINT | " + name,
+        "PRINT | Universal carrier | " + kind,
         mount_shape(kind).copy(),
         PRINT_ROTATION,
         notes,
     )
     set_property(obj, "Role", "Printed equipment carrier")
-    set_property(obj, "PrintSKU", name)
+    set_property(obj, "PrintSKU", COMMON_PRINT_SKU)
     set_property(obj, "MountKind", kind)
     stack_interface.annotate_interface(obj, name)
     set_property(obj, "MountContract", json.dumps(contract, sort_keys=True))
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
-    set_property(obj, "HalfTurnSymmetric", kind == "battery", "App::PropertyBool")
+    set_property(obj, "HalfTurnSymmetric", False, "App::PropertyBool")
     set_property(obj, "PrintSupportsRequired", False, "App::PropertyBool", "Printing")
     set_property(obj, "FDMPrintValidated", False, "App::PropertyBool", "Printing")
     set_property(obj, "MountingStackVerified", False, "App::PropertyBool")

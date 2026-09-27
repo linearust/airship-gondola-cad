@@ -15,6 +15,7 @@ class PropulsionWiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from gondola.cad import create_group, create_reference, set_property
+        from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import (
             equipment_envelopes,
             propulsion_wiring,
@@ -29,8 +30,14 @@ class PropulsionWiringTests(unittest.TestCase):
         cls.electronics = create_group(
             cls.doc, "ElectronicsEquipmentModule", "Electronics"
         )
+        station = next(
+            item
+            for item in MODULE_STATIONS
+            if item.object_name == "ElectronicsEquipmentModule"
+        )
         cls.electronics.Placement = App.Placement(
-            App.Vector(-72, -0.1, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+            App.Vector(station.x_mm, -0.1, 0),
+            App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
         )
         fc = create_reference(
             cls.doc,
@@ -79,8 +86,14 @@ class PropulsionWiringTests(unittest.TestCase):
         route = self.routes[0]
         original = route.Shape
         try:
+            points = self.wiring.route_points(
+                1,
+                self.propulsion.getGlobalPlacement(),
+                self.electronics.getGlobalPlacement(),
+            )
+            middle_y = (points[0][1] + points[1][1]) / 2
             route.Shape = original.cut(
-                Part.makeBox(1, 200, 100, App.Vector(-43, -100, 0))
+                Part.makeBox(100, 1, 100, App.Vector(-80, middle_y - 0.5, 0))
             )
             self.assertGreater(len(route.Shape.Solids), 1)
             self.assertFalse(self.audit.check(self.doc)["passed"])
@@ -90,12 +103,18 @@ class PropulsionWiringTests(unittest.TestCase):
     def test_obstacle_in_middle_is_detected(self):
         from gondola.cad import create_reference
 
+        points = self.wiring.route_points(
+            1,
+            self.propulsion.getGlobalPlacement(),
+            self.electronics.getGlobalPlacement(),
+        )
+        middle = (App.Vector(*points[0]) + App.Vector(*points[1])) / 2
         blocker = create_reference(
             self.doc,
             self.propulsion,
             "TestRouteBlocker",
             "Unmodeled wire obstruction",
-            Part.makeBox(2, 4, 4, App.Vector(-39, 43, 40)),
+            Part.makeBox(2, 4, 4, middle - App.Vector(1, 2, 2)),
             "Test",
         )
         registry = self.doc.DesignRegistry
@@ -187,13 +206,37 @@ class PropulsionWiringTests(unittest.TestCase):
             (-50, 14.8, 24.2),
         ]
         prop = self.propulsion.getGlobalPlacement()
-        electronics = self.electronics.getGlobalPlacement()
+        # Preserve this historical failure at its original installation while
+        # positive tests use the currently selected module station above.
+        electronics = App.Placement(
+            App.Vector(-72, -0.1, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
         with patch.object(self.wiring, "route_points", return_value=old_points):
             shape = self.wiring.route_geometry(1, prop, electronics)["shape"]
         shape.Placement = prop.multiply(shape.Placement)
         obstacles = self._optical_host_obstacles(electronics)
         self.assertGreater(shape.common(obstacles["OpticalMountBase"]).Volume, 8)
         self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 30)
+
+    def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
+        from gondola.cad import world_shape
+
+        prop = self.propulsion.getGlobalPlacement()
+        electronics = self.electronics.getGlobalPlacement()
+        for sign in (-1, 1):
+            points = self.wiring.route_points(sign, prop, electronics)
+            points[1] = (-38.0, sign * 20.0, 34.0)
+            with patch.object(self.wiring, "route_points", return_value=points):
+                shape = self.wiring.route_geometry(sign, prop, electronics)["shape"]
+            shape.Placement = prop.multiply(shape.Placement)
+            endpoint = prop.multVec(App.Vector(*points[-1]))
+            result = self.audit.connection_check(
+                shape,
+                world_shape(self.fc_reserve),
+                (endpoint.x, endpoint.y, endpoint.z),
+            )
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 1)
 
     def test_remote_fc_crossing_is_not_a_permitted_connection(self):
         a = Part.makeBox(1, 1, 1)

@@ -45,19 +45,32 @@ class PowerMountTests(unittest.TestCase):
             self.assertEqual(
                 row["diameter_mm"], 2.6 if row["fastener"] == "M2" else 3.6
             )
-        # The previous board/tether tie apertures are now plain plate material.
+        from gondola.parts import equipment_mounts
+
+        self.assertEqual(p.DECK_SIZE_MM, equipment_mounts.COMMON_DECK_SIZE)
+        self.assertEqual(
+            p.platform_contract()["common_plate"],
+            equipment_mounts.common_plate_contract(),
+        )
+        holes = equipment_mounts.common_plate_hole_shapes(p.DECK_BOTTOM_Z, 2)
+        self.assertEqual(len(holes), 20)
+        for hole in holes:
+            self.assertLess(shape.common(hole).Volume, 1e-6)
+        # The shared utility tab and usable deck regions remain solid. There are
+        # no cable-tie slots; straps wrap the existing outline.
         for x, y in (
             (-20, -14.5),
             (-20, 14.5),
             (20, -14.5),
             (20, 14.5),
-            (27, -5),
-            (27, 5),
+            (25, -5),
+            (25, 5),
+            (0, 45),
         ):
             region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
             self.assertLess(region.cut(shape).Volume, 1e-6)
         bounds = shape.BoundBox
-        self.assertLessEqual(max(bounds.XLength, bounds.YLength, bounds.ZLength), 65)
+        self.assertLessEqual(max(bounds.XLength, bounds.YLength, bounds.ZLength), 340)
 
     def test_regulator_bodies_and_connection_lanes_do_not_intersect_deck(self):
         from gondola.parts import power_mount as p

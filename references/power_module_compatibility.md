@@ -84,20 +84,30 @@ compatibility.
 
 ## Mechanical provision
 
-The optional one-piece **PowerPlatform** combines a 64 × 64 × 2 mm open deck
-with the common structural tower. Its complete printed height is 35 mm. Two
+The optional one-piece **PowerPlatform** combines the common 54 × 54 × 2 mm deck
+and 22 × 30 mm straight utility tab with the structural tower. Its complete
+printed height is 35 mm. Two
 M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
 board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
-while a single SVPDB leaves one bay available. The installed
+while a single SVPDB leaves one bay available. The board regions are centred at
+Y = ±13 mm: the selected pair has a nominal 3.5 mm body-to-body gap. This is a
+body-envelope allocation, not tested thermal separation or a completed harness.
+The installed
 battery baseline does not include this optional print, its fasteners or regulators.
 
-The plate adds a **20 × 20 mm M2 pattern (Ø2.6 mm clearance)** and a
-**30.5 × 30.5 mm M3 pattern (Ø3.6 mm clearance)**, both rotated 35° to clear the
-tower beam. They are general mounting patterns, not either Matek board's mounting
-holes. Dedicated board tie slots and tether holes have been removed; adhesive or
+The plate shares the rail carriers' complete **20-hole equipment/expansion
+template**: the selected FC and P-AS axes, **20 × 20 mm M2** and
+**30.5 × 30.5 mm M3** square patterns, and six M2 expansion holes. The square
+patterns use the same rotations on every plate (35° and 0°, respectively).
+The tower feet have two additional structural clamp bores. These are general
+provisions, not either Matek board's mounting holes. Some common bores cross the
+top beam below the deck; inspect the fused deck/tower shape and its remaining
+sections. See [universal carrier rationale](universal_carrier_review.md).
+Dedicated board tie slots and tether holes are absent; adhesive or
 a removable strap around existing structure provides simple attachment options.
 The two existing optical host carriers
-and the accessory carrier share the structural foot interface. One carrier cannot
+and the accessory carrier share the structural foot interface at local (0,0).
+One carrier cannot
 hold the optical tower and power tower simultaneously; move the optical tower to
 the other supported optical host first. The accessory carrier is a power host,
 not an additional qualified optical host.

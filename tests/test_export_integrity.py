@@ -411,6 +411,73 @@ class ExportIntegrityTests(unittest.TestCase):
 
 
 @unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
+class NativeSharedPrintTests(unittest.TestCase):
+    def test_shared_carrier_exports_once_but_keeps_three_installed_instances(self):
+        from gondola.print_export import export_print_parts
+
+        with tempfile.TemporaryDirectory() as directory:
+            existing = set(NativeApp.listDocuments())
+            try:
+                doc = NativeApp.newDocument("SharedCarrierExportRegression")
+                blank = NativePart.makeBox(52, 52, 2)
+
+                def plate(hole_x):
+                    return blank.cut(
+                        NativePart.makeCylinder(1.3, 2, NativeApp.Vector(hole_x, 10, 0))
+                    )
+
+                shape = plate(10)
+                names = ["BatteryMount", "ElectronicsMount", "AccessoryMount"]
+                parts = []
+                for index, name in enumerate(names):
+                    parent = doc.addObject("App::Part", name + "Module")
+                    parent.Placement = NativeApp.Placement(
+                        NativeApp.Vector(index * 70, 20, 15),
+                        NativeApp.Rotation(NativeApp.Vector(0, 0, 1), index * 90),
+                    )
+                    obj = doc.addObject("Part::Feature", name)
+                    parent.addObject(obj)
+                    obj.Shape = shape.copy()
+                    obj.addProperty("App::PropertyString", "PrintSKU")
+                    obj.PrintSKU = "UniversalEquipmentCarrier"
+                    obj.addProperty("App::PropertyRotation", "PrintRotation")
+                    obj.PrintRotation = NativeApp.Rotation(
+                        NativeApp.Vector(1, 0, 0), 180
+                    )
+                    parts.append(obj)
+                doc.recompute()
+
+                manifest = export_print_parts(doc, parts, [], directory, "shared")
+                folder = Path(directory) / "shared_print_parts"
+                self.assertEqual(len(list(folder.glob("*.stl"))), 1)
+                self.assertEqual(len(list(folder.glob("*.step"))), 1)
+                self.assertEqual(manifest["unique_stl_count"], 1)
+                self.assertEqual(manifest["installed_printed_part_count"], 3)
+                self.assertEqual(manifest["additional_coupon_printed_part_count"], 0)
+                self.assertEqual(len(manifest["parts"]), 1)
+                row = manifest["parts"][0]
+                self.assertEqual(row["sku"], "UniversalEquipmentCarrier")
+                self.assertEqual(row["instances"], names)
+                self.assertEqual(row["quantity"], 3)
+                self.assertEqual(row["installed_quantity"], 3)
+                self.assertEqual(row["coupon_quantity"], 0)
+
+                # A shifted hole preserves overall bounds and solid volume but
+                # makes the third part physically different from the shared STL.
+                altered = plate(11)
+                self.assertAlmostEqual(altered.Volume, shape.Volume)
+                parts[-1].Shape = altered
+                doc.recompute()
+                with self.assertRaisesRegex(
+                    RuntimeError, "Different parts share SKU UniversalEquipmentCarrier"
+                ):
+                    export_print_parts(doc, parts, [], directory, "shared")
+            finally:
+                for name in set(NativeApp.listDocuments()) - existing:
+                    NativeApp.closeDocument(name)
+
+
+@unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
 class NativePrintSizeTests(unittest.TestCase):
     def test_overlong_installed_part_and_coupon_are_rejected_before_export(self):
         from gondola.print_export import (

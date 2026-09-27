@@ -137,6 +137,46 @@ def mounting_pad_check(
     }
 
 
+def carrier_bore_checks(shape):
+    """Inspect every physical plate hole, including unused alternative patterns."""
+    groups = {
+        "shared_device_holes": [
+            mounting_pad_check(
+                shape,
+                centre,
+                bottom=mounts.DECK_BOTTOM_Z,
+                thickness=mounts.DECK_THICKNESS,
+                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+            )
+            for centre in mounts.COMMON_DEVICE_HOLE_CENTRES
+        ],
+    }
+    for name, holes in (
+        ("standard_mounting_holes", mounts.standard_hole_rows("electronics")),
+        ("expansion_mounting_holes", mounts.expansion_hole_rows()),
+    ):
+        groups[name] = [
+            {
+                **row,
+                **mounting_pad_check(
+                    shape,
+                    row["centre_xy_mm"],
+                    bottom=mounts.DECK_BOTTOM_Z,
+                    thickness=mounts.DECK_THICKNESS,
+                    hole_diameter=row["diameter_mm"],
+                    pad_diameter=row["diameter_mm"] + 3.0,
+                ),
+            }
+            for row in holes
+        ]
+    return {
+        **groups,
+        "physical_plate_hole_count": sum(len(rows) for rows in groups.values()),
+        "passed": all(row["passed"] for rows in groups.values() for row in rows),
+    }
+
+
 def mounting_check(doc):
     """Inspect saved supports, confirmed XY axes, free space and removal paths.
 
@@ -158,6 +198,7 @@ def mounting_check(doc):
     physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
     support_rows = []
     expected_supports = {name: kind for kind, name in mounts.MOUNT_NAMES.items()}
+    shared_reference = doc.getObject("BatteryMount")
     for name, kind in expected_supports.items():
         obj = doc.getObject(name)
         if obj is None:
@@ -180,26 +221,20 @@ def mounting_check(doc):
             ) == json.loads(json.dumps(stack_interface.interface_contract(name)))
         except (AttributeError, ValueError, TypeError):
             stack_contract_matches = False
-        standard_rows = []
-        holes = mounts.standard_hole_shapes(
-            kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
+        bores = carrier_bore_checks(shape)
+        shared_comparison = (
+            geometry_comparison(shape, local_shape(shared_reference))
+            if shared_reference is not None
+            else None
         )
-        lands = mounts.standard_hole_shapes(
-            kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
+        shared_print_matches = (
+            shared_comparison is not None
+            and _comparison_passed(shared_comparison)
+            and str(getattr(obj, "PrintSKU", "")) == mounts.COMMON_PRINT_SKU
+            and str(getattr(obj, "MountKind", "")) == kind
+            and "HalfTurnSymmetric" in obj.PropertiesList
+            and not bool(obj.HalfTurnSymmetric)
         )
-        for row, hole, outer in zip(
-            mounts.standard_hole_rows(kind), holes, lands, strict=True
-        ):
-            obstruction = intersection_volume(shape, hole)
-            missing_land = outer.cut(hole).cut(shape).Volume
-            standard_rows.append(
-                {
-                    **row,
-                    "hole_obstruction_mm3": obstruction,
-                    "missing_full_thickness_1p5mm_land_mm3": missing_land,
-                    "passed": obstruction < TOL and missing_land < TOL,
-                }
-            )
         support_rows.append(
             {
                 "object": name,
@@ -210,7 +245,9 @@ def mounting_check(doc):
                 "no_unverified_device_posts_above_support_face": no_posts,
                 "mounting_stack_remains_unverified": unverified_stack,
                 "structural_stack_contract_matches": stack_contract_matches,
-                "standard_mounting_holes": standard_rows,
+                "shared_print_comparison": shared_comparison,
+                "shared_print_geometry_and_metadata_match": shared_print_matches,
+                "physical_plate_holes": bores,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()
@@ -220,7 +257,8 @@ def mounting_check(doc):
                 and no_posts
                 and unverified_stack
                 and stack_contract_matches
-                and all(row["passed"] for row in standard_rows),
+                and shared_print_matches
+                and bores["passed"],
             }
         )
     carriers = {

@@ -1,0 +1,43 @@
+{
+  "revision": "AW",
+  "transition": "AV to AW",
+  "passed": true,
+  "fixture_promotion_approved": true,
+  "superseded_candidate_main_sha256": "dfe95aa59e149129829c9c2fdedb50b0fd8fce18e749390e5a22f137dbac73be",
+  "superseded_candidate_reason": "Final wiring gate found phase-lead reserve overlap beyond the unchanged 8 mm terminal capture; corrected route replaces that candidate. Earlier semantic review and failed candidate checks retained in compressed evidence.",
+  "source_fingerprint_at_review": "926e36ba1e698499b37a73c73f479848726de3d3465d4ecba72f218f6dbc075f",
+  "candidate_main_sha256": "ff5a729761bc9a071630966132ea7584c62321a3dc40766880d6f7ab3fd63ace",
+  "candidate_optional_sha256": "ac0ee0898518ddba3fb491351a27bb29ff959d7481c728fe26acc4666ea0427b",
+  "previous_fixture_sha256": "f0ee355bcf028b0c4f1692756e2d5547445dc016019dcd1a3084d730bfac04c4",
+  "previous_optional_sha256": "758dee32f279394a85170d2b6fa092ced945d5e86a03b38bf20363e1e75904ac",
+  "evidence_file": "rev_aw_transition_audit.json.gz",
+  "evidence_sha256": "1c7a7dac6aada680fd8b96186b27f61f3e4e23533013df6d9ce2e93b5737bf3a",
+  "corrected_candidate_wiring_gate_passed": true,
+  "minimum_planning_route_to_tower_registration_gap_mm": 2.3080148830412073,
+  "main_shape_count": 116,
+  "optional_shape_count": 125,
+  "native_control_cases": 32,
+  "registries_and_expressions_preserved": true,
+  "all_saved_properties_captured": true,
+  "unchanged_main_local_geometry_count": 106,
+  "unchanged_main_world_geometry_count": 100,
+  "intended_changes": [
+    "BatteryMount, ElectronicsMount and AccessoryMount are one identical UniversalEquipmentCarrier print: 54x54x2 mm deck, integral 22x30 mm utility tab, 20 common/device/expansion holes, unchanged rail shoe geometry and common centred structural host. Role-specific IDs, mounting contracts and registry links remain.",
+    "P-AS envelope and connector reserve translate by local (-14,+24,0) mm; Mini envelope and two connector reserves translate by (-14,+26,0) mm. Supplementary solid comparisons prove unchanged envelope geometry after those translations.",
+    "The accessory structural host moves from local (0,+16.5) to (0,0); saved optical interface metadata updates this available mechanical host without changing optical solids or its selected host.",
+    "Optional power platform inherits the common deck template and utility tab. The complete optional module shifts +16.5 mm world Y with centred accessory datum; two board/reserve groups translate by local Y +1.5 and -1.5 mm respectively without dimensional changes. Four optional fasteners retain local geometry and placement.",
+    "Common PrintSKU exports one physical carrier file with installed quantity 3; native role IDs remain distinct. Unique default print files reduce 14 to 12, installed prints remain 13. Battery HalfTurnSymmetric is false because the universal utility tab is one-sided.",
+    "The FC carrier station changes from -72 to -54 mm: the complete FC group, its clamp hardware and reservations translate +18 mm X. This separates a relocated direct MG-F10 antenna from the FC-hosted optical field and brings the FC nearer the propulsion leads. Only the two source-derived motor-wire planning envelopes change local shape; their middle waypoint is raised/inset to (-40, +/-12, 39) mm to preserve the existing 8 mm terminal capture restriction. The same three-point route construction remains; mechanism bodies and their placements remain unchanged.",
+    "Fresh Uid values, display Visibility values, source identity and print-layout placements are expected regeneration or preview-state changes, not mechanism or fit changes."
+  ],
+  "invariants": [
+    "All unchanged shapes pass exact local and global BRep comparison. The rail, propulsion mechanism, bearings, gears, servo bridge, horn adapters, battery and optical mechanism retain geometry and pose. FC-associated bodies retain local geometry while their parent translates; two wire-planning reserves follow the new fixed FC endpoint.",
+    "No native object IDs, types, parents, expressions or registry membership changed. Only the FC group and its descendants translate +18 mm X in the main assembly; rotations remain fixed. All 32 control cases pass in both documents; the sole raw-result difference is the FC rail-position exercise inheriting that 18 mm neutral shift.",
+    "All saved main/optional shapes are valid single solids; all captured input files remained byte-identical during review."
+  ],
+  "limits": [
+    "This approves intended candidate geometry and metadata for fixture promotion; source fingerprints will change when the baseline pin changes, so a complete final build/preview/validate/compare/bundle and native test run remain required.",
+    "No physical strength, print fit, fastener load, arbitrary future-module fit, adhesion, wiring, thermal or electrical qualification is implied.",
+    "Agent aw_export_review did not author the shared carrier geometry, source layout, or reference fixture. This reviewer did author the optional-export serialization/surface audit fix and generic shared-SKU regression; those changes are not independently certified by this transition review. Native snapshot comparisons were read-only and did not save or repin CAD."
+  ]
+}

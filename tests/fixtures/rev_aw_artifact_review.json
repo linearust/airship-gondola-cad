@@ -1,0 +1,1340 @@
+{
+  "all_previews_nonblank_and_byte_bound": true,
+  "authorship": {
+    "agent": "Codex subagent /root/aw_layout_review",
+    "role": "Independent read-only final artifact identity and saved-display-state reviewer; contributed layout tradeoff review and AW documentation, but no production or test source edits. Not third-party or physical certification."
+  },
+  "blender_supplement": {
+    "blend_sha256": "9215861aa5ab28c9b72ccaea531dc7e338640d638e0e3f6d5787f82ce6b5a907",
+    "current_saved_CAD_hash_checked_independently_here": true,
+    "discrepancy_count": 0,
+    "input_json_sha256": "5defddff4ca7f9c9f11c6f0bb77eca1d650ad621361ae5d943da28470c794ca3",
+    "matrix_checks": 135116,
+    "sampled_frames": 1782,
+    "scope": "Sampled derivative transformation/visibility verification only, not collision, physics or continuous interpolation. The Blender verifier reports source_cad_hash_checked=false; this separate artifact review checks the current native CAD SHA against its recorded CAD identity. Full matrices and blend bytes are identified by hash, not embedded.",
+    "source_cad_hash_checked_by_blender": false,
+    "verification_sha256": "1ec4cd2228f35dffaecfd5e128ebb46d4a8a55ee1c1a3c4c23288df89dd3ab64"
+  },
+  "bundle": {
+    "crc_and_exact_inventory_and_bytes_passed": true,
+    "entry_count": 51,
+    "file": "build/gondola_print_parts.zip",
+    "sha256": "3aef5d0b16d3777000076e566cd7ab8e55fce0fccb2b5f665710c3ca11458d0a"
+  },
+  "cart_review_sha256": "cfc001e156ece2c2c1b519d89f8e79dc40939c88fa09aca9dcd8cb1df2af63f8",
+  "common_carrier_identity": {
+    "additional_structural_clamp_bores_per_joint": 2,
+    "common_plate_contract": {
+      "common_bore_count": 20,
+      "deck_centre_xy_mm": [
+        0.0,
+        0.0
+      ],
+      "deck_size_mm": [
+        54.0,
+        54.0,
+        2.0
+      ],
+      "device_bore_diameter_mm": 2.6,
+      "expansion": {
+        "clearance_diameter_mm": 2.6,
+        "fastener": "M2",
+        "hole_centres_xy_mm": [
+          [
+            -23.0,
+            -10.0
+          ],
+          [
+            -23.0,
+            0.0
+          ],
+          [
+            -23.0,
+            10.0
+          ],
+          [
+            23.0,
+            -10.0
+          ],
+          [
+            23.0,
+            0.0
+          ],
+          [
+            23.0,
+            10.0
+          ]
+        ],
+        "industry_standard_claimed": false,
+        "row_spacing_mm": 46.0,
+        "scope": "Six spare holes for future small attachments or purchased spacers. This is a project expansion row, not an industry PCB pattern. Installed hardware and occupied device bodies may prevent simultaneous use of neighboring holes. No adapter, arbitrary extension load or spacer height is qualified merely by these bores.",
+        "within_row_pitch_mm": 10.0
+      },
+      "fc_hole_centres_xy_mm": [
+        [
+          -18.031222920256962,
+          0.0
+        ],
+        [
+          0.0,
+          -18.031222920256962
+        ],
+        [
+          0.0,
+          18.031222920256962
+        ],
+        [
+          18.031222920256962,
+          0.0
+        ]
+      ],
+      "pas_hole_centres_xy_mm": [
+        [
+          -11.5,
+          -9.3
+        ],
+        [
+          11.5,
+          -9.3
+        ]
+      ],
+      "scope": "One common plate outline and twenty-hole template. The three rail carriers are identical physical prints, including the utility tab, rail shoe and structural tower datum. The optional power deck uses the same plate template on its integral tower. FC/P-AS mounting patterns and common board patterns are alternative uses, not permission to populate overlapping equipment simultaneously. Optical sensor tray remains an uninterrupted adhesive surface.",
+      "standard_mounting": {
+        "datum_xy_mm": [
+          0.0,
+          0.0
+        ],
+        "minimum_full_thickness_land_mm": 1.5,
+        "patterns": [
+          {
+            "centres_xy_mm": [
+              [
+                -2.455756079379457,
+                -13.927284806400378
+              ],
+              [
+                13.927284806400378,
+                -2.455756079379457
+              ],
+              [
+                2.455756079379457,
+                13.927284806400378
+              ],
+              [
+                -13.927284806400378,
+                2.455756079379457
+              ]
+            ],
+            "clearance_diameter_mm": 2.6,
+            "evidence": "Manufacturer lists 20 x 20 mm and M2/M3 screw or grommet compatibility; this carrier supports the M2 option only.",
+            "fastener": "M2",
+            "pitch_mm": 20.0,
+            "rotation_deg": 35.0,
+            "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/"
+          },
+          {
+            "centres_xy_mm": [
+              [
+                -15.25,
+                -15.25
+              ],
+              [
+                15.25,
+                -15.25
+              ],
+              [
+                15.25,
+                15.25
+              ],
+              [
+                -15.25,
+                15.25
+              ]
+            ],
+            "clearance_diameter_mm": 3.6,
+            "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs.",
+            "fastener": "M3",
+            "pitch_mm": 30.5,
+            "rotation_deg": 0.0,
+            "source": "https://www.mateksys.com/?portfolio=f405-std"
+          }
+        ],
+        "scope": "Common board pitches for future alternative installations, not a universal board or connector fit. Use M2 on the 20 mm pattern and M3 on the 30.5 mm pattern. Printed holes are clearance bores, without threads or installed hardware. Choose purchased spacers and screw lengths after checking the actual device, insulation, underside access and wiring. These board patterns do not replace the separate structural tower attachment or qualify another device in an occupied bay."
+      },
+      "utility_tab_centre_xy_mm": [
+        0.0,
+        39.0
+      ],
+      "utility_tab_scope": "A plain general-purpose 22 x 30 mm landing, not a radio pocket or dedicated tie route. On the navigation carrier, the Mini uses a 22 x 14 mm adhesive/contact patch; its body overhangs that patch and its external antenna is unmodeled. Other carriers leave the tab available; actual attached devices, strap routes, wiring and extension loads need their own check.",
+      "utility_tab_size_mm": [
+        22.0,
+        30.0
+      ]
+    },
+    "fc_underbody_reservation_mm": 8,
+    "initial_rail_station_x_mm": {
+      "AccessoryEquipmentModule": -158.0,
+      "BatteryEquipmentModule": 90.0,
+      "ElectronicsEquipmentModule": -54.0,
+      "MainPropulsionModule": 0.0
+    },
+    "instances": [
+      "BatteryMount",
+      "ElectronicsMount",
+      "AccessoryMount"
+    ],
+    "native_BREP_sha256": {
+      "AccessoryMount": "971c72f4c5c7dcd45943fcfbffe682f8a77d341f5dfd1909ed57883e70aee1b6",
+      "BatteryMount": "971c72f4c5c7dcd45943fcfbffe682f8a77d341f5dfd1909ed57883e70aee1b6",
+      "ElectronicsMount": "971c72f4c5c7dcd45943fcfbffe682f8a77d341f5dfd1909ed57883e70aee1b6"
+    },
+    "native_geometry_equivalence_required_and_passed": true,
+    "native_support_checks": [
+      {
+        "contract_matches": true,
+        "kind": "battery",
+        "mounting_stack_remains_unverified": true,
+        "no_unverified_device_posts_above_support_face": true,
+        "object": "BatteryMount",
+        "passed": true,
+        "physical_plate_holes": {
+          "expansion_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "physical_plate_hole_count": 20,
+          "shared_device_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                -18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            }
+          ],
+          "standard_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -2.455756079379457,
+                -13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                13.927284806400378,
+                -2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                2.455756079379457,
+                13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -13.927284806400378,
+                2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            }
+          ]
+        },
+        "shared_print_comparison": {
+          "bounds_difference_mm": 0.0,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "shared_print_geometry_and_metadata_match": true,
+        "single_valid_solid": true,
+        "source_comparison": {
+          "bounds_difference_mm": 2.1316282072803006e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "structural_stack_contract_matches": true
+      },
+      {
+        "contract_matches": true,
+        "kind": "electronics",
+        "mounting_stack_remains_unverified": true,
+        "no_unverified_device_posts_above_support_face": true,
+        "object": "ElectronicsMount",
+        "passed": true,
+        "physical_plate_holes": {
+          "expansion_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "physical_plate_hole_count": 20,
+          "shared_device_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                -18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            }
+          ],
+          "standard_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -2.455756079379457,
+                -13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                13.927284806400378,
+                -2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                2.455756079379457,
+                13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -13.927284806400378,
+                2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            }
+          ]
+        },
+        "shared_print_comparison": {
+          "bounds_difference_mm": 0.0,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "shared_print_geometry_and_metadata_match": true,
+        "single_valid_solid": true,
+        "source_comparison": {
+          "bounds_difference_mm": 2.1316282072803006e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "structural_stack_contract_matches": true
+      },
+      {
+        "contract_matches": true,
+        "kind": "accessory",
+        "mounting_stack_remains_unverified": true,
+        "no_unverified_device_posts_above_support_face": true,
+        "object": "AccessoryMount",
+        "passed": true,
+        "physical_plate_holes": {
+          "expansion_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                -10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                0.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                23.0,
+                10.0
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "physical_plate_hole_count": 20,
+          "shared_device_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                -18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                0.0,
+                18.031222920256962
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                18.031222920256962,
+                0.0
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                11.5,
+                -9.3
+              ],
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.95,
+              "pad_diameter_mm": 6.5,
+              "passed": true
+            }
+          ],
+          "standard_mounting_holes": [
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -2.455756079379457,
+                -13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                13.927284806400378,
+                -2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                2.455756079379457,
+                13.927284806400378
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -13.927284806400378,
+                2.455756079379457
+              ],
+              "diameter_mm": 2.6,
+              "fastener": "M2",
+              "hole_diameter_mm": 2.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 5.6,
+              "passed": true,
+              "pitch_mm": 20.0
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                -15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            },
+            {
+              "bore_obstruction_mm3": 0.0,
+              "centre_xy_mm": [
+                -15.25,
+                15.25
+              ],
+              "diameter_mm": 3.6,
+              "fastener": "M3",
+              "hole_diameter_mm": 3.6,
+              "missing_full_thickness_bearing_annulus_mm3": 0.0,
+              "nominal_radial_wall_mm": 1.4999999999999998,
+              "pad_diameter_mm": 6.6,
+              "passed": true,
+              "pitch_mm": 30.5
+            }
+          ]
+        },
+        "shared_print_comparison": {
+          "bounds_difference_mm": 0.0,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "shared_print_geometry_and_metadata_match": true,
+        "single_valid_solid": true,
+        "source_comparison": {
+          "bounds_difference_mm": 2.1316282072803006e-14,
+          "closed_solid_identity_by_empty_cuts": false,
+          "difference_mm3": 0.0,
+          "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",
+          "volume_difference_mm3": 0.0
+        },
+        "structural_stack_contract_matches": true
+      }
+    ],
+    "navigation_centre_xy_mm": [
+      0,
+      0
+    ],
+    "optional_power_template_matches": true,
+    "optional_regulator_bay_centres_xy_mm": [
+      [
+        0,
+        -13
+      ],
+      [
+        0,
+        13
+      ]
+    ],
+    "print_sku": "UniversalEquipmentCarrier",
+    "radio_centre_xy_mm": [
+      0,
+      47
+    ],
+    "same_complete_plate_contract": true,
+    "same_saved_local_BREP_bytes": true,
+    "scope": "Scalar, saved metadata and observed BREP byte identity supplement required source-bound native geometry equivalence; serialization order is not treated as a geometric criterion. Physical fasteners, adhesive, arbitrary extensions and all holes used simultaneously remain unqualified.",
+    "source_file_sha256": "cc18be3187de261dcf6eaa11f8702a9989046b009a80464f153f75d8d7a393be",
+    "source_scalars": {
+      "COMMON_DECK_SIZE": [
+        54.0,
+        54.0
+      ],
+      "COMMON_PRINT_SKU": "UniversalEquipmentCarrier",
+      "COMMON_STANDARD_PATTERNS": [
+        [
+          20.0,
+          35.0
+        ],
+        [
+          30.5,
+          0.0
+        ]
+      ],
+      "NAVIGATION_CENTRE_XY": [
+        0.0,
+        0.0
+      ],
+      "RADIO_CENTRE_XY": [
+        0.0,
+        47.0
+      ],
+      "UTILITY_TAB_CENTRE_XY": [
+        0.0,
+        39.0
+      ],
+      "UTILITY_TAB_SIZE": [
+        22.0,
+        30.0
+      ]
+    },
+    "support_face_z_mm": 13.4,
+    "template_bore_count": 20,
+    "unique_main_print_files": 12
+  },
+  "completed_pipeline": {
+    "file": "/tmp/aw-final-pipeline.json",
+    "full_logs_retained_in_audit": true,
+    "sha256": "464b9c7f4051e909e7f388b71283ee67651c128a38a6d71531eb0a88cef5a560",
+    "stages": [
+      {
+        "exit_code": 0,
+        "path": "/tmp/aw-final-build.log",
+        "seconds": 14.024,
+        "sha256": "279aa86bec305b7dcece05945685ed1b5d56c0cdf52ffacc9b453b47f941c43e"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/aw-final-preview.log",
+        "seconds": 45.587,
+        "sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/aw-final-validate.log",
+        "seconds": 940.794,
+        "sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/aw-final-compare.log",
+        "seconds": 10.965,
+        "sha256": "0aadd498fe0fa1a97b5dae47a13f04deafd8f5556603c3afdac27b6f5db86627"
+      },
+      {
+        "exit_code": 0,
+        "path": "/tmp/aw-final-bundle.log",
+        "seconds": 0.209,
+        "sha256": "934330b59f001bae97adf3496e2fc192b1016945d25dfcc474cc39481c9c36e3"
+      }
+    ]
+  },
+  "fixture_file": "tests/fixtures/rev_aw_geometry.FCStd",
+  "fixture_sha256": "ff5a729761bc9a071630966132ea7584c62321a3dc40766880d6f7ab3fd63ace",
+  "independent_preview_document_review": {
+    "documentation_files": [
+      "README.md",
+      "HANDOFF.md",
+      "references/layout_and_wiring_review.md",
+      "references/navigation_module_compatibility.md",
+      "references/power_module_compatibility.md",
+      "references/radio_module_compatibility.md",
+      "references/universal_carrier_review.md"
+    ],
+    "evidence_sha256": "f62ed46939f9a4aec33973537231b17ad932ffb40d60513aebd4db46b8a6dace",
+    "material_discrepancy_found": false,
+    "scope": "Independent visual reading of four final previews and consistency review of current layout documentation. No image-derived dimensions, collision proof, physical retention, load qualification or complete native validation claim.",
+    "visually_reviewed_images": [
+      "gondola_top.png",
+      "gondola_electronics.png",
+      "gondola_power_options.png",
+      "gondola_print_parts.png"
+    ]
+  },
+  "limits": [
+    "Passing checks establish source/artifact identity and the declared nominal CAD envelope checks, not production or flight release.",
+    "Eight nominal functional interfaces in the mechanism remain separately classified; physical manufacturing fits, motion under load, wire behavior and actual interfaces remain qualified only by future bench checks.",
+    "Optional power exports remain separate from baseline quantities. Direct MG-F10 antenna with accessory power stack is screened as incompatible; use another permitted arrangement.",
+    "Historical controlled KST alternative geometry evidence remains in rev_au_kst_review.json. AW retains the source-selected mixed-metal pair; current optional KST nuts use the seller brass claim and an explicitly assumed density."
+  ],
+  "main_cad_sha256": "61d085aaac8c6a109317fe50886dbea2c643fb0ec7f68c4b874a4873bdff9739",
+  "native_counts": {
+    "fit_coupon_quantity": 3,
+    "hardware_items": 60,
+    "installed_prints": 13,
+    "unique_print_files": 12
+  },
+  "native_test_evidence": {
+    "all_passed_and_exact_coverage": true,
+    "full_logs_retained_in_audit": true,
+    "index_sha256": "179236093a179b4aa089566724c9d97bfed4620b56eb04f09f412293d8b74802",
+    "totals": {
+      "errors": 0,
+      "failures": 0,
+      "skips": 0,
+      "tests": 446
+    }
+  },
+  "optional_cad_sha256": "5259c2096a4cef3cad5aa25902af50f1c060d683a3214e66d84f76f87e7028c3",
+  "optional_inventory": {
+    "M2_hex_nuts": 2,
+    "M2x8_screws": 2,
+    "actual_branch_inputs_v": [
+      24,
+      8
+    ],
+    "actual_branch_outputs_v": [
+      8,
+      5
+    ],
+    "all_four_artifact_hashes": {
+      "gondola_power_options.FCStd": "5259c2096a4cef3cad5aa25902af50f1c060d683a3214e66d84f76f87e7028c3",
+      "gondola_power_options.json": "577d53e55a367782900b87e8ff04d98c37440c9ce010c46ba3a9bfb8f43a850a",
+      "optional_power_mount.step": "43bca5b2ee42b40c97c998dae507252a92de7e03c637ddd7fec144e81159e18b",
+      "optional_power_mount.stl": "db7a3233434254accb63a278f5710976379042e7ab07d40e28856eb148ff1457"
+    },
+    "both_optical_host_screens_passed": true,
+    "illustrated_BEC12S_PRO_units": 1,
+    "illustrated_SVPDB_8S_units": 1,
+    "included_in_default": false,
+    "no_tether_route_model": true,
+    "one_piece_print_quantity": 1,
+    "saved_cascade_contract_matches": true,
+    "saved_visibility": {
+      "AssemblyContext": false,
+      "PowerModule0": true,
+      "PowerModule1": true,
+      "PowerOptionModule": true,
+      "PowerPlatform": true
+    }
+  },
+  "passed": true,
+  "preview_image_count": 14,
+  "production_released": false,
+  "read_only_inputs_unchanged": true,
+  "release_stage": "fit_prototype",
+  "reports": {
+    "gondola_baseline_validation.json": {
+      "passed": true,
+      "sha256": "e09dfa2ad55ec75567c8a8ff1fb7c5df1a203eb90a0f24b8ed03dc39c7680a37"
+    },
+    "gondola_equipment_validation.json": {
+      "passed": true,
+      "sha256": "a245dba25b6a003fb6b4313f2095bbe3ef102e06a349f660b78eab5119c7ff2c"
+    },
+    "gondola_power_validation.json": {
+      "passed": true,
+      "sha256": "01e34130f51f14ca19032ad2b301abd6958d1e88e2c355304457ae5828218f9d"
+    },
+    "gondola_propulsion_validation.json": {
+      "passed": true,
+      "sha256": "3990a0dcd0f50e40c37e40769edf698a66d72c6862726762c05af324398cd629"
+    },
+    "gondola_validation.json": {
+      "passed": true,
+      "sha256": "0d84d2d7d6a84a4a178b31d60efae16be57a83f358cb5d49f8a1395604eb843b"
+    }
+  },
+  "retained_audit": {
+    "compressed_sha256": "7ad83662538089f45f5aeee2328600e438f6e3d0ca0e8fde66156c19ba874937",
+    "file": "tests/fixtures/rev_aw_artifact_audit.json.gz",
+    "uncompressed_sha256": "4e2725b2a92d4264ebd2f8879c7ef7ce6ceb90c985eb12696642a733de74e6b6"
+  },
+  "reviewed_at_utc": "2026-09-27T09:29:48.092313+00:00",
+  "revision": "AW",
+  "scope": "Byte identity and logical consistency of the completed final native/print/preview/reports/BOM/ZIP pipeline. No geometry regeneration, physical fit, thermal, electrical or load qualification. The source-bound native geometry reports are retained in full.",
+  "source_fingerprint": "5a09f80e21c1aa9f38524454ebf54025af6c7eb051054add5208721cf04db630"
+}

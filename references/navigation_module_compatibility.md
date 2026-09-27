@@ -1,6 +1,7 @@
 # Interchangeable navigation modules
 
-Reviewed 2026-09-25 for AT. The user selected one shared navigation location for
+Manufacturer inputs retained from the 2026-09-25 review; carrier layout updated
+for AW on 2026-09-27. The user selected one shared navigation location for
 **LinkTrack P-AS, MicoAir MG-A01/M10 Ultra, or MG-F10 with an external helix**.
 These are alternatives, not three simultaneously installed devices. P-AS remains
 the default until a specific GPS is selected. Mechanical interchangeability does
@@ -52,21 +53,28 @@ can carry a tall 15 g antenna or connector-tightening loads.
 
 ## Shared carrier and antenna arrangements
 
-AT replaces the long shared FC/navigation arm with one plain rail-mounted
-accessory plate for the selected navigation module and the onboard Mini radio.
-The plate includes the two confirmed P-AS mounting axes. GPS alternatives use
+AW uses the same printed carrier for battery, FC and navigation. The selected
+navigation module is centred on its carrier; the onboard Mini sits on the common
+straight utility tab. No long navigation/radio-specific plate is needed. All
+three carriers include the two confirmed P-AS mounting axes. GPS alternatives use
 an unpierced 18 × 14 mm adhesive allocation in the same navigation region; the
 P-AS holes lie outside this rectangle. These are mutually exclusive devices.
-The FC retains its own compact carrier and optical-stack anchors.
+The FC occupies another copy of the carrier and retains its optical-stack anchors.
 
-The accessory plate's offset rail shoe places the navigation region outward
-from the FC. This spacing retains the conservative direct-helix reservation and
-both optical hosts; it is not arbitrary excess length. Moving the plate inward
+The navigation carrier's rail station places it beyond the FC; its shoe,
+navigation centre and structural stack datum now share the local origin.
+The formerly offset navigation and tower datums are obsolete. Moving the plate inward
 requires renewed optical, antenna, connector and service clearance checks.
-The 2 mm plain deck is supported directly by its integral shoe without a long
+The 2 mm plain deck is supported by its integral shoe without a long
 narrow navigation branch. Loaded deflection and tape retention, especially with
 the 15 g helix, still require a prototype. Support the SMA socket while attaching
 its antenna; do not use the printed deck as a tightening lever.
+
+The common carrier's shape and spare mounting-hole limits are described in
+[universal carrier review](universal_carrier_review.md). Its different mounting
+roles remain separate installations: identical print geometry does not qualify
+the navigation instance as an optical host, nor permit a direct MG-F10 antenna
+and the optional power tower on that same instance simultaneously.
 
 The user accepts both MG-F10 arrangements:
 
