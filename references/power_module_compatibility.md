@@ -86,7 +86,10 @@ compatibility.
 
 The optional one-piece **PowerPlatform** combines the common 54 × 74 × 2 mm
 rounded rectangular deck with the structural tower. The 3 mm plan-view corner
-radii match the rail carriers; there is no projecting utility tab. Its complete
+radii match the rail carriers; there is no projecting utility tab or outboard
+structural clamp ear. The common feet fit inside the outline at nominal
+alignment and retain the
+inward-corner relief used for optical-tower service clearance. Its complete
 printed height is 35 mm. Two
 M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
 board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
@@ -96,14 +99,15 @@ body-envelope allocation, not tested thermal separation or a completed harness.
 The installed
 battery baseline does not include this optional print, its fasteners or regulators.
 
-The plate shares the rail carriers' complete **20-hole equipment/expansion
-template**: the selected FC and P-AS axes, **20 × 20 mm M2** and
-**30.5 × 30.5 mm M3** square patterns, and six M2 expansion holes. The square
-patterns use the same rotations on every plate (35° and 0°, respectively).
-The tower feet have two additional structural clamp bores. These are general
-provisions, not either Matek board's mounting holes. Some common bores cross the
-top beam below the deck; inspect the fused deck/tower shape and its remaining
-sections. See [universal carrier rationale](universal_carrier_review.md).
+The plate shares the rail carriers' **six fixed device bores and ten mounting
+slots**, defined in [mounting_slots.py](../gondola/parts/mounting_slots.py) and
+[equipment_mounts.py](../gondola/parts/equipment_mounts.py). The FC/P-AS support
+lands remain intact. Structural feet use two separate circular clamp bores, not
+the generic slots. These provisions are not either Matek board's mounting holes.
+Slots that cross the top beam must cut through the fused support beneath the
+deck; inspect the resulting sections. No extra baseline fasteners or washers are
+selected, and existing M2 heads are not automatically suitable for the wider M3
+slots. See [universal carrier rationale](universal_carrier_review.md).
 Dedicated board tie slots and tether holes are absent; adhesive or
 a removable strap around existing structure provides simple attachment options.
 The two existing optical host carriers
@@ -113,11 +117,12 @@ hold the optical tower and power tower simultaneously; move the optical tower to
 the other supported optical host first. The accessory carrier is a power host,
 not an additional qualified optical host.
 
-The direct MG-F10 helix overlaps the accessory-host power platform. Use the
+The direct MG-F10 helix and accessory-host power platform remain an excluded
+combination unless a current configuration review explicitly qualifies them. Use the
 already allowed remote antenna installation or assess the battery host after
 moving the optical tower to its supported FC host. The current FC station at
 X = -54 mm is not an accepted power-platform installation: its conservative
-registration screen intersects the propulsion sweep reservation. A common
+registration screen previously intersected the propulsion sweep reservation. A common
 attachment datum alone does not resolve this; relocating that carrier requires
 renewed optical, propulsion and wiring checks. These excluded combinations are
 not reasons to remove their clearance reservations.
@@ -142,7 +147,9 @@ volume-based PA12 mass estimate. Validation checks the saved optional shapes,
 main-assembly context, print exports and their identities without rewriting them.
 It screens both optical-host configurations, available power hosts/plans and
 navigation alternatives, including conservative seated XY/yaw registration bounds.
-Permitted/rejected combinations in that current report take precedence over a
+AY's changed tower and mounting slots require renewed checks; earlier successes
+are not current qualification. Permitted/rejected combinations in the current
+report take precedence over a
 generic claim that every stack location works in every equipment arrangement.
 
 ## Retained primary evidence

@@ -432,6 +432,15 @@ def audit_power_options(source=None, output_dir=None):
         report["print_size_passed"] = bool(
             actual_manifest.get("size_check", {}).get("passed")
         )
+        from .validation.equipment import carrier_opening_checks
+
+        report["plate_openings"] = carrier_opening_checks(
+            option.PowerPlatform.Shape,
+            bottom=power_mount.DECK_BOTTOM_Z,
+            thickness=power_mount.DECK_THICKNESS_MM,
+            through_bottom=0.0,
+            through_depth=stack_interface.TOP_BEAM_THICKNESS,
+        )
         expected_print = print_shape(option.PowerPlatform)
         step = Part.Shape()
         step.read(str(out / ARTIFACT_NAMES[2]))
@@ -503,6 +512,7 @@ def audit_power_options(source=None, output_dir=None):
                 )
             )
             and all(report["native_shape_checks"].values())
+            and report["plate_openings"]["passed"]
             and report["step_comparison"]["passed"]
             and report["configuration_screen"]["passed"]
             and report["mesh_checks"]["watertight_mesh"]

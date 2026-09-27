@@ -59,7 +59,14 @@ class OpticalMountTests(unittest.TestCase):
         base = optical_mount.base_shape()
         tower = stack_interface.tower_shape()
         self.assertLess(abs(tower.cut(base).Volume), 1e-5)
-        self.assertEqual(set(stack_interface.ANCHOR_CENTRES), {(-24, -24), (24, 24)})
+        self.assertEqual(
+            set(stack_interface.ANCHOR_CENTRES), {(-22.5, -22.5), (22.5, 22.5)}
+        )
+        self.assertEqual(
+            set(stack_interface.CLAMP_CENTRES), {(-22.5, -28.5), (22.5, 28.5)}
+        )
+        self.assertAlmostEqual(base.BoundBox.XLength, 53)
+        self.assertAlmostEqual(base.BoundBox.YLength, 63)
         self.assertAlmostEqual(base.BoundBox.ZMin, -stack_interface.TOWER_HEIGHT)
         self.assertEqual(len(base.Solids), 1)
         # Devices and wiring remain in the open centre, while both complete

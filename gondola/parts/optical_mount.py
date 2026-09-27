@@ -122,7 +122,7 @@ def mount_contract():
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by one straight rectangular beam with flush ends; two directly clamped broad feet independently of FC dampers",
+        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by one straight rectangular beam with flush ends; two 8 x 13 mm Y-aligned feet clamp within the carrier plate outline independently of FC dampers. Each foot has one 5 mm inward corner chamfer for FC-wire clearance during removal, retaining the entire leg footprint. Dedicated circular structural bores remain separate from generic equipment slots.",
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,

@@ -138,43 +138,83 @@ def mounting_pad_check(
     }
 
 
-def carrier_bore_checks(shape):
-    """Inspect every physical plate hole, including unused alternative patterns."""
-    groups = {
-        "shared_device_holes": [
-            mounting_pad_check(
-                shape,
-                centre,
-                bottom=mounts.DECK_BOTTOM_Z,
-                thickness=mounts.DECK_THICKNESS,
-                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
-            )
-            for centre in mounts.COMMON_DEVICE_HOLE_CENTRES
-        ],
-    }
-    for name, holes in (
-        ("standard_mounting_holes", mounts.standard_hole_rows("electronics")),
-        ("expansion_mounting_holes", mounts.expansion_hole_rows()),
+def carrier_opening_checks(
+    shape,
+    *,
+    bottom=mounts.DECK_BOTTOM_Z,
+    thickness=mounts.DECK_THICKNESS,
+    through_bottom=None,
+    through_depth=None,
+):
+    """Audit complete fixed bores and slot rims on the saved physical plate.
+
+    ``through_bottom``/``through_depth`` include material beneath an optional
+    deck, such as its fused top beam. Lands cover the entire declared deck
+    thickness; they are geometric sections, not a clamp-strength qualification.
+    """
+    from gondola.parts import mounting_slots
+
+    through_bottom = bottom if through_bottom is None else through_bottom
+    through_depth = thickness if through_depth is None else through_depth
+    if (
+        thickness <= 0
+        or through_depth <= 0
+        or through_bottom > bottom + TOL
+        or through_bottom + through_depth < bottom + thickness - TOL
     ):
-        groups[name] = [
+        raise ValueError("Opening probe must include the complete plate thickness")
+    fixed = []
+    for centre in mounts.COMMON_DEVICE_HOLE_CENTRES:
+        row = mounting_pad_check(
+            shape,
+            centre,
+            bottom=bottom,
+            thickness=thickness,
+            hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+            pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+        )
+        bore = Part.makeCylinder(
+            mounts.MOUNT_HOLE_DIAMETER / 2,
+            through_depth,
+            App.Vector(*centre, through_bottom),
+        )
+        obstruction = intersection_volume(shape, bore)
+        row["through_bore_obstruction_mm3"] = obstruction
+        row["passed"] &= obstruction < TOL
+        fixed.append(row)
+    slots = []
+    for spec in mounting_slots.rows():
+        opening = mounting_slots.shape(spec, through_bottom, through_depth)
+        deck_opening = mounting_slots.shape(spec, bottom, thickness)
+        expanded = mounting_slots.shape(spec, bottom, thickness, border=1.5)
+        rim = expanded.cut(deck_opening)
+        obstruction = intersection_volume(shape, opening)
+        missing_land = rim.cut(shape).Volume
+        slots.append(
             {
-                **row,
-                **mounting_pad_check(
-                    shape,
-                    row["centre_xy_mm"],
-                    bottom=mounts.DECK_BOTTOM_Z,
-                    thickness=mounts.DECK_THICKNESS,
-                    hole_diameter=row["diameter_mm"],
-                    pad_diameter=row["diameter_mm"] + 3.0,
-                ),
+                **spec,
+                "minimum_full_thickness_land_mm": 1.5,
+                "through_slot_obstruction_mm3": obstruction,
+                "missing_continuous_full_thickness_land_mm3": missing_land,
+                "passed": obstruction < TOL and missing_land < TOL,
             }
-            for row in holes
-        ]
+        )
+    single_solid = shape.isValid() and len(shape.Solids) == 1
     return {
-        **groups,
-        "physical_plate_hole_count": sum(len(rows) for rows in groups.values()),
-        "passed": all(row["passed"] for rows in groups.values() for row in rows),
+        "fixed_device_bores": fixed,
+        "mounting_slots": slots,
+        "fixed_bore_count": len(fixed),
+        "slot_count": len(slots),
+        "deck_probe_bottom_mm": bottom,
+        "deck_probe_thickness_mm": thickness,
+        "through_probe_bottom_mm": through_bottom,
+        "through_probe_depth_mm": through_depth,
+        "single_valid_solid": single_solid,
+        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC/P-AS axes retain complete bearing annuli. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
+        "passed": single_solid
+        and bool(fixed)
+        and bool(slots)
+        and all(row["passed"] for row in fixed + slots),
     }
 
 
@@ -222,7 +262,7 @@ def mounting_check(doc):
             ) == json.loads(json.dumps(stack_interface.interface_contract(name)))
         except (AttributeError, ValueError, TypeError):
             stack_contract_matches = False
-        bores = carrier_bore_checks(shape)
+        openings = carrier_opening_checks(shape)
         shared_comparison = (
             geometry_comparison(shape, local_shape(shared_reference))
             if shared_reference is not None
@@ -248,7 +288,7 @@ def mounting_check(doc):
                 "structural_stack_contract_matches": stack_contract_matches,
                 "shared_print_comparison": shared_comparison,
                 "shared_print_geometry_and_metadata_match": shared_print_matches,
-                "physical_plate_holes": bores,
+                "physical_plate_openings": openings,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()
@@ -259,7 +299,7 @@ def mounting_check(doc):
                 and unverified_stack
                 and stack_contract_matches
                 and shared_print_matches
-                and bores["passed"],
+                and openings["passed"],
             }
         )
     carriers = {

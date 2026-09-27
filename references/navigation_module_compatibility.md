@@ -1,7 +1,7 @@
 # Interchangeable navigation modules
 
 Manufacturer inputs retained from the 2026-09-25 review; carrier layout updated
-for AX on 2026-09-27. The user selected one shared navigation location for
+for AY on 2026-09-27. The user selected one shared navigation location for
 **LinkTrack P-AS, MicoAir MG-A01/M10 Ultra, or MG-F10 with an external helix**.
 These are alternatives, not three simultaneously installed devices. P-AS remains
 the default until a specific GPS is selected. Mechanical interchangeability does
@@ -53,11 +53,12 @@ can carry a tall 15 g antenna or connector-tightening loads.
 
 ## Shared carrier and antenna arrangements
 
-AX uses the same printed carrier for battery, FC and navigation. The selected
+AY uses the same printed carrier for battery, FC and navigation. The selected
 navigation module remains centred on its carrier; the onboard Mini uses the
 opposite plate face, beside the rail shoe. No projecting tab or dedicated
 navigation/radio plate is needed. All three carriers include the two confirmed
-P-AS mounting axes. GPS alternatives use
+P-AS mounting axes and their full support lands while generic positions use the
+shared mounting slots. GPS alternatives use
 an unpierced 18 × 14 mm adhesive allocation in the same navigation region; the
 P-AS holes lie outside this rectangle. These are mutually exclusive devices.
 The FC occupies another copy of the carrier and retains its optical-stack anchors.
@@ -76,7 +77,7 @@ the navigation face. Its populated face points toward the unmodeled balloon;
 service it with the carrier removed rather than assuming on-balloon access.
 See [radio installation limits](radio_module_compatibility.md).
 
-The common carrier's shape and spare mounting-hole limits are described in
+The common carrier's shape and spare mounting-slot limits are described in
 [universal carrier review](universal_carrier_review.md). Its different mounting
 roles remain separate installations: identical print geometry does not qualify
 the navigation instance as an optical host, nor permit a direct MG-F10 antenna

@@ -117,6 +117,78 @@ class StackInterfaceTests(unittest.TestCase):
         finally:
             base.Shape, host.Shape = old_base, old_host
 
+    def test_complete_foot_and_host_seat_cannot_lose_an_outer_corner(self):
+        from gondola.parts import stack_interface as s
+        from gondola.validation.optical import tower_attachment_check
+
+        base, host = self.doc.OpticalMountBase, self.doc.BatteryMount
+        before_base, before_host = base.Shape.copy(), host.Shape.copy()
+        result = tower_attachment_check(self.doc, self.battery)
+        self.assertTrue(result["passed"], result)
+        for row in result["direct_clamped_seats"]:
+            self.assertAlmostEqual(
+                row["expected_complete_foot_contact_area_mm2"],
+                8 * 13 - 5**2 / 2 - math.pi * 1.3**2,
+                places=6,
+            )
+        # This tiny outer-corner loss leaves much more than the old 75 mm²
+        # threshold. Inspecting the entire foot must still reject it.
+        for target, bottom in ((base, -s.TOWER_HEIGHT), (host, s.HOST_DECK_BOTTOM_Z)):
+            try:
+                target.Shape = target.Shape.cut(
+                    Part.makeBox(0.3, 0.3, 2, App.Vector(26.1, 31.1, bottom))
+                )
+                result = tower_attachment_check(self.doc, self.battery)
+                self.assertFalse(result["passed"], result)
+                row = result["direct_clamped_seats"][1]
+                self.assertGreater(row["direct_seat_contact_area_mm2"], 75)
+                self.assertGreater(
+                    row["missing_complete_foot_material_mm3"]
+                    if target == base
+                    else row["missing_complete_carrier_seat_mm3"],
+                    1e-5,
+                )
+            finally:
+                base.Shape, host.Shape = before_base.copy(), before_host.copy()
+
+    def test_inward_chamfer_retains_leg_support_and_is_required_during_removal(self):
+        from unittest.mock import patch
+
+        from gondola.cad import world_shape
+        from gondola.parts import optical_mount
+        from gondola.parts import stack_interface as s
+        from gondola.validation.optical import _tower_service_check
+
+        for index, (x, y) in enumerate(s.ANCHOR_CENTRES):
+            leg = s._radial(s._fixed_leg_shape(math.hypot(x, y)), x, y)
+            seat = leg.common(
+                Part.makeBox(100, 100, 2, App.Vector(-50, -50, -s.TOWER_HEIGHT))
+            )
+            self.assertLess(abs(seat.cut(s.foot_shape(index)).Volume), 1e-5)
+        s.attach_to_host(self.kit["group"], self.electronics)
+        base = self.doc.OpticalMountBase
+        original = base.Shape.copy()
+        fixed = {
+            obj.Name: world_shape(obj)
+            for obj in self.doc.Objects
+            if obj.TypeId == "Part::Feature" and obj not in self.moving + self.reserves
+        }
+        try:
+            for chamfer in (0, 4):
+                with patch.object(s, "FOOT_INBOARD_CHAMFER", chamfer):
+                    base.Shape = optical_mount.base_shape()
+                    result = _tower_service_check(self.doc, fixed, self.moving)
+                    self.assertFalse(result["passed"], result)
+                    self.assertTrue(
+                        all(
+                            row["fc_wiring_gap_mm"] < 1.5
+                            for row in result["registered_foot_lift"]
+                        ),
+                        result,
+                    )
+        finally:
+            base.Shape = original
+
     def test_foot_hardware_is_in_removable_kit_and_uses_existing_sizes(self):
         from gondola.parts.stack_interface import is_removable_head_part
 
@@ -151,6 +223,14 @@ class StackInterfaceTests(unittest.TestCase):
             }
             result = _tower_service_check(self.doc, fixed, self.moving)
             self.assertTrue(result["passed"], result)
+            if host == self.electronics:
+                self.assertTrue(
+                    all(
+                        row["fc_wiring_gap_mm"] >= 1.5
+                        for row in result["registered_foot_lift"]
+                    ),
+                    result,
+                )
             floating = _tower_float_clearance_check(self.doc, host, fixed)
             self.assertTrue(floating["passed"], floating)
         s.attach_to_host(self.kit["group"], self.battery)
@@ -273,6 +353,8 @@ class StackInterfaceTests(unittest.TestCase):
         bound = union([shape for _, shape in s.rigid_float_component_bounds()])
         tower = s.tower_shape()
         radius = math.hypot(*s.CLAMP_CENTRES[0])
+        frame_angle = math.atan2(*reversed(s.CLAMP_CENTRES[1]))
+        c, sn = math.cos(frame_angle), math.sin(frame_angle)
         gap = s.MAX_RADIAL_FLOAT
         limit = 2 * math.asin(gap / (2 * radius))
         for yaw in (-0.9 * limit, -0.5 * limit, 0, 0.5 * limit, 0.9 * limit):
@@ -284,15 +366,19 @@ class StackInterfaceTests(unittest.TestCase):
                 radial, tangent = (sign * t * v for v in direction)
                 self.assertLessEqual(math.hypot(radial + dr, tangent + dt), gap + 1e-7)
                 self.assertLessEqual(math.hypot(radial - dr, tangent - dt), gap + 1e-7)
-                moved = tower.copy()
-                moved.rotate(App.Vector(), App.Vector(0, 0, 1), math.degrees(yaw))
-                moved.translate(
+                pose = App.Placement(
                     App.Vector(
-                        (radial - tangent) / math.sqrt(2),
-                        (radial + tangent) / math.sqrt(2),
+                        radial * c - tangent * sn,
+                        radial * sn + tangent * c,
                         0,
-                    )
+                    ),
+                    App.Rotation(App.Vector(0, 0, 1), math.degrees(yaw)),
                 )
+                for x, y in s.CLAMP_CENTRES:
+                    axis = App.Vector(x, y, 0)
+                    self.assertLessEqual((pose.multVec(axis) - axis).Length, gap + 1e-7)
+                moved = tower.copy()
+                moved.Placement = pose.multiply(moved.Placement)
                 self.assertLess(
                     abs(moved.cut(bound).Volume), 1e-5, (yaw, radial, tangent)
                 )
@@ -324,13 +410,14 @@ class StackInterfaceTests(unittest.TestCase):
             self.assertEqual(s.host_origin_xy(host), (0.0, 0.0))
         support = equipment_mounts.mount_shape("accessory")
         datum = s.host_origin_xy("AccessoryMount")
-        platform = s.platform_shape()
-        platform.translate(App.Vector(*datum, s.HOST_DECK_BOTTOM_Z))
-        for hole in equipment_mounts.common_plate_hole_shapes(
-            s.HOST_DECK_BOTTOM_Z, s.DECK_THICKNESS
-        ):
-            platform = platform.cut(hole)
-        self.assertLess(abs(platform.cut(support).Volume), 1e-6)
+        for index in range(2):
+            seat = s.foot_shape(index, bottom=s.HOST_DECK_BOTTOM_Z)
+            seat.translate(App.Vector(*datum, 0))
+            self.assertLess(abs(seat.cut(support).Volume), 1e-6)
+        plate = equipment_mounts.common_plate_shape()
+        drilled = s.add_host_interface(plate, host)
+        self.assertLess(abs(drilled.cut(plate).Volume), 1e-6)
+        self.assertEqual((drilled.BoundBox.XMin, drilled.BoundBox.XMax), (-27.0, 27.0))
         for x, y in s.CLAMP_CENTRES:
             hole = Part.makeCylinder(
                 s.CLAMP_HOLE_DIAMETER / 2,

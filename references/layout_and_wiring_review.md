@@ -1,10 +1,10 @@
-# Three mass regions and universal electronics carriers — AX
+# Three mass regions and universal electronics carriers — AY
 
 Keep three mass regions: central propulsion, battery on one side and electronics
 on the opposite side. Two independently positioned carriers occupy the
 electronics region: the FC/optical-host carrier and one carrier for navigation
 plus the LR24-F-Mini. Battery, FC and navigation now use three copies of the same
-printed shape and hole layout. Four rail shoes do not imply four
+printed shape and mounting layout. Four rail shoes do not imply four
 separate mass regions. The intentionally removable paired-servo module remains
 separate from the output-bearing frame.
 
@@ -24,7 +24,7 @@ intended global installation orientation independently of this carrier turn;
 the square mounting pattern permits it. The CAD envelope has no component
 markings, so verify the actual board arrow and firmware orientation at assembly.
 
-AX retains the AW initial FC carrier station at X = -54 mm, with navigation
+AY retains the initial FC carrier station at X = -54 mm, with navigation
 at -158 mm. The earlier move from X = -72 mm increased separation from the centred navigation
 and optional direct helix, and brings the FC closer to the neutral motor-lead
 exits. The new shoe position coincides with a rail land centre. These are initial
@@ -43,13 +43,17 @@ The shared carrier combines a 54 × 74 mm deck with 3 mm plan-view corner radii
 and an integral rail shoe, with no projecting tab or model-shaped pockets.
 The plate outline is symmetric, while holes and clamp orientations retain their
 functional datums. Every instance has the same confirmed
-FC/P-AS axes, standard square patterns and six expansion bores. The navigation
+FC/P-AS bores and the common straight/curved mounting-slot template. The
+structural feet and their two circular clamps fit inside the plate outline at
+nominal alignment;
+there are no separate outboard clamp ears. The navigation
 instance places P-AS or one GPS at its centre, and the Mini at (-15,28) mm on the
 opposite plate face, beside the rail shoe. It needs no radio-specific plate. See
 [common carrier rationale](universal_carrier_review.md) for the hole and support
-boundaries. The Mini's X offset leaves rail-clamp hex-key access and clears the
-diagonal stack-foot bolt from its connector lane without changing the plate outline. Its ordinary rail clamp
-permits independent positioning. The navigation carrier starts near the aft
+boundaries. The Mini's X offset was selected for rail-clamp hex-key and structural
+fastener access without changing the outline. Recheck these paths against the
+revised tower feet and clamp positions. Its ordinary rail clamp permits
+independent positioning. The navigation carrier starts near the aft
 rail end to separate the optional helix
 from the optical hosts; recalculate the field-of-view and connector checks after
 layout changes rather than reusing older results. The initial accessory
@@ -97,7 +101,14 @@ servo-module removal path. A stationary electronics carrier can anchor the
 downstream portion without a needless detour to the low propulsion-frame foot.
 
 The connected CAD reservations describe available loop workspace and a route
-toward the FC. They do not establish the motor's unpublished lead-exit datum,
+toward the FC. AY moves the single intermediate waypoint to propulsion-local
+(-42, ±12, 40) mm so the compact FC-host tower retains clearance throughout its
+declared seated registration. The earlier (-40, ±12, 39) mm route failed the
+unchanged 1.5 mm minimum margin. The correction retains the same 3 mm corridor,
+R4 mm planning turn and one-bend topology; it adds about 1.8 mm of centreline
+length, not a verified wire cut-length allowance.
+
+These reservations do not establish the motor's unpublished lead-exit datum,
 an installed tie, cable length, bend radius, or the flexible cable's changing
 shape. Fixed routing must be revised after rail adjustment. Moving-wire
 clearance, rubbing, tension, twist and fatigue need the actual harness through
@@ -113,7 +124,7 @@ wire route is safe.
 - [MicoAir 45A installation guidance](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual): board orientation, insulation/damping and ESC ventilation. See `controller_selection_review.md` for the unchanged nominal interface, changed included dampers and unresolved input-voltage evidence.
 - [igus cable installation guidance](https://www.igus.com/contentData/wpck/pdf/US_en/7_guidelines_for_continuousflex_cables.pdf): motion space, avoidance of tensile loading and strain relief. General principles; the cited cable-carrier system does not qualify this miniature free loop.
 
-Current geometric evidence belongs to `tests/fixtures/rev_ax_review.json` and
+Current geometric evidence belongs to `tests/fixtures/rev_ay_review.json` and
 matching generated validation reports. Until those checks are complete, this
 reference describes the intended layout and its limits, not a passed release.
 Physical qualification remains separate.
