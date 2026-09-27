@@ -156,14 +156,13 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
     ).removeSplitter()
     fc = _orient_fc_reserve(fc)
     bottom = layout.adhesive_bottom()
-    radio_x, radio_y = mounts.RADIO_CENTRE_XY
     radio_length, radio_width, radio_height = radio_profile.size_mm
     radio_lane_size = (
         RADIO_CONNECTOR_TRAVEL_MM,
         radio_width + 2 * CONNECTOR_SIDE_MARGIN_MM,
         radio_height + CONNECTOR_TOP_MARGIN_MM,
     )
-    radio_lane_y = radio_y - radio_width / 2 - CONNECTOR_SIDE_MARGIN_MM
+    radio_lane_y = -radio_width / 2 - CONNECTOR_SIDE_MARGIN_MM
     navigation_x, navigation_y = layout.navigation_centre()
     navigation_width = navigation_profile.connector_band_width_mm
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
@@ -181,14 +180,14 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
         "RadioNegativeXConnectorReserve": _box(
             radio_lane_size,
             (
-                radio_x - radio_length / 2 - RADIO_CONNECTOR_TRAVEL_MM,
+                -radio_length / 2 - RADIO_CONNECTOR_TRAVEL_MM,
                 radio_lane_y,
-                bottom,
+                0,
             ),
         ),
         "RadioPositiveXConnectorReserve": _box(
             radio_lane_size,
-            (radio_x + radio_length / 2, radio_lane_y, bottom),
+            (radio_length / 2, radio_lane_y, 0),
         ),
         "PASConnectorReserve": _box(
             (
@@ -205,6 +204,8 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
             ),
         ),
     }
+    for name in ("RadioNegativeXConnectorReserve", "RadioPositiveXConnectorReserve"):
+        shapes[name].Placement = layout.radio_placement()
     antenna = direct_antenna_reserve_shape(navigation_profile)
     if antenna is not None:
         shapes["NavigationDirectAntennaReserve"] = antenna
@@ -282,7 +283,7 @@ def reserve_contracts(navigation_profile=None, radio_profile=None):
         "transverse_margin_each_side_mm": CONNECTOR_SIDE_MARGIN_MM,
         "top_service_margin_mm": CONNECTOR_TOP_MARGIN_MM,
         "design_outward_travel_mm": RADIO_CONNECTOR_TRAVEL_MM,
-        "operating_scope": "Reserve both complete ends of the LR24-F-Mini long body axis on the accessory carrier. Actual UART and RF connector coordinates and which installed end faces +X remain unverified. The Mini has no USB; its IPEX1 mating/lead direction away from the populated face requires a separate physical check.",
+        "operating_scope": "Reserve both complete ends of the LR24-F-Mini long body axis on the rail-facing side of the accessory carrier. Body and both lanes share the same inverted frame: the populated-face margin points toward carrier -Z, toward the balloon. Actual UART and RF connector coordinates and which installed end faces +X remain unverified. The Mini has no USB; IPEX1 mating height, actual envelope curvature and installed leads require physical checks. Remove the carrier for bench connector service; no on-balloon access is qualified.",
         "withdrawal_scope": f"Continuous {RADIO_CONNECTOR_TRAVEL_MM:g}mm end lanes include {CONNECTOR_SIDE_MARGIN_MM:g}mm transverse and {CONNECTOR_TOP_MARGIN_MM:g}mm top service margins beyond the body envelope. These are planning allowances, not a measured plug stroke, latch-access proof or antenna keepout. Check actual antenna, pigtail and selected plugs.",
     }
     contracts = {

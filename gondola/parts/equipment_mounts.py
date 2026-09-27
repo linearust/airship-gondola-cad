@@ -30,13 +30,13 @@ FC_HOLE_CENTRES = (
 # All three carriers use the same local mechanical datum and physical print.
 # Equipment selection/placement is role-specific; the spare bores are not.
 COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
-COMMON_DECK_SIZE = (54.0, 54.0)
-UTILITY_TAB_SIZE = (22.0, 30.0)
-UTILITY_TAB_CENTRE_XY = (0.0, 39.0)
+COMMON_DECK_SIZE = (54.0, 74.0)
+DECK_CORNER_RADIUS = 3.0
 NAVIGATION_CENTRE_XY = (0.0, 0.0)
 PAS_HOLE_CENTRES = interfaces.PAS_HOLE_CENTRES
 COMMON_DEVICE_HOLE_CENTRES = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
-RADIO_CENTRE_XY = (0.0, 47.0)
+# Keep both the rail-clamp key path and diagonal stack-foot hardware accessible.
+RADIO_CENTRE_XY = (-15.0, 28.0)
 GPS_ADHESIVE_SIZE = (18.0, 14.0)
 RADIO_ADHESIVE_SIZE = (22.0, 14.0)
 ACCESSORY_DECK_SIZE = COMMON_DECK_SIZE
@@ -165,8 +165,8 @@ def common_plate_contract():
     return {
         "deck_size_mm": (*COMMON_DECK_SIZE, DECK_THICKNESS),
         "deck_centre_xy_mm": (0.0, 0.0),
-        "utility_tab_size_mm": UTILITY_TAB_SIZE,
-        "utility_tab_centre_xy_mm": UTILITY_TAB_CENTRE_XY,
+        "outline_corner_radius_mm": DECK_CORNER_RADIUS,
+        "outline_half_turn_symmetric": True,
         "fc_hole_centres_xy_mm": FC_HOLE_CENTRES,
         "pas_hole_centres_xy_mm": PAS_HOLE_CENTRES,
         "device_bore_diameter_mm": MOUNT_HOLE_DIAMETER,
@@ -175,25 +175,18 @@ def common_plate_contract():
         ),
         "expansion": expansion_contract(),
         "common_bore_count": 20,
-        "scope": "One common plate outline and twenty-hole template. The three rail carriers are identical physical prints, including the utility tab, rail shoe and structural tower datum. The optional power deck uses the same plate template on its integral tower. FC/P-AS mounting patterns and common board patterns are alternative uses, not permission to populate overlapping equipment simultaneously. Optical sensor tray remains an uninterrupted adhesive surface.",
-        "utility_tab_scope": "A plain general-purpose 22 x 30 mm landing, not a radio pocket or dedicated tie route. On the navigation carrier, the Mini uses a 22 x 14 mm adhesive/contact patch; its body overhangs that patch and its external antenna is unmodeled. Other carriers leave the tab available; actual attached devices, strap routes, wiring and extension loads need their own check.",
+        "scope": "One centred rounded rectangular plate and twenty-hole template, without projecting utility tabs. The three rail carriers are identical physical prints including the rail shoe and structural tower datum. The optional power deck uses the same plate template on its integral tower. The outline is symmetric; the complete part retains oriented device holes and a rail clamp, so do not infer half-turn mounting equivalence. FC/P-AS patterns and spare board patterns are alternative uses, not permission to populate overlapping equipment simultaneously. Optical sensor tray remains an uninterrupted adhesive surface.",
     }
 
 
 def common_plate_shape(bottom=DECK_BOTTOM_Z):
     """Same simple plate outline and holes, independent of rail or tower support."""
-    pieces = [
-        box(
-            *size,
-            DECK_THICKNESS,
-            (centre[0] - size[0] / 2, centre[1] - size[1] / 2, bottom),
-        )
-        for size, centre in (
-            (COMMON_DECK_SIZE, (0.0, 0.0)),
-            (UTILITY_TAB_SIZE, UTILITY_TAB_CENTRE_XY),
-        )
+    length, width = COMMON_DECK_SIZE
+    shape = box(length, width, DECK_THICKNESS, (-length / 2, -width / 2, bottom))
+    vertical_edges = [
+        edge for edge in shape.Edges if edge.BoundBox.ZLength > DECK_THICKNESS - 0.01
     ]
-    shape = union(pieces)
+    shape = shape.makeFillet(DECK_CORNER_RADIUS, vertical_edges)
     for hole in common_plate_hole_shapes(bottom - 1, DECK_THICKNESS + 2):
         shape = shape.cut(hole)
     return shape.removeSplitter()
@@ -239,6 +232,7 @@ def mount_contract(kind):
                 "device": "LR24-F-Mini",
                 "centre_xy_mm": RADIO_CENTRE_XY,
                 "size_mm": RADIO_ADHESIVE_SIZE,
+                "support_face": "bottom",
             },
             {
                 "device": "MG-A01 / M10 Ultra or MG-F10-A",
@@ -249,8 +243,8 @@ def mount_contract(kind):
     }
     scope = {
         "battery": "Universal carrier in battery role. Three declared continuous adhesive regions remain between common holes; the structural tower datum is shared with FC/navigation carriers.",
-        "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same spare patterns and utility tab exist on every carrier.",
-        "accessory": "Universal carrier in navigation role. Centred P-AS mounting axes or mutually exclusive taped GPS alternatives use the main deck. The Mini uses the same general-purpose straight tab present on all carriers, with no separate radio plate. The centred common tower datum accepts a separately screened optional power platform; this carrier is not an optical host.",
+        "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
+        "accessory": "Universal carrier in navigation role. Centred P-AS mounting axes or mutually exclusive taped GPS alternatives use the outer face. The Mini uses a fully supported 22 x 14 mm insulating-adhesive allocation on the opposite, rail-facing face, outboard of the rail shoe; its body has minor edge/corner overhang beyond the rounded plate. No separate radio plate, tab or pocket. The populated face and connector working direction face the balloon: actual envelope curvature, plug height, antenna and lead clearance remain unverified. Remove the carrier for bench attachment and service. The centred common tower datum accepts a separately screened optional power platform; this carrier is not an optical host.",
     }
     return {
         "kind": kind,
@@ -295,7 +289,7 @@ def build_mount(doc, parent, kind):
     name = MOUNT_NAMES[kind]
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
-        "Common 54 mm square deck, plain utility tab, twenty shared device/standard/expansion holes, "
+        "Centred 54 x 74 mm rounded rectangular deck, twenty shared device/standard/expansion holes, "
         "integral rail shoe and centred structural tower interface. Choose the occupied role at assembly. "
         "Preserve the declared adhesive patches; spare bores do not qualify arbitrary simultaneous devices. "
         "No dedicated tie holes, separate radio plate, printed device spacers or added fasteners. "

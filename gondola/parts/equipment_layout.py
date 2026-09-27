@@ -1,5 +1,7 @@
 """Shared local placement datums for interchangeable purchased equipment."""
 
+import FreeCAD as App
+
 from gondola.contracts.equipment_options import get_navigation_profile
 
 from . import equipment_mounts as mounts
@@ -28,3 +30,18 @@ def navigation_hole_centres(profile=None):
 def adhesive_bottom():
     """Common nominal elevation for equipment with adhesive under its body."""
     return mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+
+
+def radio_placement():
+    """Body and connector frame on the rail-facing side; local +Z points outward."""
+    return App.Placement(
+        App.Vector(
+            *mounts.RADIO_CENTRE_XY, mounts.DECK_BOTTOM_Z - mounts.ADHESIVE_ALLOWANCE
+        ),
+        App.Rotation(App.Vector(1, 0, 0), 180),
+    )
+
+
+def device_removal_vector(name, distance=32.0):
+    """Bench removal in the carrier frame, after releasing adhesive/hardware."""
+    return (0.0, 0.0, -distance if name == "ModuleRadioEnvelope" else distance)

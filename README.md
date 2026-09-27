@@ -92,16 +92,23 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   properties and labels instead of inferring the device from its object ID.
   Count alternative equipment only when selected.
 - Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`,
-  including the same plate, utility tab, holes, rail shoe and centred structural
-  datum. Preserve identical local shape even though instance names, equipment and
+  including the same rounded rectangular plate, holes, rail shoe and centred
+  structural datum. Preserve identical local shape even though instance names, equipment and
   rail placements differ. The optional power tower uses the same plate template,
-  with its different support beneath it; it is a separate print.
+  with its different support beneath it; it is a separate print. The plate outline
+  is symmetric; hole patterns and rail-clamp orientation still have functional
+  datums.
 - FC/optical-host and accessory instances have separate local frames. Use
   `wiring_reserves.parent_name()` for reservation ownership. The accessory instance
-  carries navigation at its centre and the Mini on its generic straight tab.
+  carries navigation at its centre and the Mini on the plate's opposite face,
+  beside the rail shoe. Preserve the Mini's face orientation in its body,
+  adhesive allocation, connector reserves and removal direction. Its populated
+  face and plug access face the balloon; the envelope and actual plug height are
+  unmodeled. Service it with the carrier removed, not by assuming access on the
+  balloon.
   Its common interface accepts an optional power stack, but is not a qualified
-  optical-stack host. Do not
-  treat rail attachment wings as a verified flat electronics adhesive surface.
+  optical-stack host. Do not treat rail attachment wings as a verified flat
+  electronics adhesive surface.
   A reservation must belong to its declared carrier even when its world position
   happens to match: rail adjustment would otherwise move it with the wrong module.
 - Use `stack_interface.attach_to_host()` for optical-host changes and

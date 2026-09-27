@@ -141,6 +141,30 @@ class WiringReserveTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 self.wiring.parent_name(name)
 
+    def test_radio_body_and_connector_lanes_use_the_same_underside_face(self):
+        from gondola.parts import equipment_envelopes, equipment_mounts
+
+        body = equipment_envelopes.radio_envelope_shape()
+        expected_top = (
+            equipment_mounts.DECK_BOTTOM_Z - equipment_mounts.ADHESIVE_ALLOWANCE
+        )
+        self.assertAlmostEqual(body.BoundBox.ZMax, expected_top)
+        self.assertAlmostEqual(body.BoundBox.YMin, 28 - 18.2 / 2)
+        self.assertAlmostEqual(body.BoundBox.YMax, 28 + 18.2 / 2)
+        for name in (
+            "RadioNegativeXConnectorReserve",
+            "RadioPositiveXConnectorReserve",
+        ):
+            lane = self.expected[name]
+            with self.subTest(lane=name):
+                self.assertAlmostEqual(lane.BoundBox.ZMax, expected_top)
+                self.assertLess(lane.BoundBox.ZMin, body.BoundBox.ZMin)
+                self.assertLess(lane.common(body).Volume, 1e-6)
+                self.assertLess(
+                    lane.common(equipment_mounts.mount_shape("accessory")).Volume,
+                    1e-6,
+                )
+
     def test_reparented_reserve_is_rejected_even_when_world_geometry_is_unchanged(self):
         from gondola.cad import world_shape
         from gondola.print_export import geometry_comparison

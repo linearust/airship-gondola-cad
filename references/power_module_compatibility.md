@@ -84,8 +84,9 @@ compatibility.
 
 ## Mechanical provision
 
-The optional one-piece **PowerPlatform** combines the common 54 × 54 × 2 mm deck
-and 22 × 30 mm straight utility tab with the structural tower. Its complete
+The optional one-piece **PowerPlatform** combines the common 54 × 74 × 2 mm
+rounded rectangular deck with the structural tower. The 3 mm plan-view corner
+radii match the rail carriers; there is no projecting utility tab. Its complete
 printed height is 35 mm. Two
 M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
 board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
@@ -113,9 +114,13 @@ the other supported optical host first. The accessory carrier is a power host,
 not an additional qualified optical host.
 
 The direct MG-F10 helix overlaps the accessory-host power platform. Use the
-already allowed remote antenna installation or place the power platform on an
-unoccupied battery/FC host. This is an explicit excluded combination, not a reason
-to remove the antenna clearance reservation.
+already allowed remote antenna installation or assess the battery host after
+moving the optical tower to its supported FC host. The current FC station at
+X = -54 mm is not an accepted power-platform installation: its conservative
+registration screen intersects the propulsion sweep reservation. A common
+attachment datum alone does not resolve this; relocating that carrier requires
+renewed optical, propulsion and wiring checks. These excluded combinations are
+not reasons to remove their clearance reservations.
 
 Use the open insulating support with suitable adhesive or a removable strap. Inspect the actual
 underside before fixing the board, avoid pressure on components or solder joints,

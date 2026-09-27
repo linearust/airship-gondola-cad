@@ -16,7 +16,7 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedPowerExportTests(unittest.TestCase):
-    def test_registration_bound_includes_the_common_plate_and_utility_tab(self):
+    def test_registration_bound_includes_the_complete_common_plate(self):
         from gondola.parts import equipment_mounts, power_mount, stack_interface
         from gondola.power_export import _registration_bounds
 
@@ -25,7 +25,7 @@ class SavedPowerExportTests(unittest.TestCase):
         allowance = stack_interface.MAX_RADIAL_FLOAT
         radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
         angle = math.degrees(2 * math.asin(allowance / (2 * radius)))
-        # These samples check that the tab participates in the existing analytical
+        # These samples check that the whole plate participates in the analytical
         # enclosure; they do not replace its continuous mathematical bound.
         for yaw, x, y in (
             (0, 0, 0),

@@ -1,0 +1,74 @@
+{
+  "revision": "AX",
+  "transition": "AW to AX",
+  "passed": true,
+  "fixture_promotion_approved": true,
+  "source_fingerprint_at_review": "c56c063182f0236fa8461e5e6a892755de14d588e32c6956d42b8fa251c32b4d",
+  "previous_main_sha256": "61d085aaac8c6a109317fe50886dbea2c643fb0ec7f68c4b874a4873bdff9739",
+  "candidate_main_sha256": "613ea62f0f077afdc2df8865c4d657ba4a3b5e09f7d4446166a1e39ad7db938a",
+  "previous_optional_sha256": "5259c2096a4cef3cad5aa25902af50f1c060d683a3214e66d84f76f87e7028c3",
+  "candidate_optional_sha256": "9a994bfe49e1c07f2a636da142a4157d8d91c5af58b9d4a7ed91dfedd90c38a8",
+  "evidence_file": "rev_ax_transition_audit.json.gz",
+  "evidence_sha256": "17b4d89984a8b4379902d89729cecd82d498ce1efffad522b0f82c21c7a82212",
+  "main_shape_count": 116,
+  "optional_shape_count": 125,
+  "native_control_cases": 32,
+  "registries_and_expressions_preserved": true,
+  "all_saved_properties_captured": true,
+  "unchanged_main_local_geometry_count": 110,
+  "unchanged_main_world_geometry_count": 110,
+  "candidate_gates": {
+    "final_saved_geometry_and_controls": true,
+    "translated_final_x15_rail_and_support": true,
+    "final_centre_unit_test_count": 37,
+    "final_saved_full_integration": "pending mandatory post-pin verification"
+  },
+  "resolved_candidate_findings": [
+    {
+      "issue": "The initial opposite-face Mini at X0 intersects the optional power-foot bolt; X-6 clears that bolt but blocks the actual rail-clamp L-key. X-10/X-12 still block it, X-14 passes with1mm nominal key gap, and X-15 is selected with2mm positive-side nominal gap.",
+      "resolution": "Body and pad moved to(-15,28) with unchanged rounded plate; both actual clamp approaches, screw release, nut loading and full308mm2 adhesive patch pass the retained translated probe."
+    },
+    {
+      "issue": "The inverted radio removal along carrier-Z crosses rail/tape objects if falsely evaluated as on-vehicle removal.",
+      "resolution": "Radio service explicitly requires detaching its carrier first; the audit still checks every attached carrier obstacle, with a dedicated negative obstacle regression. Whole-carrier rail removal remains an independent full-assembly check."
+    },
+    {
+      "issue": "An experimental test assigned a new Placement to a cached mount shape and contaminated subsequent hole/contact assertions.",
+      "resolution": "The test now operates on a copy; the corrected23-test equipment-mount run passes. No production dimensions or tolerances were relaxed to hide this test-state issue."
+    }
+  ],
+  "intended_changes": [
+    "Three UniversalEquipmentCarrier instances retain one shared PrintSKU and identical shape. Their deck becomes a centred54x74x2mm rounded rectangle with3mm plan-view corner radii; the old22x30mm utility tab is removed. The same20 common device/standard/expansion bores, two structural foot-clamp bores, rail shoe and structural datum are retained.",
+    "The Mini body and both complete connector lanes use one inverted frame on the opposite plate face. Their nominal dimensions remain unchanged. The candidate exact radio frame is retained below; the same22x14mm adhesive patch follows its XY centre on the bottom face. Component/connector direction is toward the unmodeled balloon, with declared body and reserve offsets4.6mm and2.6mm from the rail reference plane.",
+    "Optional PowerPlatform receives the same rounded plate change and existing20-hole template; its tower, two power-board envelopes, service reservations and four fasteners retain geometry and placement. All context copies match the current main assembly.",
+    "Only the three radio-related native placements change. Carrier stations, navigation centre, FC orientation, all propulsion/optical parts and all32 saved control behaviors remain unchanged.",
+    "Radio removal is explicitly a detached-carrier bench operation along carrier-Z. The targeted service gate retains attached carrier obstacles and the complete carrier rail-removal audit remains an independent prerequisite. Current geometric checks do not establish installed balloon/plug/lead access.",
+    "Fresh Uid, Visibility, source identity, print-layout placement and order-only membership changes within the unchanged BatteryEquipmentModule are regeneration/preview differences, not mechanism changes."
+  ],
+  "radio_frame": {
+    "base": [
+      -15.0,
+      28.0,
+      10.4
+    ],
+    "quaternion": [
+      1.0,
+      0.0,
+      0.0,
+      6.123233995736766e-17
+    ],
+    "passed": true
+  },
+  "invariants": [
+    "Independent old-solid delta construction reproduces all three new carriers and the optional platform: remove only the old tab beyond the54mm square and add the new rounded extensions, preserving existing holes and support geometry.",
+    "All110 other main shapes and118 other optional shapes pass exact local/world/native-metadata comparison; all shapes are valid single solids. No object IDs, types, parents, expressions, registry membership or control behavior changed.",
+    "All four input CAD files remained byte-identical throughout review; no saved CAD or fixture was rewritten by this reviewer."
+  ],
+  "limits": [
+    "Final source fingerprint changes when the baseline pin changes. A fresh build/preview/validate/compare/bundle and native suite still must pass before release artifacts are accepted.",
+    "The integration and compatibility checks predate the final X-15 saved candidate; the rail/tool probe applies that translation in memory to the earlier candidate. The final saved geometry is independently compared here, but its complete integration must pass after pinning. Unit-result files do not carry a saved-CAD hash and are not substituted for that final artifact gate.",
+    "This is geometric prototype evidence, not physical print-fit, strength, PA12 creep, adhesive retention, load, wire, antenna, electrical, thermal or flight qualification.",
+    "The symmetric deck outline does not make the complete hole pattern and rail clamp half-turn interchangeable.",
+    "Agent ax_layout_options authored explanatory documentation but no production geometry, validators, tests or CAD artifacts. All native comparison inputs were read-only. This review approves intended geometry and native-contract changes; it does not itself change the pinned fixture."
+  ]
+}

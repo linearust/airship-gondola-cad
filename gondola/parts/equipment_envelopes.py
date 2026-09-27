@@ -69,13 +69,9 @@ def radio_envelope_shape(profile=None):
     """Selected radio body only; external RF connectors/antennas are separate."""
     profile = profile or get_radio_profile()
     length, width, height = profile.size_mm
-    x, y = mounts.RADIO_CENTRE_XY
-    return Part.makeBox(
-        length,
-        width,
-        height,
-        V(x - length / 2, y - width / 2, layout.adhesive_bottom()),
-    )
+    shape = Part.makeBox(length, width, height, V(-length / 2, -width / 2, 0))
+    shape.Placement = layout.radio_placement()
+    return shape
 
 
 def build_equipment(doc, battery_group, electronics_group, accessory_group):

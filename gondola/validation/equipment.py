@@ -9,6 +9,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import (
+    belongs_to_group,
     world_shape,
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, REPO_ROOT
@@ -359,7 +360,7 @@ def mounting_check(doc):
     adhesive_rows = []
     adhesive_specs = [
         *(
-            ("BatteryMount", "ModuleBatteryEnvelope", centre, size)
+            ("BatteryMount", "ModuleBatteryEnvelope", centre, size, "top")
             for centre, size in mounts.BATTERY_ADHESIVE_REGIONS
         ),
         (
@@ -367,6 +368,7 @@ def mounting_check(doc):
             "ModuleRadioEnvelope",
             mounts.RADIO_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
+            "bottom",
         ),
     ]
     if navigation_profile.key != "PAS":
@@ -376,9 +378,10 @@ def mounting_check(doc):
                 "ModulePASEnvelope",
                 mounts.NAVIGATION_CENTRE_XY,
                 mounts.GPS_ADHESIVE_SIZE,
+                "top",
             )
         )
-    for mount_name, device_name, centre, size in adhesive_specs:
+    for mount_name, device_name, centre, size, face in adhesive_specs:
         support = doc.getObject(mount_name)
         owner = support.getParentGeoFeatureGroup()
         device_local = physical_shapes_by_name[device_name].copy()
@@ -389,7 +392,7 @@ def mounting_check(doc):
             {
                 "device": device_name,
                 **adhesive_support_check(
-                    local_shape(support), device_local, centre, size
+                    local_shape(support), device_local, centre, size, face=face
                 ),
             }
         )
@@ -503,11 +506,13 @@ def mounting_check(doc):
         "ModulePASEnvelope",
         "ModuleRadioEnvelope",
     ):
-        sweep, sweep_method = translation_sweep(
-            physical_shapes_by_name[name], (0, 0, 32)
-        )
         optical_group = doc.getObject("OpticalFlowModule")
         device_parent = doc.getObject(name).getParentGeoFeatureGroup()
+        local_travel = App.Vector(*layout.device_removal_vector(name))
+        world_travel = device_parent.getGlobalPlacement().Rotation.multVec(local_travel)
+        sweep, sweep_method = translation_sweep(
+            physical_shapes_by_name[name], tuple(world_travel)
+        )
         release_head = (
             optical_group is not None
             and optical_group.getParentGeoFeatureGroup() == device_parent
@@ -518,22 +523,37 @@ def mounting_check(doc):
             if release_head
             and stack_interface.is_removable_head_part(obj, optical_group)
         }
+        detached_carrier = name == "ModuleRadioEnvelope"
+        off_carrier_names = {
+            obj.Name
+            for obj in physical_objects
+            if detached_carrier and not belongs_to_group(obj, device_parent)
+        }
         hits = [
             obj.Name
             for obj in physical_objects
             if obj.Name != name
             and obj.Name not in removed_head_names
+            and obj.Name not in off_carrier_names
             and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
         ]
         service_rows.append(
             {
                 "device": name,
-                "upward_travel_mm": 32,
+                "local_removal_vector_mm": tuple(local_travel),
+                "world_removal_vector_mm": tuple(world_travel),
+                "bench_access_required": release_head or detached_carrier,
+                "service_collision_scope": "Detached carrier assembly only"
+                if detached_carrier
+                else "Installed assembly after declared tower release",
+                "off_carrier_parts_excluded_for_bench_service": sorted(
+                    off_carrier_names
+                ),
                 "optical_head_must_be_removed_first": release_head,
                 "complete_optical_tower_removed": release_head,
                 "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. When this carrier hosts the optical stack, detach the carrier from the rail for bench access, support the tower, remove both foot nuts and withdraw both foot screws downward before lifting the complete tower along optical+Z. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. When this carrier hosts the optical stack, detach the carrier for bench access, support the tower, remove both foot nuts and withdraw both foot screws downward before lifting the complete tower along optical+Z. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -589,7 +609,7 @@ def mounting_check(doc):
         "underbody_clearance": free_height_rows,
         "fc_wiring_corridor": wiring_report,
         "fc_installation": fc_installation,
-        "device_upward_service": service_rows,
+        "device_service": service_rows,
         "native_mounting_evidence_matches_sources": evidence_matches,
         "pending_device_mounting_evidence": pending_metadata,
         "limits": "Printed XY mounting interfaces and reservations only. Purchase FC dampers and device mounting hardware after confirming PCB bearing planes, compressed damper heights and bolt/spacer lengths. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",

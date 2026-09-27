@@ -1,4 +1,4 @@
-# Three mass regions and universal electronics carriers — AW
+# Three mass regions and universal electronics carriers — AX
 
 Keep three mass regions: central propulsion, battery on one side and electronics
 on the opposite side. Two independently positioned carriers occupy the
@@ -24,8 +24,8 @@ intended global installation orientation independently of this carrier turn;
 the square mounting pattern permits it. The CAD envelope has no component
 markings, so verify the actual board arrow and firmware orientation at assembly.
 
-AW moves the initial FC carrier station from X = -72 to -54 mm while leaving
-navigation at -158 mm. This increases separation from the centred navigation
+AX retains the AW initial FC carrier station at X = -54 mm, with navigation
+at -158 mm. The earlier move from X = -72 mm increased separation from the centred navigation
 and optional direct helix, and brings the FC closer to the neutral motor-lead
 exits. The new shoe position coincides with a rail land centre. These are initial
 placement choices; optical-field, service and wiring clearance checks still apply,
@@ -39,16 +39,20 @@ reserves follow the FC orientation; ancillary-device reserves follow their
 own carrier. The XT30 body and unplugging space move to the side to avoid
 the servo module.
 
-The shared carrier combines a 54 mm square deck, a straight general-purpose tab
-and rail shoe, with no model-shaped pockets. Every instance has the same confirmed
+The shared carrier combines a 54 × 74 mm deck with 3 mm plan-view corner radii
+and an integral rail shoe, with no projecting tab or model-shaped pockets.
+The plate outline is symmetric, while holes and clamp orientations retain their
+functional datums. Every instance has the same confirmed
 FC/P-AS axes, standard square patterns and six expansion bores. The navigation
-instance places P-AS or one GPS at its centre, and the Mini at (0,47) mm on the
-tab; it no longer needs a long radio/navigation-specific plate. See
+instance places P-AS or one GPS at its centre, and the Mini at (-15,28) mm on the
+opposite plate face, beside the rail shoe. It needs no radio-specific plate. See
 [common carrier rationale](universal_carrier_review.md) for the hole and support
-boundaries. Its ordinary rail clamp permits independent positioning. The
-navigation carrier starts near the aft rail end to separate the optional helix
+boundaries. The Mini's X offset leaves rail-clamp hex-key access and clears the
+diagonal stack-foot bolt from its connector lane without changing the plate outline. Its ordinary rail clamp
+permits independent positioning. The navigation carrier starts near the aft
+rail end to separate the optional helix
 from the optical hosts; recalculate the field-of-view and connector checks after
-the centred layout change rather than reusing older results. The initial accessory
+layout changes rather than reusing older results. The initial accessory
 shoe is 4 mm from its rail land centre; it is not a claim of ±4 mm free adjustment
 around that initial position. Recheck the land, whole shoe support and all
 clearances after moving any carrier.
@@ -57,8 +61,13 @@ The rail's 32 mm wide pads are 14 mm long, with a raised central running head;
 the side wings carry attachment tape to the balloon. They are not a continuous
 flat 32 mm electronics mounting face. The common carrier provides a
 known geometric adhesive face without covering the sliding head or using the
-balloon-contact underside. Actual device underside contact and adhesion remain
-unverified. All three carrier structural datums are now centred at (0,0), but
+rail's balloon-contact underside. The Mini uses the carrier's face toward the
+balloon, outside the shoe. Its body starts 4.6 mm from the Z = 0 reference plane
+and its inverted connector reserve starts 2.6 mm from that plane. Neither
+dimension proves clearance to the actual balloon or installed plug. The actual
+device contact, strap path and adhesion remain unverified. Remove the carrier
+and service the Mini on a bench; do not assume access while attached to the
+balloon. All three carrier structural datums remain centred at (0,0), but
 the navigation instance remains excluded as an optical host. The same physical
 print does not clear the equipment attached to it from the optical field.
 
@@ -104,7 +113,7 @@ wire route is safe.
 - [MicoAir 45A installation guidance](https://micoair.cn/zh/docs/flight-controller/micoair743-aio-series/micoair743v2-aio-45a-manual): board orientation, insulation/damping and ESC ventilation. See `controller_selection_review.md` for the unchanged nominal interface, changed included dampers and unresolved input-voltage evidence.
 - [igus cable installation guidance](https://www.igus.com/contentData/wpck/pdf/US_en/7_guidelines_for_continuousflex_cables.pdf): motion space, avoidance of tensile loading and strain relief. General principles; the cited cable-carrier system does not qualify this miniature free loop.
 
-Current geometric evidence belongs to `tests/fixtures/rev_aw_review.json` and
+Current geometric evidence belongs to `tests/fixtures/rev_ax_review.json` and
 matching generated validation reports. Until those checks are complete, this
 reference describes the intended layout and its limits, not a passed release.
 Physical qualification remains separate.

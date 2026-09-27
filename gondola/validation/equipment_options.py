@@ -22,6 +22,7 @@ from gondola.contracts.optical_sensors import SENSOR_PROFILES
 from gondola.parts import (
     equipment_envelopes as devices,
 )
+from gondola.parts import equipment_layout as layout
 from gondola.parts import (
     equipment_mounts as mounts,
 )
@@ -61,13 +62,15 @@ def _matches(first, second):
     )
 
 
-def adhesive_support_check(support, body, centre, size):
+def adhesive_support_check(support, body, centre, size, *, face="top"):
     """Check intact printed pad and actual nominal plan overlap, not full coverage.
 
     Adhesive contact may be smaller than the purchased module footprint. Check
     the declared intact patch without enlarging the purchased module envelope.
     All shapes are expressed in the same carrier-local frame.
     """
+    if face not in ("top", "bottom"):
+        raise ValueError("Adhesive support face must be 'top' or 'bottom'")
     pad = Part.makeBox(
         *size,
         mounts.DECK_THICKNESS,
@@ -83,17 +86,25 @@ def adhesive_support_check(support, body, centre, size):
     missing = abs(pad.cut(support).Volume)
     overlap = intersection_volume(pad, footprint) / mounts.DECK_THICKNESS
     expected = min(size[0], bounds.XLength) * min(size[1], bounds.YLength)
-    gap = bounds.ZMin - mounts.SUPPORT_FACE_Z
+    gap = (
+        bounds.ZMin - mounts.SUPPORT_FACE_Z
+        if face == "top"
+        else mounts.DECK_BOTTOM_Z - bounds.ZMax
+    )
+    correct_side = gap >= -TOL
     return {
+        "support_face": face,
         "continuous_support_area_mm2": size[0] * size[1],
         "nominal_supported_overlap_mm2": overlap,
         "required_centered_overlap_mm2": expected,
         "missing_pad_material_mm3": missing,
         "adhesive_allowance_mm": gap,
+        "body_on_requested_side": correct_side,
         "scope": "Nominal plan overlap only. Trim adhesive to supported contact; actual backside contact, component loading, insulation and retention are unqualified.",
         "passed": missing < TOL
         and expected > 0
         and abs(overlap - expected) < TOL
+        and correct_side
         and abs(gap - mounts.ADHESIVE_ALLOWANCE) < TOL,
     }
 
@@ -367,6 +378,11 @@ def compatibility_check(doc):
         and not belongs_to_group(obj, doc.OpticalFlowModule)
     }
     support = local_shape(doc.AccessoryMount)
+    bench_fixed = {
+        obj.Name: fixed[obj.Name]
+        for obj in physical
+        if obj.Name in fixed and belongs_to_group(obj, parent)
+    }
     screens = _optical_screens(doc)
     validation_cache = {}
     rows = []
@@ -432,6 +448,7 @@ def compatibility_check(doc):
                     local_bodies[BODY_NAMES[1]],
                     mounts.RADIO_CENTRE_XY,
                     mounts.RADIO_ADHESIVE_SIZE,
+                    face="bottom",
                 ),
             }
         ]
@@ -449,13 +466,15 @@ def compatibility_check(doc):
             )
         service = []
         for name, shape in bodies.items():
-            sweep, method = translation_sweep(
-                shape, tuple(placement.Rotation.multVec(V(0, 0, 32)))
-            )
+            detached_carrier = name == "ModuleRadioEnvelope"
+            service_fixed = bench_fixed if detached_carrier else fixed
+            local_travel = V(*layout.device_removal_vector(name))
+            world_travel = placement.Rotation.multVec(local_travel)
+            sweep, method = translation_sweep(shape, tuple(world_travel))
             collisions = collision_hits(
                 sweep,
                 {
-                    **fixed,
+                    **service_fixed,
                     **{
                         other: target
                         for other, target in bodies.items()
@@ -467,6 +486,16 @@ def compatibility_check(doc):
             service.append(
                 {
                     "device": name,
+                    "local_removal_vector_mm": tuple(local_travel),
+                    "world_removal_vector_mm": tuple(world_travel),
+                    "bench_access_required": detached_carrier,
+                    "service_collision_scope": "Detached carrier assembly only"
+                    if detached_carrier
+                    else "Installed assembly after declared tower release",
+                    "off_carrier_parts_excluded_for_bench_service": sorted(
+                        set(fixed) - set(service_fixed)
+                    ),
+                    "prerequisite": "Disconnect leads and release retention. For the underside radio, detach the carrier from the rail for bench access; in-place underside access is not qualified.",
                     "method": method,
                     "collisions": collisions,
                     "passed": not collisions,
@@ -525,7 +554,7 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Three mutually exclusive navigation choices with the LR24-F-Mini air unit, both optical models and both hosts. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. The accessory plate is not an optical-stack host.",
+        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit, both optical models and both hosts. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. The accessory plate is not an optical-stack host.",
         "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
         and bool(rows)
         and all(row["passed"] for row in rows),

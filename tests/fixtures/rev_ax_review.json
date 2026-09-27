@@ -1,0 +1,171 @@
+{
+  "revision": "AX",
+  "reviewed_on": "2026-09-27",
+  "previous_commit": "10c067cce6a3f76e2c05cb1043ef23041280a046",
+  "scope": "Replace the asymmetric universal-carrier utility tab with a centred rounded rectangular plate and mount the radio on its opposite face without extra parts.",
+  "intentional_changes": [
+    "All three rail carriers and the optional power deck share a 54 x 74 x 2 mm rounded rectangular plate with 3 mm plan-view corner radii; delete the one-sided utility tab. Preserve all 20 common bores, structural interfaces and identical carrier PrintSKU.",
+    "Place the Mini and its fully supported 22 x 14 mm adhesive allocation at carrier (-15, 28) mm on the rail-facing side. The body and both connector lanes share one inverted frame. Minor body edge/corner overhang is outside the supported adhesive patch.",
+    "Keep all module stations, navigation/FC datums, rail mating geometry, servo/input module separation and procurement inventory unchanged.",
+    "Audit adhesive support by explicit face. Radio bare-device removal uses carrier -Z after detaching the carrier for bench service. Preserve all carrier-attached obstacles and record excluded off-carrier objects. Full module rail removal and both clamp-tool approaches remain checked against installed geometry."
+  ],
+  "candidate_findings": [
+    "A centred underside radio connector lane intersected the optional power foot bolt; moving it in X preserved the common plate without new parts.",
+    "X = -6, -10 and -12 mm positions blocked PositiveY rail-clamp L-key access. X = -15 mm passed both unchanged continuous tool paths, screw release and nut loading with 2 mm minimum nominal tool/body gap.",
+    "The previous assumed +Z device lift was wrong for the underside radio. Audits now use the actual outward direction and explicitly require detached-carrier bench service while retaining every attached obstacle.",
+    "An experimental test mutated cached mount Placement without copying; fixed test isolation rather than changing geometry to hide its follow-on failures."
+  ],
+  "source_fingerprint_pre_pin": "c56c063182f0236fa8461e5e6a892755de14d588e32c6956d42b8fa251c32b4d",
+  "final_verification": {
+    "status": "passed",
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 32.199,
+        "log": "/tmp/ax-final-build.log",
+        "log_sha256": "00acf6f0464d4cb4a9d7b82a159a3a5e17c1bcfcfca7547aaef442609d89f3b5",
+        "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+        "source_unchanged": true
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 50.068,
+        "log": "/tmp/ax-final-preview.log",
+        "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf",
+        "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+        "source_unchanged": true
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 1006.192,
+        "log": "/tmp/ax-final-validate.log",
+        "log_sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70",
+        "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+        "source_unchanged": true
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.608,
+        "log": "/tmp/ax-final-compare.log",
+        "log_sha256": "0aadd498fe0fa1a97b5dae47a13f04deafd8f5556603c3afdac27b6f5db86627",
+        "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+        "source_unchanged": true
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.201,
+        "log": "/tmp/ax-final-bundle.log",
+        "log_sha256": "c0117de0b2e3463d0af215ebe67ba0840e39ea2960f1afa1c8882da8e936804b",
+        "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+        "source_unchanged": true
+      }
+    ],
+    "native_tests": {
+      "resolved_test_harness_issue": "The isolated export-integrity test stub lacked the newly imported belongs_to_group helper. Added the missing mock only, preserving production source, geometry and assertions. Separately, two stale54x54 plate expectations in one manufacturing test were updated to54x74 and that test re-run. The superseded failures, before/after test hashes and resumed results are retained in the artifact audit.",
+      "modules": 46,
+      "tests": 451,
+      "skips": 0,
+      "failures": 0,
+      "errors": 0,
+      "passed": true,
+      "index_sha256": "17bb5cff4cecf80e5788a85db38a62f11224c815ff3346b19e1f9d32b234061d",
+      "scope": "Native FreeCAD execution covers every independently discovered test ID. A stale plate-size expectation was corrected in one manufacturing test and re-run alone; the other67 passing tests in that module were retained after proving their full remaining module AST unchanged. Exact original and retry IDs, logs and source lineage are retained in the independent artifact audit."
+    },
+    "blender": {
+      "passed": true,
+      "cad_sha256": "6766c9f0629214a9044f7aec9035774ca10667af58eecfe2879efd8f40e7c5b9",
+      "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+      "scene_count": 7,
+      "sampled_frames": 1782,
+      "matrix_checks": 135116,
+      "visibility_checks": 135116,
+      "discrepancy_count": 0,
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+    },
+    "static_checks": {
+      "ruff_version": "0.16.8",
+      "lint": "passed",
+      "format": "110 files already formatted",
+      "compileall": "passed",
+      "changed_markdown_local_links": "7 documents, zero broken local links"
+    },
+    "artifact_sha256": {
+      "gondola.FCStd": "6766c9f0629214a9044f7aec9035774ca10667af58eecfe2879efd8f40e7c5b9",
+      "gondola_power_options.FCStd": "fe05f73464037827a713719b943adb2944922837e86ed7d2a2634af0fe2e578c",
+      "gondola_print_parts.zip": "67e025ae3bd76020000afc8d7b100591dbadcffae5315f6512a775080c058c89",
+      "gondola_validation.json": "5b357c75e0b6a88834fcec150e62cc039c6714eede185f6bc038ab8845a58ecf",
+      "gondola_equipment_validation.json": "63613d64b43109a45cd15461164d39b03935a8cafb05c8e156a0acd94e3d60e1",
+      "gondola_baseline_validation.json": "6aebd1822bca55250adcea11f274dc02334ad436d30b554a6a45ef33284c86b2",
+      "gondola_power_validation.json": "bd527579cd779bb2053b1a2d03b577962d3a617a6c400348d291f780a2420c12",
+      "gondola_propulsion_validation.json": "311880a693b99e7fd1c6e5c570f4e5a3cf400d58dbb2896b5175e72bc0629c5a",
+      "gondola_print_parts/print_manifest.json": "5d1679f149f761a32624fcd64b66fb55a12121a9b090838be4246c0cba7c3d49",
+      "gondola_hardware_bom.json": "9e10683772086abdae35d09737c7edff644b52ddd2a5b6b27829b22bc6077807",
+      "preview_state.json": "bd1adb6d4a1dde0cbdb553056b9d3b8f7177a53634479897eab8ce71b62b75be",
+      "blender_review/cad_review.blend": "bce5905cc1cb2a1476697b862e332e9e9a46426860b99c52a0c9844c78e74290",
+      "blender_review/verification.json": "46810bb12668da192a5e4ea2a8327bc97175b4e6bb1a9ca3375643ce3d9cc6e0"
+    },
+    "independent_artifact_audit": {
+      "passed": true,
+      "reviewer": "/root/ax_artifact_audit",
+      "review_sha256": "6a38dd994001ea15cd41065d409a441b8efe51dad6d7b12004b6b3df31c8579d",
+      "audit_sha256": "d060ca0f435af6d96d49d81ab243fd3332240d2b786a7ff6e62adb8b738893fe",
+      "scope": "Independent source/CAD/mesh/STEP/BOM/ZIP/preview/native-test/Blender binding; exact test discovery and geometry checks."
+    }
+  },
+  "modeled_print_mass": {
+    "density_assumption_g_cm3": 1.01,
+    "AW_g": 84.10033204501272,
+    "AX_g": 86.80511128782796,
+    "change_g": 2.704779242815235,
+    "scope": "Native printed volumes at provisional density, excluding optional power platform and coupons; not measured parts or all-up mass."
+  },
+  "physical_limits": [
+    "Radio body starts 4.6 mm from the Z = 0 rail reference plane and connector reserve 2.6 mm; these are not verified clearances to balloon curvature, actual IPEX plug, cables or straps.",
+    "Physical adhesion, retention, thermal behavior, manufacturing fit, loaded strength and harness service are unqualified. Shared holes do not certify arbitrary device/stack combinations.",
+    "Only the plate outline is symmetric; the full print retains oriented device holes and clamp features. No unconditional half-turn assembly compatibility is claimed."
+  ],
+  "production_released": false,
+  "evidence": {
+    "transition_review": "tests/fixtures/rev_ax_transition_review.json",
+    "transition_audit": "tests/fixtures/rev_ax_transition_audit.json.gz",
+    "artifact_review": "tests/fixtures/rev_ax_artifact_review.json",
+    "artifact_audit": "tests/fixtures/rev_ax_artifact_audit.json.gz"
+  },
+  "fixture_promotion": {
+    "independent_reviewer": "/root/ax_layout_options",
+    "approved_main_candidate_sha256": "613ea62f0f077afdc2df8865c4d657ba4a3b5e09f7d4446166a1e39ad7db938a",
+    "approved_optional_candidate_sha256": "9a994bfe49e1c07f2a636da142a4157d8d91c5af58b9d4a7ed91dfedd90c38a8",
+    "fixture": "tests/fixtures/rev_ax_geometry.FCStd",
+    "scope": "Intentional shape/native-contract transition approval; full post-pin verification remains pending."
+  },
+  "source_fingerprint_final": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+  "read_only_diff_review": {
+    "reviewer": "/root/ax_validation",
+    "material_issues_found": false,
+    "scope": "Root-owned production changes and power-export test edits independently reviewed; no source changes made."
+  },
+  "freecad_display": {
+    "opened": true,
+    "file": "/home/h/cad/airship-gondola-cad/build/gondola.FCStd",
+    "objects": 298,
+    "window_visible": true,
+    "cad_file_sha256_unchanged": true,
+    "saved_from_gui": false
+  },
+  "visual_review": {
+    "reviewer": "root",
+    "images_inspected": [
+      "gondola_electronics.png",
+      "gondola_print_parts.png",
+      "gondola_preview.png",
+      "gondola_power_options.png",
+      "blender_review/stills/01_Assembly.png"
+    ],
+    "finding": "The projecting utility tab is absent; all three installations retain the common rounded plate and structural foot interfaces. Optional power shares that plate. Visualization does not qualify installed balloon/plug clearance, adhesion or strength."
+  }
+}

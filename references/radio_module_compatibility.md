@@ -25,34 +25,54 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-AW removes the long navigation/radio-specific plate. The three rail carriers use
-the same printed shape and hole layout. Each has a straight general-purpose
-landing tab; the accessory instance uses this tab for the Mini. There is no
+AX removes the projecting landing tab. The three rail carriers use the same
+54 × 74 × 2 mm rounded rectangular plate and hole layout. The accessory instance
+uses the opposite plate face for the Mini, beside the rail shoe. There is no
 separate radio plate, pocket, bracket or radio-specific fastening pattern.
 See [universal carrier rationale](universal_carrier_review.md).
 
-The modeled Mini is centred at accessory-local (0, 47) mm, with its long axis
-along X. A 22 × 14 mm nominal insulating-adhesive allocation fits on the tab;
-the body overhangs it. This is a design allocation, not a measured bearing face
-or a minimum required adhesive area. The Mini underside photograph shows
+The modeled Mini is centred at accessory-local (-15, 28) mm, with its long axis
+along X and its populated face directed toward local -Z, toward the balloon.
+A 22 × 14 mm nominal insulating-adhesive allocation at the same centre fits
+between the plate holes and its edge. The body slightly overhangs the plate edge
+and rounded corner; the complete adhesive allocation remains supported. This is a design
+allocation, not a measured bearing face or a minimum required adhesive area.
+The Mini underside photograph shows
 components. Trim compliant insulating adhesive to actual supported contact and
 verify component pressure, heat dissipation and retention. Velcro or ties may
-wrap the existing tab without dedicated slots, keeping the populated board,
+wrap the existing plate without dedicated slots, keeping the populated board,
 ports and antenna connection clear.
+
+The -15 mm X shift leaves access for the rail-clamp hex key and avoids the diagonal
+stack-foot bolt beside the connector lane. Both rail-clamp approaches and the
+structural joint's permitted seating movement must be checked; nominal body
+separation alone is insufficient. The plate outline and
+common holes remain unchanged by this radio placement choice.
+
+The reference body occupies local Z = 4.6 to 10.4 mm, leaving a nominal 1 mm
+adhesive allowance to the plate's Z = 11.4 mm face. Its connector reservations
+extend toward -Z to 2.6 mm. These offsets are measured from the Z = 0 rail
+reference plane, **not** from the actual balloon surface. Envelope curvature,
+tape build-up, IPEX plug height, installed leads and strap pressure remain
+unverified. Attach, unplug and service the Mini on the removed carrier at a
+bench; this arrangement does not establish on-balloon connector access.
 
 Preserve access at both ends of the board's X axis. Current 15 mm connector lanes
 are prototype design allowances, not manufacturer connector dimensions or
 verified cable bend radii. The SH sockets
 and IPEX1 connector occupy opposite long-axis ends, and the IPEX1 cable mates away
-from the populated face. Exact port XYZ and installed plug orientation remain
-unmeasured. The photograph shows two SH sockets while the manual documents one
+from the populated face. The 2 mm design allowance beyond that face follows
+the inverted installation toward -Z. Exact port XYZ and installed plug
+orientation remain unmeasured. The photograph shows two SH sockets while the manual documents one
 UART interface; do not infer independent UARTs or the other socket's function.
 
-The nearest modeled connector-lane edge is Y = 35.9 mm. The conservative direct
-MG-F10 helix reservation reaches Y = 31 mm after centring navigation on the
-common carrier, leaving a nominal 4.9 mm separation. This computed separation
-does not verify the actual antenna seating datum, flexible pigtail or installed
-cables. The optional power platform and a direct MG-F10 helix still cannot
+The Mini and its two end-lane reservations sit on the opposite face from the
+navigation module and its conservative direct MG-F10 helix reservation. The
+old same-face Y-gap argument no longer applies. Recheck the inverted body,
+connector lanes, rail attachment wings and clamp seating allowance together;
+the plate alone is not the complete neighboring geometry. These checks do not
+verify the actual antenna seating datum, flexible pigtail or installed cables.
+The optional power platform and a direct MG-F10 helix still cannot
 occupy the same accessory host; use another host or the remote-antenna option.
 
 Route and retain the flexible antenna separately, clear of the propeller sweep

@@ -74,9 +74,14 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         support = local_shape(self.doc.AccessoryMount)
         body = equipment_envelopes.radio_envelope_shape(get_radio_profile("LR24FMINI"))
         report = adhesive_support_check(
-            support, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
+            support,
+            body,
+            mounts.RADIO_CENTRE_XY,
+            mounts.RADIO_ADHESIVE_SIZE,
+            face="bottom",
         )
         self.assertTrue(report["passed"])
+        self.assertEqual(report["support_face"], "bottom")
         self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
         self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
         x, y = mounts.RADIO_CENTRE_XY
@@ -90,13 +95,21 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         )
         self.assertFalse(
             adhesive_support_check(
-                damaged, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
+                damaged,
+                body,
+                mounts.RADIO_CENTRE_XY,
+                mounts.RADIO_ADHESIVE_SIZE,
+                face="bottom",
             )["passed"]
         )
         body.translate(App.Vector(8, 0, 0))
         self.assertFalse(
             adhesive_support_check(
-                support, body, mounts.RADIO_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE
+                support,
+                body,
+                mounts.RADIO_CENTRE_XY,
+                mounts.RADIO_ADHESIVE_SIZE,
+                face="bottom",
             )["passed"]
         )
 
@@ -109,6 +122,25 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         self.assertEqual(len(result["combinations"]), 3)
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
+            services = {
+                service["device"]: service
+                for service in row["bare_device_service_after_tower_release"]
+            }
+            self.assertEqual(
+                services["ModuleRadioEnvelope"]["local_removal_vector_mm"],
+                (0.0, 0.0, -32.0),
+            )
+            self.assertTrue(services["ModuleRadioEnvelope"]["bench_access_required"])
+            self.assertIn(
+                "TapeWing0L",
+                services["ModuleRadioEnvelope"][
+                    "off_carrier_parts_excluded_for_bench_service"
+                ],
+            )
+            self.assertEqual(
+                services["ModulePASEnvelope"]["local_removal_vector_mm"],
+                (0.0, 0.0, 32.0),
+            )
         # A physical object introduced midway along the actual lane must fail;
         # validating only lane endpoints or metadata would miss it.
         original = list(self.doc.DesignRegistry.ReferenceParts)
@@ -132,6 +164,42 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                     )
                     for row in pas_rows
                 )
+            )
+        finally:
+            self.doc.DesignRegistry.ReferenceParts = original
+            self.doc.removeObject(blocker.Name)
+
+    def test_detached_radio_service_still_rejects_an_attached_carrier_obstacle(self):
+        from gondola.parts import equipment_envelopes
+        from gondola.validation.equipment import mounting_check
+
+        body = equipment_envelopes.radio_envelope_shape()
+        bounds = body.BoundBox
+        blocker = self.doc.addObject("Part::Feature", "CarrierServiceBlocker")
+        self.doc.AccessoryEquipmentModule.addObject(blocker)
+        blocker.Shape = Part.makeBox(
+            2,
+            2,
+            2,
+            App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMin - 12),
+        )
+        original = list(self.doc.DesignRegistry.ReferenceParts)
+        try:
+            self.doc.DesignRegistry.ReferenceParts = original + [blocker]
+            result = mounting_check(self.doc)
+            service = next(
+                row
+                for row in result["device_service"]
+                if row["device"] == "ModuleRadioEnvelope"
+            )
+            self.assertTrue(service["bench_access_required"])
+            self.assertFalse(service["passed"])
+            self.assertIn(blocker.Name, service["collisions"])
+            self.assertNotIn(
+                blocker.Name, service["off_carrier_parts_excluded_for_bench_service"]
+            )
+            self.assertIn(
+                "TapeWing0L", service["off_carrier_parts_excluded_for_bench_service"]
             )
         finally:
             self.doc.DesignRegistry.ReferenceParts = original

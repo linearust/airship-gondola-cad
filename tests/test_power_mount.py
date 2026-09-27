@@ -56,7 +56,7 @@ class PowerMountTests(unittest.TestCase):
         self.assertEqual(len(holes), 20)
         for hole in holes:
             self.assertLess(shape.common(hole).Volume, 1e-6)
-        # The shared utility tab and usable deck regions remain solid. There are
+        # The symmetric plate ends and usable deck regions remain solid. There are
         # no cable-tie slots; straps wrap the existing outline.
         for x, y in (
             (-20, -14.5),
@@ -65,7 +65,8 @@ class PowerMountTests(unittest.TestCase):
             (20, 14.5),
             (25, -5),
             (25, 5),
-            (0, 45),
+            (0, -34),
+            (0, 34),
         ):
             region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
             self.assertLess(region.cut(shape).Volume, 1e-6)
