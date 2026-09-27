@@ -707,7 +707,7 @@ def direct_adapter_fit_check(doc, prefix):
         "horn_registration": registration,
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. Two front M1.6 screws use the selected metal horn factory threads without horn nuts or transfer drilling. The printed C register and flat face limit misalignment; root concentricity, axial seating and the inferred outer-hole position remain nominal, not measured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
+        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. The selected horn profile defines retention: the two threaded metal choices use front M1.6 screws in existing threads without horn nuts; the prepared KST choice uses reverse M1.4 screws and front nuts in enlarged existing end pilot holes. No new hole centres are transferred. The printed C register and flat face limit misalignment; root concentricity, axial seating and the inferred outer-hole position remain nominal, not measured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
         "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
         and specification.total_length_mm == coupling.GEAR_LENGTH
         and bore_intrusion < TOL
@@ -1012,28 +1012,7 @@ def adapter_service_check(shape, waypoints, obstacles, spec, sign):
     """
     from gondola.parts import servo_coupling as coupling
 
-    reference = coupling.adapter_shape()
-    bounds = reference.BoundBox
-    # Start just beyond the rear body's front face so its boundary alone cannot
-    # enlarge the clamp's measured section to the remote horn-clamp bolt tip.
-    front = reference.common(
-        Part.makeBox(
-            bounds.XLength + 2,
-            bounds.YMax - coupling.SHAFT_START_Y,
-            bounds.ZLength + 2,
-            App.Vector(bounds.XMin - 1, coupling.SHAFT_START_Y + 1e-4, bounds.ZMin - 1),
-        )
-    )
-    if not front.Solids or front.Volume < TOL:
-        return {"passed": False, "error": "Missing forward adapter clamp"}
-    front_bounds = front.BoundBox
-    filled = Part.makeBox(
-        front_bounds.XLength,
-        bounds.YMax - coupling.SHAFT_START_Y,
-        front_bounds.ZLength,
-        App.Vector(front_bounds.XMin, coupling.SHAFT_START_Y, front_bounds.ZMin),
-    )
-    envelope = reference.fuse(filled).removeSplitter()
+    envelope = coupling.service_envelope()
     envelope.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
     if sign < 0:
         envelope.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
@@ -1180,6 +1159,15 @@ def input_drive_service_check(doc, module, prefix, *, module_release=None):
     """
     from gondola.parts import servo_coupling as coupling
 
+    if not coupling.servo_horns.profile(
+        str(doc.getObject(prefix + "ServoHorn").HornProfile)
+    ).threaded:
+        from .horn_coupling import assembled_servo_service_check
+
+        return assembled_servo_service_check(
+            doc, module, prefix, module_release=module_release
+        )
+
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"pod": prefix, "missing_parts": missing, "passed": False}
@@ -1271,6 +1259,27 @@ def servo_case_service_check(
 
     Reuse prerequisite evidence only during one unchanged audit invocation.
     """
+    from gondola.contracts import servo_horns
+
+    if (
+        not servo_horns.profile(
+            str(doc.getObject(prefix + "ServoHorn").HornProfile)
+        ).threaded
+        and prior_service is None
+    ):
+        prior_service = input_drive_service_check(
+            doc, module, prefix, module_release=module_release
+        )
+    if (
+        prior_service is not None
+        and prior_service.get("service_mode") == "preassembled_servo_unit"
+    ):
+        return {
+            **prior_service,
+            "required_prior_check": "input_drive_service",
+            "prior_input_drive_service_passed": prior_service["passed"],
+        }
+
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"pod": prefix, "missing_parts": missing, "passed": False}
@@ -1792,7 +1801,9 @@ def _record_fastener_checks(report, module, physical):
             report["fastener_stacks"].append(
                 {
                     "bolt": prefix + "HornGearClamp" + joint["joint"] + "Bolt",
-                    "nut": None,
+                    "nut": prefix + "HornGearClamp" + joint["joint"] + "Nut"
+                    if joint["separate_nut_required"]
+                    else None,
                     **joint,
                 }
             )
@@ -1817,8 +1828,8 @@ def _record_fastener_checks(report, module, physical):
             report["fastener_service"].append(
                 {
                     **row,
-                    "nut": None,
-                    "assembly_prerequisites": "Remove complete paired servo module first; withdraw large driver gear on bench, then unscrew Far before Near.",
+                    "nut": row.get("nut"),
+                    "assembly_prerequisites": service["scope"],
                     "service_group": module["group"].Name,
                     "service_dependencies": dependencies,
                     "retained_service_parts": row["retained_parts"],
@@ -1969,6 +1980,9 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
             "metrics": module["metrics"],
         }
         report.update({key: [] for key in PROPULSION_EVIDENCE_COUNTS})
+        from .horn_coupling import profile_compatibility_checks
+
+        report["horn_profile_compatibility"] = profile_compatibility_checks()
         report["bridge_joint"].append(bridge_joint_check(doc, module))
         report["servo_module_service"].append(servo_module_service_check(doc, module))
         _record_rail_fit_checks(report, frame, physical)

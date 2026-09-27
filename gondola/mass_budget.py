@@ -18,6 +18,7 @@ DENSITIES_G_CM3 = {
     "BearingSteel": 7.85,
     "Aluminium": 2.70,
     "UnverifiedHorn": None,
+    "Unselected": None,
 }
 PA12_DENSITY_SOURCE = "https://creallo.com/ko/capability/material/SLS/SLSPA12"
 
@@ -153,7 +154,7 @@ def mass_budget(printed, hardware):
         "is_all_up_flight_mass": False,
         "modeled_hardware_mass_complete": not unknown_hardware,
         "complete_device_mounting_hardware_included": False,
-        "device_mounting_hardware_scope": "X06 ear screws/nuts, purchased metal horns and four horn attachment screws are included in the modeled inventory. Horn mass uses its simplified envelope and assumed aluminium density, not a measured product mass. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
+        "device_mounting_hardware_scope": "X06 ear screws/nuts, purchased metal horns and four horn attachment screws are included in the modeled inventory. Two front nuts per KST horn are included only when that profile is selected; their unselected material leaves their mass unknown. Horn mass uses its simplified envelope and assumed aluminium density, not a measured product mass. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
         "comparison_limit": "Horn alloy, detailed hub geometry and actual mass remain unverified. Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only; changing which parts have unknown mass can change the accounted subtotal without reducing physical mass. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
@@ -190,6 +191,11 @@ def mass_budget(printed, hardware):
             "UnverifiedHorn": {
                 "density_g_cm3": None,
                 "basis": "Explicitly unverified horn material category: no plastic or metal density is assumed. The selected purchased aluminium horn uses its separate material category.",
+                "source": None,
+            },
+            "Unselected": {
+                "density_g_cm3": None,
+                "basis": "Hardware material is not selected; no density or mass is assumed.",
                 "source": None,
             },
         },

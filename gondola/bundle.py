@@ -28,8 +28,33 @@ from .contracts.design import (
     hardware_bom_scope,
     release_status,
 )
+from .contracts.power_options import POWER_ARTIFACT_NAMES, POWER_VALIDATION_NAME
 from .procurement import purchase_code
 from .provenance import file_sha256, source_fingerprint
+
+
+def _power_files(output, inputs, fingerprint, cad_sha):
+    """Keep optional exports separately identified and bound to the same CAD."""
+    report_path = output / POWER_VALIDATION_NAME
+    report = _read_json(report_path, inputs)
+    _same_source(report, fingerprint, "optional power validation")
+    if not (
+        report.get("passed") is True
+        and report.get("source_sha256") == cad_sha
+        and report.get("source_sha256_after") == cad_sha
+    ):
+        raise RuntimeError("Missing, failed or stale optional power validation.")
+    data = {name: _snapshot(output / name, inputs) for name in POWER_ARTIFACT_NAMES}
+    hashes = {name: hashlib.sha256(value).hexdigest() for name, value in data.items()}
+    if not (
+        report.get("artifact_hashes_before") == hashes
+        and report.get("artifact_hashes") == hashes
+    ):
+        raise RuntimeError("Stale or altered optional power artifacts.")
+    return {
+        **{"optional_power/" + name: value for name, value in data.items()},
+        "validation/optional_power.json": inputs[report_path],
+    }
 
 
 def _snapshot(path, inputs):
@@ -300,6 +325,7 @@ def build_bundle():
             "validation/baseline.json": inputs[baseline_path],
             "validation/preview.json": inputs[state_path],
         }
+        files.update(_power_files(output, inputs, fingerprint, cad_sha))
         for name, data in snapshots.items():
             files[Path(name).name] = data
         for filename in images:

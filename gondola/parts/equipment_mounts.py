@@ -35,7 +35,7 @@ PAS_HOLE_CENTRES = tuple(
     (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
     for x, y in interfaces.PAS_HOLE_CENTRES
 )
-RADIO_CENTRE_XY = (14.0, 24.0)
+RADIO_CENTRE_XY = (14.0, 21.0)
 GPS_ADHESIVE_SIZE = (18.0, 14.0)
 RADIO_ADHESIVE_SIZE = (22.0, 14.0)
 ACCESSORY_DECK_SIZE = (34.0, 78.0)
@@ -44,6 +44,13 @@ MOUNT_NAMES = {
     "battery": "BatteryMount",
     "electronics": "ElectronicsMount",
     "accessory": "AccessoryMount",
+}
+GENERIC_SLOT_WIDTH = 2.6
+GENERIC_SLOT_LENGTH = 6.0
+GENERIC_SLOT_CENTRES = {
+    "battery": tuple((x, y) for x in (-12.0, 12.0) for y in (-16.0, 16.0)),
+    "electronics": ((0.0, -25.0), (0.0, 25.0)),
+    "accessory": tuple((x, y) for x in (0.0, 28.0) for y in (-24.0, 21.0)),
 }
 BATTERY_DECK_SIZE = (16.0, 52.0)
 BATTERY_PLACEMENT_CONTRACT = {
@@ -117,6 +124,39 @@ def mount_hole_centres(kind):
     }[kind]
 
 
+def generic_slot_shapes(
+    kind, bottom=DECK_BOTTOM_Z - 1, depth=DECK_THICKNESS + 2, *, border=0.0
+):
+    """Closed round-ended M2/tie slots; border expands the footprint for checks."""
+    if kind not in MOUNT_NAMES:
+        raise ValueError("Unknown equipment mount kind: " + str(kind))
+    radius = GENERIC_SLOT_WIDTH / 2 + border
+    straight = GENERIC_SLOT_LENGTH - GENERIC_SLOT_WIDTH
+    return [
+        union(
+            [
+                box(
+                    2 * radius, straight, depth, (x - radius, y - straight / 2, bottom)
+                ),
+                Part.makeCylinder(radius, depth, V(x, y - straight / 2, bottom)),
+                Part.makeCylinder(radius, depth, V(x, y + straight / 2, bottom)),
+            ]
+        )
+        for x, y in GENERIC_SLOT_CENTRES[kind]
+    ]
+
+
+def generic_fastening_contract(kind):
+    return {
+        "slot_centres_xy_mm": GENERIC_SLOT_CENTRES[kind],
+        "slot_width_mm": GENERIC_SLOT_WIDTH,
+        "slot_overall_length_mm": GENERIC_SLOT_LENGTH,
+        "slot_long_axis": "carrier local Y",
+        "minimum_full_thickness_edge_land_mm": 1.5,
+        "scope": "Rounded through-slots provide optional M2 fastening or small-tie routes. A nominal strap width up to 2.5 mm is conditional on the finished opening freely admitting the strap in its chosen orientation; use a narrower strap or lightly finish the opening if needed, never wedge it into the carrier. They are project fastening points, not an invented device hole pattern. Use the intact adhesive patches or confirmed device holes as appropriate; no requirement to use every feature simultaneously. Check the chosen head, nut, strap path and device underside before assembly; straps must not load connectors or components. No ties or extra fasteners are counted as installed hardware solely because slots exist.",
+    }
+
+
 @functools.lru_cache(None)
 def mount_shape(kind):
     holes = mount_hole_centres(kind)
@@ -139,10 +179,17 @@ def mount_shape(kind):
         )
     else:
         pieces = [_deck(ACCESSORY_DECK_SIZE, ACCESSORY_DECK_CENTRE_XY)]
+    if kind == "battery":
+        pieces.extend(
+            _deck((10.0, 10.0), centre) for centre in GENERIC_SLOT_CENTRES[kind]
+        )
+    elif kind == "electronics":
+        pieces.extend(
+            _deck((6.6, 11.0), centre) for centre in GENERIC_SLOT_CENTRES[kind]
+        )
     pieces.append(rail.shoe_shape())
     shape = union(pieces)
-    if kind != "accessory":
-        shape = stack_interface.add_host_interface(shape)
+    shape = stack_interface.add_host_interface(shape, MOUNT_NAMES[kind])
     for x, y in holes:
         shape = shape.cut(
             Part.makeCylinder(
@@ -151,6 +198,8 @@ def mount_shape(kind):
                 V(x, y, DECK_BOTTOM_Z - 1),
             )
         )
+    for slot in generic_slot_shapes(kind):
+        shape = shape.cut(slot)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Equipment mount is not one valid solid: " + kind)
@@ -184,13 +233,12 @@ def mount_contract(kind):
     scope = {
         "battery": "Continuous adhesive deck and integral rail shoe; the optical tower uses separate structural anchors.",
         "electronics": "Compact FC support cross, integral rail shoe and two structural optical-stack anchors. No navigation or radio extensions.",
-        "accessory": "One plain rectangular adhesive plate and integral rail shoe. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. No device pockets or separate radio/GPS branches. The radio and selected navigation device use separate regions. This plate is not an optical-stack host.",
+        "accessory": "One rectangular adhesive plate and integral rail shoe. Two confirmed P-AS holes share the navigation region with mutually exclusive taped GPS alternatives. The radio and selected navigation device use separate regions. The common structural attachment is shifted +16.5 mm local Y to clear the Mini; only separately validated optional power platforms may use it. This plate is not an optical-stack host.",
     }
     return {
         "kind": kind,
-        "stack_interface": stack_interface.interface_contract()
-        if kind != "accessory"
-        else None,
+        "stack_interface": stack_interface.interface_contract(MOUNT_NAMES[kind]),
+        "generic_fastening": generic_fastening_contract(kind),
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "deck_thickness_mm": DECK_THICKNESS,
         "support_face_z_mm": SUPPORT_FACE_Z,
@@ -236,8 +284,7 @@ def build_mount(doc, parent, kind):
     set_property(obj, "Role", "Printed equipment carrier")
     set_property(obj, "PrintSKU", name)
     set_property(obj, "MountKind", kind)
-    if kind != "accessory":
-        stack_interface.annotate_interface(obj)
+    stack_interface.annotate_interface(obj, name)
     set_property(obj, "MountContract", json.dumps(contract, sort_keys=True))
     set_property(obj, "PrintProcess", "PA12 SLS or MJF")
     set_property(obj, "HalfTurnSymmetric", kind == "battery", "App::PropertyBool")

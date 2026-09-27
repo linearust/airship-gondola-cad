@@ -4,7 +4,7 @@ import json
 import types
 import unittest
 
-from gondola.contracts.design import SCOPED_LISTED_EQUIPMENT_MASS_G
+from gondola.contracts.design import HARDWARE_MATERIALS, SCOPED_LISTED_EQUIPMENT_MASS_G
 from gondola.mass_budget import mass_budget
 
 
@@ -22,6 +22,27 @@ def part(name, volume_mm3, *, print_sku=None, hardware_sku=None, material=None):
 
 
 class MassBudgetTests(unittest.TestCase):
+    def test_unselected_kst_nut_material_stays_in_inventory_with_null_mass(self):
+        nuts = [
+            part(
+                f"HornNut{index}",
+                7,
+                hardware_sku="M1_4_HEX_NUT_DIN934",
+                material=HARDWARE_MATERIALS["M1_4_HEX_NUT_DIN934"],
+            )
+            for index in range(4)
+        ]
+        report = mass_budget([], nuts)
+        row = report["hardware"][0]
+        self.assertEqual(row["material"], "Unselected")
+        self.assertEqual(row["quantity"], 4)
+        self.assertIsNone(row["density_g_cm3"])
+        self.assertIsNone(row["estimated_mass_g"])
+        self.assertFalse(report["modeled_hardware_mass_complete"])
+        self.assertEqual(report["hardware_part_count"], 4)
+        self.assertEqual(report["hardware_with_unmeasured_mass"][0]["quantity"], 4)
+        self.assertIsNone(report["density_assumptions"]["Unselected"]["density_g_cm3"])
+
     def test_unverified_horns_keep_null_mass_and_do_not_hide_inventory(self):
         horns = [
             part(

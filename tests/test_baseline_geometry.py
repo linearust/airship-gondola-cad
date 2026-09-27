@@ -292,6 +292,31 @@ class FrozenBaselineTests(unittest.TestCase):
         finally:
             clamp.ManufacturingStatus = original
 
+    def test_horn_sku_and_profile_must_match_each_selected_side(self):
+        from gondola.contracts import servo_horns
+        from gondola.validation.baseline import unresolved_scope
+
+        for prefix in ("Port", "Starboard"):
+            horn = self.reference.getObject(prefix + "ServoHorn")
+            expected = servo_horns.profile(side=prefix)
+            other = next(
+                item
+                for item in servo_horns.PROFILES.values()
+                if item.key != expected.key
+            )
+            original = horn.HardwareSKU, horn.HornProfile
+            try:
+                for sku, profile in (
+                    (other.sku, expected.key),
+                    (expected.sku, other.key),
+                    (other.sku, other.key),
+                ):
+                    with self.subTest(side=prefix, sku=sku, profile=profile):
+                        horn.HardwareSKU, horn.HornProfile = sku, profile
+                        self.assertFalse(unresolved_scope(self.reference)["passed"])
+            finally:
+                horn.HardwareSKU, horn.HornProfile = original
+
     def test_rail_has_no_comparison_exception(self):
         from gondola.validation.baseline import compare_shape_objects
         from gondola.validation.geometry import local_shape

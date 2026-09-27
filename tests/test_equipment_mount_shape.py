@@ -58,7 +58,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             mounts.mount_hole_centres("electronics"), mounts.FC_HOLE_CENTRES
         )
 
-    def test_accessory_is_plain_full_plate_with_only_confirmed_pas_holes(self):
+    def test_accessory_keeps_full_deck_with_pas_holes_and_generic_slots(self):
         from gondola.parts import equipment_mounts as mounts
 
         x, y = mounts.ACCESSORY_DECK_CENTRE_XY
@@ -77,6 +77,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     App.Vector(hx, hy, mounts.DECK_BOTTOM_Z - 1),
                 )
             )
+        for slot in mounts.generic_slot_shapes("accessory"):
+            plate = plate.cut(slot)
         shape = mounts.mount_shape("accessory")
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
@@ -84,7 +86,44 @@ class EquipmentMountShapeTests(unittest.TestCase):
         self.assertEqual(
             mounts.mount_hole_centres("accessory"), mounts.PAS_HOLE_CENTRES
         )
-        self.assertIsNone(mounts.mount_contract("accessory")["stack_interface"])
+        self.assertEqual(
+            mounts.mount_contract("accessory")["stack_interface"][
+                "carrier_datum_xy_mm"
+            ],
+            (0.0, 16.5),
+        )
+
+    def test_generic_slots_have_unobstructed_bores_and_full_edge_lands(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import rail
+
+        for kind in mounts.MOUNT_NAMES:
+            shape = mounts.mount_shape(kind)
+            slots = mounts.generic_slot_shapes(
+                kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
+            )
+            lands = mounts.generic_slot_shapes(
+                kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
+            )
+            for slot, outer in zip(slots, lands, strict=True):
+                with self.subTest(kind=kind, centre=slot.BoundBox.Center):
+                    self.assertLess(abs(slot.common(shape).Volume), 1e-6)
+                    self.assertLess(abs(outer.cut(slot).cut(shape).Volume), 1e-6)
+                    self.assertLess(abs(slot.common(rail.shoe_shape()).Volume), 1e-6)
+
+    def test_battery_generic_tabs_preserve_the_whole_adhesive_deck(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        patch = Part.makeBox(
+            *mounts.BATTERY_DECK_SIZE,
+            mounts.DECK_THICKNESS,
+            App.Vector(
+                -mounts.BATTERY_DECK_SIZE[0] / 2,
+                -mounts.BATTERY_DECK_SIZE[1] / 2,
+                mounts.DECK_BOTTOM_Z,
+            ),
+        )
+        self.assertLess(abs(patch.cut(mounts.mount_shape("battery")).Volume), 1e-6)
 
     def test_shared_adhesive_patches_are_intact_and_clear_pas_holes(self):
         from gondola.parts import equipment_mounts as mounts

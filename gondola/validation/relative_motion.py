@@ -3,6 +3,7 @@
 import math
 
 from gondola.cad import belongs_to_group, world_shape
+from gondola.contracts import servo_horns
 from gondola.contracts.design import MODULE_STATIONS
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import rail
@@ -29,6 +30,10 @@ def _input_drive_membership(parts):
     rows = []
     for prefix in ("Port", "Starboard"):
         expected = {prefix + suffix for suffix in suffixes}
+        if not servo_horns.profile(side=prefix).threaded:
+            expected.update(
+                prefix + "HornGearClamp" + side + "Nut" for side in ("Near", "Far")
+            )
         actual = {
             part["name"] for part in parts if part["group"] == prefix + "InputDrive"
         }

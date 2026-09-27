@@ -34,6 +34,23 @@ class BundleIntegrityTests(unittest.TestCase):
         self.cad_path = self.output / (self.stem + ".FCStd")
         self.cad_path.write_bytes(b"saved CAD")
         self.cad_sha = bundle.file_sha256(self.cad_path)
+        for name in bundle.POWER_ARTIFACT_NAMES:
+            (self.output / name).write_bytes(("optional " + name).encode())
+        self.power_audit = {
+            "passed": True,
+            "source_fingerprint": self.fingerprint,
+            "source_sha256": self.cad_sha,
+            "source_sha256_after": self.cad_sha,
+            "artifact_hashes": {
+                name: bundle.file_sha256(self.output / name)
+                for name in bundle.POWER_ARTIFACT_NAMES
+            },
+        }
+        self.power_audit["artifact_hashes_before"] = dict(
+            self.power_audit["artifact_hashes"]
+        )
+        self.power_audit_path = self.output / "gondola_power_validation.json"
+        write_json(self.power_audit_path, self.power_audit)
         self.parts = []
         inventory = bundle.EXPECTED_INVENTORY
         installed_skus = inventory["unique_print_files"] - inventory["fit_coupons"]
@@ -178,13 +195,14 @@ class BundleIntegrityTests(unittest.TestCase):
             names = set(zipped.namelist())
             self.assertEqual(
                 sum(name.endswith(".stl") for name in names),
-                bundle.EXPECTED_INVENTORY["unique_print_files"],
+                bundle.EXPECTED_INVENTORY["unique_print_files"] + 1,
             )
             self.assertEqual(
                 sum(name.endswith(".step") for name in names),
-                bundle.EXPECTED_INVENTORY["unique_print_files"],
+                bundle.EXPECTED_INVENTORY["unique_print_files"] + 1,
             )
             self.assertNotIn("obsolete.stl", names)
+            self.assertIn("optional_power/optional_power_mount.stl", names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(
                 zipped.read("validation/baseline.json"), self.baseline_path.read_bytes()
@@ -197,6 +215,26 @@ class BundleIntegrityTests(unittest.TestCase):
             self.assertEqual(set(hashes["files"]), names - {"package_hashes.json"})
             for name, expected in hashes["files"].items():
                 self.assertEqual(sha256_bytes(zipped.read(name)), expected)
+
+    def test_optional_power_cannot_bypass_artifact_or_source_checks(self):
+        path = self.output / "optional_power_mount.stl"
+        original = path.read_bytes()
+        path.write_bytes(b"changed optional shape")
+        with self.assertRaisesRegex(RuntimeError, "altered optional power"):
+            self.package()
+        path.write_bytes(original)
+        for key, value in (
+            ("passed", False),
+            ("source_sha256", "stale"),
+            ("source_sha256_after", "changed"),
+            ("source_fingerprint", "old source"),
+        ):
+            with self.subTest(key=key):
+                report = {**self.power_audit, key: value}
+                write_json(self.power_audit_path, report)
+                with self.assertRaises(RuntimeError):
+                    self.package()
+        write_json(self.power_audit_path, self.power_audit)
 
     def test_bom_cannot_substitute_specs_while_preserving_total_quantity(self):
         for field, replacement in (

@@ -174,6 +174,32 @@ def mounting_check(doc):
         unverified_stack = "MountingStackVerified" in obj.PropertiesList and not bool(
             obj.MountingStackVerified
         )
+        try:
+            stack_contract_matches = json.loads(
+                obj.StackInterfaceContract
+            ) == json.loads(json.dumps(stack_interface.interface_contract(name)))
+        except (AttributeError, ValueError, TypeError):
+            stack_contract_matches = False
+        slot_rows = []
+        slots = mounts.generic_slot_shapes(
+            kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
+        )
+        lands = mounts.generic_slot_shapes(
+            kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
+        )
+        for centre, slot, outer in zip(
+            mounts.GENERIC_SLOT_CENTRES[kind], slots, lands, strict=True
+        ):
+            obstruction = intersection_volume(shape, slot)
+            missing_land = outer.cut(slot).cut(shape).Volume
+            slot_rows.append(
+                {
+                    "centre_xy_mm": centre,
+                    "slot_obstruction_mm3": obstruction,
+                    "missing_full_thickness_1p5mm_land_mm3": missing_land,
+                    "passed": obstruction < TOL and missing_land < TOL,
+                }
+            )
         support_rows.append(
             {
                 "object": name,
@@ -183,6 +209,8 @@ def mounting_check(doc):
                 "single_valid_solid": shape.isValid() and len(shape.Solids) == 1,
                 "no_unverified_device_posts_above_support_face": no_posts,
                 "mounting_stack_remains_unverified": unverified_stack,
+                "structural_stack_contract_matches": stack_contract_matches,
+                "generic_fastening_slots": slot_rows,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()
@@ -190,7 +218,9 @@ def mounting_check(doc):
                 and _comparison_passed(comparison)
                 and contract_matches
                 and no_posts
-                and unverified_stack,
+                and unverified_stack
+                and stack_contract_matches
+                and all(row["passed"] for row in slot_rows),
             }
         )
     carriers = {

@@ -48,7 +48,7 @@ PROCUREMENT_SPECS = {
     "M1_6_HEX_NUT_DIN934": {
         "search_query": "M1.6 DIN934 304 hex nut 3.2mm 1.3mm",
         "candidate_url": SERVO_NUT_SOURCE,
-        "requirements": "Selected seller DIN 934 / ISO 4032, 304 stainless claim, M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 mounting-ear joints only, accessible with a small wrench; the replacement metal horns have threaded holes and need no separate horn nuts. These match the M1.6x8 screws; other joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
+        "requirements": "Selected seller DIN 934 / ISO 4032, 304 stainless claim, M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 mounting-ear joints only, accessible with a small wrench. These match the M1.6x8 screws. The two M1.6-threaded horn profiles need no horn nuts; the optional prepared KST horn uses separate M1.4 nuts. Structural M2 joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
     },
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
@@ -59,14 +59,38 @@ PROCUREMENT_SPECS = {
     "ALI_PTK_15T_4MM_HORN": {
         "search_query": "15T Single 4.0mm CNC metal servo horn M1.6 PTK",
         "candidate_url": HORN_SOURCE,
-        "requirements": "Buy two horns of selected option 15T Single 4.0mm from item 1005012006498403; the project SKU is not a manufacturer part number. Use the horn's existing M1.6 threaded holes without drilling the purchased horn, two attachment screws per side at the first and third holes and no horn nuts. Keep the X06 OEM centre retaining screw; its thread is not an M1.6 assumption. The user accepts X06 V6 spline compatibility as the design premise and confirms all three arm holes are threaded M1.6. Check actual seating, centre screw engagement, adapter fit, runout and bidirectional loaded retention before powered operation.",
-        "evidence_notes": "The retained seller drawing specifies overall length 18.2 mm, root width 6.1 mm, arm thickness 1.6 mm, first attachment radius 6.6 mm and one 2.8 mm interval. The third-hole 12.2 mm design radius repeats the only dimensioned 2.8 mm interval and is not independently specified; the adapter provides +/-0.4 mm radial slot travel there. The drawing does not fully establish hub diameter/height, concentricity, spline seating depth or usable thread engagement. Aluminium is a seller claim and mass is unmeasured. Verify the actual pack quantity when ordering two installed horns; title 2PCS alone is not an option-level packing confirmation.",
+        "requirements": "For each selected side buy one horn of option 15T Single 4.0mm from item 1005012006498403; the project SKU is not a manufacturer part number. Use the horn's existing M1.6 threaded holes without drilling the purchased horn, two attachment screws per side at the first and third holes and no horn nuts. Keep the X06 OEM centre retaining screw; its thread is not an M1.6 assumption. The user accepts X06 V6 spline compatibility as the design premise and confirms all three arm holes are threaded M1.6. Check actual seating, centre screw engagement, adapter fit, runout and bidirectional loaded retention before powered operation.",
+        "evidence_notes": "The retained seller drawing specifies overall length 18.2 mm, root width 6.1 mm, arm thickness 1.6 mm, first attachment radius 6.6 mm and one 2.8 mm interval. The third-hole 12.2 mm design radius repeats the only dimensioned 2.8 mm interval and is not independently specified; the common adapter radial slot covers all three supported hole patterns. The drawing does not fully establish hub diameter/height, concentricity, spline seating depth or usable thread engagement. Aluminium is a seller claim and mass is unmeasured. Verify the actual pack quantity against the selected-side count; title 2PCS alone is not an option-level packing confirmation.",
     },
-    "M1_6X4_PAN_HEAD_KIT": {
-        "search_query": "M1.6x4 Phillips pan head stainless screw",
+    "METAL_15T_4MM_HORN_6_98": {
+        "search_query": "15T 4mm metal servo horn 6.98mm M1.6",
+        "candidate_url": "",
+        "requirements": "Second user-drawn 15T/4 mm horn; first radius 6.98 mm, next pitch 3 mm, 6.25 mm root and 18.2 mm length. Select this exact geometry and existing M1.6 threads. Use first and third holes in the same universal printed adapter, two M1.6x5 screws and no nuts. Check actual spline seating and X06 OEM centre screw.",
+        "evidence_notes": "No seller URL supplied. references/metal_15t_4mm_horn_6_98_drawing.png is the retained source. Third radius12.98 repeats the dimensioned3mm pitch. Blade1.6mm and axial height3.5mm are provisional envelopes, not dimensions in this drawing. No mass or finished concentricity is established.",
+    },
+    "KST_0415_13_HORN": {
+        "search_query": "KST 0415.13 aluminium horn 15T 4mm",
+        "candidate_url": "https://kstservos.com/products/0415-13-aluminium-servo-arm-for-4mm-15t-servo",
+        "requirements": "Optional substitute on either side, not an additional installed horn. Supplied holes are three plain0.8mm and three plain1.0mm. Enlarge only end pilot holes at4.5/13.2mm to1.5mm and deburr. Use two reverseM1.4x6 screws/frontM1.4nuts; no washers or tapped thin-arm threads. Assemble the horn and adapter onto the free servo before inserting the complete unit into the bridge.",
+        "evidence_notes": "Retained drawing references/kst_0415_13_horn_drawing.png; manufacturer lists aluminium/15T4mm. Overall18.2mm and rounded-tip envelope inferred from13.2mm outer hole/4mm tip/root6mm, not independently dimensioned. Root concentricity, finished pilot enlargement,0.55mm minimum ligament and reversing-load retention remain unqualified.",
+    },
+    "M1_4X6_PAN_HEAD_KIT": {
+        "search_query": "M1.4x6 Phillips screw head 2.6mm",
         "candidate_url": SERVO_SCREW_SOURCE,
-        "requirements": "Use four M1.6 x 0.35 screws from the user's assorted micro-screw kit, nominal 4 mm under-head length, two per metal horn. The nominal joint has 2.6 mm adapter grip and 1.4 mm horn engagement, leaving 0.2 mm behind a 1.6 mm arm; these design values require received-part checks. They fasten through the printed adapter into existing M1.6 horn threads without nuts. Require a flat under-head bearing diameter of at least 3.0 mm, within a maximum head diameter of 3.5 mm and height of 1.6 mm. Check real adapter thickness, full usable horn thread engagement and backside protrusion through the entire tilt range; choose a shorter kit length or shorten/deburr if needed. Never substitute these screws for the OEM spline retaining screw.",
-        "evidence_notes": "Assorted kit lengths and all three M1.6 horn holes are user-confirmed; received head size, thread depth and installed clearance are not measured. The 4 mm selection is a nominal assembly design, not proof of safe tightening torque or actual engagement.",
+        "requirements": "Two per optional KST0415.13 horn only. M1.4x0.3,6mm under-head, inserted from horn rear. Require head diameter<=2.6mm,height<=1.0mm; actual assorted-kit head must be checked. Rear head/root gap is only0.2mm nominal. Couple with frontM1.4nuts, no washers. Not every generic M1.4 screw fits this acceptance envelope.",
+        "evidence_notes": "The user's kit includes M1.4 and assorted lengths; actual head/drive dimensions remain unknown. Body-clear holding-tool stem<=1.5mm is a declared tool envelope, not a supplied Phillips-bit guarantee.",
+    },
+    "M1_4_HEX_NUT_DIN934": {
+        "search_query": "M1.4 DIN934 nut 3mm AF 1.2mm",
+        "candidate_url": "https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf",
+        "requirements": "Two per optional KST0415.13 horn only, on flat front of adapter. NominalM1.4x0.3,DIN934 AF3.0mm,height1.2mm. Require AF2.9..3.0,height<=1.2mm and full thread engagement. Hold with fine parallel pliers/open tool from arm end. No separate nut for the two M1.6-threaded horn choices.",
+        "evidence_notes": "Fastenal's dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95. This is not selection or certification of the user's actual nut lot/material. Grade and physical handling remain unverified.",
+    },
+    "M1_6X5_PAN_HEAD_KIT": {
+        "search_query": "M1.6x5 Phillips pan head stainless screw",
+        "candidate_url": SERVO_SCREW_SOURCE,
+        "requirements": "Use two M1.6 x 0.35 screws per selected threaded metal horn, four in the default mixed-metal pair, from the user's assorted micro-screw kit; nominal under-head length is 5 mm. The nominal joint has 3.6 mm adapter grip and 1.4 mm horn engagement, leaving 0.2 mm behind a 1.6 mm arm; these design values require received-part checks. They fasten through the printed adapter into existing M1.6 horn threads without nuts. Require a flat under-head bearing diameter of at least 3.0 mm, within a maximum head diameter of 3.5 mm and height of 1.6 mm. Check real adapter thickness, full usable horn thread engagement and backside protrusion through the entire tilt range; choose a shorter kit length or shorten/deburr if needed. Never substitute these screws for the OEM spline retaining screw.",
+        "evidence_notes": "Assorted kit lengths and all three M1.6 horn holes are user-confirmed; received head size, thread depth and installed clearance are not measured. The 5 mm selection is a nominal assembly design, not proof of safe tightening torque or actual engagement.",
     },
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",

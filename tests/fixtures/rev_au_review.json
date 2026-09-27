@@ -1,0 +1,310 @@
+{
+  "revision": "AU",
+  "reviewed_on": "2026-09-27",
+  "previous_commit": "0bc13a111f58f67b813822007ac6f14fce2b0313",
+  "source_fingerprint": "3e59533c44c4fcc45b79405925706184607e71eaf02f208a8d59c3d7f8433c3e",
+  "approved_fixture_file": "tests/fixtures/rev_au_geometry.FCStd",
+  "approved_fixture_sha256": "56fbdb3cf9f96d3deaccb28fdd13a579b16b685021508e832f21dfd84c036a27",
+  "scope": "Three-horn common adapter, general carrier fastening and shared structural interface, separate optional Matek power platform. Removable paired servo/input drive remains separate from propulsion/output frame.",
+  "intentional_changes": [
+    "One common printed adapter with a radial slot accepts the three retained horn profiles; default mixed pair reflects one available original horn. Threaded metal horns use two M1.6x5 screws each. KST uses existing end pilot holes enlarged to 1.5 mm, reverse M1.4x6 screws and front nuts; no manual transfer of new hole centres.",
+    "Keep original input shaft, gear planes, shaft-stop floor and separate servo/propulsion modules. Extend slot-end web to 1.5 mm; preserve explicit case, tool and ordered service clearances.",
+    "Add rounded generic M2/tie slots to the battery, FC and accessory carriers. Extend the same project structural stack feet to the accessory carrier at a shifted datum; move Mini and its reservations 3 mm local-Y to clear the hardware. Optical tray remains an uninterrupted functional adhesive exception.",
+    "Add one optional integral 64x64x35 mm power platform, with two open board bays, common host feet, generic20/30.5 mm square M2 patterns and a local tether tie provision. Export it separately, outside the battery baseline inventory and mass.",
+    "One BEC12S-PRO has one output. Exact24 V to8 V main and5.2 V servo uses two boards. BEC+SVPDB alternative uses5 V servos, and battery+SVPDB is also screened. No electrical/thermal or tether-load qualification is claimed.",
+    "Propagate per-side horn choice into native geometry, procurement, conditional hardware count, thread/material metadata, mass and motion membership. Unselected optional nut material remains null-density/null-mass rather than inventing a seller alloy.",
+    "Audit optional saved CAD, context, STL/STEP, source identities and both optical-host configurations read-only. Include optional artifacts in the gated prototype bundle; preserve their view settings during preview."
+  ],
+  "evidence": {
+    "transition": "tests/fixtures/rev_au_transition_review.json",
+    "controlled_kst_alternative": "tests/fixtures/rev_au_kst_review.json",
+    "native_tests": "tests/fixtures/rev_au_native_tests_review.json",
+    "final_artifacts": "tests/fixtures/rev_au_artifact_review.json"
+  },
+  "physical_limits": [
+    "Fit prototype only. Actual horn seating/spline fit, root concentricity, torque retention, printed fit/strength/creep and reverse-load KST ligament strength remain unmeasured.",
+    "Second metal horn blade/axial dimensions remain provisional. KST rear screw head/root gap and actual tools require physical checking; its mounting requires the stated preparation.",
+    "Common mechanical interface is project-specific. One platform per unoccupied host; optical and power do not share a host. Direct MG-F10 helix with accessory-host power is excluded; use remote antenna or another screened host.",
+    "Finished tie-slot fit depends on strap orientation and printing; do not force a nominal2.5mm strap into an undersized finished throat. No board-specific Matek holes are invented.",
+    "Optional power wires/headers, insulation/cooling, input-voltage conflict of the selected FC, current margin, compass interference, tether drop/load/full trajectory and actual prototype wiring remain unresolved.",
+    "Printed mass is a BRep-volume/density estimate. Optional power is separate; battery, wiring, antenna and other unmeasured installation items prevent an all-up mass claim."
+  ],
+  "final_verification": {
+    "status": "passed",
+    "source_fingerprint": "3e59533c44c4fcc45b79405925706184607e71eaf02f208a8d59c3d7f8433c3e",
+    "main_cad_sha256": "7a1827f3865f844267074699554fbff3d145228382684e22d61e2955813b8f8d",
+    "optional_cad_sha256": "7adb558a641564bfc4af1c2043dcaf951b681c99f26386d340bdaf3aae4b7693",
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "seconds": 12.586,
+        "log": "/tmp/au-final-build.log",
+        "log_sha256": "92d5cccda257bd116016c741e4c781291eaeab8df486e8a0c2c64be9234084c4"
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "seconds": 44.725,
+        "log": "/tmp/au-final-preview.log",
+        "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "seconds": 900.344,
+        "log": "/tmp/au-final-validate.log",
+        "log_sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70"
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "seconds": 10.71,
+        "log": "/tmp/au-final-compare.log",
+        "log_sha256": "0aadd498fe0fa1a97b5dae47a13f04deafd8f5556603c3afdac27b6f5db86627"
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "seconds": 0.194,
+        "log": "/tmp/au-final-bundle.log",
+        "log_sha256": "0be483c489ec4cfd7c94e4a7be2ff8afe6c2e0d9c3a46a506b8d6a878f14d90d"
+      }
+    ],
+    "reports": {
+      "gondola_validation.json": {
+        "passed": true,
+        "sha256": "0ebfb845db7628d2094d44298993963d83418f2c3411edad7aeac254463a7c28",
+        "source_binding": "report source_fingerprint"
+      },
+      "gondola_equipment_validation.json": {
+        "passed": true,
+        "sha256": "aa1009c4e8bb950900d51c847a9091d0fd59b478c5c07a823482e995bd7b7b59",
+        "source_binding": "report source_fingerprint"
+      },
+      "gondola_propulsion_validation.json": {
+        "passed": true,
+        "sha256": "88172cbc0c375861d93b9877be55e65f750b5f10fdcfa67f8259df49850c1511",
+        "source_binding": "main assembly local_propulsion_evidence hash"
+      },
+      "gondola_power_validation.json": {
+        "passed": true,
+        "sha256": "639aa63641910d187d9b10c7e4182f4068c15072b807569549e6645d953d3051",
+        "source_binding": "report source_fingerprint"
+      },
+      "gondola_baseline_validation.json": {
+        "passed": true,
+        "sha256": "1dcd4e52d6fcc143d0767adaea9023b31348c8b7b9f97c9dae7bf6e427a9df32",
+        "source_binding": "report source_fingerprint"
+      }
+    },
+    "fixture_promotion": {
+      "performed_by": "root",
+      "basis": "Reviewed AT-to-AU transition plus approved pre-pin shape/control equivalence; final rebuilt assembly compared against that approved fixture after source freeze. See retained transition review for reviewer authorship and scope.",
+      "final_shape_count": 116,
+      "final_shape_comparison_passed": true,
+      "native_control_cases": 32,
+      "native_controls_passed": true
+    },
+    "native_tests": {
+      "revision": "AU",
+      "artifact": "rev_au_native_tests.json.gz",
+      "artifact_sha256": "98d4baec9bf3f846fefb24b73a84adc4b0bb8071f0f190702691c68325149c26",
+      "source_fingerprint": "3e59533c44c4fcc45b79405925706184607e71eaf02f208a8d59c3d7f8433c3e",
+      "approved_fixture_sha256": "56fbdb3cf9f96d3deaccb28fdd13a579b16b685021508e832f21dfd84c036a27",
+      "execution": "Per-module native processes; not one uninterrupted suite. Relevant changed modules rerun; complete logs and all prior attempts retained in the compressed artifact.",
+      "discovered_modules": 45,
+      "completed_modules": 45,
+      "discovered_test_ids": 434,
+      "distinct_successfully_completed_test_ids": 434,
+      "exact_test_id_coverage": true,
+      "latest_attempt_totals": {
+        "tests": 434,
+        "skips": 0,
+        "failures": 0,
+        "errors": 0
+      },
+      "superseded_attempts": 4,
+      "superseded_failed_attempts": 2,
+      "interrupted_attempts": 1,
+      "all_log_hashes_verified": true
+    },
+    "blender": {
+      "verification": {
+        "passed": true,
+        "cad_sha256": "7a1827f3865f844267074699554fbff3d145228382684e22d61e2955813b8f8d",
+        "source_fingerprint": "3e59533c44c4fcc45b79405925706184607e71eaf02f208a8d59c3d7f8433c3e",
+        "revision": "AU",
+        "source_cad_hash_checked": false,
+        "translation_tolerance_m": 1e-07,
+        "rotation_tolerance_rad": 1e-05,
+        "rotation_matrix_tolerance": 1e-05,
+        "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed.",
+        "scene_count": 7,
+        "sampled_frames": 1782,
+        "matrix_checks": 135116,
+        "visibility_checks": 135116,
+        "maximum_translation_error_m": 1.9818257956694642e-08,
+        "maximum_rotation_error_rad": 4.238642635136521e-07,
+        "maximum_matrix_error": 5.218992054079052e-07,
+        "discrepancy_count": 0,
+        "discrepancy_kinds": {},
+        "discrepancies": [],
+        "scenes": [
+          {
+            "name": "01 Assembly",
+            "parts": 100,
+            "frames": 120,
+            "matrix_checks": 12000,
+            "maximum_translation_error_m": 1.3863789242504055e-08,
+            "maximum_rotation_error_rad": 1.3435884024618332e-07,
+            "maximum_matrix_error": 2.384185791015625e-07,
+            "passed": true
+          },
+          {
+            "name": "02 Independent tilt",
+            "parts": 100,
+            "frames": 289,
+            "matrix_checks": 28900,
+            "maximum_translation_error_m": 1.4267891608533254e-08,
+            "maximum_rotation_error_rad": 4.238642635136521e-07,
+            "maximum_matrix_error": 4.76837158203125e-07,
+            "passed": true
+          },
+          {
+            "name": "03 Gear and horn",
+            "parts": 34,
+            "frames": 193,
+            "matrix_checks": 6562,
+            "maximum_translation_error_m": 1.3863789242504055e-08,
+            "maximum_rotation_error_rad": 4.238642635136521e-07,
+            "maximum_matrix_error": 4.76837158203125e-07,
+            "passed": true
+          },
+          {
+            "name": "04 Axial allowance",
+            "parts": 34,
+            "frames": 241,
+            "matrix_checks": 8194,
+            "maximum_translation_error_m": 1.9818257956694642e-08,
+            "maximum_rotation_error_rad": 4.238642635136521e-07,
+            "maximum_matrix_error": 4.76837158203125e-07,
+            "passed": true
+          },
+          {
+            "name": "05 Optical on Battery",
+            "parts": 100,
+            "frames": 289,
+            "matrix_checks": 28900,
+            "maximum_translation_error_m": 1.3863789242504055e-08,
+            "maximum_rotation_error_rad": 2.793927171554387e-07,
+            "maximum_matrix_error": 4.783957232579183e-07,
+            "passed": true
+          },
+          {
+            "name": "06 Optical on FC",
+            "parts": 100,
+            "frames": 289,
+            "matrix_checks": 28900,
+            "maximum_translation_error_m": 1.3863789242504055e-08,
+            "maximum_rotation_error_rad": 3.6319595727864617e-07,
+            "maximum_matrix_error": 5.218992054079052e-07,
+            "passed": true
+          },
+          {
+            "name": "07 Servo module removal",
+            "parts": 60,
+            "frames": 361,
+            "matrix_checks": 21660,
+            "maximum_translation_error_m": 1.3863789242504055e-08,
+            "maximum_rotation_error_rad": 1.3435884024618332e-07,
+            "maximum_matrix_error": 2.384185791015625e-07,
+            "passed": true
+          }
+        ],
+        "unique_object_count": 607,
+        "unique_action_count": 565,
+        "blend_path": "/home/h/cad/airship-gondola-cad/build/blender_review/cad_review.blend",
+        "input_json_sha256": "b63607b1e7e4f4f0cfcb9b0f603527007d564b3aaececd760e33bc77c3a02dbe",
+        "blend_sha256": "b870a54aac7d7b8a405b106b16fc22994d1fc37c9a7dcd9fae55164314939012",
+        "input_files_unchanged_during_verification": true,
+        "elapsed_seconds": 3.068783247000283
+      },
+      "current_saved_cad_sha256_checked_by_root": "7a1827f3865f844267074699554fbff3d145228382684e22d61e2955813b8f8d",
+      "current_json_sha256": "b63607b1e7e4f4f0cfcb9b0f603527007d564b3aaececd760e33bc77c3a02dbe",
+      "current_blend_sha256": "b870a54aac7d7b8a405b106b16fc22994d1fc37c9a7dcd9fae55164314939012",
+      "visually_inspected_still": "03_Gear_and_horn.png",
+      "visually_inspected_still_sha256": "d4db9710f263b11d5fb24f2320f45b32f2ca3b77a740e539f4c6cfdb473007b7",
+      "scope": "Derivative sampled pose/visibility equivalence only; no added collision, physical or continuous-time qualification. Root independently matched reported CAD identity to the current saved native file."
+    },
+    "static_checks": {
+      "ruff_check_passed": true,
+      "ruff_format_check_passed": true,
+      "formatted_files": 115,
+      "compileall_passed": true,
+      "git_diff_check_passed": true,
+      "local_document_links_checked": 66,
+      "broken_local_links": 0
+    },
+    "inventory": {
+      "installed_printed_parts": 13,
+      "purchased_hardware_items": 60,
+      "fit_sample_prints": 3,
+      "equipment_mount_count": 3,
+      "single_rail_count": 1,
+      "passed": true
+    },
+    "mass_estimates": {
+      "is_all_up_mass": false,
+      "baseline_printed_g": 72.63629645036826,
+      "previous_AT_printed_g": 71.6543886267,
+      "printed_change_from_AT_g": 0.9819078236682657,
+      "optional_power_print_g": 9.779154,
+      "optional_power_included_in_baseline": false,
+      "basis": "Nominal BRep volume and PA12 density assumption; not measured printed mass."
+    },
+    "production_released": false,
+    "completed_at_utc": "2026-09-27T07:20:49.392265+00:00",
+    "retained_artifact_audit": {
+      "passed": true,
+      "review_file": "tests/fixtures/rev_au_artifact_review.json",
+      "review_sha256": "92983b4f3039e3563770f39e145a730b6a7a051940b12179e198238ec0f15b65",
+      "compressed_sha256": "7381acba8283fef0e2192ec94d89961e35b53fb8384e0323ec29a8646a2cd2fd",
+      "file": "tests/fixtures/rev_au_artifact_audit.json.gz",
+      "uncompressed_sha256": "f5bed65fc9755f65011e007f89890f922155070860065dcf506fc0d7d6cc72ec"
+    },
+    "pipeline_evidence_scope": "All five completed stage logs and full native artifact reports are retained in rev_au_artifact_audit.json.gz. Native test logs are retained separately; temporary paths identify the original execution only."
+  },
+  "production_released": false,
+  "visual_review": {
+    "gondola_preview.png": {
+      "passed": true,
+      "sha256": "862e3803df6c6ed871d8c2f7a31c427c2f15ccbad2d13b2adf61708530237859"
+    },
+    "gondola_propulsion.png": {
+      "passed": true,
+      "sha256": "414ea60651969f9ea958537e73aa8eeff43059487e8aecd47ec3745ef0e0f7eb"
+    },
+    "gondola_electronics.png": {
+      "passed": true,
+      "sha256": "386f88ab8051faf615be5c9817d1bba0f339f349acbeb0e45951175e9a8d31b1"
+    },
+    "gondola_print_parts.png": {
+      "passed": true,
+      "sha256": "a03b35813e0ef2b37310bfa8ec29d19ead761d484c670cea6ced61ca333224e3"
+    },
+    "gondola_optical_stack.png": {
+      "passed": true,
+      "sha256": "33bbdb4c5253f1925c2766906774fa41f721d555af32a26f38c0b0ef5c759b34"
+    },
+    "gondola_optical_fc_stack.png": {
+      "passed": true,
+      "sha256": "b4729d6cd218fa830a08cc0afe451fd8cb4e13efb5ddd0e0aa7e216e0553beae"
+    },
+    "gondola_power_options.png": {
+      "passed": true,
+      "sha256": "299280d440df99b2d05b2afb771e55b6d3c5c288ae8614c459b3d738a60f5b1d"
+    }
+  },
+  "visual_review_scope": "Main assembly, propulsion, FC, print layout, both optical-host arrangements and optional power platform inspected. Purchased equipment uses nominal envelopes. Fixed hidden optional-parent display; context/reserves stay hidden. No strength or flexible-wire qualification."
+}

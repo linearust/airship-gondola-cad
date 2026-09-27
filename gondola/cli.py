@@ -100,11 +100,20 @@ def _execute_command(args):
         build_assembly()
         return 0
     if args.command == "validate":
+        from .power_export import audit_power_options
         from .validation import assembly, equipment
 
         assembly_report = assembly.validate(args.source)
         equipment_report = equipment.validate(args.source)
-        return 0 if assembly_report["passed"] and equipment_report["passed"] else 1
+        power_report = audit_power_options(args.source)
+        return (
+            0
+            if all(
+                report["passed"]
+                for report in (assembly_report, equipment_report, power_report)
+            )
+            else 1
+        )
     if args.command == "compare":
         from .validation import baseline
 

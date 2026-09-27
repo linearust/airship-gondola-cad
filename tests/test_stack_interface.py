@@ -308,6 +308,111 @@ class StackInterfaceTests(unittest.TestCase):
         finally:
             self.doc.removeObject(unknown.Name)
 
+    def test_accessory_shares_mechanical_pattern_without_claiming_optical_support(self):
+        from gondola.parts import equipment_mounts
+        from gondola.parts import stack_interface as s
+        from gondola.validation.geometry import intersection_volume
+
+        self.assertIn("AccessoryEquipmentModule", s.MECHANICAL_HOSTS)
+        self.assertNotIn("AccessoryEquipmentModule", s.SUPPORTED_HOSTS)
+        self.assertEqual(s.host_origin_xy("AccessoryMount"), (0.0, 16.5))
+        self.assertEqual(
+            s.host_placement("AccessoryEquipmentModule").Base,
+            App.Vector(0, 16.5, s.HOST_SUPPORT_Z),
+        )
+        support = equipment_mounts.mount_shape("accessory")
+        datum = s.host_origin_xy("AccessoryMount")
+        platform = s.platform_shape()
+        platform.translate(App.Vector(*datum, s.HOST_DECK_BOTTOM_Z))
+        for slot in equipment_mounts.generic_slot_shapes("accessory"):
+            platform = platform.cut(slot)
+        self.assertLess(abs(platform.cut(support).Volume), 1e-6)
+        for x, y in s.CLAMP_CENTRES:
+            hole = Part.makeCylinder(
+                s.CLAMP_HOLE_DIAMETER / 2,
+                s.DECK_THICKNESS,
+                App.Vector(x + datum[0], y + datum[1], s.HOST_DECK_BOTTOM_Z),
+            )
+            self.assertLess(intersection_volume(hole, support), 1e-6)
+        with self.assertRaises(ValueError):
+            s.attach_to_host(self.kit["group"], self.doc.AccessoryEquipmentModule)
+
+    def test_round_hardware_bounds_contain_seated_translation_and_yaw(self):
+        from gondola.parts import stack_interface as s
+
+        bounds = dict(s.clamp_hardware_float_bounds())
+        radius = math.hypot(*s.CLAMP_CENTRES[0])
+        angle = math.degrees(2 * math.asin(s.MAX_RADIAL_FLOAT / (2 * radius)))
+        poses = [
+            App.Placement(App.Vector(dx, dy, 0), App.Rotation())
+            for dx, dy in (
+                (-s.MAX_RADIAL_FLOAT, 0),
+                (s.MAX_RADIAL_FLOAT, 0),
+                (0, -s.MAX_RADIAL_FLOAT),
+                (0, s.MAX_RADIAL_FLOAT),
+            )
+        ] + [
+            App.Placement(App.Vector(), App.Rotation(App.Vector(0, 0, 1), a))
+            for a in (-angle, angle)
+        ]
+        anchor = App.Vector(*s.CLAMP_CENTRES[0], 0)
+        for a in (-angle / 2, angle / 2):
+            rotation = App.Rotation(App.Vector(0, 0, 1), a)
+            displacement = rotation.multVec(anchor) - anchor
+            shift = math.sqrt(s.MAX_RADIAL_FLOAT**2 - displacement.Length**2)
+            tangent = App.Vector(-displacement.y, displacement.x, 0)
+            tangent.normalize()
+            for sign in (-1, 1):
+                pose = App.Placement(tangent * (sign * shift), rotation)
+                for x, y in s.CLAMP_CENTRES:
+                    axis = App.Vector(x, y, 0)
+                    self.assertLessEqual(
+                        (pose.multVec(axis) - axis).Length, s.MAX_RADIAL_FLOAT + 1e-7
+                    )
+                poses.append(pose)
+        for obj in self.kit["hardware"]:
+            if not obj.Name.startswith("OpticalStackFoot"):
+                continue
+            key = obj.Name.removeprefix("OpticalStackFoot")
+            for pose in poses:
+                moved = obj.Shape.copy()
+                moved.Placement = pose.multiply(moved.Placement)
+                with self.subTest(object=obj.Name, pose=pose):
+                    self.assertLess(abs(moved.cut(bounds[key]).Volume), 1e-5)
+
+    def test_accessory_registration_clears_rail_and_mini_in_both_clamp_directions(self):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import equipment_envelopes, rail, wiring_reserves
+        from gondola.parts import stack_interface as s
+
+        host = "AccessoryEquipmentModule"
+        datum = s.host_placement(host, s.STACK_TOP_Z)
+        obstacles = {"Mini": equipment_envelopes.radio_envelope_shape()}
+        obstacles.update(
+            (name, shape)
+            for name, shape in wiring_reserves.reserve_shapes().items()
+            if name.startswith("Radio")
+        )
+        station = next(item for item in MODULE_STATIONS if item.object_name == host)
+        components = s.rigid_float_component_bounds() + s.clamp_hardware_float_bounds()
+        for name, shape in components:
+            placed = shape.copy()
+            placed.Placement = datum.multiply(placed.Placement)
+            for obstacle, target in obstacles.items():
+                with self.subTest(component=name, obstacle=obstacle):
+                    self.assertGreaterEqual(placed.distToShape(target)[0], 1.5 - 1e-5)
+            for side in (-1, 1):
+                pose = App.Placement(
+                    App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
+                    App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+                )
+                world = placed.copy()
+                world.Placement = pose.multiply(world.Placement)
+                with self.subTest(component=name, clamp_side=side):
+                    self.assertGreaterEqual(
+                        world.distToShape(rail.rail_shape())[0], 1.5 - 1e-5
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,91 @@
+{
+  "authorship": {
+    "agent": "Codex subagent /root/au_power",
+    "parent_agent": "/root",
+    "retained_at_utc": "2026-09-27 06:47:21 UTC",
+    "role": "Independent horn configuration review, native FreeCAD probe execution, and evidence assembly. The same subagent implemented the optional power module and the noted KST validation/material corrections; this is an independent check of the horn geometry, not third-party certification."
+  },
+  "base_commit": "0bc13a111f58f67b813822007ac6f14fce2b0313",
+  "controlled_selection": {
+    "Port": "KST_0415_13",
+    "Starboard": "KST_0415_13",
+    "method": "Each fresh process changes servo_horns.SELECTED_BY_SIDE in memory before importing design/assembly; GONDOLA_OUTPUT_DIR points to a separate /tmp directory. No selector source file or production build/ artifact is edited.",
+    "released_default_selection": {
+      "Port": "PTK_6_6",
+      "Starboard": "METAL_6_98"
+    }
+  },
+  "geometry_probe": {
+    "all_individual_checks_passed": true,
+    "classified_functional_interfaces": 8,
+    "continuous_certified_pair_count": 3257,
+    "continuous_pair_count": 3257,
+    "elapsed_seconds": 159.56154176300015,
+    "original_top_level_passed": false,
+    "per_side_discrete_tilt_poses": 49,
+    "production_cad_sha256_after": "addcddd3218433b50b9f6391b5393eb5ed6f8de2a92b18e7f979469a5bc85a6c",
+    "production_cad_sha256_before": "addcddd3218433b50b9f6391b5393eb5ed6f8de2a92b18e7f979469a5bc85a6c",
+    "reason": "Production metadata/report wording was corrected concurrently. The source-identity guard correctly failed; the first probe is NOT a full release pass or an unchanged-source audit. All native inventory and explicitly listed geometric/service checks passed.",
+    "service_scope": "Complete paired module release and both individual KST servo/adapter service routes; selected rigid geometry and nominal tool envelopes only.",
+    "source_fingerprint_after": "fbea60a2fd0f03e010c61400e249be657e41a89f8014d189da3e9b093ce8cb06",
+    "source_fingerprint_before": "65bdc8fabcbca6ba98c1ced7e3381ffff67cc2b403d5de2c000996f72bb30cdc"
+  },
+  "input_artifacts": {
+    "geometry_probe": {
+      "canonical_report_sha256": "524462d176c24fa81bf3467f53f9587361014c1f5c0177214b33af6073cf1f0f",
+      "original_file_sha256": "eb6b8a2e1ee2d63ff61b31404bd822f2a382c9d68673b67c5a7edc62ba0de91e",
+      "original_path": "/tmp/au-kst-full-probe-review.json"
+    },
+    "geometry_probe_cad": {
+      "original_path": "/tmp/au-kst-full-probe/gondola.FCStd",
+      "retained_in_archive": false,
+      "sha256": "fcdc8a071acfde1491eddee8c680e4ed1391f351a92a680c52ec971f259a1e19"
+    },
+    "metadata_rebind": {
+      "canonical_report_sha256": "6e3bb17228ff50fa43ad138c44c005e23ae0219f63982958eec6c8ef4a0f57f6",
+      "original_file_sha256": "d5a748f614e55656dbe995abf3a50a7f96bebafbe9a6e0ba3ba6a85fe295c329",
+      "original_path": "/tmp/au-kst-final-metadata-review.json"
+    },
+    "metadata_rebind_cad": {
+      "original_path": "/tmp/au-kst-final-metadata/gondola.FCStd",
+      "retained_in_archive": false,
+      "sha256": "4fe2e48cfd78ca0f2531dc8a3e4b406211ab93daef4be4a996f4cd1be5810c6d"
+    }
+  },
+  "limits": [
+    "Evidence supports this controlled both-KST alternative only; it does not replace the final current-source mixed-metal build/preview/validation/bundle pipeline.",
+    "The KST pilot holes require the documented enlargement at existing centres, reverse M1.4 screws and front nuts. Received horn seating, screw heads, root concentricity, tool fit, printed fit, material, retention and loaded motion remain physical checks.",
+    "The continuous audit separately classifies eight intended functional interfaces; same-group assembly contact, flexible wiring, structural loading, tolerances, deformation and axial float are outside that nominal collision certificate.",
+    "The metadata rebind compared 90 printed, purchased-hardware and equipment-reference solids and their global placements with the motion probe. It did not repeat exhaustive motion after metadata-only changes.",
+    "Temporary CAD paths identify original probe artifacts and their hashes; those CAD files are not embedded in this retained evidence. Reports and exact probe scripts are embedded."
+  ],
+  "metadata_rebind": {
+    "M1_4_front_nuts": 4,
+    "M1_4x6_screws": 4,
+    "compared_object_count": 90,
+    "elapsed_seconds": 33.92127178800001,
+    "geometry_comparison_tolerance_mm3": 1e-06,
+    "native_purchased_hardware_count": 64,
+    "native_threads_materials_bom_and_procurement_passed": true,
+    "passed": true,
+    "placement_comparison_tolerance": 1e-06,
+    "production_cad_sha256_after": "addcddd3218433b50b9f6391b5393eb5ed6f8de2a92b18e7f979469a5bc85a6c",
+    "production_cad_sha256_before": "addcddd3218433b50b9f6391b5393eb5ed6f8de2a92b18e7f979469a5bc85a6c",
+    "same_print_hardware_reference_geometry_and_global_placements_as_motion_probe": true,
+    "source_fingerprint_after": "dd2b357df157b988ceee6e93feea023dede6ef3ee4a20d55aefdc036bd9fcaff",
+    "source_fingerprint_before": "dd2b357df157b988ceee6e93feea023dede6ef3ee4a20d55aefdc036bd9fcaff",
+    "unselected_nut_density_and_mass": null,
+    "unselected_nuts_remain_counted": true
+  },
+  "production_released": false,
+  "release_pipeline_passed": false,
+  "retained_audit": {
+    "compressed_sha256": "db0083c382c23bbcf6f49ccd7a647e7a2bbb4bb06de934eb610d50384c46ecab",
+    "file": "tests/fixtures/rev_au_kst_audit.json.gz",
+    "includes_complete_reports_and_probe_scripts": true,
+    "uncompressed_sha256": "c320bc2442d93dc65e0d37c0d6c702a25d44755d271db30e08f7959e09379348"
+  },
+  "reviewed_on": "2026-09-27",
+  "revision": "AU",
+  "scope": "Controlled in-memory both-KST horn alternative, supporting geometry/service and metadata evidence only. Not the released default mixed-metal selection or complete release pipeline."
+}

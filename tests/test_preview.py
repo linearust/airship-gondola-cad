@@ -67,14 +67,23 @@ class PreviewCallbacks(unittest.TestCase):
             ElectronicsEquipmentModule=Mock(),
         )
         layout = types.SimpleNamespace(Name="layout", Objects=[])
-        self.app.openDocument.side_effect = [assembly, layout]
-        self.app.listDocuments.return_value = {"assembly": assembly, "layout": layout}
+        power = types.SimpleNamespace(
+            Name="power", Objects=[], PowerOptionModule=Mock(), AssemblyContext=Mock()
+        )
+        self.app.openDocument.side_effect = [assembly, layout, power]
+        self.app.listDocuments.return_value = {
+            "assembly": assembly,
+            "layout": layout,
+            "power": power,
+        }
         self.preview.create_attachment_detail_document = Mock()
         self.gui.activeDocument.return_value.activeView.return_value.fitAll.side_effect = RuntimeError(
             "camera failure"
         )
 
         self.preview.render_previews(close_after=True)
+        self.assertIs(power.PowerOptionModule.ViewObject.Visibility, True)
+        self.assertIs(power.AssemblyContext.ViewObject.Visibility, False)
         self.assertFalse(self.read_state()["passed"])
         self.assertEqual(len(self.callbacks), 1)
         self.callbacks.pop(0)()  # Qt calls this after render_previews has returned.
@@ -85,7 +94,7 @@ class PreviewCallbacks(unittest.TestCase):
         self.assertEqual(state["status"], "failed")
         self.assertEqual(
             [call.args[0] for call in self.app.closeDocument.call_args_list],
-            ["assembly", "layout"],
+            ["assembly", "layout", "power"],
         )
         self.gui.getMainWindow.return_value.close.assert_called_once()
 

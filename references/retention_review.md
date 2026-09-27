@@ -1,5 +1,10 @@
 # Retention and assembly — AS
 
+**AU update:** the horn attachment below is historical. Use the
+[three-horn compatibility review](servo_horn_compatibility.md) for the current
+shared adapter, screw lengths and optional KST preparation/service. Output-bearing
+retention sections below remain applicable.
+
 AS replaces the manually prepared supplied-horn coupling with a purchased
 factory-threaded horn and an integral locating saddle. Output bearing retention
 is unchanged from AM/AR. Source contracts and the AS revision review define the

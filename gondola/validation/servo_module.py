@@ -148,6 +148,15 @@ def servo_module_service_check(doc, module):
             "ServoEarUpperNut",
         )
     }
+    from gondola.contracts import servo_horns
+
+    for prefix in ("Port", "Starboard"):
+        if not servo_horns.profile(
+            str(doc.getObject(prefix + "ServoHorn").HornProfile)
+        ).threaded:
+            expected_moving.update(
+                prefix + "HornGearClamp" + side + "Nut" for side in ("Near", "Far")
+            )
     fixed = retained_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)]
     rows = []

@@ -25,6 +25,7 @@ from gondola.contracts.design import (
     WIRING_PURCHASE_PLAN,
     release_status,
 )
+from gondola.contracts.power_options import POWER_ARTIFACT_NAMES, power_option_contract
 from gondola.mass_budget import mass_budget
 from gondola.parts.equipment_envelopes import build_equipment
 from gondola.provenance import source_fingerprint
@@ -232,6 +233,12 @@ def build_assembly():
         "PA12 CAD fit prototype: rail flexures, tape/curvature, friction retention, optical pointing stability, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
     )
     set_property(registry, "SourceFingerprint", fingerprint)
+    set_property(
+        registry,
+        "OptionalPowerContract",
+        json.dumps(power_option_contract(), sort_keys=True),
+    )
+    set_property(registry, "OptionalPowerDocument", POWER_ARTIFACT_NAMES[0])
     set_property(registry, "NotionSource", NOTION_URL)
     set_property(registry, "NotionLastEdited", NOTION_LAST_EDITED)
     set_property(
@@ -311,6 +318,11 @@ def build_assembly():
     (OUTPUT_DIR / (ARTIFACT_STEM + "_metrics.json")).write_text(
         json.dumps(metrics, indent=2) + "\n"
     )
+    # Optional power hardware is exported separately, never counted as installed
+    # battery-baseline structure or mixed into its print quantities.
+    from gondola.power_export import export_power_options
+
+    export_power_options(doc, OUTPUT_DIR)
     print(
         json.dumps(
             {k: v for k, v in metrics.items() if k not in ("rail", "propulsion")},

@@ -96,6 +96,49 @@ class RelativeRotationCertificateTests(unittest.TestCase):
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
+class HornProfileMembershipTests(unittest.TestCase):
+    def test_kst_front_nuts_are_required_and_do_not_become_optional_inventory(self):
+        from gondola.cad import belongs_to_group
+        from gondola.contracts import servo_horns
+        from gondola.parts import propulsion
+        from gondola.validation.relative_motion import _input_drive_membership
+
+        with patch.dict(
+            servo_horns.SELECTED_BY_SIDE, Port="KST_0415_13", Starboard="KST_0415_13"
+        ):
+            doc = App.newDocument("KSTMotionMembership")
+            try:
+                module = propulsion.build_propulsion_module(doc)
+                doc.recompute()
+                parts = []
+                for obj in (
+                    module["printed"] + module["hardware"] + module["references"]
+                ):
+                    for prefix in ("Port", "Starboard"):
+                        name = prefix + "InputDrive"
+                        if belongs_to_group(obj, doc.getObject(name)):
+                            parts.append({"name": obj.Name, "group": name})
+                self.assertTrue(
+                    all(row["passed"] for row in _input_drive_membership(parts))
+                )
+                damaged = [
+                    part for part in parts if part["name"] != "PortHornGearClampNearNut"
+                ]
+                rows = _input_drive_membership(damaged)
+                self.assertFalse(rows[0]["passed"])
+                self.assertTrue(rows[1]["passed"])
+                self.assertIn("PortHornGearClampNearNut", rows[0]["expected_parts"])
+                # A metal-threaded source selection must not silently accept
+                # the optional KST nuts just because they exist in a saved CAD.
+                servo_horns.SELECTED_BY_SIDE["Port"] = "PTK_6_6"
+                rows = _input_drive_membership(parts)
+                self.assertFalse(rows[0]["passed"])
+                self.assertTrue(rows[1]["passed"])
+            finally:
+                App.closeDocument(doc.Name)
+
+
+@unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeModuleExpressionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

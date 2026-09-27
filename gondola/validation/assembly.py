@@ -335,6 +335,9 @@ def hardware_check(registry):
         elif sku.startswith("M1_6"):
             expected_diameter, expected_pitch = 1.6, 0.35
             thread_description_matches = "M1.6" in standard
+        elif sku.startswith("M1_4"):
+            expected_diameter, expected_pitch = 1.4, 0.3
+            thread_description_matches = "M1.4" in standard
         elif sku in {gear.sku for gear in GEARS.values()}:
             expected_diameter, expected_pitch = 3.0, 0.5
             thread_description_matches = "M3" in standard

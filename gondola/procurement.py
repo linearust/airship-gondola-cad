@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .config import ARTIFACT_SCHEMA_VERSION
-from .contracts.design import hardware_bom_scope
+from .contracts.design import HARDWARE_MATERIALS, hardware_bom_scope
 from .contracts.fasteners import KIT_MATERIAL
 from .contracts.hardware import PROCUREMENT_FIELDS
 from .provenance import source_fingerprint
@@ -13,6 +13,7 @@ HARDWARE_MATERIAL_CODES = {
     "A2 stainless steel": "A2",
     "304 stainless steel (seller claim)": "SS304",
     "Supplied horn material unverified": "UnverifiedHorn",
+    HARDWARE_MATERIALS["M1_4_HEX_NUT_DIN934"]: "Unselected",
     "Nylon PA66": "PA66",
     KIT_MATERIAL: "CarbonSteel",
     "Aluminium 6061 (seller claim)": "Al6061",

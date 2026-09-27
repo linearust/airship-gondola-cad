@@ -59,6 +59,27 @@ SUPPORTED_HOSTS = {
     "BatteryEquipmentModule": "BatteryMount",
     "ElectronicsEquipmentModule": "ElectronicsMount",
 }
+MECHANICAL_HOSTS = {
+    **SUPPORTED_HOSTS,
+    "AccessoryEquipmentModule": "AccessoryMount",
+}
+HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
+HOST_ORIGINS_XY["AccessoryEquipmentModule"] = (0.0, 16.5)
+
+
+def host_origin_xy(host_name=None):
+    """Common attachment datum in a carrier, accepting its group or print name."""
+    if host_name is None:
+        return (0.0, 0.0)
+    for group, part in MECHANICAL_HOSTS.items():
+        if host_name in (group, part):
+            return HOST_ORIGINS_XY[group]
+    raise ValueError("Unknown structural stack host: " + str(host_name))
+
+
+def host_placement(host_name, z=HOST_SUPPORT_Z):
+    """Local placement of the common mechanical datum, not a device fit claim."""
+    return App.Placement(V(*host_origin_xy(host_name), z), App.Rotation())
 
 
 def clamp_fit_contract():
@@ -96,7 +117,7 @@ def clamp_fit_contract():
     }
 
 
-def interface_contract():
+def interface_contract(host_name=None):
     return {
         "standard": f"Project structural stack: rigid legs at {STACK_ANCHOR_LOCATIONS}, two outboard M2 clamps",
         "industry_standard_claimed": False,
@@ -114,6 +135,10 @@ def interface_contract():
         "service": "Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.",
         "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
+        "mechanical_hosts": dict(MECHANICAL_HOSTS),
+        "carrier_datum_xy_mm": host_origin_xy(host_name),
+        "mechanical_host_datums_xy_mm": dict(HOST_ORIGINS_XY),
+        "accessory_scope": "The accessory carrier has the same attachment geometry at local (0,16.5) mm for a separately validated optional power platform. It is not an optical host: its installed direct GPS antenna can obstruct the optical field. A shared hole pattern alone does not qualify simultaneous equipment, wiring, tool access or tether loads.",
         "load_path": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
         "clamp_fit": clamp_fit_contract(),
     }
@@ -125,8 +150,9 @@ def _radial(shape, x, y):
     return result
 
 
-def _hole_cut(shape, bottom, depth):
-    for x, y in CLAMP_CENTRES:
+def _hole_cut(shape, bottom, depth, origin=(0.0, 0.0)):
+    for cx, cy in CLAMP_CENTRES:
+        x, y = cx + origin[0], cy + origin[1]
         shape = shape.cut(
             Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
         )
@@ -150,15 +176,20 @@ def platform_shape():
     return _hole_cut(union(pieces), -1, DECK_THICKNESS + 2)
 
 
-def add_host_interface(shape):
+def add_host_interface(shape, host_name=None):
+    origin = host_origin_xy(host_name)
     platform = platform_shape()
-    platform.translate(V(0, 0, HOST_DECK_BOTTOM_Z))
-    return _hole_cut(shape.fuse(platform), HOST_DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2)
+    platform.translate(V(*origin, HOST_DECK_BOTTOM_Z))
+    return _hole_cut(
+        shape.fuse(platform), HOST_DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2, origin
+    )
 
 
-def annotate_interface(obj):
+def annotate_interface(obj, host_name=None):
     set_property(
-        obj, "StackInterfaceContract", json.dumps(interface_contract(), sort_keys=True)
+        obj,
+        "StackInterfaceContract",
+        json.dumps(interface_contract(host_name), sort_keys=True),
     )
     set_property(obj, "StackFitVerified", False, "App::PropertyBool")
 
@@ -313,13 +344,16 @@ def manufacturing_wall_probes():
                 ),
             ]
         )
-        for host_name in SUPPORTED_HOSTS.values():
+        for host_name in MECHANICAL_HOSTS.values():
+            origin = host_origin_xy(host_name)
+            bottom = point(2.8, 3, HOST_DECK_BOTTOM_Z - 0.01)
+            top = point(2.8, 3, HOST_SUPPORT_Z + 0.01)
             rows.append(
                 (
                     f"{host_name}_clamp_tab_{index}",
                     host_name,
-                    point(2.8, 3, HOST_DECK_BOTTOM_Z - 0.01),
-                    point(2.8, 3, HOST_SUPPORT_Z + 0.01),
+                    (bottom[0] + origin[0], bottom[1] + origin[1], bottom[2]),
+                    (top[0] + origin[0], top[1] + origin[1], top[2]),
                     DECK_THICKNESS,
                 )
             )
@@ -391,4 +425,39 @@ def rigid_float_component_bounds():
                 rigid_float_shape_bound(_radial(beam_half, x, y)),
             )
         )
+    return rows
+
+
+def clamp_hardware_float_bounds():
+    """Circular bounds for the same seated registration as the tower legs.
+
+    Each accepted clamp-axis displacement is at most MAX_RADIAL_FLOAT. Expanding
+    the head/shank radii by that distance contains every translation/yaw pose;
+    a hex nut uses its circumradius. This avoids the much looser twice-rotated
+    box bound of a complete cylindrical screw. All heights remain seated.
+    """
+    rows = []
+    bottom = -TOWER_HEIGHT - DECK_THICKNESS
+    gap = MAX_RADIAL_FLOAT
+    for index, (x, y) in enumerate(CLAMP_CENTRES):
+        bolt = union(
+            [
+                Part.makeCylinder(
+                    purchased_hardware.SCREW_HEAD_DIAMETER / 2 + gap,
+                    purchased_hardware.SCREW_HEAD_HEIGHT,
+                    V(x, y, bottom - purchased_hardware.SCREW_HEAD_HEIGHT),
+                ),
+                Part.makeCylinder(
+                    purchased_hardware.THREAD_DIAMETER / 2 + gap,
+                    CLAMP_SCREW_LENGTH,
+                    V(x, y, bottom),
+                ),
+            ]
+        )
+        nut = Part.makeCylinder(
+            purchased_hardware.HEX_NUT_AF / math.sqrt(3) + gap,
+            purchased_hardware.HEX_NUT_HEIGHT,
+            V(x, y, -TOWER_HEIGHT + FOOT_THICKNESS),
+        )
+        rows.extend(((f"Bolt{index}", bolt), (f"Nut{index}", nut)))
     return rows

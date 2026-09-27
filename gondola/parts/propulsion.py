@@ -20,7 +20,7 @@ from gondola.cad import (
     translated_shape,
     union,
 )
-from gondola.contracts.design import DESIGN_REVISION
+from gondola.contracts.design import DESIGN_REVISION, HARDWARE_MATERIALS
 from gondola.contracts.drive import (
     DRIVE_CONFIGURATIONS,
     GEARS,
@@ -326,10 +326,18 @@ def _buy(doc, parent, name, shape, sku, notes, source, material, *, threaded=Fal
         material,
         thread_diameter=3.0
         if sku.startswith("ALI_KAILASH")
-        else (1.6 if sku.startswith("M1_6") else (2.0 if threaded else None)),
+        else (
+            1.6
+            if sku.startswith("M1_6")
+            else (1.4 if sku.startswith("M1_4") else (2.0 if threaded else None))
+        ),
         thread_pitch=0.5
         if sku.startswith("ALI_KAILASH")
-        else (0.35 if sku.startswith("M1_6") else (0.4 if threaded else None)),
+        else (
+            0.35
+            if sku.startswith("M1_6")
+            else (0.3 if sku.startswith("M1_4") else (0.4 if threaded else None))
+        ),
     )
 
 
@@ -431,7 +439,12 @@ def build_fit_coupons(doc):
 
 
 def _build_coupling(doc, parent, prefix, sign):
+    from gondola.contracts import servo_horns
+
     from . import servo_coupling as coupling
+
+    profile = servo_horns.profile(side=prefix)
+    contract = coupling.assembly_contract(profile)
 
     def positioned(shape):
         shape = translated_shape(shape, y=coupling.HORN_BOTTOM_Y)
@@ -443,51 +456,64 @@ def _build_coupling(doc, parent, prefix, sign):
         doc,
         parent,
         prefix + "ServoHorn",
-        positioned(coupling.horn_shape()),
-        coupling.HORN_SKU,
-        "Selected 15T Single 4.0mm purchased horn. X06 V6 compatibility is the user-accepted premise; all three M1.6 factory threads are user-confirmed. Retain the genuine X06 spline screw. Seller front dimensions are modeled; hub height, root concentricity and installed axial seating remain prototype envelopes.",
-        coupling.HORN_SOURCE,
+        positioned(coupling.horn_shape(profile)),
+        profile.sku,
+        profile.label
+        + ". "
+        + servo_horns.preparation_note(profile)
+        + " Retain the appropriate X06 spline screw. Installed axial seating and root concentricity remain prototype checks.",
+        profile.source,
         coupling.HORN_MATERIAL,
     )
     set_property(horn, "AxialSeatingMeasured", False, "App::PropertyBool")
     set_property(horn, "PurchasedHornMeasured", False, "App::PropertyBool")
     set_property(horn, "X06CompatibilityAccepted", True, "App::PropertyBool")
-    set_property(horn, "FactoryM1_6ThreadsConfirmed", True, "App::PropertyBool")
+    set_property(
+        horn, "FactoryM1_6ThreadsConfirmed", profile.threaded, "App::PropertyBool"
+    )
+    set_property(horn, "HornProfile", profile.key)
+    set_property(horn, "HornInterfaceContract", json.dumps(contract, sort_keys=True))
+    set_property(
+        horn, "HornPreparationRequired", not profile.threaded, "App::PropertyBool"
+    )
     set_property(
         horn,
         "ManufacturingRoute",
-        "Purchased selected metal horn; use factory M1.6 threads, no horn drilling; never print",
+        "Purchased horn; never print. " + servo_horns.preparation_note(profile),
     )
     adapter = _print(
         doc,
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One-piece adapter with an open root saddle, preprinted round clearance and short outer slot. Centre within the root-seat clearance before tightening the two front M1.6x4 screws into factory threads; do not force the root to one side. No horn nuts, drilled horn, separate cap or centring jig. Fit-prototype axial envelope and actual root fit must be checked; no deliberate operating looseness. Export this installed solid.",
+        "One common adapter for all three horn profiles: open root seat, one continuous radial slot and open head channel. Centre the shaft before tightening both screws. Slot allowance is for assembly only. No separate cap or centring jig. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
         sku="FactoryHoleHornGearAdapter",
     )
     set_property(
         adapter,
         "AfterPrintPreparation",
-        "Deburr and finish the shaft socket/root seat as needed. Use the existing horn threads; no manual hole transfer. Align with both screws loose, tighten both, then inspect runout, mesh, thread grip and case clearance.",
+        "Deburr and finish the shaft socket/root seat as needed. "
+        + servo_horns.preparation_note(profile)
+        + " Align the axes before tightening both screws; inspect runout, mesh, grip and case clearance.",
     )
     printed = [adapter]
     hardware = [horn]
-    rotation = App.Rotation(V(0, 0, 1), V(*coupling.BOLT_DIRECTION))
-    for location, positions in zip(("Near", "Far"), coupling.fastener_positions()):
-        shape = purchased_hardware.servo_screw_shape(coupling.HORN_CLAMP_LENGTH).copy()
-        shape.Placement = App.Placement(V(*positions["screw"]), rotation)
+    for suffix, shape, sku in coupling.horn_hardware_shapes(profile):
         hardware.append(
             _buy(
                 doc,
                 parent,
-                prefix + "HornGearClamp" + location + "Bolt",
+                prefix + "HornGearClamp" + suffix,
                 positioned(shape),
-                "M1_6X4_PAN_HEAD_KIT",
-                "M1.6x4 from the gear side into the existing horn thread. Nominal 2.6 mm adapter grip, 1.4 mm engagement and 0.2 mm rear clearance; no nut. The clearance hole/outer slot allows assembly adjustment before tightening. Check actual head, useful threads, length and runout; do not leave the joint loose.",
-                SERVO_SCREW_SOURCE,
-                SERVO_SCREW_MATERIAL,
+                sku,
+                f"Nominal {contract['fastener_grip_mm']:g} mm printed grip. "
+                + servo_horns.preparation_note(profile)
+                + " Align before clamping; inspect useful threads, head support, length and case clearance.",
+                SERVO_SCREW_SOURCE
+                if suffix.endswith("Bolt")
+                else servo_horns.NUT_DIMENSION_SOURCE,
+                HARDWARE_MATERIALS[sku],
                 threaded=True,
             )
         )

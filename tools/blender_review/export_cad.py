@@ -15,6 +15,7 @@ import FreeCAD as App
 import MeshPart
 
 from gondola.cad import belongs_to_group, world_shape
+from gondola.contracts import servo_horns
 from gondola.parts import optical_mount, stack_interface
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -53,8 +54,14 @@ def color(obj, category, rail_names):
 
 def representation(obj):
     """Describe the installed proxy without substituting manufacturing stock."""
-    if getattr(obj, "HardwareSKU", "") == "ALI_PTK_15T_4MM_HORN":
-        return "Selected 15T Single 4.0mm metal horn; seller front dimensions and user-confirmed M1.6 threads, with unmeasured axial seating and hub geometry."
+    if getattr(obj, "HornProfile", "") in servo_horns.PROFILES:
+        profile = servo_horns.profile(obj.HornProfile)
+        return (
+            profile.label
+            + ". "
+            + servo_horns.preparation_note(profile)
+            + " Installed seating and root concentricity remain unmeasured."
+        )
     if getattr(obj, "Name", "").endswith("HornGearAdapter"):
         return "Installed factory-hole adapter with provisional C-shaped locating seat; printed geometry does not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
@@ -93,7 +100,9 @@ def check_review_basis(doc, report):
         adapter = doc.getObject(prefix + "HornGearAdapter")
         if (
             horn is None
-            or getattr(horn, "HardwareSKU", "") != "ALI_PTK_15T_4MM_HORN"
+            or getattr(horn, "HornProfile", "") not in servo_horns.PROFILES
+            or getattr(horn, "HardwareSKU", "")
+            != servo_horns.profile(getattr(horn, "HornProfile", None)).sku
             or adapter is None
             or hasattr(adapter, "PrintBlankShape")
         ):
@@ -103,8 +112,13 @@ def check_review_basis(doc, report):
         for position in ("Near", "Far"):
             if doc.getObject(prefix + "HornGearClamp" + position + "Bolt") is None:
                 raise RuntimeError("Expected both factory-hole horn attachment screws.")
-            if doc.getObject(prefix + "HornGearClamp" + position + "Nut") is not None:
-                raise RuntimeError("Update review captions for returned horn nuts.")
+            has_nut = (
+                doc.getObject(prefix + "HornGearClamp" + position + "Nut") is not None
+            )
+            if has_nut != (not servo_horns.profile(horn.HornProfile).threaded):
+                raise RuntimeError(
+                    "Horn nut inventory does not match its saved profile."
+                )
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
@@ -278,7 +292,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks are swept envelopes. Selected metal horns use factory M1.6 threads and printed locating adapters. Horn seating, final fit and assembled runout remain physically unverified.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Three supported bought horn profiles use the same radial-slot adapter; the selected profile defines hardware and preparation. Horn seating, final fit and assembled runout remain physically unverified.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -338,7 +352,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Selected metal horn uses factory M1.6 threads and an adjustable-before-tightening printed adapter; axial seating and received-part fit remain unverified. Reference teeth; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. The selected purchased horn uses the common radial-slot printed adapter, clamped after alignment; axial seating and received-part fit remain unverified. Reference teeth; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],

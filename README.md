@@ -26,6 +26,7 @@ old reference, fixture or shopping list contains them.
 | Selected FC and published equipment interfaces | [equipment_interfaces.py](gondola/contracts/equipment_interfaces.py) |
 | Navigation alternatives, selected radio and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
 | Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
+| Horn alternatives and optional power boards | [servo_horns.py](gondola/contracts/servo_horns.py), [power_options.py](gondola/contracts/power_options.py) |
 | Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
 | Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
 | Checks, pinned regression baseline and artifact identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py), [bundle.py](gondola/bundle.py) |
@@ -36,14 +37,16 @@ Read references according to the changed interface; their revision/date matters:
 - Drive and purchasing: [selection](references/drive_selection_review.md),
   [seller gear evidence](references/kailash_gears_selected_evidence.md),
   [cart decisions](references/cart_adaptation_review.md),
-  [bearing retention and purchased-horn coupling](references/retention_review.md).
+  [bearing retention](references/retention_review.md),
+  [three-horn compatibility](references/servo_horn_compatibility.md).
 - Structure and wiring: [layout](references/layout_and_wiring_review.md),
   [rail joint](references/rail_joint_review.md), [rail fit](references/rail_fit_review.md),
   [shape rationale](references/shape_simplification_review.md).
 - Electronics: [controller](references/controller_selection_review.md),
   [navigation](references/navigation_module_compatibility.md),
   [radio](references/radio_module_compatibility.md),
-  [optical sensor](references/optical_sensor_compatibility.md).
+  [optical sensor](references/optical_sensor_compatibility.md),
+  [optional power](references/power_module_compatibility.md).
 
 Do not copy full dimension or purchase tables into this README. A source contract
 is the implementation's authority, while retained drawings support or qualify its
@@ -63,14 +66,13 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   permitted axial travel, retained contact and continuous rotation bounds where
   applicable. Label sampled checks as sampled; distinguish intentional bearing,
   gear and stop contacts from unexpected interference.
-- The [selected purchased horn](references/retention_review.md#selected-replacement-horn--2026-09-25)
-  uses factory M1.6 threads, an integral open root saddle and round/slot assembly
-  clearance. Export the installed adapter solid; no horn-drilling blank or jig
-  remains. Preserve user-accepted X06 compatibility and confirmed threads.
-  Missing axial seating/root concentricity remain explicit prototype envelopes.
-  Adjustment is before tightening, not intentional operating looseness. Recheck
-  front screw and gear removal paths when changing the coupling. Keep shaft
-  grip separate from axial/bearing retention.
+- The three retained 4 mm/15T horn drawings share one open slotted adapter.
+  Use the selected per-side profile; the two sides may differ. Preserve factory
+  spline and hole axes, actual root seating and the declared profile-specific
+  fastener/preparation route. Small pilot holes are not factory M1.6 threads.
+  Slot freedom is for alignment before clamping, never deliberate running slip.
+  Recheck all horn profiles, reverse hardware where applicable, screw access,
+  servo case clearance, loaded retention and the complete service order.
 - Rail and bearing coupons address finished fit and retention. Nominal dimensions
   and prescribed latch release motion do not establish insertion force, elastic
   recovery, shield clearance, creep or fatigue. Do not close an unverified bearing
@@ -90,7 +92,8 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   Count alternative equipment only when selected.
 - FC/optical-host and accessory carriers have separate local frames. Use
   `wiring_reserves.parent_name()` for reservation ownership. The accessory plate
-  combines navigation and Mini support; it is not an optical-stack host. Do not
+  combines navigation and Mini support; its shifted common interface accepts an
+  optional power stack, but is not a qualified optical-stack host. Do not
   treat rail attachment wings as a verified flat electronics adhesive surface.
   A reservation must belong to its declared carrier even when its world position
   happens to match: rail adjustment would otherwise move it with the wrong module.
@@ -99,6 +102,19 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   sensor profiles, fields of view, registration allowances and service paths.
   Sensor-to-tray adhesive and host-to-tower foot clamps are different interfaces.
   Actual pointing stability, cable slack and firmware orientation remain checks.
+- Common mechanical stack spacing does not certify every payload/host pairing.
+  The accessory datum is shifted to clear the Mini. Optical and power towers
+  cannot share one host at the same time. Keep baseline mass/BOM separate from
+  optional power exports. One BEC12S-PRO has one selectable output; exact
+  8 V/5.2 V needs two units. The SVPDB alternative supplies 5 V. Neither board
+  has a confirmed mechanical hole pattern: use insulating contact and ties,
+  preserving electrical pads, cooling and connector access. General plate holes
+  are project fastening provisions, not evidence of device-specific compatibility.
+  Keep the small optical tray as an uninterrupted adhesive pad: both supported
+  sensors lack a confirmed mounting pattern, and unverified straps near their
+  apertures/connectors would defeat the moving head's optical function.
+  Local tether reservations do not certify cable tension, full-cable motion or
+  installation electrical/thermal performance.
 - Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
   placement and adhesive contact. Missing mass is unknown, not zero. Geometric
   success alone must not change `design.release_status()` to physical qualification.
@@ -163,8 +179,8 @@ python3 -m gondola compare
 python3 -m gondola bundle
 ```
 
-Build/preview overwrite generated output. Preview saves display properties and
-changes the CAD hash, so it precedes validation/comparison. Inspect assembly,
+Build/preview overwrite generated output. Preview saves display properties in the
+main and optional power CAD, changing their hashes, so it precedes validation/comparison. Inspect assembly,
 print layout and both optical-host views; restore the configured host before saving.
 Record final checks against that source and saved CAD in the revision review.
 For another directory, pass `--output-dir PATH` before every subcommand consistently;
@@ -175,6 +191,12 @@ the CLI also accepts `--freecad-appimage PATH` before the subcommand.
 assembly. Export only manifest-listed print parts. `build/`, logs and temporary
 audit files are not committed and may be absent in another environment. Keep retained
 evidence and the revision review in Git; do not rely on `/tmp` as the sole record.
+The same build also writes `build/gondola_power_options.FCStd` and its separate
+optional platform STL/STEP/manifest. This document illustrates two BEC units on
+the accessory carrier, with hidden main-assembly context. It is not the default
+battery installation. The validator audits these files without regenerating them;
+the bundle places them under `optional_power/`. Optional boards, platform and
+fasteners must not be added to baseline installed quantities or mass automatically.
 GUI entry points are `build_gondola.FCMacro` and `preview_gondola.FCMacro`.
 They reload the local `gondola` package and clear its generated bytecode before
 running, so repeated GUI invocations use current source. This does not close
@@ -190,6 +212,8 @@ or Blender changes, preserving its source/CAD identities and `verification.json`
 The verifier compares evaluated Blender transforms with sampled native poses.
 This is prescribed rigid motion, not collision, dynamics, wire, friction or strength
 simulation. Optical host transfer and powered alignment are not simulated.
+The separate optional-power installation is inspected in native CAD, not included
+in this baseline Blender derivative.
 The display is rotated as a whole so neutral sensor aim points down; native CAD
 coordinates are unchanged. Blender-only edits do not by themselves justify promoting
 the CAD regression fixture.

@@ -141,7 +141,7 @@ class ServoCouplingTests(unittest.TestCase):
             moved.translate(App.Vector(shift, 0, 0))
             self.assertLess(moved.common(adapter).Volume, 1e-7)
             self.assertLess(moved.common(near).Volume, 1e-7)
-        for x, z in ((0.2, 0), (0, -0.2), (0, 0.2)):
+        for x, z in ((0.29, 0), (0, -0.29), (0, 0.29)):
             # The adapter moves relative to the fixed horn/screws. Its locating
             # arc blocks displacement while the larger screw passages remain clear.
             moved = adapter.copy()
@@ -468,7 +468,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
             App.Vector(
                 SELECTED_DRIVE.input_x_mm + 30,
                 coupling.HORN_BOTTOM_Y + coupling.BODY_BACK_Y + 3.5,
-                SELECTED_DRIVE.input_z_mm - 0.1,
+                SELECTED_DRIVE.input_z_mm + 2.0,
             ),
         )
         for displacement in waypoints:

@@ -1,0 +1,23 @@
+{
+  "revision": "AU",
+  "artifact": "rev_au_native_tests.json.gz",
+  "artifact_sha256": "98d4baec9bf3f846fefb24b73a84adc4b0bb8071f0f190702691c68325149c26",
+  "source_fingerprint": "3e59533c44c4fcc45b79405925706184607e71eaf02f208a8d59c3d7f8433c3e",
+  "approved_fixture_sha256": "56fbdb3cf9f96d3deaccb28fdd13a579b16b685021508e832f21dfd84c036a27",
+  "execution": "Per-module native processes; not one uninterrupted suite. Relevant changed modules rerun; complete logs and all prior attempts retained in the compressed artifact.",
+  "discovered_modules": 45,
+  "completed_modules": 45,
+  "discovered_test_ids": 434,
+  "distinct_successfully_completed_test_ids": 434,
+  "exact_test_id_coverage": true,
+  "latest_attempt_totals": {
+    "tests": 434,
+    "skips": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "superseded_attempts": 4,
+  "superseded_failed_attempts": 2,
+  "interrupted_attempts": 1,
+  "all_log_hashes_verified": true
+}

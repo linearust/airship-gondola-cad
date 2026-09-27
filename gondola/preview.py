@@ -175,6 +175,21 @@ def render_previews(close_after=False):
         layout = App.openDocument(
             str(OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd"))
         )
+        power = App.openDocument(str(OUTPUT_DIR / "gondola_power_options.FCStd"))
+        power.PowerOptionModule.ViewObject.Visibility = True
+        power.AssemblyContext.ViewObject.Visibility = False
+        for obj in power.Objects:
+            if obj.isDerivedFrom("Part::Feature"):
+                obj.ViewObject.Visibility = not (
+                    "CLEARANCE" in obj.Label
+                    or "CONTEXT" in obj.Label
+                    or getattr(obj, "Role", "") == "Clearance"
+                    or "SourceObjectName" in obj.PropertiesList
+                )
+                obj.ViewObject.DisplayMode = "Flat Lines"
+                obj.ViewObject.ShapeColor = (
+                    (0.31, 0.66, 0.76) if "PRINT" in obj.Label else (0.18, 0.48, 0.29)
+                )
         detail = create_attachment_detail_document()
         negative = create_attachment_detail_document(-1)
         for o in layout.Objects:
@@ -196,6 +211,7 @@ def render_previews(close_after=False):
             (detail, "front", "_attachment_section.png", "all", 1700, 850),
             (negative, "axon", "_attachment_opposite.png", "all", 1700, 1300),
             (layout, "top", "_print_parts.png", "all", 1800, 2000),
+            (power, "axon", "_power_options.png", "all", 1500, 1400),
         ]
         allparts = (
             list(doc.DesignRegistry.PrintedParts)
@@ -275,6 +291,7 @@ def render_previews(close_after=False):
             session.schedule(1000, frame_view)
 
         def finish_rendering():
+            power.save()
             detail.saveAs(
                 str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_detail.FCStd"))
             )

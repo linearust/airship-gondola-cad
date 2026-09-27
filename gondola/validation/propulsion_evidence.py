@@ -5,6 +5,7 @@ from types import MappingProxyType
 PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
     {
         "drive_motion": 2,
+        "horn_profile_compatibility": 3,
         "gear_mesh_alignment": 2,
         "gear_rotation": 2,
         "fixed_servo_datum": 2,

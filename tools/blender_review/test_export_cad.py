@@ -17,7 +17,7 @@ class ExportContractTests(unittest.TestCase):
         for prefix in ("Port", "Starboard"):
             objects[prefix + "Pod"] = SimpleNamespace(MinimumTilt=-180, MaximumTilt=180)
             objects[prefix + "ServoHorn"] = SimpleNamespace(
-                HardwareSKU="ALI_PTK_15T_4MM_HORN"
+                HardwareSKU="ALI_PTK_15T_4MM_HORN", HornProfile="PTK_6_6"
             )
             objects[prefix + "HornGearAdapter"] = SimpleNamespace(
                 Name=prefix + "HornGearAdapter"
@@ -78,7 +78,7 @@ class ExportContractTests(unittest.TestCase):
             check_review_basis(doc, report)
         doc, objects, report = self.basis()
         objects["PortHornGearClampNearNut"] = object()
-        with self.assertRaisesRegex(RuntimeError, "returned horn nuts"):
+        with self.assertRaisesRegex(RuntimeError, "Horn nut inventory"):
             check_review_basis(doc, report)
 
     def test_changed_motion_cannot_reuse_presentation_poses(self):

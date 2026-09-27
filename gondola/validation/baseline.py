@@ -20,6 +20,7 @@ from gondola.config import (
     OUTPUT_DIR,
     REPO_ROOT,
 )
+from gondola.contracts import servo_horns
 from gondola.contracts.design import (
     EXPECTED_INVENTORY,
     MANUFACTURING_DECISION,
@@ -321,7 +322,10 @@ def unresolved_scope(doc):
         for prefix in ("Port", "Starboard")
         for suffix in ("HornGearAdapter",)
     ]
-    horns = [doc.getObject(prefix + "ServoHorn") for prefix in ("Port", "Starboard")]
+    horns = [
+        (prefix, doc.getObject(prefix + "ServoHorn"))
+        for prefix in ("Port", "Starboard")
+    ]
     forbidden = [
         obj.Name
         for obj in registry.ReferenceParts
@@ -338,8 +342,9 @@ def unresolved_scope(doc):
         obj is not None
         and obj in registry.HardwareParts
         and obj not in registry.PrintedParts
-        and str(getattr(obj, "HardwareSKU", "")) == "ALI_PTK_15T_4MM_HORN"
-        for obj in horns
+        and str(getattr(obj, "HardwareSKU", "")) == servo_horns.profile(side=prefix).sku
+        and str(getattr(obj, "HornProfile", "")) == servo_horns.profile(side=prefix).key
+        for prefix, obj in horns
     )
     mtf = doc.getObject("ModuleMTF02PEnvelope")
     optical = doc.getObject("MTF02POpticalClearanceReserve")
@@ -440,6 +445,11 @@ def procurement_and_scope_metadata(obj):
         "AxialSeatingMeasured",
         "X06CompatibilityAccepted",
         "FactoryM1_6ThreadsConfirmed",
+        "HornProfile",
+        "HornPreparationRequired",
+        "HornInterfaceContract",
+        "OptionalPowerContract",
+        "OptionalPowerDocument",
     )
     values = {}
     for name in fields:

@@ -19,11 +19,14 @@ from .equipment_interfaces import (
 from .equipment_options import get_navigation_profile, get_radio_profile
 from .fasteners import KIT_MATERIAL
 from .optical_sensors import get_sensor_profile
+from .power_options import power_option_contract
+from .servo_horns import SELECTED_BY_SIDE
+from .servo_horns import profile as horn_profile
 
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "AT"
+DESIGN_REVISION = "AU"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -71,7 +74,7 @@ PART_SEPARATION_REASONS = {
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Two rectangular local seats and fixed X/Y datums retain the existing M2 mounting arrangement. Check all seating planes for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
-    "horn_and_adapter": "Use the selected AliExpress 15T Single 4.0mm aluminium horn with the X06 OEM centre retaining screw. Its first and third factory M1.6 holes attach to one printed adapter with two screws, without horn drilling or separate horn nuts. An outer radial capsule allows +/-0.4 mm around the inferred third-hole position; the first two holes are too close for the selected maximum screw heads. A permanent C-shaped seat based on the 6.1 mm front outline and a flat face reduce dependence on screw-hole clearance; this outline is not a certified hub diameter, and locating surface fit and runout remain physical acceptance checks. Keep spline manufacture in the purchased horn. Preserve gear alignment, original centre-screw access and the ordered coupling removal path; no separate rear strap or bench centring jig.",
+    "horn_and_adapter": "One open adapter with a continuous radial slot supports the three retained 4 mm/15T horn drawings. Profile-specific purchased fasteners attach factory hole axes; a small-hole horn can require explicitly documented preparation. Preserve the purchased spline, the OEM centre retaining screw, root registration, gear alignment and ordered removal. Clamp all attachment hardware before operation; slots absorb assembly variation, not running eccentricity. Actual horn seating, runout, clamping and material strength remain physical acceptance checks.",
     "optical_head": "Three printed parts provide two independently lockable manual alignment axes. The base is one open rectangular portal with its top beam flush with the two legs; broad feet clamp directly onto either host with two ordinary M2x8 screws and M2 hex nuts. Remove the host carrier from the rail for bench access to the foot fasteners, then lift the complete tower for service or transfer. No designed axial seating gap; clearance holes allow registration before tightening. Both foot clamps and angle clamps retain fasteners because optical pointing requires stable contact and friction. Physical retention and creep require testing.",
 }
 
@@ -144,12 +147,24 @@ EXCLUDED_EQUIPMENT = (
     "fin_servos",
     "servo Y harness (separate user project)",
 )
+
+
+def _selected_horn_hardware():
+    quantities = Counter()
+    for side in SELECTED_BY_SIDE:
+        selected = horn_profile(side=side)
+        quantities[selected.sku] += 1
+        quantities[selected.screw_sku] += 2
+        if not selected.threaded:
+            quantities["M1_4_HEX_NUT_DIN934"] += 2
+    return dict(quantities)
+
+
 PURCHASED_HARDWARE_QUANTITIES = {
     "M2X8_BUTTON_HEAD": 14,
     "M2X6_BUTTON_HEAD": 2,
     "M2_HEX_NUT": 16,
     "M1_6X8_PAN_HEAD_KIT": 4,
-    "M1_6X4_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
@@ -157,7 +172,7 @@ PURCHASED_HARDWARE_QUANTITIES = {
     "SS304_CUT3_L24_FLAT5_A0": 2,
     "SS304_CUT3_L14": 2,
     "SS304_CUT3_L18_FLAT18_A0": 2,
-    "ALI_PTK_15T_4MM_HORN": 2,
+    **_selected_horn_hardware(),
 }
 
 HARDWARE_MATERIALS = {
@@ -165,7 +180,7 @@ HARDWARE_MATERIALS = {
     "M2X6_BUTTON_HEAD": KIT_MATERIAL,
     "M2_HEX_NUT": KIT_MATERIAL,
     "M1_6X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
-    "M1_6X4_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
+    "M1_6X5_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
     "M1_6_HEX_NUT_DIN934": "304 stainless steel (seller claim)",
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
@@ -174,6 +189,10 @@ HARDWARE_MATERIALS = {
     "SS304_CUT3_L14": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
     "ALI_PTK_15T_4MM_HORN": "Aluminium alloy (grade unspecified)",
+    "METAL_15T_4MM_HORN_6_98": "Aluminium alloy (grade unspecified)",
+    "KST_0415_13_HORN": "Aluminium alloy (grade unspecified)",
+    "M1_4X6_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
+    "M1_4_HEX_NUT_DIN934": "Material unselected; dimensions per DIN934 reference",
 }
 
 EXPECTED_INVENTORY = {
@@ -195,7 +214,7 @@ OPTICAL_STACK_HOST = "BatteryEquipmentModule"
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
     "layout": "Three mass regions use four independently positioned rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The electronics region comprises a compact FC carrier and a separate flat accessory carrier for one navigation module and LR24-F-Mini.",
-    "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. No PSU connector or electrical supply change is specified here.",
+    "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
     "electronics": "Place the compact FC carrier behind the neutral motors and the separate navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
     "optical": "Use one source-selected MTF-02P or MTF-01P on the adhesive tray of the transferable manually aligned stack, independent of the three mass regions. Battery and FC carriers provide the structural stack anchors; the accessory carrier is not an optical-stack host. Host changes require renewed optical field-of-view and wiring checks.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
@@ -262,7 +281,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
         "seller_or_completed_harness_verified": False,
-        "stock_replacement_decision": "Use already-owned M2 metal screws/nuts and GH1.25 connectors, selected micro-screw kit, selected 15T Single 4.0mm metal horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. No purchased bearing spacers, 0415.13 horns or separate horn attachment nuts. Print the rail, carriers, integral bearing retention, removable paired-servo bridge and factory-hole horn adapters. Fit coupons are bench tools, not installed parts; the superseded horn-drilling blank and centring jig are not needed.",
+        "stock_replacement_decision": "Use already-owned M2 metal hardware and GH1.25 connectors, selected micro-screw kit, compatible purchased 4 mm/15T horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. The three horn profiles use one adapter with their declared preparation and fasteners; do not substitute unverified spline teeth. No purchased bearing spacers. Optional Matek boards use one common insulating stack platform with ties, not invented PCB holes. Optional hardware is separate from the baseline mechanism BOM.",
     }
 
 
@@ -330,7 +349,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Fit the selected 15T Single 4.0mm metal horn to the X06 and its OEM centre screw. The user accepts spline compatibility as a design premise and confirms all three M1.6 arm threads; do not reopen those questions without contrary evidence. Verify unprovided hub/seat dimensions, actual locating fit, flat seating, centre-screw retention and assembled runout. Use the first factory hole at 6.6 mm and third at inferred 12.2 mm, accepting +/-0.4 mm radial slot travel at the outer hole without drilling the horn. Verify that actual hole spacing fits this range and that screw heads clear each other. Check the selected M1.6x4 screw engagement and backside protrusion throughout motion; the nominal 2.6 mm adapter grip leaves 1.4 mm horn engagement and 0.2 mm rear clearance on the 1.6 mm arm. The 3.5 mm horn axial proxy is not a published installed seating dimension. The permanent locating interface reduces reliance on clearance-hole alignment but raw PA12 tolerance and the unqualified horn locating surface do not establish precision or torque retention. The D-socket and nominal-3mm 304 stub still require physical fit and two-way loaded grip checks. No extra input bearing is selected; direct gear loading, PA12 creep and servo output radial-load capacity remain unqualified.",
+        "Verify each selected horn profile's actual X06 seating, locating surface, axial height, flatness and runout. The accepted 15T/4 mm interface remains a design premise. One continuous radial slot uses factory hole axes; follow that profile's fasteners and any documented pilot-hole preparation. Do not leave fasteners loose during operation. Root registration and open screw slots permit assembly correction but do not compensate a bent shaft or eccentric spline. Check head/nut contact, engagement, backside protrusion and two-way loaded torque retention. Published front outlines do not certify hub concentricity or installed axial seating. The D-socket and nominal-3mm stub require fit and loaded grip checks. No extra input bearing is selected; external radial servo load, PA12 creep and thread strength remain unqualified.",
+    ),
+    UnresolvedInterface(
+        "optional_power_and_tether",
+        "BEC12S-PRO has one selectable output: use two units for separate 8 V main and 5.2 V servo rails. SVPDB-8S optionally supplies 5 V, not 5.2 V. Check the received board underside, insulation, headers, plug heights, tie contact, heat rejection and current before installing. Keep outputs separate with common ground; prevent servo backfeed into FC 5 V and do not feed 5 V peripherals from 5.2 V. The FC input-voltage conflict also applies to 8 V. Power and optical stacks cannot occupy the same host simultaneously. Tether slots guide a local cable segment only: actual cable gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -397,9 +420,9 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC mounting spacers/fasteners and dampers, plus P-AS mounting hardware only when P-AS is selected: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified. GPS alternatives use insulating adhesive, not additional GPS screws.",
-            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Two separately purchased 15T Single 4.0mm metal horns and their modeled M1.6 adapter screws are included.",
+            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. The two selected purchased horn profiles and their modeled attachment screws are included; alternative profile preparation and hardware are declared separately.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
-            "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories.",
+            "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories. Optional power platform, Matek boards, ties and its M2 attachment hardware are supplied in the separate optional-power artifacts, not this baseline BOM.",
         ],
         "unmodeled_wiring_purchase_plan": WIRING_PURCHASE_PLAN,
         "release_status": release_status(),
@@ -417,6 +440,7 @@ def project_status():
         "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. The battery and FC carriers share an interchangeable manually aligned optical stack. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "flight_controller": flight_controller_contract(),
+        "optional_power": power_option_contract(),
         "navigation": get_navigation_profile().contract(),
         "radio": get_radio_profile().contract(),
         "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
