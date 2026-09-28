@@ -40,7 +40,10 @@ class SavedPowerExportTests(unittest.TestCase):
         self,
     ):
         from gondola.cad import set_property
-        from gondola.contracts.power_options import power_option_contract
+        from gondola.contracts.power_options import (
+            POWER_PLATFORM_DOCUMENT_NAME,
+            power_option_contract,
+        )
         from gondola.parts import power_mount
         from gondola.power_export import (
             ARTIFACT_NAMES,
@@ -62,6 +65,13 @@ class SavedPowerExportTests(unittest.TestCase):
             main = App.newDocument("PowerSerializationFixture")
             try:
                 main.addObject("App::Part", power_mount.DEFAULT_HOST)
+                main.addObject("App::Part", power_mount.DEFAULT_OPTICAL_HOST)
+                from gondola.parts import optical_interface
+
+                optical = main.addObject("App::Part", "OpticalFlowModule")
+                optical_interface.attach_to_host(
+                    optical, main.getObject(power_mount.DEFAULT_HOST)
+                )
                 registry = main.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(
@@ -90,6 +100,20 @@ class SavedPowerExportTests(unittest.TestCase):
             self.assertTrue(initial["manifest_matches"])
             self.assertTrue(initial["mesh_surface_comparison"]["passed"])
             self.assertTrue(initial["read_only_artifacts"])
+            self.assertTrue(initial["manufacturing_source_matches"])
+            self.assertTrue(initial["optional_print_inventory_matches"])
+            manufacture = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
+            manufacture.PowerPrintSource.SourceFingerprint = "b" * 64
+            manufacture.save()
+            App.closeDocument(manufacture.Name)
+            changed_manufacture = audit_power_options(source, out)
+            self.assertFalse(changed_manufacture["passed"])
+            self.assertFalse(changed_manufacture["manufacturing_source_matches"])
+            self.assertTrue(changed_manufacture["manifest_matches"])
+            manufacture = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
+            manufacture.PowerPrintSource.SourceFingerprint = "a" * 64
+            manufacture.save()
+            App.closeDocument(manufacture.Name)
 
             mesh_path = out / ARTIFACT_NAMES[1]
             original_mesh = mesh_path.read_bytes()

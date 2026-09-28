@@ -15,6 +15,8 @@ from gondola.cad import (
 )
 from gondola.contracts.power_options import (
     DEFAULT_OPTIONAL_POWER_PLAN_KEY,
+    DIRECT_CARRIER,
+    PORTAL,
     get_power_module_profile,
     get_power_plan,
 )
@@ -32,8 +34,45 @@ BODY_BOTTOM_Z = SUPPORT_Z + INSULATION_ALLOWANCE_MM
 BAY_CENTRES = ((0.0, -13.0), (0.0, 13.0))
 TERMINAL_TRAVEL_MM = 15.0
 CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
-DEFAULT_HOST = "AccessoryEquipmentModule"
+DEFAULT_HOST = "BatteryEquipmentModule"
 DEFAULT_PLAN = DEFAULT_OPTIONAL_POWER_PLAN_KEY
+DEFAULT_PACKAGING = DIRECT_CARRIER
+DEFAULT_OPTICAL_HOST = "ElectronicsEquipmentModule"
+DIRECT_BAY_CENTRES = ((0.0, -14.0), (0.0, 14.0))
+DIRECT_ADHESIVE_REGIONS = (
+    (((0.0, -24.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
+    (((0.0, 6.0), (12.0, 4.0)), ((0.0, 22.0), (12.0, 4.0))),
+)
+
+
+def installation_contract(plan_key, packaging):
+    """Explicitly separate a vacant-carrier installation from the raised option."""
+    get_power_plan(plan_key)
+    if packaging not in (DIRECT_CARRIER, PORTAL):
+        raise ValueError("Unknown optional power packaging")
+    if packaging == DIRECT_CARRIER and plan_key != "TETHER_BEC_SVPDB":
+        raise ValueError(
+            "Direct carrier packaging requires tether power and no battery"
+        )
+    return {
+        "packaging": packaging,
+        "plan": plan_key,
+        "battery_installed": plan_key != "TETHER_BEC_SVPDB",
+        "additional_printed_quantity": int(packaging == PORTAL),
+        "additional_screw_nut_pairs": 2 if packaging == PORTAL else 0,
+        "bay_centres_xy_mm": DIRECT_BAY_CENTRES
+        if packaging == DIRECT_CARRIER
+        else BAY_CENTRES,
+        "insulation_allowance_mm": INSULATION_ALLOWANCE_MM,
+        "continuous_adhesive_regions": DIRECT_ADHESIVE_REGIONS
+        if packaging == DIRECT_CARRIER
+        else (),
+        "support_scope": "Direct tether boards each use two separated 12 x 4 mm continuous carrier lands and 1 mm nominal insulating adhesive. The published envelopes do not locate underside components or solder. Inspect received undersides, insulate exposed conductors and verify contact/retention without pressing components. No board holes, rigid spacers or thermal rating are inferred."
+        if packaging == DIRECT_CARRIER
+        else platform_contract()["support_scope"],
+        "service": "Disconnect leads, release adhesive and lift each direct-mounted board 32 mm away from the carrier. The bare-board sweep is checked; connected wiring, actual adhesive release and tether handling are not qualified. Raised-platform foot service remains as defined by its separate contract.",
+        "tether_scope": platform_contract()["tether_scope"],
+    }
 
 
 def standard_slot_rows():
@@ -115,26 +154,70 @@ def attachment_check(carrier_in_platform_coordinates):
     }
 
 
-def local_shapes(plan_key=DEFAULT_PLAN):
+def direct_attachment_check(carrier_in_power_coordinates, physical):
+    """Measure the actual host lands beneath the nominal insulating allocations."""
+    rows = []
+    for index, regions in enumerate(DIRECT_ADHESIVE_REGIONS):
+        for patch_index, (centre, size) in enumerate(regions):
+            patch = box(
+                *size,
+                DECK_THICKNESS_MM,
+                (centre[0] - size[0] / 2, centre[1] - size[1] / 2, -DECK_THICKNESS_MM),
+            )
+            bounds = physical[f"PowerModule{index}"].BoundBox
+            footprint = box(
+                bounds.XLength,
+                bounds.YLength,
+                DECK_THICKNESS_MM,
+                (bounds.XMin, bounds.YMin, -DECK_THICKNESS_MM),
+            )
+            missing = patch.cut(carrier_in_power_coordinates).Volume
+            overlap = patch.common(footprint).Volume / DECK_THICKNESS_MM
+            rows.append(
+                {
+                    "board": f"PowerModule{index}",
+                    "patch": patch_index,
+                    "continuous_supported_area_mm2": size[0] * size[1],
+                    "body_overlap_mm2": overlap,
+                    "missing_host_material_mm3": missing,
+                    "insulation_allowance_mm": bounds.ZMin,
+                    "passed": missing < 1e-5
+                    and abs(overlap - size[0] * size[1]) < 1e-5
+                    and abs(bounds.ZMin - INSULATION_ALLOWANCE_MM) < 1e-5,
+                }
+            )
+    return {
+        "boards": rows,
+        "passed": all(row["passed"] for row in rows),
+        "scope": "Nominal flat contact and insulation allocation only. Received underside components, adhesive shear/peel, temperature and long-term retention require physical verification.",
+    }
+
+
+def local_shapes(plan_key=DEFAULT_PLAN, *, packaging=DEFAULT_PACKAGING):
     """Return platform, bought envelopes and explicit service allowances."""
+    installation_contract(plan_key, packaging)
     plan = get_power_plan(plan_key)
     if not plan.branches or len(plan.branches) > len(BAY_CENTRES):
         raise ValueError("Power platform requires one or two optional regulators")
-    physical = {"PowerPlatform": platform_shape().copy()}
+    physical = {"PowerPlatform": platform_shape().copy()} if packaging == PORTAL else {}
     reserves = {}
+    centres = DIRECT_BAY_CENTRES if packaging == DIRECT_CARRIER else BAY_CENTRES
+    body_bottom = (
+        INSULATION_ALLOWANCE_MM if packaging == DIRECT_CARRIER else BODY_BOTTOM_Z
+    )
     for index, branch in enumerate(plan.branches):
         profile = get_power_module_profile(branch.module_key)
-        x, y = BAY_CENTRES[index]
+        x, y = centres[index]
         length, width, height = profile.size_mm
         name = f"PowerModule{index}"
         physical[name] = box(
-            length, width, height, (x - length / 2, y - width / 2, BODY_BOTTOM_Z)
+            length, width, height, (x - length / 2, y - width / 2, body_bottom)
         )
         reserves[f"{name}TopReserve"] = box(
             length,
             width,
             CONNECTION_HEIGHT_ALLOWANCE_MM,
-            (x - length / 2, y - width / 2, BODY_BOTTOM_Z + height),
+            (x - length / 2, y - width / 2, body_bottom + height),
         )
         for axis in profile.terminal_axes:
             left = (
@@ -145,10 +228,12 @@ def local_shapes(plan_key=DEFAULT_PLAN):
                     TERMINAL_TRAVEL_MM,
                     width,
                     height + CONNECTION_HEIGHT_ALLOWANCE_MM,
-                    (left, y - width / 2, BODY_BOTTOM_Z),
+                    (left, y - width / 2, body_bottom),
                 )
             )
-    for index, (x, y) in enumerate(stack_interface.CLAMP_CENTRES):
+    for index, (x, y) in enumerate(
+        stack_interface.CLAMP_CENTRES if packaging == PORTAL else ()
+    ):
         for kind, shape, z in (
             (
                 "Bolt",
@@ -167,9 +252,14 @@ def local_shapes(plan_key=DEFAULT_PLAN):
     return physical, reserves
 
 
-def host_placement(main_doc, host_name):
+def host_placement(
+    main_doc, host_name, plan_key=DEFAULT_PLAN, *, packaging=DEFAULT_PACKAGING
+):
+    installation_contract(plan_key, packaging)
     if host_name not in stack_interface.MECHANICAL_HOSTS:
         raise ValueError("Unsupported power-platform host")
+    if packaging == DIRECT_CARRIER and host_name != "BatteryEquipmentModule":
+        raise ValueError("Direct tether boards require the vacated battery carrier")
     host = main_doc.getObject(host_name)
     if host is None:
         raise ValueError("Missing power-platform host")
@@ -177,20 +267,40 @@ def host_placement(main_doc, host_name):
     if optical is not None and optical.getParentGeoFeatureGroup() == host:
         raise ValueError("Power platform cannot occupy the installed optical host")
     return host.getGlobalPlacement().multiply(
-        stack_interface.host_placement(host_name, z=stack_interface.STACK_TOP_Z)
+        stack_interface.host_placement(
+            host_name,
+            z=stack_interface.HOST_SUPPORT_Z
+            if packaging == DIRECT_CARRIER
+            else stack_interface.STACK_TOP_Z,
+        )
     )
 
 
-def create_option_document(main_doc, plan_key=DEFAULT_PLAN, host_name=DEFAULT_HOST):
+def create_option_document(
+    main_doc,
+    plan_key=DEFAULT_PLAN,
+    host_name=DEFAULT_HOST,
+    *,
+    packaging=DEFAULT_PACKAGING,
+):
     plan = get_power_plan(plan_key)
-    pose = host_placement(main_doc, host_name)
-    physical, reserves = local_shapes(plan_key)
+    pose = host_placement(main_doc, host_name, plan_key, packaging=packaging)
+    physical, reserves = local_shapes(plan_key, packaging=packaging)
     doc = App.newDocument("GondolaPowerOptions")
     doc.Label = "Optional power platform | separate from battery baseline"
     group = create_group(doc, "PowerOptionModule", "Optional power module")
     group.Placement = pose
     for key, value in (
         ("PowerPlan", plan_key),
+        ("PowerPackaging", packaging),
+        (
+            "OpticalHostName",
+            getattr(main_doc.getObject("OpticalFlowModule"), "StackHostName", ""),
+        ),
+        (
+            "PowerInstallationContract",
+            json.dumps(installation_contract(plan_key, packaging), sort_keys=True),
+        ),
         ("PowerPlanContract", json.dumps(plan.contract(), sort_keys=True)),
         ("StackHostName", host_name),
         ("PowerPlatformContract", json.dumps(platform_contract(), sort_keys=True)),

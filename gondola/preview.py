@@ -110,6 +110,29 @@ def create_attachment_detail_document(side=1):
     return doc
 
 
+def style_power_option(doc):
+    """Show direct-mounted boards on their real carrier, not floating in space."""
+    direct = getattr(doc.PowerOptionModule, "PowerPackaging", "") == "DIRECT_CARRIER"
+    doc.PowerOptionModule.ViewObject.Visibility = True
+    doc.AssemblyContext.ViewObject.Visibility = direct
+    for obj in doc.Objects:
+        if not obj.isDerivedFrom("Part::Feature"):
+            continue
+        is_context = "SourceObjectName" in obj.PropertiesList
+        obj.ViewObject.Visibility = (
+            obj.SourceObjectName == "BatteryMount"
+            if is_context and direct
+            else not is_context
+            and "CLEARANCE" not in obj.Label
+            and getattr(obj, "Role", "") != "Clearance"
+        )
+        obj.ViewObject.DisplayMode = "Flat Lines"
+        printed = "PRINT" in obj.Label or getattr(obj, "SourceRole", "") == "Printed"
+        obj.ViewObject.ShapeColor = (
+            (0.31, 0.66, 0.76) if printed else (0.18, 0.48, 0.29)
+        )
+
+
 class _PreviewSession:
     """Carry failures across Qt callbacks and invalidate stale completion files."""
 
@@ -176,20 +199,7 @@ def render_previews(close_after=False):
             str(OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd"))
         )
         power = App.openDocument(str(OUTPUT_DIR / "gondola_power_options.FCStd"))
-        power.PowerOptionModule.ViewObject.Visibility = True
-        power.AssemblyContext.ViewObject.Visibility = False
-        for obj in power.Objects:
-            if obj.isDerivedFrom("Part::Feature"):
-                obj.ViewObject.Visibility = not (
-                    "CLEARANCE" in obj.Label
-                    or "CONTEXT" in obj.Label
-                    or getattr(obj, "Role", "") == "Clearance"
-                    or "SourceObjectName" in obj.PropertiesList
-                )
-                obj.ViewObject.DisplayMode = "Flat Lines"
-                obj.ViewObject.ShapeColor = (
-                    (0.31, 0.66, 0.76) if "PRINT" in obj.Label else (0.18, 0.48, 0.29)
-                )
+        style_power_option(power)
         detail = create_attachment_detail_document()
         negative = create_attachment_detail_document(-1)
         for o in layout.Objects:

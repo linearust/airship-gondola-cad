@@ -1,9 +1,11 @@
-"""Two servo openings share one central bulkhead on an open connector plate.
+"""A removable paired-servo wall on one flat, openly supported plate.
 
 All dimensions are millimetres. The common wall has thick outer columns and
-a shared central web. Its supported central plate connects to the two mounting
-feet through broad straight arms, leaving the unused side regions open.
+a shared central web. Broad straight arms connect the central plate to two
+mounting seats, all on one plane with unilateral X/Y locating faces.
 """
+
+import math
 
 import FreeCAD as App
 import Part
@@ -24,15 +26,16 @@ CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
 SIDE_WALL = 3.0
 CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
 REAR_LEAD_ALLOWANCE = 13.9
-SEAT_Z = 8.7
-NUT_SEAT_Z = 5.7
-MOUNT_BOLT_SEAT_Z = 10.7
+SEAT_Z = 11.4
+CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
+FRAME_SEAT_THICKNESS = 3.0
+NUT_SEAT_Z = SEAT_Z - FRAME_SEAT_THICKNESS
+MOUNT_BOLT_SEAT_Z = SEAT_Z + CONNECTOR_PLATE_THICKNESS
 PAD_INNER_X, PAD_OUTER_X = 3.9, 19.5
 PAD_INNER_Y, PAD_OUTER_Y = 13.5, 26.0
-CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = 11.4, 2.0
 CONNECTOR_PLATE_HALF_WIDTH = PAD_OUTER_X
 CONNECTOR_ARM_OVERLAP = 3.0
-MOUNT_HEAD_ACCESS_DIAMETER = 6.0
+MOUNT_HOLE_DIAMETER = 2.2
 BOLT_X, BOLT_Y = 14.5, 18.0
 MOUNT_GRIP = MOUNT_BOLT_SEAT_Z - NUT_SEAT_Z
 
@@ -84,7 +87,12 @@ def _cradle_blank(drive):
 def cut_mounting_holes(shape):
     for sign in (-1, 1):
         shape = shape.cut(
-            Part.makeCylinder(1.1, 14, V(sign * BOLT_X, sign * BOLT_Y, 1), V(0, 0, 1))
+            Part.makeCylinder(
+                MOUNT_HOLE_DIAMETER / 2,
+                14,
+                V(sign * BOLT_X, sign * BOLT_Y, 1),
+                V(0, 0, 1),
+            )
         )
     return shape.removeSplitter()
 
@@ -96,12 +104,6 @@ def bridge_blank(drive=SELECTED_DRIVE):
     module removal. The side openings are real open edges, not enclosed holes.
     """
     cradle = _cradle_blank(drive)
-    pad = box(
-        PAD_OUTER_X - PAD_INNER_X,
-        PAD_OUTER_Y - PAD_INNER_Y,
-        CONNECTOR_PLATE_BOTTOM_Z - SEAT_Z,
-        (PAD_INNER_X, PAD_INNER_Y, SEAT_Z),
-    )
     width = bulkhead_width(drive)
     central_plate = box(
         width,
@@ -116,7 +118,7 @@ def bridge_blank(drive=SELECTED_DRIVE):
         CONNECTOR_PLATE_THICKNESS,
         (PAD_INNER_X, arm_start_y, CONNECTOR_PLATE_BOTTOM_Z),
     )
-    return union([cradle, central_plate, arm, opposite(arm), pad, opposite(pad)])
+    return union([cradle, central_plate, arm, opposite(arm)])
 
 
 def bridge_shape(drive=SELECTED_DRIVE):
@@ -138,22 +140,11 @@ def bridge_shape(drive=SELECTED_DRIVE):
     bridge = bridge.cut(void).cut(opposite(void))
     # Horn screws now withdraw from the gear side. Keep the side columns solid;
     # the former rear tool-relief scallops are no longer needed.
-    # The plate sits above the complete rail-key elbow; its feet stand outside
+    # The plate sits above the complete rail-key elbow; its arms stand outside
     # the rail screw head. Neither needs a tunnel, roof notch or thin ring.
     # The lower servo nut also clears the plate, including its removal path.
-    # Open top counterbores preserve the existing M2x8 screw seat and grip.
-    for sign in (-1, 1):
-        bridge = bridge.cut(
-            Part.makeCylinder(
-                MOUNT_HEAD_ACCESS_DIAMETER / 2,
-                CONNECTOR_PLATE_BOTTOM_Z
-                + CONNECTOR_PLATE_THICKNESS
-                - MOUNT_BOLT_SEAT_Z
-                + 0.1,
-                V(sign * BOLT_X, sign * BOLT_Y, MOUNT_BOLT_SEAT_Z),
-                V(0, 0, 1),
-            )
-        )
+    # Heads sit directly on the 2 mm plate; the 3 mm frame seats preserve
+    # the existing M2x8 screws and 5 mm grip without stepped feet or counterbores.
     return cut_mounting_holes(bridge)
 
 
@@ -186,9 +177,9 @@ def frame_seats():
         [
             seat,
             opposite(seat),
-            # One inside Y datum avoids the servo ears and an opposed-face
-            # tolerance trap. The opposite seat has no competing Y stop.
-            box(width, 1.5, 5, (-PAD_OUTER_X, -PAD_INNER_Y, NUT_SEAT_Z)),
+            # The negative outer edge locates Y without an opposed-face trap.
+            # The old inner stop would occupy the now-flat connecting arm.
+            box(width, 1.5, 5, (-PAD_OUTER_X, -PAD_OUTER_Y - 1.5, NUT_SEAT_Z)),
             # An outside X stop releases directly during the checked +X slide.
             box(
                 2,
@@ -201,12 +192,53 @@ def frame_seats():
 
 
 def contact_planes():
-    # Names, coordinate index, station and deliberately broad minimum contact.
-    # The joint validator measures the positive and negative Z seats separately.
+    """Complete nominal contacts, with separate XY bounds for each Z support.
+
+    A coplanar central face must not hide a missing outer seat. The optional
+    region is (X start, Y start, X size, Y size) in the propulsion frame.
+    """
+    width = PAD_OUTER_X - PAD_INNER_X
+    length = PAD_OUTER_Y - PAD_INNER_Y
+    seat_area = width * length - math.pi * (MOUNT_HOLE_DIAMETER / 2) ** 2
     return (
-        ("positive_cradle_seat", 2, SEAT_Z, 120.0),
-        ("negative_cradle_seat", 2, SEAT_Z, 120.0),
-        ("inside_y_datum", 1, -PAD_INNER_Y, 20.0),
-        ("outside_x_datum", 0, -CONNECTOR_PLATE_HALF_WIDTH, 5.0),
-        ("central_bulkhead_support", 2, CONNECTOR_PLATE_BOTTOM_Z, 300.0),
+        (
+            "positive_outer_seat",
+            2,
+            SEAT_Z,
+            seat_area,
+            (PAD_INNER_X, PAD_INNER_Y, width, length),
+        ),
+        (
+            "negative_outer_seat",
+            2,
+            SEAT_Z,
+            seat_area,
+            (-PAD_OUTER_X, -PAD_OUTER_Y, width, length),
+        ),
+        (
+            "central_bulkhead_support",
+            2,
+            SEAT_Z,
+            rail.SHOE_LENGTH * rail.SHOE_WIDTH,
+            (
+                -rail.SHOE_LENGTH / 2,
+                -rail.SHOE_WIDTH / 2,
+                rail.SHOE_LENGTH,
+                rail.SHOE_WIDTH,
+            ),
+        ),
+        (
+            "outside_y_datum",
+            1,
+            -PAD_OUTER_Y,
+            width * CONNECTOR_PLATE_THICKNESS,
+            None,
+        ),
+        (
+            "outside_x_datum",
+            0,
+            -CONNECTOR_PLATE_HALF_WIDTH,
+            3 * CONNECTOR_PLATE_THICKNESS,
+            None,
+        ),
     )

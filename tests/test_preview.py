@@ -98,6 +98,37 @@ class PreviewCallbacks(unittest.TestCase):
         )
         self.gui.getMainWindow.return_value.close.assert_called_once()
 
+    def test_direct_power_preview_shows_carrier_and_hides_clearances(self):
+        def part(name, *, source=None, role="Reference"):
+            return types.SimpleNamespace(
+                Name=name,
+                Label=name,
+                SourceObjectName=source,
+                SourceRole="Printed" if source == "BatteryMount" else role,
+                Role=role,
+                PropertiesList=["SourceObjectName"] if source is not None else [],
+                ViewObject=types.SimpleNamespace(),
+                isDerivedFrom=lambda kind: kind == "Part::Feature",
+            )
+
+        carrier = part("Context_BatteryMount", source="BatteryMount")
+        unrelated = part("Context_ElectronicsMount", source="ElectronicsMount")
+        board = part("PowerModule0")
+        reserve = part("PowerModule0TopReserve", role="Clearance")
+        doc = types.SimpleNamespace(
+            PowerOptionModule=types.SimpleNamespace(
+                PowerPackaging="DIRECT_CARRIER", ViewObject=types.SimpleNamespace()
+            ),
+            AssemblyContext=types.SimpleNamespace(ViewObject=types.SimpleNamespace()),
+            Objects=[carrier, unrelated, board, reserve],
+        )
+        self.preview.style_power_option(doc)
+        self.assertTrue(doc.AssemblyContext.ViewObject.Visibility)
+        self.assertTrue(carrier.ViewObject.Visibility)
+        self.assertTrue(board.ViewObject.Visibility)
+        self.assertFalse(unrelated.ViewObject.Visibility)
+        self.assertFalse(reserve.ViewObject.Visibility)
+
     def test_pending_callbacks_do_not_run_after_first_failure(self):
         session = self.preview._PreviewSession(self.output, close_after=False)
         failing = Mock(side_effect=OSError("cannot write preview"))

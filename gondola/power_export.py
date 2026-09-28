@@ -6,6 +6,8 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 
 import functools
 import json
+import math
+from contextlib import contextmanager
 from itertools import combinations
 from pathlib import Path
 
@@ -13,10 +15,21 @@ import FreeCAD as App
 import Mesh
 import Part
 
-from .cad import create_group, create_reference, placed_shape, set_property, world_shape
+from .cad import (
+    create_group,
+    create_printed_part,
+    create_reference,
+    placed_shape,
+    set_property,
+    world_shape,
+)
 from .config import ARTIFACT_STEM, OUTPUT_DIR
 from .contracts.power_options import (
+    DIRECT_CARRIER,
     OPTIONAL_POWER_PLAN_KEYS,
+    PORTAL,
+    POWER_PACKAGINGS,
+    POWER_PLATFORM_DOCUMENT_NAME,
     get_power_plan,
     power_option_contract,
 )
@@ -43,7 +56,11 @@ from .print_export import (
 )
 from .provenance import file_sha256, source_fingerprint
 from .validation.evidence import comparison_passed
-from .validation.geometry import compare_mesh_surfaces, intersection_volume
+from .validation.geometry import (
+    compare_mesh_surfaces,
+    intersection_volume,
+    translation_sweep,
+)
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
@@ -63,6 +80,84 @@ def _main_shapes(doc):
         for obj in getattr(registry, category)
         if hasattr(obj, "Shape") and not obj.Shape.isNull() and obj.Shape.Solids
     }
+
+
+@contextmanager
+def _illustrated_optical_host(main):
+    """Copy the tether arrangement without saving or changing the main assembly."""
+    optical = main.getObject("OpticalFlowModule")
+    if optical is None:
+        yield
+        return
+    host = optical.getParentGeoFeatureGroup()
+    pose = App.Placement(optical.Placement)
+    try:
+        optical_interface.attach_to_host(
+            optical, main.getObject(power_mount.DEFAULT_OPTICAL_HOST)
+        )
+        yield
+    finally:
+        optical_interface.attach_to_host(optical, host)
+        optical.Placement = pose
+        main.recompute()
+
+
+def _installation_context(main, plan_key):
+    context = _main_shapes(main)
+    if plan_key == "TETHER_BEC_SVPDB":
+        context.pop("ModuleBatteryEnvelope", None)
+        context.pop("MaximumBatteryEnvelope", None)
+    return context
+
+
+def _pitch_bound(shape, angle_limit_deg):
+    """Exact axis-aligned enclosure of a box throughout a bounded Y rotation."""
+    bounds = shape.BoundBox
+    limit = math.radians(angle_limit_deg)
+    xs, zs = [], []
+    for x in (bounds.XMin, bounds.XMax):
+        for z in (bounds.ZMin, bounds.ZMax):
+            angles = [-limit, limit]
+            for critical in (math.atan2(z, x), math.atan2(-x, z)):
+                angles.extend(
+                    critical + n * math.pi
+                    for n in range(-2, 3)
+                    if -limit <= critical + n * math.pi <= limit
+                )
+            for angle in angles:
+                xs.append(x * math.cos(angle) + z * math.sin(angle))
+                zs.append(-x * math.sin(angle) + z * math.cos(angle))
+    return Part.makeBox(
+        max(xs) - min(xs),
+        bounds.YLength,
+        max(zs) - min(zs),
+        App.Vector(min(xs), bounds.YMin, min(zs)),
+    )
+
+
+def _optical_motion_bounds(optical):
+    """Both mutually exclusive sensors and connectors, continuous pitch/foot fit."""
+    from .contracts.optical_sensors import SENSOR_PROFILES
+    from .parts import optical_mount, optical_sensor
+    from .validation.optical import _external_field_bound
+
+    result = {}
+    for key, profile in SENSOR_PROFILES.items():
+        result[f"{key}ContinuousOpticalFieldBound"] = _external_field_bound(
+            optical, profile
+        )[0]
+        for name, shape in (
+            ("Body", optical_sensor.envelope_shape(profile)),
+            ("Connector", optical_sensor.connector_reserve_shape(profile)),
+            ("Tray", optical_mount.sensor_tray_shape()),
+        ):
+            bound = _pitch_bound(shape, optical_mount.ANGLE_LIMIT_DEG)
+            bound.translate(App.Vector(*optical_mount.PIVOT_CENTRE))
+            bound = optical_interface.rigid_float_shape_bound(bound)
+            result[f"{key}Continuous{name}Bound"] = placed_shape(
+                bound, optical.getGlobalPlacement()
+            )
+    return result
 
 
 def _placed(shapes, pose):
@@ -99,7 +194,7 @@ def _xy_registration_bound(shape):
 
 @functools.lru_cache(None)
 def _registration_bounds(plan_key):
-    physical, reserves = power_mount.local_shapes(plan_key)
+    physical, reserves = power_mount.local_shapes(plan_key, packaging=PORTAL)
     result = dict(stack_interface.rigid_float_component_bounds())
     result.update(
         {
@@ -120,8 +215,11 @@ def _registration_bounds(plan_key):
     return result
 
 
-def _configuration_conflicts(plan_key, pose, context, host_name):
-    physical, reserves = power_mount.local_shapes(plan_key)
+def _configuration_conflicts(plan_key, pose, context, host_name, *, packaging=PORTAL):
+    local_physical, local_reserves = power_mount.local_shapes(
+        plan_key, packaging=packaging
+    )
+    physical, reserves = local_physical, local_reserves
     physical, reserves = _placed(physical, pose), _placed(reserves, pose)
     nominal = (
         _collisions(physical, context)
@@ -140,16 +238,40 @@ def _configuration_conflicts(plan_key, pose, context, host_name):
     else:
         local_host = host_shape.copy()
         local_host.Placement = pose.inverse().multiply(local_host.Placement)
-        attachment = power_mount.attachment_check(local_host)
+        attachment = (
+            power_mount.direct_attachment_check(local_host, local_physical)
+            if packaging == DIRECT_CARRIER
+            else power_mount.attachment_check(local_host)
+        )
         if not attachment["passed"]:
             nominal.append(
                 {
                     "first": "PowerPlatform",
                     "second": host_name,
-                    "reason": "Incomplete common-slot foot support or obstructed screw path",
+                    "reason": "Incomplete declared host support or obstructed attachment",
                     "attachment": attachment,
                 }
             )
+    if packaging == DIRECT_CARRIER:
+        for name, shape in physical.items():
+            sweep, _ = translation_sweep(
+                shape, tuple(pose.Rotation.multVec(App.Vector(0, 0, 32)))
+            )
+            nominal += [
+                {**row, "phase": "disconnected board removal"}
+                for row in _collisions(
+                    {name: sweep},
+                    {
+                        **context,
+                        **{
+                            other: body
+                            for other, body in physical.items()
+                            if other != name
+                        },
+                    },
+                )
+            ]
+        return [{"phase": "nominal", **row} for row in nominal]
     # Foot-fastener access is checked on the removed carrier, as specified by
     # the service contract. Other modules on that carrier remain obstacles.
     host = stack_interface.MECHANICAL_HOSTS[host_name]
@@ -176,47 +298,52 @@ def _configuration_conflicts(plan_key, pose, context, host_name):
 
 
 def screen_configurations(main_doc):
-    """Screen the saved arrangement; occupied hosts are intentionally rejected."""
+    """Retain every packaging/host/plan choice and compose navigation conflicts."""
     from .contracts.equipment_options import NAVIGATION_PROFILES, get_navigation_profile
-    from .contracts.optical_sensors import SENSOR_PROFILES
     from .parts import equipment_envelopes, wiring_reserves
-    from .validation.optical import _external_field_bound
 
-    context = _main_shapes(main_doc)
     optical = main_doc.getObject("OpticalFlowModule")
-    if optical is not None:
-        # These cones enclose both sensor profiles and the declared manual aim range.
-        for key, profile in SENSOR_PROFILES.items():
-            context[f"{key}ContinuousOpticalFieldBound"] = _external_field_bound(
-                optical, profile
-            )[0]
-    rows = []
-    for host_name in stack_interface.MECHANICAL_HOSTS:
-        for plan_key in OPTIONAL_PLANS:
-            row = {"host": host_name, "plan": plan_key}
-            try:
-                pose = power_mount.host_placement(main_doc, host_name)
-            except ValueError as error:
-                row.update(
-                    status="rejected", reason=str(error), collisions=[], permitted=False
-                )
-                rows.append(row)
-                continue
-            conflicts = _configuration_conflicts(plan_key, pose, context, host_name)
-            row.update(
-                status="clear" if not conflicts else "rejected",
-                collisions=conflicts,
-                permitted=not conflicts,
+    optical_host = getattr(optical, "StackHostName", None)
+    optical_bounds = _optical_motion_bounds(optical) if optical is not None else {}
+    contexts = {}
+    for plan_key in OPTIONAL_PLANS:
+        context = _installation_context(main_doc, plan_key)
+        context.update(optical_bounds)
+        contexts[plan_key] = context
+
+    def evaluate(plan_key, packaging, host_name, context, configuration_conflicts=()):
+        row = {"host": host_name, "plan": plan_key, "packaging": packaging}
+        try:
+            pose = power_mount.host_placement(
+                main_doc, host_name, plan_key, packaging=packaging
             )
-            rows.append(row)
-    default = next(
-        row
-        for row in rows
-        if row["host"] == power_mount.DEFAULT_HOST
-        and row["plan"] == power_mount.DEFAULT_PLAN
-    )
-    # Alternative navigation remains a compatibility probe, never added to BOM.
-    # MG-F10's direct helix is large enough to reject otherwise valid stack sites.
+        except ValueError as error:
+            return {
+                **row,
+                "status": "rejected",
+                "reason": str(error),
+                "collisions": list(configuration_conflicts),
+                "permitted": False,
+            }
+        conflicts = [
+            *configuration_conflicts,
+            *_configuration_conflicts(
+                plan_key, pose, context, host_name, packaging=packaging
+            ),
+        ]
+        return {
+            **row,
+            "status": "rejected" if conflicts else "clear",
+            "collisions": conflicts,
+            "permitted": not conflicts,
+        }
+
+    rows = [
+        {"host": host_name, "plan": plan_key, "packaging": packaging}
+        for packaging in POWER_PACKAGINGS
+        for host_name in stack_interface.MECHANICAL_HOSTS
+        for plan_key in OPTIONAL_PLANS
+    ]
     navigation_rows = []
     accessory_pose = main_doc.AccessoryEquipmentModule.getGlobalPlacement()
     for profile in NAVIGATION_PROFILES.values():
@@ -226,16 +353,6 @@ def screen_configurations(main_doc):
             else ("integrated",)
         )
         for installation in installations:
-            probe_context = {
-                name: shape
-                for name, shape in context.items()
-                if name
-                not in (
-                    "ModulePASEnvelope",
-                    "PASConnectorReserve",
-                    "NavigationDirectAntennaReserve",
-                )
-            }
             replacements = {
                 "ModulePASEnvelope": equipment_envelopes.navigation_envelope_shape(
                     profile
@@ -248,48 +365,111 @@ def screen_configurations(main_doc):
                 replacements["NavigationDirectAntennaReserve"] = (
                     wiring_reserves.direct_antenna_reserve_shape(profile)
                 )
-            probe_context.update(_placed(replacements, accessory_pose))
-            for host_name in stack_interface.MECHANICAL_HOSTS:
-                try:
-                    pose = power_mount.host_placement(main_doc, host_name)
-                except ValueError:
-                    continue
-                for plan_key in OPTIONAL_PLANS:
-                    conflicts = _configuration_conflicts(
-                        plan_key, pose, probe_context, host_name
+            replacements = _placed(replacements, accessory_pose)
+            for plan_key in OPTIONAL_PLANS:
+                fixed = {
+                    name: shape
+                    for name, shape in contexts[plan_key].items()
+                    if name
+                    not in (
+                        "ModulePASEnvelope",
+                        "PASConnectorReserve",
+                        "NavigationDirectAntennaReserve",
                     )
-                    navigation_rows.append(
+                }
+                # This check composes navigation with existing optics and every
+                # other retained object. Testing power-vs-context alone misses
+                # collisions between two members of the substituted context.
+                combined_conflicts = [
+                    {**hit, "phase": "navigation and retained assembly"}
+                    for hit in _collisions(replacements, fixed)
+                ]
+                if optical_host not in optical_interface.permitted_hosts(
+                    direct_navigation_antenna=installation == "direct_sma",
+                    navigation_key=profile.key,
+                ):
+                    combined_conflicts.append(
                         {
-                            "host": host_name,
-                            "plan": plan_key,
-                            "navigation": profile.key,
-                            "antenna_installation": installation,
-                            "permitted": not conflicts,
-                            "collisions": conflicts,
+                            "first": profile.key,
+                            "second": optical_host,
+                            "phase": "optical host compatibility",
+                            "reason": "Direct MG-F10-A requires battery-host optics",
                         }
                     )
-    permitted_hosts_by_plan = {
+                context = {**fixed, **replacements}
+                for packaging in POWER_PACKAGINGS:
+                    for host_name in stack_interface.MECHANICAL_HOSTS:
+                        navigation_rows.append(
+                            {
+                                **evaluate(
+                                    plan_key,
+                                    packaging,
+                                    host_name,
+                                    context,
+                                    combined_conflicts,
+                                ),
+                                "navigation": profile.key,
+                                "antenna_installation": installation,
+                            }
+                        )
+    selected = get_navigation_profile()
+    selected_installation = "direct_sma" if selected.external_antenna else "integrated"
+    # Default arrangement rows use exactly the same composed decisions as the
+    # navigation matrix, including optical-host restrictions.
+    for row in rows:
+        match = next(
+            probe
+            for probe in navigation_rows
+            if all(probe[k] == row[k] for k in ("host", "plan", "packaging"))
+            and probe["navigation"] == selected.key
+            and probe["antenna_installation"] == selected_installation
+        )
+        row.update(
+            {
+                key: value
+                for key, value in match.items()
+                if key not in ("navigation", "antenna_installation")
+            }
+        )
+    permitted = {
         plan_key: [
-            row["host"] for row in rows if row["plan"] == plan_key and row["permitted"]
+            {"host": row["host"], "packaging": row["packaging"]}
+            for row in rows
+            if row["plan"] == plan_key and row["permitted"]
         ]
         for plan_key in OPTIONAL_PLANS
     }
+    default = next(
+        row
+        for row in rows
+        if row["host"] == power_mount.DEFAULT_HOST
+        and row["plan"] == power_mount.DEFAULT_PLAN
+        and row["packaging"] == power_mount.DEFAULT_PACKAGING
+    )
     return {
-        "saved_optical_host": getattr(optical, "StackHostName", None),
+        "saved_optical_host": optical_host,
         "configurations": rows,
         "default_configuration_clear": default["permitted"],
-        "permitted_hosts_by_plan": permitted_hosts_by_plan,
-        "source_selected_navigation": get_navigation_profile().key,
+        "permitted_hosts_by_plan": {
+            key: sorted({row["host"] for row in value})
+            for key, value in permitted.items()
+        },
+        "permitted_installations_by_plan": permitted,
+        "source_selected_navigation": selected.key,
         "navigation_compatibility_probes": navigation_rows,
-        "seated_registration_scope": "Continuous conservative XY/yaw bounds include the full opposed common-slot travel and foot-hole clearance, with no axial lift. Angular cells use analytic interval padding; coupled axis constraints limit permitted translation and yaw. Local fastener freedom within foot bores is included. Any bound intersection rejects the configuration rather than proving actual collision. The host's intended foot seating is excluded only from this float pass, not from the nominal check.",
-        "scope": "Exact nominal optional bodies and local terminal/top allowances versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. Intentional mating contact has zero volume; positive interference rejects a configuration. No tether route or guide is modeled; tether clearance/retention, cooling and electrical operation are not qualified.",
-        "passed": all(permitted_hosts_by_plan.values())
-        and len(rows) == len(stack_interface.MECHANICAL_HOSTS) * len(OPTIONAL_PLANS),
+        "seated_registration_scope": "Portal choices retain the continuous conservative opposed-slot XY/yaw bounds. Direct boards are nominal adhesive placements on the vacated battery carrier, with measured intact land/body overlap; adhesive placement and retention remain physical checks.",
+        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and optical host. Both sensors' continuous field, body, tray and connector bounds include the full pitch range and foot registration. Retained solid bodies/reserves and disconnected direct-board removal are screened. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
+        "passed": all(permitted.values())
+        and len(rows)
+        == len(POWER_PACKAGINGS)
+        * len(stack_interface.MECHANICAL_HOSTS)
+        * len(OPTIONAL_PLANS)
+        and len(navigation_rows) == 4 * len(rows),
     }
 
 
-def _manifest(doc):
-    part = doc.PowerPlatform
+def _manifest(doc, manufacturing):
+    part = manufacturing.PowerPlatform
     printed = print_shape(part)
     bounds = printed.optimalBoundingBox(False, False)
     sizes = [bounds.XLength, bounds.YLength, bounds.ZLength]
@@ -300,7 +480,13 @@ def _manifest(doc):
         "included_in_default_installed_inventory": False,
         "default_host": power_mount.DEFAULT_HOST,
         "illustrated_power_plan": get_power_plan(power_mount.DEFAULT_PLAN).contract(),
+        "illustrated_packaging": power_mount.DEFAULT_PACKAGING,
+        "illustrated_optical_host": power_mount.DEFAULT_OPTICAL_HOST,
+        "installed_additional_printed_quantity": 0,
+        "manufacturing_document": POWER_PLATFORM_DOCUMENT_NAME,
+        "manufacturing_packaging": PORTAL,
         "printed_quantity": 1,
+        "printed_quantity_scope": "One optional portal manufacture, only used by PORTAL configurations. No added print is installed in the illustrated direct-tether assembly.",
         "printed_volume_mm3": round(float(part.Shape.Volume), 6),
         "estimated_printed_mass_g": round(
             float(part.Shape.Volume) * DENSITIES_G_CM3["PA12"] / 1000, 6
@@ -311,57 +497,102 @@ def _manifest(doc):
             "g_cm3": DENSITIES_G_CM3["PA12"],
             "source": PA12_DENSITY_SOURCE,
         },
-        "additional_hardware": {"M2X8_BUTTON_HEAD": 2, "M2_HEX_NUT": 2},
+        "additional_hardware": {},
+        "portal_additional_hardware": {"M2X8_BUTTON_HEAD": 2, "M2_HEX_NUT": 2},
         "size_mm": sizes,
         "size_check": print_size_check(
             [local.XLength, local.YLength, local.ZLength], sizes
         ),
         "platform_contract": power_mount.platform_contract(),
         "power_options": power_option_contract(),
-        "context_scope": "Hidden saved assembly reference solids preserve shape and world placement independently of main CAD display properties. Context shapes are not optional manufacturing parts or additional bought parts.",
+        "context_scope": "Saved optional-installation context preserves the reused carrier and relocated optical geometry independently of main CAD display properties. The battery is absent for tether power. Context shapes are not optional manufacturing parts or additional bought parts.",
+    }
+
+
+def _context_roles(main):
+    registry = main.DesignRegistry
+    return {
+        obj.Name: role
+        for category, role in (
+            ("PrintedParts", "Printed"),
+            ("HardwareParts", "Hardware"),
+            ("ReferenceParts", "Reference"),
+            ("TapeReferences", "Tape"),
+            ("ClearanceVolumes", "Clearance"),
+        )
+        for obj in getattr(registry, category)
     }
 
 
 def export_power_options(main_doc, output_dir=None):
     out = Path(output_dir or OUTPUT_DIR)
     out.mkdir(parents=True, exist_ok=True)
-    doc = power_mount.create_option_document(main_doc)
+    doc = manufacturing = None
     try:
-        context = create_group(
-            doc, "AssemblyContext", "REFERENCE | saved baseline assembly"
-        )
-        for name, shape in _main_shapes(main_doc).items():
-            obj = create_reference(
-                doc,
-                context,
-                "Context_" + name,
-                name,
-                shape,
-                "Saved baseline context; not printed by optional export",
+        with _illustrated_optical_host(main_doc):
+            doc = power_mount.create_option_document(main_doc)
+            context = create_group(
+                doc, "AssemblyContext", "REFERENCE | installed optional arrangement"
             )
-            set_property(obj, "SourceObjectName", name)
-            obj.Label = "CONTEXT | " + name
-            if App.GuiUp:
-                obj.ViewObject.Visibility = False
-        set_property(doc.PowerOptionModule, "SourceFingerprint", source_fingerprint())
-        doc.recompute()
-        # Derive manufacturing files from the persisted BRep. Saving/reopening
-        # can change floating extrema or planar triangulation without changing
-        # the solid; the native artifact, not its pre-save state, is authoritative.
-        native_path = out / ARTIFACT_NAMES[0]
-        doc.saveAs(str(native_path))
+            roles = _context_roles(main_doc)
+            for name, shape in _installation_context(
+                main_doc, power_mount.DEFAULT_PLAN
+            ).items():
+                obj = create_reference(
+                    doc,
+                    context,
+                    "Context_" + name,
+                    name,
+                    shape,
+                    "Copied optional installation context; not an added print or purchased part",
+                )
+                set_property(obj, "SourceObjectName", name)
+                set_property(obj, "SourceRole", roles[name])
+                obj.Label = "CONTEXT | " + name
+                if App.GuiUp:
+                    obj.ViewObject.Visibility = False
+            set_property(
+                doc.PowerOptionModule, "SourceFingerprint", source_fingerprint()
+            )
+            doc.recompute()
+            native_path = out / ARTIFACT_NAMES[0]
+            doc.saveAs(str(native_path))
         App.closeDocument(doc.Name)
         doc = App.openDocument(str(native_path))
-        shape = print_shape(doc.PowerPlatform)
+        # A separate manufacturing source keeps the retained portal out of the
+        # installed direct-tether inventory and gives its exports an auditable BRep.
+        manufacturing = App.newDocument("PowerPortalManufacturing")
+        manufacturing.Label = "Optional portal manufacture | PORTAL configurations only"
+        group = create_group(
+            manufacturing, "PowerPrintSource", "Optional portal print source"
+        )
+        set_property(group, "PowerPackaging", PORTAL)
+        set_property(group, "SourceFingerprint", source_fingerprint())
+        create_printed_part(
+            manufacturing,
+            group,
+            "PowerPlatform",
+            "OPTIONAL PRINT | raised power portal",
+            power_mount.platform_shape().copy(),
+            App.Rotation(App.Vector(1, 0, 0), 180),
+            power_mount.platform_contract()["support_scope"],
+        )
+        manufacturing.recompute()
+        print_path = out / POWER_PLATFORM_DOCUMENT_NAME
+        manufacturing.saveAs(str(print_path))
+        App.closeDocument(manufacturing.Name)
+        manufacturing = App.openDocument(str(print_path))
+        shape = print_shape(manufacturing.PowerPlatform)
         mesh_from_shape(shape).write(str(out / ARTIFACT_NAMES[1]))
         shape.exportStep(str(out / ARTIFACT_NAMES[2]))
         (out / ARTIFACT_NAMES[3]).write_text(
-            json.dumps(_manifest(doc), indent=2) + "\n"
+            json.dumps(_manifest(doc, manufacturing), indent=2) + "\n"
         )
-        # Only validation against the final saved main CAD claims report success.
         return {"artifacts": list(ARTIFACT_NAMES), "optional_only": True}
     finally:
-        App.closeDocument(doc.Name)
+        for opened in (doc, manufacturing):
+            if opened is not None:
+                App.closeDocument(opened.Name)
 
 
 def _same_shape(first, second):
@@ -381,9 +612,10 @@ def audit_power_options(source=None, output_dir=None):
         "passed": False,
     }
     main = App.openDocument(str(source))
-    option = None
+    option = manufacturing = None
     try:
         option = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+        manufacturing = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
         registry = main.DesignRegistry
         report["main_optional_contract_matches"] = getattr(
             registry, "OptionalPowerDocument", None
@@ -393,7 +625,8 @@ def audit_power_options(source=None, output_dir=None):
         physical, reserves = power_mount.local_shapes()
         expected = {**physical, **reserves}
         group = option.getObject("PowerOptionModule")
-        pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
+        with _illustrated_optical_host(main):
+            pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
         report["option_pose_matches"] = group.Placement.isSame(pose, TOL)
         report["option_source_matches"] = (
             str(group.SourceFingerprint) == source_fingerprint()
@@ -401,6 +634,8 @@ def audit_power_options(source=None, output_dir=None):
         report["option_selection_matches"] = (
             str(group.PowerPlan) == power_mount.DEFAULT_PLAN
             and str(group.StackHostName) == power_mount.DEFAULT_HOST
+            and str(group.PowerPackaging) == power_mount.DEFAULT_PACKAGING
+            and str(group.OpticalHostName) == power_mount.DEFAULT_OPTICAL_HOST
         )
         report["option_contract_matches"] = json.loads(
             group.PowerPlatformContract
@@ -408,6 +643,15 @@ def audit_power_options(source=None, output_dir=None):
         report["power_plan_contract_matches"] = json.loads(
             group.PowerPlanContract
         ) == json.loads(json.dumps(get_power_plan(power_mount.DEFAULT_PLAN).contract()))
+        report["installation_contract_matches"] = json.loads(
+            group.PowerInstallationContract
+        ) == json.loads(
+            json.dumps(
+                power_mount.installation_contract(
+                    power_mount.DEFAULT_PLAN, power_mount.DEFAULT_PACKAGING
+                )
+            )
+        )
         report["native_shape_checks"] = {
             name: option.getObject(name) is not None
             and option.getObject(name).getParentGeoFeatureGroup() == group
@@ -417,7 +661,8 @@ def audit_power_options(source=None, output_dir=None):
         report["native_inventory_matches"] = {
             obj.Name for obj in group.Group if hasattr(obj, "Shape")
         } == set(expected)
-        main_shapes = _main_shapes(main)
+        with _illustrated_optical_host(main):
+            main_shapes = _installation_context(main, power_mount.DEFAULT_PLAN)
         context = {
             obj.SourceObjectName: obj
             for obj in option.AssemblyContext.Group
@@ -435,15 +680,41 @@ def audit_power_options(source=None, output_dir=None):
         } == allowed_shapes
         report["optional_print_inventory_matches"] = [
             obj.Name for obj in option.Objects if getattr(obj, "PrintPart", False)
-        ] == ["PowerPlatform"]
+        ] == []
+        print_part = manufacturing.getObject("PowerPlatform")
+        report["manufacturing_source_matches"] = (
+            print_part is not None
+            and print_part.getParentGeoFeatureGroup() == manufacturing.PowerPrintSource
+            and str(manufacturing.PowerPrintSource.PowerPackaging) == PORTAL
+            and str(manufacturing.PowerPrintSource.SourceFingerprint)
+            == source_fingerprint()
+            and _same_shape(print_part.Shape, power_mount.platform_shape())
+            and [
+                obj.Name
+                for obj in manufacturing.Objects
+                if obj.isDerivedFrom("Part::Feature") and not obj.Shape.isNull()
+            ]
+            == ["PowerPlatform"]
+            and [
+                obj.Name
+                for obj in manufacturing.Objects
+                if getattr(obj, "PrintPart", False)
+            ]
+            == ["PowerPlatform"]
+        )
         report["context_inventory_matches"] = set(context) == set(main_shapes)
+        roles = _context_roles(main)
+        report["context_roles_match"] = report["context_inventory_matches"] and all(
+            getattr(context[name], "SourceRole", None) == roles[name]
+            for name in main_shapes
+        )
         report["context_shapes_match"] = report["context_inventory_matches"] and all(
             _same_shape(world_shape(context[name]), shape)
             for name, shape in main_shapes.items()
         )
         actual_manifest = json.loads((out / ARTIFACT_NAMES[3]).read_text())
         report["manifest_matches"] = actual_manifest == json.loads(
-            json.dumps(_manifest(option))
+            json.dumps(_manifest(option, manufacturing))
         )
         report["print_size_passed"] = bool(
             actual_manifest.get("size_check", {}).get("passed")
@@ -451,13 +722,13 @@ def audit_power_options(source=None, output_dir=None):
         from .validation.equipment import carrier_opening_checks
 
         report["plate_openings"] = carrier_opening_checks(
-            option.PowerPlatform.Shape,
+            print_part.Shape,
             bottom=power_mount.DECK_BOTTOM_Z,
             thickness=power_mount.DECK_THICKNESS_MM,
             through_bottom=0.0,
             through_depth=stack_interface.TOP_BEAM_THICKNESS,
         )
-        expected_print = print_shape(option.PowerPlatform)
+        expected_print = print_shape(print_part)
         step = Part.Shape()
         step.read(str(out / ARTIFACT_NAMES[2]))
         report["step_comparison"] = print_solid_comparison(expected_print, step, TOL)
@@ -470,9 +741,11 @@ def audit_power_options(source=None, output_dir=None):
             "passed"
         ]
         report["configuration_screen"] = screen_configurations(main)
-        report["illustrated_configuration_clear"] = report["configuration_screen"].get(
-            "default_configuration_clear", False
-        )
+        with _illustrated_optical_host(main):
+            report["illustrated_configuration_screen"] = screen_configurations(main)
+        report["illustrated_configuration_clear"] = report[
+            "illustrated_configuration_screen"
+        ].get("default_configuration_clear", False)
         report["alternate_optical_host_screens"] = []
         optical = main.getObject("OpticalFlowModule")
         if optical is not None:
@@ -517,11 +790,14 @@ def audit_power_options(source=None, output_dir=None):
                     "option_selection_matches",
                     "option_contract_matches",
                     "power_plan_contract_matches",
+                    "installation_contract_matches",
+                    "manufacturing_source_matches",
                     "native_inventory_matches",
                     "context_names_unique",
                     "complete_shape_inventory_matches",
                     "optional_print_inventory_matches",
                     "context_inventory_matches",
+                    "context_roles_match",
                     "context_shapes_match",
                     "manifest_matches",
                     "print_size_passed",
@@ -544,6 +820,8 @@ def audit_power_options(source=None, output_dir=None):
     finally:
         if option is not None:
             App.closeDocument(option.Name)
+        if manufacturing is not None:
+            App.closeDocument(manufacturing.Name)
         App.closeDocument(main.Name)
     (out / REPORT_NAME).write_text(json.dumps(report, indent=2) + "\n")
     return report

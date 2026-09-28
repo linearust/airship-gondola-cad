@@ -13,8 +13,13 @@ POWER_ARTIFACT_NAMES = (
     "optional_power_mount.stl",
     "optional_power_mount.step",
     "gondola_power_options.json",
+    "gondola_power_platform.FCStd",
 )
+POWER_PLATFORM_DOCUMENT_NAME = POWER_ARTIFACT_NAMES[4]
 POWER_VALIDATION_NAME = "gondola_power_validation.json"
+DIRECT_CARRIER = "DIRECT_CARRIER"
+PORTAL = "PORTAL"
+POWER_PACKAGINGS = (DIRECT_CARRIER, PORTAL)
 
 
 @dataclass(frozen=True)
@@ -212,6 +217,24 @@ def power_option_contract():
     return {
         "selected_plan": get_power_plan().contract(),
         "default_optional_plan": DEFAULT_OPTIONAL_POWER_PLAN_KEY,
+        "default_optional_packaging": DIRECT_CARRIER,
+        "mechanical_packagings": {
+            DIRECT_CARRIER: {
+                "plans": ["TETHER_BEC_SVPDB"],
+                "host": "BatteryEquipmentModule",
+                "battery_installed": False,
+                "additional_prints": 0,
+                "additional_screw_nut_pairs": 0,
+                "scope": "Reuse the vacated battery carrier with insulating adhesive allocations. Move the optical head to the FC carrier and screen the complete navigation/optical/power combination. Board underside contact, adhesive, cooling and tether retention remain unqualified.",
+            },
+            PORTAL: {
+                "plans": list(OPTIONAL_POWER_PLAN_KEYS),
+                "additional_prints": 1,
+                "additional_screw_nut_pairs": 2,
+                "manufacturing_document": POWER_PLATFORM_DOCUMENT_NAME,
+                "scope": "Separate optional raised platform for battery plus SVPDB, or a retained tether alternative. Host and optical/navigation compatibility must pass. The manufacturing document is not part of the direct-tether installed assembly.",
+            },
+        },
         "modules": {
             key: profile.contract() for key, profile in POWER_MODULE_PROFILES.items()
         },

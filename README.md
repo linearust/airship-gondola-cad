@@ -42,10 +42,10 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BB:** square slotted carriers, compact single-pitch optical pedestal.
-[Design](references/square_mount_review.md) ·
-[original verification](references/square_mount_verification.json) ·
-[refactor verification](references/bb_service_refactor_verification.json).
+**BC:** coplanar removable servo joint; tether regulators on the vacant battery
+carrier. Square carriers and single-pitch optical mount retained.
+[Architecture](references/bc_architecture_review.md) ·
+[verification](references/bc_architecture_verification.json).
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
@@ -86,7 +86,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BB. Preserve them during refactors;
+The architecture-specific checks below describe BC. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -100,9 +100,11 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   slot seats/datum offset and continuous lands/tape patches. M2 heads are unqualified
   for M3-width slots. Mini body/tape/connector datums jointly clear both rail-clamp and
   power-foot service paths. Bench-service off rail; tape wings are not equipment pads.
-- Optical/power feet share outer slots, not datums/supports. Bound full translation/yaw,
-  not circular-hole float; openings must pass through fused supports. No optical+power
-  on one host or unlimited stacking. Optional inventory remains separate.
+- Optical/raised-power feet share outer slots, not datums/supports. Bound full
+  translation/yaw; openings must pass through fused supports. Direct tether boards
+  replace the battery on its carrier; move optics to the FC host. Raised power is
+  a separate option. Compose power, navigation and optical checks; matching slots
+  do not permit arbitrary stacking or simultaneous devices. Keep optional inventory separate.
 - Optical uses `optical_interface.attach_to_host()` / `optical_mount.set_pitch()`:
   pitch-Y only, bonded uninterrupted tray, clamped foot/pivot. Without optional power,
   P-AS/MG-A01 allow battery/FC hosts; direct MG-F10-A allows battery only due to FC-host
@@ -178,7 +180,7 @@ python3 -m gondola bundle
 ```
 
 Build/preview overwrite outputs; preserve manual edits first. Preview needs a display
-and saves both CAD files, so it precedes file-bound checks. Inspect assembly, print
+and saves the previewed CAD files, so it precedes file-bound checks. Inspect assembly, print
 layout and both optical-host views; restore configured host before saving. Alternate
 paths: put `--output-dir PATH` / `--freecad-appimage PATH` before the subcommand;
 use the output directory consistently. Retain exact-source/file verification in Git.
@@ -187,7 +189,7 @@ Blender tools: a matching fingerprint alone does not establish their freshness.
 
 Untracked `build/gondola.FCStd` is the generated assembly, **not the fixture**.
 Export only manifest-listed prints. `build/gondola_power_options.FCStd` is a separate
-optional installation with hidden main context, audited and bundled under
+optional installation with copied main context, audited and bundled under
 `optional_power/`; do not add its boards/platform/fasteners to baseline mass/BOM.
 GUI macros `build_gondola.FCMacro` / `preview_gondola.FCMacro` reload local code but
 leave existing documents open.

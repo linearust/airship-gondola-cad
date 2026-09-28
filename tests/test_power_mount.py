@@ -89,7 +89,7 @@ class PowerMountTests(unittest.TestCase):
 
         for plan in ("TETHER_BEC_SVPDB", "BATTERY_SVPDB"):
             with self.subTest(plan=plan):
-                physical, reserves = p.local_shapes(plan)
+                physical, reserves = p.local_shapes(plan, packaging="PORTAL")
                 self.assertEqual(_internal_collisions(physical, reserves), [])
                 board_names = [
                     name for name in physical if name.startswith("PowerModule")
@@ -110,7 +110,7 @@ class PowerMountTests(unittest.TestCase):
                 )
                 self.assertNotIn("TetherDepartureReserve", reserves)
         with self.assertRaises(ValueError):
-            p.local_shapes("BATTERY")
+            p.local_shapes("BATTERY", packaging="PORTAL")
 
     def test_host_translation_and_occupied_optical_rejection(self):
         from gondola.parts import power_mount as p
@@ -124,7 +124,7 @@ class PowerMountTests(unittest.TestCase):
             optical = doc.addObject("App::Part", "OpticalFlowModule")
             hosts["BatteryEquipmentModule"].addObject(optical)
             with self.assertRaises(ValueError):
-                p.host_placement(doc, "BatteryEquipmentModule")
+                p.host_placement(doc, "BatteryEquipmentModule", packaging="PORTAL")
             host = hosts["AccessoryEquipmentModule"]
             host.Placement = App.Placement(
                 App.Vector(80, 20, 7), App.Rotation(App.Vector(0, 0, 1), 180)
@@ -133,10 +133,13 @@ class PowerMountTests(unittest.TestCase):
                 App.Vector(*s.host_origin_xy(host.Name), s.STACK_TOP_Z)
             )
             self.assertLess(
-                (p.host_placement(doc, host.Name).Base - expected).Length, 1e-6
+                (
+                    p.host_placement(doc, host.Name, packaging="PORTAL").Base - expected
+                ).Length,
+                1e-6,
             )
             with self.assertRaises(ValueError):
-                p.host_placement(doc, "PropulsionModule")
+                p.host_placement(doc, "PropulsionModule", packaging="PORTAL")
         finally:
             App.closeDocument(doc.Name)
 
@@ -144,7 +147,7 @@ class PowerMountTests(unittest.TestCase):
         from gondola.parts import power_mount, stack_interface
         from gondola.power_export import _xy_registration_bound
 
-        board = power_mount.local_shapes()[0]["PowerModule0"]
+        board = power_mount.local_shapes(packaging="PORTAL")[0]["PowerModule0"]
         bound = _xy_registration_bound(board)
         allowance = stack_interface.COMBINED_AXIS_CLEARANCE
         # Full slot travel permits coupled yaw/translation beyond the former
@@ -289,9 +292,22 @@ class PowerMountTests(unittest.TestCase):
                 App.closeDocument(doc.Name)
             report = audit_power_options(source, out)
             self.assertTrue(report["passed"], report)
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            optional.Context_BatteryMount.SourceRole = "Clearance"
+            optional.save()
+            App.closeDocument(optional.Name)
+            changed_role = audit_power_options(source, out)
+            self.assertFalse(changed_role["passed"])
+            self.assertFalse(changed_role["context_roles_match"])
+            self.assertTrue(changed_role["context_shapes_match"])
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            optional.Context_BatteryMount.SourceRole = "Printed"
+            optional.save()
+            App.closeDocument(optional.Name)
             with patch(
                 "gondola.power_export.screen_configurations",
                 side_effect=(
+                    {"passed": True, "default_configuration_clear": True},
                     {"passed": True, "default_configuration_clear": True},
                     {"passed": False},
                 ),

@@ -39,20 +39,21 @@ def _plane_contact_area(first, second, axis, station):
 
 
 def bridge_joint_check(doc, module):
-    """Check the actual two seating pads and unilateral locating faces."""
+    """Check all three coplanar supports and both unilateral locating faces."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
     contacts = []
-    for name, axis, station, minimum in servo_bridge.contact_planes():
+    for name, axis, station, minimum, bounds in servo_bridge.contact_planes():
         seat_frame, seat_bridge = frame, bridge
-        if name.endswith("cradle_seat"):
+        if bounds is not None:
+            x, y, width, length = bounds
             region = Part.makeBox(
+                width,
+                length,
                 100,
-                50,
-                100,
-                App.Vector(-50, 0 if name.startswith("positive") else -50, 0),
+                App.Vector(x, y, 0),
             )
             seat_frame, seat_bridge = frame.common(region), bridge.common(region)
         area = _plane_contact_area(seat_frame, seat_bridge, axis, station)
@@ -63,6 +64,7 @@ def bridge_joint_check(doc, module):
                 "plane_position_mm": station,
                 "actual_contact_area_mm2": area,
                 "required_contact_area_mm2": minimum,
+                "support_region_xy_mm": list(bounds) if bounds is not None else None,
                 "passed": area >= minimum - TOL,
             }
         )
@@ -73,7 +75,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "Two broad outer feet and a central shoe saddle support the shared wall and plate; unilateral Y and X datums locate the removable bridge. Bolt clearance does not locate the gear axes. The two outer feet share one seating height; the central support is higher and must meet its corresponding underside simultaneously. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
+        "scope": "The two broad outer seats and central shoe roof support one flat bridge underside at a common height. Each support's complete nominal contact is checked within its own region; the central seat cannot mask a missing outer seat. Unilateral outside Y and X datums locate the removable bridge; bolt clearance does not locate the gear axes. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
         "passed": overlap < TOL
         and all(row["passed"] for row in contacts)
         and doc.ServoDriveBridge.PrintSKU == spec.bridge_sku,
@@ -81,7 +83,7 @@ def bridge_joint_check(doc, module):
 
 
 def _bridge_path(shape, waypoints, obstacles, spec):
-    """Sweep the joined plate, pad and cradle stock with hardware holes filled.
+    """Sweep the joined flat plate and cradle stock with hardware holes filled.
 
     Containment of the actual bridge is mandatory. Filling its holes is
     conservative because every servo, ear bolt and clamp leaves with it.
