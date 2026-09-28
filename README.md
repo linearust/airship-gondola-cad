@@ -8,42 +8,39 @@ Before editing: inspect Git status, preserve others' edits/manual CAD, run
 `python3 -m gondola status`, then read the affected contracts and evidence below.
 Source defines implementation, not physical qualification or immutable requirements.
 
-## User requirements
+## Persistent user intent
 
-- **Scope:** 2 m indoor LTA gondola: two independently tilting main propulsors,
-  battery/electronics. Fins, fin servos and aft yaw thruster excluded. Consider outdoor GPS.
-- **Priority:** simple integrated, printable/assemblable structure before weight
-  optimization; no fixed mass target, modest gain acceptable. Avoid needless bends,
-  holes, thin branches, caps and fasteners. Preserve support roots/servo reaction
-  paths without excessive LTA stiffness. Redesign/reselect parts when overall better.
-- **Separation exception:** paired servos/input drives must detach from propulsion/
-  output-bearing frame for replacement; not universal drop-in servo compatibility.
-- **Metric, bought parts:** buy suitable standard parts rather than print them without
-  clear benefit. Minimize screw/nut types and unnecessary washers. Use low-load latches/slides when retention/alignment/
-  service remain sound. Confirmed device holes or existing tape/Velcro surfaces suffice;
-  no invented precision interfaces from photos. Availability is not quality evidence.
-- **Simple flexibility:** open geometry, slots or local preparation; module replacement
-  can beat complex adjustment. Align then clamp, never run loose. Preserve shaft axes,
-  torque transfer and bearing support; gear face/hub thickness may be critical.
-- **Common carriers:** identical square battery/FC/navigation plates; symmetric, mostly
-  straight/curved slots covering confirmed device axes and useful spare patterns.
-  Preserve lands/tape areas. No F-Mini-only plate/asymmetric utility tab. Spare holes
-  do not prove arbitrary hardware or simultaneous-stack compatibility.
-- **No tie-only holes/slots/tabs:** wrap existing members. Requested spare device/stack
-  patterns are different; retain useful ones even when currently unused.
-- **Layout:** propulsion / battery / FC-and-electronics regions. FC near neutral motors'
-  rear wires, battery opposite; rail positions trim CG. Provide FC underside wiring,
-  connector/tool access and restrained rotating-wire loops without excessive space.
-- **Optical:** compact, relocatable, unobstructed downward view. One lockable pitch axis
-  suffices for longitudinal curvature with a lower-centreline rail; not self-levelling.
-- **Rail:** tape to balloon; deliberate hand-pressure sliding with little rocking,
-  bolts for additional retention; qualify fit with coupons.
-- **Manufacture:** Creallo; each local/export-axis dimension **≤340 mm**, including
-  coupons; screen exports against both published SLS/MJF envelopes while undecided.
-  Unfilled PA12; process/grade/finish and one-piece acceptance pending. Allow wall/fit
-  margin above supplier minima and powder removal. Match coupon/full-part process, material, finish and feature orientation.
+- Design for lightweight LTA use. Prefer simple, printable, assemblable structure
+  over marginal weight savings; modest mass gain is acceptable, with no fixed target.
+- Integrate parts unless assembly, motion or replacement benefits from separation.
+- Prefer suitable standard bought parts; minimize custom parts and fastener variety.
+- Accommodate fit variation and replacement with simple interfaces, not complexity
+  or operating looseness. Favor reusable mounting interfaces where practical.
+- Consider assembly, wiring, motion clearance and balance together; use realistic
+  manufacturing margins and distinguish verified interfaces from assumptions.
+- Redesign/reselect when the whole assembly improves. Existing geometry and methods
+  are means, not goals.
 
-## Current design, not permanent constraints
+## Current scope, constraints and design
+
+Specific user constraints remain active; current geometry is replaceable within
+existing authorization. Do not turn implementation details into permanent rules.
+
+- **Scope:** 2 m indoor LTA gondola, two independent tilt propulsors and battery/
+  electronics; fins, fin servos and aft yaw thruster excluded. Consider outdoor GPS.
+- **Explicit constraints:** metric hardware; paired servo/input drives detachable
+  from the output-bearing frame for replacement; each local/export-axis print
+  dimension **≤340 mm**, including coupons. No universal drop-in servo fit is promised.
+- **Layout/attachment brief:** propulsion / battery / FC-and-electronics regions;
+  FC near neutral motor rear wires, battery opposite, rail positions for CG trim.
+  Tape rail to balloon; close hand-pressure slide fit with additional bolt retention.
+  Wrap existing members instead of tie-only features; retain useful spare device/stack
+  patterns even when unused. Keep optical sensing relocatable and unobstructed downward.
+
+**Manufacturing basis:** Creallo, unfilled PA12; SLS/MJF, grade/finish and one-piece
+acceptance pending. Screen both process envelopes; allow wall/fit margin and powder
+removal. Qualify fit with coupons matching full-part process, material, finish and
+feature orientation.
 
 **BB:** square slotted carriers, compact single-pitch optical pedestal.
 [Design](references/square_mount_review.md) ·
@@ -87,10 +84,12 @@ Battery/tether are alternatives, with no simultaneous-input/switching design.
 Power-board pads are electrical, not confirmed mounting holes. Verify insulation,
 terminal access and tether strain relief/routing clear of propellers and optical view.
 
-## Change boundaries
+## Current design contracts and change checks
 
-Update affected geometry, native controls/metadata, BOMs, reservations and checks
-together. Read `design.release_status()` before readiness claims. Geometry/coupons
+The architecture-specific checks below describe BB. Preserve them during refactors;
+for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
+reservations and checks together rather than freezing the old implementation.
+Read `design.release_status()` before readiness claims. Geometry/coupons
 are not physical fit, strength, retention/creep/fatigue, adhesive, electrical/thermal,
 RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays open.
 
