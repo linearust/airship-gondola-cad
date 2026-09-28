@@ -5,6 +5,7 @@ import json
 import math
 
 import FreeCAD as App
+import Part
 
 from gondola.cad import box, create_printed_part, set_property, union
 from gondola.contracts import equipment_interfaces as interfaces
@@ -24,7 +25,9 @@ FC_HOLE_CENTRES = mounting_plate.FC_HOLE_CENTRES
 # Equipment selection/placement is role-specific; the spare slots are not.
 COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
 COMMON_DECK_SIZE = mounting_plate.SIZE_MM
-RISER_SIZE_MM = (12.0, 12.0)
+# A full round section spreads the deck load while preserving the continuous
+# underside head paths of the innermost 16 mm square mounting pattern.
+CENTRAL_SUPPORT_DIAMETER_MM = 17.0
 NAVIGATION_CENTRE_XY = (0.0, -2.2)
 PAS_HOLE_CENTRES = tuple(
     (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
@@ -143,7 +146,13 @@ def common_plate_contract():
         "deck_size_mm": (*COMMON_DECK_SIZE, DECK_THICKNESS),
         "deck_centre_xy_mm": (0.0, 0.0),
         "outline_corner_radius_mm": mounting_plate.CORNER_RADIUS_MM,
-        "central_riser_size_xy_mm": RISER_SIZE_MM,
+        "central_support": {
+            "profile": "solid cylinder",
+            "diameter_mm": CENTRAL_SUPPORT_DIAMETER_MM,
+            "height_mm": DECK_BOTTOM_Z - rail.TOP_Z,
+            "z_range_mm": (rail.TOP_Z, DECK_BOTTOM_Z),
+            "scope": "Full circular section between the integral shoe and deck, with no separate spacer or added fastener. The common M2 slot head paths remain open. This geometric load path is not a strength or stiffness qualification.",
+        },
         "outline_half_turn_symmetric": True,
         "plate_quarter_turn_and_xy_mirror_symmetric": True,
         "fc_hole_centres_xy_mm": FC_HOLE_CENTRES,
@@ -163,10 +172,10 @@ def mount_shape(kind):
         raise ValueError("Unknown equipment mount kind: " + str(kind))
     pieces = [mounting_plate.shape(), rail.shoe_shape()]
     pieces.append(
-        box(
-            *RISER_SIZE_MM,
+        Part.makeCylinder(
+            CENTRAL_SUPPORT_DIAMETER_MM / 2,
             DECK_BOTTOM_Z - rail.TOP_Z + 0.2,
-            (-RISER_SIZE_MM[0] / 2, -RISER_SIZE_MM[1] / 2, rail.TOP_Z - 0.1),
+            V(0, 0, rail.TOP_Z - 0.1),
         )
     )
     shape = union(pieces)
@@ -252,7 +261,8 @@ def build_mount(doc, parent, kind):
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
         "Centred 64 x 64 mm rounded square deck, four FC bores and sixteen symmetric mounting slots, "
-        "integral rail shoe and shared outer slots for optional supports. Choose the occupied role at assembly. "
+        f"integral rail shoe joined to the deck by one solid diameter {CENTRAL_SUPPORT_DIAMETER_MM:g} mm circular support, "
+        "and shared outer slots for optional supports. The full support section keeps the underside M2 head paths and both rail-clamp approaches open. Choose the occupied role at assembly. "
         "Preserve the declared adhesive patches; spare slots do not qualify arbitrary simultaneous devices. "
         "No dedicated tie holes, separate radio plate, printed device spacers or added fasteners. "
         "Printed fit, clamping, adhesive retention, wiring, extension loads and actual device stacks remain unverified."
@@ -277,6 +287,12 @@ def build_mount(doc, parent, kind):
     set_property(obj, "FDMPrintValidated", False, "App::PropertyBool", "Printing")
     set_property(obj, "MountingStackVerified", False, "App::PropertyBool")
     set_property(obj, "EquipmentFaceZ", SUPPORT_FACE_Z, "App::PropertyLength")
+    set_property(
+        obj,
+        "CentralSupportDiameter",
+        CENTRAL_SUPPORT_DIAMETER_MM,
+        "App::PropertyLength",
+    )
     set_property(
         obj, "SourceURL", interfaces.FC_SOURCE if kind == "electronics" else rail.SOURCE
     )

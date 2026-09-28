@@ -42,10 +42,11 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BC:** coplanar removable servo joint; tether regulators on the vacant battery
-carrier. Square carriers and single-pitch optical mount retained.
-[Architecture](references/bc_architecture_review.md) ·
-[verification](references/bc_architecture_verification.json).
+**BD:** broader integral carrier supports; added tape wings under the battery
+station, preserving earlier trim stations. Coplanar removable servo joint and
+direct tether packaging retained from [BC](references/bc_architecture_review.md).
+[Rail/mount review](references/bd_rail_mount_review.md) ·
+[verification](references/bd_rail_mount_verification.json).
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
@@ -86,7 +87,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BC. Preserve them during refactors;
+The architecture-specific checks below describe BD. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -95,6 +96,10 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
 
 - Use shared oriented datums and correct movable parents (`wiring_reserves.parent_name()`),
   not merely matching world positions. Legacy object IDs can name old devices; read profiles.
+- Rail clamps must bear on complete head lands, not flex gaps. Tape proximity is
+  reported from saved geometry, not a load qualification or CG-trim restriction.
+  Qualify the close shoe fit straight and at actual installed curvature; no minimum
+  bend radius is established. Preserve underside screw-head and service access.
 - Three identical `UniversalEquipmentCarrier` prints: plate/openings have 90° rotation
   and X/Y reflection symmetry; shoe/clamp are directional. Preserve FC annuli, P-AS
   slot seats/datum offset and continuous lands/tape patches. M2 heads are unqualified

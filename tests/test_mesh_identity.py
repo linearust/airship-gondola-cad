@@ -48,6 +48,21 @@ class MeshSurfaceTests(unittest.TestCase):
         result = compare_mesh_surfaces(actual, expected)
         self.assertTrue(result["passed"], result)
 
+    def test_rail_rounding_above_identity_tolerance_is_rejected(self):
+        # Real corner-origin rail STL: shared float32 vertices alone do not
+        # establish equal surfaces. Opposite diagonals differ by 1.0789e-5 mm.
+        a = (174.64956665039062, 176.77088928222656, 1.67092764377594)
+        b = (174.65017700195312, 176.771484375, 1.7000000476837158)
+        c = (184.19610595703125, 186.3174285888672, 1.7000000476837158)
+        d = (184.19671630859375, 186.31802368164062, 1.67092764377594)
+        actual = mesh((a, b, d), (b, c, d))
+        expected = mesh((a, c, d), (a, b, c))
+        result = compare_mesh_surfaces(actual, expected)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["plane_tolerance_mm"], 1e-5)
+        self.assertTrue(result["uncovered_actual_triangles"])
+        self.assertTrue(result["uncovered_expected_triangles"])
+
     def test_missing_or_extra_surface_is_rejected_in_either_direction(self):
         missing = mesh((self.a, self.b, self.c))
         for actual, expected in ((self.square, missing), (missing, self.square)):

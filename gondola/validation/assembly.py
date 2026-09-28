@@ -17,6 +17,7 @@ import Part
 
 from gondola.bundle import print_artifact_paths
 from gondola.cad import (
+    placed_shape,
     translated_shape,
     world_shape,
 )
@@ -144,6 +145,48 @@ def rail_shoe_section(shapes, centre_y=0):
         V(bounds.XMin - 1, centre_y - rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
     )
     return compound.common(band)
+
+
+def tape_station_alignment(rail_object, modules, tapes, shapes):
+    """Report actual tape proximity; this is not a load or trim acceptance rule."""
+    inverse = rail_object.getGlobalPlacement().inverse()
+    tape_bounds = [
+        (obj.Name, placed_shape(shapes[obj.Name], inverse).BoundBox) for obj in tapes
+    ]
+    rows = []
+    for module in modules:
+        x = inverse.multVec(module.getGlobalPlacement().Base).x
+        land_centre = round(x / rail.LAND_PITCH) * rail.LAND_PITCH
+        nearest = {}
+        for side, label in ((-1, "negative_y"), (1, "positive_y")):
+            candidates = [
+                (name, bounds)
+                for name, bounds in tape_bounds
+                if side * bounds.YMin > 0 and side * bounds.YMax > 0
+            ]
+            if not candidates:
+                nearest[label] = None
+                continue
+            name, bounds = min(candidates, key=lambda item: abs(item[1].Center.x - x))
+            tape_x = bounds.Center.x
+            nearest[label] = {
+                "object": name,
+                "centre_x_mm": tape_x,
+                "centre_distance_mm": abs(tape_x - x),
+                "station_within_tape_width": bounds.XMin - TOL
+                <= x
+                <= bounds.XMax + TOL,
+                "same_head_land": abs(x - land_centre)
+                <= (rail.LAND_PITCH - rail.FLEX_GAP) / 2 + TOL
+                and abs(tape_x - land_centre) < TOL,
+            }
+        rows.append(
+            {"module": module.Name, "station_x_mm": x, "nearest_tapes": nearest}
+        )
+    return {
+        "modules": rows,
+        "scope": "Informational geometry in the rail frame, from saved module placements and tape solids. Proximity to a taped wing shortens the nominal load route; it does not qualify adhesion, base bending, tape placement or holding force. Other CG-trim positions are not prohibited by this report; recheck their installed support and cable routing.",
+    }
 
 
 def rail_check(registry, shapes):
@@ -302,6 +345,11 @@ def rail_check(registry, shapes):
         "matched_head_fit": matched_head_fit,
         "native_fit_annotations": fit_annotations,
         "tape_over_wing_checks": tape_rows,
+        "tape_station_alignment": tape_station_alignment(
+            objects[0], registry.Modules, registry.TapeReferences, shapes
+        )
+        if len(objects) == 1
+        else None,
         "head_is_uninterrupted": False,
         "one_piece_unbroken_base": True,
         "passed": len(objects) == 1

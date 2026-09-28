@@ -182,14 +182,21 @@ def manufacturing_shape(obj):
 
 
 def print_shape(obj):
-    """Orient a local part for manufacture and put its exact minimum at zero."""
+    """Orient for manufacture, centre XY for STL precision and seat Z at zero."""
     shape = manufacturing_shape(obj)
     rotation = obj.PrintRotation
     shape.rotate(App.Vector(), rotation.Axis, math.degrees(rotation.Angle))
-    # Legacy BoundBox may overestimate trimmed curves. Exact extrema keep the
-    # export on Z=0 and are essential when comparing repeated printed parts.
+    # Exact trimmed bounds avoid oversized curve boxes. Centring XY reduces
+    # float32 STL rounding; a corner origin doubled the rail's coordinate range
+    # and made equivalent face triangulations exceed the strict identity bound.
     bounds = shape.optimalBoundingBox(False, False)
-    shape.translate(App.Vector(-bounds.XMin, -bounds.YMin, -bounds.ZMin))
+    shape.translate(
+        App.Vector(
+            -(bounds.XMin + bounds.XMax) / 2,
+            -(bounds.YMin + bounds.YMax) / 2,
+            -bounds.ZMin,
+        )
+    )
     return shape
 
 
@@ -438,7 +445,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         if x and x + bounds.XLength > 380:
             x, y, row_depth = 0, y + row_depth + 15, 0
         view_shape = shape.copy()
-        view_shape.translate(App.Vector(x, y, 0))
+        view_shape.translate(App.Vector(x - bounds.XMin, y - bounds.YMin, 0))
         item = layout.addObject("Part::Feature", sku)
         item.Shape = view_shape
         installed_quantity = sum(part in installed for part in instances)
@@ -492,6 +499,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "source_fingerprint": source_fingerprint(),
         "mesh_parameters": MESH_PARAMETERS,
         "units": "mm",
+        "export_origin": "XY exact bounding-box centre; Z minimum zero. The native overview is separately arranged in positive XY.",
         "process": PRINT_PROCESS_DESCRIPTION,
         "manufacturing_decision": MANUFACTURING_DECISION,
         "manufacturing_release_status": "CAD checks do not qualify manufacture or physical interfaces; see release_status for every unresolved interface.",

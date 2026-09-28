@@ -123,6 +123,53 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     )
                 )
 
+    def test_round_support_has_a_full_section_between_unchanged_shoe_and_deck(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import rail
+
+        # Literal design dimensions keep the witness independent of the builder
+        # and reject a hollow, necked or incomplete support anywhere in its height.
+        support = Part.makeCylinder(8.5, 2.6, App.Vector(0, 0, 10.8))
+        support_band = Part.makeBox(64, 64, 2.6, App.Vector(-32, -32, 10.8))
+        shoe_band = Part.makeBox(64, 64, 10.8, App.Vector(-32, -32, 0))
+        for kind in mounts.MOUNT_NAMES:
+            shape = mounts.mount_shape(kind)
+            with self.subTest(kind=kind):
+                actual = shape.common(support_band)
+                self.assertLess(abs(support.cut(actual).Volume), 1e-6)
+                self.assertLess(abs(actual.cut(support).Volume), 1e-6)
+                shoe = shape.common(shoe_band)
+                self.assertLess(abs(shoe.cut(rail.shoe_shape()).Volume), 1e-6)
+                self.assertLess(abs(rail.shoe_shape().cut(shoe).Volume), 1e-6)
+        contract = mounts.common_plate_contract()["central_support"]
+        self.assertEqual(contract["profile"], "solid cylinder")
+        self.assertEqual(contract["diameter_mm"], 17.0)
+        self.assertAlmostEqual(contract["height_mm"], 2.6)
+        self.assertEqual(contract["z_range_mm"], (10.8, 13.4))
+
+    def test_carrier_keeps_continuous_nut_loading_and_clamp_release_open(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import rail
+        from gondola.validation.geometry import translation_sweep
+
+        carrier = mounts.mount_shape("battery")
+        # Fill the nut bore for an exact planar sweep containing the whole nut.
+        nut = rail.hex_along_y(
+            rail.NUT_AF,
+            rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH - rail.NUT_THICKNESS,
+            rail.NUT_THICKNESS,
+        )
+        for side in (-1, 1):
+            transform = rail.half_turn if side < 0 else lambda shape: shape
+            for hardware, travel in (
+                (nut, (side * 24, 0, 0)),
+                (rail.clamp_screw_shape(), (0, side * rail.RELEASE_TRAVEL, 0)),
+            ):
+                with self.subTest(side=side, travel=travel):
+                    sweep, method = translation_sweep(transform(hardware), travel)
+                    self.assertIn("face-prism", method)
+                    self.assertLess(abs(sweep.common(carrier).Volume), 1e-6)
+
     def test_all_roles_keep_a_full_common_deck_and_all_shared_holes(self):
         from gondola.parts import equipment_mounts as mounts
 
@@ -362,7 +409,9 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for side in (-1, 1):
             with self.subTest(approach_side=side):
                 correct = rail_key_service_check(
-                    {"radio": body}, side=side, inserted_leg="long"
+                    {"carrier": mounts.mount_shape("accessory"), "radio": body},
+                    side=side,
+                    inserted_leg="long",
                 )
                 self.assertTrue(correct["passed"], correct)
                 # The earlier +/-Y location blocks whichever clamp approaches

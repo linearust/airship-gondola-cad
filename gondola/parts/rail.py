@@ -26,7 +26,8 @@ from gondola.contracts.hardware import HEX_NUT_SOURCE
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
-PAD_CENTRES = (-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
+# Keep the original trim-support stations and add wings at the battery land.
+PAD_CENTRES = (-162.0, -108.0, -90.0, -54.0, 0.0, 54.0, 90.0, 108.0, 162.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.2
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
 HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 8.4
@@ -412,7 +413,7 @@ def build_rail(doc):
         rail_shape(),
         App.Rotation(),
         f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x{HEAD_TOP:g}mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
-        "Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
+        f"{len(PAD_CENTRES)} paired tape-wing stations use {2 * len(PAD_CENTRES)} separate strip references. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
         "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. "
         "Head/shoe nominal trial clearance is0.1mm per side and above/below; relieved web clearance is0.45mm per side. Print matching coupons first, finish/recalibrate to hand-push fit without rocking or free sliding; bolt is an additional lock. Raw PA12 tolerance does not guarantee this fit. "
         "The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. "
@@ -468,7 +469,7 @@ def build_coupons(doc):
         "PRINT FIRST | 48mm T rail with tape wing",
         rail_shape(48, (0,)),
         App.Rotation(),
-        "PA12 SLS/MJF matched sample for hand-push rail fit, secondary clamp and tape-over-wing trial. Same section as full rail. Print with the intended supplier/process/finish and relevant production orientation; transfer only after checking full-length straightness and fit. Nominal head clearance0.1mm per face is a coupon starting value, not guaranteed as-printed fit.",
+        "PA12 SLS/MJF matched sample for hand-push rail fit, secondary clamp and tape-over-wing trial. Same section as full rail. Print with the intended supplier/process/finish and relevant production orientation. Test the coupon straight and bent to the intended installation curvature; then check the full rail and every used station in the actual taped curvature. No minimum bend radius is qualified, and a short coupon does not establish full-length fit. Nominal head clearance0.1mm per face is a coupon starting value, not guaranteed as-printed fit.",
     )
     shoe_coupon = create_printed_part(
         doc,
@@ -615,7 +616,7 @@ def fit_contract():
             round(total_z - 2 * size_error, 6),
             round(total_z + 2 * size_error, 6),
         ],
-        "physical_acceptance": "With clamp screw backed off, matched parts push together and reposition by hand without rocking or free sliding. No numeric interference or insertion force is prescribed; prove fit on process-matched coupons and then the full rail at every used station.",
+        "physical_acceptance": "With clamp screw backed off, matched parts push together and reposition by hand without rocking or free sliding. No numeric interference or insertion force is prescribed. Test process-matched coupons straight and at the intended installation curvature, then the full rail at every used station in its actual taped curvature. No minimum bend radius is qualified, and the short coupon does not establish full-length fit.",
         "fit_correction": "Lightly finish tight head-contact faces evenly; compensate dimensions and reprint a loose pair. Sanding cannot remove excessive clearance. Do not force the flexible rail. Keep the relieved web free and use the bolt only as an additional lock.",
         "manufacturing_tolerance_rule": "Creallo SLS/MJF +/-0.3%, minimum+/-0.3mm. The nominal 0.2mm total head gap is below the general 0.3mm assembly-gap guide and intentionally requires matched-coupon correction; it is not a guarantee of raw print assembly.",
         "as_printed_fit_guaranteed": False,
@@ -737,7 +738,7 @@ def validate_mechanism():
         "released_slide_path": slide_samples,
         "release": "Loosen M2x0.4 screw three turns, reposition the matched shoe by hand along the rail; remove at an open rail end. No lift-off in the middle. Nominal CAD clearance does not prove the required snug hand fit.",
         "axial_lock": "Coupon-matched friction fit with an additional screw lock; no numerical retention/torque qualification.",
-        "tape": "Two separate strips over each side wing, not under rail, not across central cap",
+        "tape": "One strip over each lateral wing, two separate strips per station; not under rail or across the central cap",
         "tape_to_shoe_nominal_vertical_gap_mm": SHOE_BOTTOM
         - PAD_THICKNESS
         - TAPE_THICKNESS,

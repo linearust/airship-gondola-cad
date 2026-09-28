@@ -12,6 +12,67 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class RailContactTests(unittest.TestCase):
+    def test_battery_wings_add_only_local_base_material_and_preserve_old_supports(self):
+        import Part
+
+        from gondola.parts import rail
+
+        original = rail.rail_shape(
+            pads=(-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
+        )
+        current = rail.rail_shape()
+        self.assertTrue(current.isValid())
+        self.assertEqual(len(current.Solids), 1)
+        self.assertLess(original.cut(current).Volume, 1e-6)
+        added = current.cut(original)
+        # Two rounded 14×32×1.2 plates, excluding their shared 6 mm base.
+        expected_added = 2 * (14 * (32 - 6) - 4 * 3**2 + math.pi * 3**2) * 1.2
+        self.assertAlmostEqual(added.Volume, expected_added, places=5)
+        permitted = Part.makeCompound(
+            [Part.makeBox(14, 32, 1.2, App.Vector(x - 7, -16, 0)) for x in (-90, 90)]
+        )
+        self.assertLess(added.cut(permitted).Volume, 1e-6)
+        self.assertAlmostEqual(current.BoundBox.XLength, 340)
+        self.assertAlmostEqual(current.BoundBox.YLength, 32)
+        self.assertAlmostEqual(current.BoundBox.ZLength, 8.4)
+        # The added wings do not fill any raised head/web relief.
+        self.assertTrue(rail.flex_relief_check(current, 340)["passed"])
+
+    def test_nine_paired_tape_stations_keep_the_single_wing_coupon(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import rail
+
+        doc = App.newDocument("RailWingStationsTest")
+        try:
+            kit = rail.build_rail(doc)
+            self.assertEqual(len(kit["printed"]), 1)
+            self.assertEqual(len(kit["tapes"]), 18)
+            centres = sorted(
+                round((obj.Shape.BoundBox.XMin + obj.Shape.BoundBox.XMax) / 2, 6)
+                for obj in kit["tapes"]
+            )
+            self.assertEqual(
+                centres,
+                sorted([-162, -108, -90, -54, 0, 54, 90, 108, 162] * 2),
+            )
+            solid = kit["printed"][0].Shape
+            for tape in kit["tapes"]:
+                with self.subTest(tape=tape.Name):
+                    self.assertLess(tape.Shape.common(solid).Volume, 1e-6)
+                    self.assertGreater(
+                        translated_shape(tape.Shape, z=-0.01).common(solid).Volume,
+                        1.0,
+                    )
+            coupons = rail.build_coupons(doc)
+            self.assertEqual(len(coupons["printed"]), 2)
+            coupon = doc.RailFitSample.Shape
+            expected_coupon = rail.rail_shape(48, (0,))
+            self.assertLess(coupon.cut(expected_coupon).Volume, 1e-6)
+            self.assertLess(expected_coupon.cut(coupon).Volume, 1e-6)
+            self.assertAlmostEqual(coupon.BoundBox.XLength, 48)
+        finally:
+            App.closeDocument(doc.Name)
+
     def test_flex_reliefs_are_open_through_the_entire_raised_head(self):
         from gondola.parts import rail
 

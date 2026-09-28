@@ -75,9 +75,9 @@ def mirrored_y(shape, sign):
 def create_printed_part(doc, parent, name, label, shape, rotation, notes):
     """Create one printed solid with explicit local-to-print orientation.
 
-    PrintPlacement is the native FreeCAD preview placement. The export path
-    computes exact trimmed bounds separately; this preserves the saved design's
-    existing orientation metadata and does not change assembly geometry.
+    PrintPlacement retains the corner-origin native preview placement. Exports
+    centre XY using exact trimmed bounds for STL precision and seat Z at zero;
+    they use PrintRotation, not this preview translation.
     """
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Not one valid printed solid: " + name)
@@ -104,7 +104,7 @@ def create_printed_part(doc, parent, name, label, shape, rotation, notes):
 
 
 def update_print_orientation(obj):
-    """Refresh propulsion print placement and height from its stored rotation.
+    """Refresh legacy corner-origin preview placement from the stored rotation.
 
     Replacing Shape.Placement rather than composing it is intentional: these
     parts are expressed in their journal frame before the assembly moves them.
