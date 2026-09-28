@@ -43,7 +43,7 @@ class ExportIntegrityTests(unittest.TestCase):
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.contracts.equipment_interfaces": Mock(),
             "gondola.cad": types.SimpleNamespace(
-                world_shape=Mock(), belongs_to_group=Mock()
+                world_shape=Mock(), belongs_to_group=Mock(), placed_shape=Mock()
             ),
             "gondola.validation.geometry": types.SimpleNamespace(
                 intersection_volume=Mock(),

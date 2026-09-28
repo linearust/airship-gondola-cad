@@ -1,12 +1,54 @@
 """Invalid numeric audit evidence must not silently pass."""
 
+import math
 import unittest
 
-from gondola.validation.evidence import overlap_failures
+from gondola.validation.evidence import comparison_passed, overlap_failures
 from gondola.validation.propulsion_evidence import (
     PROPULSION_EVIDENCE_COUNTS,
     propulsion_evidence_check,
 )
+
+
+class ComparisonEvidenceTests(unittest.TestCase):
+    def comparison(self):
+        return {
+            "difference_mm3": 0.0,
+            "bounds_difference_mm": 0.0,
+            "volume_difference_mm3": 0.0,
+        }
+
+    def test_every_metric_must_be_strictly_below_the_callers_tolerance(self):
+        for tolerance in (1e-6, 1e-5):
+            for key in self.comparison():
+                for value, expected in (
+                    (math.nextafter(tolerance, 0.0), True),
+                    (tolerance, False),
+                    (math.nextafter(tolerance, math.inf), False),
+                ):
+                    with self.subTest(tolerance=tolerance, field=key, value=value):
+                        comparison = self.comparison()
+                        comparison[key] = value
+                        self.assertIs(
+                            comparison_passed(comparison, tolerance), expected
+                        )
+
+    def test_nan_or_infinite_difference_cannot_pass(self):
+        for key in self.comparison():
+            for value in (math.nan, math.inf):
+                with self.subTest(field=key, value=value):
+                    comparison = self.comparison()
+                    comparison[key] = value
+                    self.assertFalse(comparison_passed(comparison, 1e-5))
+
+    def test_general_geometry_gate_does_not_apply_step_empty_cut_exception(self):
+        comparison = self.comparison()
+        comparison.update(
+            volume_difference_mm3=0.1,
+            closed_solid_identity_by_empty_cuts=True,
+            passed=True,
+        )
+        self.assertFalse(comparison_passed(comparison, 1e-5))
 
 
 class OverlapEvidenceTests(unittest.TestCase):

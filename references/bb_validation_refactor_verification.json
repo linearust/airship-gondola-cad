@@ -1,0 +1,142 @@
+{
+  "revision": "BB",
+  "kind": "behavior_preserving_validation_and_runtime_refactor",
+  "verified_utc": "2026-09-28T08:16:51.907203+00:00",
+  "base_commit": "7248924d4de3a8b29ec50ec659728f2d420fc1a4",
+  "source_fingerprint": "1af218b46e438ebe2bb6da17d9eb4d19dae9dd7d33ce95f3e7107ddbaaf5acab",
+  "previous_source_fingerprint": "ae79d47805445ab619af1466c87843fe93572ab68f4d3c2f6930df9f05c6ee80",
+  "previous_verification": "references/bb_refactor_verification.json",
+  "fixture": "tests/fixtures/rev_bb_geometry.FCStd",
+  "fixture_sha256": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2",
+  "fixture_unchanged": true,
+  "passed": true,
+  "production_qualified": false,
+  "changes": [
+    "Shared strict three-metric comparison gate; each validator retains its original tolerance and report schema.",
+    "Shared copied-shape placement composition; world_shape keeps its distinct replacement semantics.",
+    "FreeCAD preview lifecycle and failure-state recording separated from AppImage dispatch.",
+    "Regression coverage for tolerance boundaries, nonfinite differences, placement order/aliasing and preview error provenance."
+  ],
+  "preserved": [
+    "Geometry, dimensions, parts and purchased hardware",
+    "Local/world placements, hierarchy and saved contracts",
+    "Expressions, registries and all 27 main native control cases",
+    "Validation decisions, measurements and report keys",
+    "Pinned BB fixture"
+  ],
+  "equivalence": {
+    "main": {
+      "shape_count": 113,
+      "shape_and_native_deltas": 0,
+      "saved_property_exceptions": [
+        "regenerated Uid",
+        "updated SourceFingerprint"
+      ],
+      "exact_saved_brep_payloads_identical": true
+    },
+    "optional": {
+      "shape_count": 122,
+      "shape_and_native_deltas": 0,
+      "saved_property_exceptions": [
+        "regenerated Uid",
+        "updated SourceFingerprint"
+      ],
+      "exact_saved_brep_payloads_identical": true
+    }
+  },
+  "independent_review": {
+    "static_passed": true,
+    "native_passed": true,
+    "findings": []
+  },
+  "report_comparison": {
+    "passed": true,
+    "scope": "Every field of all top-level build JSON reports except preview_state.json; preview freshness is checked separately. Only exact recorded source/artifact hash changes in explicit provenance fields are accepted. Duplicate keys are rejected; file inventory and all deltas are rechecked.",
+    "report_count": 9,
+    "report_schema_and_nonprovenance_values_unchanged": true,
+    "expected_hash_delta_count": 66,
+    "unexplained_deltas": []
+  },
+  "native_tests": {
+    "passed": true,
+    "test_count": 462,
+    "module_count": 47,
+    "skip_count": 0,
+    "source_tests_fixture_frozen": true,
+    "exact_discovery_execution_match": true,
+    "successful_complete_runs": 1,
+    "prior_attempt": "Stopped after export-integrity tests exposed a missing placed_shape attribute in their fake CAD module. Test stub updated without changing assertions or application code; full suite restarted. Both attempts retained."
+  },
+  "artifact_pipeline": [
+    {
+      "stage": "build",
+      "exit_code": 0,
+      "wall_seconds": 18.003,
+      "source_unchanged": true
+    },
+    {
+      "stage": "preview",
+      "exit_code": 0,
+      "wall_seconds": 48.711,
+      "source_unchanged": true
+    },
+    {
+      "stage": "compare",
+      "exit_code": 0,
+      "wall_seconds": 13.222,
+      "source_unchanged": true
+    },
+    {
+      "stage": "validate",
+      "exit_code": 0,
+      "wall_seconds": 1003.608,
+      "source_unchanged": true
+    },
+    {
+      "stage": "bundle",
+      "exit_code": 0,
+      "wall_seconds": 0.194,
+      "source_unchanged": true
+    }
+  ],
+  "final_artifacts": {
+    "gondola.FCStd": "c500fb1caa9f21b66736cf731696d837e7d9d10e5e6f7bf4a8f34858ac920945",
+    "gondola_power_options.FCStd": "38854630471bf544c2fefbbe301a6f0d1228e127dfbf959d588318db04efba22",
+    "gondola_validation.json": "dcb4f1871977050bc8849522ee9855e43305850541db2f9d2d83d552a269458e",
+    "gondola_baseline_validation.json": "cce1d0decab31eca1d41b5d0b992506546779a3ebbaa9d40a3386738b205fb44",
+    "gondola_power_validation.json": "205aa3eabc2e36eac2290914939eab4deb8f3c734228b76271a8a8970ec8e1c2"
+  },
+  "preview": {
+    "passed": true,
+    "image_count": 14
+  },
+  "blender": {
+    "passed": true,
+    "scene_count": 7,
+    "cad_sha256": "c500fb1caa9f21b66736cf731696d837e7d9d10e5e6f7bf4a8f34858ac920945",
+    "blend_sha256": "2355149676ab687bb1f2e2608409664358ca7f59b9e604d135f98ef4997c9599",
+    "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed."
+  },
+  "limitations": "Preserves the geometric prototype; no additional physical, electrical, wire-flex, structural or flight qualification.",
+  "retained_evidence": {
+    "path": "references/bb_validation_refactor_checks.json.gz",
+    "sha256": "2171e21e1f083a8c12168dbc122e90e0a42b79ebba59b7bae7a0148d8ffff1bc",
+    "format": "gzip JSON: complete native test evidence, reports, old/new comparisons and audit programs"
+  },
+  "independent_report_review": {
+    "passed": true,
+    "findings": [],
+    "source_fingerprint": "1af218b46e438ebe2bb6da17d9eb4d19dae9dd7d33ce95f3e7107ddbaaf5acab",
+    "scope": "Reviewed hardened final comparison programs and all changed report paths; independently parsed and recursively compared all nine old/new top-level build JSON reports except separately checked preview_state.json. Checked schema, primitive types, list lengths, scalar differences, report inventory, exact digest pairs, and retained evidence identity.",
+    "report_count": 9,
+    "independently_recomputed_delta_count": 66,
+    "schema_changes": 0,
+    "measurement_or_decision_changes": 0,
+    "nonhash_scalar_changes": 0,
+    "unexplained_digest_pairs": 0,
+    "accepted_changes": "All 66 differences occur in reviewed provenance/hash fields and match verified old/new source fingerprints or exact file digest pairs.",
+    "audit_hardening_review": "Duplicate JSON keys are rejected; current report inventory is asserted; deltas are recomputed; accepted digest changes require explicit provenance fields. Earlier audit-strength concerns are resolved for these captured reports.",
+    "retained_evidence_review": "Archive SHA256 matches verification manifest; retained final diff/review and comparison programs match the inspected files.",
+    "limits": "No native suite or pipeline rerun was performed during this final independent report review."
+  }
+}

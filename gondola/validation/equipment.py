@@ -10,6 +10,7 @@ import Part
 
 from gondola.cad import (
     belongs_to_group,
+    placed_shape,
     world_shape,
 )
 from gondola.config import ARTIFACT_SCHEMA_VERSION, ARTIFACT_STEM, OUTPUT_DIR, REPO_ROOT
@@ -41,6 +42,7 @@ from gondola.procurement import (
 from gondola.provenance import file_sha256, source_fingerprint
 
 from . import wiring as wiring_validation
+from .evidence import comparison_passed
 from .geometry import (
     intersection_volume,
     local_shape,
@@ -49,19 +51,6 @@ from .geometry import (
 from .optical import mtf_sensor_check
 
 TOL = 1e-6
-
-
-def _comparison_passed(comparison):
-    return all(
-        comparison[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
-
-
-def _in_parent_frame(shape, parent):
-    result = shape.copy()
-    result.Placement = parent.getGlobalPlacement().multiply(result.Placement)
-    return result
 
 
 def fc_installation_check(doc):
@@ -413,7 +402,7 @@ def mounting_check(doc):
         )
         shared_print_matches = (
             shared_comparison is not None
-            and _comparison_passed(shared_comparison)
+            and comparison_passed(shared_comparison, TOL)
             and str(getattr(obj, "PrintSKU", "")) == mounts.COMMON_PRINT_SKU
             and str(getattr(obj, "MountKind", "")) == kind
             and "HalfTurnSymmetric" in obj.PropertiesList
@@ -436,7 +425,7 @@ def mounting_check(doc):
                 and obj in registry.PrintedParts
                 and shape.isValid()
                 and len(shape.Solids) == 1
-                and _comparison_passed(comparison)
+                and comparison_passed(comparison, TOL)
                 and contract_matches
                 and no_posts
                 and unverified_stack
@@ -501,7 +490,9 @@ def mounting_check(doc):
         )
         obj = doc.getObject(name)
         body = physical_shapes_by_name[name]
-        comparison = geometry_comparison(body, _in_parent_frame(factory(), parent))
+        comparison = geometry_comparison(
+            body, placed_shape(factory(), parent.getGlobalPlacement())
+        )
         bounds = body.optimalBoundingBox(False, False)
         holes = []
         for centre in centres:
@@ -540,7 +531,7 @@ def mounting_check(doc):
                 == parent,
                 "holes": holes,
                 "passed": axes_match
-                and _comparison_passed(comparison)
+                and comparison_passed(comparison, TOL)
                 and obj.getParentGeoFeatureGroup() == parent
                 and all(row["passed"] for row in holes),
             }
@@ -621,7 +612,7 @@ def mounting_check(doc):
         if name == "ModuleFCEnvelope":
             space.rotate(App.Vector(), App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
         space.translate(App.Vector(*centre, 0))
-        space = _in_parent_frame(space, parent)
+        space = placed_shape(space, parent.getGlobalPlacement())
         hits = [
             {
                 "object": other.Name,
@@ -648,8 +639,9 @@ def mounting_check(doc):
         actual = world_shape(reserve)
         comparison = geometry_comparison(
             actual,
-            _in_parent_frame(
-                wiring_clearances.reserve_shapes()["FCWiringClearanceReserve"], parent
+            placed_shape(
+                wiring_clearances.reserve_shapes()["FCWiringClearanceReserve"],
+                parent.getGlobalPlacement(),
             ),
         )
         hits = [
@@ -683,7 +675,7 @@ def mounting_check(doc):
             "passed": reserve in registry.ClearanceVolumes
             and reserve not in registry.PrintedParts
             and reserve not in registry.HardwareParts
-            and _comparison_passed(comparison)
+            and comparison_passed(comparison, TOL)
             and not hits
             and all(row["passed"] for row in axis_distances),
         }

@@ -48,7 +48,7 @@ Source defines implementation, not physical qualification or immutable requireme
 **BB:** square slotted carriers, compact single-pitch optical pedestal.
 [Design](references/square_mount_review.md) ·
 [original verification](references/square_mount_verification.json) ·
-[refactor verification](references/bb_refactor_verification.json).
+[refactor verification](references/bb_validation_refactor_verification.json).
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |

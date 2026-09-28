@@ -3,6 +3,14 @@
 import math
 
 
+def comparison_passed(comparison, tolerance):
+    """Require every geometric difference to be strictly below the caller's limit."""
+    return all(
+        comparison[key] < tolerance
+        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
+    )
+
+
 def overlap_failures(value, tolerance, location=""):
     """Find nonzero or nonfinite overlap volumes in nested audit reports.
 

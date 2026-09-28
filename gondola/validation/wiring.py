@@ -3,10 +3,11 @@
 import json
 import math
 
-from gondola.cad import world_shape
+from gondola.cad import placed_shape, world_shape
 from gondola.parts import optical_sensor
 from gondola.print_export import geometry_comparison
 
+from .evidence import comparison_passed
 from .geometry import intersection_volume
 
 TOL = 1e-6
@@ -139,7 +140,7 @@ def _connector_geometry_check(actual, expected, hits):
         "source_comparison": comparison,
         "one_connected_solid": connected,
         "continuous_reserved_space_collisions": hits,
-        "passed": connected and _comparison_passed(comparison) and not hits,
+        "passed": connected and comparison_passed(comparison, TOL) and not hits,
     }
 
 
@@ -236,7 +237,9 @@ def reserve_checks(doc):
             source_check = (
                 _connector_geometry_check(
                     shape,
-                    _in_parent_frame(expected_shapes[name], expected_parent),
+                    placed_shape(
+                        expected_shapes[name], expected_parent.getGlobalPlacement()
+                    ),
                     physical_hits,
                 )
                 if expected_parent is not None
@@ -407,16 +410,3 @@ def reserve_checks(doc):
                 }
             )
     return checks, pairs
-
-
-def _comparison_passed(comparison):
-    return all(
-        comparison[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
-
-
-def _in_parent_frame(shape, parent):
-    result = shape.copy()
-    result.Placement = parent.getGlobalPlacement().multiply(result.Placement)
-    return result

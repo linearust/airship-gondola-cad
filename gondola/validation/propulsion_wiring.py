@@ -5,10 +5,11 @@ import json
 import FreeCAD as App
 import Part
 
-from gondola.cad import world_shape
+from gondola.cad import placed_shape, world_shape
 from gondola.parts import propulsion_wiring as wiring
 from gondola.print_export import geometry_comparison
 
+from .evidence import comparison_passed
 from .wiring import collision_hits
 
 TOL = 1e-6
@@ -40,10 +41,7 @@ def route_geometry_check(actual, expected, obstacles, fc_reserve, endpoint):
     ):
         return {"passed": False, "error": "route must be one valid connected solid"}
     comparison = geometry_comparison(actual, expected)
-    source_matches = all(
-        comparison[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
+    source_matches = comparison_passed(comparison, TOL)
     hits = collision_hits(actual, obstacles)
     connection = connection_check(actual, fc_reserve, endpoint)
     return {
@@ -53,12 +51,6 @@ def route_geometry_check(actual, expected, obstacles, fc_reserve, endpoint):
         "fc_terminal_connection": connection,
         "passed": source_matches and not hits and connection["passed"],
     }
-
-
-def _world_geometry(shape, placement):
-    result = shape.copy()
-    result.Placement = placement.multiply(result.Placement)
-    return result
 
 
 def check(doc):
@@ -93,7 +85,7 @@ def check(doc):
         except (ValueError, RuntimeError) as error:
             rows.append({**row, "passed": False, "error": str(error)})
             continue
-        expected = _world_geometry(geometry["shape"], propulsion_placement)
+        expected = placed_shape(geometry["shape"], propulsion_placement)
         endpoint = propulsion_placement.multVec(App.Vector(*geometry["points"][-1]))
         route_obstacles = dict(obstacles)
         route_obstacles.update(

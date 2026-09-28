@@ -114,6 +114,97 @@ class FreeCADLauncher(unittest.TestCase):
             json.loads((self.output / "preview_state.json").read_text())["passed"]
         )
 
+    def test_preview_failure_discards_unreadable_or_unrelated_state(self):
+        for saved_state in (
+            None,
+            '{"passed":',
+            '["not a result object"]',
+            json.dumps(
+                {
+                    "passed": True,
+                    "run_id": "previous invocation",
+                    "error": "previous error",
+                    "source_sha256": "previous CAD",
+                }
+            ),
+        ):
+            with self.subTest(saved_state=saved_state):
+                error = RuntimeError("GUI did not close")
+                state_path = self.output / "preview_state.json"
+
+                def child(args, env):
+                    if saved_state is None:
+                        state_path.unlink()
+                    else:
+                        state_path.write_text(saved_state)
+                    raise error
+
+                with patch.object(
+                    freecad_runtime, "_run_preview_process", side_effect=child
+                ) as run:
+                    with self.assertRaises(RuntimeError) as raised:
+                        freecad_runtime.run_with_freecad("preview", self.output)
+                self.assertIs(raised.exception, error)
+                run_id = run.call_args.args[1]["GONDOLA_PREVIEW_RUN_ID"]
+                self.assertEqual(
+                    json.loads(state_path.read_text()),
+                    {
+                        "passed": False,
+                        "status": "failed",
+                        "run_id": run_id,
+                        "error": "GUI did not close",
+                    },
+                )
+
+    def test_preview_failure_preserves_current_details_and_reported_error(self):
+        for reported_error in (None, "", "Traceback details\nRendering failed."):
+            with self.subTest(reported_error=reported_error):
+                error = RuntimeError("GUI did not close")
+
+                def child(args, env):
+                    self.write_result(
+                        env, error=reported_error, views={"assembly": "rendered"}
+                    )
+                    raise error
+
+                with patch.object(
+                    freecad_runtime, "_run_preview_process", side_effect=child
+                ) as run:
+                    with self.assertRaises(RuntimeError) as raised:
+                        freecad_runtime.run_with_freecad("preview", self.output)
+                self.assertIs(raised.exception, error)
+                run_id = run.call_args.args[1]["GONDOLA_PREVIEW_RUN_ID"]
+                self.assertEqual(
+                    json.loads((self.output / "preview_state.json").read_text()),
+                    {
+                        "passed": False,
+                        "status": "failed",
+                        "run_id": run_id,
+                        "source_fingerprint": self.fingerprint,
+                        "source_sha256": hashlib.sha256(
+                            self.cad.read_bytes()
+                        ).hexdigest(),
+                        "error": reported_error or "GUI did not close",
+                        "views": {"assembly": "rendered"},
+                    },
+                )
+
+    def test_preview_interruption_records_failure_and_propagates(self):
+        with patch.object(
+            freecad_runtime, "_run_preview_process", side_effect=KeyboardInterrupt
+        ) as run:
+            with self.assertRaises(KeyboardInterrupt):
+                freecad_runtime.run_with_freecad("preview", self.output)
+        self.assertEqual(
+            json.loads((self.output / "preview_state.json").read_text()),
+            {
+                "passed": False,
+                "status": "failed",
+                "run_id": run.call_args.args[1]["GONDOLA_PREVIEW_RUN_ID"],
+                "error": "Preview interrupted.",
+            },
+        )
+
     def test_preview_timeout_terminates_then_kills_unresponsive_process_group(self):
         process = Mock(pid=4321)
         process.wait.side_effect = [

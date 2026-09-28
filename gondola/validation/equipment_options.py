@@ -11,7 +11,7 @@ import json
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, world_shape
+from gondola.cad import belongs_to_group, placed_shape, world_shape
 from gondola.contracts.equipment_options import (
     NAVIGATION_PROFILES,
     RADIO_PROFILES,
@@ -34,6 +34,7 @@ from gondola.parts import (
 )
 from gondola.print_export import geometry_comparison
 
+from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape, translation_sweep
 from .optical import ANGLES, _external_field_bound
 from .wiring import collision_hits, measure_clearances, named_gap_checks
@@ -48,18 +49,9 @@ OPTION_RESERVES = tuple(
 )
 
 
-def _placed(shape, placement):
-    result = shape.copy()
-    result.Placement = placement.multiply(result.Placement)
-    return result
-
-
 def _matches(first, second):
     comparison = geometry_comparison(first, second)
-    return comparison, all(
-        comparison[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
+    return comparison, comparison_passed(comparison, TOL)
 
 
 def adhesive_support_check(support, body, centre, size, *, face="top"):
@@ -135,7 +127,8 @@ def source_evidence(doc):
             rows.append({"object": name, "passed": False, "error": "Missing device"})
             continue
         comparison, geometry_ok = _matches(
-            world_shape(obj), _placed(factory(profile), parent.getGlobalPlacement())
+            world_shape(obj),
+            placed_shape(factory(profile), parent.getGlobalPlacement()),
         )
         try:
             metadata_ok = json.loads(str(getattr(obj, field))) == json.loads(
@@ -178,7 +171,7 @@ def source_evidence(doc):
             )
             continue
         comparison, geometry_ok = _matches(
-            world_shape(obj), _placed(expected[name], parent.getGlobalPlacement())
+            world_shape(obj), placed_shape(expected[name], parent.getGlobalPlacement())
         )
         try:
             metadata_ok = json.loads(str(obj.WiringContract)) == json.loads(
@@ -215,7 +208,7 @@ def _optical_screens(doc):
             optical_interface.attach_to_host(kit["group"], host)
             placement = kit["group"].getGlobalPlacement()
             service = [
-                (tool, _placed(shape, placement))
+                (tool, placed_shape(shape, placement))
                 for tool, shape in optical_interface.clamp_tool_reservations()
             ]
             for index in range(2):
@@ -231,18 +224,18 @@ def _optical_screens(doc):
                     optical_mount.set_pitch(temporary, pitch)
                     pitch_placement = kit["pitch_stage"].getGlobalPlacement()
                     shapes = {obj.Name: world_shape(obj) for obj in physical}
-                    shapes["ModuleMTF02PEnvelope"] = _placed(
+                    shapes["ModuleMTF02PEnvelope"] = placed_shape(
                         optical_sensor.envelope_shape(profile), pitch_placement
                     )
                     poses.append(
                         {
                             "pitch_deg": pitch,
                             "physical": shapes,
-                            "field": _placed(
+                            "field": placed_shape(
                                 optical_sensor.optical_reserve_shape(profile),
                                 pitch_placement,
                             ),
-                            "connector": _placed(
+                            "connector": placed_shape(
                                 optical_sensor.connector_reserve_shape(profile),
                                 pitch_placement,
                             ),
@@ -258,7 +251,7 @@ def _optical_screens(doc):
                         continue
                     shapes = (
                         [
-                            _placed(shape, placement)
+                            placed_shape(shape, placement)
                             for shape in optical_interface.base_service_proxies()
                         ]
                         if obj.Name == "OpticalMountBase"
@@ -452,10 +445,10 @@ def compatibility_check(doc):
             BODY_NAMES[1]: devices.radio_envelope_shape(radio),
         }
         bodies = {
-            name: _placed(shape, placement) for name, shape in local_bodies.items()
+            name: placed_shape(shape, placement) for name, shape in local_bodies.items()
         }
         reserves = {
-            name: _placed(shape, placement)
+            name: placed_shape(shape, placement)
             for name, shape in wiring_reserves.reserve_shapes(navigation, radio).items()
             if name in OPTION_RESERVES and name != "NavigationDirectAntennaReserve"
         }
@@ -565,7 +558,7 @@ def compatibility_check(doc):
         antenna = None
         direct = wiring_reserves.direct_antenna_reserve_shape(navigation)
         if direct is not None:
-            direct = _placed(direct, placement)
+            direct = placed_shape(direct, placement)
             collisions = collision_hits(
                 direct,
                 {

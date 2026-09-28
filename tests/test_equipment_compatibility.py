@@ -183,19 +183,21 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.removeObject(blocker.Name)
 
     def test_direct_helix_requires_clear_battery_optical_host(self):
+        from gondola.cad import placed_shape
         from gondola.contracts.equipment_options import get_navigation_profile
         from gondola.parts import wiring_reserves
         from gondola.validation.equipment_options import (
             _optical_option_check,
             _optical_screens,
-            _placed,
         )
 
         screens = _optical_screens(self.doc)
         direct = wiring_reserves.direct_antenna_reserve_shape(
             get_navigation_profile("MGF10A")
         )
-        direct = _placed(direct, self.doc.AccessoryEquipmentModule.getGlobalPlacement())
+        direct = placed_shape(
+            direct, self.doc.AccessoryEquipmentModule.getGlobalPlacement()
+        )
         cache = {}
         for host, expected in (
             ("BatteryEquipmentModule", True),

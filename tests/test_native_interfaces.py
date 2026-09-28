@@ -11,6 +11,32 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeInterfaceTests(unittest.TestCase):
+    def test_placed_shape_composes_nonidentity_frames_without_mutating_source(self):
+        from gondola.cad import placed_shape
+
+        shape = Part.makeBox(2, 3, 4)
+        shape.Placement = App.Placement(
+            App.Vector(3, 5, 7), App.Rotation(App.Vector(1, 0, 0), 90)
+        )
+        original_placement = shape.Placement.copy()
+        original_vertices = [vertex.Point for vertex in shape.Vertexes]
+        parent_placement = App.Placement(
+            App.Vector(11, 13, 17), App.Rotation(App.Vector(0, 0, 1), 90)
+        )
+
+        result = placed_shape(shape, parent_placement)
+
+        self.assertIsNot(result, shape)
+        self.assertAlmostEqual(result.Volume, shape.Volume)
+        for actual, local in zip(result.Vertexes, original_vertices, strict=True):
+            self.assertLess(
+                (actual.Point - parent_placement.multVec(local)).Length, 1e-9
+            )
+        result.translate(App.Vector(19, 23, 29))
+        self.assertTrue(shape.Placement.isSame(original_placement, 1e-9))
+        for actual, expected in zip(shape.Vertexes, original_vertices, strict=True):
+            self.assertLess((actual.Point - expected).Length, 1e-9)
+
     def test_complete_assembly_preserves_a_common_frame_and_removable_servo_module(
         self,
     ):

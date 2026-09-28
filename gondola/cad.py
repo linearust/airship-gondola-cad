@@ -41,6 +41,13 @@ def world_shape(obj):
     return shape
 
 
+def placed_shape(shape, placement):
+    """Copy shape and pre-multiply its existing transform by placement."""
+    result = shape.copy()
+    result.Placement = placement.multiply(result.Placement)
+    return result
+
+
 def box(dx, dy, dz, origin):
     return Part.makeBox(dx, dy, dz, App.Vector(*origin))
 

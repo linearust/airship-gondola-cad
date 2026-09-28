@@ -26,6 +26,7 @@ from gondola.parts import (
 )
 from gondola.print_export import geometry_comparison
 
+from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape, translation_sweep
 from .wiring import RESERVES, collision_hits, measure_clearances, named_gap_checks
 
@@ -36,10 +37,7 @@ ANGLES = (-20, -10, 0, 10, 20)
 
 def _matches(first, second):
     result = geometry_comparison(first, second)
-    return result, all(
-        result[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
+    return result, comparison_passed(result, TOL)
 
 
 def _same_placement(first, second):

@@ -133,6 +133,50 @@ def _verify_preview_state(output_dir, run_id, fingerprint):
         ) from error
 
 
+def _record_preview_failure(output_dir, run_id, error):
+    """Invalidate this invocation, preserving only its own reported details."""
+    state_path = output_dir / "preview_state.json"
+    try:
+        state = json.loads(state_path.read_text())
+    except (OSError, ValueError):
+        state = {}
+    if not isinstance(state, dict) or state.get("run_id") != run_id:
+        state = {}
+    state.update(
+        passed=False,
+        status="failed",
+        run_id=run_id,
+        error=state.get("error") or str(error) or "Preview interrupted.",
+    )
+    state_path.write_text(json.dumps(state, indent=2) + "\n")
+
+
+def _run_preview(mount, output_dir, env):
+    """Run the GUI and require fresh, successful evidence before returning."""
+    run_id = uuid.uuid4().hex
+    fingerprint = source_fingerprint()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "preview_state.json").write_text(
+        json.dumps({"passed": False, "status": "starting", "run_id": run_id}) + "\n"
+    )
+    env["GONDOLA_CLOSE_AFTER_PREVIEW"] = "1"
+    env["GONDOLA_PREVIEW_RUN_ID"] = run_id
+    args = [str(mount / "AppRun"), str(REPO_ROOT / "preview_gondola.FCMacro")]
+    try:
+        returncode = _run_preview_process(args, env)
+        if returncode:
+            raise RuntimeError(
+                f"FreeCAD preview exited with status {returncode}; inspect its output."
+            )
+        _verify_preview_state(output_dir, run_id, fingerprint)
+    except BaseException as error:
+        # A close failure or timeout must invalidate even a result that
+        # the GUI wrote just before it stopped responding.
+        _record_preview_failure(output_dir, run_id, error)
+        raise
+    return 0
+
+
 def run_with_freecad(command, output_dir, appimage=None, source=None):
     # AppRun executes from REPO_ROOT; resolve caller-relative paths before changing cwd.
     output_dir = Path(output_dir).expanduser().resolve()
@@ -144,56 +188,18 @@ def run_with_freecad(command, output_dir, appimage=None, source=None):
         )
         env["GONDOLA_OUTPUT_DIR"] = str(output_dir)
         if command == "preview":
-            run_id = uuid.uuid4().hex
-            fingerprint = source_fingerprint()
-            output_dir.mkdir(parents=True, exist_ok=True)
-            (output_dir / "preview_state.json").write_text(
-                json.dumps({"passed": False, "status": "starting", "run_id": run_id})
-                + "\n"
-            )
-            env["GONDOLA_CLOSE_AFTER_PREVIEW"] = "1"
-            env["GONDOLA_PREVIEW_RUN_ID"] = run_id
-            args = [str(mount / "AppRun"), str(REPO_ROOT / "preview_gondola.FCMacro")]
-            try:
-                returncode = _run_preview_process(args, env)
-                if returncode:
-                    raise RuntimeError(
-                        f"FreeCAD preview exited with status {returncode}; inspect its output."
-                    )
-                _verify_preview_state(output_dir, run_id, fingerprint)
-            except BaseException as error:
-                # A close failure or timeout must invalidate even a result that
-                # the GUI wrote just before it stopped responding.
-                state_path = output_dir / "preview_state.json"
-                try:
-                    state = json.loads(state_path.read_text())
-                except (OSError, ValueError):
-                    state = {}
-                if not isinstance(state, dict) or state.get("run_id") != run_id:
-                    state = {}
-                state.update(
-                    passed=False,
-                    status="failed",
-                    run_id=run_id,
-                    error=state.get("error") or str(error) or "Preview interrupted.",
-                )
-                (output_dir / "preview_state.json").write_text(
-                    json.dumps(state, indent=2) + "\n"
-                )
-                raise
-            return 0
-        else:
-            args = [
-                str(mount / "AppRun"),
-                "python",
-                "-m",
-                "gondola",
-                "--inside-freecad",
-                "--output-dir",
-                str(output_dir),
-                command,
-            ]
-            if source:
-                args.extend(["--source", str(source)])
+            return _run_preview(mount, output_dir, env)
+        args = [
+            str(mount / "AppRun"),
+            "python",
+            "-m",
+            "gondola",
+            "--inside-freecad",
+            "--output-dir",
+            str(output_dir),
+            command,
+        ]
+        if source:
+            args.extend(["--source", str(source)])
         completed = subprocess.run(args, cwd=REPO_ROOT, env=env)
         return completed.returncode

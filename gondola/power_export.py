@@ -13,7 +13,7 @@ import FreeCAD as App
 import Mesh
 import Part
 
-from .cad import create_group, create_reference, set_property, world_shape
+from .cad import create_group, create_reference, placed_shape, set_property, world_shape
 from .config import ARTIFACT_STEM, OUTPUT_DIR
 from .contracts.power_options import (
     OPTIONAL_POWER_PLAN_KEYS,
@@ -42,6 +42,7 @@ from .print_export import (
     print_solid_comparison,
 )
 from .provenance import file_sha256, source_fingerprint
+from .validation.evidence import comparison_passed
 from .validation.geometry import compare_mesh_surfaces, intersection_volume
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
@@ -65,12 +66,7 @@ def _main_shapes(doc):
 
 
 def _placed(shapes, pose):
-    result = {}
-    for name, shape in shapes.items():
-        item = shape.copy()
-        item.Placement = pose.multiply(item.Placement)
-        result[name] = item
-    return result
+    return {name: placed_shape(shape, pose) for name, shape in shapes.items()}
 
 
 def _collisions(first, second):
@@ -370,10 +366,7 @@ def export_power_options(main_doc, output_dir=None):
 
 def _same_shape(first, second):
     result = geometry_comparison(first, second)
-    return all(
-        result[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
+    return comparison_passed(result, TOL)
 
 
 def audit_power_options(source=None, output_dir=None):
