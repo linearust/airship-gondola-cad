@@ -106,15 +106,20 @@ new printed walls or fasteners; the opposite gear face overlap and actual M3
 set-screw position still limit usable adjustment. A different gear thickness
 requires measured engagement and renewed collision checks, not an assumption
 of universal compatibility. Finish the input D socket against the actual stub.
-The AS purchased-horn adapter has an open root saddle and factory-hole
-round/slot allowance; actual fit and runout checks remain required in
-[the retention review](retention_review.md). Device holes and optical foot holes
-retain assembly clearance for relative hole-position errors; their tightened
-face contacts, rather than loose-hole diameters, provide the operating seat.
+The historical AS purchased-horn adapter had an open root saddle and factory-hole
+round/slot allowance. Current horn fit, fasteners and service requirements are in
+[the three-horn compatibility review](servo_horn_compatibility.md). Device holes
+and optical foot holes retain assembly clearance for relative hole-position
+errors; their tightened face contacts, rather than loose-hole diameters, provide
+the operating seat.
 Connector reserves, optical visibility and moving-part separation are not
 unnecessary play and must not be reduced to achieve a snug mechanical fit.
 
-## AS purchased-horn adapter
+## AS purchased-horn adapter (historical)
+
+The following records the AS design. Its horn attachment and service instructions
+are superseded by [three-horn compatibility](servo_horn_compatibility.md), which
+defines the current shared radial-slot adapter and profile-specific hardware.
 
 The [selected 15T/4.0 mm horn](retention_review.md#selected-replacement-horn--2026-09-25)
 uses two factory M1.6 threads. One printed adapter supplies an open root saddle,

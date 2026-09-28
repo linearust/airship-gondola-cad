@@ -19,14 +19,24 @@ Their source selection is not an assertion about physical fit or strength.
 - Reference centre distance is 16 mm. Printed axis positions, actual backlash,
   free rotation and output loading require checks with the received gears.
 - Both bores remain 3 mm; neither is a directly compatible X06 spline.
-  AS uses the selected **15T Single 4.0mm** purchased horn, with user-accepted
-  X06 V6 compatibility and three user-confirmed M1.6 threaded arm holes. See
-  the [coupling contract](retention_review.md). The printed adapter's open root
-  saddle and round/slot clearances permit adjustment before tightening two
-  front M1.6x4 screws; no horn drilling, attachment nuts or centring jig remain.
-  The nominal-3mm input stub and gear axial plane are retained. The KST 0415.13
-  is an earlier alternative, not the selected purchase. Actual axial seating,
-  concentricity and loaded operation remain unverified.
+  The current [horn contract](../gondola/contracts/servo_horns.py) supports all
+  three retained 4 mm/15T horn drawings independently on either side. Its
+  selected mixed pair is `PTK_6_6` on Port and `METAL_6_98` on Starboard; KST
+  0415.13 remains a supported alternative. The user's accepted X06 compatibility
+  premise does not establish received-part fit.
+  One shared [printed adapter](../gondola/parts/servo_coupling.py) uses an open
+  root seat and one continuous radial slot. Both threaded metal profiles use
+  their first and third existing M1.6 threads with two front M1.6×5 screws,
+  without horn drilling or attachment nuts. KST requires enlarging only its
+  existing end pilot holes at 4.5 and 13.2 mm to Ø1.5 mm, then using rear M1.4×6
+  screws and front M1.4 nuts; its factory holes are plain, not M1.6 threads.
+  Follow the profile-specific head/nut limits and assembly/service order in
+  [three-horn compatibility](servo_horn_compatibility.md). The nominal-3mm input
+  stub and gear axial plane are retained. Centre the axes before clamping both
+  attachment points; the slot permits assembly adjustment, not running slip.
+  Actual axial seating, root fit, concentricity and loaded retention remain
+  unverified. The former AS round-hole/outer-slot and M1.6×4 instructions are
+  superseded.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
   dimensional design; do not report POM materials or assert weight reduction.
@@ -39,10 +49,14 @@ Their source selection is not an assertion about physical fit or strength.
 
 ## Rod and bearing selection
 
-Use the user's selected nominal Ø3 mm 304 rod, cut to the preparation keys in
-`gondola/contracts/design.py` and the generated hardware BOM. The seller's
-material description does not establish diameter tolerance, roundness or
-straightness. Measure bearing/gear fits before preparing the entire batch.
+Use the user's selected nominal Ø3 mm 304 rod. Input-stub length and flat depth
+are owned by [servo_coupling.py](../gondola/parts/servo_coupling.py)
+(`SHAFT_LENGTH`, `SHAFT_FLAT_DEPTH`); output-shaft geometry and preparation keys
+are in [propulsion.py](../gondola/parts/propulsion.py). Match these to the
+[installed inventory](../gondola/contracts/design.py) and generated hardware BOM
+before cutting. The seller's material description does not establish diameter
+tolerance, roundness or straightness. Measure bearing/gear fits before preparing
+the entire batch.
 If unsuitable, use a dimensionally verified nominal-3mm precision replacement
 and recheck grip and fit. Current preparation is summarized in
 [the cart review](cart_adaptation_review.md).
