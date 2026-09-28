@@ -33,6 +33,15 @@ def module_service_shapes(doc, module):
     return shapes, sorted(expected - shapes.keys())
 
 
+def servo_bench_members(doc, shapes):
+    """Every physical part that leaves with the intentionally removable bridge."""
+    return {
+        name
+        for name in shapes
+        if belongs_to_group(doc.getObject(name), doc.ServoDriveModule)
+    }
+
+
 def retained_obstacles(physical, excluded, *, members=None):
     """Retain installed obstacles within the declared whole-module or bench scope."""
     return {
@@ -127,6 +136,104 @@ def driver_lateral_service_check(shape, start, end, obstacles, spec, sign):
         and outside < TOL
         and all(value < TOL for value in hits.values()),
     }
+
+
+def servo_lateral_service_check(shape, start, end, obstacles):
+    """Partition the actual servo at its axial steps before continuous sweeping.
+
+    The ear tips do not extend along the whole case depth. Sweeping one box
+    around case, ears and spline fills those absent corners. Axial slabs from
+    the live shape preserve them, and a coverage check prevents missing solid.
+    """
+    bounds = shape.BoundBox
+    planes = sorted({round(vertex.Point.y, 9) for vertex in shape.Vertexes})
+    pieces, segments = [], []
+    for low, high in zip(planes, planes[1:]):
+        if high - low < TOL:
+            continue
+        slab = shape.common(
+            Part.makeBox(
+                bounds.XLength + 2,
+                high - low,
+                bounds.ZLength + 2,
+                App.Vector(bounds.XMin - 1, low, bounds.ZMin - 1),
+            )
+        )
+        if abs(slab.Volume) < TOL:
+            continue
+        pieces.append(slab)
+        result = continuous_path(slab, [start, end], obstacles)
+        segments.extend(
+            {"source_axial_slab_mm": [low, high], **row} for row in result["segments"]
+        )
+    covered = Part.makeCompound(pieces)
+    missing = abs(shape.cut(covered).Volume) if pieces else abs(shape.Volume)
+    return {
+        "obstacles": sorted(obstacles),
+        "segments": segments,
+        "uncovered_servo_volume_mm3": missing,
+        "passed": bool(segments)
+        and missing < TOL
+        and all(row["passed"] for row in segments),
+    }
+
+
+def adapter_service_check(shape, waypoints, obstacles, spec, sign):
+    """Fill the forward clamp voids while preserving the rear horn socket.
+
+    The transverse shaft screw hole prevents the generic coaxial sweep from
+    retaining the horn pocket. A solid block around the forward clamp is a
+    conservative replacement for that region only. The live adapter must fit
+    completely within this reference before its continuous sweep is accepted.
+    Every retained obstacle remains checked, including the retained purchased horn.
+    """
+    from gondola.parts import servo_coupling as coupling
+
+    envelope = coupling.service_envelope()
+    envelope.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
+    if sign < 0:
+        envelope.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+    envelope.translate(App.Vector(sign * spec.input_x_mm, 0, spec.input_z_mm))
+    outside = abs(shape.cut(envelope).Volume)
+    result = continuous_path(envelope, waypoints, obstacles)
+    return {
+        **result,
+        "adapter_outside_reference_envelope_mm3": outside,
+        "reference_envelope": "Actual nominal horn socket with forward shaft-clamp voids conservatively filled; no obstacle exclusions",
+        "passed": outside < TOL and result["passed"],
+    }
+
+
+def _axial_then_lateral_path(shape, waypoints, obstacles, *, kind, spec, sign):
+    axial = continuous_path(shape, waypoints[:2], obstacles)
+    lateral = (
+        driver_lateral_service_check(
+            shape, waypoints[1], waypoints[2], obstacles, spec, sign
+        )
+        if kind == "gear"
+        else servo_lateral_service_check(shape, waypoints[1], waypoints[2], obstacles)
+    )
+    return {
+        **lateral,
+        "segments": axial["segments"] + lateral["segments"],
+        "passed": axial["passed"] and lateral["passed"],
+    }
+
+
+def input_service_path(name, shape, waypoints, obstacles, spec, sign):
+    """Select each part's conservative envelope for the ordered release path."""
+    if name.endswith("DriverGear") or name.endswith("Servo"):
+        return _axial_then_lateral_path(
+            shape,
+            waypoints,
+            obstacles,
+            kind="gear" if name.endswith("DriverGear") else "servo",
+            spec=spec,
+            sign=sign,
+        )
+    if name.endswith("HornGearAdapter"):
+        return adapter_service_check(shape, waypoints, obstacles, spec, sign)
+    return continuous_path(shape, waypoints, obstacles)
 
 
 def fastener_service_check(

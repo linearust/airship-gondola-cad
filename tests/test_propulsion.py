@@ -729,7 +729,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         from gondola.cad import translated_shape, world_shape
         from gondola.parts import servo_bridge
         from gondola.validation.geometry import intersection_volume
-        from gondola.validation.propulsion import servo_lateral_service_check
+        from gondola.validation.propulsion_service import servo_lateral_service_check
 
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             with self.subTest(pod=prefix):

@@ -12,7 +12,18 @@ import Part
 
 from gondola.cad import world_shape
 from gondola.contracts import servo_horns
+from gondola.contracts.drive import drive_for_document
 from gondola.parts import servo_coupling as coupling
+
+from .propulsion_service import (
+    continuous_path,
+    fastener_service_check,
+    input_service_path,
+    module_service_shapes,
+    retained_obstacles,
+    servo_bench_members,
+)
+from .servo_module import servo_module_service_check
 
 TOL = 1e-5
 V = App.Vector
@@ -259,16 +270,13 @@ def horn_registration_check(doc, prefix):
 
 def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     """KST sequence keeps its reverse screws in the horn during bridge removal."""
-    from . import propulsion as audit
-    from .propulsion_service import continuous_path, retained_obstacles
-
-    shapes, missing = audit.module_service_shapes(doc, module)
+    shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"passed": False, "missing_parts": missing, "pod": prefix}
     sign = 1 if prefix == "Port" else -1
     if module_release is None:
-        module_release = audit.servo_module_service_check(doc, module)
-    bench = audit._servo_bench_members(doc, shapes)
+        module_release = servo_module_service_check(doc, module)
+    bench = servo_bench_members(doc, shapes)
     shapes = {n: shapes[n] for n in bench}
     driver = prefix + "DriverGear"
     driver_path = continuous_path(
@@ -290,7 +298,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         ear_rows.append(
             {
                 "bolt": name + "Bolt",
-                **audit.fastener_service_check(
+                **fastener_service_check(
                     shapes[name + "Bolt"],
                     shapes[name + "Nut"],
                     retained_obstacles(shapes, removed | pair),
@@ -315,7 +323,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     }
     fixed = retained_obstacles(shapes, removed | moving)
     points = [(0, 0, 0), (0, sign * 12.5, 0), (sign * 40, sign * 12.5, 0)]
-    spec = audit.drive_for_document(doc)
+    spec = drive_for_document(doc)
     paths = []
     for n in sorted(moving):
         if n.endswith("HornGearAdapter"):
@@ -328,7 +336,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
                 "Conservative full adapter box; horn and servo move with it."
             )
         else:
-            path = audit._input_service_path(n, shapes[n], points, fixed, spec, sign)
+            path = input_service_path(n, shapes[n], points, fixed, spec, sign)
         paths.append({"part": n, "waypoints_mm": points, **path})
     # Once the servo is free of the bridge, the small rear holding stem clears
     # the case. A standard large screwdriver is not assumed to fit this gap.
@@ -438,8 +446,6 @@ def profile_compatibility_checks():
     """Exercise every profile on both mirrored sides without changing saved CAD."""
     from gondola.parts import propulsion, servo_envelope
 
-    from . import propulsion as audit
-
     rows = []
     original = dict(servo_horns.SELECTED_BY_SIDE)
     active = App.ActiveDocument.Name if App.ActiveDocument else None
@@ -472,7 +478,7 @@ def profile_compatibility_checks():
                             )
                 service = []
                 if not profile.threaded:
-                    module_release = audit.servo_module_service_check(doc, module)
+                    module_release = servo_module_service_check(doc, module)
                     service = [
                         assembled_servo_service_check(
                             doc, module, p, module_release=module_release

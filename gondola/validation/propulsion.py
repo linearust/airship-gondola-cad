@@ -38,10 +38,11 @@ from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_chec
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 from .propulsion_service import (
     continuous_path,
-    driver_lateral_service_check,
     fastener_service_check,
+    input_service_path,
     module_service_shapes,
     retained_obstacles,
+    servo_bench_members,
 )
 from .rail_access import rail_key_service_check
 from .relative_motion import relative_motion_check
@@ -961,72 +962,6 @@ def tilt_clearance_check(doc, module, prefix):
     }
 
 
-def servo_lateral_service_check(shape, start, end, obstacles):
-    """Partition the actual servo at its axial steps before continuous sweeping.
-
-    The ear tips do not extend along the whole case depth. Sweeping one box
-    around case, ears and spline fills those absent corners. Axial slabs from
-    the live shape preserve them, and a coverage check prevents missing solid.
-    """
-    bounds = shape.BoundBox
-    planes = sorted({round(vertex.Point.y, 9) for vertex in shape.Vertexes})
-    pieces, segments = [], []
-    for low, high in zip(planes, planes[1:]):
-        if high - low < TOL:
-            continue
-        slab = shape.common(
-            Part.makeBox(
-                bounds.XLength + 2,
-                high - low,
-                bounds.ZLength + 2,
-                App.Vector(bounds.XMin - 1, low, bounds.ZMin - 1),
-            )
-        )
-        if abs(slab.Volume) < TOL:
-            continue
-        pieces.append(slab)
-        result = continuous_path(slab, [start, end], obstacles)
-        segments.extend(
-            {"source_axial_slab_mm": [low, high], **row} for row in result["segments"]
-        )
-    covered = Part.makeCompound(pieces)
-    missing = abs(shape.cut(covered).Volume) if pieces else abs(shape.Volume)
-    return {
-        "obstacles": sorted(obstacles),
-        "segments": segments,
-        "uncovered_servo_volume_mm3": missing,
-        "passed": bool(segments)
-        and missing < TOL
-        and all(row["passed"] for row in segments),
-    }
-
-
-def adapter_service_check(shape, waypoints, obstacles, spec, sign):
-    """Fill the forward clamp voids while preserving the rear horn socket.
-
-    The transverse shaft screw hole prevents the generic coaxial sweep from
-    retaining the horn pocket. A solid block around the forward clamp is a
-    conservative replacement for that region only. The live adapter must fit
-    completely within this reference before its continuous sweep is accepted.
-    Every retained obstacle remains checked, including the retained purchased horn.
-    """
-    from gondola.parts import servo_coupling as coupling
-
-    envelope = coupling.service_envelope()
-    envelope.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
-    if sign < 0:
-        envelope.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
-    envelope.translate(App.Vector(sign * spec.input_x_mm, 0, spec.input_z_mm))
-    outside = abs(shape.cut(envelope).Volume)
-    result = continuous_path(envelope, waypoints, obstacles)
-    return {
-        **result,
-        "adapter_outside_reference_envelope_mm3": outside,
-        "reference_envelope": "Actual nominal horn socket with forward shaft-clamp voids conservatively filled; no obstacle exclusions",
-        "passed": outside < TOL and result["passed"],
-    }
-
-
 def _input_drive_names(prefix):
     """Parts withdrawn together, then separated on the bench."""
     return {
@@ -1059,38 +994,6 @@ def _ear_fastener_names(prefix):
         for side in ("Lower", "Upper")
         for kind in ("Bolt", "Nut")
     }
-
-
-def _axial_then_lateral_path(shape, waypoints, obstacles, *, kind, spec, sign):
-    axial = continuous_path(shape, waypoints[:2], obstacles)
-    lateral = (
-        driver_lateral_service_check(
-            shape, waypoints[1], waypoints[2], obstacles, spec, sign
-        )
-        if kind == "gear"
-        else servo_lateral_service_check(shape, waypoints[1], waypoints[2], obstacles)
-    )
-    return {
-        **lateral,
-        "segments": axial["segments"] + lateral["segments"],
-        "passed": axial["passed"] and lateral["passed"],
-    }
-
-
-def _input_service_path(name, shape, waypoints, obstacles, spec, sign):
-    """Select each part's conservative envelope for the ordered release path."""
-    if name.endswith("DriverGear") or name.endswith("Servo"):
-        return _axial_then_lateral_path(
-            shape,
-            waypoints,
-            obstacles,
-            kind="gear" if name.endswith("DriverGear") else "servo",
-            spec=spec,
-            sign=sign,
-        )
-    if name.endswith("HornGearAdapter"):
-        return adapter_service_check(shape, waypoints, obstacles, spec, sign)
-    return continuous_path(shape, waypoints, obstacles)
 
 
 def _horn_clamp_service_check(bolt, obstacles, outward):
@@ -1142,15 +1045,6 @@ def _horn_clamp_service_check(bolt, obstacles, outward):
     }
 
 
-def _servo_bench_members(doc, shapes):
-    """Every physical part that leaves with the intentionally removable bridge."""
-    return {
-        name
-        for name in shapes
-        if belongs_to_group(doc.getObject(name), doc.ServoDriveModule)
-    }
-
-
 def input_drive_service_check(doc, module, prefix, *, module_release=None):
     """Remove the paired module first, then service its factory horn on a bench.
 
@@ -1174,7 +1068,7 @@ def input_drive_service_check(doc, module, prefix, *, module_release=None):
     sign = 1 if prefix == "Port" else -1
     if module_release is None:
         module_release = servo_module_service_check(doc, module)
-    bench_members = _servo_bench_members(doc, shapes)
+    bench_members = servo_bench_members(doc, shapes)
     separated = sorted(set(shapes) - bench_members)
     shapes = {name: shapes[name] for name in bench_members}
     gear = prefix + "OutputGear"
@@ -1224,7 +1118,7 @@ def input_drive_service_check(doc, module, prefix, *, module_release=None):
     points = [(0, 0, 0), (0, release_y, 0), (sign * 40, release_y, 0)]
     spec = drive_for_document(doc)
     for name in sorted(moving):
-        path = _input_service_path(name, shapes[name], points, fixed, spec, sign)
+        path = input_service_path(name, shapes[name], points, fixed, spec, sign)
         rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
@@ -1287,7 +1181,7 @@ def servo_case_service_check(
         prior_service = input_drive_service_check(
             doc, module, prefix, module_release=module_release
         )
-    bench_members = _servo_bench_members(doc, shapes)
+    bench_members = servo_bench_members(doc, shapes)
     separated = sorted(set(shapes) - bench_members)
     shapes = {name: shapes[name] for name in bench_members}
     sign = 1 if prefix == "Port" else -1
@@ -1315,7 +1209,7 @@ def servo_case_service_check(
     spec = drive_for_document(doc)
     rows = []
     for name in sorted(moving):
-        path = _input_service_path(name, shapes[name], points, fixed, spec, sign)
+        path = input_service_path(name, shapes[name], points, fixed, spec, sign)
         rows.append({"part": name, "waypoints_mm": points, **path})
     return {
         "pod": prefix,
@@ -1648,7 +1542,7 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
 def _record_drive_service_checks(report, doc, prefix, sign, physical):
     """Audit in-place output gears and driver withdrawal on the removed bridge."""
     module_removed = bool(report["servo_module_service"][0]["passed"])
-    bench_members = _servo_bench_members(doc, physical)
+    bench_members = servo_bench_members(doc, physical)
     for suffix, direction, bench in (
         ("OutputGear", -sign, False),
         ("DriverGear", sign, True),
@@ -1747,7 +1641,7 @@ def _record_fastener_checks(report, module, physical):
         if "ServoEar" in bolt.Name:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
             service_excluded.update(_input_service_removed(prefix))
-            service_parts = _servo_bench_members(module["group"].Document, physical)
+            service_parts = servo_bench_members(module["group"].Document, physical)
             prerequisites = "Remove the complete paired servo module, then its driver gear and adapter on a clear bench before releasing the servo ears."
             matches = [
                 row for row in report["input_drive_service"] if row["pod"] == prefix

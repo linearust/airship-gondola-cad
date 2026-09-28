@@ -1,0 +1,186 @@
+{
+  "revision": "BB",
+  "kind": "service_dependency_and_review_motion_refactor",
+  "verified_utc": "2026-09-28T08:53:18.190713+00:00",
+  "base_commit": "a202ccf0a8578d19de2f8ac1e8603cf052fd31e1",
+  "source_fingerprint": "ac39dfb0fd714be9e09b81c2c1ab22b1d9253608a19d5202c4157b2ed3d7e0ab",
+  "previous_source_fingerprint": "1af218b46e438ebe2bb6da17d9eb4d19dae9dd7d33ce95f3e7107ddbaaf5acab",
+  "previous_verification": "references/bb_validation_refactor_verification.json",
+  "fixture": "tests/fixtures/rev_bb_geometry.FCStd",
+  "fixture_sha256": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2",
+  "fixture_unchanged": true,
+  "passed": true,
+  "production_qualified": false,
+  "changes": [
+    "Shared continuous input-drive service helpers now belong to propulsion_service; horn checks no longer import the propulsion coordinator.",
+    "Blender export uses one explicit immutable motion plan for reviewed service distances, phase boundaries, visibility, labels and evidence checks.",
+    "Malformed endpoint vectors and nonfinite numeric evidence now fail the Blender review guard; valid CAD/export behavior is preserved.",
+    "Regression coverage protects import direction and independent motion boundaries/error rejection; Blender scene builder and verifier remain unchanged."
+  ],
+  "preserved": [
+    "Geometry, dimensions, parts and purchased hardware",
+    "Local/world placements, hierarchy and saved contracts",
+    "Expressions, registries and all 27 main native control cases",
+    "Valid validation decisions, measurements and report keys",
+    "All Blender meshes, 1494 sampled frames, scene labels, markers and timing",
+    "Pinned BB fixture"
+  ],
+  "equivalence": {
+    "main": {
+      "shape_count": 113,
+      "shape_and_native_deltas": 0,
+      "saved_object_property_exceptions": [
+        "regenerated Uid",
+        "updated SourceFingerprint"
+      ],
+      "document_serialization_changes": [
+        "creation/modification timestamps",
+        "document UUID",
+        "generated numeric object IDs"
+      ],
+      "exact_saved_brep_payloads_identical": true
+    },
+    "optional": {
+      "shape_count": 122,
+      "shape_and_native_deltas": 0,
+      "saved_object_property_exceptions": [
+        "regenerated Uid",
+        "updated SourceFingerprint"
+      ],
+      "document_serialization_changes": [
+        "creation/modification timestamps",
+        "document UUID",
+        "generated numeric object IDs"
+      ],
+      "exact_saved_brep_payloads_identical": true
+    }
+  },
+  "independent_review": {
+    "static_passed": true,
+    "native_passed": true,
+    "final_passed": true,
+    "findings": []
+  },
+  "report_comparison": {
+    "passed": true,
+    "scope": "Every field of all top-level build JSON reports except preview_state.json; preview freshness is checked separately. Only exact recorded source/artifact hash changes in explicit provenance fields are accepted. Duplicate keys are rejected; file inventory and all deltas are rechecked.",
+    "report_count": 9,
+    "report_schema_and_nonprovenance_values_unchanged": true,
+    "expected_hash_delta_count": 66,
+    "unexplained_deltas": []
+  },
+  "native_tests": {
+    "passed": true,
+    "test_count": 474,
+    "module_count": 48,
+    "skip_count": 0,
+    "source_tests_fixture_frozen": true,
+    "exact_discovery_execution_match": true
+  },
+  "pipeline": [
+    {
+      "stage": "build",
+      "exit_code": 0,
+      "wall_seconds": 17.545
+    },
+    {
+      "stage": "preview",
+      "exit_code": 0,
+      "wall_seconds": 45.951
+    },
+    {
+      "stage": "compare",
+      "exit_code": 0,
+      "wall_seconds": 12.919
+    },
+    {
+      "stage": "validate",
+      "exit_code": 0,
+      "wall_seconds": 941.711
+    },
+    {
+      "stage": "bundle",
+      "exit_code": 0,
+      "wall_seconds": 0.194
+    }
+  ],
+  "static_checks": [
+    {
+      "command": [
+        "uvx",
+        "ruff==0.16.8",
+        "check",
+        "gondola",
+        "tests",
+        "build_gondola.FCMacro",
+        "preview_gondola.FCMacro",
+        "tools/blender_review"
+      ],
+      "returncode": 0,
+      "output": "All checks passed!\n"
+    },
+    {
+      "command": [
+        "uvx",
+        "ruff==0.16.8",
+        "format",
+        "--check",
+        "gondola",
+        "tests",
+        "build_gondola.FCMacro",
+        "preview_gondola.FCMacro",
+        "tools/blender_review"
+      ],
+      "returncode": 0,
+      "output": "122 files already formatted\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "output": ""
+    }
+  ],
+  "main_cad_sha256": "01564e5f203c056ac48fb6d8272d12b5b7e16f6bc7935ab257627fce84792786",
+  "optional_cad_sha256": "b83c15223b7499cdbb8044a02209bc8d5dda08d98df81f6244c39ec7e5761dc5",
+  "preview": {
+    "passed": true,
+    "image_count": 14
+  },
+  "blender": {
+    "passed": true,
+    "scene_count": 7,
+    "sampled_frame_count": 1494,
+    "input_json_sha256": "01dd7ccbab7d4319639d3f9292a0d34e18878f1f8414f8cb5bf7d96ed9f3fd7a",
+    "blend_sha256": "6727c636f560c0b2a52ad54735f3d9d501c94dc1f43abc101ec9b886efeacd81",
+    "exact_export_comparison_passed": true,
+    "expected_metadata_only_deltas": [
+      {
+        "path": "/metadata/cad_sha256",
+        "old": "c500fb1caa9f21b66736cf731696d837e7d9d10e5e6f7bf4a8f34858ac920945",
+        "new": "01564e5f203c056ac48fb6d8272d12b5b7e16f6bc7935ab257627fce84792786"
+      },
+      {
+        "path": "/metadata/source_fingerprint",
+        "old": "1af218b46e438ebe2bb6da17d9eb4d19dae9dd7d33ce95f3e7107ddbaaf5acab",
+        "new": "ac39dfb0fd714be9e09b81c2c1ab22b1d9253608a19d5202c4157b2ed3d7e0ab"
+      }
+    ],
+    "tool_files": {
+      "tools/blender_review/build_scene.py": "ce37c100b0102556759acd7cbfd8889743eb53e40f802f30e7cfca45cca7c128",
+      "tools/blender_review/export_cad.py": "06a5d1c52f2c024ef0eb00f42875b37617f02ad57e40fcc2c06283488efb46d3",
+      "tools/blender_review/motion_plan.py": "0d370825a31e370d168eb1f20c14ec155106a138800efbbf28a8ac66008d03f9",
+      "tools/blender_review/render_preview.py": "62cdd2b4549d295586f2dede29688d4de1da735dcc244911536a044a000070ff",
+      "tools/blender_review/run.py": "a5eb40888314d38cb4df2549e0b4941497d87ef559f3ee346ca351b022e2f4e4",
+      "tools/blender_review/test_export_cad.py": "8e0bf37bf136933328c97a80d84e3d57468e30ad69f11463a556bcaeadfb2948",
+      "tools/blender_review/test_motion_plan.py": "a7ab2d03271ae07950596f1d75e05d232b34f587f5ebca008db7231879286ff9",
+      "tools/blender_review/verify_scene.py": "e6f7132c4f85880f1905a2e1e972e97d9a5741330568380631aca52e77f6cbe3"
+    }
+  },
+  "evidence_archive": "references/bb_service_refactor_checks.json.gz",
+  "evidence_archive_sha256": "87718b0f37bf8853a831992d6e16267275728152751d8fe1df20c203ee998727",
+  "limits": "Software/CAD equivalence and prescribed rigid-motion review only; physical fit, strength, wires, retention, power and flight readiness remain unqualified."
+}

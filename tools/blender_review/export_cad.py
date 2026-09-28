@@ -18,6 +18,7 @@ from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.parts import optical_interface, optical_mount
 from gondola.provenance import file_sha256, source_fingerprint
+from tools.blender_review.motion_plan import REVIEW_MOTION, curve
 
 CATEGORIES = ("PrintedParts", "HardwareParts", "ReferenceParts", "TapeReferences")
 
@@ -25,17 +26,6 @@ CATEGORIES = ("PrintedParts", "HardwareParts", "ReferenceParts", "TapeReferences
 def matrix(placement):
     value = placement.toMatrix()
     return [[value.A[row * 4 + col] for col in range(4)] for row in range(4)]
-
-
-def ramp(frame, start, end):
-    return max(0.0, min(1.0, (frame - start) / (end - start)))
-
-
-def curve(frame, points):
-    for (start, a), (end, b) in zip(points, points[1:]):
-        if frame <= end:
-            return a + (b - a) * ramp(frame, start, end)
-    return points[-1][1]
 
 
 def color(obj, category, rail_names):
@@ -90,7 +80,6 @@ def review_objects(registry):
 def check_review_basis(doc, report):
     """Reject stale presentation assumptions after a mechanical redesign."""
     evidence = report["local_propulsion_evidence"]
-    service = evidence["saved_servo_module_service"]
     if report["gear_configuration"] != "48_16":
         raise RuntimeError(
             "Update review angles and captions for the selected gearing."
@@ -122,35 +111,7 @@ def check_review_basis(doc, report):
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
-    for row in evidence["saved_carrier_metal_clearances"]:
-        if any(
-            abs(row["axial_travel"][key] - 0.5) > 1e-8
-            for key in ("negative_mm", "positive_mm")
-        ):
-            raise RuntimeError(
-                "Update axial-travel poses and captions for the new stops."
-            )
-    for row in service["part_paths"]:
-        if row["waypoints_mm"] != [[0, 0, 0], [0, 0, 0.5], [80, 0, 0.5]]:
-            raise RuntimeError(
-                "Update the review for changed servo-module removal paths."
-            )
-    for index, sign in enumerate((1, -1)):
-        gear = service["output_gear_removal"][index]
-        pair = service["mount_fastener_release"][index]
-        expected = (
-            (gear["segments"][-1]["end_mm"], [0, -sign * 35, 0]),
-            (pair["bolt_axial_withdrawal"]["segments"][-1]["end_mm"], [0, 0, 8.2]),
-            (pair["nut_axial_removal"]["segments"][0]["end_mm"], [0, 0, -0.2]),
-            (pair["nut_axial_removal"]["segments"][-1]["end_mm"], [sign * 25, 0, -0.2]),
-        )
-        if any(
-            any(abs(a - b) > 1e-8 for a, b in zip(actual, target))
-            for actual, target in expected
-        ):
-            raise RuntimeError(
-                "Update the review for changed gear/fastener removal paths."
-            )
+    REVIEW_MOTION.check_basis(evidence)
 
 
 def export(cad_path, output):
@@ -367,9 +328,7 @@ def export(cad_path, output):
         )
 
         def endplay(frame):
-            shift = curve(
-                frame, [(1, 0), (49, 0.5), (97, -0.5), (145, 0), (193, 0.5), (241, 0)]
-            )
+            shift = REVIEW_MOTION.axial_shift(frame)
             doc.PortPod.Tilt = curve(
                 frame, [(1, 0), (97, 0), (145, 90), (193, -90), (241, 0)]
             )
@@ -378,17 +337,11 @@ def export(cad_path, output):
         scene(
             "04 Axial allowance",
             "AXIAL TRAVEL AT ACTUAL SCALE",
-            "Carrier and shafts move +/-0.5 mm toward integral frame stops; NOT bearing internal play. Bearings stay fixed in this prescribed pose; no spacer is installed. No friction, bearing-capture deformation, retention or load simulation.",
-            241,
+            REVIEW_MOTION.axial_description(),
+            REVIEW_MOTION.axial_steps[-1][0],
             port_detail,
             [[-18, 83, 36], [18, 100, 61]],
-            [
-                (1, "Nominal"),
-                (49, "+0.5 mm stop"),
-                (97, "-0.5 mm stop"),
-                (145, "Rotation with permitted travel"),
-                (241, "Nominal"),
-            ],
+            REVIEW_MOTION.axial_markers(),
             endplay,
         )
 
@@ -423,50 +376,15 @@ def export(cad_path, output):
                 host,
             )
 
-        def removal(frame):
-            offsets, hidden = {}, set()
-            for prefix, sign, start in (("Port", 1, 13), ("Starboard", -1, 61)):
-                name = prefix + "OutputGear"
-                offsets[name] = (0, -sign * 35 * ramp(frame, start, start + 35), 0)
-                if frame > start + 35:
-                    hidden.add(name)
-            for prefix, sign, start in (("Port", 1, 109), ("Starboard", -1, 181)):
-                bolt, nut = (
-                    "ServoBridge" + prefix + "Bolt",
-                    "ServoBridge" + prefix + "Nut",
-                )
-                offsets[bolt] = (0, 0, 8.2 * ramp(frame, start, start + 23))
-                offsets[nut] = (
-                    sign * 25 * ramp(frame, start + 29, start + 59),
-                    0,
-                    -0.2 * ramp(frame, start + 23, start + 29),
-                )
-                if frame > start + 23:
-                    hidden.add(bolt)
-                if frame > start + 59:
-                    hidden.add(nut)
-            shift = (80 * ramp(frame, 277, 336), 0, 0.5 * ramp(frame, 253, 276))
-            offsets.update({name: shift for name in drive_names})
-            return offsets, hidden
-
         scene(
             "07 Servo module removal",
             "PAIRED SERVO MODULE / BENCH REMOVAL",
-            "UNPOWERED BENCH ONLY: leads disconnected and gear set screws released first. Sequentially remove 16T gears and two M2 pairs; lift 0.5 mm, slide +X 80 mm. Nearby rail equipment excluded. Playback repeats by resetting the bench state, not by a verified reassembly operation.",
-            361,
+            REVIEW_MOTION.removal_description(),
+            REVIEW_MOTION.removal_frames,
             propulsion,
             [[-50, -111, 0], [119, 111, 90]],
-            [
-                (1, "Disconnect leads / release gear set screws"),
-                (13, "Remove Port 16T"),
-                (61, "Remove Starboard 16T"),
-                (109, "Remove Port mount bolt / nut"),
-                (181, "Remove Starboard mount bolt / nut"),
-                (253, "Lift module 0.5 mm"),
-                (277, "Slide module +X 80 mm"),
-                (337, "Module removed; output supports retained"),
-            ],
-            removal,
+            REVIEW_MOTION.removal_markers(),
+            lambda frame: REVIEW_MOTION.removal_pose(frame, drive_names),
         )
 
         result = {

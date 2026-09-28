@@ -409,8 +409,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
 
     def test_adapter_continuous_service_preserves_the_retained_horn_socket(self):
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.validation.propulsion import adapter_service_check
-        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.propulsion_service import (
+            adapter_service_check,
+            module_service_shapes,
+        )
 
         shapes, missing = module_service_shapes(self.doc, self.module)
         self.assertFalse(missing)
@@ -428,8 +430,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
 
     def test_adapter_service_rejects_geometry_outside_its_conservative_reference(self):
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.validation.propulsion import adapter_service_check
-        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.propulsion_service import (
+            adapter_service_check,
+            module_service_shapes,
+        )
 
         shapes, _ = module_service_shapes(self.doc, self.module)
         shape = shapes["PortHornGearAdapter"]
@@ -455,8 +459,10 @@ class InputShaftEvidenceTests(unittest.TestCase):
         from gondola.cad import translated_shape
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.parts import servo_coupling as coupling
-        from gondola.validation.propulsion import adapter_service_check
-        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.propulsion_service import (
+            adapter_service_check,
+            module_service_shapes,
+        )
 
         shapes, _ = module_service_shapes(self.doc, self.module)
         shape = shapes["PortHornGearAdapter"]
