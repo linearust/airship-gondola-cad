@@ -263,33 +263,22 @@ def _horn_case_clearance(horn, servo):
     placement. Its length must still match the sourced projection. The full
     remaining case and both ears stay in the continuous motion certificate.
     """
-    import FreeCAD as App
-    import Part
+    from .servo_interface import sourced_spline_volume
 
-    from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE
-
-    evidence = PROPULSION_EVIDENCE["X06"]
-    radius = evidence["spline_major_diameter_mm"] / 2
-    length = evidence["overall_height_with_spline_mm"] - evidence["case_size_mm"][2]
-    faces = list(_cylindrical_faces(servo, radius, horn["axis"]))
-    if len(faces) != 1 or abs(faces[0].BoundBox.YLength - length) > TOL:
-        return {"passed": False, "error": "Missing unique sourced servo spline face"}
-    bounds = faces[0].BoundBox
-    axis = horn["axis"]
-    spline = Part.makeCylinder(
-        radius,
-        length,
-        App.Vector(axis[0], bounds.YMin, axis[2]),
-        App.Vector(0, 1, 0),
-    )
+    spline, evidence = sourced_spline_volume(servo["shape"], horn["axis"], (0, 1, 0))
+    if spline is None:
+        return evidence
     case = servo["shape"].cut(spline)
     if case.isNull() or not case.isValid() or not case.Solids:
         return {"passed": False, "error": "Invalid servo case after spline separation"}
     result = _certify_pair(horn, _part(case, servo["name"] + "CaseAndEars"))
     return {
         **result,
-        "excluded_spline_radius_mm": radius,
-        "excluded_spline_axial_interval_mm": [bounds.YMin, bounds.YMax],
+        "excluded_spline_radius_mm": evidence["radius_mm"],
+        "excluded_spline_axial_interval_mm": [
+            evidence["start_mm"][1],
+            evidence["end_mm"][1],
+        ],
         "scope": "Continuous nominal horn separation from the actual case and ears, excluding only the sourced cylindrical spline projection. The 0.1 mm screen is not a manufacturing allowance. Actual stock horn seating, case tolerances and the unmodeled OEM retaining screw require physical checks.",
     }
 
@@ -379,6 +368,14 @@ def _functional_pairs(parts, spec):
                 cylindrical_datums_match=datums,
             )
             if a == "ServoHorn":
+                from .servo_interface import horn_spline_contact
+
+                row["spline_contact"] = horn_spline_contact(
+                    first["shape"], second["shape"], first_axis, (0, 1, 0)
+                )
+                row["classification_passed"] = (
+                    groups and datums and row["spline_contact"]["passed"]
+                )
                 row["case_and_ears_clearance"] = _horn_case_clearance(first, second)
                 row["classification_passed"] = (
                     row["classification_passed"]

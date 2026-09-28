@@ -1,4 +1,4 @@
-"""Identify the exact code and GUI entry points behind generated CAD artifacts."""
+"""Identify exact code, native source assets and GUI entry points for artifacts."""
 
 import hashlib
 from pathlib import Path
@@ -16,6 +16,11 @@ def source_fingerprint():
     paths = [
         *(REPO_ROOT / "gondola").rglob("*.py"),
         *REPO_ROOT.glob("*.FCMacro"),
+        *(
+            path
+            for path in (REPO_ROOT / "gondola" / "data").rglob("*")
+            if path.is_file()
+        ),
     ]
     fingerprint = hashlib.sha256()
     for path in sorted(paths):

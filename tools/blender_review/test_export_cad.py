@@ -1,5 +1,6 @@
 """Bounded export-contract checks; run with native FreeCAD's Python runtime."""
 
+import json
 import unittest
 from types import SimpleNamespace
 
@@ -17,13 +18,39 @@ class ExportContractTests(unittest.TestCase):
         for prefix in ("Port", "Starboard"):
             objects[prefix + "Pod"] = SimpleNamespace(MinimumTilt=-180, MaximumTilt=180)
             objects[prefix + "ServoHorn"] = SimpleNamespace(
-                HardwareSKU="ALI_PTK_15T_4MM_HORN", HornProfile="PTK_6_6"
+                HardwareSKU="KST_X06_STOCK_HALF_ARM_1",
+                HornProfile="KST_X06_HALF_ARM_1",
+                ManufacturerGeometryProvided=True,
+                ManufacturerGeometrySHA256="ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+                HornPreparationRequired=True,
+                FactoryM1_6ThreadsConfirmed=False,
+                PurchasedHornMeasured=False,
+                AxialSeatingMeasured=False,
+                HornInterfaceContract=json.dumps(
+                    {
+                        "profile": "KST_X06_HALF_ARM_1",
+                        "manufacturer_geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+                        "attachment_radii_mm": [6.8, 13.2],
+                        "adapter_slot_width_mm": 1.8,
+                        "adapter_slot_centres_x_mm": [6.8, 13.2],
+                        "adapter_slot_centre_allowance_mm": 0.3,
+                        "adapter_slot_overall_length_mm": 2.4,
+                        "nominal_arm_thickness_mm": 2.0,
+                        "screw_length_mm": 8.0,
+                        "nuts_per_side": 2,
+                    }
+                ),
             )
             objects[prefix + "HornGearAdapter"] = SimpleNamespace(
                 Name=prefix + "HornGearAdapter"
             )
             for position in ("Near", "Far"):
-                objects[prefix + "HornGearClamp" + position + "Bolt"] = object()
+                objects[prefix + "HornGearClamp" + position + "Bolt"] = SimpleNamespace(
+                    HardwareSKU="M1_4X8_PAN_HEAD_KIT"
+                )
+                objects[prefix + "HornGearClamp" + position + "Nut"] = SimpleNamespace(
+                    HardwareSKU="M1_4_HEX_NUT_DIN934"
+                )
         service = {
             "part_paths": [{"waypoints_mm": [[0, 0, 0], [0, 0, 0.5], [80, 0, 0.5]]}],
             "output_gear_removal": [
@@ -53,33 +80,108 @@ class ExportContractTests(unittest.TestCase):
         }
         return SimpleNamespace(getObject=objects.get), objects, report
 
-    def test_current_factory_hole_fastening_is_supported(self):
+    def test_current_oem_preparation_and_fastening_are_supported(self):
         doc, objects, report = self.basis()
         check_review_basis(doc, report)
-        self.assertIn("metal horn", representation(objects["PortServoHorn"]))
+        self.assertIn("plastic half arm 1", representation(objects["PortServoHorn"]))
         self.assertIn(
-            "provisional C-shaped locating seat",
+            "two-slot adapter",
             representation(objects["PortHornGearAdapter"]),
         )
+        self.assertIn("rear M1.4x8", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("front M1.4 nuts", representation(objects["PortHornGearAdapter"]))
         self.assertNotIn("undrilled", representation(objects["PortHornGearAdapter"]))
 
-    def test_missing_screw_or_changed_horn_cannot_reuse_captions(self):
-        doc, objects, report = self.basis()
-        del objects["PortHornGearClampNearBolt"]
-        with self.assertRaisesRegex(RuntimeError, "both factory-hole"):
+    def test_native_oem_module_metadata_matches_the_review_basis(self):
+        import FreeCAD as App
+
+        from gondola.parts import propulsion
+
+        doc = App.newDocument("BlenderOEMReviewBasis")
+        try:
+            propulsion.build_propulsion_module(doc)
+            doc.recompute()
+            _, _, report = self.basis()
             check_review_basis(doc, report)
-        doc, objects, report = self.basis()
-        objects["PortServoHorn"].HardwareSKU = "KST_X06_SUPPLIED_HORN"
-        with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
-            check_review_basis(doc, report)
-        doc, objects, report = self.basis()
-        objects["PortHornGearAdapter"].PrintBlankShape = object()
-        with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
-            check_review_basis(doc, report)
-        doc, objects, report = self.basis()
-        objects["PortHornGearClampNearNut"] = object()
-        with self.assertRaisesRegex(RuntimeError, "Horn nut inventory"):
-            check_review_basis(doc, report)
+        finally:
+            App.closeDocument(doc.Name)
+
+    def test_missing_or_changed_rear_bolts_and_front_nuts_are_rejected(self):
+        for prefix in ("Port", "Starboard"):
+            for position in ("Near", "Far"):
+                for kind, message in (("Bolt", "rear M1.4x8"), ("Nut", "front M1.4")):
+                    for missing in (False, True):
+                        with self.subTest(
+                            side=prefix, joint=position, kind=kind, missing=missing
+                        ):
+                            doc, objects, report = self.basis()
+                            name = prefix + "HornGearClamp" + position + kind
+                            if missing:
+                                del objects[name]
+                            else:
+                                objects[name].HardwareSKU = "UNSUPPORTED_FASTENER"
+                            with self.assertRaisesRegex(RuntimeError, message):
+                                check_review_basis(doc, report)
+
+    def test_changed_horn_identity_or_manufacturing_blank_is_rejected(self):
+        for prefix in ("Port", "Starboard"):
+            for field, value in (
+                ("HardwareSKU", "UNSUPPORTED_HORN_SKU"),
+                ("HornProfile", "UNSUPPORTED_HORN_PROFILE"),
+            ):
+                with self.subTest(side=prefix, field=field):
+                    doc, objects, report = self.basis()
+                    setattr(objects[prefix + "ServoHorn"], field, value)
+                    with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
+                        check_review_basis(doc, report)
+            doc, objects, report = self.basis()
+            objects[prefix + "HornGearAdapter"].PrintBlankShape = object()
+            with self.assertRaisesRegex(RuntimeError, "purchased-horn"):
+                check_review_basis(doc, report)
+
+    def test_missing_or_changed_oem_provenance_and_measurement_claims_are_rejected(
+        self,
+    ):
+        for prefix in ("Port", "Starboard"):
+            for field, wrong in (
+                ("ManufacturerGeometryProvided", False),
+                ("ManufacturerGeometrySHA256", "0" * 64),
+                ("HornPreparationRequired", False),
+                ("FactoryM1_6ThreadsConfirmed", True),
+                ("PurchasedHornMeasured", True),
+                ("AxialSeatingMeasured", True),
+            ):
+                for missing in (False, True):
+                    with self.subTest(side=prefix, field=field, missing=missing):
+                        doc, objects, report = self.basis()
+                        horn = objects[prefix + "ServoHorn"]
+                        if missing:
+                            delattr(horn, field)
+                        else:
+                            setattr(horn, field, wrong)
+                        with self.assertRaisesRegex(
+                            RuntimeError, "OEM horn provenance"
+                        ):
+                            check_review_basis(doc, report)
+
+    def test_missing_or_changed_horn_contract_cannot_reuse_captions(self):
+        for prefix in ("Port", "Starboard"):
+            doc, objects, report = self.basis()
+            horn = objects[prefix + "ServoHorn"]
+            contract = json.loads(horn.HornInterfaceContract)
+            for key in contract:
+                with self.subTest(side=prefix, key=key):
+                    horn.HornInterfaceContract = json.dumps({**contract, key: None})
+                    with self.assertRaisesRegex(RuntimeError, "OEM horn dimensions"):
+                        check_review_basis(doc, report)
+            for value in ("invalid json", "null", "[]", None):
+                with self.subTest(side=prefix, value=value):
+                    horn.HornInterfaceContract = value
+                    with self.assertRaisesRegex(RuntimeError, "OEM horn"):
+                        check_review_basis(doc, report)
+            del horn.HornInterfaceContract
+            with self.assertRaisesRegex(RuntimeError, "OEM horn"):
+                check_review_basis(doc, report)
 
     def test_changed_motion_cannot_reuse_presentation_poses(self):
         doc, _, report = self.basis()

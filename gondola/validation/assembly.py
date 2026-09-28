@@ -73,10 +73,29 @@ TOL = 1e-5
 V = App.Vector
 
 
-def expected_pair(a, b):
+def expected_pair(a, b, first_shape=None, second_shape=None):
     for prefix in ("Port", "Starboard"):
         if {a.Name, b.Name} == {prefix + "Shaft", prefix + "PropellerDisk"}:
             return "Motor shaft enters the conservative propeller hub envelope"
+        if {a.Name, b.Name} == {prefix + "ServoHorn", prefix + "Servo"}:
+            if first_shape is None or second_shape is None:
+                return None
+            from .servo_interface import horn_spline_contact
+
+            horn, servo = (
+                (first_shape, second_shape)
+                if a.Name.endswith("ServoHorn")
+                else (second_shape, first_shape)
+            )
+            group = a.Document.getObject(prefix + "InputDrive")
+            if group is None:
+                return None
+            frame = group.getGlobalPlacement()
+            contact = horn_spline_contact(
+                horn, servo, frame.Base, frame.Rotation.multVec(V(0, 1, 0))
+            )
+            if contact["passed"]:
+                return "OEM female spline teeth lie within the sourced smooth servo spline envelope; actual tooth fit is unverified"
     return None
 
 
@@ -121,7 +140,7 @@ def neutral_check(objects, shapes):
             if volume <= TOL:
                 continue
             row = {"first": obj.Name, "second": other.Name, "intersection_mm3": volume}
-            reason = expected_pair(obj, other)
+            reason = expected_pair(obj, other, shapes[obj.Name], shapes[other.Name])
             if reason:
                 row["reason"] = reason
                 expected.append(row)
@@ -858,7 +877,9 @@ def tilt_check(doc, registry, objects):
                         minimum_z, moving_shape.optimalBoundingBox(False, False).ZMin
                     )
                     for other in fixed:
-                        if expected_pair(obj, other):
+                        if expected_pair(
+                            obj, other, moving_shape, fixed_shapes[other.Name]
+                        ):
                             continue
                         overlap_volume = intersection_volume(
                             moving_shape, fixed_shapes[other.Name]

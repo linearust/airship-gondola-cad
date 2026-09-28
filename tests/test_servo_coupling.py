@@ -1,5 +1,6 @@
-"""Factory horn threads, integral registration and unchanged metal shaft retention."""
+"""Prepared OEM horn, separate tolerance slots and unchanged metal shaft retention."""
 
+import math
 import unittest
 
 try:
@@ -13,28 +14,18 @@ except ImportError:
 class ServoCouplingTests(unittest.TestCase):
     @staticmethod
     def _servo_envelope():
-        from gondola.cad import box
+        from gondola.parts import servo_coupling as c
+        from gondola.parts import servo_envelope
 
-        case = box(20, 16.6, 7, (-5, -16.8, -3.5))
-        ears = box(28, 1, 7, (-9, -4.9, -3.5))
-        shape = case.fuse(ears)
-        shape.rotate(App.Vector(), App.Vector(0, 1, 0), 90)
+        shape = servo_envelope.shape()
+        shape.translate(App.Vector(0, -c.HORN_BOTTOM_Y, 0))
         return shape
 
     @staticmethod
     def _clamp_hardware():
-        from gondola.parts import purchased_hardware as hardware
         from gondola.parts import servo_coupling as c
 
-        result = []
-        for anchors in c.fastener_positions():
-            placed = hardware.servo_screw_shape(c.HORN_CLAMP_LENGTH).copy()
-            placed.Placement = App.Placement(
-                App.Vector(*anchors["screw"]),
-                App.Rotation(App.Vector(0, 0, 1), App.Vector(*c.BOLT_DIRECTION)),
-            )
-            result.append(placed)
-        return result
+        return [shape for _, shape, _ in c.horn_hardware_shapes()]
 
     @staticmethod
     def _shaft_clamp_hardware():
@@ -83,8 +74,9 @@ class ServoCouplingTests(unittest.TestCase):
             )
         )
 
-    def test_selected_horn_and_front_screws_clear_the_metal_transmission(self):
+    def test_selected_horn_and_rear_bolts_front_nuts_clear_the_transmission(self):
         from gondola.parts import servo_coupling as c
+        from gondola.validation.horn_coupling import _plane_contact
 
         shapes = [
             c.adapter_shape(),
@@ -100,93 +92,150 @@ class ServoCouplingTests(unittest.TestCase):
         for index, first in enumerate(shapes):
             for second in shapes[index + 1 :]:
                 self.assertLess(first.common(second).Volume, 1e-7)
-        self.assertEqual(c.HORN_SKU, "ALI_PTK_15T_4MM_HORN")
-        self.assertEqual(c.BOLT_DIRECTION, (0, -1, 0))
-        for screw in self._clamp_hardware():
-            self.assertAlmostEqual(screw.distToShape(c.adapter_shape())[0], 0, places=6)
-            self.assertAlmostEqual(c.HORN_HEIGHT - screw.BoundBox.YMin, 1.4, places=6)
+        self.assertEqual(c.HORN_SKU, "KST_X06_STOCK_HALF_ARM_1")
+        self.assertEqual(c.BOLT_DIRECTION, (0, 1, 0))
+        hardware = {name: (shape, sku) for name, shape, sku in c.horn_hardware_shapes()}
+        self.assertEqual(set(hardware), {"NearBolt", "NearNut", "FarBolt", "FarNut"})
+        for label, x in (("Near", 6.8), ("Far", 13.2)):
+            screw, screw_sku = hardware[label + "Bolt"]
+            nut, nut_sku = hardware[label + "Nut"]
+            self.assertEqual(screw_sku, "M1_4X8_PAN_HEAD_KIT")
+            self.assertEqual(nut_sku, "M1_4_HEX_NUT_DIN934")
+            expected_screw = Part.makeCylinder(
+                1.3, 1.0, App.Vector(x, 0.5, 0), App.Vector(0, 1, 0)
+            ).fuse(
+                Part.makeCylinder(0.7, 8.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0))
+            )
+            self.assertLess(expected_screw.cut(screw).Volume, 1e-7)
+            self.assertLess(screw.cut(expected_screw).Volume, 1e-7)
+            self.assertAlmostEqual(nut.BoundBox.YMin, 7.1, places=6)
+            self.assertAlmostEqual(nut.BoundBox.YLength, 1.2, places=6)
             self.assertAlmostEqual(
-                screw.BoundBox.YMin - c.HORN_BLADE_BOTTOM, 0.2, places=6
+                nut.Volume,
+                (math.sqrt(3) / 2 * 3.0**2 - math.pi * 0.7**2) * 1.2,
+                places=6,
             )
+            self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.2)
+            self.assertGreater(_plane_contact(c.horn_shape(), screw, 1.5), 1.0)
+            self.assertGreater(_plane_contact(c.adapter_shape(), nut, 7.1), 1.0)
 
-    def test_factory_hole_passages_require_no_horn_drilling(self):
+    def test_only_two_selected_factory_holes_are_prepared(self):
         from gondola.parts import servo_coupling as c
+        from gondola.parts.oem_servo_horn import normalized_shape
 
-        horn, adapter = c.horn_shape(), c.adapter_shape()
-        for x in (6.6, 9.4, 12.2):
-            passage = Part.makeCylinder(
-                0.8, 1.6, App.Vector(x, c.HORN_BLADE_BOTTOM, 0), App.Vector(0, 1, 0)
+        original, prepared = c.horn_shape(prepared=False), c.horn_shape()
+        manufacturer = normalized_shape()
+        self.assertLess(original.cut(manufacturer).Volume, 1e-7)
+        self.assertLess(manufacturer.cut(original).Volume, 1e-7)
+        expected = original.copy()
+        for x in (6.8, 13.2):
+            expected = expected.cut(
+                Part.makeCylinder(0.75, 2.2, App.Vector(x, 1.4, 0), App.Vector(0, 1, 0))
             )
-            self.assertLess(horn.common(passage).Volume, 1e-7)
-        for x, z in c.HORN_BOLT_CENTRES:
-            passage = Part.makeCylinder(
-                0.8,
-                c.FASTENER_SEAT_Y - c.HORN_HEIGHT,
-                App.Vector(x, c.HORN_HEIGHT, z),
-                App.Vector(0, 1, 0),
+        self.assertLess(expected.cut(prepared).Volume, 1e-7)
+        self.assertLess(prepared.cut(expected).Volume, 1e-7)
+        self.assertAlmostEqual(
+            original.Volume - prepared.Volume,
+            2 * math.pi * (0.75**2 - 0.5**2) * 2.0,
+            delta=1e-6,
+        )
+        for x, original_radius in ((4.5, 0.4), (6.8, 0.5), (10.0, 0.5), (13.2, 0.5)):
+            radius = 0.75 if x in (6.8, 13.2) else original_radius
+            factory_passage = Part.makeCylinder(
+                original_radius, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
             )
-            self.assertLess(adapter.common(passage).Volume, 1e-7)
+            self.assertLess(original.common(factory_passage).Volume, 1e-7)
+            passage = Part.makeCylinder(
+                radius, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
+            )
+            surrounding = Part.makeCylinder(
+                radius + 0.1, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
+            )
+            self.assertLess(prepared.common(passage).Volume, 1e-7)
+            self.assertAlmostEqual(
+                prepared.common(surrounding).Volume,
+                math.pi * ((radius + 0.1) ** 2 - radius**2) * 2.0,
+                places=6,
+            )
         self.assertTrue(
-            all(set(anchors) == {"screw"} for anchors in c.fastener_positions())
+            all(set(anchors) == {"screw", "nut"} for anchors in c.fastener_positions())
         )
         self.assertFalse(hasattr(c, "centering_jig_shape"))
 
-    def test_outer_slot_tolerates_pitch_error_without_tight_head_overlap(self):
+    def test_two_short_slots_keep_the_intervening_web_and_allow_assembly_error(self):
         from gondola.parts import servo_coupling as c
 
         adapter = c.adapter_shape()
-        near, far = self._clamp_hardware()
-        for shift in (-0.4, 0.4):
-            moved = far.copy()
-            moved.translate(App.Vector(shift, 0, 0))
-            self.assertLess(moved.common(adapter).Volume, 1e-7)
-            self.assertLess(moved.common(near).Volume, 1e-7)
+        for x in (6.8, 13.2):
+            for start, end, material in (
+                ((x - 2, 5.3, 0), (x + 2, 5.3, 0), 4.0 - 2.4),
+                ((x, 5.3, -2), (x, 5.3, 2), 4.0 - 1.8),
+            ):
+                section = Part.makeLine(App.Vector(*start), App.Vector(*end))
+                self.assertAlmostEqual(adapter.common(section).Length, material)
+        web = Part.makeBox(3.8, 3.6, 1.8, App.Vector(8.1, 3.5, -0.9))
+        self.assertLess(web.cut(adapter).Volume, 1e-7)
+        for shape in self._clamp_hardware():
+            for shift in (-0.3, 0.3):
+                moved = shape.copy()
+                moved.translate(App.Vector(shift, 0, 0))
+                self.assertLess(moved.common(adapter).Volume, 1e-7)
+
+    def test_open_register_blocks_rearward_and_side_motion(self):
+        from gondola.parts import servo_coupling as c
+
+        adapter, horn = c.adapter_shape(), c.horn_shape()
         for x, z in ((0.29, 0), (0, -0.29), (0, 0.29)):
-            # The adapter moves relative to the fixed horn/screws. Its locating
-            # arc blocks displacement while the larger screw passages remain clear.
             moved = adapter.copy()
             moved.translate(App.Vector(x, 0, z))
-            self.assertGreater(moved.common(c.horn_shape()).Volume, 1e-4)
-            for screw in (near, far):
-                self.assertLess(moved.common(screw).Volume, 1e-7)
+            self.assertGreater(moved.common(horn).Volume, 1e-4)
 
-    def test_minimum_accepted_head_land_has_support_across_the_outer_slot(self):
+    def test_front_nuts_bear_on_both_short_slots_through_the_allowance(self):
+        from gondola.parts import purchased_hardware
         from gondola.parts import servo_coupling as c
         from gondola.validation.horn_coupling import _plane_contact
 
         adapter = c.adapter_shape()
-        for x, z in c.HORN_BOLT_CENTRES:
-            allowance = (
-                c.HORN_ADAPTER_SLOT_ALLOWANCE
-                if x == c.HORN_BOLT_CENTRES[-1][0]
-                else 0.0
+        for name, nut, _ in c.horn_hardware_shapes():
+            if not name.endswith("Nut"):
+                continue
+            for offset in (-0.3, 0.0, 0.3):
+                moved = nut.copy()
+                moved.translate(App.Vector(offset, 0, 0))
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 7.1), 1.0)
+        for x in (6.8, 13.2):
+            minimum_nut = purchased_hardware.hex_prism(2.9, 1.2).cut(
+                Part.makeCylinder(0.7, 1.4, App.Vector(0, 0, -0.1))
             )
-            for offset in (-allowance, 0.0, allowance):
-                land = Part.makeCylinder(
-                    c.HORN_MIN_HEAD_BEARING_DIAMETER / 2,
-                    0.1,
-                    App.Vector(x + offset, c.FASTENER_SEAT_Y, z),
-                    App.Vector(0, 1, 0),
+            for offset in (-0.3, 0.0, 0.3):
+                moved = minimum_nut.copy()
+                moved.Placement = App.Placement(
+                    App.Vector(x + offset, 7.1, 0),
+                    App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
                 )
-                self.assertGreaterEqual(
-                    _plane_contact(adapter, land, c.FASTENER_SEAT_Y), 1.0
-                )
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 7.1), 1.0)
 
-    def test_short_front_screws_withdraw_after_driver_gear_removal(self):
+    def test_front_nuts_release_off_bridge_while_rear_bolts_remain(self):
         from gondola.parts import servo_coupling as c
-        from gondola.validation.propulsion import _horn_clamp_service_check
+        from gondola.validation.propulsion_service import continuous_path
 
-        near, far = self._clamp_hardware()
+        # Driver gear and stub have already left the complete servo unit.
+        hardware = {name: shape for name, shape, _ in c.horn_hardware_shapes()}
         fixed = {
             "adapter": c.adapter_shape(),
             "horn": c.horn_shape(),
-            "shaft": c.driver_shaft_shape(),
             "servo": self._servo_envelope(),
+            **hardware,
         }
-        for name, screw, other in (("Far", far, {"Near": near}), ("Near", near, {})):
+        for name in ("FarNut", "NearNut"):
             with self.subTest(joint=name):
-                result = _horn_clamp_service_check(screw, fixed | other, (0, 1, 0))
+                nut = fixed.pop(name)
+                result = continuous_path(
+                    nut, [(0, 0, 0), (0, 2.6, 0), (20, 2.6, 0)], fixed
+                )
                 self.assertTrue(result["passed"], result)
+        self.assertIn("NearBolt", fixed)
+        self.assertIn("FarBolt", fixed)
 
     def test_metal_stub_retains_stop_flat_and_gear_end_reserve(self):
         from gondola.parts import servo_coupling as c
@@ -222,7 +271,7 @@ class ServoCouplingTests(unittest.TestCase):
             for obstacle in (main, shaft, nut, gear, *self._clamp_hardware()):
                 self.assertLess(withdrawn.common(obstacle).Volume, 1e-7)
 
-    def test_front_screws_and_adapter_clear_servo_during_bounded_rotation(self):
+    def test_all_horn_fasteners_and_adapter_clear_servo_during_bounded_rotation(self):
         from gondola.parts import servo_coupling as c
 
         case = self._servo_envelope()

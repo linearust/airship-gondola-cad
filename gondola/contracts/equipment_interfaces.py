@@ -106,7 +106,7 @@ X06_OUTPUT_FROM_CASE_END_MM = 5.0
 X06_EAR_TOP_FROM_CASE_TOP_MM = 3.7
 X06_EAR_UNDERSIDE_FROM_CASE_TOP_MM = 4.7
 X06_SPLINE_DIAMETER_MM = 3.90
-HORN_SOURCE = "https://www.aliexpress.com/item/1005012006498403.html"
+HORN_SOURCE = "gondola/data/kst_x06_half_arm_1.step"
 SHAFT_SOURCE = "https://www.aliexpress.com/item/1005007648646117.html"
 BEARING_SOURCE = "https://www.aliexpress.com/item/1005007668446060.html"
 BEARING_REFERENCE_SOURCE = (
@@ -136,31 +136,41 @@ PROPULSION_EVIDENCE = {
         "listed_mass_g": 6.0,
         "listed_mass_tolerance_percent": 10,
         "scope": "KST-authored May 2023 drawing obtained through the distributor. Regular-tab X06 V6.0, not X06H or X06N. Ear thickness is the 4.7 minus 3.7 mm drawing datum difference. Published case tolerance is not a fit allowance. Spline major diameter does not establish horn geometry or a retaining screw thread.",
-        "unknown": "OEM retaining screw dimensions, selected replacement horn installed seating, loaded travel and permissible external gear load.",
+        "unknown": "OEM retaining screw dimensions, selected stock plastic horn installed seating, loaded travel and permissible external gear load.",
     },
-    "ALI_PTK_15T_4MM_HORN": {
+    "KST_X06_STOCK_HALF_ARM_1": {
         "sources": [HORN_SOURCE],
         "retained_evidence": [
-            "references/selected_15t_4mm_horn_drawing.png",
-            "references/retention_review.md",
+            "gondola/data/kst_x06_half_arm_1.step",
+            "references/manufacturer/kst_x06_servo_horns_2026-09-28.json",
+            "references/servo_horn_compatibility.md",
         ],
-        "selected_option": "15T Single 4.0mm",
+        "selected_option": "Manufacturer X06 stock plastic half arm1",
+        "geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+        "geometry_basis": "User-supplied manufacturer STEP; nominal bought geometry, with only the two declared factory-hole enlargements in the installed model.",
         "spline_teeth": 15,
-        "nominal_spline_diameter_mm": 4.0,
-        "overall_length_mm": 18.2,
-        "root_width_mm": 6.1,
-        "arm_thickness_mm": 1.6,
-        "first_hole_radius_mm": 6.6,
-        "first_to_second_hole_pitch_mm": 2.8,
-        "selected_attachment_radii_mm": [6.6, 12.2],
-        "outer_attachment_radius_basis": "12.2 mm is inferred by repeating the one dimensioned 2.8 mm interval; the third-hole position is not independently dimensioned.",
-        "adapter_attachment_slot_centre_range_mm": [4.3, 13.4],
-        "threaded_hole_count": 3,
-        "thread": "M1.6",
-        "compatibility_basis": "User accepts KST X06 V6 compatibility as the design premise unless concrete contrary evidence appears. This is not physical fit verification.",
-        "thread_basis": "User confirms all three factory arm holes are M1.6 threaded. Use first and third holes without drilling the purchased horn; adjacent 2.8 mm centres would overlap the selected maximum 3.5 mm screw-head envelopes. The shared adapter has one continuous radial slot supporting all three selected horn patterns.",
-        "scope": "Seller drawing supports the named dimensions. PTK in the saved title and this project purchase key are not a certified manufacturer part number. Aluminium is a seller claim; actual alloy, mass and geometric tolerances are unverified.",
-        "unknown": "Hub height, spline seating depth, hub outer diameter and concentricity, installed face plane, centre screw seat and third-hole position are not fully dimensioned. The 6.1 mm root width is not a specified precision locating diameter. The common C-shaped adapter seat clears the maximum6.25mm root plus0.15mmradial allowance; the6.1mm horn has0.225mmnominalradialclearance; this is a prototype locating interface, not a certified hub diameter. The 3.5 mm axial horn envelope remains a provisional clearance proxy until checked on received hardware.",
+        "overall_length_mm": 18.7,
+        "root_diameter_mm": 7.0,
+        "rear_hub_diameter_mm": 6.5,
+        "overall_height_mm": 3.5,
+        "arm_thickness_mm": 2.0,
+        "blade_bottom_mm": 1.5,
+        "factory_plain_holes_radius_and_diameter_mm": [
+            [4.5, 0.8],
+            [6.8, 1.0],
+            [10.0, 1.0],
+            [13.2, 1.0],
+        ],
+        "selected_attachment_radii_mm": [6.8, 13.2],
+        "prepared_hole_diameter_mm": 1.5,
+        "adapter_attachment_slot_width_mm": 1.8,
+        "adapter_attachment_slot_centre_allowance_mm": 0.3,
+        "adapter_root_seat_diameter_mm": 7.3,
+        "adapter_root_radial_clearance_mm": 0.15,
+        "threaded_hole_count": 0,
+        "attachment_hardware": "Two reverse M1.4x8 screws and two front M1.4 nuts per horn; no washers; retain the OEM centre screw.",
+        "scope": "The exact supplied spline and outside shape are retained, not fabricated as a printed replacement. The short radial slots absorb assembly variation and must be clamped before operation. Older metal-horn drawings are superseded alternatives, not compatibility promises for this adapter.",
+        "unknown": "Plastic resin/density, actual mass, delivered dimensional tolerances, root concentricity, actual installed spline/centre-screw seating, head/tool fit, prepared-hole quality, clamping, creep and loaded torque retention remain unmeasured. Nominal STEP dimensions do not establish physical fit or strength.",
     },
     "selected_gears": {
         "sources": [gear.item_url for gear in GEARS.values()],

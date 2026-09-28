@@ -299,11 +299,9 @@ class FrozenBaselineTests(unittest.TestCase):
         for prefix in ("Port", "Starboard"):
             horn = self.reference.getObject(prefix + "ServoHorn")
             expected = servo_horns.profile(side=prefix)
-            other = next(
-                item
-                for item in servo_horns.PROFILES.values()
-                if item.key != expected.key
-            )
+            # Only one profile is supported; reject unknown identity without
+            # requiring a second selectable horn just to exercise corruption.
+            other = SimpleNamespace(sku="UNSUPPORTED_HORN_SKU", key="UNSUPPORTED_HORN")
             original = horn.HardwareSKU, horn.HornProfile
             try:
                 for sku, profile in (

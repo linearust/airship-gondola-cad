@@ -441,6 +441,7 @@ def build_fit_coupons(doc):
 def _build_coupling(doc, parent, prefix, sign):
     from gondola.contracts import servo_horns
 
+    from . import oem_servo_horn
     from . import servo_coupling as coupling
 
     profile = servo_horns.profile(side=prefix)
@@ -467,6 +468,8 @@ def _build_coupling(doc, parent, prefix, sign):
     )
     set_property(horn, "AxialSeatingMeasured", False, "App::PropertyBool")
     set_property(horn, "PurchasedHornMeasured", False, "App::PropertyBool")
+    set_property(horn, "ManufacturerGeometryProvided", True, "App::PropertyBool")
+    set_property(horn, "ManufacturerGeometrySHA256", oem_servo_horn.STEP_SHA256)
     set_property(horn, "X06CompatibilityAccepted", True, "App::PropertyBool")
     set_property(
         horn, "FactoryM1_6ThreadsConfirmed", profile.threaded, "App::PropertyBool"
@@ -486,7 +489,7 @@ def _build_coupling(doc, parent, prefix, sign):
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One common adapter for all three horn profiles: open root seat, one continuous radial slot and open head channel. Centre the shaft before tightening both screws. Slot allowance is for assembly only. No separate cap or centring jig. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
+        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, two short 1.8 x 2.4 mm radial slots at X6.8/13.2 and flat front nut seats. No long head channel, separate cap or centring jig. Centre the shaft before tightening the rear M1.4x8/front-nut pairs; slots absorb assembly error, not operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
         sku="FactoryHoleHornGearAdapter",
     )

@@ -5,7 +5,7 @@ from types import MappingProxyType
 PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
     {
         "drive_motion": 2,
-        "horn_profile_compatibility": 3,
+        "horn_profile_compatibility": 1,
         "gear_mesh_alignment": 2,
         "gear_rotation": 2,
         "fixed_servo_datum": 2,
@@ -28,7 +28,8 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_drive_service": 2,
         "servo_case_service": 2,
         "rail_key_access": 2,
-        # Six seated M2 propulsion joints and eight M1.6 horn/servo-ear joints.
+        # Six seated M2 propulsion joints, four M1.6 servo-ear joints and
+        # four M1.4 horn joints with front nuts.
         # Rail screws are outside this module. The two radial input-stub jack
         # clamps stay assembled during service and use input_shaft_retention;
         # their deliberately unseated heads are not bearing-face stacks.

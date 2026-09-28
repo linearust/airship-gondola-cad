@@ -56,7 +56,18 @@ class HornRegistrationTests(unittest.TestCase):
                         self.assertTrue(
                             result["purchased_horn_measurement_explicitly_unknown"]
                         )
+                        self.assertEqual(result["profile"], "KST_X06_HALF_ARM_1")
+                        self.assertTrue(result["manufacturer_geometry_matches"])
+                        self.assertTrue(result["axial_seating_explicitly_unmeasured"])
+                        self.assertFalse(result["factory_m1_6_threads_confirmed"])
+                        self.assertTrue(result["preparation_required"])
                         self.assertEqual(len(result["joints"]), 2)
+                        self.assertTrue(
+                            all(
+                                joint["separate_nut_required"]
+                                for joint in result["joints"]
+                            )
+                        )
                         self.assertEqual(len(result["register_directional_stops"]), 3)
                         self.assertFalse(result["obsolete_horn_parts"])
                 finally:
@@ -78,7 +89,7 @@ class HornRegistrationTests(unittest.TestCase):
             plug = Part.makeCylinder(
                 1.1,
                 2,
-                App.Vector(6.6, c.HORN_BOTTOM_Y + c.HORN_HEIGHT, 0),
+                App.Vector(6.8, c.HORN_BOTTOM_Y + c.HORN_HEIGHT, 0),
                 App.Vector(0, 1, 0),
             )
             obj.PrintBlankShape = obj.Shape.fuse(plug)
@@ -153,16 +164,43 @@ class HornRegistrationTests(unittest.TestCase):
         finally:
             obj.PurchasedHornMeasured = original
 
-    def test_unapproved_extra_horn_nut_is_detected(self):
+    def test_wrong_second_front_nut_is_detected(self):
         from gondola.validation.horn_coupling import horn_registration_check
 
-        self.doc.addObject("Part::Feature", "PortHornGearClampNearNut")
+        obj = self.doc.PortHornGearClampFarNut
+        original = obj.Shape.copy()
         try:
+            obj.Shape = self.doc.PortHornGearClampNearNut.Shape.copy()
             result = horn_registration_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
-            self.assertIn("PortHornGearClampNearNut", result["obsolete_horn_parts"])
+            self.assertGreater(
+                result["joints"][1]["nominal_fastener_difference_mm3"], 1
+            )
         finally:
-            self.doc.removeObject("PortHornGearClampNearNut")
+            obj.Shape = original
+
+    def test_missing_or_wrong_manufacturer_geometry_provenance_is_rejected(self):
+        from gondola.validation.horn_coupling import horn_registration_check
+
+        obj = self.doc.PortServoHorn
+        self.assertTrue(obj.ManufacturerGeometryProvided)
+        self.assertEqual(
+            obj.ManufacturerGeometrySHA256,
+            "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+        )
+        for name, wrong in (
+            ("ManufacturerGeometryProvided", False),
+            ("ManufacturerGeometrySHA256", "0" * 64),
+        ):
+            with self.subTest(property=name):
+                original = getattr(obj, name)
+                try:
+                    setattr(obj, name, wrong)
+                    result = horn_registration_check(self.doc, "Port")
+                    self.assertFalse(result["passed"], result)
+                    self.assertFalse(result["manufacturer_geometry_matches"])
+                finally:
+                    setattr(obj, name, original)
 
 
 if __name__ == "__main__":

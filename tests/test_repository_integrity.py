@@ -124,6 +124,12 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 (copy / "build").mkdir()
                 (copy / "build" / "irrelevant.py").write_text("generated artifact")
                 self.assertEqual(original, provenance.source_fingerprint())
+                asset = copy / "gondola" / "data" / "kst_x06_half_arm_1.step"
+                contents = asset.read_bytes()
+                asset.write_bytes(contents + b"\n")
+                self.assertNotEqual(original, provenance.source_fingerprint())
+                asset.write_bytes(contents)
+                self.assertEqual(original, provenance.source_fingerprint())
                 source = copy / "gondola" / "contracts" / "design.py"
                 source.write_text(source.read_text() + "\n# changed design input\n")
                 self.assertNotEqual(original, provenance.source_fingerprint())

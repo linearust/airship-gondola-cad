@@ -1,0 +1,38 @@
+{
+  "revision": "BE",
+  "passed": true,
+  "recorded_utc": "2026-09-28T13:40:36.377241+00:00",
+  "source_fingerprint": "341f3c15b365ba6018cb2d8660117082c734c0e3ec7c1409a631778555875eb1",
+  "main_cad_sha256": "9d5533cc618fb42de43f857e5cb7bb80a8f6c3ec880d504d686e068282b48f34",
+  "fixture": "tests/fixtures/rev_be_geometry.FCStd",
+  "fixture_sha256": "824cba0ce9104f3668e3facd7291dab36630bbc10c905a2e438798a8d74c182b",
+  "transition_review": "tests/fixtures/rev_be_review.json",
+  "test_count": 524,
+  "module_count": 53,
+  "skips": 0,
+  "ordered_pipeline": [
+    {
+      "stage": "build",
+      "exit_code": 0
+    },
+    {
+      "stage": "preview",
+      "exit_code": 0
+    },
+    {
+      "stage": "compare",
+      "exit_code": 0
+    },
+    {
+      "stage": "validate",
+      "exit_code": 0
+    },
+    {
+      "stage": "bundle",
+      "exit_code": 0
+    }
+  ],
+  "evidence_archive": "be_oem_horn_checks.json.gz",
+  "evidence_archive_sha256": "95dd32332a17a960bf574093921bc2c8742ea9250d1022deaa6acbc5f6cfb6b9",
+  "scope": "Exact-source native tests, ordered saved-artifact pipeline, inspected previews and sampled Blender rigid motion. Nominal CAD does not qualify delivered spline/installed seating, hole preparation, load/creep, runout, wiring, gear screws or flight."
+}

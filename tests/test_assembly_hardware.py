@@ -23,8 +23,8 @@ class KSTHardwareMetadataTests(unittest.TestCase):
         with (
             patch.dict(
                 servo_horns.SELECTED_BY_SIDE,
-                Port="KST_0415_13",
-                Starboard="KST_0415_13",
+                Port="KST_X06_HALF_ARM_1",
+                Starboard="KST_X06_HALF_ARM_1",
             ),
             tempfile.TemporaryDirectory() as temporary,
         ):
@@ -39,7 +39,7 @@ class KSTHardwareMetadataTests(unittest.TestCase):
                 quantities = Counter(str(obj.HardwareSKU) for obj in hardware)
                 self.assertEqual(
                     quantities,
-                    {"M1_4X6_PAN_HEAD_KIT": 4, "M1_4_HEX_NUT_DIN934": 4},
+                    {"M1_4X8_PAN_HEAD_KIT": 4, "M1_4_HEX_NUT_DIN934": 4},
                 )
                 registry = doc.addObject("App::FeaturePython", "HardwareRegistry")
                 for name in (

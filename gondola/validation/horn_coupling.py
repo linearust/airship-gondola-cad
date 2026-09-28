@@ -1,8 +1,7 @@
-"""Selected factory-threaded horn and nominal integral-register evidence.
+"""Manufacturer horn geometry, prepared holes and nominal coupling evidence.
 
-A PASS establishes the saved geometry, thread engagement envelopes and limited
-registration function. It cannot certify purchased root concentricity, the axial
-proxy, printed fit, preload, retention or physical gear runout.
+A PASS establishes nominal geometry and limited registration, not delivered
+concentricity, installed seating, printed fit, preload, strength or gear runout.
 """
 
 import json
@@ -158,7 +157,7 @@ def horn_registration_check(doc, prefix):
                 + bearing.common(bolt).Volume
             )
         support = []
-        allowance = min(0.2, x - coupling.SLOT_CENTRE_MIN, coupling.SLOT_CENTRE_MAX - x)
+        allowance = coupling.HORN_ADAPTER_SLOT_ALLOWANCE
         for offset in (-allowance, 0.0, allowance):
             land = (
                 Part.makeCylinder(
@@ -231,6 +230,12 @@ def horn_registration_check(doc, prefix):
     measured = bool(getattr(horn_obj, "PurchasedHornMeasured", True))
     axial_unknown = not bool(getattr(horn_obj, "AxialSeatingMeasured", True))
     compatibility = bool(getattr(horn_obj, "X06CompatibilityAccepted", False))
+    from gondola.parts.oem_servo_horn import STEP_SHA256
+
+    manufacturer_matches = (
+        bool(getattr(horn_obj, "ManufacturerGeometryProvided", False))
+        and str(getattr(horn_obj, "ManufacturerGeometrySHA256", "")) == STEP_SHA256
+    )
     threads = bool(getattr(horn_obj, "FactoryM1_6ThreadsConfirmed", False))
     preparation = bool(getattr(horn_obj, "HornPreparationRequired", False))
     return {
@@ -249,9 +254,10 @@ def horn_registration_check(doc, prefix):
         "physical_concentricity_verified": False,
         "axial_seating_explicitly_unmeasured": axial_unknown,
         "x06_compatibility_accepted": compatibility,
+        "manufacturer_geometry_matches": manufacturer_matches,
         "factory_m1_6_threads_confirmed": threads,
         "preparation_required": preparation,
-        "scope": "Saved selected profile/common adapter and nominal hardware only. KST has prepared plain holes/reverse M1.4 screws and front nuts; other profiles retain M1.6 threads. Slot/root allowance is for centring before clamping, not running flexibility. Received seating, runout, strength and retention remain unqualified.",
+        "scope": "Saved manufacturer half-arm geometry, prepared Ø1.5 holes and rear M1.4x8/front-nut hardware. Short slots allow centring before clamping, not running flexibility. Nominal source shape does not qualify received seating, runout, strength or retention.",
         "passed": selection_matches
         and contract_matches
         and adapter_difference < TOL
@@ -261,6 +267,7 @@ def horn_registration_check(doc, prefix):
         and not measured
         and axial_unknown
         and compatibility
+        and manufacturer_matches
         and threads == profile.threaded
         and preparation == (not profile.threaded)
         and seating > 1
@@ -341,7 +348,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     # Once the servo is free of the bridge, the small rear holding stem clears
     # the case. A standard large screwdriver is not assumed to fit this gap.
     inverse = coupling_frame(doc, prefix).inverse()
-    case = shapes[prefix + "Servo"].copy()
+    case = world_shape(doc.getObject(prefix + "Servo"))
     case.Placement = inverse.multiply(case.Placement)
     profile = servo_horns.profile(str(doc.getObject(prefix + "ServoHorn").HornProfile))
     holding = []
@@ -362,13 +369,20 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         **{n: s for n, s, _ in coupling.horn_hardware_shapes(profile)},
     }
     fasteners = []
+    removed_nuts = []
+    nut_release_y = (
+        profile.blade_bottom_mm
+        + profile.screw_length_mm
+        - coupling.FASTENER_SEAT_Y
+        + 0.2
+    )
     # Remove outer front nut first, then inner. Rear screws remain in the horn
     # until the adapter has cleared their forward tips.
     for label in ("Far", "Near"):
         n = label + "Nut"
         nut = local[n]
         obstacles = {k: s for k, s in local.items() if k != n}
-        first = continuous_path(nut, [(0, 0, 0), (0, 1.6, 0)], obstacles)
+        first = continuous_path(nut, [(0, 0, 0), (0, nut_release_y, 0)], obstacles)
         x = profile.attachment_radii_mm[0 if label == "Near" else 1]
         outer = coupling._hex_along_axis(
             servo_horns.NUT_AF_MM,
@@ -376,7 +390,9 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
             (x, coupling.FASTENER_SEAT_Y, 0),
             (0, 1, 0),
         )
-        second = continuous_path(outer, [(0, 1.6, 0), (20, 1.6, 0)], obstacles)
+        second = continuous_path(
+            outer, [(0, nut_release_y, 0), (20, nut_release_y, 0)], obstacles
+        )
         route = {
             "segments": first["segments"] + second["segments"],
             "passed": first["passed"] and second["passed"],
@@ -399,17 +415,33 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
                 "joint": label,
                 "bolt": prefix + "HornGearClamp" + label + "Bolt",
                 "nut": prefix + "HornGearClamp" + label + "Nut",
-                "retained_parts": list(obstacles),
-                "removed_prior_parts": sorted(removed),
+                "retained_parts": [
+                    prefix
+                    + (
+                        "ServoHorn"
+                        if k == "horn"
+                        else "HornGearAdapter"
+                        if k == "adapter"
+                        else "HornGearClamp" + k
+                    )
+                    for k in obstacles
+                ],
+                "removed_prior_parts": sorted(removed) + removed_nuts.copy(),
+                "removed_part": prefix + "HornGearClamp" + n,
                 "front_nut_release": route,
                 "fine_plier_jaw_collisions_mm3": collisions,
                 "passed": route["passed"] and not collisions,
             }
         )
         local.pop(n)
+        removed_nuts.append(prefix + "HornGearClamp" + n)
     adapter_route = continuous_path(
         coupling.service_envelope(retain_screws=True),
-        [(0, 0, 0), (0, 6.7, 0), (40, 6.7, 0)],
+        [
+            (0, 0, 0),
+            (0, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
+            (40, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
+        ],
         {k: s for k, s in local.items() if k != "adapter"},
     )
     passed = (
@@ -461,6 +493,14 @@ def profile_compatibility_checks():
                 ]
                 case = servo_envelope.shape()
                 case.translate(V(0, -coupling.HORN_BOTTOM_Y, 0))
+                from .servo_interface import horn_spline_contact, sourced_spline_volume
+
+                spline, spline_evidence = sourced_spline_volume(
+                    case, (0, 0, 0), (0, 1, 0)
+                )
+                if spline is None:
+                    raise ValueError(spline_evidence)
+                case_and_ears = case.cut(spline)
                 moving = {
                     "adapter": coupling.adapter_shape(),
                     "horn": coupling.horn_shape(profile),
@@ -471,8 +511,17 @@ def profile_compatibility_checks():
                     for name, shape in moving.items():
                         turned = shape.copy()
                         turned.rotate(V(), V(0, 1, 0), angle)
-                        volume = turned.common(case).Volume
-                        if volume > TOL:
+                        contact = (
+                            horn_spline_contact(turned, case, (0, 0, 0), (0, 1, 0))
+                            if name == "horn"
+                            else None
+                        )
+                        volume = turned.common(
+                            case_and_ears if name == "horn" else case
+                        ).Volume
+                        if volume > TOL or (
+                            contact is not None and not contact["passed"]
+                        ):
                             overlaps.append(
                                 {"angle_deg": angle, "part": name, "volume_mm3": volume}
                             )
@@ -495,7 +544,12 @@ def profile_compatibility_checks():
                         1.5,
                     ),
                     ("near_nut_socket_wall", (1.55, 8.0, 0), (2.65, 8.0, 0), 1.1),
-                    ("root_register_wall", (-5, 2.5, 0), (-3.275, 2.5, 0), 1.725),
+                    (
+                        "root_register_wall",
+                        (-coupling.REGISTER_OUTER_RADIUS, 2.5, 0),
+                        (-coupling.REGISTER_INNER_RADIUS, 2.5, 0),
+                        coupling.REGISTER_OUTER_RADIUS - coupling.REGISTER_INNER_RADIUS,
+                    ),
                 ):
                     thickness = adapter.common(Part.makeLine(V(*start), V(*end))).Length
                     web_rows.append(

@@ -26,7 +26,7 @@ from .servo_horns import profile as horn_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BD"
+DESIGN_REVISION = "BE"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -74,7 +74,7 @@ PART_SEPARATION_REASONS = {
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Both outboard seats and the central seat share one Z plane; the bridge underside is flat across these contacts. Unilateral X/Y datums locate it, and two existing M2x8 pairs clamp its plain 2 mm plate without head counterbores. Check the common seating plane for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Four 3x6x2.5 ball bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
-    "horn_and_adapter": "One open adapter with a continuous radial slot supports the three retained 4 mm/15T horn drawings. Profile-specific purchased fasteners attach factory hole axes; a small-hole horn can require explicitly documented preparation. Preserve the purchased spline, the OEM centre retaining screw, root registration, gear alignment and ordered removal. Clamp all attachment hardware before operation; slots absorb assembly variation, not running eccentricity. Actual horn seating, runout, clamping and material strength remain physical acceptance checks.",
+    "horn_and_adapter": "One adapter fits the selected manufacturer X06 stock plastic half arm 1 on both sides. Preserve the supplied STEP geometry and factory hole axes; enlarge only the existing diameter-1mm holes at radii6.8/13.2mm to1.5mm for rear M1.4x8 screws and front M1.4 nuts. Two short1.8mm-wide slots with0.3mm centre allowance each way replace the universal passage. The nominal diameter7mm root uses an open diameter7.3mm seat; its0.15mm radial clearance is assembly allowance, not certified concentricity. Keep the purchased spline, OEM centre retaining screw, full shaft-stop floor, gear/stub planes and ordered removal. Tighten both joints before operation. Resin, mass, actual seating, runout, clamping and reversing-load strength remain unmeasured.",
     "optical_head": "Two prints provide one lockable manual pitch-Y alignment axis. A compact corner pedestal bolts directly to one common outer plate slot with two M2 pairs; one M2 pair clamps the tray angle. The central rail position is assumed to remove the need for roll adjustment. No self-levelling or automatic correction is provided. Remove the carrier for foot-fastener bench access. Flat seating, pointing retention, fastener fit and creep require physical testing.",
 }
 
@@ -180,7 +180,6 @@ HARDWARE_MATERIALS = {
     "M2X6_BUTTON_HEAD": KIT_MATERIAL,
     "M2_HEX_NUT": KIT_MATERIAL,
     "M1_6X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
-    "M1_6X5_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
     "M1_6_HEX_NUT_DIN934": "304 stainless steel (seller claim)",
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
@@ -188,10 +187,8 @@ HARDWARE_MATERIALS = {
     "SS304_CUT3_L24_FLAT5_A0": "304 stainless steel (seller claim)",
     "SS304_CUT3_L14": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
-    "ALI_PTK_15T_4MM_HORN": "Aluminium alloy (grade unspecified)",
-    "METAL_15T_4MM_HORN_6_98": "Aluminium alloy (grade unspecified)",
-    "KST_0415_13_HORN": "Aluminium alloy (grade unspecified)",
-    "M1_4X6_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
+    "KST_X06_STOCK_HALF_ARM_1": "Supplied horn material unverified",
+    "M1_4X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
     "M1_4_HEX_NUT_DIN934": "Brass (seller claim; grade unspecified)",
 }
 
@@ -281,7 +278,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
         "seller_or_completed_harness_verified": False,
-        "stock_replacement_decision": "Use already-owned M2 metal hardware and GH1.25 connectors, selected micro-screw kit, compatible purchased 4 mm/15T horns, gears, nominal-3mm 304 rods and 3x6x2.5 ball bearings. The three horn profiles use one adapter with their declared preparation and fasteners; do not substitute unverified spline teeth. No purchased bearing spacers. Optional Matek boards use insulating adhesive or straps on the vacated battery carrier or the separately screened raised platform, not invented PCB holes. Optional hardware is separate from the baseline mechanism BOM.",
+        "stock_replacement_decision": "Use already-owned M2 metal hardware and GH1.25 connectors, selected micro-screw kit, manufacturer X06 stock plastic half arm1 on both sides, gears, nominal-3mm 304 rods and3x6x2.5 ball bearings. The selected horn uses the manufacturer's nominal STEP geometry with only the two declared factory-hole enlargements, rear M1.4x8 screws and front M1.4 nuts; do not fabricate a replacement spline. Older metal-horn drawings are historical alternatives, not current adapter compatibility claims. No purchased bearing spacers. Optional Matek boards use insulating adhesive or straps on the vacated battery carrier or the separately screened raised platform, not invented PCB holes. Optional hardware is separate from the baseline mechanism BOM.",
     }
 
 
@@ -349,7 +346,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify each selected horn profile's actual X06 seating, locating surface, axial height, flatness and runout. The accepted 15T/4 mm interface remains a design premise. One continuous radial slot uses factory hole axes; follow that profile's fasteners and any documented pilot-hole preparation. Do not leave fasteners loose during operation. Root registration and open screw slots permit assembly correction but do not compensate a bent shaft or eccentric spline. Check head/nut contact, engagement, backside protrusion and two-way loaded torque retention. Published front outlines do not certify hub concentricity or installed axial seating. The D-socket and nominal-3mm stub require fit and loaded grip checks. No extra input bearing is selected; external radial servo load, PA12 creep and thread strength remain unqualified.",
+        "Verify the selected manufacturer X06 stock plastic half arm1 on the actual servo: spline/OEM screw seating, locating surface, flatness and runout. The supplied STEP establishes nominal geometry, not delivered tolerances, resin, mass or loaded retention. Enlarge only the existing diameter1mm holes at6.8/13.2mm to1.5mm; deburr and inspect the remaining plastic. Use two rear M1.4x8 screws/front M1.4 nuts and the short adapter slots, clamped before operation. The nominal2mm arm,3.6mm printed grip and1.2mm nut give6.8mm total grip and1.2mm tip projection; check actual head/nut contact, engagement, protrusion and service clearance. The0.15mm radial open root-seat allowance and slots do not compensate a bent shaft or eccentric spline. The D-socket and nominal-3mm stub require fit and loaded grip checks. No extra input bearing is selected; external radial servo load, plastic/PA12 creep and two-way torque retention remain unqualified.",
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
@@ -420,7 +417,7 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC mounting spacers/fasteners and dampers, plus P-AS mounting hardware only when P-AS is selected: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified. GPS alternatives use insulating adhesive, not additional GPS screws.",
-            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. The two selected purchased horn profiles and their modeled attachment screws are included; alternative profile preparation and hardware are declared separately.",
+            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Two manufacturer stock plastic half arms of the same selected profile, four M1.4x8 attachment screws and four front M1.4 nuts are included with their declared preparation; older horn alternatives are outside the current inventory.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories. Optional power platform, Matek boards, ties and its M2 attachment hardware are supplied in the separate optional-power artifacts, not this baseline BOM.",
         ],

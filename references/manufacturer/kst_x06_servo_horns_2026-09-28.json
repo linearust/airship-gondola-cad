@@ -1,0 +1,62 @@
+{
+  "manufacturer": "KST",
+  "product": "X06 servo horns",
+  "received_date": "2026-09-28",
+  "provenance": "User-supplied archive identified by the user as manufacturer CAD. Preserved as received; no independent download or physical-part measurement is implied.",
+  "original_archive_filename": "X06舵臂3D图.rar",
+  "archive": {
+    "path": "references/manufacturer/kst_x06_servo_horns_2026-09-28.rar",
+    "sha256": "9e368b75641448629abe97fe12627e65be39c72140b53ac387f301e85d230cf5",
+    "size_bytes": 220402
+  },
+  "archive_members": [
+    {
+      "original_filename": "X06十字臂3.STEP",
+      "sha256": "78b5989e78ab5188d880bc386236954cc3a65d38f337d2a2b698fda0393cfa94",
+      "size_bytes": 503376,
+      "nominal_length_unit": "mm",
+      "selected": false
+    },
+    {
+      "original_filename": "X06十字臂4.STEP",
+      "sha256": "50c46a4ab9a563f45bfd68bad263ff6ca914c00eda4cecc3bdda7355fefb8a4b",
+      "size_bytes": 438125,
+      "nominal_length_unit": "mm",
+      "selected": false
+    },
+    {
+      "original_filename": "X06半臂1.STEP",
+      "sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+      "size_bytes": 304046,
+      "nominal_length_unit": "mm",
+      "selected": true
+    },
+    {
+      "original_filename": "X06半臂2.STEP",
+      "sha256": "deba224309c09ed22f442246c713230bec5b82eec4eeed7f43da1a8fff5f9b9d",
+      "size_bytes": 395090,
+      "nominal_length_unit": "mm",
+      "selected": false
+    }
+  ],
+  "selected_asset": {
+    "original_filename": "X06半臂1.STEP",
+    "path": "gondola/data/kst_x06_half_arm_1.step",
+    "sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+    "size_bytes": 304046,
+    "nominal_length_unit": "mm",
+    "unit_evidence": "The STEP declares LENGTH_UNIT with SI_UNIT(.MILLI., .METRE.)."
+  },
+  "normalization": {
+    "rotation_x_deg": -90.0,
+    "translation_y_mm": 1.5,
+    "mapping": "(source_x, source_y, source_z) -> (source_x, source_z + 1.5, -source_y)",
+    "normalized_spline_rear_y_mm": 0.0,
+    "normalized_arm_rear_y_mm": 1.5,
+    "normalized_arm_front_y_mm": 3.5,
+    "output_axis": "+Y",
+    "long_arm_axis": "+X"
+  },
+  "modification_scope": "Archive and selected STEP bytes are unchanged. The loader applies only a rigid coordinate transform. Hole preparation, if selected for an assembly, belongs to the caller and is not part of this asset.",
+  "qualification": "Manufacturer CAD establishes nominal modeled geometry only. Received-part dimensions, material, spline fit, fastener preparation and loaded retention require separate verification."
+}

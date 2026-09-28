@@ -46,6 +46,7 @@ from .propulsion_service import (
 )
 from .rail_access import rail_key_service_check
 from .relative_motion import relative_motion_check
+from .servo_interface import horn_spline_contact
 from .servo_module import bridge_joint_check, servo_module_service_check
 
 TOL = 1e-5
@@ -708,7 +709,7 @@ def direct_adapter_fit_check(doc, prefix):
         "horn_registration": registration,
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. The selected horn profile defines retention: the two threaded metal choices use front M1.6 screws in existing threads without horn nuts; the prepared KST choice uses reverse M1.4 screws and front nuts in enlarged existing end pilot holes. No new hole centres are transferred. The printed C register and flat face limit misalignment; root concentricity, axial seating and the inferred outer-hole position remain nominal, not measured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
+        "scope": "Selected bought Ø3 bore remains unchanged. The metal D stub spans the full 8 mm driver and projects 2 mm beyond it; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. The manufacturer X06 half arm 1 uses rear M1.4x8 screws and front nuts through its two enlarged existing Ø1 pilot holes at 6.8/13.2 mm. No new hole centres are transferred. The open C register and flat face limit misalignment; the nominal STEP fixes the hole positions and root geometry, while installed seating, delivered concentricity and runout remain unmeasured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
         "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
         and specification.total_length_mm == coupling.GEAR_LENGTH
         and bore_intrusion < TOL
@@ -901,6 +902,21 @@ def tilt_clearance_check(doc, module, prefix):
     output_moving = [obj for obj in moving if belongs_to_group(obj, pod)]
     input_moving = [obj for obj in moving if belongs_to_group(obj, drive)]
     fixed = [obj for obj in objects if obj not in moving]
+    horn = doc.getObject(prefix + "ServoHorn")
+    servo = doc.getObject(prefix + "Servo")
+    mount = doc.getObject(prefix + "ServoMount")
+    if (
+        horn not in input_moving
+        or servo not in fixed
+        or mount is None
+        or not belongs_to_group(servo, mount)
+    ):
+        return {
+            "pod": prefix,
+            "poses": [],
+            "error": "Horn must move with its input drive and servo must remain in its fixed mount",
+            "passed": False,
+        }
     original_tilt = float(pod.Tilt)
     rows = []
     try:
@@ -911,12 +927,26 @@ def tilt_clearance_check(doc, module, prefix):
             fixed_shapes = {obj.Name: world_shape(obj) for obj in fixed}
             moving_shapes = {obj.Name: world_shape(obj) for obj in moving}
             collisions = []
+            spline_contacts = []
             minimum_z = float("inf")
             for obj in moving:
                 shape = moving_shapes[obj.Name]
                 minimum_z = min(minimum_z, shape.optimalBoundingBox(False, False).ZMin)
                 for name, obstacle in fixed_shapes.items():
                     volume = intersection_volume(shape, obstacle)
+                    if obj.Name == prefix + "ServoHorn" and name == prefix + "Servo":
+                        frame = drive.getGlobalPlacement()
+                        contact = horn_spline_contact(
+                            shape,
+                            obstacle,
+                            frame.Base,
+                            frame.Rotation.multVec(App.Vector(0, 1, 0)),
+                        )
+                        spline_contacts.append(
+                            {"moving": obj.Name, "fixed": name, **contact}
+                        )
+                        if contact["passed"]:
+                            continue
                     if volume > TOL:
                         collisions.append(
                             {
@@ -944,7 +974,10 @@ def tilt_clearance_check(doc, module, prefix):
                     "output_angle_deg": angle,
                     "minimum_z_mm": minimum_z,
                     "collisions": collisions,
-                    "passed": not collisions and minimum_z >= -TOL,
+                    "spline_contacts": spline_contacts,
+                    "passed": not collisions
+                    and minimum_z >= -TOL
+                    and all(contact["passed"] for contact in spline_contacts),
                 }
             )
     finally:
@@ -957,7 +990,7 @@ def tilt_clearance_check(doc, module, prefix):
         "relative_motion_pairs_checked_per_pose": len(output_moving)
         * len(input_moving),
         "poses": rows,
-        "scope": "49 sampled coupled-output/input positions at the fixed nominal center distance, including both bounded rotation endpoints. Checks live fixed obstacles and every output-pod/input-drive pair, including gear teeth; no gear-pair exclusion. Not a continuous rigid-body or connected-wire sweep proof.",
+        "scope": "49 sampled coupled-output/input positions at the fixed nominal center distance, including both bounded rotation endpoints. Checks live fixed obstacles and every output-pod/input-drive pair, including gear teeth; no gear-pair exclusion. Same-side OEM horn contact is permitted only inside the uniquely sourced servo spline cylinder measured at that pose; case and ear overlap remains forbidden. Not a continuous rigid-body or connected-wire sweep proof or a qualification of physical spline fit.",
         "passed": bool(moving) and all(row["passed"] for row in rows),
     }
 
@@ -1640,9 +1673,13 @@ def _record_fastener_checks(report, module, physical):
         prerequisites = "Other local propulsion parts stay installed at neutral tilt."
         if "ServoEar" in bolt.Name:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
-            service_excluded.update(_input_service_removed(prefix))
+            service_excluded.update({prefix + "DriverGear", prefix + "InputShaft"})
+            if "Upper" in bolt.Name:
+                service_excluded.update(
+                    {prefix + "ServoEarLowerBolt", prefix + "ServoEarLowerNut"}
+                )
             service_parts = servo_bench_members(module["group"].Document, physical)
-            prerequisites = "Remove the complete paired servo module, then its driver gear and adapter on a clear bench before releasing the servo ears."
+            prerequisites = "Remove the paired servo module and selected driver gear/input stub, then release lower and upper ear joints in order. Keep the horn, adapter and both rear-screw/front-nut pairs attached to the servo."
             matches = [
                 row for row in report["input_drive_service"] if row["pod"] == prefix
             ]
@@ -1727,7 +1764,8 @@ def _record_fastener_checks(report, module, physical):
                     "service_group": module["group"].Name,
                     "service_dependencies": dependencies,
                     "retained_service_parts": row["retained_parts"],
-                    "removed_local_parts": row["removed_prior_parts"] + [row["bolt"]],
+                    "removed_local_parts": row["removed_prior_parts"]
+                    + [row.get("removed_part", row["bolt"])],
                     "passed": row["passed"]
                     and all(item["passed"] for item in dependencies),
                 }

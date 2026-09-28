@@ -56,6 +56,44 @@ class NativeHardwareProcurementTests(unittest.TestCase):
 
 
 class HardwareSpecificationTests(unittest.TestCase):
+    def test_current_plastic_horn_selection_preserves_source_and_unknown_mass(self):
+        from gondola.config import REPO_ROOT
+        from gondola.contracts.design import HARDWARE_MATERIALS
+        from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE
+        from gondola.mass_budget import DENSITIES_G_CM3
+        from gondola.procurement import hardware_material_code
+        from gondola.provenance import file_sha256
+
+        sku = "KST_X06_STOCK_HALF_ARM_1"
+        for code, quantity in (
+            (sku, 2),
+            ("M1_4X8_PAN_HEAD_KIT", 4),
+            ("M1_4_HEX_NUT_DIN934", 4),
+        ):
+            self.assertEqual(PURCHASED_HARDWARE_QUANTITIES[code], quantity)
+        evidence = PROPULSION_EVIDENCE[sku]
+        self.assertEqual(evidence["selected_attachment_radii_mm"], [6.8, 13.2])
+        self.assertEqual(evidence["threaded_hole_count"], 0)
+        self.assertEqual(evidence["prepared_hole_diameter_mm"], 1.5)
+        self.assertEqual(
+            file_sha256(REPO_ROOT / evidence["sources"][0]),
+            evidence["geometry_sha256"],
+        )
+        self.assertEqual(procurement_spec(sku)["candidate_url"], evidence["sources"][0])
+        material = hardware_material_code(HARDWARE_MATERIALS[sku])
+        self.assertIsNone(DENSITIES_G_CM3[material])
+        for obsolete in (
+            "ALI_PTK_15T_4MM_HORN",
+            "METAL_15T_4MM_HORN_6_98",
+            "KST_0415_13_HORN",
+            "M1_6X5_PAN_HEAD_KIT",
+            "M1_4X6_PAN_HEAD_KIT",
+        ):
+            self.assertNotIn(obsolete, PURCHASED_HARDWARE_QUANTITIES)
+            self.assertNotIn(obsolete, HARDWARE_MATERIALS)
+            with self.assertRaises(KeyError):
+                procurement_spec(obsolete)
+
     def test_selected_shaft_evidence_matches_preparation_and_materials(self):
         from gondola.contracts.design import HARDWARE_MATERIALS
         from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE

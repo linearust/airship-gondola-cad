@@ -21,6 +21,11 @@ from gondola.provenance import file_sha256, source_fingerprint
 from tools.blender_review.motion_plan import REVIEW_MOTION, curve
 
 CATEGORIES = ("PrintedParts", "HardwareParts", "ReferenceParts", "TapeReferences")
+REVIEW_HORN_PROFILE = "KST_X06_HALF_ARM_1"
+REVIEW_HORN_SKU = "KST_X06_STOCK_HALF_ARM_1"
+REVIEW_HORN_STEP_SHA256 = (
+    "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81"
+)
 
 
 def matrix(placement):
@@ -48,12 +53,12 @@ def representation(obj):
         profile = servo_horns.profile(obj.HornProfile)
         return (
             profile.label
-            + ". "
+            + ". Manufacturer nominal STEP geometry with only the declared hole preparation. "
             + servo_horns.preparation_note(profile)
-            + " Installed seating and root concentricity remain unmeasured."
+            + " Resin, mass, installed seating and root concentricity remain unmeasured."
         )
     if getattr(obj, "Name", "").endswith("HornGearAdapter"):
-        return "Installed factory-hole adapter with provisional C-shaped locating seat; printed geometry does not certify received-horn concentricity or assembled runout."
+        return "Installed two-slot adapter for the OEM half arm: 1.8 x 2.4 mm slots at 6.8/13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat does not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
 
 
@@ -89,24 +94,62 @@ def check_review_basis(doc, report):
         adapter = doc.getObject(prefix + "HornGearAdapter")
         if (
             horn is None
-            or getattr(horn, "HornProfile", "") not in servo_horns.PROFILES
-            or getattr(horn, "HardwareSKU", "")
-            != servo_horns.profile(getattr(horn, "HornProfile", None)).sku
+            or getattr(horn, "HornProfile", "") != REVIEW_HORN_PROFILE
+            or servo_horns.profile(side=prefix).key != REVIEW_HORN_PROFILE
+            or getattr(horn, "HardwareSKU", "") != REVIEW_HORN_SKU
             or adapter is None
             or hasattr(adapter, "PrintBlankShape")
         ):
             raise RuntimeError(
                 "Update review captions for changed purchased-horn evidence."
             )
-        for position in ("Near", "Far"):
-            if doc.getObject(prefix + "HornGearClamp" + position + "Bolt") is None:
-                raise RuntimeError("Expected both factory-hole horn attachment screws.")
-            has_nut = (
-                doc.getObject(prefix + "HornGearClamp" + position + "Nut") is not None
+        if (
+            getattr(horn, "ManufacturerGeometryProvided", False) is not True
+            or getattr(horn, "ManufacturerGeometrySHA256", "")
+            != REVIEW_HORN_STEP_SHA256
+            or getattr(horn, "HornPreparationRequired", False) is not True
+            or getattr(horn, "FactoryM1_6ThreadsConfirmed", True) is not False
+            or getattr(horn, "PurchasedHornMeasured", True) is not False
+            or getattr(horn, "AxialSeatingMeasured", True) is not False
+        ):
+            raise RuntimeError(
+                "Update review captions for changed OEM horn provenance."
             )
-            if has_nut != (not servo_horns.profile(horn.HornProfile).threaded):
+        try:
+            contract = json.loads(horn.HornInterfaceContract)
+        except (AttributeError, TypeError, ValueError) as error:
+            raise RuntimeError(
+                "Missing reviewed OEM horn interface contract."
+            ) from error
+        expected_contract = {
+            "profile": REVIEW_HORN_PROFILE,
+            "manufacturer_geometry_sha256": REVIEW_HORN_STEP_SHA256,
+            "attachment_radii_mm": [6.8, 13.2],
+            "adapter_slot_width_mm": 1.8,
+            "adapter_slot_centres_x_mm": [6.8, 13.2],
+            "adapter_slot_centre_allowance_mm": 0.3,
+            "adapter_slot_overall_length_mm": 2.4,
+            "nominal_arm_thickness_mm": 2.0,
+            "screw_length_mm": 8.0,
+            "nuts_per_side": 2,
+        }
+        if not isinstance(contract, dict) or any(
+            contract.get(key) != value for key, value in expected_contract.items()
+        ):
+            raise RuntimeError(
+                "Update review captions for changed OEM horn dimensions."
+            )
+        for position in ("Near", "Far"):
+            bolt = doc.getObject(prefix + "HornGearClamp" + position + "Bolt")
+            nut = doc.getObject(prefix + "HornGearClamp" + position + "Nut")
+            if (
+                bolt is None
+                or getattr(bolt, "HardwareSKU", "") != "M1_4X8_PAN_HEAD_KIT"
+            ):
+                raise RuntimeError("Expected both rear M1.4x8 horn attachment screws.")
+            if nut is None or getattr(nut, "HardwareSKU", "") != "M1_4_HEX_NUT_DIN934":
                 raise RuntimeError(
-                    "Horn nut inventory does not match its saved profile."
+                    "Expected both front M1.4 horn nuts for the reviewed OEM profile."
                 )
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
@@ -253,7 +296,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks are swept envelopes. Three supported bought horn profiles use the same radial-slot adapter; the selected profile defines hardware and preparation. Horn seating, final fit and assembled runout remain physically unverified.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Both servos use the manufacturer stock plastic half arm 1, with two prepared factory holes and rear M1.4x8 screws/front M1.4 nuts on the two-slot adapter. Resin, mass, installed seating and assembled runout remain unmeasured.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -313,7 +356,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. The selected purchased horn uses the common radial-slot printed adapter, clamped after alignment; axial seating and received-part fit remain unverified. Reference teeth; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its source geometry except two prepared holes; rear M1.4x8 screws and front nuts clamp the short-slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -379,7 +422,8 @@ def export(cad_path, output):
         scene(
             "07 Servo module removal",
             "PAIRED SERVO MODULE / BENCH REMOVAL",
-            REVIEW_MOTION.removal_description(),
+            REVIEW_MOTION.removal_description()
+            + " Horns, adapters and their rear screws/front nuts stay on the servos throughout this module-removal scene.",
             REVIEW_MOTION.removal_frames,
             propulsion,
             [[-50, -111, 0], [119, 111, 90]],
@@ -397,7 +441,7 @@ def export(cad_path, output):
                 "fps": 24,
                 "part_count": len(parts),
                 "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
-                "installed_representation": "Installed factory-hole horn adapters and purchased metal-horn envelopes are displayed; fit samples and clearance reservations are excluded. Missing horn seating data remains provisional.",
+                "installed_representation": "Installed two-slot adapters and manufacturer stock plastic half-arm geometry with two declared hole enlargements are displayed, including rear M1.4x8 screws and front M1.4 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(report_path),

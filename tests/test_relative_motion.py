@@ -104,7 +104,9 @@ class HornProfileMembershipTests(unittest.TestCase):
         from gondola.validation.relative_motion import _input_drive_membership
 
         with patch.dict(
-            servo_horns.SELECTED_BY_SIDE, Port="KST_0415_13", Starboard="KST_0415_13"
+            servo_horns.SELECTED_BY_SIDE,
+            Port="KST_X06_HALF_ARM_1",
+            Starboard="KST_X06_HALF_ARM_1",
         ):
             doc = App.newDocument("KSTMotionMembership")
             try:
@@ -128,12 +130,19 @@ class HornProfileMembershipTests(unittest.TestCase):
                 self.assertFalse(rows[0]["passed"])
                 self.assertTrue(rows[1]["passed"])
                 self.assertIn("PortHornGearClampNearNut", rows[0]["expected_parts"])
-                # A metal-threaded source selection must not silently accept
-                # the optional KST nuts just because they exist in a saved CAD.
-                servo_horns.SELECTED_BY_SIDE["Port"] = "PTK_6_6"
-                rows = _input_drive_membership(parts)
+                # Keep the nut in the inventory but attach it to a fixed group:
+                # an installed front nut must follow the complete input drive.
+                misplaced = [
+                    {**part, "group": "MainPropulsionModule"}
+                    if part["name"] == "PortHornGearClampFarNut"
+                    else part
+                    for part in parts
+                ]
+                rows = _input_drive_membership(misplaced)
                 self.assertFalse(rows[0]["passed"])
                 self.assertTrue(rows[1]["passed"])
+                self.assertIn("PortHornGearClampFarNut", rows[0]["expected_parts"])
+                self.assertNotIn("PortHornGearClampFarNut", rows[0]["actual_parts"])
             finally:
                 App.closeDocument(doc.Name)
 
@@ -251,6 +260,8 @@ class NativeRelativeMotionTests(unittest.TestCase):
 
         servo = self.doc.PortServo
         original = servo.Shape.copy()
+        nominal_horn, nominal_body = self.horn_and_servo_parts("Port")
+        nominal_overlap = nominal_horn["shape"].common(nominal_body["shape"]).Volume
         try:
             # The lobe joins the actual case but clears the neutral horn; its
             # forward face enters the blade orbit at intermediate input angles.
@@ -260,7 +271,14 @@ class NativeRelativeMotionTests(unittest.TestCase):
             servo.Shape = original.fuse(lobe)
             self.doc.recompute()
             horn, body = self.horn_and_servo_parts("Port")
-            self.assertLess(horn["shape"].common(body["shape"]).Volume, 1e-7)
+            # The exact female spline already overlaps the smooth male spline
+            # envelope intentionally. This new lobe must add no neutral-pose
+            # intersection while still obstructing an intermediate pose.
+            self.assertAlmostEqual(
+                horn["shape"].common(body["shape"]).Volume,
+                nominal_overlap,
+                delta=1e-7,
+            )
             result = _horn_case_clearance(horn, body)
             self.assertFalse(result["passed"], result)
             self.assertGreater(result["intersection_mm3"], 0)
@@ -283,9 +301,17 @@ class NativeRelativeMotionTests(unittest.TestCase):
         original = servo.Shape.copy()
         try:
             extension = Part.makeCylinder(
-                1.95, 0.4, App.Vector(0, 33.4, 0), App.Vector(0, 1, 0)
+                1.95,
+                0.5,
+                App.Vector(0, original.BoundBox.YMax - 0.1, 0),
+                App.Vector(0, 1, 0),
             )
             servo.Shape = original.fuse(extension).removeSplitter()
+            self.assertTrue(servo.Shape.isValid())
+            self.assertEqual(len(servo.Shape.Solids), 1)
+            self.assertAlmostEqual(
+                servo.Shape.BoundBox.YMax - original.BoundBox.YMax, 0.4
+            )
             self.doc.recompute()
             result = _horn_case_clearance(*self.horn_and_servo_parts("Port"))
             self.assertFalse(result["passed"], result)
@@ -340,7 +366,7 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_second_horn_fastener_cannot_be_declared_fixed(self):
-        # Both factory-threaded horn joints rotate with the input. Keeping an object
+        # Both through-bolted horn joints rotate with the input. Keeping an object
         # in the inventory while silently changing its motion group is unsafe.
         nut = self.doc.PortHornGearClampFarBolt
         parent = nut.getParentGeoFeatureGroup()

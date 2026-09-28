@@ -42,18 +42,21 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BD:** broader integral carrier supports; added tape wings under the battery
-station, preserving earlier trim stations. Coplanar removable servo joint and
-direct tether packaging retained from [BC](references/bc_architecture_review.md).
-[Rail/mount review](references/bd_rail_mount_review.md) ·
-[verification](references/bd_rail_mount_verification.json).
+**BE:** manufacturer X06 stock plastic half arm 1 on both sides; exact supplied
+nominal STEP geometry with two declared factory-hole enlargements and a dedicated
+adapter with two short tolerance slots. [Interface](references/servo_horn_compatibility.md);
+[verification](references/be_oem_horn_verification.json).
+Broader carrier supports and added battery-station tape wings remain from
+[BD](references/bd_rail_mount_review.md), whose [verification](references/bd_rail_mount_verification.json)
+covers BD only. The coplanar removable servo joint and direct tether packaging
+remain from [BC](references/bc_architecture_review.md).
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
 | --- | --- | --- |
 | FC / battery | MicoAir H743V2 AIO **45A AM32**, existing 2S pack. Official input-range conflict leaves 2S and 8 V suitability unresolved; confirm supplied revision. | [FC](references/controller_selection_review.md) |
 | Drive | Two X06 V6.0; metric m0.5 **48T input / 16T output**, both Ø3 mm nominal bores. Bounded ±180° target; small shortfall allowed, no wraparound. No alternate ratio/collective mode implemented. | [selection](references/drive_selection_review.md), [gear evidence](references/kailash_gears_selected_evidence.md) |
-| Horns | All three retained 4 mm/15T drawings share an open radial-slot adapter; sides may differ. X06 spline compatibility is user-accepted, not measured. Two metal profiles have M1.6 threads; KST 0415.13 needs specified preparation/fasteners. Preserve factory axes and OEM centre retention. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
+| Horns | Manufacturer X06 stock plastic half arm 1 on both sides. Preserve supplied STEP geometry except existing Ø1 mm holes at 6.8/13.2 mm enlarged to Ø1.5 mm; rear M1.4×8 screws/front M1.4 nuts. Two short adapter slots, no washers. Preserve factory axes and OEM centre retention; resin, mass and installed fit remain unmeasured. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
 | Shafts / bearings | Nominal Ø3 mm 304 rod, generic 3×6×2.5 mm bearings; precision replacement rod allowed if fit fails. No established h5 tolerance or NSK/ISC identity. Integral outer-ring capture, separate shaft grip/axial stops. **No purchased spacers**; rejected 3×5×3 bush contacts shields. | [cart adaptation](references/cart_adaptation_review.md), [retention](references/retention_review.md) |
 | Navigation | One of P-AS, MG-A01/M10 Ultra, bare MG-F10-A in the same region; not MG-F10-C. | [navigation](references/navigation_module_compatibility.md) |
 | Optical | One of MTF-02P/MTF-01P on a common adhesive tray. MTF-02P holes unconfirmed; MTF-01P holes intentionally unused. | [sensors](references/optical_sensor_compatibility.md) |
@@ -69,7 +72,9 @@ protrusion unresolved, screw solids unmodeled. Y servo harness, push-on rings, n
 M2 standoffs and unrelated cart items are outside CAD requirements. [Cart record](references/cart_review_2026_09_27.json).
 
 **Superseded:** carbon-adapter-based rail architecture, 35A Bluejay, DS-M005,
-60T/20T, imperial 48DP, MISUMI-only purchasing, two-BEC/exact-5.2-V servo scheme.
+60T/20T, imperial 48DP, MISUMI-only purchasing, two-BEC/exact-5.2-V servo scheme,
+and the three-metal-horn universal radial-slot adapter. Its drawings remain historical
+references; they are not current compatibility requirements.
 Do not restore these from old records. The 59° example was hypothetical.
 Changing a saved gear-ratio property does not regenerate or validate the mechanism.
 
@@ -87,7 +92,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BD. Preserve them during refactors;
+The architecture-specific checks below describe BE. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -116,9 +121,11 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   view obstruction. Power can further restrict hosts: follow its report. Navigation/
   propulsion hosts and arbitrary corners are unqualified. Retain rejected cases;
   the saved selected configuration must pass.
-- Check all horn profiles, seating/concentricity, screw/nut direction/access, servo
-  clearance and ordered removal. X06 radial-load capacity, loaded travel/torque retention
-  remain unverified; slots do not cure running eccentricity. Check received hardware,
+- Check the selected manufacturer horn against its retained STEP, the two prepared
+  holes, short slots, seating/concentricity, screw/nut direction/access, servo
+  clearance and ordered removal. Nominal source geometry is not physical measurement.
+  X06 radial-load capacity, loaded travel/torque retention remain unverified;
+  slots do not cure running eccentricity. Check received hardware,
   FC damping/insulation and bearing shields; never restore the rejected shield-contact bush.
 - Check neutral/coupled rotation, axial travel and complete service paths, not endpoints.
   Separate intended contacts from collisions; distinguish sampled checks from continuous
@@ -189,8 +196,10 @@ and saves the previewed CAD files, so it precedes file-bound checks. Inspect ass
 layout and both optical-host views; restore configured host before saving. Alternate
 paths: put `--output-dir PATH` / `--freecad-appimage PATH` before the subcommand;
 use the output directory consistently. Retain exact-source/file verification in Git.
-Fingerprint covers `gondola/**/*.py` and root `.FCMacro`, excluding docs/tests/evidence/
-Blender tools: a matching fingerprint alone does not establish their freshness.
+Fingerprint covers `gondola/**/*.py`, files in `gondola/data/` and root `.FCMacro`,
+excluding docs/tests/reference evidence/Blender tools: a matching fingerprint alone
+does not establish their freshness. Retain the manufacturer STEP and its source
+archive/provenance together; nominal CAD is not a delivered-part measurement.
 
 Untracked `build/gondola.FCStd` is the generated assembly, **not the fixture**.
 Export only manifest-listed prints. `build/gondola_power_options.FCStd` is a separate

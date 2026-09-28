@@ -406,7 +406,28 @@ class NativeGearedDriveTests(unittest.TestCase):
                     servo_bridge.case_front_y() - 16.7,
                 )
                 self.assertAlmostEqual(allowance["inward_planning_volume_mm"][1], 13.9)
-                self.assertEqual(len(allowance["continuous_input_drive_clearance"]), 16)
+                self.assertCountEqual(
+                    [
+                        row["parts"]
+                        for row in allowance["continuous_input_drive_clearance"]
+                    ],
+                    [
+                        [prefix + "RearLeadAllowance", side + suffix]
+                        for side in ("Port", "Starboard")
+                        for suffix in (
+                            "ServoHorn",
+                            "HornGearAdapter",
+                            "DriverGear",
+                            "InputShaft",
+                            "InputShaftClampBolt",
+                            "InputShaftClampNut",
+                            "HornGearClampNearBolt",
+                            "HornGearClampFarBolt",
+                            "HornGearClampNearNut",
+                            "HornGearClampFarNut",
+                        )
+                    ],
+                )
                 self.assertIn(
                     "StarboardServoEarLowerNut", allowance["checked_physical_objects"]
                 )
@@ -1067,6 +1088,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                 "HornGearAdapter",
                 "HornGearClampNearBolt",
                 "HornGearClampFarBolt",
+                "HornGearClampNearNut",
+                "HornGearClampFarNut",
                 "ServoEarLowerBolt",
                 "ServoEarLowerNut",
                 "ServoEarUpperBolt",
@@ -1222,6 +1245,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                 self.assertTrue(row["passed"], (key, row))
 
     def test_servo_and_adapter_have_checked_removal_paths(self):
+        from gondola.parts import servo_coupling as coupling
         from gondola.validation.propulsion import (
             input_drive_service_check,
             servo_case_service_check,
@@ -1236,70 +1260,102 @@ class SelectedGearDriveTests(unittest.TestCase):
                     self.assertGreater(assembly_shape.Volume, 0)
                     result = input_drive_service_check(doc, module, prefix)
                     self.assertTrue(result["passed"], result)
+                    self.assertEqual(result["service_mode"], "preassembled_servo_unit")
+                    moving = {
+                        prefix + suffix
+                        for suffix in (
+                            "Servo",
+                            "ServoHorn",
+                            "HornGearAdapter",
+                            "HornGearClampNearBolt",
+                            "HornGearClampFarBolt",
+                            "HornGearClampNearNut",
+                            "HornGearClampFarNut",
+                            "InputShaftClampBolt",
+                            "InputShaftClampNut",
+                        )
+                    }
                     self.assertEqual(
                         set(result["moving_parts"]),
-                        {
-                            prefix + suffix
-                            for suffix in (
-                                "HornGearAdapter",
-                                "InputShaft",
-                                "InputShaftClampBolt",
-                                "InputShaftClampNut",
-                            )
-                        },
-                    )
-                    self.assertEqual(
-                        result["removed_output_gear"], prefix + "OutputGear"
-                    )
-                    self.assertTrue(result["output_gear_removal"]["passed"])
-                    self.assertEqual(
-                        result["removed_driver_gear"], prefix + "DriverGear"
+                        moving,
                     )
                     self.assertTrue(result["driver_gear_removal"]["passed"])
-                    self.assertTrue(result["adapter_clamp_release"]["passed"])
-                    clamp_release = result["adapter_clamp_release"]
-                    self.assertEqual(clamp_release["release_order"], ["Far", "Near"])
-                    far, near = clamp_release["fasteners"]
-                    self.assertIn(
-                        prefix + "HornGearClampNearBolt", far["retained_parts"]
-                    )
-                    for kind in ("Bolt",):
-                        name = prefix + "HornGearClampFar" + kind
-                        self.assertIn(name, near["removed_prior_parts"])
-                        self.assertNotIn(name, near["retained_parts"])
-                    for joint in (far, near):
-                        self.assertEqual(
-                            len(joint["bolt_axial_withdrawal"]["segments"]), 1
-                        )
-                        self.assertAlmostEqual(
-                            joint["measured_head_envelope_diameter_mm"], 3.5
-                        )
-                        self.assertAlmostEqual(
-                            joint["measured_head_envelope_height_mm"], 1.6
-                        )
+                    self.assertTrue(result["input_stub_removal"]["passed"])
                     self.assertEqual(
-                        set(result["released_fasteners"]),
+                        {row["bolt"] for row in result["ear_fastener_release"]},
                         {
-                            prefix + "HornGearClamp" + position + "Bolt"
-                            for position in ("Near", "Far")
+                            prefix + "ServoEar" + side + "Bolt"
+                            for side in ("Lower", "Upper")
                         },
                     )
+                    self.assertTrue(
+                        all(row["passed"] for row in result["ear_fastener_release"])
+                    )
+                    self.assertTrue(result["adapter_clamp_release"]["passed"])
+                    clamp_release = result["adapter_clamp_release"]
+                    self.assertEqual(
+                        [row["joint"] for row in clamp_release["fasteners"]],
+                        ["Far", "Near"],
+                    )
+                    far, near = clamp_release["fasteners"]
+                    self.assertIn(
+                        prefix + "HornGearClampNearNut", far["retained_parts"]
+                    )
+                    far_nut = prefix + "HornGearClampFarNut"
+                    self.assertIn(far_nut, near["removed_prior_parts"])
+                    self.assertNotIn(far_nut, near["retained_parts"])
+                    for joint in (far, near):
+                        # Both rear bolts stay in the plastic horn while its
+                        # front nuts are released in order on the clear bench.
+                        for position in ("Near", "Far"):
+                            name = prefix + "HornGearClamp" + position + "Bolt"
+                            self.assertIn(name, joint["retained_parts"])
+                            self.assertNotIn(name, joint["removed_prior_parts"])
+                        route = joint["front_nut_release"]
+                        self.assertTrue(route["passed"], route)
+                        self.assertEqual(len(route["segments"]), 2)
+                        self.assertEqual(route["segments"][0]["start_mm"], [0, 0, 0])
+                        self.assertAlmostEqual(route["segments"][0]["end_mm"][1], 2.6)
+                        self.assertEqual(
+                            route["segments"][1]["start_mm"],
+                            route["segments"][0]["end_mm"],
+                        )
+                        self.assertEqual(route["segments"][1]["end_mm"][0], 20)
+                        self.assertEqual(joint["fine_plier_jaw_collisions_mm3"], {})
+                    self.assertEqual(
+                        [
+                            row["radius_mm"]
+                            for row in result["rear_holding_tool_off_bridge"]
+                        ],
+                        [6.8, 13.2],
+                    )
+                    self.assertTrue(
+                        all(
+                            row["passed"]
+                            for row in result["rear_holding_tool_off_bridge"]
+                        )
+                    )
+                    adapter_route = result["adapter_release_off_bridge"]
+                    self.assertTrue(adapter_route["passed"], adapter_route)
+                    self.assertEqual(
+                        [row["end_mm"] for row in adapter_route["segments"]],
+                        [
+                            [0, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0],
+                            [40, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0],
+                        ],
+                    )
+                    self.assertNotIn("PropulsionFixedFrame", result["bench_members"])
+                    for side in ("Port", "Starboard"):
+                        self.assertNotIn(side + "OutputGear", result["bench_members"])
                     case_service = servo_case_service_check(
                         doc, module, prefix, prior_service=result
                     )
                     self.assertTrue(case_service["passed"], case_service)
                     self.assertEqual(
                         set(case_service["moving_parts"]),
-                        {prefix + "Servo", prefix + "ServoHorn"},
+                        moving,
                     )
-                    self.assertEqual(
-                        set(case_service["released_fasteners"]),
-                        {
-                            prefix + "ServoEar" + side + kind
-                            for side in ("Lower", "Upper")
-                            for kind in ("Bolt", "Nut")
-                        },
-                    )
+                    self.assertTrue(case_service["prior_input_drive_service_passed"])
                     self.assertEqual(
                         case_service["required_prior_check"], "input_drive_service"
                     )
@@ -1317,14 +1373,23 @@ class SelectedGearDriveTests(unittest.TestCase):
                         result["required_prior_check"], "servo_module_service"
                     )
                     self.assertTrue(result["module_removal_passed"])
-                    self.assertIn(
-                        "PropulsionFixedFrame", result["separated_fixed_parts"]
-                    )
                     for service in (result, case_service):
                         self.assertTrue(retained.issubset(service["retained_parts"]))
+                        self.assertEqual(
+                            {row["part"] for row in service["part_paths"]}, moving
+                        )
                         for row in service["part_paths"]:
                             self.assertTrue(row["passed"], row)
                             self.assertTrue(retained.issubset(row["obstacles"]))
+                            sign = 1 if prefix == "Port" else -1
+                            self.assertEqual(
+                                row["waypoints_mm"],
+                                [
+                                    (0, 0, 0),
+                                    (0, sign * 12.5, 0),
+                                    (sign * 40, sign * 12.5, 0),
+                                ],
+                            )
 
     def test_horn_fastener_report_retains_the_other_joint_until_ordered_release(self):
         from gondola.cad import world_shape
@@ -1356,7 +1421,16 @@ class SelectedGearDriveTests(unittest.TestCase):
             self.assertIn(
                 prefix + "HornGearClampNearBolt", far["retained_service_parts"]
             )
-            self.assertIn(prefix + "HornGearClampFarBolt", near["removed_local_parts"])
+            self.assertIn(prefix + "HornGearClampFarNut", near["removed_local_parts"])
+            for row, position in ((far, "Far"), (near, "Near")):
+                self.assertEqual(
+                    row["nut"], prefix + "HornGearClamp" + position + "Nut"
+                )
+                self.assertIn(row["nut"], row["removed_local_parts"])
+                for kept in ("Near", "Far"):
+                    name = prefix + "HornGearClamp" + kept + "Bolt"
+                    self.assertIn(name, row["retained_service_parts"])
+                    self.assertNotIn(name, row["removed_local_parts"])
             self.assertIn(
                 {
                     "check": "fastener_service",
@@ -1421,6 +1495,8 @@ class SelectedGearDriveTests(unittest.TestCase):
             "PortInputShaftClampBolt",
             "PortInputShaftClampNut",
             "PortHornGearClampNearBolt",
+            "PortHornGearClampNearNut",
+            "PortHornGearClampFarNut",
             "PortServoHorn",
             "PortHornGearAdapter",
             "PortOutputShaftPositive",
