@@ -385,14 +385,18 @@ def tower_attachment_check(doc, host):
     placement = doc.OpticalFlowModule.getGlobalPlacement()
     axial = placement.Rotation.multVec(V(0, 0, 1))
     rows = []
-    for index, (x, y) in enumerate(stack_interface.ANCHOR_CENTRES):
-        radius = math.hypot(x, y)
-        clip = Part.makeBox(
-            18, 14, 4, V(radius - 5, -7, -stack_interface.TOWER_HEIGHT - 1)
-        )
-        clip.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(y, x)))
+    for index in range(len(stack_interface.ANCHOR_CENTRES)):
+        clip = stack_interface.foot_outline_shape(index)
         clip.Placement = placement.multiply(clip.Placement)
         foot = base.common(clip)
+        expected_foot = stack_interface.foot_shape(index)
+        expected_foot.Placement = placement.multiply(expected_foot.Placement)
+        missing_foot = abs(expected_foot.cut(base).Volume)
+        expected_area = expected_foot.Volume / stack_interface.FOOT_THICKNESS
+        seat = stack_interface.foot_shape(index, thickness=0.1)
+        seat.Placement = placement.multiply(seat.Placement)
+        seat.translate(axial * -0.1)
+        missing_seat = abs(seat.cut(carrier).Volume)
         down = foot.copy()
         down.translate(axial * -0.1)
         seat_area = intersection_volume(down, carrier) / 0.1
@@ -431,13 +435,19 @@ def tower_attachment_check(doc, host):
         rows.append(
             {
                 "foot": index,
+                "expected_complete_foot_contact_area_mm2": expected_area,
                 "direct_seat_contact_area_mm2": seat_area,
+                "missing_complete_foot_material_mm3": missing_foot,
+                "missing_complete_carrier_seat_mm3": missing_seat,
                 "nominal_head_bearing_area_mm2": head_area,
                 "nominal_nut_bearing_area_mm2": nut_area,
                 "full_nut_core_missing_mm3": missing_core,
                 "nominal_tip_projection_mm": projection,
                 "hardware_overlap_mm3": overlaps,
                 "passed": seat_area > 75
+                and abs(seat_area - expected_area) < TOL
+                and missing_foot < TOL
+                and missing_seat < TOL
                 and head_area > 10
                 and nut_area > 8
                 and missing_core < TOL
@@ -613,17 +623,39 @@ def _tower_service_check(doc, fixed, kit):
                 "passed": not hits and uncontained < TOL,
             }
         )
+    registered_feet = []
+    for index in range(len(stack_interface.ANCHOR_CENTRES)):
+        bound = stack_interface.foot_float_shape_bound(index)
+        bound.Placement = placement.multiply(bound.Placement)
+        vector = placement.Rotation.multVec(V(0, 0, 40))
+        sweep, method = translation_sweep(bound, tuple(vector))
+        hits = find_hits(sweep, fixed)
+        wire = fixed.get("FCWiringClearanceReserve")
+        wire_gap = sweep.distToShape(wire)[0] if wire is not None else None
+        registered_feet.append(
+            {
+                "foot": index,
+                "upward_travel_mm": 40,
+                "method": method,
+                "registration_bound": "Intersection of two independently complete XY/yaw bounds at 0 and 45 degrees; unchanged two-hole registration allowance, no sampled-pose inference.",
+                "collisions": hits,
+                "fc_wiring_gap_mm": wire_gap,
+                "passed": not hits and (wire_gap is None or wire_gap >= 1.5 - TOL),
+            }
+        )
     return {
         "bench_service_frame": bench_frame,
         "clamp_tool_access": access,
         "clamp_hardware_removal": removal,
         "whole_tower_lift": lift,
+        "registered_foot_lift": registered_feet,
         "scope": "Disconnect leads, remove the carrier from the rail and support it on a bench. The unmodeled balloon may obstruct underside tools; on-balloon access is not claimed. Support tower upright. Hold exposed nuts from outboard, operate 1.5 mm keys from below, remove both nuts and withdraw both screws downward, then lift the complete tower 40 mm along optical +Z. Tool access volumes are design envelopes, not measured tools. Loosened tower is a non-operating service state; arbitrary tilted extraction is not certified.",
         "passed": bench_frame["valid_supported_host"]
         and len(access) == 4
         and len(removal) == 6
+        and len(registered_feet) == 2
         and bool(lift)
-        and all(row["passed"] for row in access + removal + lift),
+        and all(row["passed"] for row in access + removal + lift + registered_feet),
     }
 
 

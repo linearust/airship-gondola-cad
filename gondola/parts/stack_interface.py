@@ -25,7 +25,6 @@ from . import purchased_hardware
 V = App.Vector
 PITCH_MM = STACK_PITCH_MM
 ANCHOR_CENTRES = STACK_ANCHOR_CENTRES
-ARM_WIDTH = 5.0
 DECK_THICKNESS = 2.0
 TOP_BEAM_THICKNESS = 3.0
 HOST_DECK_BOTTOM_Z = 11.4
@@ -33,14 +32,14 @@ HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
 TOWER_HEIGHT = 32.0
 STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
 FOOT_THICKNESS = 2.0
-FOOT_INNER_OFFSET = -3.6
-FOOT_OUTER_OFFSET = 7.3
+FOOT_WIDTH = 8.0
+FOOT_LENGTH = 13.0
+FOOT_INBOARD_Y = 4.0
+FOOT_INBOARD_CHAMFER = 5.0
 FIXED_LEG_INNER = -1.4
 FIXED_LEG_THICKNESS = 2.0
 LEG_WIDTH = 8.0
-HOST_SEAT_OUTER = 8.0
-HOST_SEAT_WIDTH = 8.0
-CLAMP_AXIS_OFFSET = 4.0
+CLAMP_Y_OFFSET = 6.0
 CLAMP_HOLE_DIAMETER = 2.6
 CLAMP_SCREW_LENGTH = 8.0
 DIMENSION_ALLOWANCE = 0.3
@@ -50,8 +49,8 @@ MAX_RADIAL_FLOAT = (
 )
 CLAMP_CENTRES = tuple(
     (
-        x * (1 + CLAMP_AXIS_OFFSET / math.hypot(x, y)),
-        y * (1 + CLAMP_AXIS_OFFSET / math.hypot(x, y)),
+        x,
+        y + math.copysign(CLAMP_Y_OFFSET, y),
     )
     for x, y in ANCHOR_CENTRES
 )
@@ -64,77 +63,6 @@ MECHANICAL_HOSTS = {
     "AccessoryEquipmentModule": "AccessoryMount",
 }
 HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
-
-# Common board spacings are separate from the two-point structural tower joint.
-# Clearance diameters are our PA12 design choices, not OEM PCB hole diameters.
-BOARD_PATTERNS = {
-    20.0: {
-        "fastener": "M2",
-        "clearance_diameter_mm": 2.6,
-        "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/",
-        "evidence": "Manufacturer lists 20 x 20 mm and M2/M3 screw or grommet compatibility; this carrier supports the M2 option only.",
-    },
-    30.5: {
-        "fastener": "M3",
-        "clearance_diameter_mm": 3.6,
-        "source": "https://www.mateksys.com/?portfolio=f405-std",
-        "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs.",
-    },
-}
-
-
-def board_pattern_contract(patterns, centre=(0.0, 0.0)):
-    """Common square pitches with an explicit carrier-local datum and rotation."""
-    rows = []
-    for pitch, rotation in patterns:
-        spec = BOARD_PATTERNS[pitch]
-        angle = math.radians(rotation)
-        axes = tuple(
-            (
-                centre[0] + x * math.cos(angle) - y * math.sin(angle),
-                centre[1] + x * math.sin(angle) + y * math.cos(angle),
-            )
-            for x, y in (
-                (-pitch / 2, -pitch / 2),
-                (pitch / 2, -pitch / 2),
-                (pitch / 2, pitch / 2),
-                (-pitch / 2, pitch / 2),
-            )
-        )
-        rows.append(
-            {"pitch_mm": pitch, "rotation_deg": rotation, "centres_xy_mm": axes, **spec}
-        )
-    return {
-        "datum_xy_mm": centre,
-        "patterns": rows,
-        "minimum_full_thickness_land_mm": 1.5,
-        "scope": "Common board pitches for future alternative installations, not a universal board or connector fit. Use M2 on the 20 mm pattern and M3 on the 30.5 mm pattern. Printed holes are clearance bores, without threads or installed hardware. Choose purchased spacers and screw lengths after checking the actual device, insulation, underside access and wiring. These board patterns do not replace the separate structural tower attachment or qualify another device in an occupied bay.",
-    }
-
-
-def board_hole_rows(patterns, centre=(0.0, 0.0)):
-    return [
-        {
-            "pitch_mm": row["pitch_mm"],
-            "fastener": row["fastener"],
-            "diameter_mm": row["clearance_diameter_mm"],
-            "centre_xy_mm": axis,
-        }
-        for row in board_pattern_contract(patterns, centre)["patterns"]
-        for axis in row["centres_xy_mm"]
-    ]
-
-
-def board_hole_shapes(rows, bottom, depth, *, border=0.0):
-    """Round bores or their surrounding land probes; never cable-tie slots."""
-    return [
-        Part.makeCylinder(
-            row["diameter_mm"] / 2 + border,
-            depth,
-            V(*row["centre_xy_mm"], bottom),
-        )
-        for row in rows
-    ]
 
 
 def host_origin_xy(host_name=None):
@@ -189,19 +117,23 @@ def clamp_fit_contract():
 
 def interface_contract(host_name=None):
     return {
-        "standard": f"Project structural stack: rigid legs at {STACK_ANCHOR_LOCATIONS}, two outboard M2 clamps",
+        "standard": f"Project structural stack: rigid legs at {STACK_ANCHOR_LOCATIONS}, two M2 plate clamps",
         "industry_standard_claimed": False,
-        "axis_spacing_mm": math.sqrt(2) * PITCH_MM,
+        "anchor_spacing_mm": math.sqrt(2) * PITCH_MM,
+        "clamp_axis_spacing_mm": 2 * math.hypot(*CLAMP_CENTRES[0]),
         "anchor_centres_xy_mm": ANCHOR_CENTRES,
         "clamp_centres_xy_mm": CLAMP_CENTRES,
         "printed_deck_thickness_mm": DECK_THICKNESS,
         "host_support_z_mm": HOST_SUPPORT_Z,
         "integral_tower_height_mm": TOWER_HEIGHT,
         "tower_foot_thickness_mm": FOOT_THICKNESS,
+        "tower_foot_size_xy_mm": [FOOT_WIDTH, FOOT_LENGTH],
+        "tower_foot_orientation": "Feet aligned with carrier X/Y; long axis Y, one inward 45-degree corner chamfer",
+        "tower_foot_inward_corner_chamfer_mm": FOOT_INBOARD_CHAMFER,
         "fixed_load_leg_section_mm": [FIXED_LEG_THICKNESS, LEG_WIDTH],
         "top_beam_section_mm": [TOP_BEAM_THICKNESS, LEG_WIDTH],
         "top_beam_overhang_past_legs_mm": 0.0,
-        "tower_attachment": "Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.",
+        "tower_attachment": "Two integral 8 x 13 x 2 mm feet seat directly inside the 2 mm carrier plate outline. One 5 mm inward corner chamfer per foot clears FC wiring during tower removal while retaining the full leg footprint. The host has two circular structural bores, separate from its generic mounting slots; no projecting arms or tabs are added. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.",
         "service": "Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.",
         "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
@@ -209,7 +141,7 @@ def interface_contract(host_name=None):
         "carrier_datum_xy_mm": host_origin_xy(host_name),
         "mechanical_host_datums_xy_mm": dict(HOST_ORIGINS_XY),
         "accessory_scope": "The accessory carrier has the same attachment geometry at the common local (0,0) mm datum for a separately validated optional power platform. It is not an optical host: its installed direct GPS antenna can obstruct the optical field. A shared hole pattern alone does not qualify simultaneous equipment, wiring, tool access or tether loads.",
-        "load_path": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+        "load_path": "Carrier plate -> directly clamped broad tower feet -> two diagonal rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
         "clamp_fit": clamp_fit_contract(),
     }
 
@@ -229,29 +161,13 @@ def _hole_cut(shape, bottom, depth, origin=(0.0, 0.0)):
     return shape.removeSplitter()
 
 
-def platform_shape():
-    pieces = []
-    for x, y in ANCHOR_CENTRES:
-        radius = math.hypot(x, y)
-        arm = box(
-            radius + HOST_SEAT_OUTER, ARM_WIDTH, DECK_THICKNESS, (0, -ARM_WIDTH / 2, 0)
-        )
-        seat = box(
-            HOST_SEAT_OUTER - FOOT_INNER_OFFSET,
-            HOST_SEAT_WIDTH,
-            DECK_THICKNESS,
-            (radius + FOOT_INNER_OFFSET, -HOST_SEAT_WIDTH / 2, 0),
-        )
-        pieces.append(_radial(union([arm, seat]), x, y))
-    return _hole_cut(union(pieces), -1, DECK_THICKNESS + 2)
-
-
 def add_host_interface(shape, host_name=None):
-    origin = host_origin_xy(host_name)
-    platform = platform_shape()
-    platform.translate(V(*origin, HOST_DECK_BOTTOM_Z))
+    """Cut the two structural bores in the existing plate; add no carrier ears."""
     return _hole_cut(
-        shape.fuse(platform), HOST_DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2, origin
+        shape,
+        HOST_DECK_BOTTOM_Z - 1,
+        DECK_THICKNESS + 2,
+        host_origin_xy(host_name),
     )
 
 
@@ -279,20 +195,52 @@ def attach_to_host(group, host):
     group.Document.recompute()
 
 
-def _fixed_leg_pieces(radius):
-    return (
-        box(
-            FIXED_LEG_THICKNESS,
-            LEG_WIDTH,
-            TOWER_HEIGHT,
-            (radius + FIXED_LEG_INNER, -LEG_WIDTH / 2, -TOWER_HEIGHT),
-        ),
-        box(
-            FOOT_OUTER_OFFSET - FOOT_INNER_OFFSET,
-            HOST_SEAT_WIDTH,
-            FOOT_THICKNESS,
-            (radius + FOOT_INNER_OFFSET, -HOST_SEAT_WIDTH / 2, -TOWER_HEIGHT),
-        ),
+def _fixed_leg_shape(radius):
+    return box(
+        FIXED_LEG_THICKNESS,
+        LEG_WIDTH,
+        TOWER_HEIGHT,
+        (radius + FIXED_LEG_INNER, -LEG_WIDTH / 2, -TOWER_HEIGHT),
+    )
+
+
+def foot_outline_shape(index, *, bottom=-TOWER_HEIGHT, thickness=FOOT_THICKNESS):
+    """One Y-aligned foot with an inward corner cut for FC-wire lift clearance."""
+    x, y = ANCHOR_CENTRES[index]
+    centre_y = y + math.copysign(FOOT_LENGTH / 2 - FOOT_INBOARD_Y, y)
+    shape = box(
+        FOOT_WIDTH,
+        FOOT_LENGTH,
+        thickness,
+        (x - FOOT_WIDTH / 2, centre_y - FOOT_LENGTH / 2, bottom),
+    )
+    if FOOT_INBOARD_CHAMFER:
+        direction = math.copysign(1, x)
+        tip = V(
+            x - direction * FOOT_WIDTH / 2,
+            y - direction * FOOT_INBOARD_Y,
+            bottom - 1,
+        )
+        chamfer = Part.Face(
+            Part.makePolygon(
+                [
+                    tip,
+                    tip + V(direction * FOOT_INBOARD_CHAMFER, 0, 0),
+                    tip + V(0, direction * FOOT_INBOARD_CHAMFER, 0),
+                    tip,
+                ]
+            )
+        ).extrude(V(0, 0, thickness + 2))
+        shape = shape.cut(chamfer)
+    return shape.removeSplitter()
+
+
+def foot_shape(index, *, bottom=-TOWER_HEIGHT, thickness=FOOT_THICKNESS):
+    """Complete foot/contact template including its structural clearance bore."""
+    return _hole_cut(
+        foot_outline_shape(index, bottom=bottom, thickness=thickness),
+        bottom - 1,
+        thickness + 2,
     )
 
 
@@ -307,12 +255,17 @@ def _top_beam_half(radius):
 
 
 def tower_shape():
-    """Open rectangular portal; outboard foot material stays only at the feet."""
+    """One diagonal portal with broad feet contained by the carrier plate."""
     pieces = []
-    for x, y in ANCHOR_CENTRES:
+    for index, (x, y) in enumerate(ANCHOR_CENTRES):
         radius = math.hypot(x, y)
-        pieces.append(
-            _radial(union([_top_beam_half(radius), *_fixed_leg_pieces(radius)]), x, y)
+        pieces.extend(
+            [
+                _radial(
+                    union([_top_beam_half(radius), _fixed_leg_shape(radius)]), x, y
+                ),
+                foot_shape(index),
+            ]
         )
     return _hole_cut(union(pieces), -TOWER_HEIGHT - 1, FOOT_THICKNESS + 2)
 
@@ -408,19 +361,19 @@ def manufacturing_wall_probes():
                 (
                     f"optical_rigid_foot_{index}",
                     "OpticalMountBase",
-                    point(2.8, 3, -TOWER_HEIGHT - 0.01),
-                    point(2.8, 3, -TOWER_HEIGHT + FOOT_THICKNESS + 0.01),
+                    (x, y + math.copysign(2, y), -TOWER_HEIGHT - 0.01),
+                    (x, y + math.copysign(2, y), -TOWER_HEIGHT + FOOT_THICKNESS + 0.01),
                     FOOT_THICKNESS,
                 ),
             ]
         )
         for host_name in MECHANICAL_HOSTS.values():
             origin = host_origin_xy(host_name)
-            bottom = point(2.8, 3, HOST_DECK_BOTTOM_Z - 0.01)
-            top = point(2.8, 3, HOST_SUPPORT_Z + 0.01)
+            bottom = (x, y + math.copysign(2, y), HOST_DECK_BOTTOM_Z - 0.01)
+            top = (x, y + math.copysign(2, y), HOST_SUPPORT_Z + 0.01)
             rows.append(
                 (
-                    f"{host_name}_clamp_tab_{index}",
+                    f"{host_name}_clamp_seat_{index}",
                     host_name,
                     (bottom[0] + origin[0], bottom[1] + origin[1], bottom[2]),
                     (top[0] + origin[0], top[1] + origin[1], top[2]),
@@ -430,7 +383,7 @@ def manufacturing_wall_probes():
     return rows
 
 
-def rigid_float_shape_bound(shape):
+def rigid_float_shape_bound(shape, *, alignment_degrees=45.0):
     """Bound seated XY/yaw registration from two circular clearance-hole pairs.
 
     The screw axis can move in BOTH printed holes. Relative axis error is at
@@ -438,12 +391,14 @@ def rigid_float_shape_bound(shape):
     For opposed axes at +/-R, |t+d|<=g and |t-d|<=g imply |t|²+|d|²<=g².
     This enclosing disk intentionally relaxes the exact lens. No axial motion
     is added: feet must seat and be clamped before accepting optical pointing.
+    Alignment only tightens the initial enclosing rectangle; the same complete
+    translation/yaw disk and angular cell padding apply in any planar frame.
     """
     gap = MAX_RADIAL_FLOAT
     radius = math.hypot(*CLAMP_CENTRES[0])
     maximum_angle = 2 * math.asin(gap / (2 * radius))
     aligned = shape.copy()
-    aligned.rotate(V(), V(0, 0, 1), -45)
+    aligned.rotate(V(), V(0, 0, 1), -alignment_degrees)
     bounds = aligned.BoundBox
     points = [
         (x, y) for x in (bounds.XMin, bounds.XMax) for y in (bounds.YMin, bounds.YMax)
@@ -468,8 +423,24 @@ def rigid_float_shape_bound(shape):
         bounds.ZLength,
         (min(xs), min(ys), bounds.ZMin),
     )
-    envelope.rotate(V(), V(0, 0, 1), 45)
+    envelope.rotate(V(), V(0, 0, 1), alignment_degrees)
     return envelope
+
+
+def foot_float_shape_bound(index):
+    """Intersect two complete bounds to retain the functional corner clearance.
+
+    Each rectangle encloses every accepted coupled XY/yaw registration. Their
+    intersection therefore also encloses every registration; this is not an
+    intersection of sampled poses. The diagonal frame preserves the inward
+    chamfer while the X/Y frame keeps the other three edges close to the foot.
+    """
+    foot = foot_shape(index)
+    return (
+        rigid_float_shape_bound(foot, alignment_degrees=0)
+        .common(rigid_float_shape_bound(foot, alignment_degrees=45))
+        .removeSplitter()
+    )
 
 
 def rigid_float_component_bounds():
@@ -483,8 +454,10 @@ def rigid_float_component_bounds():
                 f"load_leg_{index}",
                 union(
                     [
-                        rigid_float_shape_bound(_radial(piece, x, y))
-                        for piece in _fixed_leg_pieces(radius)
+                        rigid_float_shape_bound(
+                            _radial(_fixed_leg_shape(radius), x, y)
+                        ),
+                        foot_float_shape_bound(index),
                     ]
                 ),
             )

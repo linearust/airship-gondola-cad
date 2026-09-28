@@ -1,92 +1,126 @@
-# Universal equipment carrier — AX
+# Universal equipment carrier — AY
 
-The user requested interchangeable mounting plates, useful spare mounting holes
-and modular expansion, then rejected the asymmetric radio landing tab. AX removes
-the tab and uses both faces of a simple symmetric plate. Preserve the deliberately
-separate servo/input-drive and propulsion/output-frame modules.
+The user wants identical, expandable plates with simple outlines. AY moves the
+nominal structural tower feet inside the existing plate and replaces generic fixed-hole
+rows with shared mounting slots. Confirmed FC/P-AS axes remain fixed. Preserve
+the deliberately separate servo/input-drive and propulsion/output-frame modules.
 
 ## One carrier shape
 
-Battery, FC and navigation use identical printed carriers: one 54 × 74 × 2 mm
-deck with 3 mm plan-view corner radii, one integral rail shoe and the same
-structural stack datum at (0, 0). There is no side tab, separate radio bracket
-or additional fastener. Only the plate outline is symmetric: the hole set and
-rail-clamp interface retain their prescribed orientation.
-Role-specific object names and equipment reservations do not imply different
-printed geometry. The FC keeps its existing 8 mm underbody design reservation;
-the rail mating profile and equipment support height are unchanged.
+Battery, FC and navigation use identical printed carriers: a 54 × 74 × 2 mm
+rounded rectangular deck with 3 mm plan-view corner radii, one integral rail shoe
+and the same structural datum at (0, 0). There is no projecting radio tab or
+outboard structural clamp ear. Only the outline is symmetric; device positions
+and the rail clamp retain their prescribed orientation. Different instance names
+and equipment allocations do not imply different printed shapes.
 
-The longer rectangular deck supports the underside radio allocation without a
-narrow branch and retains the common hole set. Its outer hole rows retain
-2.7 mm nominal material to the X edges. The battery's declared maximum envelope
-and adjustment remain unchanged; the larger outline does not turn perforated
-areas into continuous adhesive support or qualify a different battery.
+The FC's 8 mm underbody design reservation, rail mating profile and equipment
+support height remain unchanged. Battery envelope and adjustment bounds are
+unchanged. Spare slots do not enlarge the qualified equipment envelope or turn
+perforated areas into continuous adhesive support.
 
-All carriers have the same centred 20 mm M2 and 30.5 mm M3 square patterns,
-the selected FC's 25.5 mm axes, and the confirmed P-AS mounting axes. Two short
-rows of M2 clearance holes provide a 10 mm longitudinal pitch for future
-attachments. The rows are a project provision, not an industry-standard PCB or
-breadboard interface. These are 20 shared device/standard/expansion bores in
-total; two additional structural foot-clamp bores belong to the tower joint.
-Exact bores, rotations, coordinates and declared adhesive patches belong to
-[equipment_mounts.py](../gondola/parts/equipment_mounts.py) and
-[stack_interface.py](../gondola/parts/stack_interface.py); do not maintain a second
-independent dimensional definition here.
+The shared plate template contains:
 
-The extra holes have a cost: reduced contact area, local sections and possible
-fastener interference. Keep the declared solid adhesive patches rather than
-assuming an unbroken tape strip. The centre holes of the two expansion rows are
-close to the FC's transverse mounting axes; a bore fit does not establish room
-for a simultaneous extension fastener beside a received FC damper. Choose free
-holes after checking actual heads, nuts, spacers, insulation and wiring. No
-printed threads, installed expansion hardware or dedicated tie holes are added.
+- Six fixed Ø2.6 mm clearance bores on the confirmed FC/P-AS axes, each with its
+  full Ø6.5 mm support region preserved. The clearance diameter is a project M2
+  provision, not a claim that the original device holes have that diameter.
+- Four M2 radial slots providing square-pitch coverage from 20 to 24 mm at a
+  fixed 30° pattern orientation. The 20 mm pitch has a retained manufacturer
+  reference; the full 20–24 mm range is geometric adjustment, not a claim that
+  every intervening pitch belongs to a compatible catalog board. Smaller inward
+  positions were rejected because the rail shoe obstructed the M2 screw heads.
+- Four M3 arc slots preserving a 30.5 mm square pitch while allowing its pattern
+  to be clocked ±15°. They do not permit independent arbitrary hole placement.
+- Two opposed M2 side slots replacing the former six discrete expansion bores.
+  Their spacing and centre travel are project provisions, not a PCB standard.
 
-The optional power platform uses the same deck outline and 20-hole template,
-with its integral tower instead of a rail shoe. Its two regulator regions are
-centred at Y = ±13 mm, keeping the BEC12S-PRO and SVPDB-8S body envelopes apart.
-Shared plate geometry does not make the complete tower and rail carrier the
-same print. Hole cuts cross parts of the tower's top beam below the deck; inspect
-the fused supporting shape, rather than assuming the original beam is unchanged.
+The two circular structural foot-clamp bores are separate from those six bores
+and ten slots. They remain rigid fastening locations rather than generic
+adjustment slots. Exact dimensions, datums and swept slot geometry belong to
+[mounting_slots.py](../gondola/parts/mounting_slots.py), device axes and support
+allocations to [equipment_mounts.py](../gondola/parts/equipment_mounts.py), and the
+structural joint to [stack_interface.py](../gondola/parts/stack_interface.py).
+
+The [Holybro reference review](holybro_x500_plate_review.md) distinguishes the
+X500 V1 plate from the current V2 #31109. The V2 plate is 93 × 65 mm and has a
+different radial-slot layout. Its complete outline and pattern are not copied:
+they would enlarge this carrier and cut through useful support. These are
+project-specific provisions inspired by that approach, not a drop-in X500
+interface or a newly established industry standard.
+
+## Support, fastening and the structural tower
+
+Slot travel is for selecting an assembly position before tightening, not movement
+in operation. Choose actual heads, nuts, standoffs and insulation after checking
+the board, adjacent fasteners and underside access. Existing M2 heads are not
+automatically suitable for the M3-width arcs. No extra baseline fasteners,
+washers, printed threads or dedicated cable-tie features are selected.
+
+Keep the declared continuous adhesive patches. The battery allocation is a
+16 × 18 mm centre patch plus two 16 × 7 mm end patches at Y = ±23 mm: the total
+512 mm² is unchanged, but its distribution avoids the new slots. GPS retains
+its 18 × 14 mm centre allocation. The Mini retains its 22 × 14 mm opposite-face
+allocation. These are geometric support regions, not measured device contact
+faces or qualified adhesive strength. Do not bridge a slot and count it as
+continuous load-bearing contact.
+
+The common optical/power portal is narrower in plan so its broad feet and both
+M2 clamp bores fit within the rectangular plate at nominal alignment. Its 32 mm
+rise is unchanged.
+The feet align with local Y and seat directly on the deck. Each has one 5 mm
+45° cut across its inward corner to clear the FC underbody wiring reservation
+while lifting the tower for service. This functional relief retains the complete
+leg support and both clamp datums; it is not a lightweight lattice or another
+part. The portal's diagonal orientation does not require projecting tabs. Two existing M2×8 screws
+and ordinary M2 nuts still clamp the joint, independently of FC dampers. No new
+parts or locating latch are added. Registration, complete foot seating, nut/key
+access and removal paths must be checked with the revised joint. Print flatness,
+clamp retention and PA12 creep remain physical acceptance checks. Permitted
+pre-clamp registration can leave a foot edge slightly beyond the deck; the full
+nominal contact area is not guaranteed at every allowed offset. Require flat,
+stable seating and sound actual fastener bearing without rocking or slip.
+
+The optional power platform uses the same deck outline and bore/slot template
+with its integral tower instead of a rail shoe. Its regulator regions stay at
+Y = ±13 mm. Shared deck geometry does not make the complete power tower and rail
+carrier the same print. Slot cuts that cross the top beam must continue through
+the fused support beneath the deck; verify the remaining structural sections.
 
 ## Shared interfaces, distinct installations
 
-The same carrier can be exchanged between rail stations without selecting a
-role-specific print. Standard board holes can accept a future board or purchased
-standoffs after its complete installation has been checked. Existing removable
-optical and power towers retain their structural feet, independently of PCB
-dampers. A common pattern does not make every payload, host or stack height
-interchangeable without clearance checks. No additional speculative extension
-adapter or extra baseline fasteners are required.
+Identical carriers can exchange roles without choosing a different print. A
+common interface does not qualify every payload, host or stack height, nor
+simultaneous installation of devices whose patterns fit. No speculative extension
+adapter or extra baseline fastening hardware is needed.
 
-The Mini uses the accessory plate's opposite face at local (-15, 28) mm, outside
-the rail shoe. Its 22 × 14 mm adhesive allocation has the same centre and is
-clear of the existing holes. The body slightly overhangs the plate edge and
-rounded corner; the complete adhesive region remains on the plate. Navigation remains centred
-on the original face. The -15 mm X offset leaves access for the rail-clamp hex key
-and keeps the connector lane away from the diagonal structural-foot bolt;
-it does not alter the symmetric outline or common
-hole datums. This arrangement separates the radio body and connector
-reservations from the navigation region in height, without moving the navigation
-datum or restoring a projecting branch. See
+The Mini remains at accessory-local (-15, 28) mm on the face opposite navigation,
+outside the rail shoe. Its body slightly overhangs the edge and rounded corner;
+the declared adhesive allocation stays within the plate. The X offset preserves
+rail-clamp access. Navigation remains centred on the other face. Recheck the
+Mini, its connector lanes and tools against AY's relocated structural clamps and
+new cuts, including permitted joint registration. See
 [radio installation limits](radio_module_compatibility.md).
 
 The radio's populated face points toward the balloon. Its nominal body starts
-4.6 mm from the Z = 0 rail reference plane, and the declared connector reserve
-starts 2.6 mm from that plane. Those are geometric offsets, not clearances to
-an actual envelope or a measured installed plug. The balloon, IPEX plug height,
-flexible pigtail and strap route remain unmodeled. Attach and service the Mini
-with the carrier removed on a bench; on-balloon access is not qualified.
+4.6 mm from the Z = 0 rail reference plane, and the connector reserve starts
+2.6 mm from that plane. These are offsets, not clearances to a measured envelope
+or installed plug. Attach and service it with the carrier removed on a bench;
+on-balloon access, IPEX plug height, flexible pigtail and strap route remain
+unqualified.
 
-The accessory carrier remains excluded as an optical host because navigation
-and its possible antenna need their own optical-clearance review. Optional power
-and optical towers cannot share one host simultaneously. A directly attached
-MG-F10 helix and the accessory power tower also remain mutually exclusive.
+The navigation carrier remains excluded as an optical host. Optical and power
+towers cannot share one host simultaneously. A direct MG-F10 helix and the
+accessory power tower remain an excluded combination. Current saved-assembly
+validation must establish the permitted host/profile combinations after this
+change; a common attachment datum alone is insufficient.
 
 ## Evidence boundary
 
-Common pattern sources are retained in `stack_interface.BOARD_PATTERNS`; FC and
-P-AS source dimensions belong to `contracts/equipment_interfaces.py`. Carrier
-outline, face assignment, clearance bores, expansion rows and adhesive allocations
-are design choices. CAD tests screen modeled contacts, sections, reservations, host changes
-and print outputs. They do not qualify adhesive strength, PA12 creep, loaded
-tether anchoring, RF performance, actual fastener stacks or received-part fit.
+FC/P-AS source dimensions belong to `contracts/equipment_interfaces.py`;
+`mounting_slots.contract()` retains the reference square-pattern sources and
+project adjustment ranges. Outline, face assignment, clearances and adhesive
+allocations are design choices. AY results belong to
+`tests/fixtures/rev_ay_review.json` and matching generated reports. Until those
+are complete, this reference describes intended geometry, not a passed release.
+CAD checks do not qualify adhesive strength, loaded extension or tether anchors,
+RF performance, actual fastener stacks, material life or received-part fit.

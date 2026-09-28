@@ -16,62 +16,72 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class PowerMountTests(unittest.TestCase):
-    def test_one_piece_flat_deck_and_true_through_holes(self):
+    def test_one_piece_deck_has_complete_slot_lands_and_true_beam_through_openings(
+        self,
+    ):
+        from gondola.parts import equipment_mounts
         from gondola.parts import power_mount as p
+        from gondola.validation.equipment import carrier_opening_checks
 
         shape = p.platform_shape()
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
-        from gondola.parts import stack_interface
-
-        for pattern in p.platform_contract()["standard_mounting"]["patterns"]:
-            points = pattern["centres_xy_mm"]
-            self.assertAlmostEqual(
-                (App.Vector(*points[0], 0) - App.Vector(*points[1], 0)).Length,
-                pattern["pitch_mm"],
-            )
-        for row, hole, outer in zip(
-            p.standard_hole_rows(),
-            stack_interface.board_hole_shapes(
-                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2
-            ),
-            stack_interface.board_hole_shapes(
-                p.standard_hole_rows(), p.DECK_BOTTOM_Z, 2, border=1.5
-            ),
-            strict=True,
-        ):
-            self.assertLess(shape.common(hole).Volume, 1e-6)
-            self.assertLess(outer.cut(hole).cut(shape).Volume, 1e-6)
-            self.assertEqual(
-                row["diameter_mm"], 2.6 if row["fastener"] == "M2" else 3.6
-            )
-        from gondola.parts import equipment_mounts
-
         self.assertEqual(p.DECK_SIZE_MM, equipment_mounts.COMMON_DECK_SIZE)
         self.assertEqual(
             p.platform_contract()["common_plate"],
             equipment_mounts.common_plate_contract(),
         )
-        holes = equipment_mounts.common_plate_hole_shapes(p.DECK_BOTTOM_Z, 2)
-        self.assertEqual(len(holes), 20)
-        for hole in holes:
-            self.assertLess(shape.common(hole).Volume, 1e-6)
-        # The symmetric plate ends and usable deck regions remain solid. There are
-        # no cable-tie slots; straps wrap the existing outline.
-        for x, y in (
-            (-20, -14.5),
-            (-20, 14.5),
-            (20, -14.5),
-            (20, 14.5),
-            (25, -5),
-            (25, 5),
-            (0, -34),
-            (0, 34),
-        ):
+        self.assertEqual(
+            p.standard_slot_rows(), equipment_mounts.standard_slot_rows("electronics")
+        )
+        report = carrier_opening_checks(
+            shape,
+            bottom=p.DECK_BOTTOM_Z,
+            thickness=p.DECK_THICKNESS_MM,
+            through_bottom=0,
+            through_depth=p.SUPPORT_Z,
+        )
+        self.assertTrue(report["passed"], report)
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (6, 10))
+        # Central board support and both broad end regions are continuous. No
+        # dedicated cable-tie slots are required for straps around the outline.
+        for x, y in ((0, 0), (0, -23), (0, 23), (0, -34), (0, 34)):
             region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
             self.assertLess(region.cut(shape).Volume, 1e-6)
         bounds = shape.BoundBox
         self.assertLessEqual(max(bounds.XLength, bounds.YLength, bounds.ZLength), 340)
+
+    def test_slot_floor_in_underlying_beam_cannot_pass_a_deck_only_probe(self):
+        from gondola.parts import mounting_slots, stack_interface
+        from gondola.parts import power_mount as p
+        from gondola.validation.equipment import carrier_opening_checks
+
+        original = p.platform_shape()
+        # The diagonal beam crosses this arc. Reintroduce only material below
+        # the deck, leaving the entire declared two-mm deck opening intact.
+        row = next(row for row in mounting_slots.rows() if row["kind"] == "arc")
+        floor = mounting_slots.shape(row, 0, 0.5).common(stack_interface.tower_shape())
+        self.assertGreater(floor.Volume, 0.1)
+        changed = original.fuse(floor).removeSplitter()
+        self.assertTrue(changed.isValid())
+        self.assertEqual(len(changed.Solids), 1)
+        deck_only = carrier_opening_checks(
+            changed, bottom=p.DECK_BOTTOM_Z, thickness=p.DECK_THICKNESS_MM
+        )
+        self.assertTrue(deck_only["passed"], deck_only)
+        full = carrier_opening_checks(
+            changed,
+            bottom=p.DECK_BOTTOM_Z,
+            thickness=p.DECK_THICKNESS_MM,
+            through_bottom=0,
+            through_depth=p.SUPPORT_Z,
+        )
+        self.assertFalse(full["passed"])
+        rejected = next(
+            item for item in full["mounting_slots"] if item["name"] == row["name"]
+        )
+        self.assertGreater(rejected["through_slot_obstruction_mm3"], 0.1)
+        self.assertLess(rejected["missing_continuous_full_thickness_land_mm3"], 1e-6)
 
     def test_regulator_bodies_and_connection_lanes_do_not_intersect_deck(self):
         from gondola.parts import power_mount as p

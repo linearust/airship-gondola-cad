@@ -25,8 +25,10 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-AX removes the projecting landing tab. The three rail carriers use the same
-54 × 74 × 2 mm rounded rectangular plate and hole layout. The accessory instance
+AY retains the plate without a projecting landing tab. The three rail carriers
+use the same 54 × 74 × 2 mm rounded rectangular plate, fixed device bores and
+shared mounting slots; the revised tower feet/clamps fit inside the nominal
+outline, with seating-registration limits recorded in the common interface. The accessory instance
 uses the opposite plate face for the Mini, beside the rail shoe. There is no
 separate radio plate, pocket, bracket or radio-specific fastening pattern.
 See [universal carrier rationale](universal_carrier_review.md).
@@ -34,7 +36,7 @@ See [universal carrier rationale](universal_carrier_review.md).
 The modeled Mini is centred at accessory-local (-15, 28) mm, with its long axis
 along X and its populated face directed toward local -Z, toward the balloon.
 A 22 × 14 mm nominal insulating-adhesive allocation at the same centre fits
-between the plate holes and its edge. The body slightly overhangs the plate edge
+clear of the declared plate cuts and inside its edge. The body slightly overhangs the plate edge
 and rounded corner; the complete adhesive allocation remains supported. This is a design
 allocation, not a measured bearing face or a minimum required adhesive area.
 The Mini underside photograph shows
@@ -43,11 +45,13 @@ verify component pressure, heat dissipation and retention. Velcro or ties may
 wrap the existing plate without dedicated slots, keeping the populated board,
 ports and antenna connection clear.
 
-The -15 mm X shift leaves access for the rail-clamp hex key and avoids the diagonal
-stack-foot bolt beside the connector lane. Both rail-clamp approaches and the
+The -15 mm X shift was selected to leave rail-clamp hex-key access and separate
+the connector lane from the structural foot hardware. Both rail-clamp approaches and the
 structural joint's permitted seating movement must be checked; nominal body
 separation alone is insufficient. The plate outline and
-common holes remain unchanged by this radio placement choice.
+common mounting datums are independent of this radio placement choice. AY changes
+the tower feet and generic slots, so their body, connector and tool clearances
+must be checked again against the saved assembly.
 
 The reference body occupies local Z = 4.6 to 10.4 mm, leaving a nominal 1 mm
 adhesive allowance to the plate's Z = 11.4 mm face. Its connector reservations

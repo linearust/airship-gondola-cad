@@ -1,0 +1,80 @@
+{
+  "all_printed_and_purchased_geometry_identical": true,
+  "candidate_main_sha256": "384fc879aabbea59b582514f370964c1284e4205bd58dc4febf1287d09af97f2",
+  "candidate_optional_sha256": "3ccc9f947813967e9bf4c7c0c67bb095bad4d08ef968ef9c423d3981ab46ee2e",
+  "changed_main_shapes": [
+    "PortPhaseLeadLoopReserve",
+    "StarboardPhaseLeadLoopReserve"
+  ],
+  "changed_optional_context_shapes": [
+    "Context_PortPhaseLeadLoopReserve",
+    "Context_StarboardPhaseLeadLoopReserve"
+  ],
+  "evidence_file": "rev_ay_wiring_correction_audit.json.gz",
+  "evidence_sha256": "8aca25ff410f80586dbb9b60610016948bdc29b57c613de81aba4e8ec018fbb2",
+  "failed_native_results_reused": false,
+  "failed_native_totals": {
+    "errors": 0,
+    "failures": 1,
+    "skips": 0,
+    "tests": 334
+  },
+  "failed_source_fingerprint": "ffcd4a64c9dc92c7c6581d582789ccea11c9d835c1ab0ad3f71a8562c812a5f8",
+  "fc_entry_terminal_only": true,
+  "fixture_promotion_approved": true,
+  "full_final_verification": "pending; all47modules must run freshly on repinned source",
+  "independent_numeric_route_reconstruction_passed": true,
+  "inventory_and_native_placements_identical": true,
+  "limits": [
+    "Only the intentional wiring-reservation correction is approved for fixture promotion; complete fresh post-pin native tests, pipeline and Blender derivative verification remain required.",
+    "Original AX-to-AY candidate approval is retained as historical scope-limited review. Its subsequent real1.5mmwire-margin failure is preserved, not reclassified as pass.",
+    "No printed/purchased geometry, hardware count or modeled structure mass changes. Wire reservation length is a planning dimension, not a measured cable cut length or mass.",
+    "Actual wire exits, flexible cable sweep, bend/fatigue/tension, tie position and retention remain unqualified."
+  ],
+  "minimum_new_registered_tower_gap_mm": 2.4016780347843176,
+  "new_midpoints_mm": [
+    [
+      -42,
+      12,
+      40
+    ],
+    [
+      -42,
+      -12,
+      40
+    ]
+  ],
+  "old_failure_gap_mm": 0.8745596258885955,
+  "old_midpoints_mm": [
+    [
+      -40,
+      12,
+      39
+    ],
+    [
+      -40,
+      -12,
+      39
+    ]
+  ],
+  "original_approval_preserved": true,
+  "original_approved_candidate_main_sha256": "3d968e6bc9e034caf3c3871f7c36f7052abed5b00eec624702b1bc2413d13809",
+  "original_transition_review_file": "rev_ay_transition_review.json",
+  "original_transition_review_sha256": "74cb34d9ab79a44f8fbb0c41b7b7418f767a2089a463dbc23ded34c7a3e11245",
+  "passed": true,
+  "planning_centreline_length_delta_mm": {
+    "PortPhaseLeadLoopReserve": 1.7999892142502318,
+    "StarboardPhaseLeadLoopReserve": 1.8047011045378838
+  },
+  "previous_main_sha256": "79da1d7e471a51551a0b0e46fcf2314aac7dbecd2fdf1d538d23818e7093f39b",
+  "previous_optional_sha256": "38c938f6d74ca71b8dbd38e33e94f5b99fa53b7baf6f1fa9242361f2c5c3826d",
+  "print_blank_geometry_identical": true,
+  "required_gap_mm": 1.5,
+  "reviewer_scope": "Agent /root/ax_layout_options independently measured saved route geometry and authored this review; did not edit production geometry, validators or tests. Earlier AY documentation/research authored by this agent. Conservative registration-bound shapes are inputs from unchanged production stack_interface, not an independently derived tolerance model. No physical or third-party certification.",
+  "revision": "AY",
+  "source_fingerprint_at_review": "52084515045c5e75748369a2dabad1ea0c1e75d32ecfb6a88dbcae34bb26c9fa",
+  "structure_mass_delta_g": 0,
+  "targeted_unchanged_native_tests_passed": 10,
+  "transition": "first AY to corrected AY wire reservation",
+  "unchanged_native_control_cases": 32
+}

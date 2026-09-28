@@ -1,0 +1,20 @@
+{
+  "revision": "AY",
+  "status": "superseded_by_user_before_final_verification",
+  "production_released": false,
+  "reason": "User selected a purchased30x30x1mm carbon FPV adapter plate and authorized redesign of the rail/mounting architecture. AY is an archived work checkpoint, not a verified release.",
+  "source_fingerprint": "f5b8b9ef4b34d9f5b0245a28e45aea1f1ecd4612198cd8e5be72d8ef8d76c765",
+  "baseline_candidate_sha256": "384fc879aabbea59b582514f370964c1284e4205bd58dc4febf1287d09af97f2",
+  "prior_released_commit": "2aa2ec7235af6dbf2fae86d0547838baee705ba9",
+  "completed_native_totals": {
+    "tests": 89,
+    "skips": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "native_suite_passed": false,
+  "pipeline": "Build and preview passed; full validation interrupted on user supersession. Compare, bundle and Blender review not completed for corrected AY.",
+  "review_scope": "Initial carrier/tower geometry and late wiring correction independently reviewed; see transition and wiring-correction records. None substitutes for the interrupted final suite.",
+  "raw_index_sha256": "d093a4d762719de6b430e0d3570a22994703c0b302ddcdbd40cb50ddacab64d7",
+  "raw_evidence_local_only": "/tmp/ay-final-native-tests; /tmp/ay-superseded-clearance. These temporary folders are not portable repository artifacts."
+}

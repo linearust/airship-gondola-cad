@@ -1,6 +1,7 @@
-"""Identical universal carriers with audited holes, contact pads and device axes."""
+"""Identical carriers with audited openings, contact pads and device axes."""
 
 import json
+import math
 import unittest
 
 try:
@@ -74,17 +75,18 @@ class EquipmentMountShapeTests(unittest.TestCase):
                         App.Vector(-21, 28 if side > 0 else -36, mounts.DECK_BOTTOM_Z),
                     )
                     self.assertLess(abs(end.cut(shape).Volume), 1e-6)
-                self.assertLessEqual(shape.BoundBox.XLength, 66)
+                self.assertAlmostEqual(shape.BoundBox.XMin, -27)
+                self.assertAlmostEqual(shape.BoundBox.XMax, 27)
                 self.assertAlmostEqual(shape.BoundBox.YMin, -37)
                 self.assertAlmostEqual(shape.BoundBox.YMax, 37)
 
     def test_plate_outline_is_centred_rounded_and_half_turn_symmetric(self):
         from gondola.parts import equipment_mounts as mounts
 
-        # Fill only the through bores before checking the outer outline. The
+        # Fill only the through openings before checking the outer outline. The
         # P-AS pattern and rail clamp remain intentionally oriented features.
         plate = mounts.common_plate_shape()
-        for hole in mounts.common_plate_hole_shapes(
+        for hole in mounts.common_plate_cutters(
             mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
         ):
             plate = plate.fuse(hole)
@@ -118,11 +120,11 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import stack_interface
 
         self.assertEqual(mounts.COMMON_DECK_SIZE, (54.0, 74.0))
-        self.assertEqual(len(mounts.common_plate_hole_shapes(0, 2)), 20)
+        self.assertEqual(len(mounts.common_plate_cutters(0, 2)), 16)
         plate = Part.makeBox(
             54, 54, mounts.DECK_THICKNESS, App.Vector(-27, -27, mounts.DECK_BOTTOM_Z)
         )
-        for hole in mounts.common_plate_hole_shapes(
+        for hole in mounts.common_plate_cutters(
             mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
         ):
             plate = plate.cut(hole)
@@ -145,20 +147,20 @@ class EquipmentMountShapeTests(unittest.TestCase):
             mounts.mount_hole_centres("accessory"), mounts.PAS_HOLE_CENTRES
         )
 
-    def test_standard_holes_have_open_bores_and_full_edge_lands(self):
+    def test_standard_slots_have_open_paths_and_full_continuous_lands(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.parts import rail
 
         for kind in mounts.MOUNT_NAMES:
             shape = mounts.mount_shape(kind)
-            slots = mounts.standard_hole_shapes(
+            slots = mounts.standard_slot_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
-            ) + mounts.expansion_hole_shapes(
+            ) + mounts.expansion_slot_shapes(
                 mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
             )
-            lands = mounts.standard_hole_shapes(
+            lands = mounts.standard_slot_shapes(
                 kind, mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
-            ) + mounts.expansion_hole_shapes(
+            ) + mounts.expansion_slot_shapes(
                 mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS, border=1.5
             )
             for slot, outer in zip(slots, lands, strict=True):
@@ -182,54 +184,99 @@ class EquipmentMountShapeTests(unittest.TestCase):
             )
             self.assertLess(abs(patch.cut(mounts.mount_shape("battery")).Volume), 1e-6)
 
-    def test_every_carrier_has_a_real_20mm_m2_square_and_no_tie_contract(self):
+    def test_slots_cover_only_the_declared_square_pitch_and_clocking_ranges(self):
         from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import mounting_slots
 
-        for kind in mounts.MOUNT_NAMES:
-            contract = mounts.mount_contract(kind)
-            self.assertNotIn("generic_fastening", contract)
-            patterns = contract["standard_mounting"]["patterns"]
-            self.assertEqual(len(patterns), 2)
-            common = next(row for row in patterns if row["pitch_mm"] == 20.0)
-            self.assertEqual(common["fastener"], "M2")
-            self.assertEqual(common["clearance_diameter_mm"], 2.6)
-            points = [App.Vector(*xy, 0) for xy in common["centres_xy_mm"]]
-            for i in range(4):
-                self.assertAlmostEqual((points[i] - points[(i + 1) % 4]).Length, 20.0)
-                self.assertAlmostEqual(
-                    (points[i] - points[(i + 2) % 4]).Length ** 2, 800.0
+        slot_contract = mounting_slots.contract()
+        self.assertEqual(slot_contract["square_pitch_range_mm"], (20.0, 24.0))
+        self.assertEqual(slot_contract["square_pitch_range_rotation_deg"], 30.0)
+        self.assertEqual(slot_contract["square30_5_pitch_mm"], 30.5)
+        self.assertEqual(slot_contract["square30_5_rotation_range_deg"], (-15.0, 15.0))
+        self.assertFalse(slot_contract["x500_drop_in_compatible"])
+        shape = mounts.mount_shape("electronics")
+        # Interior values accompany end positions. Exact continuous openings and
+        # lands are audited separately; this is not a sampled full-range proof.
+        patterns = [(pitch, 30, 2.6) for pitch in (20.0, 21.37, 24.0)]
+        patterns += [(30.5, turn, 3.6) for turn in (-15.0, -4.7, 0.0, 15.0)]
+        for pitch, turn, diameter in patterns:
+            for index in range(4):
+                angle = math.radians(45 + turn + index * 90)
+                radius = pitch / math.sqrt(2)
+                probe = Part.makeCylinder(
+                    diameter / 2,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(
+                        radius * math.cos(angle),
+                        radius * math.sin(angle),
+                        mounts.DECK_BOTTOM_Z,
+                    ),
                 )
-            large = patterns[1]
-            self.assertEqual(
-                (large["pitch_mm"], large["fastener"], large["clearance_diameter_mm"]),
-                (30.5, "M3", 3.6),
-            )
-            self.assertEqual(contract["standard_mounting"]["datum_xy_mm"], (0.0, 0.0))
+                with self.subTest(pitch=pitch, turn=turn, corner=index):
+                    self.assertLess(probe.common(shape).Volume, 1e-6)
+        for kind in mounts.MOUNT_NAMES:
+            self.assertNotIn("generic_fastening", mounts.mount_contract(kind))
+            contract = mounts.common_plate_contract()
+            self.assertEqual(contract["fixed_bore_count"], 6)
+            self.assertEqual(contract["slot_count"], 10)
 
-    def test_ordinary_m2_heads_fit_spare_holes_without_touching_shoe_or_rail(self):
+    def test_m2_slot_screws_clear_shoe_and_rail_over_the_whole_straight_path(self):
+        from gondola.contracts import fasteners
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts as mounts
-        from gondola.parts import purchased_hardware, rail
+        from gondola.parts import mounting_slots, purchased_hardware, rail
 
         stations = {row.object_name: row for row in MODULE_STATIONS}
+        rail_shape = rail.rail_shape()
         for kind in mounts.MOUNT_NAMES:
             station = stations[kind.capitalize() + "EquipmentModule"]
             carrier = mounts.mount_shape(kind)
-            for row in mounts.standard_hole_rows(kind) + mounts.expansion_hole_rows():
+            # Exclude the intended head-to-deck bearing contact to measure
+            # clearance from the actual shoe and its integral riser instead.
+            underdeck = carrier.common(
+                Part.makeBox(
+                    100,
+                    100,
+                    mounts.DECK_BOTTOM_Z - 1e-5,
+                    App.Vector(-50, -50, 0),
+                )
+            )
+            for row in mounting_slots.rows():
                 if row["fastener"] != "M2":
                     continue
-                screw = purchased_hardware.screw_shape(8)
-                screw.translate(App.Vector(*row["centre_xy_mm"], mounts.DECK_BOTTOM_Z))
-                self.assertLess(screw.common(carrier).Volume, 1e-6)
+                self.assertEqual(row["kind"], "straight")
+                start = App.Vector(*row["start_xy_mm"], mounts.DECK_BOTTOM_Z)
+                end = App.Vector(*row["end_xy_mm"], mounts.DECK_BOTTOM_Z)
+                # The transverse sweep of each cylindrical portion is a
+                # capsule. Keeping head and shank at their own Z intervals
+                # avoids a whole-screw bounding box filling the narrow slot.
+                head = mounting_slots.shape(
+                    {**row, "width_mm": fasteners.SCREW_HEAD_DIAMETER},
+                    mounts.DECK_BOTTOM_Z - fasteners.SCREW_HEAD_HEIGHT,
+                    fasteners.SCREW_HEAD_HEIGHT,
+                )
+                shank = mounting_slots.shape(
+                    {**row, "width_mm": fasteners.THREAD_DIAMETER},
+                    mounts.DECK_BOTTOM_Z,
+                    8,
+                )
+                sweep = head.fuse(shank)
+                for point in (start, end):
+                    screw = purchased_hardware.screw_shape(8).copy()
+                    screw.translate(point)
+                    self.assertLess(screw.cut(sweep).Volume, 1e-6)
+                with self.subTest(kind=kind, slot=row["name"]):
+                    self.assertLess(sweep.common(carrier).Volume, 1e-6)
+                    self.assertGreaterEqual(head.distToShape(underdeck)[0], 0.4)
                 for side in (-1, 1):
-                    placed = screw.copy()
+                    placed = sweep.copy()
                     placed.Placement = App.Placement(
                         App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
                         App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                     ).multiply(placed.Placement)
-                    with self.subTest(kind=kind, hole=row, approach=side):
+                    with self.subTest(kind=kind, slot=row["name"], approach=side):
                         self.assertGreaterEqual(
-                            placed.distToShape(rail.rail_shape())[0], 1.0 - 1e-6
+                            placed.distToShape(rail_shape)[0], 1.0 - 1e-6
                         )
 
     def test_shared_adhesive_patches_are_intact_and_clear_pas_holes(self):
@@ -331,44 +378,64 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 actual[1] - mounts.NAVIGATION_CENTRE_XY[1], expected[1]
             )
 
-    def test_expansion_rows_have_ten_mm_pitch_without_an_industry_standard_claim(self):
+    def test_side_slots_keep_their_explicit_nonstandard_travel(self):
         from gondola.parts import equipment_mounts as mounts
 
-        rows = mounts.expansion_hole_rows()
-        self.assertEqual(len(rows), 6)
+        rows = mounts.expansion_slot_rows()
+        self.assertEqual(len(rows), 2)
         self.assertEqual(
-            {row["centre_xy_mm"] for row in rows},
-            {(x, y) for x in (-23.0, 23.0) for y in (-10.0, 0.0, 10.0)},
+            {tuple(row["start_xy_mm"]) for row in rows}, {(-23.0, -9.0), (23.0, -9.0)}
+        )
+        self.assertEqual(
+            {tuple(row["end_xy_mm"]) for row in rows}, {(-23.0, 9.0), (23.0, 9.0)}
+        )
+        self.assertTrue(
+            all(
+                row["kind"] == "straight"
+                and row["width_mm"] == 2.6
+                and row["fastener"] == "M2"
+                for row in rows
+            )
         )
         contract = mounts.expansion_contract()
         self.assertFalse(contract["industry_standard_claimed"])
-        self.assertEqual(contract["within_row_pitch_mm"], 10.0)
-        self.assertEqual(contract["row_spacing_mm"], 46.0)
 
-    def test_unused_device_or_expansion_hole_blockage_and_missing_land_fail_audit(self):
+    def test_unused_fixed_device_bore_blockage_and_missing_annulus_fail_audit(self):
         from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import carrier_bore_checks
+        from gondola.validation.equipment import carrier_opening_checks
 
         original = mounts.mount_shape("battery")
-        report = carrier_bore_checks(original)
+        report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
-        self.assertEqual(report["physical_plate_hole_count"], 20)
-        for centre in (mounts.PAS_HOLE_CENTRES[0], mounts.EXPANSION_HOLE_CENTRES[0]):
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (6, 10))
+        for centre in (mounts.PAS_HOLE_CENTRES[0], mounts.FC_HOLE_CENTRES[0]):
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(
-                    0.4,
+                    1.5,
                     mounts.DECK_THICKNESS,
                     App.Vector(*centre, mounts.DECK_BOTTOM_Z),
                 )
-                self.assertFalse(
-                    carrier_bore_checks(original.fuse(obstruction))["passed"]
+                blocked = carrier_opening_checks(original.fuse(obstruction))
+                self.assertFalse(blocked["passed"])
+                self.assertTrue(
+                    any(
+                        row["through_bore_obstruction_mm3"] > 0.1
+                        for row in blocked["fixed_device_bores"]
+                    )
                 )
                 notch = Part.makeCylinder(
                     0.2,
                     mounts.DECK_THICKNESS,
                     App.Vector(centre[0] + 2, centre[1], mounts.DECK_BOTTOM_Z),
                 )
-                self.assertFalse(carrier_bore_checks(original.cut(notch))["passed"])
+                missing = carrier_opening_checks(original.cut(notch))
+                self.assertFalse(missing["passed"])
+                self.assertTrue(
+                    any(
+                        row["missing_full_thickness_bearing_annulus_mm3"] > 0.01
+                        for row in missing["fixed_device_bores"]
+                    )
+                )
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")

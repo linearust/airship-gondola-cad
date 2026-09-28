@@ -71,9 +71,10 @@ def route_points(sign, propulsion_placement, electronics_placement):
     return [
         (WORKSPACE_X_MM, sign * propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z),
         # Come inward above the FC band before descending into its final entry.
-        # This fixed planning waypoint clears the centred FC-host tower, including
-        # its seated registration bounds; moving either module requires rechecking.
-        (-40.0, sign * 12.0, 39.0),
+        # Clear the compact FC-host tower's seated registration bounds, then
+        # descend only into the terminal FC access region. Moving either module
+        # requires rechecking this layout-specific planning waypoint.
+        (-42.0, sign * 12.0, 40.0),
         (endpoint.x, endpoint.y, endpoint.z),
     ]
 

@@ -4,16 +4,16 @@ Read [HANDOFF.md](HANDOFF.md) for user requirements, decision history and known
 limitations. This README covers repository navigation, edits and verification.
 Both files are for AI agents, not manufacturing or assembly instructions.
 
-The user rejected designing the rail around standard/purchased mounting plates on
-2026-09-28. The active implementation is restored to AX, commit
-`2aa2ec7235af6dbf2fae86d0547838baee705ba9`, before the two carbon-adapter redesigns.
-The former BA implementation remains in Git history and on
-`codex/carbon-track-redesign`. Carbon-tube and nylon-tube rail discussions were
-proposals, not implemented replacements. Do not reintroduce a stock-plate-driven
-rail architecture without a new user decision. This does not reject ordinary bought
-gears, bearings, fasteners or the existing common holes in printed carriers.
-Historical AX verification remains historical; current restoration checks are
-recorded separately in [the restoration review](references/printed_rail_restoration.json).
+Active direction (2026-09-28): restore the AY printed-mounting improvement from
+`c38f85497408d7a961f881124c7eacfe47593935`, following the user's clarification after
+the AX restoration. AY keeps the printed rail and propulsion design, adds common
+mounting slots, and brings the optical/power tower joints inside the plate outline.
+Use the corrected AY wire reservations too. The archived AY checkpoint was
+interrupted before final verification; preserve that historical record and read
+[the current restoration review](references/slotted_mount_restoration.json) for
+new checks. The user still rejects designing the rail around bought carbon plates;
+carbon- and nylon-tube discussions are unimplemented proposals. Normal bought
+gears, bearings and fasteners remain selected.
 
 ## Establish the current state
 
@@ -38,6 +38,7 @@ old reference, fixture or shopping list contains them.
 | Navigation alternatives, selected radio and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
 | Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
 | Horn alternatives and optional power boards | [servo_horns.py](gondola/contracts/servo_horns.py), [power_options.py](gondola/contracts/power_options.py) |
+| Shared device bores, adjustable mounting slots and structural stack joint | [equipment_mounts.py](gondola/parts/equipment_mounts.py), [mounting_slots.py](gondola/parts/mounting_slots.py), [stack_interface.py](gondola/parts/stack_interface.py) |
 | Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
 | Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
 | Checks, pinned regression baseline and artifact identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py), [bundle.py](gondola/bundle.py) |
@@ -52,6 +53,7 @@ Read references according to the changed interface; their revision/date matters:
   [three-horn compatibility](references/servo_horn_compatibility.md).
 - Structure and wiring: [layout](references/layout_and_wiring_review.md),
   [universal carriers](references/universal_carrier_review.md),
+  [Holybro payload-plate reference](references/holybro_x500_plate_review.md),
   [rail joint](references/rail_joint_review.md), [rail fit](references/rail_fit_review.md),
   [shape rationale](references/shape_simplification_review.md).
 - Electronics: [controller](references/controller_selection_review.md),
@@ -103,8 +105,14 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   properties and labels instead of inferring the device from its object ID.
   Count alternative equipment only when selected.
 - Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`,
-  including the same rounded rectangular plate, holes, rail shoe and centred
-  structural datum. Preserve identical local shape even though instance names, equipment and
+  including the same rounded rectangular plate, device bores, mounting slots,
+  rail shoe and centred structural datum. At nominal alignment the tower feet
+  and circular clamp bores fit inside the plate outline. Preserve their inward-corner relief for tower removal past the
+  FC wiring reserve; nominal seated clearance alone does not verify service.
+  Permitted registration may leave a foot edge slightly overhanging; require flat,
+  stable seating and actual fastener bearing, not assumed full-area contact at
+  every allowed offset. Generic slots do not locate the structural joint. Preserve
+  identical local shape even though instance names, equipment and
   rail placements differ. The optional power tower uses the same plate template,
   with its different support beneath it; it is a separate print. The plate outline
   is symmetric; hole patterns and rail-clamp orientation still have functional
@@ -146,13 +154,16 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
 - Omit dedicated cable-tie holes, slots and tie-only tabs. The user wraps Velcro
   and ties around existing members. Common spare module-hole patterns are a
   separate requested feature: retain confirmed device holes and record each
-  standard pattern's pitch, bore and local datum. Spare holes do not imply
-  simultaneous devices, a selected fastener stack or verified adhesive retention.
-  Current non-use alone is not a reason to delete these requested spare patterns.
-  The shared template has 20 device/standard/expansion bores; two additional
-  structural foot-clamp bores belong to the tower joint. Preserve solid adhesive
-  patches and hole lands. The project's 10 mm-pitch expansion rows are not an
-  industry PCB standard, and a nearby FC damper may obstruct a populated hole.
+  mounting pattern's pitch, slot or bore dimensions and local datum. Spare holes
+  do not imply simultaneous devices, a selected fastener stack or verified adhesive retention.
+  Current non-use alone is not a reason to delete these requested provisions.
+  The shared template keeps six fixed FC/P-AS bores and ten mounting slots; two
+  circular structural foot-clamp bores remain separate. `mounting_slots.py` owns
+  pitch, angular travel, widths and datums. Preserve device support lands and
+  declared solid adhesive patches; slots can obstruct fasteners or reduce contact.
+  These are project provisions inspired by the X500 payload plate, not its complete
+  pattern or a drop-in X500 interface. Existing M2 heads are not automatically
+  suitable for M3-width slots. No extra baseline fasteners or washers are selected.
 - Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
   placement and adhesive contact. Missing mass is unknown, not zero. Geometric
   success alone must not change `design.release_status()` to physical qualification.

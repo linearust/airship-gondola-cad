@@ -19,7 +19,7 @@ from gondola.contracts.power_options import (
 )
 
 from . import equipment_mounts as mounts
-from . import purchased_hardware, stack_interface
+from . import mounting_slots, purchased_hardware, stack_interface
 
 V = App.Vector
 DECK_SIZE_MM = mounts.COMMON_DECK_SIZE
@@ -29,15 +29,14 @@ DECK_BOTTOM_Z = SUPPORT_Z - DECK_THICKNESS_MM
 INSULATION_ALLOWANCE_MM = 1.0
 BODY_BOTTOM_Z = SUPPORT_Z + INSULATION_ALLOWANCE_MM
 BAY_CENTRES = ((0.0, -13.0), (0.0, 13.0))
-STANDARD_PATTERNS = mounts.COMMON_STANDARD_PATTERNS
 TERMINAL_TRAVEL_MM = 15.0
 CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
 DEFAULT_HOST = "AccessoryEquipmentModule"
 DEFAULT_PLAN = DEFAULT_OPTIONAL_POWER_PLAN_KEY
 
 
-def standard_hole_rows():
-    return stack_interface.board_hole_rows(STANDARD_PATTERNS)
+def standard_slot_rows():
+    return mounts.standard_slot_rows("electronics")
 
 
 def platform_contract():
@@ -51,7 +50,7 @@ def platform_contract():
         "body_bottom_z_mm": BODY_BOTTOM_Z,
         "insulation_allowance_mm": INSULATION_ALLOWANCE_MM,
         "bay_centres_xy_mm": BAY_CENTRES,
-        "standard_mounting": stack_interface.board_pattern_contract(STANDARD_PATTERNS),
+        "standard_mounting": mounting_slots.contract(),
         "tether_scope": "No dedicated tether hole, guide or constrained cable route. Wrap existing structure with suitable straps and secure the incoming lead before the PCB terminals. Actual tether routing, strain relief, loads and clearance from moving propulsors are unverified and must be established for the installed cable; no arbitrary straight cable envelope is certified.",
         "connection_height_allowance_mm": CONNECTION_HEIGHT_ALLOWANCE_MM,
         "terminal_end_allowance_mm": TERMINAL_TRAVEL_MM,
@@ -63,7 +62,7 @@ def platform_contract():
 @functools.lru_cache(None)
 def platform_shape():
     shape = stack_interface.tower_shape().fuse(mounts.common_plate_shape(DECK_BOTTOM_Z))
-    for hole in mounts.common_plate_hole_shapes(-1, 5):
+    for hole in mounts.common_plate_cutters(-1, 5):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
