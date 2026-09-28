@@ -27,7 +27,12 @@ from .contracts.power_options import (
     POWER_VALIDATION_NAME as REPORT_NAME,
 )
 from .mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
-from .parts import equipment_mounts, optical_interface, power_mount, stack_interface
+from .parts import (
+    mounting_plate,
+    optical_interface,
+    power_mount,
+    stack_interface,
+)
 from .print_export import (
     geometry_comparison,
     mesh_checks,
@@ -107,7 +112,7 @@ def _registration_bounds(plan_key):
         }
     )
     result["PowerDeck"] = _xy_registration_bound(
-        equipment_mounts.common_plate_shape(power_mount.DECK_BOTTOM_Z)
+        mounting_plate.shape(power_mount.DECK_BOTTOM_Z)
     )
     result.update(
         {

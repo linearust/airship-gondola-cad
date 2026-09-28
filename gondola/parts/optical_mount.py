@@ -42,16 +42,22 @@ def _finished(shape, name):
     return shape
 
 
-def base_shape():
-    """One flat two-hole foot and short straight upright ending in a pitch ear."""
+def upright_shape():
+    """Shared straight post for the print and conservative service envelopes."""
     x, y, z = PIVOT_CENTRE
-    ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
-    post = box(
+    return box(
         4,
         EAR_THICKNESS,
         z - optical_interface.FOOT_THICKNESS,
         (x - 3, y - EAR_THICKNESS, optical_interface.FOOT_THICKNESS),
     )
+
+
+def base_shape():
+    """One flat two-hole foot and short straight upright ending in a pitch ear."""
+    x, y, z = PIVOT_CENTRE
+    ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
+    post = upright_shape()
     bore = _cylinder(
         PIVOT_HOLE_DIAMETER / 2,
         2 * EAR_THICKNESS + 2,

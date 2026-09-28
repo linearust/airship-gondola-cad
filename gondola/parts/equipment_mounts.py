@@ -5,33 +5,25 @@ import json
 import math
 
 import FreeCAD as App
-import Part
 
 from gondola.cad import box, create_printed_part, set_property, union
 from gondola.contracts import equipment_interfaces as interfaces
 
-from . import mounting_slots, rail, stack_interface
+from . import mounting_plate, mounting_slots, rail, stack_interface
 
 V = App.Vector
-DECK_BOTTOM_Z = stack_interface.HOST_DECK_BOTTOM_Z
-DECK_THICKNESS = stack_interface.DECK_THICKNESS
-SUPPORT_FACE_Z = DECK_BOTTOM_Z + DECK_THICKNESS
-MOUNT_HOLE_DIAMETER = 2.6
-MOUNT_PAD_DIAMETER = 6.5
+DECK_BOTTOM_Z = mounting_plate.CARRIER_BOTTOM_Z
+DECK_THICKNESS = mounting_plate.THICKNESS_MM
+SUPPORT_FACE_Z = mounting_plate.CARRIER_SUPPORT_Z
+MOUNT_HOLE_DIAMETER = mounting_plate.FIXED_HOLE_DIAMETER_MM
+MOUNT_PAD_DIAMETER = mounting_plate.FC_PAD_DIAMETER_MM
 FC_CENTRE_XY = (0.0, 0.0)
 FC_ROTATION_DEG = -45.0
-FC_AXIS_OFFSET = interfaces.FC_HOLE_PITCH / math.sqrt(2)
-FC_HOLE_CENTRES = (
-    (-FC_AXIS_OFFSET, 0.0),
-    (0.0, -FC_AXIS_OFFSET),
-    (0.0, FC_AXIS_OFFSET),
-    (FC_AXIS_OFFSET, 0.0),
-)
+FC_HOLE_CENTRES = mounting_plate.FC_HOLE_CENTRES
 # All three carriers use the same local mechanical datum and physical print.
 # Equipment selection/placement is role-specific; the spare slots are not.
 COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
-COMMON_DECK_SIZE = (64.0, 64.0)
-DECK_CORNER_RADIUS = 3.0
+COMMON_DECK_SIZE = mounting_plate.SIZE_MM
 RISER_SIZE_MM = (12.0, 12.0)
 NAVIGATION_CENTRE_XY = (0.0, -2.2)
 PAS_HOLE_CENTRES = tuple(
@@ -134,14 +126,6 @@ def expansion_slot_shapes(
     ]
 
 
-def common_plate_cutters(bottom, depth):
-    """Four fixed FC bores and sixteen shared slots, independent of support."""
-    return [
-        Part.makeCylinder(MOUNT_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
-        for x, y in COMMON_DEVICE_HOLE_CENTRES
-    ] + mounting_slots.shapes(bottom, depth)
-
-
 def expansion_contract():
     return {
         "industry_standard_claimed": False,
@@ -158,7 +142,7 @@ def common_plate_contract():
     return {
         "deck_size_mm": (*COMMON_DECK_SIZE, DECK_THICKNESS),
         "deck_centre_xy_mm": (0.0, 0.0),
-        "outline_corner_radius_mm": DECK_CORNER_RADIUS,
+        "outline_corner_radius_mm": mounting_plate.CORNER_RADIUS_MM,
         "central_riser_size_xy_mm": RISER_SIZE_MM,
         "outline_half_turn_symmetric": True,
         "plate_quarter_turn_and_xy_mirror_symmetric": True,
@@ -173,27 +157,11 @@ def common_plate_contract():
     }
 
 
-def common_plate_shape(bottom=DECK_BOTTOM_Z):
-    """One intact plate before the rail shoe or tower can mask a broken web."""
-    length, width = COMMON_DECK_SIZE
-    shape = box(length, width, DECK_THICKNESS, (-length / 2, -width / 2, bottom))
-    vertical_edges = [
-        edge for edge in shape.Edges if edge.BoundBox.ZLength > DECK_THICKNESS - 0.01
-    ]
-    shape = shape.makeFillet(DECK_CORNER_RADIUS, vertical_edges)
-    for hole in common_plate_cutters(bottom - 1, DECK_THICKNESS + 2):
-        shape = shape.cut(hole)
-    shape = shape.removeSplitter()
-    if not shape.isValid() or len(shape.Solids) != 1:
-        raise RuntimeError("Common mounting plate must be one valid solid")
-    return shape
-
-
 @functools.lru_cache(None)
 def mount_shape(kind):
     if kind not in MOUNT_NAMES:
         raise ValueError("Unknown equipment mount kind: " + str(kind))
-    pieces = [common_plate_shape(), rail.shoe_shape()]
+    pieces = [mounting_plate.shape(), rail.shoe_shape()]
     pieces.append(
         box(
             *RISER_SIZE_MM,
@@ -203,7 +171,7 @@ def mount_shape(kind):
     )
     shape = union(pieces)
     # Cut again through any supporting member sharing a plate-hole position.
-    for hole in common_plate_cutters(DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2):
+    for hole in mounting_plate.cutters(DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:

@@ -9,6 +9,8 @@ from unittest.mock import patch
 try:
     import FreeCAD as App
     import Mesh
+
+    from gondola.parts import mounting_plate
 except ImportError:
     App = Mesh = None
 
@@ -16,10 +18,10 @@ except ImportError:
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedPowerExportTests(unittest.TestCase):
     def test_registration_bound_includes_the_complete_common_plate(self):
-        from gondola.parts import equipment_mounts, power_mount
+        from gondola.parts import power_mount
         from gondola.power_export import _registration_bounds
 
-        shape = equipment_mounts.common_plate_shape(power_mount.DECK_BOTTOM_Z)
+        shape = mounting_plate.shape(power_mount.DECK_BOTTOM_Z)
         bound = _registration_bounds(power_mount.DEFAULT_PLAN)["PowerDeck"]
         # These samples check that the whole plate participates in the analytical
         # enclosure; they do not replace its continuous mathematical bound.

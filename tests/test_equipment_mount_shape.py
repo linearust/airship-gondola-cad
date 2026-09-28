@@ -7,6 +7,8 @@ import unittest
 try:
     import FreeCAD as App
     import Part
+
+    from gondola.parts import mounting_plate
 except ImportError:
     App = Part = None
 
@@ -93,10 +95,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
         # Fill through openings to inspect the outline; a separate audit also
         # checks the complete pattern, including every physical opening.
-        plate = mounts.common_plate_shape()
-        for hole in mounts.common_plate_cutters(
-            mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
-        ):
+        plate = mounting_plate.shape()
+        for hole in mounting_plate.cutters(mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS):
             plate = plate.fuse(hole)
         bounds = plate.BoundBox
         self.assertAlmostEqual(bounds.XLength, 64)
@@ -127,8 +127,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         self.assertEqual(mounts.COMMON_DECK_SIZE, (64.0, 64.0))
-        self.assertEqual(len(mounts.common_plate_cutters(0, 2)), 20)
-        plate = mounts.common_plate_shape()
+        self.assertEqual(len(mounting_plate.cutters(0, 2)), 20)
+        plate = mounting_plate.shape()
         for kind in mounts.MOUNT_NAMES:
             carrier_deck = mounts.mount_shape(kind).common(
                 Part.makeBox(

@@ -20,11 +20,11 @@ from gondola.contracts.power_options import (
 )
 
 from . import equipment_mounts as mounts
-from . import mounting_slots, purchased_hardware, stack_interface
+from . import mounting_plate, mounting_slots, purchased_hardware, stack_interface
 
 V = App.Vector
-DECK_SIZE_MM = mounts.COMMON_DECK_SIZE
-DECK_THICKNESS_MM = 2.0
+DECK_SIZE_MM = mounting_plate.SIZE_MM
+DECK_THICKNESS_MM = mounting_plate.THICKNESS_MM
 SUPPORT_Z = stack_interface.TOP_BEAM_THICKNESS
 DECK_BOTTOM_Z = SUPPORT_Z - DECK_THICKNESS_MM
 INSULATION_ALLOWANCE_MM = 1.0
@@ -63,8 +63,8 @@ def platform_contract():
 
 @functools.lru_cache(None)
 def platform_shape():
-    shape = stack_interface.tower_shape().fuse(mounts.common_plate_shape(DECK_BOTTOM_Z))
-    for hole in mounts.common_plate_cutters(-1, 5):
+    shape = stack_interface.tower_shape().fuse(mounting_plate.shape(DECK_BOTTOM_Z))
+    for hole in mounting_plate.cutters(-1, 5):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
@@ -76,9 +76,7 @@ def platform_shape():
 def _attachment_templates():
     bottom = -stack_interface.TOWER_HEIGHT - stack_interface.DECK_THICKNESS
     depth = stack_interface.DECK_THICKNESS
-    common_deck = mounts.common_plate_shape(bottom)
-    for cutter in mounts.common_plate_cutters(bottom - 1, depth + 2):
-        common_deck = common_deck.cut(cutter)
+    common_deck = mounting_plate.shape(bottom)
     return tuple(
         (
             stack_interface.foot_shape(index, bottom=bottom, thickness=depth).common(

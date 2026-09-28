@@ -18,15 +18,15 @@ from gondola.contracts.design import (
     STACK_PITCH_MM,
 )
 
-from . import mounting_slots, purchased_hardware
+from . import mounting_plate, mounting_slots, purchased_hardware
 
 V = App.Vector
 PITCH_MM = STACK_PITCH_MM
 ANCHOR_CENTRES = STACK_ANCHOR_CENTRES
-DECK_THICKNESS = 2.0
+DECK_THICKNESS = mounting_plate.THICKNESS_MM
 TOP_BEAM_THICKNESS = 3.0
-HOST_DECK_BOTTOM_Z = 13.4
-HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
+HOST_DECK_BOTTOM_Z = mounting_plate.CARRIER_BOTTOM_Z
+HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
 TOWER_HEIGHT = 32.0
 STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
 FOOT_THICKNESS = 2.0
@@ -156,12 +156,6 @@ def _hole_cut(shape, bottom, depth, origin=(0.0, 0.0)):
             Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
         )
     return shape.removeSplitter()
-
-
-def add_host_interface(shape, host_name=None):
-    """Use the carrier's common slots without adding asymmetric structural holes."""
-    host_origin_xy(host_name)
-    return shape
 
 
 def annotate_interface(obj, host_name=None):

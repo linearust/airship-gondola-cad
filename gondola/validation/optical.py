@@ -811,11 +811,7 @@ def _host_checks(doc, host, physical, kit, *, profile=None):
         kit,
     )
     service = []
-    retained = [
-        obj
-        for obj in physical
-        if not optical_interface.is_removable_head_part(obj, group)
-    ]
+    retained = [obj for obj in physical if not belongs_to_group(obj, group)]
     for name in (
         "ModuleBatteryEnvelope",
         "ModuleFCEnvelope",

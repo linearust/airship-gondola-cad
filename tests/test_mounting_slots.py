@@ -6,6 +6,8 @@ import unittest
 try:
     import FreeCAD as App
     import Part
+
+    from gondola.parts import mounting_plate
 except ImportError:
     App = Part = None
 
@@ -16,7 +18,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_opening_checks
 
-        original = mounts.common_plate_shape()
+        original = mounting_plate.shape()
         report = carrier_opening_checks(original)
         self.assertTrue(report["deck_symmetry"]["passed"], report)
         self.assertTrue(report["passed"], report)
@@ -52,7 +54,7 @@ class MountingSlotTests(unittest.TestCase):
             slot_mounting_pad_check,
         )
 
-        original = mounts.common_plate_shape()
+        original = mounting_plate.shape()
         for centre in mounts.PAS_HOLE_CENTRES:
             arguments = dict(
                 bottom=mounts.DECK_BOTTOM_Z,
@@ -97,7 +99,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_contact_patch_checks
 
-        original = mounts.common_plate_shape()
+        original = mounting_plate.shape()
         arguments = dict(bottom=mounts.DECK_BOTTOM_Z, thickness=mounts.DECK_THICKNESS)
         report = carrier_contact_patch_checks(original, **arguments)
         self.assertEqual(len(report["patches"]), 5)
@@ -180,7 +182,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import mounting_slots
         from gondola.validation.equipment import carrier_opening_checks
 
-        original = mounts.common_plate_shape()
+        original = mounting_plate.shape()
         self.assertTrue(original.isValid())
         self.assertEqual(len(original.Solids), 1)
         self.assertTrue(carrier_opening_checks(original)["passed"])
@@ -256,7 +258,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_opening_checks
 
-        shape = mounts.common_plate_shape()
+        shape = mounting_plate.shape()
         for bottom, depth in (
             (mounts.DECK_BOTTOM_Z + 0.1, 2),
             (mounts.DECK_BOTTOM_Z, 1.9),

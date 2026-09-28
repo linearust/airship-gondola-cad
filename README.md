@@ -8,10 +8,12 @@ Active direction (2026-09-28), revision BB: square printed carriers with a
 quarter-turn-symmetric array of fixed FC holes and adjustable slots, plus a
 compact one-axis optical pedestal attached directly to the common outer slots.
 The rail and deliberately separate servo/propulsion modules remain in use.
-Read [the design review](references/square_mount_review.md) and the
-[BB verification record](references/square_mount_verification.json) before claiming verification. AY restoration is historical;
-its checks do not certify this change. Bought-carbon-plate rail architectures
-remain superseded. Normal purchased gears, bearings and fasteners remain selected.
+Read [the design review](references/square_mount_review.md), its
+[original BB verification](references/square_mount_verification.json), and the
+[current behavior-preserving refactor verification](references/bb_refactor_verification.json)
+before claiming verification. The refactor preserves the pinned BB fixture.
+AY restoration is historical; its checks do not certify this design.
+Bought-carbon-plate rail architectures remain superseded. Normal purchased gears, bearings and fasteners remain selected.
 
 ## Establish the current state
 
@@ -36,7 +38,12 @@ old reference, fixture or shopping list contains them.
 | Navigation alternatives, selected radio and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
 | Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
 | Horn alternatives and optional power boards | [servo_horns.py](gondola/contracts/servo_horns.py), [power_options.py](gondola/contracts/power_options.py) |
-| Shared plate, mounting slots, optional power portal and compact optical attachment | [equipment_mounts.py](gondola/parts/equipment_mounts.py), [mounting_slots.py](gondola/parts/mounting_slots.py), [stack_interface.py](gondola/parts/stack_interface.py), [optical_interface.py](gondola/parts/optical_interface.py) |
+| Shared plate outline, fixed FC holes and carrier support heights | [mounting_plate.py](gondola/parts/mounting_plate.py) |
+| Common adjustable slot array | [mounting_slots.py](gondola/parts/mounting_slots.py) |
+| Carrier support geometry and device/adhesive datums | [equipment_mounts.py](gondola/parts/equipment_mounts.py) |
+| Equipment placement, bodies and connector reservations | [equipment_layout.py](gondola/parts/equipment_layout.py), [equipment_envelopes.py](gondola/parts/equipment_envelopes.py), [wiring_reserves.py](gondola/parts/wiring_reserves.py) |
+| Compact optical attachment and pitch adjustment | [optical_interface.py](gondola/parts/optical_interface.py), [optical_mount.py](gondola/parts/optical_mount.py) |
+| Optional power portal and platform | [stack_interface.py](gondola/parts/stack_interface.py), [power_mount.py](gondola/parts/power_mount.py) |
 | Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
 | Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
 | Checks, pinned regression baseline and artifact identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py), [bundle.py](gondola/bundle.py) |
@@ -105,6 +112,7 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
 - Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`.
   Its square plate and complete opening array are symmetric under 90-degree
   rotation and X/Y reflection; the integral rail shoe and clamp are directional.
+  `mounting_plate.py` owns the shared plate, fixed FC holes and support heights;
   `mounting_slots.py` defines the common adjustment coverage. Preserve continuous
   lands, fixed FC bearing annuli, P-AS slot seats and the declared adhesive patches.
   The P-AS/navigation datum has a small Y offset so its actual two holes use the
@@ -146,8 +154,7 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   rating, including conversion losses; installed load/thermal margin is unknown.
   Neither board has a confirmed mechanical hole pattern: use insulating contact
   and straps wrapped around the existing structure,
-  preserving electrical pads, cooling and connector access. General plate holes
-  are project fastening provisions, not evidence of device-specific compatibility.
+  preserving electrical pads, cooling and connector access.
   Keep the small optical tray as an uninterrupted adhesive pad. MTF-02P has no
   confirmed mounting pattern; MTF-01P's published holes are deliberately unused.
   Unverified straps near their apertures/connectors can obstruct the moving head.

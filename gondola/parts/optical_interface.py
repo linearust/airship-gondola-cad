@@ -10,15 +10,15 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, box, set_property
+from gondola.cad import box, set_property
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
-from . import purchased_hardware, stack_interface
+from . import mounting_plate, purchased_hardware
 
 V = App.Vector
-HOST_SUPPORT_Z = stack_interface.HOST_SUPPORT_Z
-DECK_THICKNESS = stack_interface.DECK_THICKNESS
+HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
+DECK_THICKNESS = mounting_plate.THICKNESS_MM
 HOST_ORIGIN_XY = (27.0, 18.0)
 FOOT_SIZE_MM = (8.0, 16.0)
 FOOT_CENTRE_X_MM = -1.0
@@ -165,10 +165,6 @@ def build_hardware(doc, group):
     return objects
 
 
-def is_removable_head_part(obj, group):
-    return belongs_to_group(obj, group)
-
-
 def rigid_float_shape_bound(shape):
     """Enclose every endpoint-slot registration, including continuous yaw cells."""
     bounds = shape.BoundBox
@@ -263,12 +259,7 @@ def base_service_proxies():
     x, y, z = optical_mount.PIVOT_CENTRE
     return [
         foot_outline_shape(),
-        box(
-            4,
-            optical_mount.EAR_THICKNESS,
-            z - FOOT_THICKNESS,
-            (x - 3, y - optical_mount.EAR_THICKNESS, FOOT_THICKNESS),
-        ),
+        optical_mount.upright_shape(),
         box(
             2 * optical_mount.EAR_RADIUS,
             optical_mount.EAR_THICKNESS,
