@@ -14,8 +14,6 @@ from gondola.contracts.equipment_interfaces import (
     SHAFT_SOURCE,
 )
 from gondola.contracts.fasteners import KIT_SOURCE
-from gondola.contracts.stack_adapter import PART_SKU as _STACK_ADAPTER_SKU
-from gondola.contracts.stack_adapter import PRODUCT_URL as _STACK_ADAPTER_URL
 
 FASTENER_KIT_SOURCE = KIT_SOURCE
 CLAMP_SCREW_SOURCE = FASTENER_KIT_SOURCE
@@ -97,12 +95,12 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, carbon plate clamps and optical pivots. No washers. Finish the nominal4.15mm open-bottom rail nut guides to4.05–4.25mm across flats and verify anti-rotation with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee fit. These guides do not retain unbolted nuts; support them during insertion before taping the rail. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, optical feet and pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
 }
 
-for _length in (6, 8, 20):
+for _length in (6, 8):
     PROCUREMENT_SPECS[f"M2X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M2x{_length} black steel button head hex socket screw",
         "candidate_url": FASTENER_KIT_SOURCE,
@@ -112,7 +110,7 @@ for _length in (6, 8, 20):
             "envelope: head diameter 4.5 mm and head height 2 mm. Check actual "
             "head, length, 1.5 mm hex-key access and the documented joint grip. "
             + (
-                "For thin printed joints, require a measured flat under-head "
+                "For the two optical foot clamps, require a measured flat under-head "
                 "bearing diameter at least 3.5 mm and thread crest diameter at least "
                 "1.8 mm; the 4.5 mm maximum head envelope alone does not establish "
                 "bearing contact. Both printed clearance holes must be at most 2.9 mm. "
@@ -123,7 +121,7 @@ for _length in (6, 8, 20):
             "and creep; these are not OEM motor or horn screws."
         ),
         "evidence_notes": (
-            "Kit image identifies a button head, lengths including 6/8/20 mm and a "
+            "Kit image identifies a button head, lengths 5/6/8 mm and a "
             "1.5 mm hex key. Head envelopes are deliberate design allowances, "
             "not seller-dimensioned maxima or an ISO conformity claim. The "
             "seller's 10.9 statement is unverified for the received lot. "
@@ -236,13 +234,3 @@ def procurement_spec(sku, *, allow_unknown=False):
     )
     spec["status"] = PURCHASING_STATUS
     return spec
-
-
-# Bought structural plate; seller dimensions are nominal, not print dimensions.
-
-PROCUREMENT_SPECS[_STACK_ADAPTER_SKU] = {
-    "search_query": "carbon FPV stack adapter 30x30x1mm 25.5 20 16 M2",
-    "candidate_url": _STACK_ADAPTER_URL,
-    "requirements": "Selected5PCS carbon adapter. Four boards are installed by default: battery, FC, navigation and Mini. The modeled optional power portal adds two upper boards while retaining all four lower boards, for six total; one5PCS pack alone is insufficient for that configuration. Nominal30x30x1mm, three square25.5/20/16mm patterns with nominal2mm unthreaded through-holes. Electrically insulate PCB, wiring and battery. Inspect received hole clearance, burrs, flatness, outline, cutouts and actual contact lands. Do not infer structural or adhesive support from the filled CAD envelope, simultaneous pattern usability, or included fastener quantities.",
-    "evidence_notes": "User-selected product drawing and saved page retained in references/stock_stack_adapter/. Seller lists0.72g perplate. Pattern vertical pitches inferred from square symmetry; tolerances/cutout contours and package fastener quantities unverified.",
-}

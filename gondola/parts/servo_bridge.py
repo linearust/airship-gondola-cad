@@ -11,13 +11,11 @@ import Part
 from gondola.cad import box, mirrored_y, union
 from gondola.contracts.drive import SELECTED_DRIVE
 
-from . import servo_envelope
+from . import rail, servo_envelope
 from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
-FRAME_BASE_Z = 2.2
-CENTRAL_PLATE_DEPTH = 22.0
 # The bought case is not a locating datum. Clearance around its nominal 7 x20
 # section also accommodates the published +/-0.2 mm case-size tolerance.
 CASE_CLEARANCE = 0.5
@@ -107,11 +105,11 @@ def bridge_blank(drive=SELECTED_DRIVE):
     width = bulkhead_width(drive)
     central_plate = box(
         width,
-        CENTRAL_PLATE_DEPTH,
+        rail.SHOE_WIDTH,
         CONNECTOR_PLATE_THICKNESS,
-        (-width / 2, -CENTRAL_PLATE_DEPTH / 2, CONNECTOR_PLATE_BOTTOM_Z),
+        (-width / 2, -rail.SHOE_WIDTH / 2, CONNECTOR_PLATE_BOTTOM_Z),
     )
-    arm_start_y = CENTRAL_PLATE_DEPTH / 2 - CONNECTOR_ARM_OVERLAP
+    arm_start_y = rail.SHOE_WIDTH / 2 - CONNECTOR_ARM_OVERLAP
     arm = box(
         PAD_OUTER_X - PAD_INNER_X,
         PAD_OUTER_Y - arm_start_y,
@@ -140,8 +138,8 @@ def bridge_shape(drive=SELECTED_DRIVE):
     bridge = bridge.cut(void).cut(opposite(void))
     # Horn screws now withdraw from the gear side. Keep the side columns solid;
     # the former rear tool-relief scallops are no longer needed.
-    # The central bulkhead is supported directly by the fixed frame web.
-    # The independent rail-clamp heads lie below this removable assembly.
+    # The plate sits above the complete rail-key elbow; its feet stand outside
+    # the rail screw head. Neither needs a tunnel, roof notch or thin ring.
     # The lower servo nut also clears the plate, including its removal path.
     # Open top counterbores preserve the existing M2x8 screw seat and grip.
     for sign in (-1, 1):
@@ -173,14 +171,14 @@ def frame_seats():
             box(
                 width,
                 2,
-                NUT_SEAT_Z - FRAME_BASE_Z,
-                (PAD_INNER_X, PAD_INNER_Y, FRAME_BASE_Z),
+                NUT_SEAT_Z - rail.SHOE_BOTTOM,
+                (PAD_INNER_X, PAD_INNER_Y, rail.SHOE_BOTTOM),
             ),
             box(
                 width,
                 5.5,
-                NUT_SEAT_Z - FRAME_BASE_Z,
-                (PAD_INNER_X, 20.5, FRAME_BASE_Z),
+                NUT_SEAT_Z - rail.SHOE_BOTTOM,
+                (PAD_INNER_X, 20.5, rail.SHOE_BOTTOM),
             ),
         ]
     )
@@ -210,5 +208,5 @@ def contact_planes():
         ("negative_cradle_seat", 2, SEAT_Z, 120.0),
         ("inside_y_datum", 1, -PAD_INNER_Y, 20.0),
         ("outside_x_datum", 0, -CONNECTOR_PLATE_HALF_WIDTH, 5.0),
-        ("central_bulkhead_support", 2, CONNECTOR_PLATE_BOTTOM_Z, 130.0),
+        ("central_bulkhead_support", 2, CONNECTOR_PLATE_BOTTOM_Z, 300.0),
     )

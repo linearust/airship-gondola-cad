@@ -1,0 +1,153 @@
+{
+  "restored_on": "2026-09-28",
+  "requested_direction": "Restore printed rail and integral printed carriers; reject centering the rail architecture on stock mounting plates.",
+  "restored_design_commit": "2aa2ec7235af6dbf2fae86d0547838baee705ba9",
+  "preserved_previous_commit": "2c955749808b05b783580d3fa2ae5a6f13694923",
+  "preserved_previous_branch": "codex/carbon-track-redesign",
+  "design_revision": "AX",
+  "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+  "baseline_sha256": "613ea62f0f077afdc2df8865c4d657ba4a3b5e09f7d4446166a1e39ad7db938a",
+  "current_verification": {
+    "status": "passed",
+    "source_and_tests_match_restored_commit": true,
+    "native_tests": 451,
+    "native_modules": 46,
+    "native_skips": 0,
+    "exact_discovery_execution_match": true,
+    "native_before_after_hashes_identical": true,
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "wall_seconds": 15.08,
+        "source_unchanged": true
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "wall_seconds": 47.35,
+        "source_unchanged": true
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "wall_seconds": 11.671,
+        "source_unchanged": true
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "wall_seconds": 923.048,
+        "source_unchanged": true
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "wall_seconds": 0.196,
+        "source_unchanged": true
+      }
+    ],
+    "artifact_sha256": {
+      "gondola.FCStd": "01fd235983d4bdbee2337bb6e11ec8b65d8412bf1e9714acc5f0f2bf4275bb05",
+      "gondola_assembly_reference.step": "bbd03f46a3b47abfd02559f22a10df026304b73eb993f4af78d3461fbedb9f49",
+      "gondola_attachment_detail.FCStd": "550b7330d2a77ce4d42669b6c85022978f992d1e5ade36260a459bb77810ce20",
+      "gondola_attachment_detail.png": "70c85dbb18403d9afdb3855af58eae53d1205aa88eadd416d308fcc170e3a06e",
+      "gondola_attachment_opposite.FCStd": "9a8db91482137248d0fea866ddaa18a6ee1bf9512219d4b10717331b85743644",
+      "gondola_attachment_opposite.png": "b5ceccc604175a29e36f029d477f695298e4aa322656ceac22e06548e753bf90",
+      "gondola_attachment_section.png": "008a2d87514dba28d0ecae105b010731230a5c1e9bcdb2451a4cd20ef89bd430",
+      "gondola_baseline_validation.json": "158ca3efda66ab609203ff92c6a3b24321dc59cb5e5f4443a5b1882d2e7c3b7d",
+      "gondola_electronics.png": "0f069a84fcb2c7f8c03ea2e6c6c756b2b4a30d160b204479fc0cd5adcacd17fc",
+      "gondola_equipment_validation.json": "94009ae3a977e9f3aa85134890312d0a2ca31127c86e70fca09148ecee3af914",
+      "gondola_hardware_bom.json": "9e10683772086abdae35d09737c7edff644b52ddd2a5b6b27829b22bc6077807",
+      "gondola_metrics.json": "71ad8876d9cce1f179bbbc531102ddd333168e2dc99c1f6be9a2401846511a64",
+      "gondola_optical_fc_stack.png": "d2681ccec9fdc1b81644f3105965de3c6c8b4bd30f1ffb40cb133661f6fa4f8a",
+      "gondola_optical_stack.png": "56de54478dc9a58faa00bf0e3fbdc59037093e8f96a2f3780f172381c44c675b",
+      "gondola_power_options.FCStd": "6312a1f48d3e14c898f3bb6ffd224c5a02f11e50c9e193263143f7bacdc55ada",
+      "gondola_power_options.json": "8b7ae667b73938adc5e81d576bd3786a0c275b4d872695f6a026b426a6da15e2",
+      "gondola_power_options.png": "33323060892abea8caea0fc8b94e6071501592dc73767eb265835f43eb328211",
+      "gondola_power_validation.json": "5e5c526cba9d74776365c4c9ce3d33fa61f24c9754f3aeb90723d6c971c39fca",
+      "gondola_preview.png": "0b0964db85567eb6af333e822877e3ffff5f4887b3d32136ee72fc7cd049a3b1",
+      "gondola_print_parts/bearing_seat_fit_sample.step": "023bd9b086f19274f3a709d55867a44a81a086a01ee4936a9c8daa9fac4031b9",
+      "gondola_print_parts/bearing_seat_fit_sample.stl": "1a0211d2afdb2b4c7eda84eb7a78859b38f5e8d2d16ae12465e9898182814b88",
+      "gondola_print_parts/continuous_rail.step": "ec6b13f331a713e090c8bfe6fa0d9f7d1198aa09cebe2f9836a3ce760acaeff6",
+      "gondola_print_parts/continuous_rail.stl": "c7348a3ad2b5992c54392c3a21e14ee71a2dc0a517cdef9df130c7b0ea0ef7fb",
+      "gondola_print_parts/factory_hole_horn_gear_adapter.step": "62a69924f02a5db17a45d2858a067d814e66dc0210b80826c098aaa66cd432ff",
+      "gondola_print_parts/factory_hole_horn_gear_adapter.stl": "026764d6208de19354c402f147ebc0b67313a379a7263d27ebfc5f7814c4f471",
+      "gondola_print_parts/motor_carrier.step": "96ea77be6a270612b1506f8de7c89ca25b77aa2d2c0ad13c2dd394f440d834db",
+      "gondola_print_parts/motor_carrier.stl": "88548221d9a51b54f569beab2e6615c7952b0371160939093574e441f52a9f8c",
+      "gondola_print_parts/optical_mount_base.step": "9b4df025c169907e506749cc31032268fec80886ce5765174de7452ad8f8e240",
+      "gondola_print_parts/optical_mount_base.stl": "2a5472ca3536de8857c87e0c4521701c69463199a0cd4f617fe03087694f4691",
+      "gondola_print_parts/optical_roll_bracket.step": "3b4e10510b78f7d1b1024fd0792142d0bd983aca5b3c4c8b0297935d0805b4c0",
+      "gondola_print_parts/optical_roll_bracket.stl": "ac679375ddf4515c8e7ed33620cac2618ec1779e772599f87354f2f4a660beff",
+      "gondola_print_parts/optical_sensor_tray.step": "f1e156071c7c20572a3d5138063e54bfcc76c22d76159bd76419853d66433205",
+      "gondola_print_parts/optical_sensor_tray.stl": "2960696b63d241587497f520d17f6afa8e36bff1f089cc8a38425e6daf728289",
+      "gondola_print_parts/print_manifest.json": "6c5d2b36624df5b110659a6404f5ea54027267fec2d7c6a948fe1fb3c601441d",
+      "gondola_print_parts/propulsion_fixed_frame.step": "3ad706c53eb937a26f46d1382676370af9e90d68c71300dd681973a962e26ab3",
+      "gondola_print_parts/propulsion_fixed_frame.stl": "81cc256af366e746a43c546e04c9c992b53f9fdbb923aa762f9f624f6a2ca77d",
+      "gondola_print_parts/rail_fit_sample.step": "3e43851f32c1a009c45e0ad88feadf91b7e7f318a5b0c28613922307cdf3c157",
+      "gondola_print_parts/rail_fit_sample.stl": "1695e6aae8b581d99f16698d795905b6bace6430da482d0725f20f3f0c46b7fb",
+      "gondola_print_parts/servo_drive_bridge48_t.step": "968b4fe3784f93c414f3f5e752a177d64908752b0259328886aaa50f5707a09f",
+      "gondola_print_parts/servo_drive_bridge48_t.stl": "16d36b4d5366bc8cffeb1b259121df98052c0e4c32ba5ff01095df45c9524d06",
+      "gondola_print_parts/shoe_fit_sample.step": "14a6d175482a676e5072ff28ea464c89d7ed66a82fbbf9469a2fb4d700b47926",
+      "gondola_print_parts/shoe_fit_sample.stl": "b73f73a9a208687ea23632412bad9fc376d38773b7304ed9d4193169d95cb662",
+      "gondola_print_parts/universal_equipment_carrier.step": "0a145951a6d0bf6af52ffcd91af9c8c3dc47c4fc17f30af8941bbad57084c12c",
+      "gondola_print_parts/universal_equipment_carrier.stl": "3cb88583f8cbe6f6ffb5b537a4eb4631777b1ec88c1a0ce4ef9976d64b15251b",
+      "gondola_print_parts.FCStd": "8cbcc76a908ea4d9657fb67b90a23f4081a5099c6ba1ec980a8b2f191d8a9ef8",
+      "gondola_print_parts.png": "c16914b0e522271f8711b5fe98c2506a21bb734ba0fef03965da8d5174a95680",
+      "gondola_print_parts.zip": "fdc997cd3ce9771a176cca3c6d9158440f7ebfa0738971d92672d97ed485d269",
+      "gondola_printed_structure.png": "7f22f92704790db2c9ac698740b6285a53ce1d76b73674fea2c81d700d70afc1",
+      "gondola_printed_structure.step": "1824d61b3096063dbfd1c37f2e4e59d0e7b078a2a60c29b10c69a8339bc23e36",
+      "gondola_propulsion.png": "06312f6dc7a243209909de5ebb4c0fe74c5c4a77bc6733a7f5bff905ee5808c6",
+      "gondola_propulsion_validation.json": "c6916523037e76114b1877cf19b9f9aa1c86f64d7eccd454f1269d6cfe429623",
+      "gondola_rail.png": "ccb63f2b32349268e04b4ccfcffad3f51c9767f4ad2777effc442b484ef0e7d9",
+      "gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+      "gondola_top.png": "64ae8b26d1ae0e5b72ab2be74e53f98988786f510f6f779c0fc4ad7979089bc8",
+      "gondola_validation.json": "ae001def2888ac1c488eaaed2cbad2512508ce8a8293d245b0f0452008101781",
+      "gondola_wiring.png": "cf305353e8c5b0a19cec1028e288be677d0de3ad80d2f2ad41557bb07fee7fb0",
+      "optional_power_mount.step": "876e8557d381dc7ede315d6b018fd552c70b14c88a84c421553ba18d0f1c2079",
+      "optional_power_mount.stl": "f24568b8900766e4113fe2641e758faec4510aa95f2e8c58aff492fe4306d130",
+      "preview_state.json": "84203a21d680092d4b560adc1dfa17bb1d6a0b4055b655ed7896f8f86d891cca"
+    },
+    "static_checks": {
+      "ruff_check": "passed",
+      "ruff_format": "110 files already formatted",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    },
+    "independent_review": {
+      "reviewer": "/root/rollback_target_review",
+      "source_test_fixture_identity": "passed",
+      "README_HANDOFF_local_links": "61 resolved",
+      "newest_user_decision_consistency": "passed"
+    },
+    "visual_review": [
+      "gondola_preview.png",
+      "gondola_electronics.png",
+      "gondola_print_parts.png",
+      "gondola_power_options.png",
+      "gondola_optical_stack.png",
+      "gondola_optical_fc_stack.png"
+    ],
+    "freecad_display": {
+      "document_name": "gondola",
+      "document_path": "/home/h/cad/airship-gondola-cad/build/gondola.FCStd",
+      "source_fingerprint": "83af3f5640704a10d410a69564f9daa1cb397f8211129dc1ba1c80737899c01e",
+      "printed_parts": 13,
+      "hardware_parts": 60,
+      "window_title": "FreeCAD 1.1.3",
+      "window_visible": true,
+      "file_sha256_before": "01fd235983d4bdbee2337bb6e11ec8b65d8412bf1e9714acc5f0f2bf4275bb05",
+      "file_sha256_after": "01fd235983d4bdbee2337bb6e11ec8b65d8412bf1e9714acc5f0f2bf4275bb05",
+      "file_unchanged": true,
+      "saved_by_macro": false
+    },
+    "retained_evidence": "references/printed_rail_restoration_checks.json.gz",
+    "retained_evidence_sha256": "31f42e15128a9e0261c7463f73a892a244ac8bc754bf78642a56a5fb2a012771",
+    "production_qualified": false
+  },
+  "limits": [
+    "Historical AX verification is separate from this restoration run.",
+    "Physical fit, strength, wires, retained contact and flight qualification remain unverified.",
+    "Carbon and nylon tube proposals were not implemented."
+  ]
+}

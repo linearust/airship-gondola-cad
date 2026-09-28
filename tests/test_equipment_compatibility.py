@@ -64,35 +64,33 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         finally:
             lane.Shape = original
 
-    def test_radio_reservation_checks_identity_without_inventing_contact(self):
+    def test_radio_support_uses_actual_overlap_and_rejects_missing_material(self):
         from gondola.contracts.equipment_options import get_radio_profile
         from gondola.parts import equipment_envelopes
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment_options import adhesive_support_check
         from gondola.validation.geometry import local_shape
 
-        support = local_shape(self.doc.StockRadioAdapter)
+        support = local_shape(self.doc.AccessoryMount)
         body = equipment_envelopes.radio_envelope_shape(get_radio_profile("LR24FMINI"))
         report = adhesive_support_check(
             support,
             body,
             mounts.RADIO_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
-            face="top",
+            face="bottom",
         )
         self.assertTrue(report["passed"])
-        self.assertEqual(report["support_face"], "top")
-        self.assertFalse(report["continuous_support_area_verified"])
-        self.assertFalse(report["physical_contact_qualified"])
-        self.assertAlmostEqual(report["reserved_pad_area_mm2"], 308)
-        self.assertAlmostEqual(report["nominal_body_pad_overlap_mm2"], 308)
+        self.assertEqual(report["support_face"], "bottom")
+        self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
+        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
         x, y = mounts.RADIO_CENTRE_XY
         damaged = support.cut(
             Part.makeBox(
                 2,
                 2,
-                3,
-                App.Vector(x - 1, y - 1, 6),
+                mounts.DECK_THICKNESS + 2,
+                App.Vector(x - 1, y - 1, mounts.DECK_BOTTOM_Z - 1),
             )
         )
         self.assertFalse(
@@ -101,7 +99,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 body,
                 mounts.RADIO_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
-                face="top",
+                face="bottom",
             )["passed"]
         )
         body.translate(App.Vector(8, 0, 0))
@@ -111,7 +109,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 body,
                 mounts.RADIO_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
-                face="top",
+                face="bottom",
             )["passed"]
         )
 
@@ -125,18 +123,19 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
             services = {
-                service["device"]: service for service in row["bare_device_service"]
+                service["device"]: service
+                for service in row["bare_device_service_after_tower_release"]
             }
             self.assertEqual(
                 services["ModuleRadioEnvelope"]["local_removal_vector_mm"],
-                (0.0, 0.0, 32.0),
+                (0.0, 0.0, -32.0),
             )
-            self.assertFalse(services["ModuleRadioEnvelope"]["bench_access_required"])
-            self.assertEqual(
+            self.assertTrue(services["ModuleRadioEnvelope"]["bench_access_required"])
+            self.assertIn(
+                "TapeWing0L",
                 services["ModuleRadioEnvelope"][
                     "off_carrier_parts_excluded_for_bench_service"
                 ],
-                [],
             )
             self.assertEqual(
                 services["ModulePASEnvelope"]["local_removal_vector_mm"],
@@ -170,7 +169,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_installed_radio_service_rejects_a_carrier_obstacle(self):
+    def test_detached_radio_service_still_rejects_an_attached_carrier_obstacle(self):
         from gondola.parts import equipment_envelopes
         from gondola.validation.equipment import mounting_check
 
@@ -182,7 +181,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             2,
             2,
             2,
-            App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMax + 4),
+            App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMin - 12),
         )
         original = list(self.doc.DesignRegistry.ReferenceParts)
         try:
@@ -193,14 +192,14 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 for row in result["device_service"]
                 if row["device"] == "ModuleRadioEnvelope"
             )
-            self.assertFalse(service["bench_access_required"])
+            self.assertTrue(service["bench_access_required"])
             self.assertFalse(service["passed"])
             self.assertIn(blocker.Name, service["collisions"])
             self.assertNotIn(
                 blocker.Name, service["off_carrier_parts_excluded_for_bench_service"]
             )
-            self.assertEqual(
-                service["off_carrier_parts_excluded_for_bench_service"], []
+            self.assertIn(
+                "TapeWing0L", service["off_carrier_parts_excluded_for_bench_service"]
             )
         finally:
             self.doc.DesignRegistry.ReferenceParts = original

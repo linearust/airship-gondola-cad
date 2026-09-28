@@ -1,11 +1,5 @@
 # Universal equipment carrier — AX
 
-Historical AX record, superseded by the
-[AZ purchased-adapter redesign](stock_stack_adapter_review.md). The identical
-54×74 mm decks, separate optical feet and underside radio below are not current
-assembly instructions. Current role carriers and service paths are documented
-in [the layout review](layout_and_wiring_review.md).
-
 The user requested interchangeable mounting plates, useful spare mounting holes
 and modular expansion, then rejected the asymmetric radio landing tab. AX removes
 the tab and uses both faces of a simple symmetric plate. Preserve the deliberately

@@ -13,7 +13,12 @@ def navigation_centre():
 
 def navigation_bottom(profile=None):
     profile = profile or get_navigation_profile()
-    return mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
+    clearance = (
+        mounts.PAS_SERVICE_CLEARANCE
+        if profile.key == "PAS"
+        else mounts.ADHESIVE_ALLOWANCE
+    )
+    return mounts.SUPPORT_FACE_Z + clearance
 
 
 def navigation_hole_centres(profile=None):
@@ -28,13 +33,15 @@ def adhesive_bottom():
 
 
 def radio_placement():
-    """Radio beside navigation on the accessible outer face of the shared deck."""
+    """Body and connector frame on the rail-facing side; local +Z points outward."""
     return App.Placement(
-        App.Vector(*mounts.RADIO_CENTRE_XY, adhesive_bottom()),
-        App.Rotation(App.Vector(0, 0, 1), 90),
+        App.Vector(
+            *mounts.RADIO_CENTRE_XY, mounts.DECK_BOTTOM_Z - mounts.ADHESIVE_ALLOWANCE
+        ),
+        App.Rotation(App.Vector(1, 0, 0), 180),
     )
 
 
 def device_removal_vector(name, distance=32.0):
     """Bench removal in the carrier frame, after releasing adhesive/hardware."""
-    return (0.0, 0.0, distance)
+    return (0.0, 0.0, -distance if name == "ModuleRadioEnvelope" else distance)

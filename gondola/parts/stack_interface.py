@@ -1,7 +1,8 @@
-"""Removable one-piece optical portal on two bought carbon25.5mm axes.
+"""Common optical tower with two directly clamped broad seating feet.
 
-The lower carbon plate clamps to the rail through separate16mm axes. The
-portal feet use the two25.5mm X axes, independently of FC soft retention.
+Clearance holes permit assembly registration. Both feet must seat before their
+ordinary M2 fasteners are tightened; no operating axial gap or snap preload is
+specified. Physical clamp retention, print flatness and PA12 creep need testing.
 """
 
 import json
@@ -11,81 +12,205 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, box, set_property, union
-from gondola.contracts import stack_adapter as adapter_specification
-from gondola.contracts.design import STACK_ANCHOR_CENTRES, STACK_PITCH_MM
+from gondola.contracts import fasteners
+from gondola.contracts.design import (
+    STACK_ANCHOR_CENTRES,
+    STACK_ANCHOR_LOCATIONS,
+    STACK_PITCH_MM,
+)
+from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
+
+from . import purchased_hardware
 
 V = App.Vector
 PITCH_MM = STACK_PITCH_MM
 ANCHOR_CENTRES = STACK_ANCHOR_CENTRES
-FOOT_CENTRES = tuple(
-    (x, y) for x, y in adapter_specification.COMMON_HOLE_CENTRES if abs(x) > 1
-)
-FOOT_DIAMETER = 6.0
-FOOT_HOLE_DIAMETER = 2.6
-HOST_SUPPORT_Z = 8.0
-STACK_TOP_Z = 51.3
-TOWER_HEIGHT = STACK_TOP_Z - HOST_SUPPORT_Z
+ARM_WIDTH = 5.0
+DECK_THICKNESS = 2.0
 TOP_BEAM_THICKNESS = 3.0
+HOST_DECK_BOTTOM_Z = 11.4
+HOST_SUPPORT_Z = HOST_DECK_BOTTOM_Z + DECK_THICKNESS
+TOWER_HEIGHT = 32.0
+STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
+FOOT_THICKNESS = 2.0
+FOOT_INNER_OFFSET = -3.6
+FOOT_OUTER_OFFSET = 7.3
 FIXED_LEG_INNER = -1.4
 FIXED_LEG_THICKNESS = 2.0
 LEG_WIDTH = 8.0
-ROOT_ARM_BOTTOM_Z = HOST_SUPPORT_Z
-ROOT_ARM_THICKNESS = 2.0
-ROOT_ARM_WIDTH = 6.0
-LEG_BOTTOM_Z = ROOT_ARM_BOTTOM_Z - STACK_TOP_Z
+HOST_SEAT_OUTER = 8.0
+HOST_SEAT_WIDTH = 8.0
+CLAMP_AXIS_OFFSET = 4.0
+CLAMP_HOLE_DIAMETER = 2.6
+CLAMP_SCREW_LENGTH = 8.0
+DIMENSION_ALLOWANCE = 0.3
+MINIMUM_RECEIVED_BOLT_DIAMETER = 1.8
+MAX_RADIAL_FLOAT = (
+    CLAMP_HOLE_DIAMETER + DIMENSION_ALLOWANCE - MINIMUM_RECEIVED_BOLT_DIAMETER
+)
+CLAMP_CENTRES = tuple(
+    (
+        x * (1 + CLAMP_AXIS_OFFSET / math.hypot(x, y)),
+        y * (1 + CLAMP_AXIS_OFFSET / math.hypot(x, y)),
+    )
+    for x, y in ANCHOR_CENTRES
+)
 SUPPORTED_HOSTS = {
-    "BatteryEquipmentModule": "StockBatteryAdapter",
-    "ElectronicsEquipmentModule": "StockFCAdapter",
+    "BatteryEquipmentModule": "BatteryMount",
+    "ElectronicsEquipmentModule": "ElectronicsMount",
 }
 MECHANICAL_HOSTS = {
     **SUPPORTED_HOSTS,
-    "AccessoryEquipmentModule": "StockNavigationAdapter",
+    "AccessoryEquipmentModule": "AccessoryMount",
 }
 HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
-HOST_ORIGINS_XY["AccessoryEquipmentModule"] = (24.0, 0.0)
-FOOT_HARDWARE_NAMES = tuple(
-    "OpticalFoot" + str(i) + kind for i in range(2) for kind in ("Bolt", "Nut")
-)
+
+# Common board spacings are separate from the two-point structural tower joint.
+# Clearance diameters are our PA12 design choices, not OEM PCB hole diameters.
+BOARD_PATTERNS = {
+    20.0: {
+        "fastener": "M2",
+        "clearance_diameter_mm": 2.6,
+        "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/",
+        "evidence": "Manufacturer lists 20 x 20 mm and M2/M3 screw or grommet compatibility; this carrier supports the M2 option only.",
+    },
+    30.5: {
+        "fastener": "M3",
+        "clearance_diameter_mm": 3.6,
+        "source": "https://www.mateksys.com/?portfolio=f405-std",
+        "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs.",
+    },
+}
+
+
+def board_pattern_contract(patterns, centre=(0.0, 0.0)):
+    """Common square pitches with an explicit carrier-local datum and rotation."""
+    rows = []
+    for pitch, rotation in patterns:
+        spec = BOARD_PATTERNS[pitch]
+        angle = math.radians(rotation)
+        axes = tuple(
+            (
+                centre[0] + x * math.cos(angle) - y * math.sin(angle),
+                centre[1] + x * math.sin(angle) + y * math.cos(angle),
+            )
+            for x, y in (
+                (-pitch / 2, -pitch / 2),
+                (pitch / 2, -pitch / 2),
+                (pitch / 2, pitch / 2),
+                (-pitch / 2, pitch / 2),
+            )
+        )
+        rows.append(
+            {"pitch_mm": pitch, "rotation_deg": rotation, "centres_xy_mm": axes, **spec}
+        )
+    return {
+        "datum_xy_mm": centre,
+        "patterns": rows,
+        "minimum_full_thickness_land_mm": 1.5,
+        "scope": "Common board pitches for future alternative installations, not a universal board or connector fit. Use M2 on the 20 mm pattern and M3 on the 30.5 mm pattern. Printed holes are clearance bores, without threads or installed hardware. Choose purchased spacers and screw lengths after checking the actual device, insulation, underside access and wiring. These board patterns do not replace the separate structural tower attachment or qualify another device in an occupied bay.",
+    }
+
+
+def board_hole_rows(patterns, centre=(0.0, 0.0)):
+    return [
+        {
+            "pitch_mm": row["pitch_mm"],
+            "fastener": row["fastener"],
+            "diameter_mm": row["clearance_diameter_mm"],
+            "centre_xy_mm": axis,
+        }
+        for row in board_pattern_contract(patterns, centre)["patterns"]
+        for axis in row["centres_xy_mm"]
+    ]
+
+
+def board_hole_shapes(rows, bottom, depth, *, border=0.0):
+    """Round bores or their surrounding land probes; never cable-tie slots."""
+    return [
+        Part.makeCylinder(
+            row["diameter_mm"] / 2 + border,
+            depth,
+            V(*row["centre_xy_mm"], bottom),
+        )
+        for row in rows
+    ]
 
 
 def host_origin_xy(host_name=None):
+    """Common attachment datum in a carrier, accepting its group or print name."""
     if host_name is None:
         return (0.0, 0.0)
     for group, part in MECHANICAL_HOSTS.items():
         if host_name in (group, part):
             return HOST_ORIGINS_XY[group]
-    raise ValueError("Unknown carbon stack host: " + str(host_name))
+    raise ValueError("Unknown structural stack host: " + str(host_name))
 
 
 def host_placement(host_name, z=HOST_SUPPORT_Z):
+    """Local placement of the common mechanical datum, not a device fit claim."""
     return App.Placement(V(*host_origin_xy(host_name), z), App.Rotation())
+
+
+def clamp_fit_contract():
+    return {
+        "dimension_allowance_each_printed_dimension_mm": DIMENSION_ALLOWANCE,
+        "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
+        "maximum_accepted_hole_diameter_mm": CLAMP_HOLE_DIAMETER + DIMENSION_ALLOWANCE,
+        "minimum_received_screw_crest_diameter_mm": MINIMUM_RECEIVED_BOLT_DIAMETER,
+        "maximum_seated_registration_axis_offset_mm": MAX_RADIAL_FLOAT,
+        "nominal_axial_seating_gap_mm": 0.0,
+        "printed_grip_mm": DECK_THICKNESS + FOOT_THICKNESS,
+        "screw_length_mm": CLAMP_SCREW_LENGTH,
+        "nut_height_mm": fasteners.HEX_NUT_HEIGHT,
+        "nominal_tip_projection_mm": CLAMP_SCREW_LENGTH
+        - DECK_THICKNESS
+        - FOOT_THICKNESS
+        - fasteners.HEX_NUT_HEIGHT,
+        "tip_projection_with_both_prints_0_3mm_thicker_mm": CLAMP_SCREW_LENGTH
+        - DECK_THICKNESS
+        - FOOT_THICKNESS
+        - 2 * DIMENSION_ALLOWANCE
+        - fasteners.HEX_NUT_HEIGHT,
+        "minimum_received_flat_head_bearing_diameter_mm": 3.5,
+        "concentric_flat_head_radial_land_at_maximum_hole_mm": (
+            3.5 - CLAMP_HOLE_DIAMETER - DIMENSION_ALLOWANCE
+        )
+        / 2,
+        "concentric_nut_radial_land_at_maximum_hole_mm": (
+            fasteners.HEX_NUT_MIN_AF - CLAMP_HOLE_DIAMETER - DIMENSION_ALLOWANCE
+        )
+        / 2,
+        "bearing_scope": "The listed radial lands assume concentric hardware and holes. At maximum accepted hole/screw clearance the screw may be eccentric by 0.55 mm within each hole, so a continuous all-around head or nut bearing land is not guaranteed. Inspect actual contact and reject edge tipping, local indentation or pull-through; CAD does not qualify bearing pressure or PA12 clamp creep.",
+        "pointing_acceptance": "Seat both broad feet directly on the carrier and hand-snug both M2 clamps while holding the tower square. No adhesive anti-rattle pad or elastic latch is required or specified. Reject rocking, a foot that does not fully seat, or slip under cable loads; inspect print flatness and actual fastener dimensions. Clearance holes locate only approximately until the clamp friction is established. Holding torque, vibration retention, strength and PA12 creep remain unqualified.",
+        "loosened_state": "Not an operating pointing datum. Perform foot-fastener service with the carrier removed from the rail and supported on a bench; envelope clearance is not modeled. Support tower upright; remove both nuts and withdraw screws downward before lifting the complete tower. No arbitrary tilted removal or loosened-flight clearance is claimed.",
+    }
 
 
 def interface_contract(host_name=None):
     return {
-        "construction": "One-piece removable PA12 portal on purchased carbon",
+        "standard": f"Project structural stack: rigid legs at {STACK_ANCHOR_LOCATIONS}, two outboard M2 clamps",
         "industry_standard_claimed": False,
+        "axis_spacing_mm": math.sqrt(2) * PITCH_MM,
         "anchor_centres_xy_mm": ANCHOR_CENTRES,
-        "foot_centres_xy_mm": FOOT_CENTRES,
-        "foot_hole_diameter_mm": FOOT_HOLE_DIAMETER,
+        "clamp_centres_xy_mm": CLAMP_CENTRES,
+        "printed_deck_thickness_mm": DECK_THICKNESS,
         "host_support_z_mm": HOST_SUPPORT_Z,
         "integral_tower_height_mm": TOWER_HEIGHT,
-        "stack_platform_bottom_z_mm": STACK_TOP_Z,
-        "lower_root_arm_bottom_z_mm": ROOT_ARM_BOTTOM_Z,
-        "lower_root_arm_section_mm": [ROOT_ARM_THICKNESS, ROOT_ARM_WIDTH],
+        "tower_foot_thickness_mm": FOOT_THICKNESS,
         "fixed_load_leg_section_mm": [FIXED_LEG_THICKNESS, LEG_WIDTH],
         "top_beam_section_mm": [TOP_BEAM_THICKNESS, LEG_WIDTH],
-        "separate_base_print_count": 1,
-        "detachable_foot_joint": True,
-        "tower_attachment": "Two opposed25.5mm X axes secure the portal to the bought carbon. On the battery plate use twoM2x6 screws upward through carbon and2mm feet, with ordinaryM2 nuts above. At the FC reuse its two X-axisM2x20 studs, seating the corresponding intermediate nuts above the feet. The other two FC studs remain unchanged. No printed lower mounting plate or rail shoe.",
-        "load_path": "Optical pivot -> integral beam/legs/feet -> two25.5mm carbon axes -> laminate -> independent two16mm rail clamps -> twin tracks. The light optical support deliberately uses carbon structurally; laminate contact, flex and strength remain unqualified.",
-        "service": "Disconnect leads and remove the FC or battery first. At FC remove the two X-axis intermediate nuts, fit/remove the portal over the existing studs, and replace the nuts; keep the independent16mm rail screws tight. At battery hold the two under-plate heads while releasing their top nuts. Remove the plate from the rail first if underside access is needed. Transfer the complete portal/head to the other carbon host and recalibrate both axes. FC soft mounting remains separately retained and unverified.",
+        "top_beam_overhang_past_legs_mm": 0.0,
+        "tower_attachment": "Two broad integral 2 mm feet seat directly on 2 mm carrier tabs. Two existing-kit M2x8 screws enter from below; ordinary M2 hex nuts sit above the feet. No washers, spring fingers, precision locating tongues or anti-rattle pads.",
+        "service": "Disconnect sensor wiring, remove the carrier from the rail and support it on a bench; the balloon surface is not modeled and underside access on the balloon is not claimed. Support the tower upright, hold each exposed nut from the outboard side, undo each screw with a 1.5 mm key from below, remove both nuts and withdraw both screws downward. Lift the complete tower along optical +Z before servicing the host device. Re-seat and tighten both feet, then reinstall and retrim the carrier before use.",
+        "stack_platform_bottom_z_mm": STACK_TOP_Z,
         "supported_hosts": list(SUPPORTED_HOSTS),
         "mechanical_hosts": dict(MECHANICAL_HOSTS),
         "carrier_datum_xy_mm": host_origin_xy(host_name),
         "mechanical_host_datums_xy_mm": dict(HOST_ORIGINS_XY),
-        "accessory_scope": "Accessory navigation carbon can host the optional power portal after its separate compatibility check. It is not an optical host. Do not populate power and optical at the same host.",
-        "physical_qualification": "Inspect received carbon at both foot contacts and rail contact bands; the filled CAD plate is only an external envelope. Qualify laminate bending, clamps, printed portal stiffness, creep and pointing with real sensor/cable loads. No torque or flight strength rating is supplied.",
+        "accessory_scope": "The accessory carrier has the same attachment geometry at the common local (0,0) mm datum for a separately validated optional power platform. It is not an optical host: its installed direct GPS antenna can obstruct the optical field. A shared hole pattern alone does not qualify simultaneous equipment, wiring, tool access or tether loads.",
+        "load_path": "Carrier tabs -> directly clamped broad tower feet -> two rigid legs -> one straight rectangular beam supporting the optical pivot. Beam ends are flush with the leg outer faces; there are no unused top branches. No stack load passes through FC dampers, PCB or battery. Bolt preload seats the contacts; friction retention is not qualified by CAD.",
+        "clamp_fit": clamp_fit_contract(),
     }
 
 
@@ -95,59 +220,39 @@ def _radial(shape, x, y):
     return result
 
 
-def _root_shape(index):
-    fx, fy = FOOT_CENTRES[index]
-    x, y = ANCHOR_CENTRES[index]
-    length = math.hypot(x - fx, y - fy)
-    beam = box(
-        length,
-        ROOT_ARM_WIDTH,
-        ROOT_ARM_THICKNESS,
-        (0, -ROOT_ARM_WIDTH / 2, LEG_BOTTOM_Z),
-    )
-    beam.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(y - fy, x - fx)))
-    beam.translate(V(fx, fy, 0))
-    pad = Part.makeCylinder(
-        FOOT_DIAMETER / 2, ROOT_ARM_THICKNESS, V(fx, fy, LEG_BOTTOM_Z)
-    )
-    bore = Part.makeCylinder(
-        FOOT_HOLE_DIAMETER / 2, ROOT_ARM_THICKNESS + 2, V(fx, fy, LEG_BOTTOM_Z - 1)
-    )
-    return union([beam, pad]).cut(bore).removeSplitter()
+def _hole_cut(shape, bottom, depth, origin=(0.0, 0.0)):
+    for cx, cy in CLAMP_CENTRES:
+        x, y = cx + origin[0], cy + origin[1]
+        shape = shape.cut(
+            Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
+        )
+    return shape.removeSplitter()
 
 
-def structural_component_shapes():
-    """Six true portal components in portal-top coordinates."""
-    rows = []
-    for i, (x, y) in enumerate(ANCHOR_CENTRES):
+def platform_shape():
+    pieces = []
+    for x, y in ANCHOR_CENTRES:
         radius = math.hypot(x, y)
-        leg = box(
-            FIXED_LEG_THICKNESS,
-            LEG_WIDTH,
-            -LEG_BOTTOM_Z,
-            (radius + FIXED_LEG_INNER, -LEG_WIDTH / 2, LEG_BOTTOM_Z),
+        arm = box(
+            radius + HOST_SEAT_OUTER, ARM_WIDTH, DECK_THICKNESS, (0, -ARM_WIDTH / 2, 0)
         )
-        beam = box(
-            radius + FIXED_LEG_INNER + FIXED_LEG_THICKNESS,
-            LEG_WIDTH,
-            TOP_BEAM_THICKNESS,
-            (0, -LEG_WIDTH / 2, 0),
+        seat = box(
+            HOST_SEAT_OUTER - FOOT_INNER_OFFSET,
+            HOST_SEAT_WIDTH,
+            DECK_THICKNESS,
+            (radius + FOOT_INNER_OFFSET, -HOST_SEAT_WIDTH / 2, 0),
         )
-        rows.extend(
-            (
-                (f"load_leg_{i}", _radial(leg, x, y)),
-                (f"root_arm_{i}", _root_shape(i)),
-                (f"top_beam_half_{i}", _radial(beam, x, y)),
-            )
-        )
-    return rows
+        pieces.append(_radial(union([arm, seat]), x, y))
+    return _hole_cut(union(pieces), -1, DECK_THICKNESS + 2)
 
 
-def tower_shape():
-    shape = union([s for _, s in structural_component_shapes()]).removeSplitter()
-    if not shape.isValid() or len(shape.Solids) != 1:
-        raise RuntimeError("Carbon-mounted portal must be one valid solid")
-    return shape
+def add_host_interface(shape, host_name=None):
+    origin = host_origin_xy(host_name)
+    platform = platform_shape()
+    platform.translate(V(*origin, HOST_DECK_BOTTOM_Z))
+    return _hole_cut(
+        shape.fuse(platform), HOST_DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2, origin
+    )
 
 
 def annotate_interface(obj, host_name=None):
@@ -159,194 +264,270 @@ def annotate_interface(obj, host_name=None):
     set_property(obj, "StackFitVerified", False, "App::PropertyBool")
 
 
-def host_print(group):
-    """The actual fixed support is a separate portal, never the bought host plate."""
-    obj = group.Document.getObject("OpticalMountBase")
-    if obj is None or obj.getParentGeoFeatureGroup() != group:
-        raise ValueError("Optical group lacks its physical fixed portal")
-    return obj
-
-
-def device_removal_segments(name):
-    """Ordered disconnected module bench path, after leads/head/device release.
-
-    Vectors use carrier coordinates and are successive, not absolute positions.
-    The complete fixed portal stays in the obstacle set throughout.
-    """
-    if name == "ModuleFCEnvelope":
-        return ((0.0, 0.0, 12.0), (60.0, -60.0, 0.0))
-    if name == "ModuleBatteryEnvelope":
-        return ((0.0, 0.0, 5.0), (-60.0, 60.0, 0.0))
-    raise ValueError("No qualified portal device removal path: " + name)
-
-
-def device_removal_shape(device):
-    """Filled conservative body bound in world coordinates for exact planar sweep.
-
-    Callers must verify the actual device is contained. The battery bound covers
-    its maximum18x66x17 body with ±1mm centre shift on either carrier axis.
-    Filling FC mounting bores avoids a loose whole-world bounding box when the
-    normal cylinder-aware sweep cannot handle sideways hole translations.
-    """
-    from gondola.contracts import equipment_interfaces as interfaces
-    from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG
-
-    from . import equipment_envelopes, equipment_layout, equipment_mounts
-
-    if device.Name == "ModuleFCEnvelope":
-        length, width, height = interfaces.FC_SIZE_MM
-        result = box(length, width, height, (-length / 2, -width / 2, 0))
-        result.rotate(V(), V(0, 0, 1), equipment_mounts.FC_ROTATION_DEG)
-        result.translate(
-            V(*equipment_mounts.FC_CENTRE_XY, equipment_envelopes.FC_BOTTOM_Z)
-        )
-        result.rotate(
-            V(*equipment_mounts.FC_CENTRE_XY, 0),
-            V(0, 0, 1),
-            FC_INSTALLATION_LOCAL_YAW_DEG,
-        )
-    elif device.Name == "ModuleBatteryEnvelope":
-        result = box(20, 68, 17, (-10, -34, equipment_layout.adhesive_bottom()))
-    else:
-        raise ValueError("No portal service bound: " + device.Name)
-    result.Placement = (
-        device.getParentGeoFeatureGroup()
-        .getGlobalPlacement()
-        .multiply(result.Placement)
-    )
-    return result
-
-
-def _update_foot_hardware(group, host):
-    from gondola.contracts import fasteners
-
-    from . import purchased_hardware, stock_adapter
-
-    doc = group.Document
-    registry = doc.getObject("DesignRegistry")
-    old = [doc.getObject(name) for name in FOOT_HARDWARE_NAMES if doc.getObject(name)]
-    if registry:
-        registry.HardwareParts = [
-            obj for obj in registry.HardwareParts if obj not in old
-        ]
-    for obj in old:
-        doc.removeObject(obj.Name)
-    stock_adapter.set_fc_portal(doc, host.Name == "ElectronicsEquipmentModule")
-    added = []
-    if host.Name == "BatteryEquipmentModule":
-        for i, (x, y) in enumerate(FOOT_CENTRES):
-            for kind, shape, z, sku in (
-                (
-                    "Bolt",
-                    purchased_hardware.screw_shape(6).copy(),
-                    7.0,
-                    "M2X6_BUTTON_HEAD",
-                ),
-                (
-                    "Nut",
-                    purchased_hardware.hex_nut_shape().copy(),
-                    HOST_SUPPORT_Z + ROOT_ARM_THICKNESS,
-                    "M2_HEX_NUT",
-                ),
-            ):
-                shape.translate(V(x, y, z - STACK_TOP_Z))
-                obj = purchased_hardware.add_hardware(
-                    doc,
-                    group,
-                    f"OpticalFoot{i}{kind}",
-                    "BUY | carbon optical portal " + kind,
-                    shape,
-                    sku,
-                    interface_contract(host.Name)["tower_attachment"],
-                    fasteners.KIT_SOURCE,
-                    material=fasteners.KIT_MATERIAL,
-                )
-                added.append(obj)
-    if registry:
-        retained = list(registry.HardwareParts)
-        insertion = max(
-            (
-                index + 1
-                for index, obj in enumerate(retained)
-                if belongs_to_group(obj, group)
-            ),
-            default=len(retained),
-        )
-        registry.HardwareParts = retained[:insertion] + added + retained[insertion:]
-    return added
-
-
 def attach_to_host(group, host):
     if host.Name not in SUPPORTED_HOSTS or host.Document != group.Document:
-        raise ValueError("Optical stack requires a supported carbon host")
-    plate = host.Document.getObject(SUPPORTED_HOSTS[host.Name])
-    if plate is None or plate.getParentGeoFeatureGroup() != host:
-        raise ValueError("Target optical host lacks its purchased plate")
+        raise ValueError(
+            "Optical stack requires a supported carrier in the same document"
+        )
     old = group.getParentGeoFeatureGroup()
-    if old and old != host:
+    if old is not None and old != host:
         old.removeObject(group)
     host.addObject(group)
-    group.Placement = host_placement(host.Name, STACK_TOP_Z)
-    if old != host or "HostPlateName" not in group.PropertiesList:
-        _update_foot_hardware(group, host)
+    group.Placement = App.Placement(V(0, 0, STACK_TOP_Z), App.Rotation())
     set_property(group, "StackHostName", host.Name)
-    set_property(group, "HostPlateName", plate.Name)
-    annotate_interface(group, host.Name)
-    annotate_interface(host_print(group), host.Name)
+    annotate_interface(group)
     group.Document.recompute()
 
 
-def is_removable_head_part(obj, stack):
+def _fixed_leg_pieces(radius):
     return (
-        belongs_to_group(obj, stack)
-        and obj.Name != "OpticalMountBase"
-        and obj.Name not in FOOT_HARDWARE_NAMES
+        box(
+            FIXED_LEG_THICKNESS,
+            LEG_WIDTH,
+            TOWER_HEIGHT,
+            (radius + FIXED_LEG_INNER, -LEG_WIDTH / 2, -TOWER_HEIGHT),
+        ),
+        box(
+            FOOT_OUTER_OFFSET - FOOT_INNER_OFFSET,
+            HOST_SEAT_WIDTH,
+            FOOT_THICKNESS,
+            (radius + FOOT_INNER_OFFSET, -HOST_SEAT_WIDTH / 2, -TOWER_HEIGHT),
+        ),
     )
 
 
-def manufacturing_wall_probes(doc=None):
-    rows = []
-    for i, (x, y) in enumerate(ANCHOR_CENTRES):
-        angle = math.atan2(y, x)
-        radius = math.hypot(x, y)
+def _top_beam_half(radius):
+    """One half of a continuous beam ending flush with the leg outer face."""
+    return box(
+        radius + FIXED_LEG_INNER + FIXED_LEG_THICKNESS,
+        LEG_WIDTH,
+        TOP_BEAM_THICKNESS,
+        (0, -LEG_WIDTH / 2, 0),
+    )
 
-        def point(radial, z):
+
+def tower_shape():
+    """Open rectangular portal; outboard foot material stays only at the feet."""
+    pieces = []
+    for x, y in ANCHOR_CENTRES:
+        radius = math.hypot(x, y)
+        pieces.append(
+            _radial(union([_top_beam_half(radius), *_fixed_leg_pieces(radius)]), x, y)
+        )
+    return _hole_cut(union(pieces), -TOWER_HEIGHT - 1, FOOT_THICKNESS + 2)
+
+
+def build_stack_hardware(doc, group):
+    objects = []
+    for index, (x, y) in enumerate(CLAMP_CENTRES):
+        for kind, shape, z, sku, source in (
+            (
+                "Bolt",
+                purchased_hardware.screw_shape(CLAMP_SCREW_LENGTH),
+                -TOWER_HEIGHT - DECK_THICKNESS,
+                "M2X8_BUTTON_HEAD",
+                STACK_SCREW_SOURCE,
+            ),
+            (
+                "Nut",
+                purchased_hardware.hex_nut_shape(),
+                -TOWER_HEIGHT + FOOT_THICKNESS,
+                "M2_HEX_NUT",
+                HEX_NUT_SOURCE,
+            ),
+        ):
+            local = shape.copy()
+            local.translate(V(x, y, z))
+            obj = purchased_hardware.add_hardware(
+                doc,
+                group,
+                f"OpticalStackFoot{kind}{index}",
+                f"BUY | optical tower foot {index + 1} {kind.lower()}",
+                local,
+                sku,
+                "Two directly seated 2 mm prints; M2x8 from below and M2 hex nut above. No washer. 4 mm nominal grip, full 1.6 mm nut engagement and 2.4 mm nominal projection. Both prints 0.3 mm thicker leave 1.8 mm before screw-length/nut tolerances. Require measured flat head bearing diameter >=3.5 mm, hole <=2.9 mm and screw crest diameter >=1.8 mm. Physical clamp, print flatness and PA12 creep unverified.",
+                source,
+                fasteners.KIT_MATERIAL,
+            )
+            set_property(obj, "StackEnd", index, "App::PropertyInteger")
+            objects.append(obj)
+    return objects
+
+
+def is_removable_head_part(obj, stack):
+    return belongs_to_group(obj, stack)
+
+
+def clamp_tool_reservations():
+    """Simple access envelopes in tower coordinates, not measured tool bodies."""
+    rows = []
+    for index, (x, y) in enumerate(CLAMP_CENTRES):
+        radius = math.hypot(x, y)
+        key = Part.makeCylinder(
+            3, 20, V(radius, 0, -TOWER_HEIGHT - DECK_THICKNESS - 22)
+        )
+        nut = box(10, 8, 4, (radius - 2.5, -4, -TOWER_HEIGHT + FOOT_THICKNESS))
+        rows.extend(
+            ((f"key_{index}", _radial(key, x, y)), (f"nut_{index}", _radial(nut, x, y)))
+        )
+    return rows
+
+
+def manufacturing_wall_probes():
+    rows = []
+    for index, (x, y) in enumerate(ANCHOR_CENTRES):
+        radius, angle = math.hypot(x, y), math.atan2(y, x)
+
+        def point(radial, tangent, z):
             return (
-                (radius + radial) * math.cos(angle),
-                (radius + radial) * math.sin(angle),
+                (radius + radial) * math.cos(angle) - tangent * math.sin(angle),
+                (radius + radial) * math.sin(angle) + tangent * math.cos(angle),
                 z,
             )
 
-        fx, fy = FOOT_CENTRES[i]
         rows.extend(
             [
                 (
-                    f"optical_top_beam_{i}",
+                    f"optical_top_beam_{index}",
                     "OpticalMountBase",
                     (x / 2, y / 2, -0.01),
                     (x / 2, y / 2, TOP_BEAM_THICKNESS + 0.01),
                     TOP_BEAM_THICKNESS,
                 ),
                 (
-                    f"optical_fixed_leg_{i}",
+                    f"optical_fixed_leg_{index}",
                     "OpticalMountBase",
-                    point(FIXED_LEG_INNER - 0.01, LEG_BOTTOM_Z / 2),
+                    point(FIXED_LEG_INNER - 0.01, 0, -TOWER_HEIGHT / 2),
                     point(
-                        FIXED_LEG_INNER + FIXED_LEG_THICKNESS + 0.01, LEG_BOTTOM_Z / 2
+                        FIXED_LEG_INNER + FIXED_LEG_THICKNESS + 0.01,
+                        0,
+                        -TOWER_HEIGHT / 2,
                     ),
                     FIXED_LEG_THICKNESS,
                 ),
                 (
-                    f"optical_root_arm_{i}",
+                    f"optical_rigid_foot_{index}",
                     "OpticalMountBase",
-                    ((fx + x) / 2, (fy + y) / 2, LEG_BOTTOM_Z - 0.01),
-                    (
-                        (fx + x) / 2,
-                        (fy + y) / 2,
-                        LEG_BOTTOM_Z + ROOT_ARM_THICKNESS + 0.01,
-                    ),
-                    ROOT_ARM_THICKNESS,
+                    point(2.8, 3, -TOWER_HEIGHT - 0.01),
+                    point(2.8, 3, -TOWER_HEIGHT + FOOT_THICKNESS + 0.01),
+                    FOOT_THICKNESS,
                 ),
             ]
         )
+        for host_name in MECHANICAL_HOSTS.values():
+            origin = host_origin_xy(host_name)
+            bottom = point(2.8, 3, HOST_DECK_BOTTOM_Z - 0.01)
+            top = point(2.8, 3, HOST_SUPPORT_Z + 0.01)
+            rows.append(
+                (
+                    f"{host_name}_clamp_tab_{index}",
+                    host_name,
+                    (bottom[0] + origin[0], bottom[1] + origin[1], bottom[2]),
+                    (top[0] + origin[0], top[1] + origin[1], top[2]),
+                    DECK_THICKNESS,
+                )
+            )
+    return rows
+
+
+def rigid_float_shape_bound(shape):
+    """Bound seated XY/yaw registration from two circular clearance-hole pairs.
+
+    The screw axis can move in BOTH printed holes. Relative axis error is at
+    most (maximum hole diameter - minimum accepted screw crest diameter).
+    For opposed axes at +/-R, |t+d|<=g and |t-d|<=g imply |t|²+|d|²<=g².
+    This enclosing disk intentionally relaxes the exact lens. No axial motion
+    is added: feet must seat and be clamped before accepting optical pointing.
+    """
+    gap = MAX_RADIAL_FLOAT
+    radius = math.hypot(*CLAMP_CENTRES[0])
+    maximum_angle = 2 * math.asin(gap / (2 * radius))
+    aligned = shape.copy()
+    aligned.rotate(V(), V(0, 0, 1), -45)
+    bounds = aligned.BoundBox
+    points = [
+        (x, y) for x in (bounds.XMin, bounds.XMax) for y in (bounds.YMin, bounds.YMax)
+    ]
+    max_radius = max(math.hypot(x, y) for x, y in points)
+    xs, ys = [], []
+    count, step = 64, maximum_angle / 64
+    for index in range(count):
+        displacement = 2 * radius * math.sin(index * step / 2)
+        translation = math.sqrt(max(0, gap**2 - displacement**2))
+        padding = max_radius * step / 2 + 1e-8
+        for sign in (-1, 1):
+            theta = sign * (index + 0.5) * step
+            c, s = math.cos(theta), math.sin(theta)
+            for x, y in points:
+                px, py = x * c - y * s, x * s + y * c
+                xs.extend((px - translation - padding, px + translation + padding))
+                ys.extend((py - translation - padding, py + translation + padding))
+    envelope = box(
+        max(xs) - min(xs),
+        max(ys) - min(ys),
+        bounds.ZLength,
+        (min(xs), min(ys), bounds.ZMin),
+    )
+    envelope.rotate(V(), V(0, 0, 1), 45)
+    return envelope
+
+
+def rigid_float_component_bounds():
+    """Bound two legs and two analytical halves of the single integral beam."""
+    rows = []
+    for index, (x, y) in enumerate(ANCHOR_CENTRES):
+        radius = math.hypot(x, y)
+        beam_half = _top_beam_half(radius)
+        rows.append(
+            (
+                f"load_leg_{index}",
+                union(
+                    [
+                        rigid_float_shape_bound(_radial(piece, x, y))
+                        for piece in _fixed_leg_pieces(radius)
+                    ]
+                ),
+            )
+        )
+        rows.append(
+            (
+                f"top_beam_half_{index}",
+                rigid_float_shape_bound(_radial(beam_half, x, y)),
+            )
+        )
+    return rows
+
+
+def clamp_hardware_float_bounds():
+    """Circular bounds for the same seated registration as the tower legs.
+
+    Each accepted clamp-axis displacement is at most MAX_RADIAL_FLOAT. Expanding
+    the head/shank radii by that distance contains every translation/yaw pose;
+    a hex nut uses its circumradius. This avoids the much looser twice-rotated
+    box bound of a complete cylindrical screw. All heights remain seated.
+    """
+    rows = []
+    bottom = -TOWER_HEIGHT - DECK_THICKNESS
+    gap = MAX_RADIAL_FLOAT
+    for index, (x, y) in enumerate(CLAMP_CENTRES):
+        bolt = union(
+            [
+                Part.makeCylinder(
+                    purchased_hardware.SCREW_HEAD_DIAMETER / 2 + gap,
+                    purchased_hardware.SCREW_HEAD_HEIGHT,
+                    V(x, y, bottom - purchased_hardware.SCREW_HEAD_HEIGHT),
+                ),
+                Part.makeCylinder(
+                    purchased_hardware.THREAD_DIAMETER / 2 + gap,
+                    CLAMP_SCREW_LENGTH,
+                    V(x, y, bottom),
+                ),
+            ]
+        )
+        nut = Part.makeCylinder(
+            purchased_hardware.HEX_NUT_AF / math.sqrt(3) + gap,
+            purchased_hardware.HEX_NUT_HEIGHT,
+            V(x, y, -TOWER_HEIGHT + FOOT_THICKNESS),
+        )
+        rows.extend(((f"Bolt{index}", bolt), (f"Nut{index}", nut)))
     return rows

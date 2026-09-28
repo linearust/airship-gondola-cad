@@ -522,36 +522,26 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(metrics["output_face_width_mm"], 5.0)
         self.assertEqual(metrics["nominal_full_face_overlap_mm"], 3.0)
 
-    def test_top_rail_key_requires_checked_paired_servo_module_removal(self):
+    def test_rail_key_clears_complete_fixed_module_on_both_sides(self):
         from gondola.validation.propulsion import rail_key_access_check
 
         rows = rail_key_access_check(self.doc, self.module)
-        self.assertEqual(len(rows), 2)
         self.assertEqual(
-            {row["rail_joint_name"] for row in rows},
-            {
-                "MainPropulsionModuleRailClampNegativeYScrew",
-                "MainPropulsionModuleRailClampPositiveYScrew",
-            },
+            {row["approach_side_y"] for row in rows},
+            {1, -1},
         )
         for row in rows:
             self.assertTrue(row["passed"], row)
-            self.assertTrue(row["prior_servo_module_removal_passed"])
-            self.assertIn("ServoDriveBridge", row["removed_before_rail_service"])
-            self.assertNotIn("ServoDriveBridge", row["checked_objects"])
-            self.assertIn("PropulsionFixedFrame", row["checked_objects"])
-            self.assertIn("ContinuousRail", row["checked_objects"])
+            for name in ("PropulsionFixedFrame", "StarboardDriverGear", "PortServo"):
+                self.assertIn(name, row["checked_objects"])
 
-    def test_new_frame_obstacle_cannot_hide_from_top_key_check(self):
-        from gondola.parts import rail
+    def test_new_frame_obstacle_cannot_hide_from_whole_module_key_check(self):
         from gondola.validation.propulsion import rail_key_access_check
 
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
         try:
-            frame.Shape = original.fuse(
-                Part.makeBox(4, 2, 3, App.Vector(-2, -rail.TRACK_OFFSET - 1, 8))
-            )
+            frame.Shape = original.fuse(Part.makeBox(4, 2, 3, App.Vector(-2, 19, 5)))
             self.doc.recompute()
             rows = rail_key_access_check(self.doc, self.module)
             self.assertFalse(rows[0]["passed"], rows)
@@ -1691,9 +1681,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 }
                 # A nonzero module placement also exercises the measurement's
                 # conversion from global coordinates back to the module frame.
-                doc.MainPropulsionModule.Placement.Base = App.Vector(
-                    36, 0.45, propulsion.MODULE_Z_OFFSET
-                )
+                doc.MainPropulsionModule.Placement.Base = App.Vector(36, 0.45, 0)
                 rail.build_rail(doc)
                 host = doc.addObject("App::Part", "BatteryEquipmentModule")
                 equipment_mounts.build_mount(doc, host, "battery")
@@ -1701,10 +1689,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 equipment_mounts.build_mount(doc, electronics, "electronics")
                 accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
                 equipment_mounts.build_mount(doc, accessory, "accessory")
-                from gondola.parts import stack_interface
-
-                optical = optical_mount.build_optical_mount(doc, host)
-                stack_interface.attach_to_host(optical["group"], host)
+                optical_mount.build_optical_mount(doc, host)
                 doc.recompute()
                 doc.saveAs(str(path))
             finally:
@@ -1728,26 +1713,21 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                         row = measurements[feature]
                         self.assertEqual(row["sample_line_mm"], [start, end])
                         self.assertTrue(row["passed"], row)
-                for feature, thickness in (
-                    ("direct_rail_foot_thickness", 3.0),
-                    ("rail_slotted_roof_thickness", 2.0),
-                    ("central_servo_support_web", 5.0),
+                for feature in (
+                    "fc_support_deck_thickness",
+                    "accessory_plate_thickness",
                 ):
                     row = measurements[feature]
-                    self.assertAlmostEqual(
-                        row["measured_material_length_mm"], thickness
+                    self.assertAlmostEqual(row["measured_material_length_mm"], 2.0)
+                    self.assertLess(
+                        row["sample_line_mm"][0][2], equipment_mounts.DECK_BOTTOM_Z
                     )
                     self.assertTrue(row["passed"], row)
                 assessment = result["equipment_mount_assessment"]
-                self.assertEqual(assessment["printed_role_deck_or_shoe_count"], 0)
-                self.assertEqual(len(assessment["purchased_carbon_plates"]), 3)
-                self.assertFalse(
-                    any(
-                        "deck_thickness" in name
-                        and name != "optical_tray_deck_thickness"
-                        for name in measurements
-                    )
+                self.assertEqual(
+                    assessment["fc_support_deck_size_mm"], [54.0, 74.0, 2.0]
                 )
+                self.assertEqual(assessment["accessory_deck_size_mm"], (54.0, 74.0))
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

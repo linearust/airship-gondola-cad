@@ -105,8 +105,8 @@ class NativeInterfaceTests(unittest.TestCase):
         document = App.newDocument("RailThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parent = create_group(document, "ClampGroup", "Clamp hardware")
-        hardware = rail.build_clamp_hardware(document, parent, "Test")
-        self.assertEqual(len(hardware), 4)
+        hardware = rail.build_clamp_hardware(document, parent, "Test", "0")
+        self.assertEqual(len(hardware), 2)
         for part in hardware:
             self.assertEqual(part.NominalThreadDiameter.Value, 2)
             self.assertEqual(part.ThreadPitch.Value, 0.4)
@@ -158,42 +158,47 @@ class NativeInterfaceTests(unittest.TestCase):
         self.assertTrue(part.PrintPart)
         self.assertEqual(part.getTypeIdOfProperty("PrintPart"), "App::PropertyBool")
 
-    def test_bought_plate_identity_does_not_infer_unknown_lands(self):
-        from gondola.contracts.stack_adapter import COMMON_HOLE_CENTRES
-        from gondola.parts import stock_adapter
+    def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import mounting_pad_check
 
-        shape = stock_adapter.plate_shape()
-        self.assertTrue(shape.isValid())
-        for x, y in COMMON_HOLE_CENTRES:
-            bore = Part.makeCylinder(1, 1, App.Vector(x, y, 7))
-            self.assertLess(abs(shape.common(bore).Volume), 1e-7)
-        contract = stock_adapter.mounting_contract()
-        self.assertFalse(contract["physical_fit_verified"])
-        self.assertIn("not dimensioned", contract["purchased_plate"]["contour_scope"])
+        for kind in ("electronics", "accessory"):
+            shape = mounts.mount_shape(kind).copy()
+            for centre in mounts.mount_hole_centres(kind):
+                result = mounting_pad_check(
+                    shape,
+                    centre,
+                    bottom=mounts.DECK_BOTTOM_Z,
+                    thickness=mounts.DECK_THICKNESS,
+                    hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                    pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+                )
+                self.assertTrue(result["passed"], result)
 
-    def test_portal_toggles_existing_fc_nuts_only(self):
-        from gondola.cad import create_group
-        from gondola.parts import stock_adapter
+    def test_partial_bearing_or_filled_bore_is_rejected(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import mounting_pad_check
 
-        doc = App.newDocument("StockFCSeparatePortal")
-        self.addCleanup(App.closeDocument, doc.Name)
-        parent = create_group(doc, "ElectronicsEquipmentModule", "FC")
-        result = stock_adapter.build_stock_adapter(doc, parent)
-        before = {obj.Name: obj.Shape.copy() for obj in result["hardware"]}
-        object_count = len(doc.Objects)
-        stock_adapter.set_fc_portal(doc, True)
-        self.assertEqual(len(result["hardware"]), 9)
-        self.assertEqual(len(doc.Objects), object_count)
-        for name in stock_adapter.BOLT_OBJECT_NAMES:
-            self.assertLess(
-                abs(doc.getObject(name).Shape.cut(before[name]).Volume), 1e-7
+        shape = mounts.mount_shape("electronics").copy()
+        centre = mounts.FC_HOLE_CENTRES[0]
+        x, y = centre
+        bottom, thickness = mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS
+        missing_edge = shape.cut(
+            Part.makeBox(1, 1, thickness + 2, App.Vector(x - 3.3, y - 0.5, bottom - 1))
+        )
+        blocked_bore = shape.fuse(
+            Part.makeCylinder(0.4, thickness, App.Vector(x, y, bottom))
+        )
+        for changed in (missing_edge, blocked_bore):
+            result = mounting_pad_check(
+                changed,
+                centre,
+                bottom=bottom,
+                thickness=thickness,
+                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
             )
-        stock_adapter.set_fc_portal(doc, False)
-        for name, shape in before.items():
-            actual = doc.getObject(name).Shape
-            self.assertLess(
-                abs(actual.cut(shape).Volume) + abs(shape.cut(actual).Volume), 1e-7
-            )
+            self.assertFalse(result["passed"], result)
 
 
 if __name__ == "__main__":

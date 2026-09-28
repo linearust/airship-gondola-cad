@@ -15,13 +15,10 @@ except ImportError:
 class OpticalMountTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import optical_mount, stock_adapter
+        from gondola.parts import optical_mount
 
         cls.doc = App.newDocument("OpticalMountRegression")
-        cls.parent = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
-        stock_adapter.build_stock_adapter(cls.doc, cls.parent, "battery")
-        fc = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
-        stock_adapter.build_stock_adapter(cls.doc, fc, "electronics")
+        cls.parent = cls.doc.addObject("App::Part", "Host")
         cls.module = optical_mount.build_optical_mount(cls.doc, cls.parent)
 
     @classmethod
@@ -34,7 +31,7 @@ class OpticalMountTests(unittest.TestCase):
         self.parent.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_two_moving_solids_and_four_purchased_fasteners(self):
+    def test_three_separate_solids_and_eight_purchased_fasteners(self):
         from gondola.contracts import fasteners
 
         self.assertEqual(len(self.module["printed"]), 3)
@@ -46,10 +43,7 @@ class OpticalMountTests(unittest.TestCase):
             self.assertFalse(obj.PrintPart, obj.Name)
             self.assertNotIn("WASHER", obj.HardwareSKU)
             if "Bolt" in obj.Name:
-                self.assertEqual(
-                    obj.HardwareSKU,
-                    "M2X6_BUTTON_HEAD" if "Foot" in obj.Name else "M2X8_BUTTON_HEAD",
-                )
+                self.assertEqual(obj.HardwareSKU, "M2X8_BUTTON_HEAD")
                 self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
             else:
                 self.assertEqual(obj.HardwareSKU, "M2_HEX_NUT")
@@ -59,23 +53,18 @@ class OpticalMountTests(unittest.TestCase):
         self.assertFalse(contract["self_levelling"])
         self.assertFalse(contract["physical_angle_stops_modeled"])
 
-    def test_integral_portal_has_straight_roots_and_open_device_space(self):
+    def test_integral_tower_has_broad_clamped_feet_and_open_device_space(self):
         from gondola.parts import optical_mount, stack_interface
 
         base = optical_mount.base_shape()
         tower = stack_interface.tower_shape()
         self.assertLess(abs(tower.cut(base).Volume), 1e-5)
-        self.assertEqual(
-            set(stack_interface.ANCHOR_CENTRES),
-            {
-                (-stack_interface.PITCH_MM / 2, -stack_interface.PITCH_MM / 2),
-                (stack_interface.PITCH_MM / 2, stack_interface.PITCH_MM / 2),
-            },
-        )
-        self.assertAlmostEqual(base.BoundBox.ZMin, stack_interface.LEG_BOTTOM_Z)
+        self.assertEqual(set(stack_interface.ANCHOR_CENTRES), {(-24, -24), (24, 24)})
+        self.assertAlmostEqual(base.BoundBox.ZMin, -stack_interface.TOWER_HEIGHT)
         self.assertEqual(len(base.Solids), 1)
-        # Device space above the low roots remains open.
-        centre = Part.makeBox(30, 30, 29, App.Vector(-15, -15, -30))
+        # Devices and wiring remain in the open centre, while both complete
+        # clamped feet belong to one installed print.
+        centre = Part.makeBox(30, 30, 31, App.Vector(-15, -15, -32))
         self.assertLess(abs(base.common(centre).Volume), 1e-5)
         self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 4)
 

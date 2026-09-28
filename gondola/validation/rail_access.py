@@ -1,4 +1,4 @@
-"""Continuous finite top-tool service for direct carbon-to-rail screws.
+"""Continuous nominal service envelope for a short-arm 1.5 mm hex L-key.
 
 The purchased rail screws have solid design envelopes rather than modeled
 sockets. The audit therefore declares a 0..2 mm socket-insertion acceptance
@@ -12,12 +12,9 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import translated_shape
+from gondola.parts import rail
 
-from .geometry import (
-    certify_translation_clearance,
-    intersection_volume,
-    translation_sweep,
-)
+from .geometry import certify_translation_clearance, intersection_volume
 
 TOL = 1e-5
 KEY_SOURCE = (
@@ -39,7 +36,7 @@ V = App.Vector
 def _key_components(head_end_y, centre_x=0.0, centre_z=None, *, inserted_leg="short"):
     """Conservative external bars and a filled 4×4 mm inside-bend reservation."""
     if centre_z is None:
-        centre_z = 0.0
+        centre_z = rail.CLAMP_Z
     if inserted_leg not in ("short", "long"):
         raise ValueError("Insert either the short or long L-key leg")
     axial_length = (
@@ -95,7 +92,7 @@ def working_sector_check(
     sector=KEY_WORKING_SECTOR_DEG,
     axial_range=(
         -SOCKET_INSERTION_ACCEPTANCE_MM - TOOL_FACE_RESERVE_MM,
-        1.2,
+        rail.RELEASE_TRAVEL,
     ),
     max_depth=22,
     max_evaluations=4096,
@@ -217,48 +214,13 @@ def working_sector_check(
     return result
 
 
-def _outward_translation_check(shape, vector, obstacles):
-    """Retain boundary contact only when a supporting plane proves separation.
-
-    Canonical +Y motion cannot enter a closed obstacle wholly behind the
-    moving solid's initial minimum-Y plane. This includes the key tip exactly
-    at the carbon top after full socket insertion. Bounds enclose every point;
-    no angle samples, invented clearance or omitted interior overlap is used.
-    """
-    plane = shape.optimalBoundingBox(False, False).YMin
-    outward = abs(vector[0]) < 1e-12 and abs(vector[2]) < 1e-12 and vector[1] > 0
-    separated = {
-        name: other.optimalBoundingBox(False, False).YMax
-        for name, other in obstacles.items()
-        if outward and other.optimalBoundingBox(False, False).YMax <= plane + 1e-9
-    }
-    remaining = {
-        name: other for name, other in obstacles.items() if name not in separated
-    }
-    # The independent geometric certificate permits boundary contact only;
-    # every obstacle that extends in front of the plane keeps the strict gate.
-    if remaining:
-        result = certify_translation_clearance(shape, vector, remaining)
-    else:
-        result = {
-            "method": "continuous supporting-plane separation",
-            "passed": bool(obstacles),
-        }
-    return {
-        **result,
-        "obstacles": sorted(obstacles),
-        "supporting_plane_mm": plane,
-        "outward_supporting_plane_obstacles": separated,
-    }
-
-
 def _key_working_check(axial, bent, obstacles, axis, *, axial_range):
     # The complete circular shaft is coaxial with the rotation axis, hence it
     # has exactly the same shape at every key angle. Check only its continuous
     # translation, then independently certify the whole bent handle. Their
     # union is the tool envelope; no obstacle or part of the tool is dropped.
     start, end = axial_range
-    axial_check = _outward_translation_check(
+    axial_check = certify_translation_clearance(
         translated_shape(axial, y=start), (0, end - start, 0), obstacles
     )
     bend_check = working_sector_check(bent, obstacles, axis, axial_range=axial_range)
@@ -283,7 +245,7 @@ def _key_working_check(axial, bent, obstacles, axis, *, axial_range):
 def _translation_path(tool, waypoints, obstacles):
     rows = []
     for start, end in zip(waypoints, waypoints[1:]):
-        result = _outward_translation_check(
+        result = certify_translation_clearance(
             translated_shape(tool, *start),
             tuple(b - a for a, b in zip(start, end)),
             obstacles,
@@ -301,46 +263,35 @@ def _translation_path(tool, waypoints, obstacles):
     }
 
 
-def top_key_service_check(
+def rail_key_service_check(
     obstacles,
     *,
-    screw,
-    screw_name,
+    side=1,
     placement=None,
-    release_travel_mm=None,
+    screw=None,
+    screw_name=None,
     inserted_leg="short",
-    clock_deg=0.0,
 ):
-    """Certify top access and complete removal of an actual downward screw.
-
-    Inputs are world shapes. ``placement`` defines the rigid joint frame whose
-    +Z is the removal direction. The checked tool remains the same finite
-    catalog envelope; only its reference frame changes. Remove a covering FC
-    or other device first, with that prerequisite independently validated.
-    """
-    if screw_name not in obstacles:
-        raise ValueError("Operated rail screw is absent from the obstacle inventory")
+    """Check both finite key travel and a continuous, reindexable working arc."""
+    if side not in (-1, 1):
+        raise ValueError("Rail key approach side must be -1 or +1")
     placement = placement or App.Placement()
-    # The distance-bound implementation works about canonical +Y. Rotate this
-    # complete frame so canonical +Y is the joint's actual +Z tool direction.
-    canonical = placement.multiply(App.Placement(V(), App.Rotation(V(1, 0, 0), 90)))
+    canonical = placement.multiply(
+        App.Placement(V(), App.Rotation(V(0, 0, 1), 180 if side < 0 else 0))
+    )
     inverse = canonical.inverse()
     local_obstacles = {}
     for name, shape in obstacles.items():
         local = shape.copy()
         local.Placement = inverse.multiply(local.Placement)
         local_obstacles[name] = local
-    local_screw = screw.copy()
-    local_screw.Placement = inverse.multiply(local_screw.Placement)
-    bounds = local_screw.optimalBoundingBox(False, False)
+    if screw is None:
+        screw = rail.clamp_screw_shape()
+    else:
+        screw = screw.copy()
+        screw.Placement = inverse.multiply(screw.Placement)
+    bounds = screw.optimalBoundingBox(False, False)
     axis = V((bounds.XMin + bounds.XMax) / 2, 0, (bounds.ZMin + bounds.ZMax) / 2)
-    release = (
-        bounds.YLength + 1 if release_travel_mm is None else float(release_travel_mm)
-    )
-    if not math.isfinite(release) or release < bounds.YLength:
-        raise ValueError(
-            "Top service must withdraw the complete screw beyond its original envelope"
-        )
     socket_acceptance = Part.makeCylinder(
         SOCKET_VALIDATION_RADIUS_MM,
         SOCKET_INSERTION_ACCEPTANCE_MM + 2 * TOOL_FACE_RESERVE_MM,
@@ -351,31 +302,46 @@ def top_key_service_check(
         ),
         V(0, 1, 0),
     )
-    # This bounded socket allowance is only for tool engagement. The complete
-    # unchanged screw is separately swept against every other retained solid.
-    local_obstacles[screw_name] = local_obstacles[screw_name].cut(socket_acceptance)
+    if screw_name is not None:
+        if screw_name not in local_obstacles:
+            raise ValueError(
+                "Operated rail screw is absent from the obstacle inventory"
+            )
+        # This is a declared validation acceptance volume, not a CAD alteration
+        # or an assertion that an unknown kit screw has a 2 mm deep socket.
+        local_obstacles[screw_name] = local_obstacles[screw_name].cut(socket_acceptance)
     axial, bent = _key_components(
         bounds.YMax, axis.x, axis.z, inserted_leg=inserted_leg
     )
-    if not math.isfinite(float(clock_deg)):
-        raise ValueError("Tool clocking must be finite")
-    bent.rotate(axis, V(0, 1, 0), float(clock_deg))
     tool = axial.fuse(bent).removeSplitter()
     working = _key_working_check(
         axial,
         bent,
         local_obstacles,
         axis,
-        axial_range=(-SOCKET_INSERTION_ACCEPTANCE_MM - TOOL_FACE_RESERVE_MM, release),
+        axial_range=(
+            -SOCKET_INSERTION_ACCEPTANCE_MM - TOOL_FACE_RESERVE_MM,
+            rail.RELEASE_TRAVEL,
+        ),
     )
-    # Withdraw vertically instead of assuming an unlimited side exit through
-    # neighbouring modules. The finite handle and bend are both retained.
-    clear_offset = release + KEY_REINDEX_OFFSET_MM
-    removal = _translation_path(
-        tool,
-        [(0, release, 0), (0, clear_offset, 0), (0, clear_offset + KEY_LONG_ARM_MM, 0)],
-        local_obstacles,
+    # After each engaged stroke, withdraw before resetting the key angle;
+    # turning back while engaged would undo the stroke. The separate certified
+    # disengaged reindex arc below returns the key to the sector start. For
+    # final removal, keep the tip beyond the external head by the reindex
+    # offset plus face reserve, then take the key out of the module. This is an absolute clear
+    # position, not travel measured from an engaged tip. Insertion reverses it.
+    parked = tool.copy()
+    parked.rotate(axis, V(0, 1, 0), KEY_WORKING_SECTOR_DEG[0])
+    clear_offset = rail.RELEASE_TRAVEL + KEY_REINDEX_OFFSET_MM
+    exit_offset = (
+        (-70, clear_offset, 0)
+        if inserted_leg == "short"
+        else (0, clear_offset + KEY_LONG_ARM_MM, 0)
     )
+    waypoints = [(0, rail.RELEASE_TRAVEL, 0), (0, clear_offset, 0), exit_offset]
+    removal = _translation_path(parked, waypoints, local_obstacles)
+    # A reindex cycle withdraws/reinserts at either end of the sector. It is
+    # needed repeatedly because a 60 degree stroke alone cannot loosen 3 turns.
     reindex = []
     for angle in KEY_WORKING_SECTOR_DEG:
         indexed = tool.copy()
@@ -385,7 +351,7 @@ def top_key_service_check(
                 indexed,
                 [
                     (0, -SOCKET_INSERTION_ACCEPTANCE_MM - TOOL_FACE_RESERVE_MM, 0),
-                    (0, clear_offset, 0),
+                    (0, rail.RELEASE_TRAVEL + KEY_REINDEX_OFFSET_MM, 0),
                 ],
                 local_obstacles,
             )
@@ -395,25 +361,14 @@ def top_key_service_check(
         bent,
         local_obstacles,
         axis,
-        axial_range=(KEY_REINDEX_OFFSET_MM, clear_offset),
+        axial_range=(
+            KEY_REINDEX_OFFSET_MM,
+            KEY_REINDEX_OFFSET_MM + rail.RELEASE_TRAVEL,
+        ),
     )
-    swept, method = translation_sweep(local_screw, (0, release, 0))
-    screw_hits = [
-        {"part": name, "intersection_mm3": volume}
-        for name, shape in local_obstacles.items()
-        if name != screw_name and (volume := intersection_volume(swept, shape)) > TOL
-    ]
-    screw_removal = {
-        "method": method,
-        "travel_mm": release,
-        "checked_objects": sorted(set(local_obstacles) - {screw_name}),
-        "collisions": screw_hits,
-        "passed": not screw_hits,
-    }
     collisions = (
         working["collisions"]
         + reindex_arc["collisions"]
-        + screw_hits
         + [
             hit
             for path in [removal, *reindex]
@@ -422,25 +377,28 @@ def top_key_service_check(
         ]
     )
     return {
-        "approach": "joint-local +Z",
-        "tool_clock_deg": float(clock_deg),
+        "approach_side_y": side,
         "tool": "Dimensionally checked 1.5 mm AF, 50 × 16 mm L-key",
         "reference_catalog_item": "GEDORE red R36601508 / 3301282, catalogue page 66",
-        "reference_conflict": "The live product title lists45×14mm; confirm the actual tool dimensions against the larger50×16mm envelope used here.",
+        "reference_conflict": "The live product title lists 45 × 14 mm; the catalogue/reference is 50 × 16 mm. Confirm the actual tool geometry rather than approving the SKU alone.",
         "tool_source": KEY_SOURCE,
         "inserted_leg": inserted_leg,
+        "tool_radius_mm": KEY_RADIUS_MM,
+        "inside_bend_reservation_mm": [4.0, 4.0, 2.0],
         "socket_insertion_acceptance_mm": [0.0, SOCKET_INSERTION_ACCEPTANCE_MM],
+        "reindex_tip_clearance_beyond_head_mm": KEY_REINDEX_OFFSET_MM
+        + TOOL_FACE_RESERVE_MM,
+        "operated_screw_socket_acceptance_only": screw_name,
+        "socket_validation_radius_mm": SOCKET_VALIDATION_RADIUS_MM,
         "checked_objects": sorted(obstacles),
         "continuous_working_sector": working,
-        "complete_screw_removal": screw_removal,
         "staged_key_removal_and_reverse_insertion": removal,
-        "disengaged_reindex_paths": reindex,
-        "disengaged_reindex_arc": reindex_arc,
+        "reindex_withdrawal_at_both_arc_ends": reindex,
+        "continuous_disengaged_reindex_arc": reindex_arc,
         "collisions": collisions,
-        "scope": "Nominal finite top-tool and complete screw travel after the declared covering-device removal. The operated screw is retained except for a bounded engagement accommodation; its unchanged solid is swept separately. No installed-FC top access, real socket fit, hand room, torque or retention qualification is inferred.",
+        "scope": "Conservative L-key envelope against all supplied installed solids; only the operated screw receives a declared coaxial socket-acceptance void in this audit. Continuous 60 degree indexed working arc includes every 0..2 mm socket insertion and complete 1.2 mm screw release; disengagement then a sideways short-leg exit or axial long-leg exit is reversible. Socket-acceptance radius is a validation accommodation for intended key engagement, not a specified factory socket. Actual tool dimensions, socket fit, bend tolerance, hand room and clamp force require a physical trial.",
         "passed": working["passed"]
         and removal["passed"]
         and reindex_arc["passed"]
-        and screw_removal["passed"]
         and all(row["passed"] for row in reindex),
     }

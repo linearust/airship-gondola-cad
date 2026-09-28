@@ -1,7 +1,6 @@
 """Native geometry regressions for continuous, explicitly provisional access."""
 
 import json
-import math
 import unittest
 from unittest.mock import patch
 
@@ -20,10 +19,10 @@ class WiringReserveTests(unittest.TestCase):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import (
             equipment_envelopes,
+            equipment_mounts,
             optical_mount,
             optical_sensor,
-            rail,
-            stock_adapter,
+            stack_interface,
             wiring_reserves,
         )
         from gondola.validation import wiring as wiring_validation
@@ -45,31 +44,15 @@ class WiringReserveTests(unittest.TestCase):
                     App.Vector(station.x_mm, 0, 0),
                     App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                 )
-        bought = []
-        plates = []
-        for kind, group in (
-            ("battery", battery),
-            ("electronics", electronics),
-            ("accessory", accessory),
-        ):
-            built = stock_adapter.build_stock_adapter(cls.doc, group, kind)
-            bought.extend(built["hardware"])
-            plates.extend(built["plates"])
-        for spec in stock_adapter.joint_specs():
-            bought.extend(
-                rail.build_clamp_hardware(
-                    cls.doc,
-                    cls.doc.getObject(spec["parent_name"]),
-                    spec["clamp_prefix"],
-                    plate_thickness_mm=spec["plate_thickness_mm"],
-                    centre_xy_mm=spec["local_centre_xy"],
-                    parent_z_mm=spec["parent_z_mm"],
-                )
-            )
+        carrier = equipment_mounts.build_mount(cls.doc, electronics, "electronics")
+        accessory_carrier = equipment_mounts.build_mount(
+            cls.doc, accessory, "accessory"
+        )
         refs, reserves = equipment_envelopes.build_equipment(
             cls.doc, battery, electronics, accessory
         )
         optical = optical_mount.build_optical_mount(cls.doc, battery)
+        stack_interface.attach_to_host(optical["group"], battery)
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )
@@ -77,9 +60,8 @@ class WiringReserveTests(unittest.TestCase):
         reserves += sensor_reserves
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
-            "PrintedParts": optical["printed"],
-            "HardwareParts": bought + optical["hardware"],
-            "EquipmentMounts": plates,
+            "PrintedParts": [carrier, accessory_carrier] + optical["printed"],
+            "HardwareParts": optical["hardware"],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
             "TapeReferences": [],
@@ -159,35 +141,27 @@ class WiringReserveTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 self.wiring.parent_name(name)
 
-    def test_radio_body_and_connector_lanes_use_the_same_outer_face(self):
-        from gondola.parts import equipment_envelopes, equipment_mounts, stock_adapter
+    def test_radio_body_and_connector_lanes_use_the_same_underside_face(self):
+        from gondola.parts import equipment_envelopes, equipment_mounts
 
         body = equipment_envelopes.radio_envelope_shape()
         expected_top = (
-            equipment_mounts.SUPPORT_FACE_Z + equipment_mounts.ADHESIVE_ALLOWANCE
+            equipment_mounts.DECK_BOTTOM_Z - equipment_mounts.ADHESIVE_ALLOWANCE
         )
-        self.assertAlmostEqual(body.BoundBox.ZMin, expected_top)
-        self.assertAlmostEqual(
-            body.BoundBox.YMin, equipment_mounts.RADIO_CENTRE_XY[1] - 24 / 2
-        )
-        self.assertAlmostEqual(
-            body.BoundBox.YMax, equipment_mounts.RADIO_CENTRE_XY[1] + 24 / 2
-        )
+        self.assertAlmostEqual(body.BoundBox.ZMax, expected_top)
+        self.assertAlmostEqual(body.BoundBox.YMin, 28 - 18.2 / 2)
+        self.assertAlmostEqual(body.BoundBox.YMax, 28 + 18.2 / 2)
         for name in (
             "RadioNegativeXConnectorReserve",
             "RadioPositiveXConnectorReserve",
         ):
             lane = self.expected[name]
             with self.subTest(lane=name):
-                self.assertAlmostEqual(lane.BoundBox.ZMin, expected_top)
-                self.assertGreater(lane.BoundBox.ZMax, body.BoundBox.ZMax)
+                self.assertAlmostEqual(lane.BoundBox.ZMax, expected_top)
+                self.assertLess(lane.BoundBox.ZMin, body.BoundBox.ZMin)
                 self.assertLess(lane.common(body).Volume, 1e-6)
                 self.assertLess(
-                    lane.common(
-                        stock_adapter.plate_shape(
-                            centre_xy_mm=equipment_mounts.RADIO_CENTRE_XY
-                        )
-                    ).Volume,
+                    lane.common(equipment_mounts.mount_shape("accessory")).Volume,
                     1e-6,
                 )
 
@@ -376,26 +350,15 @@ class WiringReserveTests(unittest.TestCase):
     def test_fc_reserve_contains_complete_core_and_both_continuous_turns(self):
         fc = self.expected["FCWiringClearanceReserve"]
         self.assertLess(self.wiring.fc_underbody_reserve_shape().cut(fc).Volume, 1e-6)
-        # Independent nominal centreline probes in the selected diagonal exit
-        # frame. Keep both R5 bends and the following straight stretches; a
-        # source envelope that merely joins endpoints must fail these probes.
-        from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG
-        from gondola.parts import equipment_mounts
-
-        turn = App.Rotation(
-            App.Vector(0, 0, 1),
-            equipment_mounts.FC_WIRING_CORRIDOR_ROTATION_DEG
-            + FC_INSTALLATION_LOCAL_YAW_DEG,
-        )
-        section_z = self.doc.ModuleFCEnvelope.Shape.BoundBox.ZMin - 2.75
+        # Independently check endpoint and middle sections of both selected
+        # turn paths; the generated whole union must remain one solid.
+        # Probe halfway through the required 8 mm space below the actual FC
+        # envelope, rather than retaining an obsolete absolute deck elevation.
+        section_z = self.doc.ModuleFCEnvelope.Shape.BoundBox.ZMin - 4.0
         for side in (-1, 1):
-            for x, y in (
-                (side * (21 + 5 / math.sqrt(2)), -side * 5 * (1 - 1 / math.sqrt(2))),
-                (side * 26, -side * 9),
-            ):
-                centre = turn.multVec(App.Vector(x, y, section_z))
-                section = Part.makeSphere(1.4, centre)
-                self.assertLess(section.cut(fc).Volume, 1e-6)
+            turn_y = 14 if side < 0 else 4
+            section = Part.makeSphere(1.4, App.Vector(-side * 29, -turn_y, section_z))
+            self.assertLess(section.cut(fc).Volume, 1e-6)
         self.assertEqual(len(fc.Solids), 1)
 
     def test_xt30_is_beside_fc_with_continuous_fore_aft_access(self):

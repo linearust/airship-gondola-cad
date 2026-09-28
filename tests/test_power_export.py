@@ -1,6 +1,7 @@
 """Saved optional artifacts must preserve the native solid and declared dimensions."""
 
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,11 +16,33 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedPowerExportTests(unittest.TestCase):
+    def test_registration_bound_includes_the_complete_common_plate(self):
+        from gondola.parts import equipment_mounts, power_mount, stack_interface
+        from gondola.power_export import _registration_bounds
+
+        shape = equipment_mounts.common_plate_shape(power_mount.DECK_BOTTOM_Z)
+        bound = _registration_bounds(power_mount.DEFAULT_PLAN)["PowerDeck"]
+        allowance = stack_interface.MAX_RADIAL_FLOAT
+        radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
+        angle = math.degrees(2 * math.asin(allowance / (2 * radius)))
+        # These samples check that the whole plate participates in the analytical
+        # enclosure; they do not replace its continuous mathematical bound.
+        for yaw, x, y in (
+            (0, 0, 0),
+            (angle, allowance, allowance),
+            (-angle, -allowance, -allowance),
+        ):
+            moved = shape.copy()
+            moved.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
+            moved.translate(App.Vector(x, y, 0))
+            self.assertLess(moved.cut(bound).Volume, 1e-6)
+
     def test_saved_round_trip_accepts_surface_identity_but_rejects_artifact_changes(
         self,
     ):
         from gondola.cad import set_property
         from gondola.contracts.power_options import power_option_contract
+        from gondola.parts import power_mount
         from gondola.power_export import (
             ARTIFACT_NAMES,
             audit_power_options,
@@ -39,17 +62,7 @@ class SavedPowerExportTests(unittest.TestCase):
             out = Path(directory)
             main = App.newDocument("PowerSerializationFixture")
             try:
-                from gondola.parts import equipment_mounts, stack_interface
-
-                carriers = []
-                for host_name, part_name in stack_interface.MECHANICAL_HOSTS.items():
-                    host = main.addObject("App::Part", host_name)
-                    kind = next(
-                        k
-                        for k, name in equipment_mounts.MOUNT_NAMES.items()
-                        if name == part_name
-                    )
-                    carriers.append(equipment_mounts.build_mount(main, host, kind))
+                main.addObject("App::Part", power_mount.DEFAULT_HOST)
                 registry = main.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(
@@ -65,11 +78,7 @@ class SavedPowerExportTests(unittest.TestCase):
                     "ClearanceVolumes",
                 ):
                     registry.addProperty("App::PropertyLinkListGlobal", category)
-                    setattr(
-                        registry,
-                        category,
-                        carriers if category == "PrintedParts" else [],
-                    )
+                    setattr(registry, category, [])
                 main.recompute()
                 source = out / "gondola.FCStd"
                 main.saveAs(str(source))

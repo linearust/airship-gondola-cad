@@ -157,30 +157,31 @@ class NativeModuleExpressionTests(unittest.TestCase):
 
         result = _static_expression_contract(self.doc, self.spec)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["checked_expression_count"], 14)
+        self.assertGreater(result["checked_expression_count"], 20)
 
-    def test_extra_side_motion_or_wrong_longitudinal_formula_is_rejected(self):
+    def test_opposite_seating_formula_is_rejected_for_both_carrier_orientations(self):
         from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import rail
         from gondola.validation.relative_motion import _static_expression_contract
 
         for station in MODULE_STATIONS:
             module = self.doc.getObject(station.object_name)
-            original = dict(module.ExpressionEngine)[".Placement.Base.x"]
-            for path, expression in (
-                ("Placement.Base.x", "RailPositionX+1 mm"),
-                ("Placement.Base.y", "RailPositionX/10"),
-            ):
-                try:
-                    with self.subTest(module=module.Name, path=path):
-                        module.setExpression(path, expression)
-                        with self.assertRaisesRegex(ValueError, module.Name):
-                            _static_expression_contract(self.doc, self.spec)
-                finally:
+            expression = dict(module.ExpressionEngine)[".Placement.Base.y"]
+            control = "AssemblySettings." + station.clamp_control
+            wrong_shift = -station.transverse_sign * rail.CLAMP_SHIFT_Y
+            try:
+                with self.subTest(module=module.Name):
+                    # For the reversed electronics carrier this is precisely
+                    # the old, incorrectly positive-first world-Y formula.
                     module.setExpression(
-                        path, original if path.endswith(".x") else None
+                        "Placement.Base.y",
+                        f"{control} == 0 ? {wrong_shift:g} mm : {-wrong_shift:g} mm",
                     )
-                    module.Placement.Base.y = 0
-                    self.doc.recompute()
+                    with self.assertRaisesRegex(ValueError, module.Name):
+                        _static_expression_contract(self.doc, self.spec)
+            finally:
+                module.setExpression("Placement.Base.y", expression)
+                self.doc.recompute()
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")

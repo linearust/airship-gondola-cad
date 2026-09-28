@@ -82,70 +82,68 @@ installed magnetic-interference check. Use another available structural host or
 reroute the leads if the compass is affected; mechanical clearance is not magnetic
 compatibility.
 
-## Mechanical provision — purchased-adapter redesign
+## Mechanical provision
 
-The optional **PowerPlatform** is one complete integral replacement carrier: its
-rail shoe, lower support, portal and upper board deck are printed together. It
-replaces the selected low carrier; it is not a second carrier stacked on the
-first. Reuse the existing rail clamp and, at the FC host, the bought carbon and
-its independent clamps. There are no separate tower feet, foot bolts, printed
-spacers or extra attachment hardware. Optical and power upper structures cannot
-occupy the same host simultaneously.
+The optional one-piece **PowerPlatform** combines the common 54 × 74 × 2 mm
+rounded rectangular deck with the structural tower. The 3 mm plan-view corner
+radii match the rail carriers; there is no projecting utility tab. Its complete
+printed height is 35 mm. Two
+M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
+board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
+while a single SVPDB leaves one bay available. The board regions are centred at
+Y = ±13 mm: the selected pair has a nominal 3.5 mm body-to-body gap. This is a
+body-envelope allocation, not tested thermal separation or a completed harness.
+The installed
+battery baseline does not include this optional print, its fasteners or regulators.
 
-The current geometry authority is [power_mount.py](../gondola/parts/power_mount.py),
-with common carrier geometry in
-[equipment_mounts.py](../gondola/parts/equipment_mounts.py) and the integral
-support construction in [stack_interface.py](../gondola/parts/stack_interface.py).
-The old AX 54×74 mm deck, 20-hole template, detachable feet and seating-registration
-allowances are superseded. They are historical evidence, not this installation.
+The plate shares the rail carriers' complete **20-hole equipment/expansion
+template**: the selected FC and P-AS axes, **20 × 20 mm M2** and
+**30.5 × 30.5 mm M3** square patterns, and six M2 expansion holes. The square
+patterns use the same rotations on every plate (35° and 0°, respectively).
+The tower feet have two additional structural clamp bores. These are general
+provisions, not either Matek board's mounting holes. Some common bores cross the
+top beam below the deck; inspect the fused deck/tower shape and its remaining
+sections. See [universal carrier rationale](universal_carrier_review.md).
+Dedicated board tie slots and tether holes are absent; adhesive or
+a removable strap around existing structure provides simple attachment options.
+The two existing optical host carriers
+and the accessory carrier share the structural foot interface at local (0,0).
+One carrier cannot
+hold the optical tower and power tower simultaneously; move the optical tower to
+the other supported optical host first. The accessory carrier is a power host,
+not an additional qualified optical host.
 
-The smaller upper deck is unperforated because neither Matek board has confirmed
-mechanical mounting holes. Its two regions accept the BEC/SVPDB pair; one SVPDB
-uses a single region. Adhesive or a removable strap around existing structure
-provides attachment without dedicated tie slots or invented board holes. The
-nominal insulating allowance and board separation are design allocations, not
-verified backside contact, thermal separation or fitted connector dimensions.
-Inspect the actual underside and leave populated faces and ventilation exposed.
+The direct MG-F10 helix overlaps the accessory-host power platform. Use the
+already allowed remote antenna installation or assess the battery host after
+moving the optical tower to its supported FC host. The current FC station at
+X = -54 mm is not an accepted power-platform installation: its conservative
+registration screen intersects the propulsion sweep reservation. A common
+attachment datum alone does not resolve this; relocating that carrier requires
+renewed optical, propulsion and wiring checks. These excluded combinations are
+not reasons to remove their clearance reservations.
 
-The accessory variant uses straight opposed legs to clear the Mini's connector
-lanes. FC and battery variants retain their own diagonal support orientation;
-rotating every portal identically would conflict with lower FC hardware or its
-wire reservation. Shared rail attachment does not imply identical complete
-carrier geometry or universal compatibility at every station.
+Use the open insulating support with suitable adhesive or a removable strap. Inspect the actual
+underside before fixing the board, avoid pressure on components or solder joints,
+and leave the populated side exposed to air. Neither electrical solder pads nor
+generic stack holes in the printed support imply a verified board bolt pattern.
+Reserve accessible board ends and extra height for the chosen connection method;
+these are design allowances, not measured connector envelopes.
 
-The accessory station is near the rail end. Its complete shoe remains engaged;
-the upper deck and portal may project beyond that end. This is not a print-size
-violation or an instruction to align the deck edge with the rail end. Observe the
-limited outward trim described in [layout review](layout_and_wiring_review.md).
-Geometric seating does not establish bending strength, creep or tether retention.
+There is no dedicated tether guide, retention hole or modeled cable trajectory.
+Secure the incoming lead around suitable existing structure before its soldered
+board connection, keep its free path outside moving propulsion and sensor view,
+and verify pulling direction and slack after installation. The CAD does not
+establish tether clearance, an aircraft anchor load or a strain-relief rating.
 
-Disconnect leads and remove the whole carrier from the rail before lower-device
-service. Release the relevant retention, then use the audited staged lift and
-lateral path while keeping the complete integral support present. Do not assume
-a device can lift vertically through the fixed upper deck. Actual soldered wires,
-plugs, tools and flexible harnesses still require physical assembly checks.
-
-The direct MG-F10 helix conflicts with the accessory-host power structure. Use
-the already accepted remote-antenna arrangement or another configuration that
-passes the current screen. The generated permitted/rejected combinations take
-precedence over a generic claim that every mechanical host works with every
-navigation, optical and power option. Do not delete a valid obstruction merely
-to accept a configuration. Mechanical separation is not compass or RF clearance.
-
-There is no dedicated tether guide, hole or certified cable trajectory. Secure
-the incoming lead around suitable existing structure before its board connection,
-keep the free cable outside moving propulsion and sensor view, and verify pulling
-direction and slack. No aircraft-anchor load or strain-relief rating is assigned.
-
-The separate `gondola_power_options.FCStd`, print exports, manifest and validation
-report remain outside the default installed BOM. Their filenames and quantities
-are defined by [power_options.py](../gondola/contracts/power_options.py).
-[power_export.py](../gondola/power_export.py) checks the saved optional geometry,
-main-assembly context, exports and identities without silently regenerating them.
-It screens alternatives, both optical hosts, actual rail-clamp approaches and
-lower-device service. Integral variants have no detachable-foot registration
-freedom; old registration-float results cannot qualify them. Only reports bound
-to the final matching source and saved artifacts establish a geometric pass.
+The separate `gondola_power_options.FCStd`, `optional_power_mount.stl/.step`,
+`gondola_power_options.json` and `gondola_power_validation.json` are generated
+alongside the main CAD. The manifest identifies optional quantities and its
+volume-based PA12 mass estimate. Validation checks the saved optional shapes,
+main-assembly context, print exports and their identities without rewriting them.
+It screens both optical-host configurations, available power hosts/plans and
+navigation alternatives, including conservative seated XY/yaw registration bounds.
+Permitted/rejected combinations in that current report take precedence over a
+generic claim that every stack location works in every equipment arrangement.
 
 ## Retained primary evidence
 

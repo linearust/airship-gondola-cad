@@ -38,7 +38,6 @@ class ExportIntegrityTests(unittest.TestCase):
             "gondola.parts.equipment_envelopes": Mock(),
             "gondola.parts.optical_sensor": Mock(),
             "gondola.parts.stack_interface": Mock(),
-            "gondola.parts.stock_adapter": Mock(),
             "gondola.validation.optical": Mock(),
             "gondola.validation.wiring": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
@@ -415,28 +414,13 @@ class ExportIntegrityTests(unittest.TestCase):
 
 @unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
 class NativeSharedPrintTests(unittest.TestCase):
-    def test_bought_carbon_can_never_be_exported_as_printed_plate(self):
-        from gondola.parts import stock_adapter
-        from gondola.print_export import export_print_parts
-
-        with tempfile.TemporaryDirectory() as directory:
-            doc = NativeApp.newDocument("BoughtCarbonNotPrintable")
-            self.addCleanup(NativeApp.closeDocument, doc.Name)
-            parent = doc.addObject("App::Part", "BatteryEquipmentModule")
-            board = stock_adapter.build_stock_adapter(doc, parent, "battery")["plates"][
-                0
-            ]
-            self.assertFalse(board.PrintPart)
-            with self.assertRaisesRegex(RuntimeError, "Purchased part in print list"):
-                export_print_parts(doc, [board], [], directory, "invalid_carbon_print")
-
-    def test_generic_shared_print_exports_once_but_keeps_three_instances(self):
+    def test_shared_carrier_exports_once_but_keeps_three_installed_instances(self):
         from gondola.print_export import export_print_parts
 
         with tempfile.TemporaryDirectory() as directory:
             existing = set(NativeApp.listDocuments())
             try:
-                doc = NativeApp.newDocument("SharedPrintExportRegression")
+                doc = NativeApp.newDocument("SharedCarrierExportRegression")
                 blank = NativePart.makeBox(52, 52, 2)
 
                 def plate(hole_x):
@@ -445,11 +429,7 @@ class NativeSharedPrintTests(unittest.TestCase):
                     )
 
                 shape = plate(10)
-                names = [
-                    "FirstPrintedFixture",
-                    "SecondPrintedFixture",
-                    "ThirdPrintedFixture",
-                ]
+                names = ["BatteryMount", "ElectronicsMount", "AccessoryMount"]
                 parts = []
                 for index, name in enumerate(names):
                     parent = doc.addObject("App::Part", name + "Module")
@@ -461,7 +441,7 @@ class NativeSharedPrintTests(unittest.TestCase):
                     parent.addObject(obj)
                     obj.Shape = shape.copy()
                     obj.addProperty("App::PropertyString", "PrintSKU")
-                    obj.PrintSKU = "SharedPrintedFixture"
+                    obj.PrintSKU = "UniversalEquipmentCarrier"
                     obj.addProperty("App::PropertyRotation", "PrintRotation")
                     obj.PrintRotation = NativeApp.Rotation(
                         NativeApp.Vector(1, 0, 0), 180
@@ -478,7 +458,7 @@ class NativeSharedPrintTests(unittest.TestCase):
                 self.assertEqual(manifest["additional_coupon_printed_part_count"], 0)
                 self.assertEqual(len(manifest["parts"]), 1)
                 row = manifest["parts"][0]
-                self.assertEqual(row["sku"], "SharedPrintedFixture")
+                self.assertEqual(row["sku"], "UniversalEquipmentCarrier")
                 self.assertEqual(row["instances"], names)
                 self.assertEqual(row["quantity"], 3)
                 self.assertEqual(row["installed_quantity"], 3)
@@ -491,7 +471,7 @@ class NativeSharedPrintTests(unittest.TestCase):
                 parts[-1].Shape = altered
                 doc.recompute()
                 with self.assertRaisesRegex(
-                    RuntimeError, "Different parts share SKU SharedPrintedFixture"
+                    RuntimeError, "Different parts share SKU UniversalEquipmentCarrier"
                 ):
                     export_print_parts(doc, parts, [], directory, "shared")
             finally:

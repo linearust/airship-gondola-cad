@@ -68,35 +68,10 @@ class OpticalClearanceTests(unittest.TestCase):
                     setattr(obj, name, original)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_carrier_pose_mismatch_cannot_pass_fixed_support_evidence(self):
-        from gondola.parts import stack_interface
-        from gondola.validation.optical import _source_evidence, tower_attachment_check
-
-        group = self.doc.OpticalFlowModule
-        original_host = group.getParentGeoFeatureGroup()
-        try:
-            for host_name in stack_interface.SUPPORTED_HOSTS:
-                host = self.doc.getObject(host_name)
-                stack_interface.attach_to_host(group, host)
-                carrier = stack_interface.host_print(group)
-                original = carrier.Placement.copy()
-                try:
-                    carrier.Placement.Base.x += 0.2
-                    self.doc.recompute()
-                    self.assertFalse(_source_evidence(self.doc)["passed"])
-                    attachment = tower_attachment_check(self.doc, host)
-                    self.assertFalse(attachment["passed"], attachment)
-                    self.assertFalse(attachment["portal_placement_matches"])
-                finally:
-                    carrier.Placement = original
-            self.assertTrue(_source_evidence(self.doc)["passed"])
-        finally:
-            stack_interface.attach_to_host(group, original_host)
-
-    def test_changed_pivot_hardware_geometry_or_hierarchy_is_rejected(self):
+    def test_changed_foot_hardware_geometry_or_hierarchy_is_rejected(self):
         from gondola.validation.optical import _source_evidence
 
-        bolt = self.doc.OpticalRollBolt
+        bolt = self.doc.OpticalStackFootBolt0
         shape = bolt.Shape.copy()
         parent = bolt.getParentGeoFeatureGroup()
         try:
@@ -175,9 +150,7 @@ class OpticalClearanceTests(unittest.TestCase):
         optical_mount.set_angles(self.doc, 13, -9)
         placement = group.Placement.copy()
         for changed_parent in (None, unsupported):
-            with self.subTest(
-                parent=changed_parent.Name if changed_parent is not None else None
-            ):
+            with self.subTest(parent=changed_parent):
                 host.removeObject(group)
                 if changed_parent is not None:
                     changed_parent.addObject(group)
@@ -197,21 +170,17 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertEqual(self.doc.OpticalRollStage.Roll.Value, 13)
                     self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
                 finally:
-                    if changed_parent is not None:
-                        changed_parent.removeObject(group)
                     stack_interface.attach_to_host(group, host)
 
     def test_missing_host_support_or_native_metadata_returns_a_failed_report(self):
         from gondola.validation.optical import mtf_sensor_check
 
-        self.doc.removeObject("StockBatteryAdapter")
+        self.doc.removeObject("BatteryMount")
         self.doc.OpticalFlowModule.removeProperty("StackInterfaceContract")
         result = mtf_sensor_check(self.doc)
         self.assertFalse(result["passed"])
         errors = result["source_evidence"]["native_structure"]["errors"]
-        self.assertIn(
-            {"object": "StockBatteryAdapter", "error": "missing object"}, errors
-        )
+        self.assertIn({"object": "BatteryMount", "error": "missing object"}, errors)
         self.assertIn(
             {
                 "object": "OpticalFlowModule",
@@ -412,22 +381,13 @@ class OpticalClearanceTests(unittest.TestCase):
                         doc.ModuleMTF02PEnvelope.Shape.BoundBox.ZLength,
                         profile.size_mm[2],
                     )
-                    stack_interface.attach_to_host(group, probe_host)
-                    feet = (
-                        set(stack_interface.FOOT_HARDWARE_NAMES)
-                        if probe_host.Name == "BatteryEquipmentModule"
-                        else set()
-                    )
-                    self.assertEqual(
-                        {obj.Name for obj in doc.Objects}, object_names | feet
-                    )
+                    self.assertEqual({obj.Name for obj in doc.Objects}, object_names)
                     for key, names in registry_names.items():
-                        expected = set(names) | (
-                            feet if key == "HardwareParts" else set()
+                        self.assertEqual(
+                            [obj.Name for obj in getattr(doc.DesignRegistry, key)],
+                            names,
                         )
-                        current = [obj.Name for obj in getattr(doc.DesignRegistry, key)]
-                        self.assertEqual(set(current), expected)
-                        self.assertEqual(len(current), len(expected))
+                    stack_interface.attach_to_host(group, probe_host)
                     optical_mount.set_angles(doc, -20, 20)
                     return {
                         "host": probe_host.Name,
@@ -446,12 +406,6 @@ class OpticalClearanceTests(unittest.TestCase):
                     ],
                 )
                 self.assertEqual(result["passed"], not fail_alternative)
-                self.assertEqual({obj.Name for obj in self.doc.Objects}, object_names)
-                for key, names in registry_names.items():
-                    self.assertEqual(
-                        [obj.Name for obj in getattr(self.doc.DesignRegistry, key)],
-                        names,
-                    )
                 self.assertEqual(result["selected_sensor_model"], selected)
                 self.assertEqual(
                     result["hosts"], result["sensor_alternatives"][selected]["hosts"]

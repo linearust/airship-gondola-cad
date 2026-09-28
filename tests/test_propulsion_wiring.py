@@ -26,14 +26,7 @@ class PropulsionWiringTests(unittest.TestCase):
         cls.wiring, cls.audit = propulsion_wiring, audit
         cls.doc = App.newDocument("PropulsionWiringRegression")
         cls.propulsion = create_group(cls.doc, "MainPropulsionModule", "Propulsion")
-        prop_station = next(
-            item
-            for item in MODULE_STATIONS
-            if item.object_name == "MainPropulsionModule"
-        )
-        cls.propulsion.Placement.Base = App.Vector(
-            prop_station.x_mm, 0.0, prop_station.z_mm
-        )
+        cls.propulsion.Placement.Base.y = 0.1
         cls.electronics = create_group(
             cls.doc, "ElectronicsEquipmentModule", "Electronics"
         )
@@ -43,7 +36,7 @@ class PropulsionWiringTests(unittest.TestCase):
             if item.object_name == "ElectronicsEquipmentModule"
         )
         cls.electronics.Placement = App.Placement(
-            App.Vector(station.x_mm, 0.0, station.z_mm),
+            App.Vector(station.x_mm, -0.1, 0),
             App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
         )
         fc = create_reference(
@@ -184,12 +177,12 @@ class PropulsionWiringTests(unittest.TestCase):
             App.Placement(App.Vector(0, 0, stack_interface.STACK_TOP_Z), App.Rotation())
         )
         obstacles = {"OpticalMountBase": optical_mount.base_shape()}
-        obstacles.update(dict(stack_interface.structural_component_shapes()))
+        obstacles.update(dict(stack_interface.rigid_float_component_bounds()))
         for shape in obstacles.values():
             shape.Placement = tower_placement.multiply(shape.Placement)
         return obstacles
 
-    def test_both_optical_hosts_leave_fixed_support_margin(self):
+    def test_both_optical_hosts_leave_registration_margin(self):
         from gondola.cad import world_shape
 
         hosts = {
@@ -223,21 +216,20 @@ class PropulsionWiringTests(unittest.TestCase):
         shape.Placement = prop.multiply(shape.Placement)
         obstacles = self._optical_host_obstacles(electronics)
         self.assertGreater(shape.common(obstacles["OpticalMountBase"]).Volume, 8)
-        # The integral portal has a different leg section; the historical
-        # route must still cause substantial positive interference.
-        self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 1)
+        self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 30)
 
-    def test_remote_intermediate_waypoint_crosses_fc_band_before_terminal_entry(self):
+    def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
         from gondola.cad import world_shape
 
         prop = self.propulsion.getGlobalPlacement()
         electronics = self.electronics.getGlobalPlacement()
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, prop, electronics)
-            crossing = electronics.multVec(App.Vector(-32.0, 0.0, 17.0))
+            points[1] = (-38.0, sign * 20.0, 34.0)
+            with patch.object(self.wiring, "route_points", return_value=points):
+                shape = self.wiring.route_geometry(sign, prop, electronics)["shape"]
+            shape.Placement = prop.multiply(shape.Placement)
             endpoint = prop.multVec(App.Vector(*points[-1]))
-            direction = endpoint - crossing
-            shape = Part.makeCylinder(1.4, direction.Length, crossing, direction)
             result = self.audit.connection_check(
                 shape,
                 world_shape(self.fc_reserve),
