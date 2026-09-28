@@ -84,48 +84,53 @@ compatibility.
 
 ## Mechanical provision
 
-The optional one-piece **PowerPlatform** combines the common 54 × 74 × 2 mm
-rounded rectangular deck with the structural tower. The 3 mm plan-view corner
-radii match the rail carriers; there is no projecting utility tab or outboard
-structural clamp ear. The common feet fit inside the outline at nominal
-alignment and retain the
-inward-corner relief used for optical-tower service clearance. Its complete
-printed height is 35 mm. Two
-M2×8 screws and two ordinary M2 nuts secure its feet; no extra printed spacers,
-board pockets or separate tower legs are needed. It holds the BEC/SVPDB pair,
-while a single SVPDB leaves one bay available. The board regions are centred at
-Y = ±13 mm: the selected pair has a nominal 3.5 mm body-to-body gap. This is a
-body-envelope allocation, not tested thermal separation or a completed harness.
-The installed
-battery baseline does not include this optional print, its fasteners or regulators.
+The optional one-piece **PowerPlatform** combines the common **64 × 64 × 2 mm**
+rounded square deck with a diagonal portal. The deck has the same 3 mm corner
+radius and symmetric mounting array as every rail carrier. The portal remains
+32 mm high above its host seating plane; the complete optional print is 35 mm
+high. Its two 13 × 9 × 2 mm feet remain inside the square outline, with a 5 mm
+inward corner relief that leaves the diagonal leg roots intact. Two M2×8 screws
+and two ordinary M2 nuts secure the feet; there are no extra printed spacers,
+board pockets or separate legs. The BEC/SVPDB board regions remain centred at
+Y = ±13 mm, giving the selected bare pair a nominal 3.5 mm body gap. This is an
+envelope allocation, not tested cooling or a completed harness. None of this
+optional print, its four fasteners or the regulators enters the battery baseline.
 
-The plate shares the rail carriers' **six fixed device bores and ten mounting
-slots**, defined in [mounting_slots.py](../gondola/parts/mounting_slots.py) and
-[equipment_mounts.py](../gondola/parts/equipment_mounts.py). The FC/P-AS support
-lands remain intact. Structural feet use two separate circular clamp bores, not
-the generic slots. These provisions are not either Matek board's mounting holes.
-Slots that cross the top beam must cut through the fused support beneath the
-deck; inspect the resulting sections. No extra baseline fasteners or washers are
-selected, and existing M2 heads are not automatically suitable for the wider M3
-slots. See [universal carrier rationale](universal_carrier_review.md).
-Dedicated board tie slots and tether holes are absent; adhesive or
-a removable strap around existing structure provides simple attachment options.
-The two existing optical host carriers
-and the accessory carrier share the structural foot interface at local (0,0).
-One carrier cannot
-hold the optical tower and power tower simultaneously; move the optical tower to
-the other supported optical host first. The accessory carrier is a power host,
-not an additional qualified optical host.
+The deck shares the carriers' **four fixed FC bores and sixteen slots**:
+four M2 diagonal slots for 16–23 mm square pitches, four M3 arcs for a 30.5 mm
+square, and eight outer M2 slots. See
+[mounting_slots.py](../gondola/parts/mounting_slots.py) and
+[equipment_mounts.py](../gondola/parts/equipment_mounts.py).
+The P-AS uses two endpoints of the shared 23 mm diagonal pattern. The optional
+portal feet clamp through common outer slots at nominal local (+27,+23) and
+(−27,−23) mm; no separate structural carrier bores are added. These provisions
+are not either Matek board's mounting holes. Slots crossing the top beam cut
+through the fused support beneath the deck. Existing small M2 heads are not
+qualified for the wider M3 slots; no baseline washers are added.
 
-The direct MG-F10 helix and accessory-host power platform remain an excluded
-combination unless a current configuration review explicitly qualifies them. Use the
-already allowed remote antenna installation or assess the battery host after
-moving the optical tower to its supported FC host. The current FC station at
-X = -54 mm is not an accepted power-platform installation: its conservative
-registration screen previously intersected the propulsion sweep reservation. A common
-attachment datum alone does not resolve this; relocating that carrier requires
-renewed optical, propulsion and wiring checks. These excluded combinations are
-not reasons to remove their clearance reservations.
+The foot holes are circular while their host openings are slots. The geometric
+registration bound therefore includes the **full opposed-slot travel** and the
+combined clearance of both printed interfaces. It does not treat the host as
+having two locating bores. Seat the feet and centre the portal before tightening.
+Underside heads bear on the two sides of a slot: actual head diameter, seating,
+print flatness, clamp retention and PA12 creep still require inspection/testing.
+The saved audit checks actual material under both nominal foot seats, clear screw
+paths and geometric access to their fasteners. Remove the carrier from the rail
+for foot-fastener service; balloon clearance is not modeled.
+
+The battery, FC and accessory carriers share this optional portal attachment.
+The optical head now uses a separate compact one-axis pedestal rather than the
+same portal. Concurrent optical and power installation on one host remains
+excluded; move the optical head to its other supported host first. Matching
+slots alone do not establish clearance, module access or structural capacity.
+The previous AY host-screen results belong to the earlier rectangular plate and
+two-axis optical tower. Current square-carrier/one-axis combinations must pass
+the generated configuration screen. In particular, do not assume that a direct
+MG-F10 helix or a propulsion-adjacent FC carrier accepts the power platform;
+use only a currently permitted host/antenna combination.
+
+Dedicated board tie slots, tabs and tether holes are absent; adhesive or a
+removable strap around existing structure provides simple attachment options.
 
 Use the open insulating support with suitable adhesive or a removable strap. Inspect the actual
 underside before fixing the board, avoid pressure on components or solder joints,
@@ -147,9 +152,12 @@ volume-based PA12 mass estimate. Validation checks the saved optional shapes,
 main-assembly context, print exports and their identities without rewriting them.
 It screens both optical-host configurations, available power hosts/plans and
 navigation alternatives, including conservative seated XY/yaw registration bounds.
-AY's changed tower and mounting slots require renewed checks; earlier successes
-are not current qualification. Permitted/rejected combinations in the current
-report take precedence over a
+The square carrier and compact optical pedestal require renewed checks; historical
+AY successes are not current qualification. A complete screen requires at least
+one permitted host for each optional power plan. The separately saved illustration
+must also be clear on its actual default host. Moving the optical head may change
+which power host is permitted; it does not require every host combination to work.
+Permitted/rejected combinations in the current report take precedence over a
 generic claim that every stack location works in every equipment arrangement.
 
 ## Retained primary evidence

@@ -1,8 +1,7 @@
-"""Standard-stack, manually clamped roll/pitch optical sensor support.
+"""Compact two-print optical pedestal with one manually clamped pitch axis.
 
-The three PA12 parts print separately. Two ordinary M2 fastener stacks clamp
-plain contact faces; the native angle limits are planning controls, not physical
-stops, self-levelling, or a qualified friction/holding-torque specification.
+The carrier is placed along the balloon bottom centreline; the one transverse
+axis corrects longitudinal curvature. This is not self-levelling or actuated.
 """
 
 import json
@@ -12,19 +11,15 @@ import Part
 
 from gondola.cad import box, create_group, create_printed_part, set_property, union
 from gondola.contracts import fasteners
-from gondola.contracts.design import STACK_ANCHOR_LOCATIONS
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
-from . import purchased_hardware, stack_interface
+from . import optical_interface, purchased_hardware
 
 V = App.Vector
-ROLL_PIVOT_Z = 8.0
-PITCH_PIVOT_OFFSET_Z = 10.0
+PIVOT_CENTRE = (2.0, 2.0, 22.0)
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 3.5
 EAR_THICKNESS = 2.0
-ROLL_POST_WIDTH = 3.0
-ROLL_POST_BOTTOM_Z = 2.8
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -48,59 +43,28 @@ def _finished(shape, name):
 
 
 def base_shape():
-    """Integral rectangular portal and a fully supported negative-X roll ear."""
-    ear = _cylinder(
-        EAR_RADIUS, EAR_THICKNESS, (-EAR_THICKNESS, 0, ROLL_PIVOT_Z), (1, 0, 0)
-    )
+    """One flat two-hole foot and short straight upright ending in a pitch ear."""
+    x, y, z = PIVOT_CENTRE
+    ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
     post = box(
+        4,
         EAR_THICKNESS,
-        2 * EAR_RADIUS,
-        ROLL_PIVOT_Z - stack_interface.TOP_BEAM_THICKNESS,
-        (-EAR_THICKNESS, -EAR_RADIUS, stack_interface.TOP_BEAM_THICKNESS),
+        z - optical_interface.FOOT_THICKNESS,
+        (x - 3, y - EAR_THICKNESS, optical_interface.FOOT_THICKNESS),
     )
     bore = _cylinder(
         PIVOT_HOLE_DIAMETER / 2,
         2 * EAR_THICKNESS + 2,
-        (-EAR_THICKNESS - 1, 0, ROLL_PIVOT_Z),
-        (1, 0, 0),
-    )
-    return _finished(
-        union([stack_interface.tower_shape(), ear, post]).cut(bore), "base"
-    )
-
-
-def roll_bracket_shape():
-    """Orthogonal ears joined by one 3 by 2 mm beam, in the roll frame."""
-    first = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (1, 0, 0))
-    # Widen only +X, within the second ear's radial outline. Start above the
-    # first-axis nut's full circumradius; the first ear contains the old narrow
-    # post below this height. Keep Y in the second ear's plane to clear its head.
-    post = box(
-        ROLL_POST_WIDTH,
-        EAR_THICKNESS,
-        PITCH_PIVOT_OFFSET_Z - ROLL_POST_BOTTOM_Z,
-        (0, -EAR_THICKNESS, ROLL_POST_BOTTOM_Z),
-    )
-    second = _cylinder(
-        EAR_RADIUS,
-        EAR_THICKNESS,
-        (0, -EAR_THICKNESS, PITCH_PIVOT_OFFSET_Z),
+        (x, y - EAR_THICKNESS - 1, z),
         (0, 1, 0),
     )
-    shape = union([first, post, second])
-    shape = shape.cut(_cylinder(PIVOT_HOLE_DIAMETER / 2, 5, (-1, 0, 0), (1, 0, 0))).cut(
-        _cylinder(
-            PIVOT_HOLE_DIAMETER / 2,
-            6,
-            (0, -EAR_THICKNESS - 1, PITCH_PIVOT_OFFSET_Z),
-            (0, 1, 0),
-        )
+    return _finished(
+        union([optical_interface.foot_shape(), ear, post]).cut(bore), "base"
     )
-    return _finished(shape, "roll bracket")
 
 
 def sensor_tray_shape():
-    """Continuous adhesive pad and one 2 mm pitch ear, in the pitch frame."""
+    """Continuous adhesive pad and one pitch ear, without invented sensor holes."""
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (0, 0, 0), (0, 1, 0))
     neck = box(4, EAR_THICKNESS, TRAY_BOTTOM_Z, (-2, 0, 0))
     pad = box(
@@ -114,50 +78,53 @@ def sensor_tray_shape():
 
 def mount_contract():
     return {
-        "mechanism": "Separate manual roll-X and pitch-Y friction clamps",
-        "roll_pivot_z_mm": ROLL_PIVOT_Z,
-        "pitch_pivot_offset_z_mm": PITCH_PIVOT_OFFSET_Z,
-        "planning_angle_limit_each_axis_deg": ANGLE_LIMIT_DEG,
+        "mechanism": "One manual pitch-Y friction clamp on a compact corner pedestal",
+        "adjustment_degrees_of_freedom": 1,
+        "pivot_centre_in_pedestal_mm": PIVOT_CENTRE,
+        "pivot_centre_in_carrier_mm": tuple(
+            a + b
+            for a, b in zip(
+                PIVOT_CENTRE,
+                (*optical_interface.HOST_ORIGIN_XY, optical_interface.HOST_SUPPORT_Z),
+            )
+        ),
+        "planning_angle_limit_deg": ANGLE_LIMIT_DEG,
+        "axis": "Carrier-local Y, transverse to the longitudinal rail. The FC carrier's 180 degree yaw reverses the angle sign, not the physical axis.",
         "physical_angle_stops_modeled": False,
         "self_levelling": False,
         "holding_torque_verified": False,
         "integral_common_rail_shoe": False,
-        "standard_stack_interface": f"Two diagonal rigid legs at {STACK_ANCHOR_LOCATIONS}, joined by one straight rectangular beam with flush ends; two 8 x 13 mm Y-aligned feet clamp within the carrier plate outline independently of FC dampers. Each foot has one 5 mm inward corner chamfer for FC-wire clearance during removal, retaining the entire leg footprint. Dedicated circular structural bores remain separate from generic equipment slots.",
+        "carrier_interface": optical_interface.interface_contract(),
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
         "nominal_ear_radial_wall_mm": EAR_RADIUS - PIVOT_HOLE_DIAMETER / 2,
-        "post_section_mm": [ROLL_POST_WIDTH, EAR_THICKNESS],
-        "roll_post_bottom_z_mm": ROLL_POST_BOTTOM_Z,
-        "tray_size_mm": list(TRAY_SIZE_MM),
+        "upright_section_mm": (4.0, EAR_THICKNESS),
+        "tray_size_mm": TRAY_SIZE_MM,
         "tray_bottom_z_in_pitch_frame_mm": TRAY_BOTTOM_Z,
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware_per_axis": "Kit steel M2x8 button-head screw and M2 hex nut; no washers. Unmeasured head uses a design clearance envelope.",
+        "hardware": "Three kit steel M2x8 button-head screw / M2 hex nut pairs total: two pedestal clamps and one pitch clamp. No washers.",
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "minimum_nominal_pivot_wall_mm": EAR_THICKNESS,
-        "fastener_fit_scope": "Nominal screw projection is 2.4 mm beyond a 1.6 mm nut. Two ears each 0.3 mm thicker leave 1.8 mm, before screw-length tolerance. Measure printed thickness, kit head and screw/nut before use; full physical engagement is unverified.",
-        "assembly": "Print all three parts separately; the base integrates its rigid support legs and broad clamped feet. Plain nominal contact faces touch when the bought fasteners clamp them. No printed thread, bearing or screw.",
-        "adjustment": "Support the sensor, hold the hex nut with a small wrench or pliers, loosen the M2 screw, set its angle, then hand snug. Native limits are design controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
-        "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. The sensor is not screwed through invented holes.",
+        "assembly": "Print the pedestal and sensor tray separately. Seat and clamp the pedestal on one common carrier slot; clamp the two plain 2 mm pitch ears with the third M2 pair. No intermediate roll bracket or broad tower remains.",
+        "adjustment": "Place the rail along the balloon bottom centreline. Support the sensor, loosen its pitch screw while holding the nut, align downward at flight trim, and hand-snug. There is no roll correction or operating play. Native angle limits are planning controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
+        "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. Do not invent sensor fixing holes or cover its optical apertures.",
     }
 
 
-def _pivot_hardware(doc, parent, prefix, axis, centre_z):
-    rotation_axis = V(0, 1, 0) if axis == "X" else V(1, 0, 0)
-    rotation_degrees = 90 if axis == "X" else -90
-    specs = [
+def _pivot_hardware(doc, parent):
+    objects = []
+    for kind, shape, axial, sku, source in (
         (
             "Bolt",
             purchased_hardware.screw_shape(SCREW_LENGTH),
             SCREW_BEARING_START,
             "M2X8_BUTTON_HEAD",
             STACK_SCREW_SOURCE,
-            fasteners.KIT_MATERIAL,
         ),
         (
             "Nut",
@@ -165,108 +132,84 @@ def _pivot_hardware(doc, parent, prefix, axis, centre_z):
             NUT_START,
             "M2_HEX_NUT",
             HEX_NUT_SOURCE,
-            fasteners.KIT_MATERIAL,
         ),
-    ]
-    objects = []
-    for kind, original, axial, sku, source, material in specs:
-        shape = original.copy()
-        shape.rotate(V(), rotation_axis, rotation_degrees)
-        shape.translate(V(axial, 0, centre_z) if axis == "X" else V(0, axial, centre_z))
-        obj = purchased_hardware.add_hardware(
-            doc,
-            parent,
-            prefix + kind,
-            "BUY | manual optical "
-            + prefix.removeprefix("Optical").lower()
-            + " "
-            + kind,
-            shape,
-            sku,
-            "One kit steel M2x8 button-head screw and M2 hex nut directly clamp two separately printed 2 mm ears, without washers. Nominal full 1.6 mm nut engagement and 2.4 mm tip projection; actual screw length, head envelope and both printed thicknesses must be checked. Manual friction adjustment, not a qualified torque, creep life or holding-load claim.",
-            source,
-            material,
+    ):
+        shape = shape.copy()
+        shape.rotate(V(), V(1, 0, 0), -90)
+        shape.translate(V(PIVOT_CENTRE[0], PIVOT_CENTRE[1] + axial, PIVOT_CENTRE[2]))
+        objects.append(
+            purchased_hardware.add_hardware(
+                doc,
+                parent,
+                "OpticalPitch" + kind,
+                "BUY | manual optical pitch " + kind.lower(),
+                shape,
+                sku,
+                "M2x8 and ordinary M2 nut clamp two plain 2 mm PA12 ears. Nominal full 1.6 mm engagement and 2.4 mm tip projection; verify actual hardware, printed fit and angle retention. No washer, bearing or qualified holding-torque claim.",
+                source,
+                fasteners.KIT_MATERIAL,
+            )
         )
-        objects.append(obj)
     return objects
 
 
 def build_optical_mount(doc, parent):
     group = create_group(
-        doc,
-        "OpticalFlowModule",
-        "Optical flow | standard-stack manual roll/pitch mount",
+        doc, "OpticalFlowModule", "Optical flow | compact single-axis pedestal"
     )
     parent.addObject(group)
-    group.Placement.Base.z = stack_interface.STACK_TOP_Z
+    group.Placement = optical_interface.host_placement()
     contract = json.dumps(mount_contract(), sort_keys=True)
     set_property(group, "OpticalMountContract", contract)
     set_property(
         group,
         "AdjustmentControls",
-        "OpticalRollStage.Roll and OpticalPitchStage.Pitch; native controls are on their own stages to avoid parent/child expression cycles.",
+        "OpticalPitchStage.Pitch; one manually clamped transverse axis, no roll stage.",
     )
     set_property(group, "HoldingTorqueVerified", False, "App::PropertyBool")
     set_property(group, "SelfLevelling", False, "App::PropertyBool")
-    roll = create_group(doc, "OpticalRollStage", "Manual roll | X axis")
-    group.addObject(roll)
-    roll.Placement = App.Placement(V(0, 0, ROLL_PIVOT_Z), App.Rotation(V(1, 0, 0), 1))
-    pitch = create_group(doc, "OpticalPitchStage", "Manual pitch | Y axis after roll")
-    roll.addObject(pitch)
-    pitch.Placement = App.Placement(
-        V(0, 0, PITCH_PIVOT_OFFSET_Z), App.Rotation(V(0, 1, 0), 1)
+    optical_interface.annotate_interface(group)
+    pitch = create_group(doc, "OpticalPitchStage", "Manual pitch | Y axis")
+    group.addObject(pitch)
+    pitch.Placement = App.Placement(V(*PIVOT_CENTRE), App.Rotation(V(0, 1, 0), 1))
+    for key, value in (
+        ("Pitch", 0),
+        ("MinimumAngle", -ANGLE_LIMIT_DEG),
+        ("MaximumAngle", ANGLE_LIMIT_DEG),
+    ):
+        set_property(pitch, key, value, "App::PropertyAngle", "Manual adjustment")
+    pitch.setEditorMode("MinimumAngle", 1)
+    pitch.setEditorMode("MaximumAngle", 1)
+    pitch.setExpression(
+        "Placement.Rotation.Angle", "min(MaximumAngle; max(MinimumAngle; Pitch))"
     )
-    for stage, key in ((roll, "Roll"), (pitch, "Pitch")):
-        set_property(stage, key, 0, "App::PropertyAngle", "Manual adjustment")
-        set_property(
-            stage,
-            "MinimumAngle",
-            -ANGLE_LIMIT_DEG,
-            "App::PropertyAngle",
-            "Manual adjustment",
-        )
-        set_property(
-            stage,
-            "MaximumAngle",
-            ANGLE_LIMIT_DEG,
-            "App::PropertyAngle",
-            "Manual adjustment",
-        )
-        stage.setEditorMode("MinimumAngle", 1)
-        stage.setEditorMode("MaximumAngle", 1)
-        stage.setExpression(
-            "Placement.Rotation.Angle",
-            f"min(MaximumAngle; max(MinimumAngle; {key}))",
-        )
     printed = []
-    for parent, name, shape in (
+    for part_parent, name, shape in (
         (group, "OpticalMountBase", base_shape()),
-        (roll, "OpticalRollBracket", roll_bracket_shape()),
         (pitch, "OpticalSensorTray", sensor_tray_shape()),
     ):
         obj = create_printed_part(
             doc,
-            parent,
+            part_parent,
             name,
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            f"PA12 SLS/MJF, printed separately. The base integrates an open rectangular portal with a {stack_interface.TOP_BEAM_THICKNESS:g} mm-deep, {stack_interface.LEG_WIDTH:g} mm-wide straight beam ending flush with its two legs of the same width; its broad 2 mm feet seat directly with ordinary M2x8 screws and M2 hex nuts. Host decks, foot interfaces and optical axes are unchanged by the beam thickness. No spring fingers or anti-rattle pads. Seat both feet and reject rocking or slip before accepting optical pointing. Plain 2 mm friction ears use M2x8 screws and hex nuts; their one {ROLL_POST_WIDTH:g} by {EAR_THICKNESS:g} mm connecting beam starts {ROLL_POST_BOTTOM_Z:g} mm above the roll axis to clear its nut. No washers, printed threads or physical stops. Verify printed thickness, screw/head dimensions, engagement, actual fit, stiffness, adhesive contact and angle retention before use.",
+            "PA12 SLS/MJF compact optical support, two separately printed pieces. One rectangular foot and straight upright replace the former broad two-axis tower. Existing M2x8 / M2 nut pairs seat the foot and lock the single pitch joint. Check actual print, contact, clamping, adhesive and optical alignment before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
         set_property(obj, "PrintProcess", "PA12 SLS or MJF")
         set_property(obj, "HoldingTorqueVerified", False, "App::PropertyBool")
         if name == "OpticalMountBase":
-            stack_interface.annotate_interface(obj)
+            optical_interface.annotate_interface(obj)
         printed.append(obj)
-    hardware = _pivot_hardware(doc, group, "OpticalRoll", "X", ROLL_PIVOT_Z)
-    hardware += _pivot_hardware(doc, roll, "OpticalPitch", "Y", PITCH_PIVOT_OFFSET_Z)
-    hardware += stack_interface.build_stack_hardware(doc, group)
+    hardware = _pivot_hardware(doc, group) + optical_interface.build_hardware(
+        doc, group
+    )
     doc.recompute()
     return {
         "group": group,
-        "roll_stage": roll,
         "pitch_stage": pitch,
         "printed": printed,
         "hardware": hardware,
@@ -274,8 +217,7 @@ def build_optical_mount(doc, parent):
     }
 
 
-def set_angles(doc, roll, pitch):
-    """Set the two saved native controls; their own expressions bound motion."""
-    doc.getObject("OpticalRollStage").Roll = roll
+def set_pitch(doc, pitch):
+    """Set the one saved native control; its own expression bounds motion."""
     doc.getObject("OpticalPitchStage").Pitch = pitch
     doc.recompute()

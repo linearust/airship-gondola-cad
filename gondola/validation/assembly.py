@@ -907,12 +907,12 @@ def battery_check(doc, objects):
         for name, shape in obstacles
         if name in tower_names
     ]
-    from gondola.parts import stack_interface
+    from gondola.parts import optical_interface
 
     float_rows = []
     tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
     if tower is not None:
-        for component, envelope in stack_interface.rigid_float_component_bounds():
+        for component, envelope in optical_interface.rigid_float_component_bounds():
             envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
             gap = swept.distToShape(envelope)[0]
             float_rows.append(
@@ -928,10 +928,11 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Continuous conservative component bounds over the coupled XY/yaw registration permitted by both clearance-hole pairs. No axial play is added: both broad feet must seat and be clamped before operation. Physical pointing stability and clamp friction require verification.",
+        "tower_registration_scope": "Continuous conservative foot, upright and ear bounds for the two-bolt attachment to the host slot. No axial play is added: the single flat foot must seat and be clamped before operation. Physical pointing stability and clamp friction require verification.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
-        and len(float_rows) == 4
+        and {row["component"] for row in float_rows}
+        == {"foot", "upright", "fixed_pitch_ear"}
         and all(row["passed"] for row in float_rows)
         and {row["object"] for row in tower_gaps} == tower_names
         and all(

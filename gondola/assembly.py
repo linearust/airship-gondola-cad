@@ -78,13 +78,13 @@ def style_assembly(doc):
 def build_assembly():
     from gondola.parts import equipment_mounts as mounts
     from gondola.parts import (
+        optical_interface,
         optical_mount,
         optical_sensor,
         propulsion,
         propulsion_wiring,
         purchased_hardware,
         rail,
-        stack_interface,
     )
     from gondola.print_export import export_print_parts
     from gondola.procurement import export_hardware_bom
@@ -166,7 +166,7 @@ def build_assembly():
     optical_assembly = optical_mount.build_optical_mount(
         doc, doc.getObject(OPTICAL_STACK_HOST)
     )
-    stack_interface.attach_to_host(
+    optical_interface.attach_to_host(
         optical_assembly["group"], doc.getObject(OPTICAL_STACK_HOST)
     )
     rail_clamps = []
@@ -300,7 +300,7 @@ def build_assembly():
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
         "optical_mount": optical_mount.mount_contract(),
-        "optical_stack": stack_interface.interface_contract(),
+        "optical_stack": optical_interface.interface_contract(),
         "optical_stack_host": OPTICAL_STACK_HOST,
         "installed_printed_part_count": len(printed_parts),
         "purchased_hardware_count": len(hardware_parts),

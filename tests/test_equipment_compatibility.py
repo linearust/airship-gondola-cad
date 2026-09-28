@@ -76,15 +76,15 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         report = adhesive_support_check(
             support,
             body,
-            mounts.RADIO_CENTRE_XY,
+            mounts.RADIO_ADHESIVE_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
             face="bottom",
         )
         self.assertTrue(report["passed"])
         self.assertEqual(report["support_face"], "bottom")
-        self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
-        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
-        x, y = mounts.RADIO_CENTRE_XY
+        self.assertAlmostEqual(report["continuous_support_area_mm2"], 120)
+        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 120)
+        x, y = mounts.RADIO_ADHESIVE_CENTRE_XY
         damaged = support.cut(
             Part.makeBox(
                 2,
@@ -97,7 +97,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             adhesive_support_check(
                 damaged,
                 body,
-                mounts.RADIO_CENTRE_XY,
+                mounts.RADIO_ADHESIVE_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
                 face="bottom",
             )["passed"]
@@ -107,7 +107,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             adhesive_support_check(
                 support,
                 body,
-                mounts.RADIO_CENTRE_XY,
+                mounts.RADIO_ADHESIVE_CENTRE_XY,
                 mounts.RADIO_ADHESIVE_SIZE,
                 face="bottom",
             )["passed"]
@@ -122,6 +122,19 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         self.assertEqual(len(result["combinations"]), 3)
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
+            if row["navigation_model"] == "MGF10A":
+                antenna = row["direct_antenna"]["optical_clearance"]
+                self.assertEqual(
+                    antenna["permitted_optical_hosts"], ["BatteryEquipmentModule"]
+                )
+                self.assertEqual(
+                    antenna["blocked_optical_hosts"], ["ElectronicsEquipmentModule"]
+                )
+                self.assertEqual(len(antenna["hosts_and_sensors"]), 4)
+                for pose_row in antenna["hosts_and_sensors"]:
+                    self.assertEqual(
+                        pose_row["passed"], pose_row["host"] == "BatteryEquipmentModule"
+                    )
             services = {
                 service["device"]: service
                 for service in row["bare_device_service_after_tower_release"]
@@ -168,6 +181,54 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         finally:
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
+
+    def test_direct_helix_requires_clear_battery_optical_host(self):
+        from gondola.contracts.equipment_options import get_navigation_profile
+        from gondola.parts import wiring_reserves
+        from gondola.validation.equipment_options import (
+            _optical_option_check,
+            _optical_screens,
+            _placed,
+        )
+
+        screens = _optical_screens(self.doc)
+        direct = wiring_reserves.direct_antenna_reserve_shape(
+            get_navigation_profile("MGF10A")
+        )
+        direct = _placed(direct, self.doc.AccessoryEquipmentModule.getGlobalPlacement())
+        cache = {}
+        for host, expected in (
+            ("BatteryEquipmentModule", True),
+            ("ElectronicsEquipmentModule", False),
+        ):
+            with self.subTest(installed_host=host):
+                report = _optical_option_check(
+                    screens,
+                    {"NavigationDirectAntennaReserve": direct},
+                    antenna=True,
+                    navigation_key="MGF10A",
+                    required_host=host,
+                    validation_cache=cache,
+                )
+                self.assertEqual(report["passed"], expected, report)
+                self.assertEqual(report["installed_host_passed"], expected)
+                self.assertEqual(report["required_installed_optical_host"], host)
+                self.assertEqual(
+                    report["geometrically_clear_optical_hosts"],
+                    ["BatteryEquipmentModule"],
+                )
+
+        # The known MG-F10-A restriction must not silently qualify other
+        # antenna profiles when the same physical obstacle blocks their FC host.
+        unknown = _optical_option_check(
+            screens,
+            {"OtherNavigationAntenna": direct},
+            antenna=True,
+            navigation_key="UNKNOWN",
+            required_host="BatteryEquipmentModule",
+        )
+        self.assertFalse(unknown["passed"])
+        self.assertEqual(len(unknown["permitted_optical_hosts"]), 2)
 
     def test_detached_radio_service_still_rejects_an_attached_carrier_obstacle(self):
         from gondola.parts import equipment_envelopes

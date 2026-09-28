@@ -1,0 +1,1179 @@
+{
+  "revision": "BB",
+  "verified_utc": "2026-09-28T06:52:11.534530+00:00",
+  "source_fingerprint": "1eb228083b2c5f65b14e2cb1288844a4e9bd3a40e665f2ceb30705f095e710e1",
+  "fixture": "tests/fixtures/rev_bb_geometry.FCStd",
+  "fixture_sha256": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2",
+  "passed": true,
+  "production_qualified": false,
+  "transition": {
+    "from": "AY",
+    "main_review": {
+      "revision_transition": "AY to BB",
+      "reviewer": "/root/square_power_interface",
+      "authorship_disclosure": "Reviewer authored stack_interface.py optional-power changes, power_mount.py, power_export.py, related power tests and power_module_compatibility.md. This independent review approves the main carrier/optical/propulsion transition only. Optional power geometry and self-authored shared attachment metadata need the separate plate-agent cross-review.",
+      "review_status": "main_geometry_and_native_behavior_accepted_pending_two_text_metadata_corrections",
+      "geometry_transition_passed": true,
+      "metadata_transition_passed": false,
+      "conditional_promotion_approval": true,
+      "conditions_before_promotion": [
+        {
+          "source": "gondola/contracts/design.py",
+          "saved_field": "DesignRegistry.ReleaseStatus / unresolved_interfaces[optical_sensor_installation].required_evidence",
+          "old_inherited_text": "lock both axes",
+          "required_correction": "Describe locking the single manual pitch joint."
+        },
+        {
+          "source": "gondola/contracts/equipment_interfaces.py",
+          "saved_field": "MTF02PConnectorReserve.WiringContract / connection_limit and any other serialized uses of this interface",
+          "old_inherited_text": "both manual pivots",
+          "required_correction": "Describe clearance from the single manual pitch pivot."
+        },
+        "Regenerate the saved native documents and prove pre/post geometry, placement, hierarchy, registry and expressions unchanged; only the intended two text fields plus derived fingerprint/manifest provenance may differ.",
+        "Complete the separate final native validation pipeline, tests and optional-power cross-review before release."
+      ],
+      "evidence": {
+        "capture_path": "/tmp/bb-transition-capture.json",
+        "capture_sha256": "ce24c28cd50ed8d9dcfb6758424383375eb4ca074ccbb9d9a73bb169894c8c07",
+        "source_fingerprint": "6849c27c2de9a7c97bfd5b3304c07539ed683c7624725bb5f699822be1889f4f",
+        "source_unchanged_during_capture": true,
+        "main_file_hashes": {
+          "/tmp/bb-before-change-ay-build/gondola.FCStd": "df40db242892a49b3832d3eb99aec394f6041be3bbf1aef6cfb5e9669cd39a70",
+          "/tmp/bb-final-candidate/gondola.FCStd": "e7321522d3016aa9559c459f28715f98fc2889e098609ed09c418b9ae6ec6dfc"
+        },
+        "read_only_files_unchanged": true,
+        "unhandled_properties": []
+      },
+      "accepted_exact_local_brep_change_groups": {
+        "square_carriers": [
+          "AccessoryMount",
+          "BatteryMount",
+          "ElectronicsMount"
+        ],
+        "raised_support_reservations": [
+          "CapacitorServiceReserve",
+          "FCWiringClearanceReserve",
+          "MaximumBatteryEnvelope",
+          "XT30ServiceReserve"
+        ],
+        "navigation_datum": [
+          "ModulePASEnvelope",
+          "PASConnectorReserve"
+        ],
+        "compact_optical_base": [
+          "OpticalMountBase"
+        ],
+        "motor_wire_planning_routes": [
+          "PortPhaseLeadLoopReserve",
+          "StarboardPhaseLeadLoopReserve"
+        ]
+      },
+      "accepted_geometry_semantics": {
+        "square_carriers": "Three identical 64 x 64 x 2 mm square plates with 3 mm corners, four fixed FC bores and 16 symmetric slots. Plain 12 x 12 mm riser raises plate underside from 11.4 to 13.4 mm and support to 15.4 mm; rail shoe/clamp design is retained.",
+        "raised_support_reservations": "Battery and FC bodies move +2 mm Z; their maximum-volume/wiring/XT30/capacitor reservations follow the raised support datum. Component sizes are not reselected.",
+        "navigation_and_radio": "P-AS and its verified carrier-local axes move -2.2 mm local Y and +2 mm Z, placing the two published board-relative holes onto lower 23 mm slot endpoints. Mini radio and both connector reserves move from (-15,28,10.4) to (0,-26,12.4) mm in the carrier, with orientation preserved.",
+        "optical": "Broad two-leg tower and roll bracket become one 8 x 16 mm foot, offset 1 mm inboard, and short upright with pivot at (2,2,22) mm. The group moves from (0,0,45.4) to (27,18,15.4) mm on the same battery host. The sensor tray and bought sensor local BReps are unchanged; pitch and descendants are reparented directly to OpticalFlowModule. One manual Y axis remains with +/-20 degree limits.",
+        "motor_wiring": "Only the two planning phase-lead reserve BReps change within propulsion: the intermediate route point rises from Z40 to Z42 mm, following FC height. These are clearance allowances, not physical wire validation."
+      },
+      "accepted_added_shapes": [
+        "OpticalFootBolt0",
+        "OpticalFootBolt1",
+        "OpticalFootNut0",
+        "OpticalFootNut1"
+      ],
+      "accepted_removed_shapes": [
+        "OpticalRollBolt",
+        "OpticalRollBracket",
+        "OpticalRollNut",
+        "OpticalStackFootBolt0",
+        "OpticalStackFootBolt1",
+        "OpticalStackFootNut0",
+        "OpticalStackFootNut1"
+      ],
+      "accepted_native_bookkeeping": "FreeCAD auto-numbered Origin/axis/plane objects and regenerated Uid values change after deleting OpticalRollStage; no physical object is lost through these numbering changes.",
+      "inventory": {
+        "old_shapes": 116,
+        "new_shapes": 113,
+        "old_printed_parts": 13,
+        "new_printed_parts": 12,
+        "old_hardware_parts": 60,
+        "new_hardware_parts": 58,
+        "meaning": "Remove one printed roll bracket and one M2 screw/nut pair. Four retained foot fasteners are renamed OpticalFootBolt/Nut0/1 with the same SKUs."
+      },
+      "native_controls": {
+        "case_count": 27,
+        "passed": true,
+        "expression_delta": "Only OpticalRollStage expression is removed; every other saved expression is exactly unchanged. Old AY controls are not judged by the incompatible BB one-axis validator."
+      },
+      "unchanged_critical_shapes": [
+        "ContinuousRail",
+        "PortDriverGear",
+        "PortHornGearAdapter",
+        "PortHornGearClampFarBolt",
+        "PortHornGearClampNearBolt",
+        "PortInputShaft",
+        "PortInputShaftClampBolt",
+        "PortInputShaftClampNut",
+        "PortMotor",
+        "PortMotorCarrier",
+        "PortOutputBearingNegative",
+        "PortOutputBearingPositive",
+        "PortOutputClampNegativeBolt",
+        "PortOutputClampNegativeNut",
+        "PortOutputClampPositiveBolt",
+        "PortOutputClampPositiveNut",
+        "PortOutputGear",
+        "PortOutputShaftNegative",
+        "PortOutputShaftPositive",
+        "PortPropellerDisk",
+        "PortServo",
+        "PortServoEarLowerBolt",
+        "PortServoEarLowerNut",
+        "PortServoEarUpperBolt",
+        "PortServoEarUpperNut",
+        "PortServoHorn",
+        "PortShaft",
+        "PortSweepBound",
+        "PropulsionFixedFrame",
+        "ServoBridgePortBolt",
+        "ServoBridgePortNut",
+        "ServoBridgeStarboardBolt",
+        "ServoBridgeStarboardNut",
+        "ServoDriveBridge",
+        "StarboardDriverGear",
+        "StarboardHornGearAdapter",
+        "StarboardHornGearClampFarBolt",
+        "StarboardHornGearClampNearBolt",
+        "StarboardInputShaft",
+        "StarboardInputShaftClampBolt",
+        "StarboardInputShaftClampNut",
+        "StarboardMotor",
+        "StarboardMotorCarrier",
+        "StarboardOutputBearingNegative",
+        "StarboardOutputBearingPositive",
+        "StarboardOutputClampNegativeBolt",
+        "StarboardOutputClampNegativeNut",
+        "StarboardOutputClampPositiveBolt",
+        "StarboardOutputClampPositiveNut",
+        "StarboardOutputGear",
+        "StarboardOutputShaftNegative",
+        "StarboardOutputShaftPositive",
+        "StarboardPropellerDisk",
+        "StarboardServo",
+        "StarboardServoEarLowerBolt",
+        "StarboardServoEarLowerNut",
+        "StarboardServoEarUpperBolt",
+        "StarboardServoEarUpperNut",
+        "StarboardServoHorn",
+        "StarboardShaft",
+        "StarboardSweepBound"
+      ],
+      "qualification": "Saved fit-prototype status remains production_released=false. The transition does not establish print strength, creep, fastener bearing, adhesive retention, electrical operation or flight qualification. Optical and optional-power/nav combinations remain explicitly permitted/rejected by their separate screens, not universally compatible.",
+      "visual_review": {
+        "files": [
+          "/tmp/bb-final-candidate/gondola_electronics.png",
+          "/tmp/bb-final-candidate/gondola_optical_fc_stack.png",
+          "/tmp/bb-final-candidate/gondola_optical_stack.png"
+        ],
+        "findings": "Square outline and symmetric slot pattern are visible; the small single upright optical support uses one corner slot without a broad tower. Both battery and FC illustrations match the intended compact form. Visual inspection is supplementary to exact native checks."
+      },
+      "additional_material_issues": []
+    },
+    "optional_power_review": {
+      "revision": "BB",
+      "reviewer": "square_plate_review",
+      "scope": "Independent semantic review of saved AY-to-BB optional-power native transition; reviewer did not author optional-power implementation.",
+      "accepted_optional_transition": true,
+      "blocking_findings": [],
+      "capture_path": "/tmp/bb-transition-capture.json",
+      "capture_sha256": "ce24c28cd50ed8d9dcfb6758424383375eb4ca074ccbb9d9a73bb169894c8c07",
+      "capture_files": {
+        "old": "/tmp/bb-before-change-ay-build/gondola_power_options.FCStd",
+        "new": "/tmp/bb-final-candidate/gondola_power_options.FCStd",
+        "sha256": {
+          "/tmp/bb-before-change-ay-build/gondola_power_options.FCStd": "ad244e2da1c6361691b748942cfaa428ed376e8558a2d1649df9c2ed64700950",
+          "/tmp/bb-final-candidate/gondola_power_options.FCStd": "31ba98b0dbf1ec65a4f93f16e16f8a55ec9c7ddd61b4b2f37a882c9458a74b3c"
+        }
+      },
+      "independent_probe": "/tmp/square_power_transition_review.json",
+      "independent_probe_sha256": "4309707aa877c303b1c375468630ae3b7ed43e272f0118987f050f8cbaa304b0",
+      "accepted_change_groups": [
+        {
+          "group": "Optional platform local BRep",
+          "objects": [
+            "PowerPlatform"
+          ],
+          "reason": "54x74 rectangular template becomes the D4-symmetric 64x64 square with four FC bores, four 16-23 M2 diagonals, four 30.5 M3 arcs, eight outer M2 slots. Integral 32 mm portal remains one solid. Feet move to common opposed slot clamps with inboard relief; no separate carrier clamp bores. Native print bounds change to64x64x35. Volume falls from8956.677802 to8862.209817 mm3."
+        },
+        {
+          "group": "Optional fastener local placements",
+          "objects": [
+            "PowerFootBolt0",
+            "PowerFootBolt1",
+            "PowerFootNut0",
+            "PowerFootNut1"
+          ],
+          "reason": "Axes move from +/-[22.5,28.5] to +/-[27,23] for common outer slots; z and purchased screw/nut geometry remain unchanged. Still two M2x8 and two hex nuts."
+        },
+        {
+          "group": "Optional world datum and dependent origins",
+          "objects": [
+            "Origin",
+            "Origin001",
+            "PowerFootBolt0",
+            "PowerFootBolt1",
+            "PowerFootNut0",
+            "PowerFootNut1",
+            "PowerModule0",
+            "PowerModule0NegativeXReserve",
+            "PowerModule0TopReserve",
+            "PowerModule1",
+            "PowerModule1NegativeXReserve",
+            "PowerModule1PositiveXReserve",
+            "PowerModule1TopReserve",
+            "PowerOptionModule",
+            "PowerPlatform",
+            "XY_Plane",
+            "XZ_Plane",
+            "X_Axis",
+            "YZ_Plane",
+            "Y_Axis",
+            "Z_Axis"
+          ],
+          "reason": "PowerOptionModule remains accessory-hosted atX=-158,Y=-0.1 andRz180; Z rises45.4 to47.4 with common host support rise13.4 to15.4. Its children/origin geometry follow this +2 mm translation. No regulator or connector-envelope local shape changes."
+        },
+        {
+          "group": "Mirrored main-assembly context shape or placement changes",
+          "objects": [
+            "Context_AccessoryMount",
+            "Context_BatteryMount",
+            "Context_CapacitorServiceReserve",
+            "Context_ElectronicsMount",
+            "Context_FCWiringClearanceReserve",
+            "Context_MTF02PConnectorReserve",
+            "Context_MTF02POpticalClearanceReserve",
+            "Context_MaximumBatteryEnvelope",
+            "Context_ModuleBatteryEnvelope",
+            "Context_ModuleFCEnvelope",
+            "Context_ModuleMTF02PEnvelope",
+            "Context_ModulePASEnvelope",
+            "Context_ModuleRadioEnvelope",
+            "Context_OpticalMountBase",
+            "Context_OpticalPitchBolt",
+            "Context_OpticalPitchNut",
+            "Context_OpticalSensorTray",
+            "Context_PASConnectorReserve",
+            "Context_PortPhaseLeadLoopReserve",
+            "Context_RadioNegativeXConnectorReserve",
+            "Context_RadioPositiveXConnectorReserve",
+            "Context_StarboardPhaseLeadLoopReserve",
+            "Context_XT30ServiceReserve"
+          ],
+          "native_pose_objects": [
+            "Context_MTF02PConnectorReserve",
+            "Context_MTF02POpticalClearanceReserve",
+            "Context_ModuleBatteryEnvelope",
+            "Context_ModuleFCEnvelope",
+            "Context_ModuleMTF02PEnvelope",
+            "Context_ModuleRadioEnvelope",
+            "Context_OpticalMountBase",
+            "Context_OpticalPitchBolt",
+            "Context_OpticalPitchNut",
+            "Context_OpticalSensorTray",
+            "Context_RadioNegativeXConnectorReserve",
+            "Context_RadioPositiveXConnectorReserve"
+          ],
+          "reason": "Context captures square/riser carrier changes, carrier equipment and associated reserve +2 mm height, P-AS datum Y=-2.2, radio moved to opposite rail-key side, and phase-lead bounds updated for FC rise. Compact one-axis optical placement replaces the high two-axis tower. Rail/propulsion/servo and unrelated context remain unchanged. These are main-assembly mirrors, not added optional BOM."
+        },
+        {
+          "group": "Optical context inventory",
+          "added": [
+            "Context_OpticalFootBolt0",
+            "Context_OpticalFootBolt1",
+            "Context_OpticalFootNut0",
+            "Context_OpticalFootNut1"
+          ],
+          "removed": [
+            "Context_OpticalRollBolt",
+            "Context_OpticalRollBracket",
+            "Context_OpticalRollNut",
+            "Context_OpticalStackFootBolt0",
+            "Context_OpticalStackFootBolt1",
+            "Context_OpticalStackFootNut0",
+            "Context_OpticalStackFootNut1"
+          ],
+          "reason": "New compact-foot bolts/nuts replace renamed old tower-foot hardware; roll bracket/bolt/nut removed. Four context objects added, seven removed; all optional physical power objects retained."
+        },
+        {
+          "group": "Saved semantic metadata",
+          "accepted_keys": {
+            "PowerOptionModule": [
+              "PowerPlatformContract",
+              "SourceFingerprint"
+            ],
+            "PowerPlatform": [
+              "PrintPlacement"
+            ],
+            "AssemblyContext": [
+              "Group"
+            ]
+          },
+          "reason": "Platform contract records new square/common-slot and slotted-foot registration bounds, keeps baseline/optional and optical-host separation explicit. PrintPlacement recentres 64 square from[27,37,3] to[32,32,3], keeping X180 print rotation. SourceFingerprint changes with current source; AssemblyContext links match declared optical inventory migration. Power plan, branch voltages, regulator quantities, terminal metadata and role/procurement metadata unchanged for surviving optional parts."
+        },
+        {
+          "group": "Generated native identity",
+          "accepted_keys": {
+            "PowerOptionModule": [
+              "Uid"
+            ],
+            "AssemblyContext": [
+              "Uid"
+            ]
+          },
+          "reason": "Fresh build-generated UIDs; no design semantics. Added/removed optical-context metadata follows exact inventory migration, without unrelated metadata changes."
+        }
+      ],
+      "independent_saved_geometry_checks": {
+        "platform_one_valid_solid": true,
+        "deck_dimensions_mm": [
+          64,
+          64,
+          2
+        ],
+        "deck_volume_mm3": 7081.0474770634755,
+        "deck_quarter_turn_and_mirror_difference_mm3": {
+          "quarter": 0.0,
+          "mirror_x": 0.0,
+          "mirror_y": 0.0
+        },
+        "four_fc_bores_through_fused_beam_clear": true,
+        "common_slot_paths_independently_sampled_clear": 80,
+        "nominal_supported_foot_area_each_mm2": [
+          80.08443281542252,
+          80.08443281542968
+        ],
+        "foot_contact_scope": "~80.084 mm2 per foot is the actual material overlap at nominal saved registration, not its ~99.191 mm2 whole face. Carrier openings account for the difference. This does not prove complete face contact, all registration poses, clamping strength or PA12 creep.",
+        "platform_vs_two_modules_and_four_fasteners_no_positive_intersection": true,
+        "two_module_body_gap_mm": 3.5,
+        "baseline_optional_inventory_absent": true,
+        "selected_optional_plan": {
+          "PowerPlan": "TETHER_BEC_SVPDB",
+          "StackHostName": "AccessoryEquipmentModule"
+        },
+        "expressions_unchanged": true,
+        "unsupported_saved_properties": [],
+        "saved_files_unchanged": true
+      },
+      "release_boundary": "Semantic transition accepted, not physical qualification. Final integrated optional-power screen must pass against these hashes and keep rejected hosts visible. Existing head-bearing, printed fit, adhesive, cooling/current, tether routing and remote antenna limitations remain. Main CAD transition is independently reviewed by the power agent.",
+      "documentation_review": {
+        "files": [
+          "README.md",
+          "HANDOFF.md",
+          "references/square_mount_review.md"
+        ],
+        "result": "Temporary compatibility-pending language removed; direct MG-F10-A uses battery optical host, P-AS/MG-A01 permit both, remote antenna remains unmodeled. Common slot array is project-specific and M3 arcs do not imply selected M2-head suitability. Local links checked."
+      },
+      "compatibility_regression": {
+        "log": "/tmp/square_equipment_final_tests.log",
+        "tests": 6,
+        "passed": 6,
+        "baseline_file_override": "/tmp/bb-final-candidate/gondola.FCStd",
+        "override_scope": "In-memory development runner only; fixture not modified. Includes direct-helix battery pass / FC fail, retained failed rows and unknown-profile fail-closed behavior."
+      }
+    },
+    "metadata_correction_closure": {
+      "passed": true,
+      "source_fingerprint": "4bd1dbeb1f40be9e6784e4107c6648f361d317871bbd491370cbaa6696207033",
+      "capture_sha256": "90ff408c18beb3203b9ba2a4b94d043d5e788ee2c4224a6d41ecf2db8c096352",
+      "geometry_placement_hierarchy_registry_expressions_unchanged": true,
+      "main_release_status_exact_two_axis_to_one_axis_wording_only": true,
+      "MTF01P_connection_limit_source_corrected": true,
+      "MTF01P_not_selected_in_saved_default": "This source wording correction has no corresponding saved default MTF02P field; alternative generation uses corrected source.",
+      "new_main_sha256": "620b4f04bae158ac4032d533064020cbe5bae72730e8401016c27606a27d4467",
+      "new_optional_sha256": "122efe5ed9935be882997b12b21e03ac99605701851c0d6a57542057f25c80a0"
+    },
+    "radio_correction_review": {
+      "scope": "Limited semantic acceptance of the previous BB native fixture to radio-clearance candidate. This is not a new broad approval of all BB design decisions or physical qualification.",
+      "reviewer": "square_power_interface subagent",
+      "authorship_disclosure": "Reviewer authored optional-power portal and validation code earlier in this task. This run independently checks the other agent's radio relocation against the saved optional context, and independently reviews the limited main/optional native delta. It is not an independent-from-author audit of the entire power implementation.",
+      "capture": "/tmp/bb-radio-transition-capture.json",
+      "source_fingerprint": "d76fc14fed6e6efbb7e429a28226680969d2642b56482f00bbb82f8bace24527",
+      "old_main": "/tmp/bb-release-candidate/gondola.FCStd",
+      "new_main": "/tmp/bb-radio-reviewed-candidate/gondola.FCStd",
+      "file_hashes": {
+        "main": {
+          "/tmp/bb-release-candidate/gondola.FCStd": "620b4f04bae158ac4032d533064020cbe5bae72730e8401016c27606a27d4467",
+          "/tmp/bb-radio-candidate/gondola.FCStd": "b79aff82ba5bdb2c9ce8d262127b9ba6474bb36c3189c447038c6841fee7b5b1"
+        },
+        "optional": {
+          "/tmp/bb-release-candidate/gondola_power_options.FCStd": "122efe5ed9935be882997b12b21e03ac99605701851c0d6a57542057f25c80a0",
+          "/tmp/bb-radio-candidate/gondola_power_options.FCStd": "69fb80fcead5881a47d60525f116f6ea0ea0ea3c5b968ce94ab393f51ba14812"
+        }
+      },
+      "checks": {
+        "source_unchanged_during_capture": true,
+        "same_source_in_capture_and_power_audit": true,
+        "full_saved_optional_power_audit_passed": true,
+        "main_shape_inventory_unchanged": true,
+        "main_native_inventory_unchanged": true,
+        "main_only_accepted_shape_deltas": true,
+        "main_all_local_brep_unchanged": true,
+        "main_only_radio_placement_changes": true,
+        "main_expressions_unchanged": true,
+        "main_all_serialized_properties_captured": true,
+        "main_read_only_native_files": true,
+        "main_native_hashes_still_match": true,
+        "main_no_unreviewed_property_deltas": true,
+        "optional_shape_inventory_unchanged": true,
+        "optional_native_inventory_unchanged": true,
+        "optional_only_accepted_shape_deltas": true,
+        "optional_all_local_brep_unchanged": true,
+        "optional_only_radio_placement_changes": true,
+        "optional_expressions_unchanged": true,
+        "optional_all_serialized_properties_captured": true,
+        "optional_read_only_native_files": true,
+        "optional_native_hashes_still_match": true,
+        "optional_no_unreviewed_property_deltas": true,
+        "only_accessory_adhesive_and_support_contract_changed": true,
+        "native_registry_unchanged": true,
+        "all_27_native_control_cases_passed": true
+      },
+      "accepted_change_groups": [
+        {
+          "group": "Radio rigid placement only",
+          "objects": [
+            "ModuleRadioEnvelope",
+            "RadioNegativeXConnectorReserve",
+            "RadioPositiveXConnectorReserve"
+          ],
+          "old_local_base_mm": [
+            0,
+            -26,
+            12.4
+          ],
+          "new_local_base_mm": [
+            26,
+            -11,
+            12.4
+          ],
+          "added_local_yaw_deg": 90,
+          "existing_flip_about_x_deg": 180,
+          "effect": "Moves the underside Mini and both complete end-service reserves together. Radio body dimensions, reserve dimensions, one-mm insulating allowance and all their local BReps remain unchanged."
+        },
+        {
+          "group": "Radio adhesive allocation and carrier metadata",
+          "object": "AccessoryMount",
+          "fields": [
+            "continuous_adhesive_pads",
+            "support_path_scope"
+          ],
+          "old_patch": {
+            "centre_xy_mm": [
+              0,
+              -26
+            ],
+            "size_mm": [
+              22,
+              10
+            ],
+            "area_mm2": 220
+          },
+          "new_patch": {
+            "centre_xy_mm": [
+              26,
+              -5
+            ],
+            "size_mm": [
+              10,
+              12
+            ],
+            "area_mm2": 120
+          },
+          "effect": "Uses an offset continuous underside patch. No plate, slot, shoe, arm or printed geometry changes. Available nominal contact is explicitly not a qualified minimum holding area."
+        },
+        {
+          "group": "Saved optional context update",
+          "objects": [
+            "Context_ModuleRadioEnvelope",
+            "Context_RadioNegativeXConnectorReserve",
+            "Context_RadioPositiveXConnectorReserve"
+          ],
+          "effect": "The same three radio context solids move exactly with the main arrangement. All optional platform, purchased hardware, regulator and terminal-reserve local/world geometry remain unchanged."
+        },
+        {
+          "group": "Rebuild/display bookkeeping",
+          "effect": "New source fingerprints, regenerated Uids, preview-versus-build Visibility differences, and BatteryEquipmentModule child-order permutation with identical members. All parent relationships, expressions and registry contents are unchanged."
+        }
+      ],
+      "preserved_geometry": "Every main and optional local BRep is identical within the 1e-5 mm/mm3 comparison tolerances. Main has 113 and optional has 122 shapes before/after. Only the three radio rigid world placements differ. All rail, propulsion, optical and carrier geometry is unchanged.",
+      "saved_optional_preflight": {
+        "report": "/tmp/bb-radio-candidate/gondola_power_validation.json",
+        "elapsed_seconds": 44.761,
+        "passed": true,
+        "main_and_optional_artifacts_read_only": true,
+        "source_unchanged": true,
+        "default_optical_host": "BatteryEquipmentModule",
+        "default_permitted_hosts": {
+          "TETHER_BEC_SVPDB": [
+            "AccessoryEquipmentModule"
+          ],
+          "BATTERY_SVPDB": [
+            "AccessoryEquipmentModule"
+          ]
+        },
+        "illustrated_configuration_clear": true,
+        "alternate_optical_hosts": [
+          {
+            "optical_host": "ElectronicsEquipmentModule",
+            "permitted_hosts_by_plan": {
+              "TETHER_BEC_SVPDB": [
+                "BatteryEquipmentModule"
+              ],
+              "BATTERY_SVPDB": [
+                "BatteryEquipmentModule"
+              ]
+            },
+            "passed": true
+          }
+        ],
+        "coverage": "Complete official audit: saved native selection/contracts/shapes/inventory/context, manifest, STEP, STL/native mesh, plate openings, six ordinary configuration rows and sixteen navigation rows per optical host; alternate optical host included. Explicitly rejected combinations remain rejected."
+      },
+      "inherited_issue_outside_radio_delta": {
+        "field": "MountContract.future_fastener_scope",
+        "issue": "Text still says deck underside is 3 mm above rail head and 2 mm head leaves 1 mm. Current numerical fields and geometry are 13.4-8.4=5 mm, leaving 3 mm nominal; this pre-existed the radio-only delta. Root has been notified for metadata correction.",
+        "blocking_for_radio_geometry_acceptance": false,
+        "resolved_by_final_metadata_candidate": true
+      },
+      "acceptance": "The two captured transitions form an exact hash-linked chain from the prior BB fixture to this approved main native SHA. This approves replacing the geometry comparison fixture for the explicit radio relocation and corrected carrier text. It does not replace whole-assembly service validation, physical adhesion/print-fit/load tests or flight qualification.",
+      "radio_delta_checks_passed": true,
+      "passed": true,
+      "review_status": "Approved: limited radio relocation plus exact metadata correction, with complete saved optional-power preflight.",
+      "initial_radio_source_fingerprint": "e1b8bf5f3637b049dfbdf531f30bc831e1603412fbb8ea518ef6b048e5b6ff27",
+      "final_metadata_review": {
+        "capture": "/tmp/bb-radio-metadata-capture.json",
+        "checks": {
+          "main_geometry_identical": true,
+          "main_native_placement_hierarchy_unchanged": true,
+          "main_shape_inventory_unchanged": true,
+          "main_expressions_unchanged": true,
+          "main_all_properties_captured": true,
+          "main_read_only": true,
+          "main_hashes_still_exact": true,
+          "optional_geometry_identical": true,
+          "optional_native_placement_hierarchy_unchanged": true,
+          "optional_shape_inventory_unchanged": true,
+          "optional_expressions_unchanged": true,
+          "optional_all_properties_captured": true,
+          "optional_read_only": true,
+          "optional_hashes_still_exact": true,
+          "exact_expected_text_deltas": true,
+          "main_registry_unchanged": true,
+          "native_control_cases_passed": true,
+          "source_unchanged": true,
+          "final_full_optional_audit_passed": true,
+          "final_source_matches_power_audit": true,
+          "chain_joins_same_intermediate_files": true,
+          "final_main_power_audit_hash_matches": true
+        },
+        "accepted_text_changes": [
+          {
+            "object": "AccessoryMount",
+            "fields": [
+              "future_fastener_scope"
+            ],
+            "new_text": {
+              "future_fastener_scope": "The deck_underside_to_rail_head_mm value describes vertical planning clearance only; a chosen screw head consumes part of it. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; spare slot fasteners are not installed BOM items."
+            }
+          },
+          {
+            "object": "BatteryMount",
+            "fields": [
+              "future_fastener_scope",
+              "support_path_scope"
+            ],
+            "new_text": {
+              "future_fastener_scope": "The deck_underside_to_rail_head_mm value describes vertical planning clearance only; a chosen screw head consumes part of it. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; spare slot fasteners are not installed BOM items.",
+              "support_path_scope": "Universal carrier in battery role. Three declared continuous adhesive regions remain between the device bores and mounting slots. The common outer slots support separately screened optical or power feet, as on the other carriers."
+            }
+          },
+          {
+            "object": "ElectronicsMount",
+            "fields": [
+              "future_fastener_scope"
+            ],
+            "new_text": {
+              "future_fastener_scope": "The deck_underside_to_rail_head_mm value describes vertical planning clearance only; a chosen screw head consumes part of it. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; spare slot fasteners are not installed BOM items."
+            }
+          }
+        ],
+        "file_hashes": {
+          "main": {
+            "/tmp/bb-radio-candidate/gondola.FCStd": "b79aff82ba5bdb2c9ce8d262127b9ba6474bb36c3189c447038c6841fee7b5b1",
+            "/tmp/bb-radio-reviewed-candidate/gondola.FCStd": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2"
+          },
+          "optional": {
+            "/tmp/bb-radio-candidate/gondola_power_options.FCStd": "69fb80fcead5881a47d60525f116f6ea0ea0ea3c5b968ce94ab393f51ba14812",
+            "/tmp/bb-radio-reviewed-candidate/gondola_power_options.FCStd": "4021ddb5b86d90d3f174878aff79092b6bd7802b4158606473e37fa592e54904"
+          }
+        },
+        "scope": "Only the three carrier clearance strings and Battery carrier support wording change; source fingerprints and regenerated Uids follow rebuild. All main/optional geometry and placements are identical."
+      },
+      "final_saved_optional_preflight": {
+        "report": "/tmp/bb-radio-reviewed-candidate/gondola_power_validation.json",
+        "elapsed_seconds": 43.873,
+        "passed": true,
+        "read_only_artifacts": true,
+        "source_unchanged": true,
+        "default_permitted_hosts_by_plan": {
+          "TETHER_BEC_SVPDB": [
+            "AccessoryEquipmentModule"
+          ],
+          "BATTERY_SVPDB": [
+            "AccessoryEquipmentModule"
+          ]
+        },
+        "alternate_optical_hosts": [
+          {
+            "optical_host": "ElectronicsEquipmentModule",
+            "passed": true,
+            "permitted_hosts_by_plan": {
+              "TETHER_BEC_SVPDB": [
+                "BatteryEquipmentModule"
+              ],
+              "BATTERY_SVPDB": [
+                "BatteryEquipmentModule"
+              ]
+            }
+          }
+        ]
+      },
+      "new_main_sha256": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2",
+      "approved": true
+    },
+    "scope": "Shape/placement/native-control and metadata transition reviewed before fixture promotion. Later two stale optical-axis strings were corrected with identical saved geometry/native hierarchy/controls; config pin then changes provenance only. A subsequent independently reviewed radio placement/adhesive correction clears reversed-clamp and optional-power service. Three stale planning descriptions were then corrected without changing geometry or native controls. Final exact-source pipeline follows."
+  },
+  "design": {
+    "shared_carrier_plate_mm": [
+      64,
+      64,
+      2
+    ],
+    "fixed_fc_bores": 4,
+    "mounting_slots": 16,
+    "pattern": "90-degree and X/Y mirror symmetry of plate and all openings; directional rail shoe/clamp.",
+    "small_square_pitch_range_mm": [
+      16,
+      23
+    ],
+    "fixed_fc_square_pitch_mm": 25.5,
+    "large_square_pitch_mm": 30.5,
+    "large_square_clocking_deg": [
+      -15,
+      15
+    ],
+    "optical_print_parts_before_after": [
+      3,
+      2
+    ],
+    "optical_manual_axes": 1,
+    "optical_pitch_range_deg": [
+      -20,
+      20
+    ],
+    "optical_fastener_pairs_before_after": [
+      4,
+      3
+    ],
+    "optical_print_volume_cm3_before_after": [
+      3.6226218927054434,
+      0.9441468923406905
+    ],
+    "installed_print_count": 12,
+    "modeled_hardware_count": 58,
+    "direct_MGF10A_helix_optical_host": "BatteryEquipmentModule only; FC blocked rows retained."
+  },
+  "verification": {
+    "native_test_count": 455,
+    "native_module_count": 47,
+    "native_skips": 0,
+    "exact_discovery_execution_match": true,
+    "full_suite_invocation_passed": false,
+    "all_current_test_cases_passed": true,
+    "corrected_full_module": {
+      "before_after_hashes_identical": true,
+      "discovered_test_ids": [
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+        ]
+      ],
+      "elapsed_seconds": 0.723,
+      "exact_discovery_execution_match": true,
+      "failed_modules": [],
+      "finished_test_ids": [
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+        ]
+      ],
+      "frozen_fixture_sha256": "ab35c4d780b660d4a9d520c4e478c38b5e0531089e0c0092dd4d4cff659521c2",
+      "frozen_source_fingerprint": "1eb228083b2c5f65b14e2cb1288844a4e9bd3a40e665f2ceb30705f095e710e1",
+      "full_suite_passed": false,
+      "modules": [
+        {
+          "elapsed_seconds": 0.71,
+          "evidence": {
+            "discovered_ids_unique": true,
+            "errors": 0,
+            "exact_discovery_execution_match": true,
+            "expected_failures": 0,
+            "expected_test_ids": [
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+            ],
+            "failures": 0,
+            "failures_and_errors": [],
+            "finished_test_ids": [
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+            ],
+            "folder": "tests",
+            "passed": true,
+            "pattern": "test_equipment_option_shapes.py",
+            "skipped": [],
+            "skips": 0,
+            "started_test_ids": [
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body",
+              "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+            ],
+            "tests": 5,
+            "unexpected_successes": 0
+          },
+          "log": "/tmp/bb-radio-corrected-native/tests__test_equipment_option_shapes.log",
+          "module": "tests/test_equipment_option_shapes.py",
+          "passed": true,
+          "result": "/tmp/bb-radio-corrected-native/tests__test_equipment_option_shapes.json",
+          "result_sha256": "bd2b3fe2d81243534d5981bb06346306c0d891883d42f9c877f80c2e823ba892",
+          "returncode": 0
+        }
+      ],
+      "plan": {
+        "full_discovered_module_files": [
+          "tests/test_propulsion.py",
+          "tests/test_assembly_hardware.py",
+          "tests/test_baseline_geometry.py",
+          "tests/test_battery_placement.py",
+          "tests/test_bearing_retention.py",
+          "tests/test_bundle.py",
+          "tests/test_drive_contract.py",
+          "tests/test_equipment_compatibility.py",
+          "tests/test_equipment_mount_shape.py",
+          "tests/test_equipment_option_shapes.py",
+          "tests/test_equipment_options.py",
+          "tests/test_export_integrity.py",
+          "tests/test_flight_controller_contract.py",
+          "tests/test_frame_roots.py",
+          "tests/test_freecad_runtime.py",
+          "tests/test_gui_entrypoints.py",
+          "tests/test_hardware_procurement.py",
+          "tests/test_horn_registration.py",
+          "tests/test_manufacturing_blank.py",
+          "tests/test_mass_budget.py",
+          "tests/test_mesh_identity.py",
+          "tests/test_module_layout.py",
+          "tests/test_motion_clearance.py",
+          "tests/test_mounting_slots.py",
+          "tests/test_native_interfaces.py",
+          "tests/test_optical_interface.py",
+          "tests/test_optical_mount.py",
+          "tests/test_optical_profiles.py",
+          "tests/test_optical_validation.py",
+          "tests/test_power_export.py",
+          "tests/test_power_mount.py",
+          "tests/test_power_options.py",
+          "tests/test_preview.py",
+          "tests/test_propulsion_wiring.py",
+          "tests/test_rail_contact.py",
+          "tests/test_rail_fasteners.py",
+          "tests/test_relative_motion.py",
+          "tests/test_repository_integrity.py",
+          "tests/test_rotation_envelope.py",
+          "tests/test_servo_bridge_shape.py",
+          "tests/test_servo_coupling.py",
+          "tests/test_servo_horn_profiles.py",
+          "tests/test_step_identity.py",
+          "tests/test_translation_sweep.py",
+          "tests/test_validation_evidence.py",
+          "tests/test_wiring_reserves.py",
+          "tools/blender_review/test_export_cad.py"
+        ],
+        "full_suite_requested": false,
+        "launch_requested": true,
+        "max_workers": 1,
+        "module_worker": "/tmp/ba_final_native_one.py",
+        "repository": "/home/h/cad/airship-gondola-cad",
+        "reuse_policy": "No diagnostic or previous-run results. Each selected file executes its full native module in an isolated process.",
+        "runtime_wrapper": "/tmp/run_gondola_native.py",
+        "selected_module_files": [
+          "tests/test_equipment_option_shapes.py"
+        ],
+        "skip_policy": "Any skip, expected failure, missing test, repeated ID or incomplete process fails the module"
+      },
+      "selected_modules_covered_exactly": true,
+      "selected_modules_passed": true,
+      "skip_count": 0,
+      "started_test_ids": [
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_direct_helix_bounds_all_body_positions_without_adding_another_device"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_connector_lane_covers_short_edge_and_follows_device_height"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_radio_lanes_start_at_selected_body_ends_without_entering_body"
+        ],
+        [
+          "tests/test_equipment_option_shapes.py",
+          "test_equipment_option_shapes.EquipmentOptionShapeTests.test_source_selected_build_changes_slot_identity_without_duplicate_devices"
+        ]
+      ],
+      "test_count": 5
+    },
+    "coverage_note": "The frozen full run executed every discovered case without skips. Its only failure was an old carrier-axis assumption in the radio connector test. Only that test file changed: the check now uses device coordinates, preserves contact/nonpenetration checks, and checks both width boundaries and connector travel. Its complete five-case module was rerun successfully. Production source, fixture and every other test remain byte-identical. This is combined coverage, not a second successful whole-suite invocation.",
+    "before_after_hashes_identical": true,
+    "pipeline": [
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "wall_seconds": 17.861,
+        "source_unchanged": true,
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "gondola",
+          "--output-dir",
+          "/home/h/cad/airship-gondola-cad/build",
+          "build"
+        ],
+        "log": "/tmp/bb-radio-final-pipeline/build.log",
+        "log_sha256": "63dce286e03381120117eb7a0bec17debdb8484bc49673b78ba94c077ebbf3b1"
+      },
+      {
+        "stage": "preview",
+        "exit_code": 0,
+        "wall_seconds": 47.464,
+        "source_unchanged": true,
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "gondola",
+          "--output-dir",
+          "/home/h/cad/airship-gondola-cad/build",
+          "preview"
+        ],
+        "log": "/tmp/bb-radio-final-pipeline/preview.log",
+        "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
+      },
+      {
+        "stage": "compare",
+        "exit_code": 0,
+        "wall_seconds": 13.302,
+        "source_unchanged": true,
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "gondola",
+          "--output-dir",
+          "/home/h/cad/airship-gondola-cad/build",
+          "compare"
+        ],
+        "log": "/tmp/bb-radio-final-pipeline/compare.log",
+        "log_sha256": "19c02b90a8ab00580933a970a7508be6aedd93f7e1d4cd36c317bc562d3034fe"
+      },
+      {
+        "stage": "validate",
+        "exit_code": 0,
+        "wall_seconds": 935.284,
+        "source_unchanged": true,
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "gondola",
+          "--output-dir",
+          "/home/h/cad/airship-gondola-cad/build",
+          "validate"
+        ],
+        "log": "/tmp/bb-radio-resumed-pipeline/validate.log",
+        "log_sha256": "645889e60c5f4126ac12bc7298146354f63a70509523680f4af7f9d27d700a70"
+      },
+      {
+        "stage": "bundle",
+        "exit_code": 0,
+        "wall_seconds": 0.236,
+        "source_unchanged": true,
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "gondola",
+          "--output-dir",
+          "/home/h/cad/airship-gondola-cad/build",
+          "bundle"
+        ],
+        "log": "/tmp/bb-radio-resumed-pipeline/bundle.log",
+        "log_sha256": "9ce40ec1c4c4830076f62b9540f2c8871ba5f9ed0a437ea86e0a4d9b07f020ec"
+      }
+    ],
+    "artifact_sha256": {
+      "gondola.FCStd": "3cc0287968b7b2c6771a9ce1396069b86c977dec9dc85b1a901c380044599913",
+      "gondola_assembly_reference.step": "94a49b99c05833772fbcf9884af6ec42c71ed9f727130bcc57620952d5d11057",
+      "gondola_attachment_detail.FCStd": "a26530be71c58602fc8bad4ace24752da3937d7bb478883c94c21657624db93f",
+      "gondola_attachment_detail.png": "44f8ed252a85aade21ea4c6b626bbaa366f30c0f7b3607785a7dcbc5ca47472c",
+      "gondola_attachment_opposite.FCStd": "0d167ed839ffb5e6fc72c8716fd28091d86a8e5ca35ef07b56b9673dfe7aeb7c",
+      "gondola_attachment_opposite.png": "17fab0b45a194d9872b6d867c550d8182ae250e8d8e8f95ba83d0229523aad79",
+      "gondola_attachment_section.png": "55f0df550657ad6f35d14e2f4853525c946f519deec04a0a83c8e8405c7b0de0",
+      "gondola_baseline_validation.json": "459cf691d0ca3a2282f5341e41a2abd7560e889ef2e3a8340a62cb0c1c0dca2a",
+      "gondola_bb_view.png": "07ae70abe8c665b37aafc836a93352b99ade314733c3ec15cde137079fd7451a",
+      "gondola_electronics.png": "179c9ba3ec4743387f80ee53dabea218b700dd6154338dd8fc65298be6561063",
+      "gondola_equipment_validation.json": "2329750159d53dc1ef15e5cac1851d0bba492e93c96adb69ccbea62b4c499459",
+      "gondola_hardware_bom.json": "9545682ccc3b2c810ba5190548c036fa999aa64faef22c08b9e0a9761b1861c8",
+      "gondola_metrics.json": "cf4dae110139e9d7cc08627e0b9e85717d732c31df5a4a0fd5788ee81aa3c267",
+      "gondola_optical_fc_stack.png": "cd9904f539a24a152302388ebc7a7643c1bed3b18fcbc6373ac9934a06037a01",
+      "gondola_optical_stack.png": "dee3374992212e9e001f106db9fa9da66305c435416237d2ee782f73069bf399",
+      "gondola_power_options.FCStd": "3f13da421b2e8ed8c98523802bd2350b2a8124b87d89f9c91e8d362119a39d9e",
+      "gondola_power_options.json": "00d61b50ec8333c122cebdd29c9799841c607c44f983cd0e16fe3543bd3fb1f1",
+      "gondola_power_options.png": "32089640d0a708e26e47d53b1af8dbe920968d5bcba02ff2cb387c8c48aeea0c",
+      "gondola_power_validation.json": "3bca7efe926f7374155e2be7520adb1be900e9269ad49332ca93ff74e1b1b86f",
+      "gondola_preview.png": "593fe8c64108efc247783ce2280070b4427f015fa9ae8426a0c84f0186e51108",
+      "gondola_print_parts/bearing_seat_fit_sample.step": "55cd56ee465cc27de029e7000cf5d62c2580ea564b6ecb0329535d79ca3e1507",
+      "gondola_print_parts/bearing_seat_fit_sample.stl": "1a0211d2afdb2b4c7eda84eb7a78859b38f5e8d2d16ae12465e9898182814b88",
+      "gondola_print_parts/continuous_rail.step": "b05ede93aec2bc7ced9914fe2a76d5909ad87f1a87aef428c71e5d7467e776da",
+      "gondola_print_parts/continuous_rail.stl": "c7348a3ad2b5992c54392c3a21e14ee71a2dc0a517cdef9df130c7b0ea0ef7fb",
+      "gondola_print_parts/factory_hole_horn_gear_adapter.step": "458efe3f2d11cb0a6ee9c653396314fdf372191afb35b875543672f503ea471f",
+      "gondola_print_parts/factory_hole_horn_gear_adapter.stl": "026764d6208de19354c402f147ebc0b67313a379a7263d27ebfc5f7814c4f471",
+      "gondola_print_parts/motor_carrier.step": "adcb372a41935734ed6bca98188a497962b5eb31635b95ca9637f618248af590",
+      "gondola_print_parts/motor_carrier.stl": "88548221d9a51b54f569beab2e6615c7952b0371160939093574e441f52a9f8c",
+      "gondola_print_parts/optical_mount_base.step": "f938612ee6d9168a134b3d138805e4d2bce5fb9af8301ea0b16fb5ec11dade3d",
+      "gondola_print_parts/optical_mount_base.stl": "0c665461437ef44af1f0f8fc3c7fb425ee63ce439f9ad68c48528f1bf44cb0a3",
+      "gondola_print_parts/optical_sensor_tray.step": "f86f31777db5e4ab989a7d8dfb34834f8ee1dfa77f27e21c853755e093ec7130",
+      "gondola_print_parts/optical_sensor_tray.stl": "2960696b63d241587497f520d17f6afa8e36bff1f089cc8a38425e6daf728289",
+      "gondola_print_parts/print_manifest.json": "777f8ee88d00b823eaeb8a8f19066c03b104d9683f1cf55e507bb4eaec819d35",
+      "gondola_print_parts/propulsion_fixed_frame.step": "89dea0e183df332074178115c8e408608ab2b0be18540a26543ddcb3b3cc435c",
+      "gondola_print_parts/propulsion_fixed_frame.stl": "81cc256af366e746a43c546e04c9c992b53f9fdbb923aa762f9f624f6a2ca77d",
+      "gondola_print_parts/rail_fit_sample.step": "986b7546dd5c625a44e3cd328d5dc9008198d872338bd9be703f9dcf64f90f55",
+      "gondola_print_parts/rail_fit_sample.stl": "1695e6aae8b581d99f16698d795905b6bace6430da482d0725f20f3f0c46b7fb",
+      "gondola_print_parts/servo_drive_bridge48_t.step": "7949ac61999e84c10fe25185f79a8885c8b996c1c4cfd431b86db8eb41e77786",
+      "gondola_print_parts/servo_drive_bridge48_t.stl": "16d36b4d5366bc8cffeb1b259121df98052c0e4c32ba5ff01095df45c9524d06",
+      "gondola_print_parts/shoe_fit_sample.step": "8efcdb2a479047249bb4fd2aa6485c10910133efaf819250921bd88731a6e93b",
+      "gondola_print_parts/shoe_fit_sample.stl": "b73f73a9a208687ea23632412bad9fc376d38773b7304ed9d4193169d95cb662",
+      "gondola_print_parts/universal_equipment_carrier.step": "146d363295607540d92c07e03921da09b3beaada3955057786ccdfb7362ff01b",
+      "gondola_print_parts/universal_equipment_carrier.stl": "4caf97163a883451961629659750ac7ebd89b4bf573b488aac94e50e7d024283",
+      "gondola_print_parts.FCStd": "55fff46abf9d8b181d4908df2ccd2e9049d3e2c16e3f51dc6f39ccc44c8456cf",
+      "gondola_print_parts.png": "308bf04c6b0c1cf0d7353eb39d58d9e480cf30dfd2919a3400bacf900ff2c6e8",
+      "gondola_print_parts.zip": "71a7297000b6d6989364574166d9322ea4cc2b9d6cbd1f531f3dcd17a53bc278",
+      "gondola_printed_structure.png": "c44012d969d45d2884c02b76e9c7188ac45800ed775a1814b9bf760486ff1a93",
+      "gondola_printed_structure.step": "d287153dd79fcb66271eb2e9bfd6282236dbc2a3260a7580e72c2d9a383941a4",
+      "gondola_propulsion.png": "547baf2a981d069c814cf4f2b25f47fe322b5c5b59b8632c2c1af197216c17fe",
+      "gondola_propulsion_validation.json": "e9de3607e38a9389018cf30448cab9394f052ecb88eb6808186e7f30056ece77",
+      "gondola_rail.png": "df342e213edcc440a9d36f7e8bc91487d0f09057286fd9ab6d0967396483c771",
+      "gondola_rail_validation.json": "327a413e2fc4ff8cbc2e8f823557d54b6867f31feb91ea4d4f385f207a339fa6",
+      "gondola_top.png": "b42033dda90c2d49c983c7d7aa15e95c37894155a48dad7395e805a3f1b7266a",
+      "gondola_validation.json": "9f8fa95ec60cfdb9b5ab31d00f63d8c9c17c15ef5c9f4a11b664baf2f6bd43e8",
+      "gondola_wiring.png": "7acafe2fc6577d977e16b6a996dc9338a99802a0427ae547e4e48b22cd108af1",
+      "optional_power_mount.step": "3c2d1ea926b62263518d062af1094f1926174312986dafccc299eec0dce9df5a",
+      "optional_power_mount.stl": "7c3db9ee18914398068b388674af9da8b0da8523f1dc2e61a035511e97ef9d87",
+      "preview_state.json": "707cdca9e8ab49bf293a08bec61f21fae23d83d95882573399bce9d7e1ecd350"
+    },
+    "preview_images": {
+      "gondola_preview.png": "593fe8c64108efc247783ce2280070b4427f015fa9ae8426a0c84f0186e51108",
+      "gondola_top.png": "b42033dda90c2d49c983c7d7aa15e95c37894155a48dad7395e805a3f1b7266a",
+      "gondola_rail.png": "df342e213edcc440a9d36f7e8bc91487d0f09057286fd9ab6d0967396483c771",
+      "gondola_electronics.png": "179c9ba3ec4743387f80ee53dabea218b700dd6154338dd8fc65298be6561063",
+      "gondola_wiring.png": "7acafe2fc6577d977e16b6a996dc9338a99802a0427ae547e4e48b22cd108af1",
+      "gondola_optical_stack.png": "dee3374992212e9e001f106db9fa9da66305c435416237d2ee782f73069bf399",
+      "gondola_optical_fc_stack.png": "cd9904f539a24a152302388ebc7a7643c1bed3b18fcbc6373ac9934a06037a01",
+      "gondola_propulsion.png": "547baf2a981d069c814cf4f2b25f47fe322b5c5b59b8632c2c1af197216c17fe",
+      "gondola_printed_structure.png": "c44012d969d45d2884c02b76e9c7188ac45800ed775a1814b9bf760486ff1a93",
+      "gondola_attachment_detail.png": "44f8ed252a85aade21ea4c6b626bbaa366f30c0f7b3607785a7dcbc5ca47472c",
+      "gondola_attachment_section.png": "55f0df550657ad6f35d14e2f4853525c946f519deec04a0a83c8e8405c7b0de0",
+      "gondola_attachment_opposite.png": "17fab0b45a194d9872b6d867c550d8182ae250e8d8e8f95ba83d0229523aad79",
+      "gondola_print_parts.png": "308bf04c6b0c1cf0d7353eb39d58d9e480cf30dfd2919a3400bacf900ff2c6e8",
+      "gondola_power_options.png": "32089640d0a708e26e47d53b1af8dbe920968d5bcba02ff2cb387c8c48aeea0c"
+    },
+    "blender": {
+      "passed": true,
+      "cad_sha256": "3cc0287968b7b2c6771a9ce1396069b86c977dec9dc85b1a901c380044599913",
+      "source_fingerprint": "1eb228083b2c5f65b14e2cb1288844a4e9bd3a40e665f2ceb30705f095e710e1",
+      "revision": "BB",
+      "source_cad_hash_checked": false,
+      "translation_tolerance_m": 1e-07,
+      "rotation_tolerance_rad": 1e-05,
+      "rotation_matrix_tolerance": 1e-05,
+      "scope": "All exported integer-frame native samples, exact CAD-part inventories and visibility, and scene object/action isolation. CAD millimetres become metres with a global X half-turn. Quaternion sign continuity is checked between samples. No continuous-time interpolation, collision, physics, or source-CAD freshness certification is claimed.",
+      "scene_count": 7,
+      "sampled_frames": 1494,
+      "matrix_checks": 104219,
+      "visibility_checks": 104219,
+      "maximum_translation_error_m": 1.9818257956694642e-08,
+      "maximum_rotation_error_rad": 4.238642635136521e-07,
+      "maximum_matrix_error": 4.76837158203125e-07,
+      "discrepancy_count": 0,
+      "discrepancy_kinds": {},
+      "discrepancies": [],
+      "scenes": [
+        {
+          "name": "01 Assembly",
+          "parts": 97,
+          "frames": 120,
+          "matrix_checks": 11640,
+          "maximum_translation_error_m": 1.5305110044777115e-08,
+          "maximum_rotation_error_rad": 1.60296726397606e-07,
+          "maximum_matrix_error": 2.384185791015625e-07,
+          "passed": true
+        },
+        {
+          "name": "02 Independent tilt",
+          "parts": 97,
+          "frames": 289,
+          "matrix_checks": 28033,
+          "maximum_translation_error_m": 1.5305110044777115e-08,
+          "maximum_rotation_error_rad": 4.238642635136521e-07,
+          "maximum_matrix_error": 4.76837158203125e-07,
+          "passed": true
+        },
+        {
+          "name": "03 Gear and horn",
+          "parts": 34,
+          "frames": 193,
+          "matrix_checks": 6562,
+          "maximum_translation_error_m": 1.3863789242504055e-08,
+          "maximum_rotation_error_rad": 4.238642635136521e-07,
+          "maximum_matrix_error": 4.76837158203125e-07,
+          "passed": true
+        },
+        {
+          "name": "04 Axial allowance",
+          "parts": 34,
+          "frames": 241,
+          "matrix_checks": 8194,
+          "maximum_translation_error_m": 1.9818257956694642e-08,
+          "maximum_rotation_error_rad": 4.238642635136521e-07,
+          "maximum_matrix_error": 4.76837158203125e-07,
+          "passed": true
+        },
+        {
+          "name": "05 Optical on Battery",
+          "parts": 97,
+          "frames": 145,
+          "matrix_checks": 14065,
+          "maximum_translation_error_m": 1.5305110044777115e-08,
+          "maximum_rotation_error_rad": 1.60296726397606e-07,
+          "maximum_matrix_error": 4.3320957843207e-07,
+          "passed": true
+        },
+        {
+          "name": "06 Optical on FC",
+          "parts": 97,
+          "frames": 145,
+          "matrix_checks": 14065,
+          "maximum_translation_error_m": 1.5305110044777115e-08,
+          "maximum_rotation_error_rad": 1.60296726397606e-07,
+          "maximum_matrix_error": 4.3320957843207e-07,
+          "passed": true
+        },
+        {
+          "name": "07 Servo module removal",
+          "parts": 60,
+          "frames": 361,
+          "matrix_checks": 21660,
+          "maximum_translation_error_m": 1.3863789242504055e-08,
+          "maximum_rotation_error_rad": 1.3435884024618332e-07,
+          "maximum_matrix_error": 2.384185791015625e-07,
+          "passed": true
+        }
+      ],
+      "unique_object_count": 591,
+      "unique_action_count": 549,
+      "blend_path": "/home/h/cad/airship-gondola-cad/build/blender_review/cad_review.blend",
+      "input_json_sha256": "1fb547b076c5b80c1fb26a874c26630bd64ab45430daf8e0b8eb950029b9d682",
+      "blend_sha256": "3d746e14a8a35c5193b263defdd80adc39fcea385f346c68a0ae2a230b4740a0",
+      "input_files_unchanged_during_verification": true,
+      "elapsed_seconds": 2.378854174996377
+    },
+    "freecad_display": {
+      "document_name": "gondola",
+      "document_path": "/home/h/cad/airship-gondola-cad/build/gondola.FCStd",
+      "source_fingerprint": "1eb228083b2c5f65b14e2cb1288844a4e9bd3a40e665f2ceb30705f095e710e1",
+      "printed_parts": 12,
+      "hardware_parts": 58,
+      "window_title": "FreeCAD 1.1.3",
+      "window_visible": true,
+      "file_sha256_before": "3cc0287968b7b2c6771a9ce1396069b86c977dec9dc85b1a901c380044599913",
+      "file_sha256_after": "3cc0287968b7b2c6771a9ce1396069b86c977dec9dc85b1a901c380044599913",
+      "file_unchanged": true,
+      "saved_by_macro": false
+    },
+    "static_checks": {
+      "ruff": "passed",
+      "ruff_format": "119 files formatted",
+      "compileall": "passed",
+      "git_diff_check": "passed"
+    }
+  },
+  "limits": [
+    "Geometric design/inspection result only: no received-part fit, fastening torque, PA12 stiffness/creep, adhesive retention or flight qualification.",
+    "Slots cover declared pitches and clearances; they do not qualify arbitrary devices, fastener stacks or simultaneous payloads. M3-width arcs need suitable bearing hardware.",
+    "Single-axis optical trim assumes a lower-centreline rail. The modeled facing and documented removal path apply; no roll trim or self-levelling.",
+    "Direct MG-F10-A helix requires battery-host optical. Optional power combinations must follow their saved per-plan permitted host report. Remote antenna hardware remains unmodeled.",
+    "Modeled printed volumes and provisional density estimates are not measured all-up mass. Wire reservations and rigid-body animations are not flexible-cable dynamics or hardware qualification."
+  ],
+  "retained_evidence": "references/square_mount_checks.json.gz",
+  "retained_evidence_sha256": "9c7e4df970b32e8c7478b350be1d9698eff2bb5ab4d4ee5fde06d55bb39a2cb2"
+}

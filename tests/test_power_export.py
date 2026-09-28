@@ -1,7 +1,6 @@
 """Saved optional artifacts must preserve the native solid and declared dimensions."""
 
 import json
-import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,20 +16,18 @@ except ImportError:
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedPowerExportTests(unittest.TestCase):
     def test_registration_bound_includes_the_complete_common_plate(self):
-        from gondola.parts import equipment_mounts, power_mount, stack_interface
+        from gondola.parts import equipment_mounts, power_mount
         from gondola.power_export import _registration_bounds
 
         shape = equipment_mounts.common_plate_shape(power_mount.DECK_BOTTOM_Z)
         bound = _registration_bounds(power_mount.DEFAULT_PLAN)["PowerDeck"]
-        allowance = stack_interface.MAX_RADIAL_FLOAT
-        radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
-        angle = math.degrees(2 * math.asin(allowance / (2 * radius)))
         # These samples check that the whole plate participates in the analytical
         # enclosure; they do not replace its continuous mathematical bound.
         for yaw, x, y in (
             (0, 0, 0),
-            (angle, allowance, allowance),
-            (-angle, -allowance, -allowance),
+            (-2.5, 0, 0),
+            (-2, 0, 1.5),
+            (-2, 0, -1.5),
         ):
             moved = shape.copy()
             moved.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
@@ -56,7 +53,7 @@ class SavedPowerExportTests(unittest.TestCase):
             # screening, which has separate real-assembly native tests.
             patch(
                 "gondola.power_export.screen_configurations",
-                return_value={"passed": True},
+                return_value={"passed": True, "default_configuration_clear": True},
             ),
         ):
             out = Path(directory)

@@ -363,7 +363,7 @@ DEVICE_CONNECTOR_EVIDENCE = {
         "installed_port_centres_mm": None,
         "installed_port_datums_verified": False,
         "unknown": "Exact connector X/Z and header datum, plugged envelope, cable bend radius and installed sensor yaw.",
-        "connection_limit": "Use only one optical sensor. Verify actual pinout; keep cable and optional ties outside all three optical apertures and both manual pivots.",
+        "connection_limit": "Use only one optical sensor. Verify actual pinout; keep cable and optional ties outside all three optical apertures and the single pitch pivot.",
     },
     "SERVO": {
         "sources": [SERVO_SOURCE, X06_DATASHEET_SOURCE],

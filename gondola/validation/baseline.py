@@ -233,18 +233,28 @@ def control_behavior(doc):
             module.RailPositionX = original
             doc.recompute()
     optical = doc.getObject("OpticalFlowModule")
-    roll = doc.getObject("OpticalRollStage")
+    from gondola.parts import optical_mount
+
     pitch = doc.getObject("OpticalPitchStage")
-    if any(obj is None for obj in (optical, roll, pitch)):
+    if (
+        optical is None
+        or pitch is None
+        or doc.getObject("OpticalRollStage") is not None
+    ):
         return {
             "cases": rows,
             "module_control_mapping_valid": True,
-            "error": "Missing independent optical roll/pitch stages",
+            "error": "Expected exactly one optical pitch stage; no roll stage",
             "passed": False,
         }
-    for property_name, stage, axis, origin, other_stage, expected_parent in (
-        ("Roll", roll, App.Vector(1, 0, 0), App.Vector(0, 0, 8), pitch, optical),
-        ("Pitch", pitch, App.Vector(0, 1, 0), App.Vector(0, 0, 10), roll, roll),
+    for property_name, stage, axis, origin, expected_parent in (
+        (
+            "Pitch",
+            pitch,
+            App.Vector(0, 1, 0),
+            App.Vector(*optical_mount.PIVOT_CENTRE),
+            optical,
+        ),
     ):
         if not {property_name, "MinimumAngle", "MaximumAngle"}.issubset(
             stage.PropertiesList
@@ -255,7 +265,6 @@ def control_behavior(doc):
                 "passed": False,
             }
         original = float(getattr(stage, property_name))
-        other_placement = other_stage.Placement.copy()
         module_placements = {module.Name: module.Placement.copy() for module in modules}
         optical_placement = optical.getGlobalPlacement()
         declared_limits_match = (
@@ -272,13 +281,11 @@ def control_behavior(doc):
             ):
                 setattr(stage, property_name, requested)
                 doc.recompute()
-                independent = (
-                    other_stage.Placement.isSame(other_placement, 1e-7)
-                    and optical.getGlobalPlacement().isSame(optical_placement, 1e-7)
-                    and all(
-                        doc.getObject(name).Placement.isSame(placement, 1e-7)
-                        for name, placement in module_placements.items()
-                    )
+                independent = optical.getGlobalPlacement().isSame(
+                    optical_placement, 1e-7
+                ) and all(
+                    doc.getObject(name).Placement.isSame(placement, 1e-7)
+                    for name, placement in module_placements.items()
                 )
                 stage_pose_matches = stage.Placement.isSame(
                     App.Placement(origin, App.Rotation(axis, expected)), 1e-7
@@ -294,7 +301,7 @@ def control_behavior(doc):
                         "stage_local_placement_matches": stage_pose_matches,
                         "stage_parent_matches": parent_matches,
                         "declared_limits_match": declared_limits_match,
-                        "other_axis_and_modules_unchanged": independent,
+                        "parent_and_modules_unchanged": independent,
                         "passed": stage_pose_matches
                         and parent_matches
                         and declared_limits_match
@@ -305,7 +312,7 @@ def control_behavior(doc):
             setattr(stage, property_name, original)
             doc.recompute()
     expected_cases = (
-        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 10
+        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 5
     )
     return {
         "cases": rows,
@@ -427,6 +434,9 @@ def procurement_and_scope_metadata(obj):
         "MountContract",
         "ModulePlacementContract",
         "OpticalMountContract",
+        "OpticalInterfaceContract",
+        "OpticalFitVerified",
+        "OpticalFootEnd",
         "StackInterfaceContract",
         "BatteryPlacementContract",
         "RailFitContract",

@@ -20,9 +20,9 @@ class WiringReserveTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
+            optical_interface,
             optical_mount,
             optical_sensor,
-            stack_interface,
             wiring_reserves,
         )
         from gondola.validation import wiring as wiring_validation
@@ -52,7 +52,7 @@ class WiringReserveTests(unittest.TestCase):
             cls.doc, battery, electronics, accessory
         )
         optical = optical_mount.build_optical_mount(cls.doc, battery)
-        stack_interface.attach_to_host(optical["group"], battery)
+        optical_interface.attach_to_host(optical["group"], battery)
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )
@@ -149,8 +149,12 @@ class WiringReserveTests(unittest.TestCase):
             equipment_mounts.DECK_BOTTOM_Z - equipment_mounts.ADHESIVE_ALLOWANCE
         )
         self.assertAlmostEqual(body.BoundBox.ZMax, expected_top)
-        self.assertAlmostEqual(body.BoundBox.YMin, 28 - 18.2 / 2)
-        self.assertAlmostEqual(body.BoundBox.YMax, 28 + 18.2 / 2)
+        self.assertAlmostEqual(
+            body.BoundBox.YMin, equipment_mounts.RADIO_CENTRE_XY[1] - 24.0 / 2
+        )
+        self.assertAlmostEqual(
+            body.BoundBox.YMax, equipment_mounts.RADIO_CENTRE_XY[1] + 24.0 / 2
+        )
         for name in (
             "RadioNegativeXConnectorReserve",
             "RadioPositiveXConnectorReserve",

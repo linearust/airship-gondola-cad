@@ -25,71 +25,32 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-AY retains the plate without a projecting landing tab. The three rail carriers
-use the same 54 × 74 × 2 mm rounded rectangular plate, fixed device bores and
-shared mounting slots; the revised tower feet/clamps fit inside the nominal
-outline, with seating-registration limits recorded in the common interface. The accessory instance
-uses the opposite plate face for the Mini, beside the rail shoe. There is no
-separate radio plate, pocket, bracket or radio-specific fastening pattern.
-See [universal carrier rationale](universal_carrier_review.md).
+BB uses the same 64 × 64 × 2 mm square plate in all three carrier roles.
+The Mini uses the navigation carrier's rail-facing face at local (26, −11) mm,
+long axis Y, populated face toward −Z and the balloon. It has no separate plate,
+pocket or radio-only fastening pattern. The continuous 10 × 12 mm insulating
+adhesive allocation is centred separately at (26, −5) mm on solid plate; its
+120 mm² is nominal available contact, not a qualified holding area. The nominal
+body overhangs the +X edge by 3.1 mm.
 
-The modeled Mini is centred at accessory-local (-15, 28) mm, with its long axis
-along X and its populated face directed toward local -Z, toward the balloon.
-A 22 × 14 mm nominal insulating-adhesive allocation at the same centre fits
-clear of the declared plate cuts and inside its edge. The body slightly overhangs the plate edge
-and rounded corner; the complete adhesive allocation remains supported. This is a design
-allocation, not a measured bearing face or a minimum required adhesive area.
-The Mini underside photograph shows
-components. Trim compliant insulating adhesive to actual supported contact and
-verify component pressure, heat dissipation and retention. Velcro or ties may
-wrap the existing plate without dedicated slots, keeping the populated board,
-ports and antenna connection clear.
+This position clears both local rail-clamp tool approaches and the optional
+power portal's foot fasteners and service reservations. The former (0, −26)
+position blocked the negative-Y clamp approach; merely reversing that Y position
+blocks the other approach. Rotating the radio at (26, 0) clears the rail tool but
+obstructs optional-power fastener service, so retain the −11 mm body offset.
+Body, its separate adhesive patch and connector reserves must move together.
+Source datums in `equipment_mounts.py` and `equipment_layout.py` own the heights;
+the BB plate underside is 2 mm higher than AY to accommodate common-slot heads.
 
-The -15 mm X shift was selected to leave rail-clamp hex-key access and separate
-the connector lane from the structural foot hardware. Both rail-clamp approaches and the
-structural joint's permitted seating movement must be checked; nominal body
-separation alone is insufficient. The plate outline and
-common mounting datums are independent of this radio placement choice. AY changes
-the tower feet and generic slots, so their body, connector and tool clearances
-must be checked again against the saved assembly.
+The adhesive allocation is not a measured bearing face or a qualified area.
+The underside photograph shows components: verify insulation, pressure, heat,
+actual contact, antenna and lead routing. Wrap Velcro/ties around existing
+structure if needed, keeping components and ports clear. Actual balloon curvature
+and plugged height remain unmodeled. Remove the carrier for bench installation
+and service; this is not proof of on-balloon connector access.
 
-The reference body occupies local Z = 4.6 to 10.4 mm, leaving a nominal 1 mm
-adhesive allowance to the plate's Z = 11.4 mm face. Its connector reservations
-extend toward -Z to 2.6 mm. These offsets are measured from the Z = 0 rail
-reference plane, **not** from the actual balloon surface. Envelope curvature,
-tape build-up, IPEX plug height, installed leads and strap pressure remain
-unverified. Attach, unplug and service the Mini on the removed carrier at a
-bench; this arrangement does not establish on-balloon connector access.
-
-Preserve access at both ends of the board's X axis. Current 15 mm connector lanes
-are prototype design allowances, not manufacturer connector dimensions or
-verified cable bend radii. The SH sockets
-and IPEX1 connector occupy opposite long-axis ends, and the IPEX1 cable mates away
-from the populated face. The 2 mm design allowance beyond that face follows
-the inverted installation toward -Z. Exact port XYZ and installed plug
-orientation remain unmeasured. The photograph shows two SH sockets while the manual documents one
-UART interface; do not infer independent UARTs or the other socket's function.
-
-The Mini and its two end-lane reservations sit on the opposite face from the
-navigation module and its conservative direct MG-F10 helix reservation. The
-old same-face Y-gap argument no longer applies. Recheck the inverted body,
-connector lanes, rail attachment wings and clamp seating allowance together;
-the plate alone is not the complete neighboring geometry. These checks do not
-verify the actual antenna seating datum, flexible pigtail or installed cables.
-The optional power platform and a direct MG-F10 helix still cannot
-occupy the same accessory host; use another host or the remote-antenna option.
-
-Route and retain the flexible antenna separately, clear of the propeller sweep
-and optical field. Antenna dimensions, the final mounting location and pigtail
-bend limits are not established by the retained package image. No extra antenna
-holder or completed harness is implied by the body envelope.
-
-Follow the Mini's pin labels, cross TX/RX and connect common ground. The FC's
-UART1/6 SH1.0-6P connection needs the corresponding verified SH1.0-4P Mini end;
-connector count alone is not a pinout. The 2 W maximum-average reference does not
-prove adequate shared FC 5 V BEC headroom or bound transient demand. Match the
-LR24-F ground unit's communication settings and antenna. Mechanical fit does not
-qualify the RF link.
+See [square_mount_review.md](square_mount_review.md) for the shared array and
+current verification boundary. Older AY placement and clearances are superseded.
 
 ## Retained primary evidence
 

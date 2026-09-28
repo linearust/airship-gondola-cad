@@ -1,4 +1,4 @@
-"""Shared mounting slots; separate from the rigid structural tower joint.
+"""Symmetric shared device slots and direct support-foot attachment array.
 
 Square pitch coverage and rotation are geometric allowances, not qualification
 of an arbitrary board, fastener, standoff or occupied installation.
@@ -13,12 +13,12 @@ from gondola.cad import box, union
 
 V = App.Vector
 MINIMUM_LAND = 1.5
-SMALL_PITCH_RANGE = (20.0, 24.0)
-SMALL_PATTERN_ROTATION = 30.0
+SMALL_PITCH_RANGE = (16.0, 23.0)
+SMALL_PATTERN_ROTATION = 0.0
 LARGE_PITCH = 30.5
 LARGE_ROTATION_RANGE = (-15.0, 15.0)
-SIDE_X = 23.0
-SIDE_Y_RANGE = (-9.0, 9.0)
+SIDE_X = 27.0
+SIDE_Y_RANGE = (13.0, 23.0)
 
 
 def _radial_point(radius, angle):
@@ -33,9 +33,9 @@ def rows():
         angle = SMALL_PATTERN_ROTATION - 45 + 90 * index
         result.append(
             {
-                "name": f"square20_24_{index}",
+                "name": f"square16_23_{index}",
                 "kind": "straight",
-                "family": "square20_24",
+                "family": "square16_23",
                 "width_mm": 2.6,
                 "fastener": "M2",
                 "start_xy_mm": _radial_point(
@@ -56,18 +56,27 @@ def rows():
                 "end_angle_deg": 45 + LARGE_ROTATION_RANGE[1] + 90 * index,
             }
         )
-    for index, x in enumerate((-SIDE_X, SIDE_X)):
-        result.append(
-            {
-                "name": f"side_{index}",
-                "kind": "straight",
-                "family": "side",
-                "width_mm": 2.6,
-                "fastener": "M2",
-                "start_xy_mm": (x, SIDE_Y_RANGE[0]),
-                "end_xy_mm": (x, SIDE_Y_RANGE[1]),
-            }
-        )
+    for index in range(4):
+        angle = math.radians(90 * index)
+        for sign in (-1, 1):
+            points = tuple(
+                (
+                    SIDE_X * math.cos(angle) - sign * y * math.sin(angle),
+                    SIDE_X * math.sin(angle) + sign * y * math.cos(angle),
+                )
+                for y in SIDE_Y_RANGE
+            )
+            result.append(
+                {
+                    "name": f"side_{index}_{'negative' if sign < 0 else 'positive'}",
+                    "kind": "straight",
+                    "family": "side",
+                    "width_mm": 2.6,
+                    "fastener": "M2",
+                    "start_xy_mm": points[0],
+                    "end_xy_mm": points[1],
+                }
+            )
     return result
 
 
@@ -122,6 +131,7 @@ def contract():
         "datum_xy_mm": (0.0, 0.0),
         "slots": rows(),
         "slot_count": len(rows()),
+        "quarter_turn_and_xy_mirror_symmetric": True,
         "minimum_full_thickness_land_mm": MINIMUM_LAND,
         "square_pitch_range_mm": SMALL_PITCH_RANGE,
         "square_pitch_range_rotation_deg": SMALL_PATTERN_ROTATION,
@@ -134,7 +144,7 @@ def contract():
                 "pitch_mm": 20.0,
                 "fastener": "M2",
                 "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/",
-                "evidence": "Manufacturer lists a 20 x 20 mm pattern and M2/M3 screw or grommet compatibility. This slot family supports the M2 option; 20 through 24 mm pitches are geometric adjustment coverage, not another selected manufacturer's interface.",
+                "evidence": "Manufacturer lists a 20 x 20 mm pattern and M2/M3 screw or grommet compatibility. This slot family supports the M2 option; 16 through 23 mm pitches are geometric adjustment coverage, not another selected manufacturer's interface.",
             },
             {
                 "pitch_mm": 30.5,
@@ -144,6 +154,6 @@ def contract():
             },
         ],
         "x500_drop_in_compatible": False,
-        "reference": "references/holybro_x500_plate_review.md",
-        "scope": "Project-specific rounded slots inspired by the X500 payload plate, not its outline, datums or complete pattern. Four M2 radial slots geometrically admit square pitches 20 through 24 mm at 30 degrees; four M3 arcs admit a 30.5 mm square rotated -15 through +15 degrees. Opposed M2 side slots have 46 mm row spacing and independent +/-9 mm longitudinal centre travel. These are alternative positions for future devices, not simultaneously populated hardware. Fixed FC/P-AS bores retain their full support lands. Slots do not replace the two circular structural tower clamps. Select actual heads, nuts, standoffs and underside access after checking the installation; do not use existing small M2 heads on the M3-width arcs without a suitable independently reviewed bearing interface. No extra baseline fasteners or washers are selected.",
+        "reference": "references/square_mount_review.md",
+        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Eight outer M2 slots lie on a 54 mm square: each side has two centre-travel intervals 13 through 23 mm from its midpoint. These slots also receive the optical foot and optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. No added baseline washers.",
     }

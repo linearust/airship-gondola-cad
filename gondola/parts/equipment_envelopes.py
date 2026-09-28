@@ -102,7 +102,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
     set_property(
         battery,
         "Notes",
-        "Plain battery carrier with three declared continuous adhesive regions between its device bores and spare mounting slots; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to keep the integral optical tower clear. Move the rail carrier for larger trim changes. Select and verify actual pack, adhesive area and retention. No battery hole pattern is invented.",
+        "Plain battery carrier with three declared continuous adhesive regions between its device bores and spare mounting slots; 1mm nominal insulating adhesive allowance. Geometric centre adjustment is limited to +/-5mm X and +/-4mm Y to preserve the checked equipment-clearance range. Move the rail carrier for larger trim changes. Available nominal battery adhesive patches total 536 mm2; shifted packs can cover less. Select and verify actual pack, contact and retention. No battery hole pattern is invented.",
     )
     set_property(battery, "SourceURL", BATTERY_SOURCE)
     set_property(

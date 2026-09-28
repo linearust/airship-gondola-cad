@@ -138,6 +138,131 @@ def mounting_pad_check(
     }
 
 
+def slot_mounting_pad_check(
+    shape, centre, *, bottom, thickness, hole_diameter, pad_diameter
+):
+    """Check a P-AS axis in a slot and the complete two-sided bearing material.
+
+    A slot deliberately removes part of a circular annulus. Its expected bearing
+    region is the pad disk minus the exact slot, not a filled round-hole annulus.
+    This is a geometric seat check; the final fastener and clamp force are pending.
+    """
+    from gondola.parts import mounting_slots
+
+    origin = App.Vector(*centre, bottom)
+    bore = Part.makeCylinder(hole_diameter / 2, thickness, origin)
+    candidates = []
+    for spec in mounting_slots.rows():
+        if spec["family"] != "square16_23":
+            continue
+        opening = mounting_slots.shape(spec, bottom, thickness)
+        if bore.cut(opening).Volume < TOL:
+            candidates.append((spec, opening))
+    if len(candidates) != 1:
+        return {
+            "centre_xy_mm": list(centre),
+            "matching_slot_count": len(candidates),
+            "error": "Device fastener axis must fit exactly one diagonal M2 slot",
+            "passed": False,
+        }
+    spec, opening = candidates[0]
+    bearing = Part.makeCylinder(pad_diameter / 2, thickness, origin).cut(opening)
+    obstruction = intersection_volume(shape, bore)
+    missing = bearing.cut(shape).Volume
+    side_land = (pad_diameter - spec["width_mm"]) / 2
+    return {
+        "centre_xy_mm": list(centre),
+        "slot_name": spec["name"],
+        "matching_slot_count": 1,
+        "hole_diameter_mm": hole_diameter,
+        "pad_diameter_mm": pad_diameter,
+        "slot_width_mm": spec["width_mm"],
+        "nominal_side_land_mm": side_land,
+        "expected_slot_bearing_area_mm2": bearing.Volume / thickness,
+        "bore_obstruction_mm3": obstruction,
+        "missing_full_thickness_slot_bearing_mm3": missing,
+        "full_circular_annulus_required": False,
+        "passed": obstruction < TOL
+        and missing < TOL
+        and side_land >= mounting_slots.MINIMUM_LAND - TOL
+        and bearing.Volume > TOL,
+    }
+
+
+def carrier_symmetry_check(shape, *, bottom, thickness):
+    """Measure the saved deck, excluding the intentionally directional rail shoe."""
+    bounds = shape.BoundBox
+    slab = Part.makeBox(
+        bounds.XLength + 2,
+        bounds.YLength + 2,
+        thickness,
+        App.Vector(bounds.XMin - 1, bounds.YMin - 1, bottom),
+    )
+    deck = shape.common(slab)
+    if deck.isNull() or not deck.isValid() or len(deck.Solids) != 1:
+        return {"passed": False, "error": "Saved deck must be one valid solid"}
+    box = deck.BoundBox
+    centred_square = (
+        abs(box.XLength - mounts.COMMON_DECK_SIZE[0]) < TOL
+        and abs(box.YLength - mounts.COMMON_DECK_SIZE[1]) < TOL
+        and abs(box.XLength - box.YLength) < TOL
+        and abs(box.Center.x) < TOL
+        and abs(box.Center.y) < TOL
+        and abs(box.ZLength - thickness) < TOL
+    )
+    differences = {}
+    for name, axis, angle in (
+        ("quarter_turn", App.Vector(0, 0, 1), 90),
+        ("mirror_x", App.Vector(0, 1, 0), 180),
+        ("mirror_y", App.Vector(1, 0, 0), 180),
+    ):
+        transformed = deck.copy()
+        transformed.rotate(App.Vector(0, 0, bottom + thickness / 2), axis, angle)
+        differences[name + "_difference_mm3"] = (
+            transformed.cut(deck).Volume + deck.cut(transformed).Volume
+        )
+    return {
+        "centred_nominal_square": centred_square,
+        **differences,
+        "scope": "Deck outline and all openings only; rail shoe/clamp are directional.",
+        "passed": centred_square and all(value < TOL for value in differences.values()),
+    }
+
+
+def carrier_contact_patch_checks(shape, *, bottom, thickness):
+    """Keep unused alternatives' declared tape regions intact on every carrier."""
+    specs = [
+        (f"battery_{index}", centre, size)
+        for index, (centre, size) in enumerate(mounts.BATTERY_ADHESIVE_REGIONS)
+    ] + [
+        ("navigation", mounts.NAVIGATION_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
+        ("radio", mounts.RADIO_ADHESIVE_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE),
+    ]
+    rows = []
+    for name, centre, size in specs:
+        patch = Part.makeBox(
+            *size,
+            thickness,
+            App.Vector(centre[0] - size[0] / 2, centre[1] - size[1] / 2, bottom),
+        )
+        missing = patch.cut(shape).Volume
+        rows.append(
+            {
+                "allocation": name,
+                "centre_xy_mm": centre,
+                "size_xy_mm": size,
+                "nominal_contact_area_mm2": size[0] * size[1],
+                "missing_full_thickness_material_mm3": missing,
+                "passed": missing < TOL,
+            }
+        )
+    return {
+        "patches": rows,
+        "scope": "Alternative nominal contact allocations, not simultaneous equipment or physical adhesive qualification. Shifted batteries need not cover the entire nominal allocation.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def carrier_opening_checks(
     shape,
     *,
@@ -200,6 +325,19 @@ def carrier_opening_checks(
             }
         )
     single_solid = shape.isValid() and len(shape.Solids) == 1
+    symmetry = carrier_symmetry_check(shape, bottom=bottom, thickness=thickness)
+    contact = carrier_contact_patch_checks(shape, bottom=bottom, thickness=thickness)
+    pas = [
+        slot_mounting_pad_check(
+            shape,
+            centre,
+            bottom=bottom,
+            thickness=thickness,
+            hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+            pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+        )
+        for centre in mounts.PAS_HOLE_CENTRES
+    ]
     return {
         "fixed_device_bores": fixed,
         "mounting_slots": slots,
@@ -210,11 +348,16 @@ def carrier_opening_checks(
         "through_probe_bottom_mm": through_bottom,
         "through_probe_depth_mm": through_depth,
         "single_valid_solid": single_solid,
-        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC/P-AS axes retain complete bearing annuli. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
+        "deck_symmetry": symmetry,
+        "nominal_adhesive_patches": contact,
+        "pas_slot_mounts": pas,
+        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC axes retain complete bearing annuli; P-AS axes use the diagonal slots with the complete expected side-bearing material. The saved deck is a centred square with quarter-turn and X/Y mirror symmetry. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
         "passed": single_solid
         and bool(fixed)
         and bool(slots)
-        and all(row["passed"] for row in fixed + slots),
+        and symmetry["passed"]
+        and contact["passed"]
+        and all(row["passed"] for row in fixed + slots + pas),
     }
 
 
@@ -362,7 +505,12 @@ def mounting_check(doc):
         bounds = body.optimalBoundingBox(False, False)
         holes = []
         for centre in centres:
-            pad = mounting_pad_check(
+            pad_check = (
+                mounting_pad_check
+                if name == "ModuleFCEnvelope"
+                else slot_mounting_pad_check
+            )
+            pad = pad_check(
                 carrier_shape,
                 centre,
                 bottom=mounts.DECK_BOTTOM_Z,
@@ -406,7 +554,7 @@ def mounting_check(doc):
         (
             "AccessoryMount",
             "ModuleRadioEnvelope",
-            mounts.RADIO_CENTRE_XY,
+            mounts.RADIO_ADHESIVE_CENTRE_XY,
             mounts.RADIO_ADHESIVE_SIZE,
             "bottom",
         ),
@@ -560,8 +708,7 @@ def mounting_check(doc):
         removed_head_names = {
             obj.Name
             for obj in physical_objects
-            if release_head
-            and stack_interface.is_removable_head_part(obj, optical_group)
+            if release_head and belongs_to_group(obj, optical_group)
         }
         detached_carrier = name == "ModuleRadioEnvelope"
         off_carrier_names = {
@@ -590,10 +737,10 @@ def mounting_check(doc):
                     off_carrier_names
                 ),
                 "optical_head_must_be_removed_first": release_head,
-                "complete_optical_tower_removed": release_head,
+                "complete_optical_mount_removed": release_head,
                 "temporarily_removed_head_parts": sorted(removed_head_names),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. When this carrier hosts the optical stack, detach the carrier for bench access, support the tower, remove both foot nuts and withdraw both foot screws downward before lifting the complete tower along optical+Z. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. When this carrier hosts the optical mount, detach the carrier for bench access, support the complete optical assembly, release its foot clamps and lift it away before servicing the device. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -817,7 +964,7 @@ def validate(source=None):
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack over the bounded -180 to +180 degree output range.",
-                "The optical stack can use either common host. Its400mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
+                "The optical mount can use either supported host. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }

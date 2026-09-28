@@ -6,7 +6,6 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 
 import functools
 import json
-import math
 from itertools import combinations
 from pathlib import Path
 
@@ -28,7 +27,7 @@ from .contracts.power_options import (
     POWER_VALIDATION_NAME as REPORT_NAME,
 )
 from .mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
-from .parts import equipment_mounts, power_mount, stack_interface
+from .parts import equipment_mounts, optical_interface, power_mount, stack_interface
 from .print_export import (
     geometry_comparison,
     mesh_checks,
@@ -93,28 +92,8 @@ def _internal_collisions(physical, reserves):
 
 
 def _xy_registration_bound(shape):
-    """Continuous XY bound, without rotating an already-enclosing box twice.
-
-    Every point is within the shape's XY box and hence within radius r. Seated
-    translation is <=g and yaw <=2 asin(g/(2 R)); rotation displaces any point
-    by <=2 r sin(yaw/2). Adding those bounds is conservative for all poses,
-    including the actual correlated translation/yaw constraint.
-    """
-    bounds = shape.BoundBox
-    g = stack_interface.MAX_RADIAL_FLOAT
-    axis_radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
-    radius = max(
-        math.hypot(x, y)
-        for x in (bounds.XMin, bounds.XMax)
-        for y in (bounds.YMin, bounds.YMax)
-    )
-    padding = g + radius * g / axis_radius
-    return Part.makeBox(
-        bounds.XLength + 2 * padding,
-        bounds.YLength + 2 * padding,
-        bounds.ZLength,
-        App.Vector(bounds.XMin - padding, bounds.YMin - padding, bounds.ZMin),
-    )
+    """Continuous coupled XY/yaw bound from the common opposed carrier slots."""
+    return stack_interface.rigid_float_shape_bound(shape)
 
 
 @functools.lru_cache(None)
@@ -148,6 +127,38 @@ def _configuration_conflicts(plan_key, pose, context, host_name):
         + _collisions(reserves, context)
         + _internal_collisions(physical, reserves)
     )
+    host_shape = context.get(stack_interface.MECHANICAL_HOSTS[host_name])
+    if host_shape is None:
+        nominal.append(
+            {
+                "first": "PowerPlatform",
+                "second": host_name,
+                "reason": "Missing structural host solid",
+            }
+        )
+    else:
+        local_host = host_shape.copy()
+        local_host.Placement = pose.inverse().multiply(local_host.Placement)
+        attachment = power_mount.attachment_check(local_host)
+        if not attachment["passed"]:
+            nominal.append(
+                {
+                    "first": "PowerPlatform",
+                    "second": host_name,
+                    "reason": "Incomplete common-slot foot support or obstructed screw path",
+                    "attachment": attachment,
+                }
+            )
+    # Foot-fastener access is checked on the removed carrier, as specified by
+    # the service contract. Other modules on that carrier remain obstacles.
+    host = stack_interface.MECHANICAL_HOSTS[host_name]
+    tools = _placed(dict(stack_interface.clamp_tool_reservations()), pose)
+    nominal += [
+        {**row, "phase": "foot-fastener service"}
+        for row in _collisions(
+            tools, {name: shape for name, shape in context.items() if name != host}
+        )
+    ]
     # Feet intentionally seat on their host. Its mating-hole/clamp fit is a
     # separate interface check; arbitrary host overlap is never excused nominally.
     obstacles = {
@@ -158,7 +169,7 @@ def _configuration_conflicts(plan_key, pose, context, host_name):
     float_conflicts = _collisions(
         _placed(_registration_bounds(plan_key), pose), obstacles
     )
-    return [{**row, "phase": "nominal"} for row in nominal] + [
+    return [{"phase": "nominal", **row} for row in nominal] + [
         {**row, "phase": "conservative seated registration"} for row in float_conflicts
     ]
 
@@ -256,15 +267,22 @@ def screen_configurations(main_doc):
                             "collisions": conflicts,
                         }
                     )
+    permitted_hosts_by_plan = {
+        plan_key: [
+            row["host"] for row in rows if row["plan"] == plan_key and row["permitted"]
+        ]
+        for plan_key in OPTIONAL_PLANS
+    }
     return {
         "saved_optical_host": getattr(optical, "StackHostName", None),
         "configurations": rows,
         "default_configuration_clear": default["permitted"],
+        "permitted_hosts_by_plan": permitted_hosts_by_plan,
         "source_selected_navigation": get_navigation_profile().key,
         "navigation_compatibility_probes": navigation_rows,
-        "seated_registration_scope": "Continuous conservative XY/yaw bounds from the shared two-hole clearance contract, with no axial lift. Cylindrical fasteners use expanded radial bounds; legs use existing analytical component bounds; flat deck, devices and reservations use XY boxes enlarged by the sum of maximum translation and maximum rotational point displacement. Any bound intersection rejects the configuration rather than proving actual collision. The host's intended foot seating is excluded only from this float pass, not from the nominal check.",
+        "seated_registration_scope": "Continuous conservative XY/yaw bounds include the full opposed common-slot travel and foot-hole clearance, with no axial lift. Angular cells use analytic interval padding; coupled axis constraints limit permitted translation and yaw. Local fastener freedom within foot bores is included. Any bound intersection rejects the configuration rather than proving actual collision. The host's intended foot seating is excluded only from this float pass, not from the nominal check.",
         "scope": "Exact nominal optional bodies and local terminal/top allowances versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. Intentional mating contact has zero volume; positive interference rejects a configuration. No tether route or guide is modeled; tether clearance/retention, cooling and electrical operation are not qualified.",
-        "passed": default["permitted"]
+        "passed": all(permitted_hosts_by_plan.values())
         and len(rows) == len(stack_interface.MECHANICAL_HOSTS) * len(OPTIONAL_PLANS),
     }
 
@@ -454,22 +472,25 @@ def audit_power_options(source=None, output_dir=None):
             "passed"
         ]
         report["configuration_screen"] = screen_configurations(main)
+        report["illustrated_configuration_clear"] = report["configuration_screen"].get(
+            "default_configuration_clear", False
+        )
         report["alternate_optical_host_screens"] = []
         optical = main.getObject("OpticalFlowModule")
         if optical is not None:
             original_host = optical.getParentGeoFeatureGroup()
             original_pose = App.Placement(optical.Placement)
             try:
-                for host_name in stack_interface.SUPPORTED_HOSTS:
+                for host_name in optical_interface.SUPPORTED_HOSTS:
                     if host_name != original_host.Name:
-                        stack_interface.attach_to_host(
+                        optical_interface.attach_to_host(
                             optical, main.getObject(host_name)
                         )
                         report["alternate_optical_host_screens"].append(
                             screen_configurations(main)
                         )
             finally:
-                stack_interface.attach_to_host(optical, original_host)
+                optical_interface.attach_to_host(optical, original_host)
                 optical.Placement = original_pose
                 main.recompute()
         report["source_sha256_after"] = file_sha256(source)
@@ -492,6 +513,7 @@ def audit_power_options(source=None, output_dir=None):
                 report[key]
                 for key in (
                     "option_pose_matches",
+                    "illustrated_configuration_clear",
                     "main_optional_contract_matches",
                     "option_source_matches",
                     "option_selection_matches",

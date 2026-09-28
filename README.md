@@ -4,16 +4,14 @@ Read [HANDOFF.md](HANDOFF.md) for user requirements, decision history and known
 limitations. This README covers repository navigation, edits and verification.
 Both files are for AI agents, not manufacturing or assembly instructions.
 
-Active direction (2026-09-28): restore the AY printed-mounting improvement from
-`c38f85497408d7a961f881124c7eacfe47593935`, following the user's clarification after
-the AX restoration. AY keeps the printed rail and propulsion design, adds common
-mounting slots, and brings the optical/power tower joints inside the plate outline.
-Use the corrected AY wire reservations too. The archived AY checkpoint was
-interrupted before final verification; preserve that historical record and read
-[the current restoration review](references/slotted_mount_restoration.json) for
-new checks. The user still rejects designing the rail around bought carbon plates;
-carbon- and nylon-tube discussions are unimplemented proposals. Normal bought
-gears, bearings and fasteners remain selected.
+Active direction (2026-09-28), revision BB: square printed carriers with a
+quarter-turn-symmetric array of fixed FC holes and adjustable slots, plus a
+compact one-axis optical pedestal attached directly to the common outer slots.
+The rail and deliberately separate servo/propulsion modules remain in use.
+Read [the design review](references/square_mount_review.md) and the
+[BB verification record](references/square_mount_verification.json) before claiming verification. AY restoration is historical;
+its checks do not certify this change. Bought-carbon-plate rail architectures
+remain superseded. Normal purchased gears, bearings and fasteners remain selected.
 
 ## Establish the current state
 
@@ -38,7 +36,7 @@ old reference, fixture or shopping list contains them.
 | Navigation alternatives, selected radio and optical selection | [equipment_options.py](gondola/contracts/equipment_options.py), [optical_sensors.py](gondola/contracts/optical_sensors.py) |
 | Selected gears, bought hardware and nominal fastener envelopes | [drive.py](gondola/contracts/drive.py), [hardware.py](gondola/contracts/hardware.py), [fasteners.py](gondola/contracts/fasteners.py) |
 | Horn alternatives and optional power boards | [servo_horns.py](gondola/contracts/servo_horns.py), [power_options.py](gondola/contracts/power_options.py) |
-| Shared device bores, adjustable mounting slots and structural stack joint | [equipment_mounts.py](gondola/parts/equipment_mounts.py), [mounting_slots.py](gondola/parts/mounting_slots.py), [stack_interface.py](gondola/parts/stack_interface.py) |
+| Shared plate, mounting slots, optional power portal and compact optical attachment | [equipment_mounts.py](gondola/parts/equipment_mounts.py), [mounting_slots.py](gondola/parts/mounting_slots.py), [stack_interface.py](gondola/parts/stack_interface.py), [optical_interface.py](gondola/parts/optical_interface.py) |
 | Geometry and native hierarchy/controls | [parts/](gondola/parts/), [assembly.py](gondola/assembly.py), [cad.py](gondola/cad.py) |
 | Print exports, purchases and estimated mass | [print_export.py](gondola/print_export.py), [procurement.py](gondola/procurement.py), [mass_budget.py](gondola/mass_budget.py) |
 | Checks, pinned regression baseline and artifact identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py), [bundle.py](gondola/bundle.py) |
@@ -104,39 +102,43 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   native IDs retain older device names: inspect the selected model/profile
   properties and labels instead of inferring the device from its object ID.
   Count alternative equipment only when selected.
-- Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`,
-  including the same rounded rectangular plate, device bores, mounting slots,
-  rail shoe and centred structural datum. At nominal alignment the tower feet
-  and circular clamp bores fit inside the plate outline. Preserve their inward-corner relief for tower removal past the
-  FC wiring reserve; nominal seated clearance alone does not verify service.
-  Permitted registration may leave a foot edge slightly overhanging; require flat,
-  stable seating and actual fastener bearing, not assumed full-area contact at
-  every allowed offset. Generic slots do not locate the structural joint. Preserve
-  identical local shape even though instance names, equipment and
-  rail placements differ. The optional power tower uses the same plate template,
-  with its different support beneath it; it is a separate print. The plate outline
-  is symmetric; hole patterns and rail-clamp orientation still have functional
-  datums.
-- FC/optical-host and accessory instances have separate local frames. Use
-  `wiring_reserves.parent_name()` for reservation ownership. The accessory instance
-  carries navigation at its centre and the Mini on the plate's opposite face,
-  beside the rail shoe. Preserve the Mini's face orientation in its body,
-  adhesive allocation, connector reserves and removal direction. Its populated
-  face and plug access face the balloon; the envelope and actual plug height are
-  unmodeled. Service it with the carrier removed, not by assuming access on the
-  balloon.
-  Its common interface accepts an optional power stack, but is not a qualified
-  optical-stack host. Do not treat rail attachment wings as a verified flat
-  electronics adhesive surface.
-  A reservation must belong to its declared carrier even when its world position
-  happens to match: rail adjustment would otherwise move it with the wrong module.
-- Use `stack_interface.attach_to_host()` for optical-host changes and
-  `optical_mount.set_angles()` for its manual alignment. Verify both supported hosts,
-  sensor profiles, fields of view, registration allowances and service paths.
-  Sensor-to-tray adhesive and host-to-tower foot clamps are different interfaces.
-  Actual pointing stability, cable slack and firmware orientation remain checks.
+- Battery, FC and navigation use three copies of `UniversalEquipmentCarrier`.
+  Its square plate and complete opening array are symmetric under 90-degree
+  rotation and X/Y reflection; the integral rail shoe and clamp are directional.
+  `mounting_slots.py` defines the common adjustment coverage. Preserve continuous
+  lands, fixed FC bearing annuli, P-AS slot seats and the declared adhesive patches.
+  The P-AS/navigation datum has a small Y offset so its actual two holes use the
+  symmetric 23 mm slot pattern. Do not reintroduce asymmetric device-only bores.
+- The optional power deck shares the plate template but retains its own portal.
+  Optical and power feet use common outer slots directly. Their geometries and
+  registration bounds differ: `optical_interface.py` owns the compact optical
+  foot; `stack_interface.py` owns the optional power portal. Do not reuse a
+  circular-hole float model for the slotted host without deriving its bounds.
+- The Mini sits off to one side of the navigation plate's underside, with its
+  body rotated 90 degrees and offset to leave both rail-clamp approaches and
+  optional-power foot service paths clear. Preserve the
+  separate body/adhesive datums and connector orientation together. Its smaller
+  continuous tape allocation is available material, not qualified retention.
+  Use `wiring_reserves.parent_name()` for reservation ownership; a matching world
+  position cannot replace attachment to the correct movable carrier.
+  Actual balloon curvature, plugged height and adhesive retention are unverified.
+  Remove the carrier for bench service; rail tape wings are not a qualified
+  electronics adhesive face. The accessory carrier is not a qualified optical host.
+- Use `optical_interface.attach_to_host()` for optical-host changes and
+  `optical_mount.set_pitch()` for the single Y-axis adjustment. There is no roll
+  stage. This assumes a rail on the balloon's lower centreline and corrects only
+  longitudinal curvature. Check both host candidates and both sensor profiles,
+  retaining rejected combinations in the report; the selected installation must
+  pass its full optical, connector, registration and removal screens.
+  The tray is adhesively attached to the sensor; the foot and pivot are clamped.
+  Manual alignment does not establish self-levelling or loaded pointing stability.
+  Without optional power, P-AS and MG-A01 permit either host. A directly attached
+  MG-F10-A helix permits the battery optical host only: the FC-host sensor field
+  intersects its reserved space. A remote antenna location remains unmodeled.
+  Optional power can further restrict the optical-host choice; use the permitted
+  combinations in its report, not the plate's shared hole pattern.
 - Common mechanical stack spacing does not certify every payload/host pairing.
-  All carrier stack datums are local (0, 0). Optical and power towers
+  The optical and power supports have different local datums and
   cannot share one host at the same time. Keep baseline mass/BOM separate from
   optional power exports. The tether option uses one BEC12S-PRO at 8 V,
   feeding both FC/main power and the SVPDB-8S input; the latter supplies 5 V
@@ -157,13 +159,11 @@ inputs. Catalog claims, design allowances and physical measurements remain disti
   mounting pattern's pitch, slot or bore dimensions and local datum. Spare holes
   do not imply simultaneous devices, a selected fastener stack or verified adhesive retention.
   Current non-use alone is not a reason to delete these requested provisions.
-  The shared template keeps six fixed FC/P-AS bores and ten mounting slots; two
-  circular structural foot-clamp bores remain separate. `mounting_slots.py` owns
-  pitch, angular travel, widths and datums. Preserve device support lands and
-  declared solid adhesive patches; slots can obstruct fasteners or reduce contact.
-  These are project provisions inspired by the X500 payload plate, not its complete
-  pattern or a drop-in X500 interface. Existing M2 heads are not automatically
-  suitable for M3-width slots. No extra baseline fasteners or washers are selected.
+  The common array keeps four fixed FC bores and sixteen slots, including the
+  two P-AS axes and support-foot interfaces. Exact patterns, widths and datums
+  live in source. It is not a universal industry breadboard or a complete X500
+  interface. Existing M2 heads do not automatically fit M3-width slots. No extra
+  baseline washers are selected.
 - Preserve unresolved evidence such as FC input voltage, actual dampers, antenna
   placement and adhesive contact. Missing mass is unknown, not zero. Geometric
   success alone must not change `design.release_status()` to physical qualification.

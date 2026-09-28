@@ -27,9 +27,9 @@ from gondola.parts import (
     equipment_mounts as mounts,
 )
 from gondola.parts import (
+    optical_interface,
     optical_mount,
     optical_sensor,
-    stack_interface,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
@@ -206,29 +206,29 @@ def _optical_screens(doc):
     screens = []
     try:
         hosts = {}
-        for name in stack_interface.SUPPORTED_HOSTS:
+        for name in optical_interface.SUPPORTED_HOSTS:
             hosts[name] = temporary.addObject("App::Part", name)
             hosts[name].Placement = doc.getObject(name).getGlobalPlacement()
         kit = optical_mount.build_optical_mount(temporary, next(iter(hosts.values())))
         physical = kit["printed"] + kit["hardware"]
         for name, host in hosts.items():
-            stack_interface.attach_to_host(kit["group"], host)
+            optical_interface.attach_to_host(kit["group"], host)
             placement = kit["group"].getGlobalPlacement()
             service = [
                 (tool, _placed(shape, placement))
-                for tool, shape in stack_interface.clamp_tool_reservations()
+                for tool, shape in optical_interface.clamp_tool_reservations()
             ]
             for index in range(2):
-                for kind, z in (("Bolt", -12), ("Nut", 4)):
-                    obj = temporary.getObject(f"OpticalStackFoot{kind}{index}")
+                for kind, vector in (("Bolt", V(0, 0, -12)), ("Nut", V(20, 0, 0))):
+                    obj = temporary.getObject(f"OpticalFoot{kind}{index}")
                     swept, _ = translation_sweep(
-                        world_shape(obj), tuple(placement.Rotation.multVec(V(0, 0, z)))
+                        world_shape(obj), tuple(placement.Rotation.multVec(vector))
                     )
                     service.append((obj.Name + "Removal", swept))
             for profile in SENSOR_PROFILES.values():
                 poses = []
-                for roll, pitch in itertools.product(ANGLES, repeat=2):
-                    optical_mount.set_angles(temporary, roll, pitch)
+                for pitch in ANGLES:
+                    optical_mount.set_pitch(temporary, pitch)
                     pitch_placement = kit["pitch_stage"].getGlobalPlacement()
                     shapes = {obj.Name: world_shape(obj) for obj in physical}
                     shapes["ModuleMTF02PEnvelope"] = _placed(
@@ -236,7 +236,6 @@ def _optical_screens(doc):
                     )
                     poses.append(
                         {
-                            "roll_deg": roll,
                             "pitch_deg": pitch,
                             "physical": shapes,
                             "field": _placed(
@@ -249,19 +248,42 @@ def _optical_screens(doc):
                             ),
                         }
                     )
-                optical_mount.set_angles(temporary, 0, 0)
+                optical_mount.set_pitch(temporary, 0)
                 bound, _ = _external_field_bound(kit["group"], profile)
-                tower_sweep, _ = translation_sweep(
-                    Part.makeCompound([world_shape(obj) for obj in physical]),
-                    tuple(placement.Rotation.multVec(V(0, 0, 32))),
-                )
+                # Separate simple base proxies avoid a whole-pedestal box that
+                # would fill unused air beside the upright during extraction.
+                extraction = []
+                for obj in physical:
+                    if obj.Name.startswith("OpticalFoot"):
+                        continue
+                    shapes = (
+                        [
+                            _placed(shape, placement)
+                            for shape in optical_interface.base_service_proxies()
+                        ]
+                        if obj.Name == "OpticalMountBase"
+                        else [world_shape(obj)]
+                    )
+                    for index, shape in enumerate(shapes):
+                        first = placement.Rotation.multVec(V(20, 0, 0))
+                        slide, _ = translation_sweep(shape, tuple(first))
+                        shape.translate(first)
+                        lift, _ = translation_sweep(
+                            shape, tuple(placement.Rotation.multVec(V(0, 0, 40)))
+                        )
+                        extraction.extend(
+                            (
+                                (f"{obj.Name}Slide{index}", slide),
+                                (f"{obj.Name}Lift{index}", lift),
+                            )
+                        )
                 screens.append(
                     {
                         "host": name,
                         "sensor": profile.key,
                         "poses": poses,
                         "continuous_field": bound,
-                        "service": service + [("CompleteTowerLift", tower_sweep)],
+                        "service": service + extraction,
                     }
                 )
         return screens
@@ -269,7 +291,15 @@ def _optical_screens(doc):
         App.closeDocument(temporary.Name)
 
 
-def _optical_option_check(screens, obstacles, *, antenna=False, validation_cache=None):
+def _optical_option_check(
+    screens,
+    obstacles,
+    *,
+    antenna=False,
+    validation_cache=None,
+    required_host=None,
+    navigation_key=None,
+):
     validation_cache = {} if validation_cache is None else validation_cache
     rows = []
     for screen in screens:
@@ -303,7 +333,6 @@ def _optical_option_check(screens, obstacles, *, antenna=False, validation_cache
             )
             samples.append(
                 {
-                    "roll_deg": pose["roll_deg"],
                     "pitch_deg": pose["pitch_deg"],
                     "collisions": hits,
                     "connector_service_clearances": gaps,
@@ -345,9 +374,38 @@ def _optical_option_check(screens, obstacles, *, antenna=False, validation_cache
                 and all(row["passed"] for row in samples),
             }
         )
+    permitted = optical_interface.permitted_hosts(
+        direct_navigation_antenna=antenna, navigation_key=navigation_key
+    )
+    supported = [
+        host
+        for host in optical_interface.SUPPORTED_HOSTS
+        if all(
+            any(
+                row["host"] == host and row["sensor_model"] == model and row["passed"]
+                for row in rows
+            )
+            for model in SENSOR_PROFILES
+        )
+    ]
+    required_rows = [row for row in rows if row["host"] in permitted]
+    selection_ok = required_host is None or (
+        required_host in permitted and required_host in supported
+    )
     return {
         "hosts_and_sensors": rows,
-        "passed": len(rows) == 4 and all(row["passed"] for row in rows),
+        "permitted_optical_hosts": list(permitted),
+        "geometrically_clear_optical_hosts": supported,
+        "blocked_optical_hosts": [
+            host for host in optical_interface.SUPPORTED_HOSTS if host not in supported
+        ],
+        "required_installed_optical_host": required_host,
+        "installed_host_passed": selection_ok,
+        "configuration_scope": "Direct MG-F10-A helix requires the battery optical host. Failed FC-host rows remain visible as blocked configurations; they are not a supported installation. Without the direct helix, both host alternatives must pass. Remote antenna location and harness remain unmodeled.",
+        "passed": len(rows) == 4
+        and len(required_rows) == len(permitted) * len(SENSOR_PROFILES)
+        and all(row["passed"] for row in required_rows)
+        and selection_ok,
     }
 
 
@@ -446,7 +504,7 @@ def compatibility_check(doc):
                 **adhesive_support_check(
                     support,
                     local_bodies[BODY_NAMES[1]],
-                    mounts.RADIO_CENTRE_XY,
+                    mounts.RADIO_ADHESIVE_CENTRE_XY,
                     mounts.RADIO_ADHESIVE_SIZE,
                     face="bottom",
                 ),
@@ -526,7 +584,13 @@ def compatibility_check(doc):
                 screens,
                 {"NavigationDirectAntennaReserve": direct},
                 antenna=True,
+                navigation_key=navigation.key,
                 validation_cache=validation_cache,
+                required_host=(
+                    doc.OpticalFlowModule.getParentGeoFeatureGroup().Name
+                    if navigation.key == get_navigation_profile().key
+                    else None
+                ),
             )
             antenna = {
                 "installed_clearance_collisions": collisions,
@@ -554,7 +618,7 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit, both optical models and both hosts. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. The accessory plate is not an optical-stack host.",
+        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit and both optical models. Both optical hosts are supported except that a directly attached MG-F10-A helix requires the battery optical host; blocked FC-host evidence remains in the report. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. The accessory plate is not an optical-stack host.",
         "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
         and bool(rows)
         and all(row["passed"] for row in rows),

@@ -40,6 +40,7 @@ class EquipmentOptionShapeTests(unittest.TestCase):
 
     def test_radio_lanes_start_at_selected_body_ends_without_entering_body(self):
         from gondola.parts import equipment_envelopes as envelopes
+        from gondola.parts import equipment_layout as layout
         from gondola.parts import wiring_reserves as wiring
 
         for profile in options.RADIO_PROFILES.values():
@@ -48,15 +49,33 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                 reserves = wiring.reserve_shapes(radio_profile=profile)
                 negative = reserves["RadioNegativeXConnectorReserve"]
                 positive = reserves["RadioPositiveXConnectorReserve"]
+                inverse = layout.radio_placement().inverse()
+
+                def device_bounds(shape):
+                    # Port names refer to the radio's own X ends. Carrier yaw
+                    # and the underside flip must not change this interface.
+                    local = shape.copy()
+                    local.Placement = inverse.multiply(local.Placement)
+                    return local.BoundBox
+
+                body_bounds = device_bounds(body)
                 for lane in (negative, positive):
                     self.assertLess(abs(lane.common(body).Volume), 1e-7)
                     self.assertAlmostEqual(lane.distToShape(body)[0], 0)
+                    bounds = device_bounds(lane)
                     self.assertAlmostEqual(
-                        lane.BoundBox.YLength,
-                        body.BoundBox.YLength + 2 * wiring.CONNECTOR_SIDE_MARGIN_MM,
+                        bounds.YMin,
+                        body_bounds.YMin - wiring.CONNECTOR_SIDE_MARGIN_MM,
                     )
-                self.assertAlmostEqual(negative.BoundBox.XMax, body.BoundBox.XMin)
-                self.assertAlmostEqual(positive.BoundBox.XMin, body.BoundBox.XMax)
+                    self.assertAlmostEqual(
+                        bounds.YMax,
+                        body_bounds.YMax + wiring.CONNECTOR_SIDE_MARGIN_MM,
+                    )
+                    self.assertAlmostEqual(
+                        bounds.XLength, wiring.RADIO_CONNECTOR_TRAVEL_MM
+                    )
+                self.assertAlmostEqual(device_bounds(negative).XMax, body_bounds.XMin)
+                self.assertAlmostEqual(device_bounds(positive).XMin, body_bounds.XMax)
 
     def test_gps_connector_lane_covers_short_edge_and_follows_device_height(self):
         from gondola.parts import equipment_envelopes as envelopes

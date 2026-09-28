@@ -137,8 +137,8 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc.recompute()
         result = control_behavior(doc)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
-        doc.OpticalRollStage.MaximumAngle = 30
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 15)
+        doc.OpticalPitchStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
 
     def test_rotated_carrier_reverses_clamp_offset_but_not_local_side(self):
@@ -258,7 +258,7 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(
             {obj.Name for obj in getattr(registry, "OpticalMountParts", [])},
-            {"OpticalMountBase", "OpticalRollBracket", "OpticalSensorTray"},
+            {"OpticalMountBase", "OpticalSensorTray"},
         )
         self.assertTrue(
             {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(
@@ -279,7 +279,7 @@ class FrozenBaselineTests(unittest.TestCase):
 
         result = control_behavior(self.reference)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 20)
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 15)
 
     def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):
         from gondola.validation.baseline import unresolved_scope
@@ -389,14 +389,31 @@ class FrozenBaselineTests(unittest.TestCase):
         shape = Part.makeBox(2, 2, 2)
         expected = self.feature("ExpectedOpticalBracket", shape)
         actual = self.feature("ActualOpticalBracket", shape)
-        contract = {"angle_limit_deg": 20, "retention_physically_verified": False}
-        for obj in (expected, actual):
-            obj.addProperty("App::PropertyString", "OpticalMountContract")
-            obj.OpticalMountContract = json.dumps(contract)
-        self.assertTrue(compare_shape_objects(actual, expected)["passed"])
-        contract["retention_physically_verified"] = True
-        actual.OpticalMountContract = json.dumps(contract)
-        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+        properties = (
+            (
+                "OpticalMountContract",
+                "App::PropertyString",
+                '{"angle_limit_deg":20}',
+                "{}",
+            ),
+            (
+                "OpticalInterfaceContract",
+                "App::PropertyString",
+                '{"foot_width":8}',
+                "{}",
+            ),
+            ("OpticalFitVerified", "App::PropertyBool", False, True),
+            ("OpticalFootEnd", "App::PropertyInteger", 0, 1),
+        )
+        for name, kind, original, changed in properties:
+            for obj in (expected, actual):
+                obj.addProperty(kind, name)
+                setattr(obj, name, original)
+            with self.subTest(property=name):
+                self.assertTrue(compare_shape_objects(actual, expected)["passed"])
+                setattr(actual, name, changed)
+                self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+                setattr(actual, name, original)
 
 
 if __name__ == "__main__":

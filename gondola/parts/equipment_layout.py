@@ -38,7 +38,9 @@ def radio_placement():
         App.Vector(
             *mounts.RADIO_CENTRE_XY, mounts.DECK_BOTTOM_Z - mounts.ADHESIVE_ALLOWANCE
         ),
-        App.Rotation(App.Vector(1, 0, 0), 180),
+        App.Rotation(App.Vector(0, 0, 1), mounts.RADIO_YAW_DEG).multiply(
+            App.Rotation(App.Vector(1, 0, 0), 180)
+        ),
     )
 
 

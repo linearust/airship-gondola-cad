@@ -11,7 +11,7 @@ from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail, servo_bridge, stack_interface
+from gondola.parts import optical_interface, propulsion, rail, servo_bridge
 
 from .geometry import local_shape
 
@@ -159,20 +159,6 @@ def review(doc, registry):
             propulsion.FOOT_THICKNESS,
         ),
         (
-            "optical_base_pivot_wall",
-            "OpticalMountBase",
-            (-optical_mount.EAR_THICKNESS - 0.01, 0, 4),
-            (0.01, 0, 4),
-            optical_mount.EAR_THICKNESS,
-        ),
-        (
-            "optical_roll_bracket_wall",
-            "OpticalRollBracket",
-            (-0.01, -1, 5),
-            (optical_mount.ROLL_POST_WIDTH + 0.01, -1, 5),
-            optical_mount.ROLL_POST_WIDTH,
-        ),
-        (
             "optical_tray_neck_wall",
             "OpticalSensorTray",
             (0, -0.01, 3.8),
@@ -187,7 +173,7 @@ def review(doc, registry):
             optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
         ),
     ]
-    analytic.extend(stack_interface.manufacturing_wall_probes())
+    analytic.extend(optical_interface.manufacturing_wall_probes())
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
         (probe, True)

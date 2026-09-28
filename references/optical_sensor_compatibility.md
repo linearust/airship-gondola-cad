@@ -1,6 +1,6 @@
 # Interchangeable optical sensors
 
-Use exactly one MicoAir MTF-02P or MTF-01P on the existing manual roll/pitch
+Use exactly one MicoAir MTF-02P or MTF-01P on the compact manually clamped pitch-only
 optical stack. MTF-02P remains the default. The sensor choice does not add a
 second sensor, printed part or mounting fastener. The complete stack remains
 transferable between the battery and electronics carriers.

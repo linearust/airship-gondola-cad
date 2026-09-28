@@ -1,5 +1,9 @@
 # Holybro X500 payload-plate reference review
 
+Historical AY design review. BB supersedes the carrier dimensions and hole layout;
+see [the current square-plate review](square_mount_review.md). The measured Holybro
+reference below remains source evidence, not the active project mounting pattern.
+
 Review date: 2026-09-27. This is reference geometry, not a second definition of
 the gondola carrier. The compact 54 × 74 mm carrier is retained. Its project-specific slots are
 defined in [mounting_slots.py](../gondola/parts/mounting_slots.py); support lands

@@ -15,7 +15,7 @@ from gondola.assembly import style_assembly
 from gondola.cad import belongs_to_group, create_group, translated_shape, world_shape
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import DESIGN_REVISION
-from gondola.parts import stack_interface
+from gondola.parts import optical_interface
 from gondola.provenance import file_sha256, source_fingerprint
 
 
@@ -227,7 +227,7 @@ def render_previews(close_after=False):
             active, pose, suffix, scope, w, h = jobs[i]
             App.setActiveDocument(active.Name)
             if active == doc:
-                stack_interface.attach_to_host(
+                optical_interface.attach_to_host(
                     doc.OpticalFlowModule,
                     alternative_stack_host
                     if scope == "optical_alternate"
@@ -300,7 +300,7 @@ def render_previews(close_after=False):
                 str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_opposite.FCStd"))
             )
             App.setActiveDocument(doc.Name)
-            stack_interface.attach_to_host(doc.OpticalFlowModule, default_stack_host)
+            optical_interface.attach_to_host(doc.OpticalFlowModule, default_stack_host)
             style_assembly(doc)
             Gui.activeDocument().activeView().viewAxonometric()
             Gui.updateGui()

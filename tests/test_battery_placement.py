@@ -16,8 +16,8 @@ class BatteryPlacementTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
+            optical_interface,
             optical_mount,
-            stack_interface,
         )
 
         cls.doc = App.newDocument("BatteryPlacementRegression")
@@ -32,7 +32,7 @@ class BatteryPlacementTests(unittest.TestCase):
             cls.doc, cls.host, electronics, accessory
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
-        stack_interface.attach_to_host(stack, cls.host)
+        optical_interface.attach_to_host(stack, cls.host)
         base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
         stack.addObject(base)
         base.Shape = optical_mount.base_shape()
@@ -58,7 +58,9 @@ class BatteryPlacementTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), 18)
         floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
-        self.assertEqual(len(floats), 4)
+        self.assertEqual(
+            {row["component"] for row in floats}, {"foot", "upright", "fixed_pitch_ear"}
+        )
         self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
             result["continuous_translation"]["local_size_mm"], [28, 74, 17]
@@ -114,7 +116,9 @@ class BatteryPlacementTests(unittest.TestCase):
         obstacle = self.doc.addObject("Part::Box", "BatteryInteriorBlocker")
         self.host.addObject(obstacle)
         obstacle.Length = obstacle.Width = obstacle.Height = 1
-        obstacle.Placement.Base = App.Vector(-0.5, -0.5, 15)
+        obstacle.Placement.Base = App.Vector(
+            -0.5, -0.5, self.battery.Shape.BoundBox.ZMin + 0.5
+        )
         self.doc.recompute()
         try:
             result = self.check(self.objects + [obstacle])
@@ -131,7 +135,7 @@ class BatteryPlacementTests(unittest.TestCase):
         # reserve, but stop short of contact with the continuous pack envelope.
         result = self.check()
         gap = result["continuous_translation"]["stack_tower_gaps"][0]["minimum_gap_mm"]
-        tower.Placement.Base.x += gap - 0.5
+        tower.Placement.Base.x -= gap - 0.5
         self.doc.recompute()
         try:
             result = self.check()

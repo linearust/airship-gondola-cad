@@ -12,13 +12,124 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class MountingSlotTests(unittest.TestCase):
+    def test_saved_deck_openings_have_quarter_turn_and_both_mirror_symmetries(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import carrier_opening_checks
+
+        original = mounts.common_plate_shape()
+        report = carrier_opening_checks(original)
+        self.assertTrue(report["deck_symmetry"]["passed"], report)
+        self.assertTrue(report["passed"], report)
+        # A new hole away from existing openings retains every specified rim.
+        # Symmetry must reject the changed saved material independently.
+        notch = Part.makeCylinder(
+            0.3,
+            mounts.DECK_THICKNESS,
+            App.Vector(4, 29, mounts.DECK_BOTTOM_Z),
+        )
+        changed = original.cut(notch)
+        single = carrier_opening_checks(changed)
+        self.assertTrue(all(row["passed"] for row in single["mounting_slots"]))
+        self.assertTrue(all(row["passed"] for row in single["fixed_device_bores"]))
+        self.assertFalse(single["deck_symmetry"]["passed"])
+        self.assertFalse(single["passed"])
+        # Four identical notches preserve rotation but create a chiral array.
+        # A rotation-only symmetry check would incorrectly accept this shape.
+        for angle in (90, 180, 270):
+            rotated = notch.copy()
+            rotated.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
+            changed = changed.cut(rotated)
+        chiral = carrier_opening_checks(changed)["deck_symmetry"]
+        self.assertLess(chiral["quarter_turn_difference_mm3"], 1e-6)
+        self.assertGreater(chiral["mirror_x_difference_mm3"], 0.1)
+        self.assertGreater(chiral["mirror_y_difference_mm3"], 0.1)
+        self.assertFalse(chiral["passed"])
+
+    def test_pas_slot_axes_keep_bearing_sides_without_requiring_a_round_annulus(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import (
+            mounting_pad_check,
+            slot_mounting_pad_check,
+        )
+
+        original = mounts.common_plate_shape()
+        for centre in mounts.PAS_HOLE_CENTRES:
+            arguments = dict(
+                bottom=mounts.DECK_BOTTOM_Z,
+                thickness=mounts.DECK_THICKNESS,
+                hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
+                pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+            )
+            with self.subTest(centre=centre):
+                self.assertTrue(
+                    slot_mounting_pad_check(original, centre, **arguments)["passed"]
+                )
+                self.assertFalse(
+                    mounting_pad_check(original, centre, **arguments)["passed"]
+                )
+                origin = App.Vector(*centre, mounts.DECK_BOTTOM_Z)
+                normal = App.Vector(-centre[1], centre[0], 0)
+                normal.normalize()
+                for sign in (-1, 1):
+                    cut = Part.makeCylinder(
+                        0.2, mounts.DECK_THICKNESS, origin + normal * (sign * 2.0)
+                    )
+                    row = slot_mounting_pad_check(
+                        original.cut(cut), centre, **arguments
+                    )
+                    self.assertFalse(row["passed"])
+                    self.assertGreater(
+                        row["missing_full_thickness_slot_bearing_mm3"], 0.01
+                    )
+                fill = Part.makeCylinder(0.3, mounts.DECK_THICKNESS, origin)
+                self.assertFalse(
+                    slot_mounting_pad_check(original.fuse(fill), centre, **arguments)[
+                        "passed"
+                    ]
+                )
+                # Published axes cannot drift sideways out of their actual slot.
+                shifted = (centre[0] + normal.x, centre[1] + normal.y)
+                self.assertFalse(
+                    slot_mounting_pad_check(original, shifted, **arguments)["passed"]
+                )
+
+    def test_all_nominal_contact_patches_reject_missing_interior_material(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import carrier_contact_patch_checks
+
+        original = mounts.common_plate_shape()
+        arguments = dict(bottom=mounts.DECK_BOTTOM_Z, thickness=mounts.DECK_THICKNESS)
+        report = carrier_contact_patch_checks(original, **arguments)
+        self.assertEqual(len(report["patches"]), 5)
+        self.assertTrue(report["passed"])
+        for row in report["patches"]:
+            with self.subTest(allocation=row["allocation"]):
+                defect = Part.makeCylinder(
+                    0.2,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(*row["centre_xy_mm"], mounts.DECK_BOTTOM_Z),
+                )
+                changed = carrier_contact_patch_checks(
+                    original.cut(defect), **arguments
+                )
+                selected = next(
+                    x
+                    for x in changed["patches"]
+                    if x["allocation"] == row["allocation"]
+                )
+                self.assertFalse(selected["passed"])
+                self.assertGreater(
+                    selected["missing_full_thickness_material_mm3"], 0.01
+                )
+                self.assertFalse(changed["passed"])
+
     def test_slot_volumes_match_capsule_and_rounded_arc_formulae(self):
         from gondola.parts import mounting_slots
 
         rows = mounting_slots.rows()
-        self.assertEqual(len(rows), 10)
-        self.assertEqual(len({row["name"] for row in rows}), 10)
-        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 6)
+        self.assertEqual(len(rows), 16)
+        self.assertEqual(len({row["name"] for row in rows}), 16)
+        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 12)
         self.assertEqual(sum(row["kind"] == "arc" for row in rows), 4)
         for row in rows:
             for border in (0.0, 1.5):
@@ -75,7 +186,7 @@ class MountingSlotTests(unittest.TestCase):
         self.assertTrue(carrier_opening_checks(original)["passed"])
         specs = [
             next(row for row in mounting_slots.rows() if row["family"] == family)
-            for family in ("square20_24", "square30_5", "side")
+            for family in ("square16_23", "square30_5", "side")
         ]
         for row in specs:
             fraction = 0.413
@@ -127,11 +238,11 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.validation.equipment_options import adhesive_support_check
 
         self.assertEqual(
-            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 512
+            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 536
         )
         support = mounts.mount_shape("accessory")
         body = equipment_envelopes.radio_envelope_shape()
-        centre = mounts.RADIO_CENTRE_XY
+        centre = mounts.RADIO_ADHESIVE_CENTRE_XY
         notch = Part.makeCylinder(
             0.2, mounts.DECK_THICKNESS, App.Vector(*centre, mounts.DECK_BOTTOM_Z)
         )

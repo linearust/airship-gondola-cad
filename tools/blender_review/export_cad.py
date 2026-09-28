@@ -16,7 +16,7 @@ import MeshPart
 
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
-from gondola.parts import optical_mount, stack_interface
+from gondola.parts import optical_interface, optical_mount
 from gondola.provenance import file_sha256, source_fingerprint
 
 CATEGORIES = ("PrintedParts", "HardwareParts", "ReferenceParts", "TapeReferences")
@@ -241,8 +241,8 @@ def export(cad_path, output):
         def reset(host="BatteryEquipmentModule"):
             doc.PortPod.Tilt = doc.StarboardPod.Tilt = 0
             doc.ServoDriveModule.Placement = original_drive
-            stack_interface.attach_to_host(doc.OpticalFlowModule, doc.getObject(host))
-            optical_mount.set_angles(doc, 0, 0)
+            optical_interface.attach_to_host(doc.OpticalFlowModule, doc.getObject(host))
+            optical_mount.set_pitch(doc, 0)
             doc.recompute()
 
         def scene(
@@ -393,32 +393,8 @@ def export(cad_path, output):
         )
 
         def optical(frame):
-            roll = curve(
-                frame,
-                [
-                    (1, 0),
-                    (37, 20),
-                    (73, -20),
-                    (109, 0),
-                    (181, 0),
-                    (217, 20),
-                    (253, -20),
-                    (289, 0),
-                ],
-            )
-            pitch = curve(
-                frame,
-                [
-                    (1, 0),
-                    (109, 0),
-                    (145, 20),
-                    (181, -20),
-                    (217, 20),
-                    (253, -20),
-                    (289, 0),
-                ],
-            )
-            optical_mount.set_angles(doc, roll, pitch)
+            pitch = curve(frame, [(1, 0), (37, 20), (73, -20), (109, 20), (145, 0)])
+            optical_mount.set_pitch(doc, pitch)
             return {}, set()
 
         for number, host, label in (
@@ -429,21 +405,19 @@ def export(cad_path, output):
             scene(
                 f"0{number} Optical on {label}",
                 f"OPTICAL MANUAL TRIM / {label.upper()} HOST",
-                "Manual roll and pitch +/-20 deg; loosen, align and retighten pivot joints. Not actuated or self-levelling. Alternate installed host, not a transfer path. Sensor local +Z is its viewing direction.",
-                289,
+                "One manual pitch axis +/-20 deg. Loosen, align and retighten the single pivot; no roll correction, actuation or self-levelling. Alternate installed host, not a transfer path. Sensor local +Z is the viewing direction.",
+                145,
                 all_names,
                 [
-                    [origin.x - 42, origin.y - 40, origin.z + 7],
-                    [origin.x + 42, origin.y + 40, origin.z + 97],
+                    [origin.x - 51, origin.y - 44, origin.z + 7],
+                    [origin.x + 51, origin.y + 44, origin.z + 67],
                 ],
                 [
                     (1, "Aligned"),
-                    (37, "Roll +20"),
-                    (73, "Roll -20"),
-                    (145, "Pitch +20"),
-                    (181, "Pitch -20"),
-                    (217, "Combined trim"),
-                    (289, "Aligned"),
+                    (37, "Pitch +20"),
+                    (73, "Pitch -20"),
+                    (109, "Pitch +20"),
+                    (145, "Aligned"),
                 ],
                 optical,
                 host,

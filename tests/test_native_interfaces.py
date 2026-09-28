@@ -160,12 +160,20 @@ class NativeInterfaceTests(unittest.TestCase):
 
     def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
         from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
+        from gondola.validation.equipment import (
+            mounting_pad_check,
+            slot_mounting_pad_check,
+        )
 
         for kind in ("electronics", "accessory"):
             shape = mounts.mount_shape(kind).copy()
             for centre in mounts.mount_hole_centres(kind):
-                result = mounting_pad_check(
+                check = (
+                    mounting_pad_check
+                    if kind == "electronics"
+                    else slot_mounting_pad_check
+                )
+                result = check(
                     shape,
                     centre,
                     bottom=mounts.DECK_BOTTOM_Z,

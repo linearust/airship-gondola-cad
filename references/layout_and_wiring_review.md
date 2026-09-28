@@ -1,4 +1,4 @@
-# Three mass regions and universal electronics carriers — AY
+# Three mass regions and universal electronics carriers — BB
 
 Keep three mass regions: central propulsion, battery on one side and electronics
 on the opposite side. Two independently positioned carriers occupy the
@@ -10,7 +10,7 @@ separate from the output-bearing frame.
 
 `contracts/design.py:MODULE_STATIONS` owns the initial locations and discrete
 carrier orientations. These are starting positions for physical trim, not a
-measured centre-of-gravity result. The optical tower remains transferable
+measured centre-of-gravity result. The compact optical pedestal remains transferable
 between the battery and electronics carriers through the existing structural
 stack interface; its load does not pass through the battery or FC dampers.
 There is no propulsion-frame optical host in this revision.
@@ -24,7 +24,7 @@ intended global installation orientation independently of this carrier turn;
 the square mounting pattern permits it. The CAD envelope has no component
 markings, so verify the actual board arrow and firmware orientation at assembly.
 
-AY retains the initial FC carrier station at X = -54 mm, with navigation
+BB retains the initial FC carrier station at X = -54 mm, with navigation
 at -158 mm. The earlier move from X = -72 mm increased separation from the centred navigation
 and optional direct helix, and brings the FC closer to the neutral motor-lead
 exits. The new shoe position coincides with a rail land centre. These are initial
@@ -39,41 +39,23 @@ reserves follow the FC orientation; ancillary-device reserves follow their
 own carrier. The XT30 body and unplugging space move to the side to avoid
 the servo module.
 
-The shared carrier combines a 54 × 74 mm deck with 3 mm plan-view corner radii
-and an integral rail shoe, with no projecting tab or model-shaped pockets.
-The plate outline is symmetric, while holes and clamp orientations retain their
-functional datums. Every instance has the same confirmed
-FC/P-AS bores and the common straight/curved mounting-slot template. The
-structural feet and their two circular clamps fit inside the plate outline at
-nominal alignment;
-there are no separate outboard clamp ears. The navigation
-instance places P-AS or one GPS at its centre, and the Mini at (-15,28) mm on the
-opposite plate face, beside the rail shoe. It needs no radio-specific plate. See
-[common carrier rationale](universal_carrier_review.md) for the hole and support
-boundaries. The Mini's X offset was selected for rail-clamp hex-key and structural
-fastener access without changing the outline. Recheck these paths against the
-revised tower feet and clamp positions. Its ordinary rail clamp permits
-independent positioning. The navigation carrier starts near the aft
-rail end to separate the optional helix
-from the optical hosts; recalculate the field-of-view and connector checks after
-layout changes rather than reusing older results. The initial accessory
-shoe is 4 mm from its rail land centre; it is not a claim of ±4 mm free adjustment
-around that initial position. Recheck the land, whole shoe support and all
-clearances after moving any carrier.
+The shared carrier is now a 64 mm square with a symmetric bore/slot array and
+simple raised centre support. Its P-AS datum is (0,-2.2) mm and the underside Mini
+is at (26,-11) mm, with its long axis along Y and its 10×12 mm adhesive patch
+at (26,-5). This clears both rail-clamp approaches and optional-power foot
+service. The common plate sits 2 mm
+higher than AY to clear heads at the 16 mm slot pattern; device and reserve
+heights follow the shared datum. [Square mount review](square_mount_review.md)
+defines these changes and the compact one-axis optical pedestal.
 
-The rail's 32 mm wide pads are 14 mm long, with a raised central running head;
-the side wings carry attachment tape to the balloon. They are not a continuous
-flat 32 mm electronics mounting face. The common carrier provides a
-known geometric adhesive face without covering the sliding head or using the
-rail's balloon-contact underside. The Mini uses the carrier's face toward the
-balloon, outside the shoe. Its body starts 4.6 mm from the Z = 0 reference plane
-and its inverted connector reserve starts 2.6 mm from that plane. Neither
-dimension proves clearance to the actual balloon or installed plug. The actual
-device contact, strap path and adhesion remain unverified. Remove the carrier
-and service the Mini on a bench; do not assume access while attached to the
-balloon. All three carrier structural datums remain centred at (0,0), but
-the navigation instance remains excluded as an optical host. The same physical
-print does not clear the equipment attached to it from the optical field.
+The three prints remain identical, while role-specific equipment and rail poses
+differ. Optical attachment is directly to one common outer slot; it no longer
+uses the centred diagonal portal. The optional power platform retains a separate
+portal on the same common slot array. Inspect each chosen host and optical screen.
+
+The rail tape wings are not a verified flat device mounting surface: a raised
+running head and flexible segmented contact remain. Adhesive devices use declared
+solid regions on the shared carrier instead.
 
 ## Variable battery load
 
@@ -101,12 +83,11 @@ servo-module removal path. A stationary electronics carrier can anchor the
 downstream portion without a needless detour to the low propulsion-frame foot.
 
 The connected CAD reservations describe available loop workspace and a route
-toward the FC. AY moves the single intermediate waypoint to propulsion-local
-(-42, ±12, 40) mm so the compact FC-host tower retains clearance throughout its
-declared seated registration. The earlier (-40, ±12, 39) mm route failed the
-unchanged 1.5 mm minimum margin. The correction retains the same 3 mm corridor,
-R4 mm planning turn and one-bend topology; it adds about 1.8 mm of centreline
-length, not a verified wire cut-length allowance.
+toward the FC. BB uses a propulsion-local intermediate waypoint at
+(-42, ±12, 42) mm, raised 2 mm with the new carrier deck. This avoids entering
+the FC connector reserve before the terminal connection region. The corridor is
+a planning reservation; it is not an installed harness, cut length or verified
+flexible-wire sweep.
 
 These reservations do not establish the motor's unpublished lead-exit datum,
 an installed tie, cable length, bend radius, or the flexible cable's changing

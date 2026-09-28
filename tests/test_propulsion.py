@@ -1725,9 +1725,9 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                     self.assertTrue(row["passed"], row)
                 assessment = result["equipment_mount_assessment"]
                 self.assertEqual(
-                    assessment["fc_support_deck_size_mm"], [54.0, 74.0, 2.0]
+                    assessment["fc_support_deck_size_mm"], [64.0, 64.0, 2.0]
                 )
-                self.assertEqual(assessment["accessory_deck_size_mm"], (54.0, 74.0))
+                self.assertEqual(assessment["accessory_deck_size_mm"], (64.0, 64.0))
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

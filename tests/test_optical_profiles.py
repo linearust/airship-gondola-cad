@@ -1,5 +1,6 @@
 """Purchased alternatives share one support without reusing connector directions."""
 
+import math
 import unittest
 
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
@@ -65,3 +66,59 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                     profile.size_mm[0] / 2 + 0.3, 0, sensor.SENSOR_BOTTOM_Z + 1
                 )
                 self.assertTrue(screen.isInside(point, 1e-7, True))
+
+    def test_continuous_external_cone_contains_both_fields_and_registration(self):
+        from gondola.parts import optical_interface, optical_mount, optical_sensor
+        from gondola.validation.optical import _external_field_bound
+
+        doc = App.newDocument("OpticalFullFieldBound")
+        try:
+            group = doc.addObject("App::Part", "OpticalFlowModule")
+            for profile in SENSOR_PROFILES.values():
+                bound, _ = _external_field_bound(group, profile)
+                for pitch in (-20, -11, 0, 13, 20):
+                    rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
+                    for distance in (0, 100, 400):
+                        expansion = distance * math.tan(
+                            math.radians(profile.flow_fov_deg / 2)
+                        )
+                        for sx, sy in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                            start = App.Vector(
+                                sx * (profile.size_mm[0] / 2 + expansion),
+                                sy * (profile.size_mm[1] / 2 + expansion),
+                                optical_sensor.SENSOR_BOTTOM_Z
+                                + profile.optical_origin_min_z_mm
+                                + distance,
+                            )
+                            point = rotation.multVec(start) + App.Vector(
+                                *optical_mount.PIVOT_CENTRE
+                            )
+                            for yaw in (
+                                -optical_interface.MAX_REGISTRATION_YAW_RAD,
+                                0,
+                                optical_interface.MAX_REGISTRATION_YAW_RAD,
+                            ):
+                                registered = App.Rotation(
+                                    App.Vector(0, 0, 1), math.degrees(yaw)
+                                ).multVec(point)
+                                for tx, ty in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                                    shifted = registered + App.Vector(
+                                        tx * optical_interface.MAX_REGISTRATION_X,
+                                        ty * optical_interface.MAX_REGISTRATION_Y,
+                                        0,
+                                    )
+                                    self.assertTrue(
+                                        bound.isInside(shifted, 1e-7, True),
+                                        (
+                                            profile.key,
+                                            pitch,
+                                            distance,
+                                            sx,
+                                            sy,
+                                            yaw,
+                                            tx,
+                                            ty,
+                                        ),
+                                    )
+        finally:
+            App.closeDocument(doc.Name)

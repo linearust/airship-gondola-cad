@@ -42,10 +42,10 @@ class PowerMountTests(unittest.TestCase):
             through_depth=p.SUPPORT_Z,
         )
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (6, 10))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 16))
         # Central board support and both broad end regions are continuous. No
         # dedicated cable-tie slots are required for straps around the outline.
-        for x, y in ((0, 0), (0, -23), (0, 23), (0, -34), (0, 34)):
+        for x, y in ((0, 0), (0, -23), (0, 23), (0, -29), (0, 29)):
             region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
             self.assertLess(region.cut(shape).Volume, 1e-6)
         bounds = shape.BoundBox
@@ -140,28 +140,94 @@ class PowerMountTests(unittest.TestCase):
         finally:
             App.closeDocument(doc.Name)
 
-    def test_analytic_xy_bound_contains_extreme_translated_rotated_board(self):
+    def test_slot_registration_bound_contains_coupled_extreme_poses(self):
         from gondola.parts import power_mount, stack_interface
         from gondola.power_export import _xy_registration_bound
 
         board = power_mount.local_shapes()[0]["PowerModule0"]
         bound = _xy_registration_bound(board)
-        g = stack_interface.MAX_RADIAL_FLOAT
-        radius = math.hypot(*stack_interface.CLAMP_CENTRES[0])
-        angle = math.degrees(2 * math.asin(g / (2 * radius)))
-        # Sanity-check the continuous analytic enclosure, not a sampled proof.
-        for yaw in (-angle, 0, angle):
-            for x, y in ((g, 0), (-g, 0), (0, g), (0, -g)):
-                moved = board.copy()
-                moved.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
-                moved.translate(App.Vector(x, y, 0))
-                self.assertLess(moved.cut(bound).Volume, 1e-6)
+        allowance = stack_interface.COMBINED_AXIS_CLEARANCE
+        # Full slot travel permits coupled yaw/translation beyond the former
+        # circular-hole displacement disk. Check genuine capsule-valid poses.
+        beyond_round_hole = False
+        for yaw, dx, dy in (
+            (0, 1, 0),
+            (0, 0, 1),
+            (-2.5, 0, 0),
+            (-2, 0, 1.5),
+            (-2, 0, -1.5),
+        ):
+            pose = App.Placement(
+                App.Vector(dx, dy, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
+            )
+            for x, y in stack_interface.CLAMP_CENTRES:
+                point = pose.multVec(App.Vector(x, y, 0))
+                low, high = (13, 23) if y > 0 else (-23, -13)
+                closest_y = max(low, min(high, point.y))
+                self.assertLessEqual(
+                    math.hypot(point.x - x, point.y - closest_y), allowance
+                )
+                beyond_round_hole |= math.hypot(point.x - x, point.y - y) > allowance
+            moved = board.copy()
+            moved.Placement = pose
+            self.assertLess(moved.cut(bound).Volume, 1e-6)
+        self.assertTrue(beyond_round_hole)
+
+    def test_power_feet_use_common_slots_and_have_clear_nut_access(self):
+        from gondola.parts import equipment_mounts
+        from gondola.parts import stack_interface as s
+
+        tower = s.tower_shape()
+        carrier = equipment_mounts.mount_shape("battery")
+        for name, tool in s.clamp_tool_reservations():
+            self.assertLess(tool.common(tower).Volume, 1e-6, name)
+        for index, (x, y) in enumerate(s.CLAMP_CENTRES):
+            bore = Part.makeCylinder(
+                s.CLAMP_HOLE_DIAMETER / 2,
+                s.DECK_THICKNESS,
+                App.Vector(x, y, s.HOST_DECK_BOTTOM_Z),
+            )
+            self.assertLess(bore.common(carrier).Volume, 1e-6)
+            foot = s.foot_shape(index, bottom=s.HOST_DECK_BOTTOM_Z)
+            contact = foot.common(carrier).Volume / s.DECK_THICKNESS
+            self.assertGreater(contact, 50)
+            self.assertLessEqual(
+                max(
+                    abs(foot.BoundBox.XMin),
+                    abs(foot.BoundBox.XMax),
+                    abs(foot.BoundBox.YMin),
+                    abs(foot.BoundBox.YMax),
+                ),
+                32,
+            )
+
+    def test_power_attachment_rejects_missing_host_seat_and_blocked_slot(self):
+        from gondola.parts import equipment_mounts, power_mount
+        from gondola.parts import stack_interface as s
+
+        carrier = equipment_mounts.mount_shape("accessory").copy()
+        carrier.translate(App.Vector(0, 0, -s.STACK_TOP_Z))
+        self.assertTrue(power_mount.attachment_check(carrier)["passed"])
+        changed = carrier.cut(
+            Part.makeBox(
+                3, 3, 2, App.Vector(28, 24, -s.TOWER_HEIGHT - s.DECK_THICKNESS)
+            )
+        )
+        self.assertFalse(power_mount.attachment_check(changed)["passed"])
+        changed = carrier.fuse(
+            Part.makeCylinder(
+                0.6,
+                s.DECK_THICKNESS,
+                App.Vector(27, 23, -s.TOWER_HEIGHT - s.DECK_THICKNESS),
+            )
+        )
+        self.assertFalse(power_mount.attachment_check(changed)["passed"])
 
     def test_saved_audit_rejects_body_alternative_host_and_source_changes(self):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.contracts.power_options import power_option_contract
-        from gondola.parts import equipment_mounts, stack_interface
+        from gondola.parts import equipment_mounts, optical_interface
         from gondola.power_export import (
             ARTIFACT_NAMES,
             audit_power_options,
@@ -196,7 +262,7 @@ class PowerMountTests(unittest.TestCase):
                     host.addObject(obj)
                     mounts.append(obj)
                 optical = doc.addObject("App::Part", "OpticalFlowModule")
-                stack_interface.attach_to_host(optical, doc.BatteryEquipmentModule)
+                optical_interface.attach_to_host(optical, doc.BatteryEquipmentModule)
                 registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(
@@ -225,7 +291,10 @@ class PowerMountTests(unittest.TestCase):
             self.assertTrue(report["passed"], report)
             with patch(
                 "gondola.power_export.screen_configurations",
-                side_effect=({"passed": True}, {"passed": False}),
+                side_effect=(
+                    {"passed": True, "default_configuration_clear": True},
+                    {"passed": False},
+                ),
             ):
                 rejected_alternate = audit_power_options(source, out)
             self.assertFalse(rejected_alternate["passed"])
@@ -233,12 +302,21 @@ class PowerMountTests(unittest.TestCase):
             self.assertTrue(rejected_alternate["configuration_screen"]["passed"])
             self.assertTrue(rejected_alternate["read_only_artifacts"])
 
+            with patch(
+                "gondola.power_export.screen_configurations",
+                return_value={"passed": True, "default_configuration_clear": False},
+            ):
+                blocked_illustrated = audit_power_options(source, out)
+            self.assertFalse(blocked_illustrated["passed"])
+            self.assertFalse(blocked_illustrated["illustrated_configuration_clear"])
+            self.assertTrue(blocked_illustrated["alternate_optical_hosts_passed"])
+
             source_changed = False
 
             def screen_while_source_changes(_doc):
                 nonlocal source_changed
                 source_changed = True
-                return {"passed": True}
+                return {"passed": True, "default_configuration_clear": True}
 
             with (
                 patch(

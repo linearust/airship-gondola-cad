@@ -171,13 +171,11 @@ class PropulsionWiringTests(unittest.TestCase):
             route.MovingWireSweepVerified = False
 
     def _optical_host_obstacles(self, host_placement):
-        from gondola.parts import optical_mount, stack_interface
+        from gondola.parts import optical_interface, optical_mount
 
-        tower_placement = host_placement.multiply(
-            App.Placement(App.Vector(0, 0, stack_interface.STACK_TOP_Z), App.Rotation())
-        )
+        tower_placement = host_placement.multiply(optical_interface.host_placement())
         obstacles = {"OpticalMountBase": optical_mount.base_shape()}
-        obstacles.update(dict(stack_interface.rigid_float_component_bounds()))
+        obstacles.update(dict(optical_interface.rigid_float_component_bounds()))
         for shape in obstacles.values():
             shape.Placement = tower_placement.multiply(shape.Placement)
         return obstacles
@@ -197,26 +195,6 @@ class PropulsionWiringTests(unittest.TestCase):
                     with self.subTest(host=host, route=route.Name, obstacle=name):
                         self.assertLess(shape.common(obstacle).Volume, 1e-6)
                         self.assertGreaterEqual(shape.distToShape(obstacle)[0], 1.5)
-
-    def test_old_diagonal_route_hits_electronics_stack_leg(self):
-        old_points = [
-            (-38, 65.5, 48.2),
-            (-46, 65.5, 48.2),
-            (-54, 45, 34),
-            (-50, 14.8, 24.2),
-        ]
-        prop = self.propulsion.getGlobalPlacement()
-        # Preserve this historical failure at its original installation while
-        # positive tests use the currently selected module station above.
-        electronics = App.Placement(
-            App.Vector(-72, -0.1, 0), App.Rotation(App.Vector(0, 0, 1), 180)
-        )
-        with patch.object(self.wiring, "route_points", return_value=old_points):
-            shape = self.wiring.route_geometry(1, prop, electronics)["shape"]
-        shape.Placement = prop.multiply(shape.Placement)
-        obstacles = self._optical_host_obstacles(electronics)
-        self.assertGreater(shape.common(obstacles["OpticalMountBase"]).Volume, 8)
-        self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 30)
 
     def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
         from gondola.cad import world_shape

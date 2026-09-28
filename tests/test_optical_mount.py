@@ -1,4 +1,4 @@
-"""Native regressions for the independently clamped two-axis optical head."""
+"""Native mechanism checks for the compact single-axis optical pedestal."""
 
 import itertools
 import json
@@ -26,91 +26,52 @@ class OpticalMountTests(unittest.TestCase):
         App.closeDocument(cls.doc.Name)
 
     def setUp(self):
-        self.module["roll_stage"].Roll = 0
         self.module["pitch_stage"].Pitch = 0
         self.parent.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_three_separate_solids_and_eight_purchased_fasteners(self):
+    def test_two_prints_and_three_existing_m2_fastener_pairs(self):
         from gondola.contracts import fasteners
 
-        self.assertEqual(len(self.module["printed"]), 3)
-        self.assertEqual(len(self.module["hardware"]), 8)
+        self.assertEqual(len(self.module["printed"]), 2)
+        self.assertEqual(len(self.module["hardware"]), 6)
+        self.assertIsNone(self.doc.getObject("OpticalRollStage"))
+        self.assertIsNone(self.doc.getObject("OpticalRollBracket"))
         for obj in self.module["printed"] + self.module["hardware"]:
             self.assertTrue(obj.Shape.isValid(), obj.Name)
             self.assertEqual(len(obj.Shape.Solids), 1, obj.Name)
         for obj in self.module["hardware"]:
-            self.assertFalse(obj.PrintPart, obj.Name)
-            self.assertNotIn("WASHER", obj.HardwareSKU)
-            if "Bolt" in obj.Name:
-                self.assertEqual(obj.HardwareSKU, "M2X8_BUTTON_HEAD")
-                self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
-            else:
-                self.assertEqual(obj.HardwareSKU, "M2_HEX_NUT")
-                self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
+            self.assertFalse(obj.PrintPart)
+            self.assertEqual(
+                obj.HardwareSKU,
+                "M2X8_BUTTON_HEAD" if "Bolt" in obj.Name else "M2_HEX_NUT",
+            )
+            self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
         contract = json.loads(self.module["group"].OpticalMountContract)
-        self.assertFalse(contract["holding_torque_verified"])
-        self.assertFalse(contract["self_levelling"])
-        self.assertFalse(contract["physical_angle_stops_modeled"])
+        self.assertEqual(contract["adjustment_degrees_of_freedom"], 1)
+        for key in (
+            "holding_torque_verified",
+            "self_levelling",
+            "physical_angle_stops_modeled",
+        ):
+            self.assertFalse(contract[key])
 
-    def test_integral_tower_has_broad_clamped_feet_and_open_device_space(self):
-        from gondola.parts import optical_mount, stack_interface
+    def test_compact_foot_and_straight_upright_are_continuous(self):
+        from gondola.parts import optical_interface, optical_mount
 
-        base = optical_mount.base_shape()
-        tower = stack_interface.tower_shape()
-        self.assertLess(abs(tower.cut(base).Volume), 1e-5)
-        self.assertEqual(
-            set(stack_interface.ANCHOR_CENTRES), {(-22.5, -22.5), (22.5, 22.5)}
-        )
-        self.assertEqual(
-            set(stack_interface.CLAMP_CENTRES), {(-22.5, -28.5), (22.5, 28.5)}
-        )
-        self.assertAlmostEqual(base.BoundBox.XLength, 53)
-        self.assertAlmostEqual(base.BoundBox.YLength, 63)
-        self.assertAlmostEqual(base.BoundBox.ZMin, -stack_interface.TOWER_HEIGHT)
-        self.assertEqual(len(base.Solids), 1)
-        # Devices and wiring remain in the open centre, while both complete
-        # clamped feet belong to one installed print.
-        centre = Part.makeBox(30, 30, 31, App.Vector(-15, -15, -32))
-        self.assertLess(abs(base.common(centre).Volume), 1e-5)
-        self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 4)
+        shape = optical_mount.base_shape()
+        self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
+        self.assertLess(shape.BoundBox.XLength, 11)
+        self.assertLessEqual(shape.BoundBox.YLength, 16)
+        self.assertLess(shape.BoundBox.ZLength, 26)
+        post = Part.makeBox(4, 2, 12, App.Vector(-1, 0, 2))
+        self.assertLess(abs(post.cut(shape).Volume), 1e-5)
+        self.assertGreater(shape.Volume, 350)
 
-    def test_full_pivot_root_bears_on_the_straight_top_beam(self):
-        from gondola.parts import optical_mount, stack_interface
-
-        support = Part.makeBox(
-            optical_mount.EAR_THICKNESS,
-            2 * optical_mount.EAR_RADIUS,
-            0.2,
-            App.Vector(
-                -optical_mount.EAR_THICKNESS,
-                -optical_mount.EAR_RADIUS,
-                stack_interface.TOP_BEAM_THICKNESS - 0.2,
-            ),
-        )
-        self.assertLess(abs(support.cut(stack_interface.tower_shape()).Volume), 1e-5)
-        self.assertLess(abs(support.cut(optical_mount.base_shape()).Volume), 1e-5)
-
-    def test_native_angles_clamp_independently_and_follow_the_host(self):
+    def test_pitch_limit_is_native_and_every_part_follows_the_host(self):
         from gondola.cad import world_shape
 
-        roll, pitch = self.module["roll_stage"], self.module["pitch_stage"]
-        for requested, expected in (
-            (-999, -20),
-            (-11, -11),
-            (0, 0),
-            (13, 13),
-            (999, 20),
-        ):
-            roll.Roll = requested
-            self.doc.recompute()
-            self.assertTrue(
-                roll.Placement.Rotation.isSame(
-                    App.Rotation(App.Vector(1, 0, 0), expected), 1e-7
-                )
-            )
-            self.assertTrue(pitch.Placement.Rotation.isSame(App.Rotation(), 1e-7))
-        roll.Roll = 0
+        pitch = self.module["pitch_stage"]
         for requested, expected in (
             (-999, -20),
             (-11, -11),
@@ -125,10 +86,9 @@ class OpticalMountTests(unittest.TestCase):
                     App.Rotation(App.Vector(0, 1, 0), expected), 1e-7
                 )
             )
-            self.assertTrue(roll.Placement.Rotation.isSame(App.Rotation(), 1e-7))
         before = {
-            o.Name: world_shape(o).Solids[0].CenterOfMass
-            for o in self.module["printed"] + self.module["hardware"]
+            obj.Name: world_shape(obj).Solids[0].CenterOfMass
+            for obj in self.module["printed"] + self.module["hardware"]
         }
         shift = App.Vector(37, -9, 3)
         self.parent.Placement.Base = shift
@@ -139,100 +99,49 @@ class OpticalMountTests(unittest.TestCase):
                     world_shape(obj).Solids[0].CenterOfMass - before[obj.Name] - shift
                 ).Length,
                 1e-7,
-                obj.Name,
             )
 
-    def test_complete_assembled_head_has_no_volume_collision_at_adjusted_poses(self):
+    def test_head_and_complete_fasteners_clear_at_all_sampled_angles(self):
         from gondola.cad import world_shape
-        from gondola.parts.optical_mount import set_angles
+        from gondola.parts.optical_mount import set_pitch
         from gondola.validation.geometry import intersection_volume
 
-        objects = self.module["printed"] + self.module["hardware"]
-        for roll, pitch in itertools.product((-20, -10, 0, 10, 20), repeat=2):
-            set_angles(self.doc, roll, pitch)
-            shapes = [(o.Name, world_shape(o)) for o in objects]
+        for pitch in range(-20, 21, 2):
+            set_pitch(self.doc, pitch)
+            shapes = [
+                (obj.Name, world_shape(obj))
+                for obj in self.module["printed"] + self.module["hardware"]
+            ]
             for (first, a), (second, b) in itertools.combinations(shapes, 2):
-                self.assertLess(
-                    intersection_volume(a, b), 1e-5, (roll, pitch, first, second)
-                )
+                self.assertLess(intersection_volume(a, b), 1e-5, (pitch, first, second))
 
-    def test_both_bolts_cross_the_complete_nut_and_project_beyond_it(self):
+    def test_pitch_screw_engages_full_nut_and_clearance_holes_are_open(self):
         from gondola.cad import world_shape
 
-        for prefix, axis in (("OpticalRoll", 0), ("OpticalPitch", 1)):
-            bolt = world_shape(self.doc.getObject(prefix + "Bolt"))
-            nut = world_shape(self.doc.getObject(prefix + "Nut"))
-            bounds = nut.BoundBox
-            low = (bounds.XMin, bounds.YMin, bounds.ZMin)[axis]
-            high = (bounds.XMax, bounds.YMax, bounds.ZMax)[axis]
-            tip = (bolt.BoundBox.XMax, bolt.BoundBox.YMax, bolt.BoundBox.ZMax)[axis]
-            origin = App.Vector(
-                (bounds.XMin + bounds.XMax) / 2,
-                (bounds.YMin + bounds.YMax) / 2,
-                (bounds.ZMin + bounds.ZMax) / 2,
-            )
-            origin[axis] = low
-            direction = App.Vector(1, 0, 0) if axis == 0 else App.Vector(0, 1, 0)
-            core = Part.makeCylinder(0.8, high - low, origin, direction)
-            self.assertLess(abs(core.cut(bolt).Volume), 1e-5, prefix)
-            self.assertAlmostEqual(high - low, 1.6, places=7)
-            self.assertAlmostEqual(tip - high, 2.4, places=7)
+        bolt = world_shape(self.doc.OpticalPitchBolt)
+        nut = world_shape(self.doc.OpticalPitchNut)
+        b = nut.BoundBox
+        core = Part.makeCylinder(
+            0.8,
+            b.YLength,
+            App.Vector((b.XMin + b.XMax) / 2, b.YMin, (b.ZMin + b.ZMax) / 2),
+            App.Vector(0, 1, 0),
+        )
+        self.assertLess(abs(core.cut(bolt).Volume), 1e-5)
+        self.assertAlmostEqual(b.YLength, 1.6)
+        self.assertAlmostEqual(bolt.BoundBox.YMax - b.YMax, 2.4)
+        for obj in self.module["printed"]:
+            self.assertLess(abs(world_shape(obj).common(core).Volume), 1e-5)
 
-    def test_backset_post_regression_would_obstruct_the_pitch_screw(self):
+    def test_bad_post_that_crosses_upper_nut_is_detectable(self):
         from gondola.cad import world_shape
         from gondola.validation.geometry import intersection_volume
 
-        bad_post = Part.makeBox(2, 2, 12, App.Vector(0, -3.5, -2))
-        bad_post.Placement = self.module["roll_stage"].getGlobalPlacement()
-        bolt = world_shape(self.doc.getObject("OpticalPitchBolt"))
-        self.assertGreater(intersection_volume(bad_post, bolt), 0.1)
-
-    def test_pivot_post_has_a_continuous_three_by_two_mm_section(self):
-        from gondola.parts import optical_mount
-
-        shape = optical_mount.roll_bracket_shape()
-        section = Part.makeBox(3, 2, 3, App.Vector(0, -2, 3.5))
-        self.assertLess(abs(section.cut(shape).Volume), 1e-5)
-        broad_section = Part.makeBox(4, 4, 1, App.Vector(-1, -3, 4.5))
-        self.assertAlmostEqual(shape.common(broad_section).Volume, 6.0, places=7)
-
-    def test_wider_post_preserves_the_original_ears_and_narrow_post(self):
-        from gondola.parts import optical_mount
-
-        v = App.Vector
-        original = (
-            Part.makeCylinder(3.5, 2, v(), v(1, 0, 0))
-            .fuse(Part.makeBox(2, 2, 12, v(0, -2, -2)))
-            .fuse(Part.makeCylinder(3.5, 2, v(0, -2, 10), v(0, 1, 0)))
+        bad = Part.makeBox(4, 4, 5, App.Vector(0, 2, 2))
+        bad.Placement = self.module["group"].getGlobalPlacement()
+        self.assertGreater(
+            intersection_volume(bad, world_shape(self.doc.OpticalFootNut1)), 0.1
         )
-        original = original.cut(Part.makeCylinder(1.3, 5, v(-1, 0, 0), v(1, 0, 0))).cut(
-            Part.makeCylinder(1.3, 6, v(0, -3, 10), v(0, 1, 0))
-        )
-        shape = optical_mount.roll_bracket_shape()
-        self.assertLess(abs(original.cut(shape).Volume), 1e-5)
-        self.assertGreater(abs(shape.cut(original).Volume), 9.5)
-
-    def test_wider_post_clears_full_roll_nut_circumference_continuously(self):
-        from gondola.parts import optical_mount, purchased_hardware
-
-        shape = optical_mount.roll_bracket_shape()
-        # The nut rotates relative to the bracket. A filled cylinder with its
-        # complete vertex circumradius contains every nut angle, not just poses.
-        nut = purchased_hardware.hex_nut_shape()
-        radius = max((p.Point.x**2 + p.Point.y**2) ** 0.5 for p in nut.Vertexes)
-        nut_bound = Part.makeCylinder(
-            radius,
-            purchased_hardware.HEX_NUT_HEIGHT,
-            App.Vector(2, 0, 0),
-            App.Vector(1, 0, 0),
-        )
-        self.assertLess(abs(shape.common(nut_bound).Volume), 1e-5)
-        # Cut off the intentional ear/nut seating plane before measuring the
-        # new material's all-angle radial gap. The cut is inside that material.
-        widened = shape.common(Part.makeBox(2, 4, 14, App.Vector(2.01, -2, -1)))
-        self.assertGreater(widened.Volume, 9)
-        self.assertGreater(widened.distToShape(nut_bound)[0], 0.49)
-        self.assertLessEqual(optical_mount.ROLL_POST_WIDTH, optical_mount.EAR_RADIUS)
 
 
 if __name__ == "__main__":

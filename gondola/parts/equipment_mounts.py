@@ -30,15 +30,21 @@ FC_HOLE_CENTRES = (
 # All three carriers use the same local mechanical datum and physical print.
 # Equipment selection/placement is role-specific; the spare slots are not.
 COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
-COMMON_DECK_SIZE = (54.0, 74.0)
+COMMON_DECK_SIZE = (64.0, 64.0)
 DECK_CORNER_RADIUS = 3.0
-NAVIGATION_CENTRE_XY = (0.0, 0.0)
-PAS_HOLE_CENTRES = interfaces.PAS_HOLE_CENTRES
-COMMON_DEVICE_HOLE_CENTRES = FC_HOLE_CENTRES + PAS_HOLE_CENTRES
+RISER_SIZE_MM = (12.0, 12.0)
+NAVIGATION_CENTRE_XY = (0.0, -2.2)
+PAS_HOLE_CENTRES = tuple(
+    (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
+    for x, y in interfaces.PAS_HOLE_CENTRES
+)
+COMMON_DEVICE_HOLE_CENTRES = FC_HOLE_CENTRES
 # Keep both the rail-clamp key path and diagonal stack-foot hardware accessible.
-RADIO_CENTRE_XY = (-15.0, 28.0)
-GPS_ADHESIVE_SIZE = (18.0, 14.0)
-RADIO_ADHESIVE_SIZE = (22.0, 14.0)
+RADIO_CENTRE_XY = (26.0, -11.0)
+RADIO_YAW_DEG = 90.0
+RADIO_ADHESIVE_CENTRE_XY = (26.0, -5.0)
+GPS_ADHESIVE_SIZE = (12.0, 14.0)
+RADIO_ADHESIVE_SIZE = (10.0, 12.0)
 ACCESSORY_DECK_SIZE = COMMON_DECK_SIZE
 ACCESSORY_DECK_CENTRE_XY = (0.0, 0.0)
 BATTERY_DECK_SIZE = COMMON_DECK_SIZE
@@ -49,11 +55,11 @@ MOUNT_NAMES = {
     "accessory": "AccessoryMount",
 }
 # Keep continuous contact regions clear of every device bore and spare slot.
-# The redistributed three battery patches retain the previous 512 mm² total.
+# Three uninterrupted patches provide 536 mm² of nominal battery contact.
 BATTERY_ADHESIVE_REGIONS = (
-    ((0.0, 0.0), (16.0, 18.0)),
-    ((0.0, -23.0), (16.0, 7.0)),
-    ((0.0, 23.0), (16.0, 7.0)),
+    ((0.0, 0.0), (12.0, 18.0)),
+    ((0.0, -25.0), (16.0, 10.0)),
+    ((0.0, 25.0), (16.0, 10.0)),
 )
 BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
@@ -61,7 +67,7 @@ BATTERY_PLACEMENT_CONTRACT = {
     "maximum_size_mm": [66, 18, 17],
     "minimum_stack_tower_gap_mm": 1.5,
     "frame": "Battery carrier XY; pack long axis along Y, nominal 1mm adhesive allowance",
-    "qualification": "Geometric placement envelope only. Actual pack size, adhesive contact and retention remain unverified. For larger trim changes move the carrier along the rail and recheck module clearances; do not push the pack into the integral optical tower.",
+    "qualification": "Geometric placement envelope only; shifted packs do not necessarily cover every nominal adhesive patch. Actual pack size, contact and retention remain unverified. Use the carrier's rail travel for larger trim changes and recheck the compact optical mount and wiring.",
 }
 FC_WIRING_CLEARANCE = 8.0
 FC_WIRING_CORRIDOR_WIDTH = 8.0
@@ -129,7 +135,7 @@ def expansion_slot_shapes(
 
 
 def common_plate_cutters(bottom, depth):
-    """Six verified device bores and ten shared slots, independent of support."""
+    """Four fixed FC bores and sixteen shared slots, independent of support."""
     return [
         Part.makeCylinder(MOUNT_HOLE_DIAMETER / 2, depth, V(x, y, bottom))
         for x, y in COMMON_DEVICE_HOLE_CENTRES
@@ -144,7 +150,7 @@ def expansion_contract():
         "slots": expansion_slot_rows(),
         "fastener": "M2",
         "slot_width_mm": MOUNT_HOLE_DIAMETER,
-        "scope": "Two continuous rounded side slots replace six discrete expansion holes. Their 46 mm row spacing is a project provision, not an industry PCB pattern. The centre can move +/-9 mm along each row before clamping. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
+        "scope": "Eight outer slots on four sides of a 54 mm square. Each side has two ten-mm centre-travel intervals, 13 to 23 mm from its midpoint. This is a project provision, not an industry PCB standard. The optical foot uses one interval; the optional power feet use opposed intervals. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
     }
 
 
@@ -153,7 +159,9 @@ def common_plate_contract():
         "deck_size_mm": (*COMMON_DECK_SIZE, DECK_THICKNESS),
         "deck_centre_xy_mm": (0.0, 0.0),
         "outline_corner_radius_mm": DECK_CORNER_RADIUS,
+        "central_riser_size_xy_mm": RISER_SIZE_MM,
         "outline_half_turn_symmetric": True,
+        "plate_quarter_turn_and_xy_mirror_symmetric": True,
         "fc_hole_centres_xy_mm": FC_HOLE_CENTRES,
         "pas_hole_centres_xy_mm": PAS_HOLE_CENTRES,
         "device_bore_diameter_mm": MOUNT_HOLE_DIAMETER,
@@ -161,7 +169,7 @@ def common_plate_contract():
         "expansion": expansion_contract(),
         "fixed_bore_count": len(COMMON_DEVICE_HOLE_CENTRES),
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One centred rounded rectangular plate with six verified device bores and ten rounded mounting slots, without projecting utility or structural clamp tabs. The three rail carriers are identical physical prints including the rail shoe and inboard structural tower clamps. The optional power deck uses the same plate template on its integral tower. The outline is symmetric; the complete part retains oriented device holes and a rail clamp, so do not infer half-turn mounting equivalence. FC/P-AS and spare patterns are alternative uses, not permission to populate overlapping equipment simultaneously. Optical sensor tray remains an uninterrupted adhesive surface.",
+        "scope": "One rounded square plate with four fixed FC bores and sixteen slots. The outline and every mounting opening have quarter-turn and X/Y mirror symmetry; the integral rail shoe and clamp remain directional. The three rail carriers are identical physical prints. P-AS is shifted 2.2 mm along local negative Y so its verified holes use two diagonal-slot endpoints on a 23 mm square. Optical and optional-power feet use the outer slot array directly, without special clamp bores or projecting tabs. The optional power deck shares this plate template. Patterns are alternative uses, not permission to populate overlapping devices simultaneously. The optical tray remains a continuous adhesive pad.",
     }
 
 
@@ -188,13 +196,12 @@ def mount_shape(kind):
     pieces = [common_plate_shape(), rail.shoe_shape()]
     pieces.append(
         box(
-            rail.SHOE_LENGTH,
-            rail.SHOE_WIDTH,
+            *RISER_SIZE_MM,
             DECK_BOTTOM_Z - rail.TOP_Z + 0.2,
-            (-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.TOP_Z - 0.1),
+            (-RISER_SIZE_MM[0] / 2, -RISER_SIZE_MM[1] / 2, rail.TOP_Z - 0.1),
         )
     )
-    shape = stack_interface.add_host_interface(union(pieces), MOUNT_NAMES[kind])
+    shape = union(pieces)
     # Cut again through any supporting member sharing a plate-hole position.
     for hole in common_plate_cutters(DECK_BOTTOM_Z - 1, DECK_THICKNESS + 2):
         shape = shape.cut(hole)
@@ -219,7 +226,7 @@ def mount_contract(kind):
         "accessory": [
             {
                 "device": "LR24-F-Mini",
-                "centre_xy_mm": RADIO_CENTRE_XY,
+                "centre_xy_mm": RADIO_ADHESIVE_CENTRE_XY,
                 "size_mm": RADIO_ADHESIVE_SIZE,
                 "support_face": "bottom",
             },
@@ -231,9 +238,9 @@ def mount_contract(kind):
         ],
     }
     scope = {
-        "battery": "Universal carrier in battery role. Three declared continuous adhesive regions remain between the device bores and mounting slots; the structural tower datum is shared with FC/navigation carriers.",
+        "battery": "Universal carrier in battery role. Three declared continuous adhesive regions remain between the device bores and mounting slots. The common outer slots support separately screened optical or power feet, as on the other carriers.",
         "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
-        "accessory": "Universal carrier in navigation role. Centred P-AS mounting axes or mutually exclusive taped GPS alternatives use the outer face. The Mini uses a fully supported 22 x 14 mm insulating-adhesive allocation on the opposite, rail-facing face, outboard of the rail shoe; its body has minor edge/corner overhang beyond the rounded plate. No separate radio plate, tab or pocket. The populated face and connector working direction face the balloon: actual envelope curvature, plug height, antenna and lead clearance remain unverified. Remove the carrier for bench attachment and service. The centred common tower datum accepts a separately screened optional power platform; this carrier is not an optical host.",
+        "accessory": "Universal navigation carrier. P-AS axes and mutually exclusive GPS alternatives share the local (0,-2.2) datum. The Mini body is centred at (26,-11) with its long axis along carrier Y. Its continuous 10 x 12 mm insulating-adhesive allocation is offset to (26,-5) on the rail-facing face to remain on solid material. This clears both rail-clamp tool approaches and the optional portal fastener/service reserves; the body overhangs the square plate edge. The 120 mm2 allocation is available nominal contact, not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform; this carrier is not a qualified optical host.",
     }
     return {
         "kind": kind,
@@ -248,7 +255,7 @@ def mount_contract(kind):
         "support_face_z_mm": SUPPORT_FACE_Z,
         "integral_common_rail_shoe": True,
         "deck_underside_to_rail_head_mm": DECK_BOTTOM_Z - rail.HEAD_TOP,
-        "future_fastener_scope": "The deck underside is 3 mm above the rail head: a nominal 2 mm head leaves 1 mm vertical clearance. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; spare slot fasteners are not installed BOM items.",
+        "future_fastener_scope": "The deck_underside_to_rail_head_mm value describes vertical planning clearance only; a chosen screw head consumes part of it. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the shoe, board and neighboring devices; spare slot fasteners are not installed BOM items.",
         "mount_hole_centres_xy_mm": list(holes),
         "mount_hole_diameter_mm": MOUNT_HOLE_DIAMETER,
         "mount_pad_diameter_mm": MOUNT_PAD_DIAMETER,
@@ -265,7 +272,7 @@ def mount_contract(kind):
         "fc_wiring_corridor_width_mm": FC_WIRING_CORRIDOR_WIDTH,
         "fc_wiring_corridor_centre_y_mm": FC_WIRING_CORRIDOR_CENTRE_Y,
         "pas_service_clearance_mm": PAS_SERVICE_CLEARANCE,
-        "hole_interface_scope": "Six device-specific bores preserve verified XY axes and bearing lands. Diameter 2.6 mm is our M2 clearance choice, not the original device hole diameter. The separate standard_mounting contract defines adjustable square-pitch and side slots. No printed threads or device posts.",
+        "hole_interface_scope": "Four fixed FC bores preserve the 25.5 mm pattern and complete bearing annuli. The P-AS's published two axes lie at endpoints of two shared 23 mm diagonal slots after the declared navigation shift. M2 openings are 2.6 mm wide; this is our clearance choice, not the OEM hole diameter. Slot seats have continuous side lands, not full circular annuli. No printed threads or device posts.",
         "unresolved_mounting_stack": "Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.",
         "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }
@@ -276,8 +283,8 @@ def build_mount(doc, parent, kind):
     name = MOUNT_NAMES[kind]
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
-        "Centred 54 x 74 mm rounded rectangular deck, six device bores and ten shared mounting slots, "
-        "integral rail shoe and inboard structural tower clamps. Choose the occupied role at assembly. "
+        "Centred 64 x 64 mm rounded square deck, four FC bores and sixteen symmetric mounting slots, "
+        "integral rail shoe and shared outer slots for optional supports. Choose the occupied role at assembly. "
         "Preserve the declared adhesive patches; spare slots do not qualify arbitrary simultaneous devices. "
         "No dedicated tie holes, separate radio plate, printed device spacers or added fasteners. "
         "Printed fit, clamping, adhesive retention, wiring, extension loads and actual device stacks remain unverified."

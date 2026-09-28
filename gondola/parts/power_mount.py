@@ -4,6 +4,7 @@ import functools
 import json
 
 import FreeCAD as App
+import Part
 
 from gondola.cad import (
     box,
@@ -43,6 +44,7 @@ def platform_contract():
     return {
         "optional_only": True,
         "common_plate": mounts.common_plate_contract(),
+        "carrier_attachment": stack_interface.interface_contract(),
         "expansion_mounting": mounts.expansion_contract(),
         "deck_size_mm": (*DECK_SIZE_MM, DECK_THICKNESS_MM),
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
@@ -55,7 +57,7 @@ def platform_contract():
         "connection_height_allowance_mm": CONNECTION_HEIGHT_ALLOWANCE_MM,
         "terminal_end_allowance_mm": TERMINAL_TRAVEL_MM,
         "support_scope": "Flat open deck with two board regions, no dedicated tie slots, board pockets or invented board holes. Use suitable adhesive or wrap the existing structure with a removable strap. One mm nominal insulating support allowance is not measured underside-component clearance or thermal qualification. Position ties clear of hot components, solder and headers after inspecting received boards.",
-        "stack_scope": "One optional platform per unoccupied structural host. Do not install over an optical tower or stack platforms on one another. Remove the host from the rail for foot-fastener service; the balloon is not modeled.",
+        "stack_scope": "One optional platform per unoccupied structural host. Do not occupy the installed optical head host or stack platforms on one another. Remove the host from the rail for foot-fastener service; the balloon is not modeled.",
     }
 
 
@@ -68,6 +70,51 @@ def platform_shape():
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Optional power platform is not one valid solid")
     return shape
+
+
+@functools.lru_cache(None)
+def _attachment_templates():
+    bottom = -stack_interface.TOWER_HEIGHT - stack_interface.DECK_THICKNESS
+    depth = stack_interface.DECK_THICKNESS
+    common_deck = mounts.common_plate_shape(bottom)
+    for cutter in mounts.common_plate_cutters(bottom - 1, depth + 2):
+        common_deck = common_deck.cut(cutter)
+    return tuple(
+        (
+            stack_interface.foot_shape(index, bottom=bottom, thickness=depth).common(
+                common_deck
+            ),
+            Part.makeCylinder(
+                stack_interface.CLAMP_HOLE_DIAMETER / 2, depth, V(x, y, bottom)
+            ),
+        )
+        for index, (x, y) in enumerate(stack_interface.CLAMP_CENTRES)
+    )
+
+
+def attachment_check(carrier_in_platform_coordinates):
+    """Check actual carrier material beneath the two complete slotted foot seats."""
+    depth = stack_interface.DECK_THICKNESS
+    rows = []
+    for index, (expected_seat, bore) in enumerate(_attachment_templates()):
+        missing = expected_seat.cut(carrier_in_platform_coordinates).Volume
+        obstruction = bore.common(carrier_in_platform_coordinates).Volume
+        rows.append(
+            {
+                "foot": index,
+                "expected_supported_contact_area_mm2": expected_seat.Volume / depth,
+                "missing_contact_material_mm3": missing,
+                "screw_path_obstruction_mm3": obstruction,
+                "passed": expected_seat.Volume / depth > 50
+                and missing < 1e-5
+                and obstruction < 1e-5,
+            }
+        )
+    return {
+        "feet": rows,
+        "passed": all(row["passed"] for row in rows),
+        "scope": "Nominal geometric support around the common carrier slots, not clamp pressure, strength or PA12 creep qualification.",
+    }
 
 
 def local_shapes(plan_key=DEFAULT_PLAN):
