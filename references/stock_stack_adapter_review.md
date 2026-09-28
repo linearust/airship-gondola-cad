@@ -23,16 +23,24 @@ or adhesive patch. Do not locate a mating part using the undimensioned cutouts.
 
 The FC interface uses the **25.5 mm pattern rotated 45°**, placing
 its four nominal axes at `(±25.5/√2, 0)` and `(0, ±25.5/√2)` mm about the plate
-centre. The compact raised saddle instead fastens at two opposite axes of the
-**16 mm pattern**; four printed pads support its plane. This makes the bought
-carbon plate carry the short span between saddle and FC patterns. This is a
-project installation choice, not a further seller feature.
-The carbon plate must clamp rigidly to its carrier or spacers independently of
-the FC's soft support. The FC board or its dampers must not provide the clamp
-stop for the carbon plate. The assembly contract records modeled lower retention and nominal screw lengths;
-complete FC damping/upper retention remains unverified. The installed 20 mm holes are
-not qualified for simultaneous use. Neighboring holes interrupt some carbon
-contact material, so inspect the actual nut and pad contact before tightening.
+centre. In BA all four equipment plates clamp directly to twin rail tracks at
+opposed **16 mm Y axes**. Two **25.5 mm X axes** carry the removable optical or
+power portal; FC uses its existing studs at those axes. There is no printed
+saddle or equipment deck. These are project choices, not further seller features.
+
+Carbon retention is rigid and independent of FC damping. The FC board or dampers
+must not provide the clamp stop. The complete FC damping/upper fastening stack
+remains unverified. Neighboring holes and undimensioned cutouts may interrupt
+nut, portal-foot, rail-contact or adhesive areas. Inspect actual contact before
+assembly; the filled CAD envelope cannot qualify laminate support or strength.
+Battery end overhang and strap retention on the central small plate also require
+a physical check. Nominal 3 mm insulating pads for taped devices must retain
+clearance above the actual screw heads after compression.
+
+Four boards are installed in the default design. Optional power adds two upper
+boards while keeping the four lower boards, requiring six in that configuration.
+A five-piece pack does not cover that complete combination. Reusing an empty
+battery board would require a deliberately revised configuration and fresh checks.
 
 Three patterns do not mean all holes can be occupied simultaneously. The nearest
 same-corner hole centres are 2.828 mm apart for 16/20 mm, 3.889 mm for 20/25.5 mm,

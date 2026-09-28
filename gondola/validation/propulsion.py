@@ -43,7 +43,7 @@ from .propulsion_service import (
     module_service_shapes,
     retained_obstacles,
 )
-from .rail_access import rail_key_service_check
+from .rail_access import top_key_service_check
 from .relative_motion import relative_motion_check
 from .servo_module import bridge_joint_check, servo_module_service_check
 
@@ -1338,16 +1338,79 @@ def servo_case_service_check(
     }
 
 
-def rail_key_access_check(doc, module):
-    """Check the finite L-key, working arc and service path on either rail side."""
-    objects = module["printed"] + module["hardware"] + module["references"]
-    shapes = {obj.Name: world_shape(obj) for obj in objects}
-    return [
-        rail_key_service_check(
-            shapes, side=side, placement=module["group"].getGlobalPlacement()
+def _rail_joint_shapes(doc, module):
+    """Use actual saved direct clamps, or nominal clamps for a source bench build."""
+    pose = module["group"].getGlobalPlacement()
+    rows = rail.clamp_rows(
+        plate_thickness_mm=propulsion.RAIL_FOOT_THICKNESS,
+        parent_z_mm=propulsion.MODULE_Z_OFFSET,
+    )
+    saved = [doc.getObject("MainPropulsionModule" + row["suffix"]) for row in rows]
+    partial = any(saved) and not all(saved)
+    results = []
+    for row, obj in zip(rows, saved):
+        expected = row["shape"].copy()
+        expected.Placement = pose.multiply(expected.Placement)
+        actual = world_shape(obj) if obj else expected.copy()
+        delta = abs(actual.cut(expected).Volume) + abs(expected.cut(actual).Volume)
+        results.append(
+            {
+                **row,
+                "name": "MainPropulsionModule" + row["suffix"],
+                "shape": actual,
+                "source_shape_delta_mm3": delta,
+                "saved_hardware_present": obj is not None,
+                "passed": not partial and delta < TOL,
+            }
         )
-        for side in (1, -1)
-    ]
+    source_rail = rail.rail_shape()
+    source_rail.translate(App.Vector(0, 0, -propulsion.MODULE_Z_OFFSET))
+    source_rail.Placement = pose.multiply(source_rail.Placement)
+    saved_rail = doc.getObject("ContinuousRail")
+    return results, world_shape(saved_rail) if saved_rail else source_rail
+
+
+def rail_key_access_check(doc, module, *, prior_service=None):
+    """Top clamp service after the independently checked servo/input-module removal."""
+    if prior_service is None:
+        prior_service = servo_module_service_check(doc, module)
+    removed = (
+        set(prior_service.get("moving_parts", ()))
+        | set(prior_service.get("removed_output_gears", ()))
+        | set(prior_service.get("released_fasteners", ()))
+    )
+    objects = module["printed"] + module["hardware"] + module["references"]
+    shapes = {obj.Name: world_shape(obj) for obj in objects if obj.Name not in removed}
+    rows, rail_shape = _rail_joint_shapes(doc, module)
+    shapes["ContinuousRail"] = rail_shape
+    shapes.update({row["name"]: row["shape"] for row in rows})
+    checks = []
+    for row in rows:
+        if row["kind"] != "screw":
+            continue
+        nut_name = row["name"].removesuffix("Screw") + "Nut"
+        obstacles = {name: shape for name, shape in shapes.items() if name != nut_name}
+        result = top_key_service_check(
+            obstacles,
+            screw=row["shape"],
+            screw_name=row["name"],
+            placement=module["group"].getGlobalPlacement(),
+        )
+        result.update(
+            {
+                "rail_joint_name": row["name"],
+                "hardware_source_shape_delta_mm3": row["source_shape_delta_mm3"],
+                "prior_servo_module_removal_passed": prior_service.get("passed")
+                is True,
+                "removed_before_rail_service": sorted(removed),
+                "scope": "Disconnected bench service with rail off balloon. First follow the independently checked small-gear and paired servo/input-bridge removal, then hold/unthread the ordinary rail nut from below. The finite top key and complete screw withdrawal retain the output frame, bearings, shafts and motor carriers. This is not access through the installed servo bridge.",
+                "passed": result["passed"]
+                and prior_service.get("passed") is True
+                and all(r["passed"] for r in rows),
+            }
+        )
+        checks.append(result)
+    return checks
 
 
 def bearing_post_roots_check(doc):
@@ -1383,38 +1446,45 @@ def bearing_post_roots_check(doc):
     return rows
 
 
-def _record_rail_fit_checks(report, frame, physical):
-    """Audit both seated rail interfaces and continuous nut loading."""
-    for side, label in ((1, "positive"), (-1, "negative")):
-        transform = (lambda shape: shape) if side > 0 else rail.half_turn
-        report[label + "_seated_rail_overlap_mm3"] = intersection_volume(
-            translated_shape(frame, y=side * rail.CLAMP_SHIFT_Y), rail.rail_shape()
-        )
-        for name, shape in (
-            ("clamp_screw", rail.clamp_screw_shape()),
-            ("clamp_nut", rail.nut_shape()),
-        ):
-            report[label + "_" + name + "_frame_overlap_mm3"] = intersection_volume(
-                frame, transform(shape)
-            )
-        key = rail_key_service_check(physical, side=side)
-        report[label + "_clamp_key_service"] = key
-    # Fill the bore for this insertion audit. The resulting hex prism contains
-    # the whole nut and has an exact planar translation sweep; a transverse
-    # cylinder otherwise triggers an unnecessarily broad rectangular fallback
-    # that reports the pocket's intended hex corner material as a collision.
-    outer_nut = rail.hex_along_y(
-        rail.NUT_AF,
-        rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH - rail.NUT_THICKNESS,
-        rail.NUT_THICKNESS,
+def _record_rail_fit_checks(report, doc, module, frame, physical):
+    """Direct foot contact and finite underside nut-loading paths on a bench."""
+    rows, rail_shape = _rail_joint_shapes(doc, module)
+    report["direct_foot_seated_rail_overlap_mm3"] = intersection_volume(
+        frame, rail_shape
     )
     report["continuous_nut_loading"] = []
-    for side in (1, -1):
-        envelope = outer_nut if side > 0 else rail.half_turn(outer_nut)
-        result = continuous_path(envelope, [(0, 0, 0), (side * 20, 0, 0)], physical)
-        result["scope"] = (
-            "Continuous outer-hex insertion envelope with the bore filled; "
-            "conservative over the complete nut, with its rail bolt removed."
+    pose = module["group"].getGlobalPlacement()
+    direction = pose.Rotation.multVec(App.Vector(0, 0, -8))
+    for row in rows:
+        report[row["name"] + "_frame_overlap_mm3"] = intersection_volume(
+            frame, row["shape"]
+        )
+        if row["kind"] != "nut":
+            continue
+        envelope = row["shape"].copy()
+        envelope.Placement = pose.inverse().multiply(envelope.Placement)
+        bounds = envelope.BoundBox
+        envelope = envelope.fuse(
+            Part.makeCylinder(
+                1.1,
+                bounds.ZLength,
+                App.Vector(
+                    (bounds.XMin + bounds.XMax) / 2,
+                    (bounds.YMin + bounds.YMax) / 2,
+                    bounds.ZMin,
+                ),
+            )
+        ).removeSplitter()
+        envelope.Placement = pose.multiply(envelope.Placement)
+        obstacles = {**physical, "ContinuousRail": rail_shape}
+        result = continuous_path(envelope, [(0, 0, 0), tuple(direction)], obstacles)
+        result.update(
+            {
+                "part": row["name"],
+                "hardware_source_shape_delta_mm3": row["source_shape_delta_mm3"],
+                "scope": "Rail detached from balloon, associated bolt removed, nut held from below. Filled whole-hex envelope moves8mm below the open-bottom guide. An unbolted nut is not retained; reverse this path for insertion.",
+                "passed": result["passed"] and row["passed"],
+            }
         )
         report["continuous_nut_loading"].append(result)
 
@@ -1985,8 +2055,10 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
         report["horn_profile_compatibility"] = profile_compatibility_checks()
         report["bridge_joint"].append(bridge_joint_check(doc, module))
         report["servo_module_service"].append(servo_module_service_check(doc, module))
-        _record_rail_fit_checks(report, frame, physical)
-        report["rail_key_access"] = rail_key_access_check(doc, module)
+        _record_rail_fit_checks(report, doc, module, frame, physical)
+        report["rail_key_access"] = rail_key_access_check(
+            doc, module, prior_service=report["servo_module_service"][0]
+        )
         report["bearing_post_roots"] = bearing_post_roots_check(doc)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             _record_drive_checks(report, doc, module, physical, frame, prefix, sign)

@@ -26,7 +26,14 @@ class PropulsionWiringTests(unittest.TestCase):
         cls.wiring, cls.audit = propulsion_wiring, audit
         cls.doc = App.newDocument("PropulsionWiringRegression")
         cls.propulsion = create_group(cls.doc, "MainPropulsionModule", "Propulsion")
-        cls.propulsion.Placement.Base.y = 0.1
+        prop_station = next(
+            item
+            for item in MODULE_STATIONS
+            if item.object_name == "MainPropulsionModule"
+        )
+        cls.propulsion.Placement.Base = App.Vector(
+            prop_station.x_mm, 0.0, prop_station.z_mm
+        )
         cls.electronics = create_group(
             cls.doc, "ElectronicsEquipmentModule", "Electronics"
         )
@@ -36,7 +43,7 @@ class PropulsionWiringTests(unittest.TestCase):
             if item.object_name == "ElectronicsEquipmentModule"
         )
         cls.electronics.Placement = App.Placement(
-            App.Vector(station.x_mm, -0.1, 0),
+            App.Vector(station.x_mm, 0.0, station.z_mm),
             App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
         )
         fc = create_reference(
@@ -220,18 +227,17 @@ class PropulsionWiringTests(unittest.TestCase):
         # route must still cause substantial positive interference.
         self.assertGreater(shape.common(obstacles["load_leg_0"]).Volume, 1)
 
-    def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
+    def test_remote_intermediate_waypoint_crosses_fc_band_before_terminal_entry(self):
         from gondola.cad import world_shape
 
         prop = self.propulsion.getGlobalPlacement()
         electronics = self.electronics.getGlobalPlacement()
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, prop, electronics)
-            points[1] = (-38.0, sign * 20.0, 34.0)
-            with patch.object(self.wiring, "route_points", return_value=points):
-                shape = self.wiring.route_geometry(sign, prop, electronics)["shape"]
-            shape.Placement = prop.multiply(shape.Placement)
+            crossing = electronics.multVec(App.Vector(-32.0, 0.0, 17.0))
             endpoint = prop.multVec(App.Vector(*points[-1]))
+            direction = endpoint - crossing
+            shape = Part.makeCylinder(1.4, direction.Length, crossing, direction)
             result = self.audit.connection_check(
                 shape,
                 world_shape(self.fc_reserve),

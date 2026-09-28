@@ -105,8 +105,8 @@ class NativeInterfaceTests(unittest.TestCase):
         document = App.newDocument("RailThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parent = create_group(document, "ClampGroup", "Clamp hardware")
-        hardware = rail.build_clamp_hardware(document, parent, "Test", "0")
-        self.assertEqual(len(hardware), 2)
+        hardware = rail.build_clamp_hardware(document, parent, "Test")
+        self.assertEqual(len(hardware), 4)
         for part in hardware:
             self.assertEqual(part.NominalThreadDiameter.Value, 2)
             self.assertEqual(part.ThreadPitch.Value, 0.4)
@@ -158,64 +158,42 @@ class NativeInterfaceTests(unittest.TestCase):
         self.assertTrue(part.PrintPart)
         self.assertEqual(part.getTypeIdOfProperty("PrintPart"), "App::PropertyBool")
 
-    def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
+    def test_bought_plate_identity_does_not_infer_unknown_lands(self):
+        from gondola.contracts.stack_adapter import COMMON_HOLE_CENTRES
+        from gondola.parts import stock_adapter
 
-        for kind in ("electronics", "accessory"):
-            shape = mounts.mount_shape(kind).copy()
-            for row in mounts.carrier_hole_rows(kind):
-                result = mounting_pad_check(
-                    shape,
-                    row["centre_xy_mm"],
-                    bottom=mounts.carrier_plate_bottom(kind),
-                    thickness=mounts.carrier_plate_thickness(kind),
-                    hole_diameter=row["diameter_mm"],
-                    pad_diameter=row["pad_diameter_mm"],
-                )
-                self.assertTrue(result["passed"], result)
+        shape = stock_adapter.plate_shape()
+        self.assertTrue(shape.isValid())
+        for x, y in COMMON_HOLE_CENTRES:
+            bore = Part.makeCylinder(1, 1, App.Vector(x, y, 7))
+            self.assertLess(abs(shape.common(bore).Volume), 1e-7)
+        contract = stock_adapter.mounting_contract()
+        self.assertFalse(contract["physical_fit_verified"])
+        self.assertIn("not dimensioned", contract["purchased_plate"]["contour_scope"])
 
-    def test_partial_bearing_or_filled_bore_is_rejected(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
+    def test_portal_toggles_existing_fc_nuts_only(self):
+        from gondola.cad import create_group
+        from gondola.parts import stock_adapter
 
-        shape = mounts.mount_shape("electronics").copy()
-        row = mounts.carrier_hole_rows("electronics")[0]
-        centre = row["centre_xy_mm"]
-        x, y = centre
-        bottom = mounts.carrier_plate_bottom("electronics")
-        thickness = mounts.carrier_plate_thickness("electronics")
-        self.assertTrue(
-            mounting_pad_check(
-                shape,
-                centre,
-                bottom=bottom,
-                thickness=thickness,
-                hole_diameter=row["diameter_mm"],
-                pad_diameter=row["pad_diameter_mm"],
-            )["passed"]
-        )
-        edge_cut = Part.makeBox(
-            1,
-            1,
-            thickness + 2,
-            App.Vector(x - row["pad_diameter_mm"] / 2, y - 0.5, bottom - 1),
-        )
-        self.assertGreater(abs(shape.common(edge_cut).Volume), 0.1)
-        missing_edge = shape.cut(edge_cut)
-        blocked_bore = shape.fuse(
-            Part.makeCylinder(0.4, thickness, App.Vector(x, y, bottom))
-        )
-        for changed in (missing_edge, blocked_bore):
-            result = mounting_pad_check(
-                changed,
-                centre,
-                bottom=bottom,
-                thickness=thickness,
-                hole_diameter=row["diameter_mm"],
-                pad_diameter=row["pad_diameter_mm"],
+        doc = App.newDocument("StockFCSeparatePortal")
+        self.addCleanup(App.closeDocument, doc.Name)
+        parent = create_group(doc, "ElectronicsEquipmentModule", "FC")
+        result = stock_adapter.build_stock_adapter(doc, parent)
+        before = {obj.Name: obj.Shape.copy() for obj in result["hardware"]}
+        object_count = len(doc.Objects)
+        stock_adapter.set_fc_portal(doc, True)
+        self.assertEqual(len(result["hardware"]), 9)
+        self.assertEqual(len(doc.Objects), object_count)
+        for name in stock_adapter.BOLT_OBJECT_NAMES:
+            self.assertLess(
+                abs(doc.getObject(name).Shape.cut(before[name]).Volume), 1e-7
             )
-            self.assertFalse(result["passed"], result)
+        stock_adapter.set_fc_portal(doc, False)
+        for name, shape in before.items():
+            actual = doc.getObject(name).Shape
+            self.assertLess(
+                abs(actual.cut(shape).Volume) + abs(shape.cut(actual).Volume), 1e-7
+            )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,235 @@
+{
+  "created_utc": "2026-09-28T03:56:00.906523+00:00",
+  "passed": true,
+  "source_fingerprint": "492824c951e652c9ce411ec2d3302e5f700586764b8424dbb5582dcfcb5d0eb7",
+  "native_sha256": "c13fee9092a0cb867361bca2638050c42943c2d9c0ecac87d44e2afb4f36b597",
+  "baseline_sha256": "41eff55eaacb911f88722a7223feb1e52e9c1eeaffb1c250049ca4b0f37b9d3b",
+  "reviewer_authorship": "Read-only persisted native/STEP/STL/BOM/preview/ZIP/source/report consistency and separately recorded saved-shape/export observations. Full collision reports are bound by exact hashes, not regenerated or rerun. Fresh complete native tests are checked against independent discovery, raw logs, exact results and frozen dependencies. Reviewer implemented carbon/equipment/validation and parts of documentation; this is not claimed as independent design authorship. No Blender derivative belongs to this delivery.",
+  "artifact_audit": {
+    "path": "tests/fixtures/rev_ba_artifact_audit.json.gz",
+    "compressed_sha256": "446686785fb200363ee9601a11b76d6646588d8dd8c7c569266642b7d596d12d",
+    "uncompressed_sha256": "e131ed064737da6e55ff466fef8a96d4dd003591592f0b8d8aa08b23088d790b"
+  },
+  "counts": {
+    "installed_prints": 10,
+    "purchased_hardware": 84,
+    "unique_main_and_coupon_print_files": 10,
+    "fit_coupons": 2,
+    "optional_additional_prints": 1,
+    "optional_additional_hardware": 14,
+    "baseline_carbon_boards": 4,
+    "optional_additional_carbon_boards": 2
+  },
+  "carbon": {
+    "baseline_count": 4,
+    "optional_additional_count": 2,
+    "unit_seller_reference_mass_g": 0.72,
+    "exported_as_print": false,
+    "exact_contour_modeled": false,
+    "physical_fit_verified": false
+  },
+  "pipeline_all_five_stages_passed": true,
+  "native_reports_bound_to_exact_artifacts": true,
+  "bundle_exact_inventory_and_bytes": true,
+  "preview_images": {
+    "gondola_preview.png": {
+      "sha256": "d02f7fc63ba3de8e0cfef487c5e5ea90edcedacfbb410a9fa8ea3eaad5ce6423",
+      "size_pixels": [
+        1900,
+        1200
+      ],
+      "nonwhite_bounds": [
+        136,
+        150,
+        1764,
+        1137
+      ]
+    },
+    "gondola_top.png": {
+      "sha256": "d792ede86571b2fe62c46dc2b5b08cdf44fab92c3730da20e4379081771026f2",
+      "size_pixels": [
+        1900,
+        1200
+      ],
+      "nonwhite_bounds": [
+        101,
+        103,
+        1799,
+        1097
+      ]
+    },
+    "gondola_rail.png": {
+      "sha256": "58b2e0e1f08e98678f071308bb941ebe562f371fb8ef565083cbd4efc6f27bce",
+      "size_pixels": [
+        1900,
+        800
+      ],
+      "nonwhite_bounds": [
+        352,
+        66,
+        1548,
+        758
+      ]
+    },
+    "gondola_electronics.png": {
+      "sha256": "131c0b514e46f38630711c4eaea77b8371286587c17afdb700fe36e1e0726cc5",
+      "size_pixels": [
+        1400,
+        1400
+      ],
+      "nonwhite_bounds": [
+        386,
+        428,
+        1014,
+        1030
+      ]
+    },
+    "gondola_wiring.png": {
+      "sha256": "c3af37c68e3b6458a461e167297fd42330a17c4d69039b059c3012ef6c4452bb",
+      "size_pixels": [
+        1600,
+        1400
+      ],
+      "nonwhite_bounds": [
+        85,
+        195,
+        1494,
+        1151
+      ]
+    },
+    "gondola_optical_stack.png": {
+      "sha256": "fc031424113cb718e17d2aee75aad8eca1fe1363e23320a0b57c01a3dd94d5b7",
+      "size_pixels": [
+        1400,
+        1600
+      ],
+      "nonwhite_bounds": [
+        214,
+        174,
+        1186,
+        1303
+      ]
+    },
+    "gondola_optical_fc_stack.png": {
+      "sha256": "a5a923f4ba6b882ebce6c1143b00fe0a748e076851f715d46fa532b4d88f7cd9",
+      "size_pixels": [
+        1500,
+        1600
+      ],
+      "nonwhite_bounds": [
+        229,
+        129,
+        1271,
+        1307
+      ]
+    },
+    "gondola_propulsion.png": {
+      "sha256": "83b42d7ba906eb41e95d38dfa5a3b4eb515f6df9ba1c2bbb54d143652c1e6b1d",
+      "size_pixels": [
+        1800,
+        1300
+      ],
+      "nonwhite_bounds": [
+        302,
+        186,
+        1509,
+        1198
+      ]
+    },
+    "gondola_printed_structure.png": {
+      "sha256": "582dc7af07f05d5a98ee3c2a6edef792d87b382185bea9acd915e57a35ea5eb0",
+      "size_pixels": [
+        1900,
+        1200
+      ],
+      "nonwhite_bounds": [
+        191,
+        150,
+        1709,
+        1105
+      ]
+    },
+    "gondola_attachment_detail.png": {
+      "sha256": "b3ced7c397d0f6f98eb7fcf684eab7e09baea107afd6c78b38ca8a979d845998",
+      "size_pixels": [
+        1700,
+        1300
+      ],
+      "nonwhite_bounds": [
+        90,
+        209,
+        1610,
+        1091
+      ]
+    },
+    "gondola_attachment_section.png": {
+      "sha256": "bd9aed9b276eb6fdd9be2d2368b017d16a19a8f8762b240a64836538ab26ad1a",
+      "size_pixels": [
+        1700,
+        850
+      ],
+      "nonwhite_bounds": [
+        90,
+        348,
+        1610,
+        502
+      ]
+    },
+    "gondola_attachment_opposite.png": {
+      "sha256": "c18db8456fa612621b65e3e2c6653249cc6d324febc04afa4021da6a079537b4",
+      "size_pixels": [
+        1700,
+        1300
+      ],
+      "nonwhite_bounds": [
+        90,
+        209,
+        1610,
+        1091
+      ]
+    },
+    "gondola_print_parts.png": {
+      "sha256": "675d1e03dc0da2ccbe87e98feddd6fe09929c435536530368baac39d9c45791f",
+      "size_pixels": [
+        1800,
+        2000
+      ],
+      "nonwhite_bounds": [
+        285,
+        195,
+        1516,
+        1805
+      ]
+    },
+    "gondola_power_options.png": {
+      "sha256": "1fcb6ef76dc7b6b29dfd9e0df4548248164b90ffdf503caecd18106cd89f3e47",
+      "size_pixels": [
+        1500,
+        1400
+      ],
+      "nonwhite_bounds": [
+        271,
+        74,
+        1241,
+        1122
+      ]
+    }
+  },
+  "all_inputs_unchanged": true,
+  "native_test_execution_review": {
+    "full_suite_passed": true,
+    "module_count": 46,
+    "unique_test_count": 450,
+    "skip_count": 0,
+    "failed_module_count": 0,
+    "earlier_attempt_reused": false
+  },
+  "production_released": false,
+  "remaining_limits": [
+    "Received carbon contours, support/contact lands, laminate strength and compressed insulation require physical checks.",
+    "FC lower hardware and8mm underbody allowance do not qualify the actual PCB/damping/upper retention stack.",
+    "Open-bottom rail nut loading, finished guides, clamp retention, PA12 flexure fatigue and balloon tape/curvature remain unqualified.",
+    "Connected wire flexibility, strain relief, actual connectors, optional supply/tether loading and flight operation require physical validation."
+  ],
+  "blender": "No derivative audited; earlier Blender outputs are excluded."
+}

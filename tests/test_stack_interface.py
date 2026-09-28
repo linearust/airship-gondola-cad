@@ -1,4 +1,4 @@
-"""Native regressions for integral portal carriers and real bench extraction."""
+"""Native regressions for removable carbon-mounted portals and installed extraction."""
 
 import math
 import unittest
@@ -16,7 +16,6 @@ class StackInterfaceTests(unittest.TestCase):
     def setUpClass(cls):
         from gondola.parts import (
             equipment_envelopes,
-            equipment_mounts,
             optical_mount,
             optical_sensor,
             stock_adapter,
@@ -28,8 +27,7 @@ class StackInterfaceTests(unittest.TestCase):
         cls.battery.Placement.Base.x = -90
         cls.electronics.Placement.Base.x = 90
         for host, kind in ((cls.battery, "battery"), (cls.electronics, "electronics")):
-            equipment_mounts.build_mount(cls.doc, host, kind)
-        stock_adapter.build_stock_adapter(cls.doc, cls.electronics)
+            stock_adapter.build_stock_adapter(cls.doc, host, kind)
         accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
         accessory.Placement.Base.x = 180
         equipment_envelopes.build_equipment(
@@ -39,7 +37,11 @@ class StackInterfaceTests(unittest.TestCase):
         cls.refs, cls.reserves = optical_sensor.build_sensor(
             cls.doc, cls.kit["pitch_stage"]
         )
-        cls.moving = cls.kit["printed"] + cls.kit["hardware"] + cls.refs
+        cls.moving = [
+            obj
+            for obj in cls.kit["printed"] + cls.kit["hardware"] + cls.refs
+            if obj.Name != "OpticalMountBase" and not obj.Name.startswith("OpticalFoot")
+        ]
         cls.doc.recompute()
 
     @classmethod
@@ -52,29 +54,19 @@ class StackInterfaceTests(unittest.TestCase):
         stack_interface.attach_to_host(self.kit["group"], self.battery)
         optical_mount.set_angles(self.doc, 0, 0)
 
-    def test_transfer_selects_one_integral_carrier_and_restores_previous_low_carrier(
-        self,
-    ):
-        from gondola.parts import equipment_mounts
+    def test_transfer_preserves_bought_plates_and_moves_portal(self):
         from gondola.parts import stack_interface as s
         from gondola.validation.optical import tower_attachment_check
 
         before = {obj.Name: obj.getGlobalPlacement().Base for obj in self.moving}
-        for host, dx, old, old_kind in (
-            (self.electronics, 180, self.doc.BatteryMount, "battery"),
-            (self.battery, 0, self.doc.ElectronicsMount, "electronics"),
+        for host, dx, plate in (
+            (self.electronics, 180, self.doc.StockFCAdapter),
+            (self.battery, 0, self.doc.StockBatteryAdapter),
         ):
             s.attach_to_host(self.kit["group"], host)
-            carrier = s.host_print(self.kit["group"])
-            self.assertEqual(self.kit["group"].IntegratedCarrierName, carrier.Name)
-            self.assertTrue(carrier.IntegralOpticalSupport)
-            self.assertFalse(old.IntegralOpticalSupport)
-            expected = equipment_mounts.mount_shape(old_kind)
-            self.assertLess(
-                abs(old.Shape.cut(expected).Volume)
-                + abs(expected.cut(old.Shape).Volume),
-                1e-5,
-            )
+            self.assertEqual(self.kit["group"].HostPlateName, plate.Name)
+            self.assertFalse(plate.PrintPart)
+            self.assertEqual(s.host_print(self.kit["group"]).Name, "OpticalMountBase")
             for obj in self.moving:
                 self.assertLess(
                     (
@@ -84,73 +76,143 @@ class StackInterfaceTests(unittest.TestCase):
                     ).Length,
                     1e-7,
                 )
-            check = tower_attachment_check(self.doc, host)
-            self.assertTrue(check["passed"], check)
-            self.assertEqual(len(check["integral_roots"]), 2)
+            result = tower_attachment_check(self.doc, host)
+            self.assertTrue(result["passed"], result)
+            self.assertEqual(len(result["nominal_foot_axes"]), 2)
 
-    def test_host_roundtrip_restores_exact_low_carrier_property_schema_and_values(self):
+    def test_roundtrip_restores_plate_and_hardware_without_mutating_cached_templates(
+        self,
+    ):
+        from gondola.parts import purchased_hardware as h
         from gondola.parts import stack_interface as s
 
-        carrier = self.doc.ElectronicsMount
-        names = tuple(carrier.PropertiesList)
-        values = {key: str(getattr(carrier, key)) for key in names if key != "Shape"}
-        original_shape = carrier.Shape.copy()
-        s.attach_to_host(self.kit["group"], self.electronics)
-        self.assertTrue(carrier.IntegralOpticalSupport)
-        s.attach_to_host(self.kit["group"], self.battery)
-        self.assertEqual(tuple(carrier.PropertiesList), names)
-        self.assertEqual({key: str(getattr(carrier, key)) for key in values}, values)
-        self.assertLess(
-            abs(original_shape.cut(carrier.Shape).Volume)
-            + abs(carrier.Shape.cut(original_shape).Volume),
-            1e-5,
-        )
-        self.assertEqual(carrier.getParentGeoFeatureGroup(), self.electronics)
+        plate = self.doc.StockFCAdapter
+        original = plate.Shape.copy()
+        cached = {"nut": h.hex_nut_shape().copy(), "screw": h.screw_shape(6).copy()}
+        original_names = {obj.Name for obj in self.doc.Objects}
+        for _ in range(2):
+            s.attach_to_host(self.kit["group"], self.electronics)
+            self.assertTrue(plate.FCPortalInstalled)
+            self.assertFalse(any(self.doc.getObject(n) for n in s.FOOT_HARDWARE_NAMES))
+            s.attach_to_host(self.kit["group"], self.battery)
+            self.assertFalse(plate.FCPortalInstalled)
+            self.assertEqual({obj.Name for obj in self.doc.Objects}, original_names)
+        for first, second in (
+            (original, plate.Shape),
+            (cached["nut"], h.hex_nut_shape()),
+            (cached["screw"], h.screw_shape(6)),
+        ):
+            self.assertLess(
+                abs(first.cut(second).Volume) + abs(second.cut(first).Volume), 1e-5
+            )
 
-    def test_rectangular_portal_beams_are_flush_and_have_no_feet_or_holes(self):
+    def test_saved_hardware_order_survives_host_roundtrip_and_reopen(self):
+        import tempfile
+        from pathlib import Path
+
+        from gondola.config import BASELINE_FILE
+        from gondola.parts import stack_interface as s
+        from gondola.provenance import file_sha256
+
+        source_hash = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        reopened = None
+        try:
+            group = doc.OpticalFlowModule
+            self.assertEqual(group.StackHostName, "BatteryEquipmentModule")
+            expected = [obj.Name for obj in doc.DesignRegistry.HardwareParts]
+            feet = set(s.FOOT_HARDWARE_NAMES)
+            last_foot = max(
+                index for index, name in enumerate(expected) if name in feet
+            )
+            # The real baseline has other purchased hardware after the optical
+            # block; an implementation that merely appends feet must fail here.
+            self.assertLess(last_foot, len(expected) - 1)
+            for _ in range(2):
+                s.attach_to_host(group, doc.ElectronicsEquipmentModule)
+                self.assertEqual(
+                    [obj.Name for obj in doc.DesignRegistry.HardwareParts],
+                    [name for name in expected if name not in feet],
+                )
+                s.attach_to_host(group, doc.BatteryEquipmentModule)
+                actual = [obj.Name for obj in doc.DesignRegistry.HardwareParts]
+                self.assertEqual(actual, expected)
+                self.assertEqual(len(actual), len(set(actual)))
+            with tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / "roundtrip.FCStd"
+                doc.saveAs(str(path))
+                App.closeDocument(doc.Name)
+                doc = None
+                reopened = App.openDocument(str(path), hidden=True)
+                self.assertEqual(
+                    [obj.Name for obj in reopened.DesignRegistry.HardwareParts],
+                    expected,
+                )
+                self.assertEqual(
+                    reopened.OpticalFlowModule.StackHostName,
+                    "BatteryEquipmentModule",
+                )
+        finally:
+            if doc is not None:
+                App.closeDocument(doc.Name)
+            if reopened is not None:
+                App.closeDocument(reopened.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), source_hash)
+
+    def test_straight_top_beam_has_two_open_carbon_attachment_feet(self):
         from gondola.parts import stack_interface as s
 
         tower = s.tower_shape()
+        self.assertEqual(len(tower.Solids), 1)
+        for x, y in s.FOOT_CENTRES:
+            bore = Part.makeCylinder(
+                s.FOOT_HOLE_DIAMETER / 2,
+                s.ROOT_ARM_THICKNESS,
+                App.Vector(x, y, s.LEG_BOTTOM_Z),
+            )
+            self.assertLess(tower.common(bore).Volume, 1e-5)
         tower.rotate(App.Vector(), App.Vector(0, 0, 1), -45)
-        half_span = (
+        half = (
             math.hypot(*s.ANCHOR_CENTRES[0]) + s.FIXED_LEG_INNER + s.FIXED_LEG_THICKNESS
         )
         expected = Part.makeBox(
-            2 * half_span,
+            2 * half,
             s.LEG_WIDTH,
             s.TOP_BEAM_THICKNESS,
-            App.Vector(-half_span, -s.LEG_WIDTH / 2, 0),
+            App.Vector(-half, -s.LEG_WIDTH / 2, 0),
         )
         top = tower.common(Part.makeBox(200, 200, 10, App.Vector(-100, -100, 0)))
         self.assertLess(
             abs(top.cut(expected).Volume) + abs(expected.cut(top).Volume), 1e-5
         )
-        self.assertEqual(len(tower.Solids), 1)
-        self.assertIsNone(self.doc.getObject("OpticalMountBase"))
-        self.assertFalse(any("StackFoot" in obj.Name for obj in self.doc.Objects))
-        self.assertEqual(len(self.kit["printed"]), 2)
-        self.assertEqual(len(self.kit["hardware"]), 4)
+        self.assertEqual(len(self.kit["printed"]), 3)
+        self.assertEqual(len(self.kit["hardware"]), 8)
 
     def test_missing_root_material_is_rejected(self):
         from gondola.parts import stack_interface as s
         from gondola.validation.optical import tower_attachment_check
 
-        carrier = self.doc.BatteryMount
-        original = carrier.Shape.copy()
-        root = dict(s.structural_component_shapes())["root_arm_0"]
-        root.translate(App.Vector(0, 0, s.STACK_TOP_Z))
+        base = self.doc.OpticalMountBase
+        original = base.Shape.copy()
         try:
-            carrier.Shape = original.cut(root)
-            result = tower_attachment_check(self.doc, self.battery)
-            self.assertFalse(result["passed"], result)
+            base.Shape = original.cut(
+                dict(s.structural_component_shapes())["root_arm_0"]
+            )
+            self.assertFalse(tower_attachment_check(self.doc, self.battery)["passed"])
         finally:
-            carrier.Shape = original
+            base.Shape = original
 
-    def test_portal_cannot_be_fused_to_a_disconnected_carrier(self):
+    def test_missing_bought_host_is_rejected_without_transfer(self):
         from gondola.parts import stack_interface as s
 
-        with self.assertRaises(ValueError):
-            s.integral_portal_shape(Part.makeBox(2, 2, 2, App.Vector(90, 90, 90)))
+        plate = self.doc.StockFCAdapter
+        self.electronics.removeObject(plate)
+        try:
+            with self.assertRaises(ValueError):
+                s.attach_to_host(self.kit["group"], self.electronics)
+            self.assertEqual(self.kit["group"].getParentGeoFeatureGroup(), self.battery)
+        finally:
+            self.electronics.addObject(plate)
 
     def _fixed(self):
         from gondola.cad import world_shape
@@ -210,12 +272,12 @@ class StackInterfaceTests(unittest.TestCase):
             kept, frame = _bench_service_obstacles(
                 self.doc,
                 {
-                    "ElectronicsMount": world_shape(self.doc.ElectronicsMount),
+                    "StockFCAdapter": world_shape(self.doc.StockFCAdapter),
                     "Unknown": Part.makeBox(1, 1, 1),
                 },
             )
-            self.assertNotIn("ElectronicsMount", kept)
-            self.assertIn("BatteryMount", kept)
+            self.assertIn("StockFCAdapter", kept)
+            self.assertIn("StockBatteryAdapter", kept)
             self.assertIn(extra.Name, kept)
             self.assertIn("Unknown", kept)
             self.assertTrue(frame["valid_supported_host"])
@@ -229,7 +291,7 @@ class StackInterfaceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             s.attach_to_host(self.kit["group"], self.doc.AccessoryEquipmentModule)
         self.assertEqual(self.kit["group"].getParentGeoFeatureGroup(), old)
-        self.assertTrue(self.doc.BatteryMount.IntegralOpticalSupport)
+        self.assertEqual(self.kit["group"].HostPlateName, "StockBatteryAdapter")
 
 
 if __name__ == "__main__":

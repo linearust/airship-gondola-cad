@@ -125,7 +125,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
         interfaces.FC_MODEL,
         fc_envelope_shape(),
         "Published envelope and hole dimensions are recorded in FlightControllerContract. The symmetric hole pattern is unchanged; FC installation is turned180deg relative to the electronics carrier to preserve the prior world-heading design basis after the carrier's180deg turn. "
-        "Our carrier provides M2 clearance holes on these XY axes. Use the selected 45A package's silicone dampers; see MountingEvidence. Their compressed geometry is not modeled. "
+        "The bought carbon has nominal unthreaded Ø2 holes on these25.5mm XY axes. Use the selected 45A package's silicone dampers; see MountingEvidence. Their compressed geometry is not modeled. "
         "An8mm design allowance separates the component-envelope minimum from the carrier face, with an open-X wiring corridor. This is not a manufacturer-required spacer height or PCB bearing-plane location. "
         "The square envelope does not identify the physical board arrow or exact port datums. Verify actual board heading and matching firmware orientation during assembly. Actual spacer/bolt lengths, underside components, connectors, ventilation and strain relief remain to verify.",
         interfaces.FC_SOURCE,

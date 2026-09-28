@@ -286,6 +286,25 @@ def _subtract_polygon(subject, cutter):
     return outside
 
 
+def _float32_rounding_radius(triangle):
+    """Largest vertex rounding-cell radius, in the serialized coordinate frame.
+
+    A finite normal float32 has spacing 2**(exponent-150); subnormals use
+    2**-149. Half that spacing on each axis bounds nearest rounding. At an
+    exponent boundary this uses the larger adjacent spacing, conservatively.
+    A triangle's affine interpolation cannot amplify the largest vertex error.
+    """
+    radii = []
+    for point in triangle:
+        half_spacings = []
+        for coordinate in point:
+            bits = struct.unpack("<I", struct.pack("<f", abs(coordinate)))[0]
+            exponent = (bits >> 23) & 0xFF
+            half_spacings.append(math.ldexp(1.0, max(-149, exponent - 150) - 1))
+        radii.append(math.sqrt(sum(value * value for value in half_spacings)))
+    return max(radii)
+
+
 def compare_mesh_surfaces(actual, expected, plane_tolerance_mm=1e-5):
     """Prove bidirectional surface coverage despite planar retriangulation.
 
@@ -293,9 +312,14 @@ def compare_mesh_surfaces(actual, expected, plane_tolerance_mm=1e-5):
     give skinny facets different normals after serialization. Clip each target
     triangle to a narrow slab around the source triangle, then project it
     orthogonally: every covered point is within plane_tolerance_mm of the target
-    surface. Polygon subtraction checks the covered union, so overlapping facets
-    cannot compensate for holes. The reverse pass rejects extra surface as well.
-    Solid topology is checked separately by the export validator.
+    surface. Only when both meshes have the exact same serialized vertex set,
+    permit the sum of each source/target triangle's float32 rounding-cell radii
+    if larger. Two triangulations of one unquantized planar face can each move
+    by at most one such radius, so their separation can reach the sum. This is
+    a coordinate-resolution bound, not a fabrication allowance. Changed vertex
+    sets keep the caller's original tolerance. Polygon subtraction checks the
+    covered union, so overlapping facets cannot compensate for holes. The reverse
+    pass rejects extra surface as well. Solid topology is checked separately.
     """
     if not math.isfinite(plane_tolerance_mm) or plane_tolerance_mm <= 0:
         raise ValueError("Mesh plane tolerance must be finite and positive.")
@@ -303,6 +327,23 @@ def compare_mesh_surfaces(actual, expected, plane_tolerance_mm=1e-5):
     second = Counter(_stl_triangle(facet.Points) for facet in expected.Facets)
     first_only = list((first - second).elements())
     second_only = list((second - first).elements())
+    shared_vertices = {point for triangle in first for point in triangle} == {
+        point for triangle in second for point in triangle
+    }
+    rounding_radii = (
+        {
+            triangle: _float32_rounding_radius(triangle)
+            for triangle in set(first_only + second_only)
+        }
+        if shared_vertices
+        else {}
+    )
+    maximum_rounding_allowance = (
+        max((rounding_radii[t] for t in first_only), default=0)
+        + max((rounding_radii[t] for t in second_only), default=0)
+        if shared_vertices
+        else 0
+    )
 
     def coverage_failures(source_triangles, target_triangles):
         failures = []
@@ -341,23 +382,23 @@ def compare_mesh_surfaces(actual, expected, plane_tolerance_mm=1e-5):
             low = tuple(min(p[i] for p in triangle) for i in range(3))
             high = tuple(max(p[i] for p in triangle) for i in range(3))
             for target, target_low, target_high in targets:
+                tolerance = max(
+                    plane_tolerance_mm,
+                    rounding_radii.get(triangle, 0) + rounding_radii.get(target, 0),
+                )
                 if any(
-                    target_high[i] < low[i] - plane_tolerance_mm
-                    or target_low[i] > high[i] + plane_tolerance_mm
+                    target_high[i] < low[i] - tolerance
+                    or target_low[i] > high[i] + tolerance
                     for i in range(3)
                 ):
                     continue
                 clipped = _clip_polygon(
                     list(target),
-                    lambda point: (
-                        plane_tolerance_mm - _dot(normal, _subtract(point, origin))
-                    ),
+                    lambda point: tolerance - _dot(normal, _subtract(point, origin)),
                 )
                 clipped = _clip_polygon(
                     clipped,
-                    lambda point: (
-                        plane_tolerance_mm + _dot(normal, _subtract(point, origin))
-                    ),
+                    lambda point: tolerance + _dot(normal, _subtract(point, origin)),
                 )
                 if len(clipped) < 3:
                     continue
@@ -389,6 +430,11 @@ def compare_mesh_surfaces(actual, expected, plane_tolerance_mm=1e-5):
         "method": "Bidirectional surface coverage by orthogonal slab projection and polygon union subtraction",
         "plane_tolerance_mm": plane_tolerance_mm,
         "coordinate_precision": "STL float32",
+        "exact_serialized_vertex_sets_match": shared_vertices,
+        "maximum_rounding_cell_allowance_mm": maximum_rounding_allowance,
+        "maximum_plane_tolerance_mm": max(
+            plane_tolerance_mm, maximum_rounding_allowance
+        ),
         "actual_retriangulated_facets": len(first_only),
         "expected_retriangulated_facets": len(second_only),
         "uncovered_actual_triangles": actual_failures,

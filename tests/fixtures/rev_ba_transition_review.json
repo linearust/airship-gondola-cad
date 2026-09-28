@@ -1,0 +1,86 @@
+{
+  "approved_for_fixture_promotion": true,
+  "physical_release_approved": false,
+  "candidate_path": "/tmp/ba-seventh-candidate/gondola.FCStd",
+  "candidate_sha256": "41eff55eaacb911f88722a7223feb1e52e9c1eeaffb1c250049ca4b0f37b9d3b",
+  "source_fingerprint": "d559eb53204aa5e36eafe6fc626e872cb0f9f7739e8bc1af05a86441e1fcbe4a",
+  "evidence": {
+    "/tmp/ba_architecture_review.json": "f7cfeb6f100cdf66cd47795939d41a5335d9a16885c93abf399dcd2cdb7e98ed",
+    "/tmp/ba_candidate_rebind.json": "9efabff1893a99a5d3259e23c12d7c76fd70c699062fa11af4d4da9ef88ee161"
+  },
+  "checks": {
+    "protected_propulsion_local_solids_and_poses": 51,
+    "protected_geometry_passed": true,
+    "rebinding_exact_brep_payloads": 136,
+    "all_native_placements_and_shape_references_match": true,
+    "control_behavior_passed": true,
+    "hardware_bom_matches": true
+  },
+  "inventory": {
+    "installed_prints": 10,
+    "purchased_hardware": 84,
+    "fit_coupons": 2,
+    "equipment_mounts": 4,
+    "optical_mount_parts": 3,
+    "rails": 1
+  },
+  "mass_delta_BA_minus_AZ": {
+    "printed_count": -2,
+    "hardware_count": 15,
+    "coupon_count": -1,
+    "printed_volume_mm3": -10860.449587983901,
+    "printed_g": -10.969054083863774,
+    "hardware_g": 5.254822709663159,
+    "structure_hardware_g": -5.714231374200622
+  },
+  "modeled_structure_and_hardware_mass_g": {
+    "AZ": 112.11300294907963,
+    "BA": 106.398771574879
+  },
+  "tradeoffs": [
+    "Four identical bought carbon plates replace three bespoke low printed carriers; separate optical portal is retained. Printed count drops12 to10 but modeled hardware instances rise69 to84. This is standardization and lower modeled mass, not a total installed part-count reduction.",
+    "New rail is about5.85g heavier than AZ; removing the custom carriers and reshaping the direct frame foot lowers printed mass10.969g overall. Additional bought boards and fastening raise modeled hardware mass5.255g, leaving5.714g net modeled reduction. Unknown component, straps, insulation, wires and upper FC retention masses remain excluded.",
+    "Only +/-6mm trim within one42mm flat bay is allowed. For coarse relocation lift/reinstall; open guides do not retain unbolted nuts. Loading/removing nuts requires underside bench access before balloon attachment.",
+    "Propulsion remains separate from the paired servo/input drive. Its top rail screws require prior servo-module removal; installed service dependency on the adjacent battery/optical assembly must pass the separate assembly audit.",
+    "Carbon is a conservative full-square collision envelope with published bores, not verified material at undimensioned cutouts. Inspect both16mm clamp lands, rail contact strips,25.5mm FC/portal contacts, laminate stiffness and insulation; do not infer strength or continuous adhesive area from filled CAD.",
+    "The long battery overhangs one carbon plate. Qualify the insulating pad and strap support with the actual pack. The8mm FC underside allowance remains geometric; the actual upper damping/retention stack is unverified.",
+    "42mm flat bays linked by6mm,1.2mm-thick flexures require curvature, tape and fatigue tests. Illustrative R300/500/1000mm arcs imply0.736/0.441/0.221mm bay sag and ideal uniform flexure strains1.60/0.96/0.48%; these are kinematic estimates, not allowable strains."
+  ],
+  "post_pin_source_fingerprint": "be23d469a656ed336d181ba298bd08ce48cf0e5c9edda0e16ff54f16d341bea3",
+  "post_pin_binding_passed": true,
+  "audit_archive": "rev_ba_transition_audit.json.gz",
+  "audit_archive_sha256": "54ba2afafc56cfef7f953bf74a75f4b0cb3b1b58cba292ea49a01871c3b781d8",
+  "audit_uncompressed_sha256": "e47ba162d19a31d9770ebde72da817433f4a3378a28007924c9fc7d85b5eb6fa",
+  "retained_file_count": 54,
+  "archive_bytes_verified": true,
+  "native_fixture_sha256": "41eff55eaacb911f88722a7223feb1e52e9c1eeaffb1c250049ca4b0f37b9d3b",
+  "final_source_fingerprint": "48924e4cf9b37ef1b8bb33b7264879aaa486e93e92ba2a97010e76a5df11617c",
+  "lifecycle_repair_binding_passed": true,
+  "lifecycle_changed_production_files": [
+    "gondola/preview.py",
+    "gondola/validation/assembly.py"
+  ],
+  "lifecycle_scope_note": "A native Battery-to-FC-to-Battery lifecycle probe reproduces invalid cached handles. Current equipment compatibility host screens use a disposable document; a full assembly.validate crash through that call was NOT reproduced. Reacquisition and exact-name guard are defensive lifecycle hardening.",
+  "visual_review_passed": true,
+  "visual_review_sha256": "d601bd2e5cef454ba5c78abb1c224915bc6e5d5db2e7dd4032e5b6e437cc9978",
+  "remaining_release_gates_at_promotion": [
+    "Fresh full native suite on the repinned frozen source.",
+    "Final build/preview/read-only validation/baseline comparison/print bundle hash consistency.",
+    "Physical supplier acceptance, fit/creep/curvature, contact and loaded-operation qualification remain unresolved."
+  ],
+  "final_native_completion_binding": {
+    "full_suite_reported_passed": true,
+    "scope": "Completion and source/fixture/before-after identity checked here; complete per-module raw-log/ID audit is the separate final artifact review. No native execution was reused by this transition review.",
+    "source_fingerprint": "48924e4cf9b37ef1b8bb33b7264879aaa486e93e92ba2a97010e76a5df11617c",
+    "fixture_sha256": "41eff55eaacb911f88722a7223feb1e52e9c1eeaffb1c250049ca4b0f37b9d3b",
+    "modules": 46,
+    "tests": 444,
+    "skips": 0,
+    "before_after_bytes_identical": true,
+    "unique_discovered_started_finished_ids_match": true,
+    "summary_path": "/tmp/ba-final-native-v2/summary.json",
+    "summary_sha256": "fbeb9b9a3104c39706368df3b328ebbb9bccaebc231286a669b9f4b8376f8bb9",
+    "before_sha256": "3d8e6fc257755ef121af63cbdc676ec729cea8d6787b58fd685a37c749c9fc47",
+    "after_sha256": "3d8e6fc257755ef121af63cbdc676ec729cea8d6787b58fd685a37c749c9fc47"
+  }
+}

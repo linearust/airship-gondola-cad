@@ -11,7 +11,7 @@ from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import propulsion, rail, servo_bridge, stack_interface
+from gondola.parts import propulsion, rail, stack_interface, stock_adapter
 
 from .geometry import local_shape
 
@@ -88,71 +88,47 @@ def review(doc, registry):
         )
     analytic = [
         (
-            "rail_solid_clamping_head_thickness",
+            "rail_slotted_roof_thickness",
             "ContinuousRail",
-            (0, 4, rail.HEAD_BOTTOM - 0.01),
-            (0, 4, rail.HEAD_TOP + 0.01),
-            rail.HEAD_TOP - rail.HEAD_BOTTOM,
+            (0, rail.TRACK_OFFSET + 1.8, rail.NUT_TOP_Z - 0.01),
+            (0, rail.TRACK_OFFSET + 1.8, rail.TOP_Z + 0.01),
+            rail.ROOF_THICKNESS,
         ),
         (
             "rail_functional_flexure_thickness",
             "ContinuousRail",
-            (9, 0, -0.01),
-            (9, 0, 1.3),
-            1.2,
+            (24, rail.TRACK_OFFSET, -0.01),
+            (24, rail.TRACK_OFFSET, 1.3),
+            rail.BASE_THICKNESS,
         ),
         (
             "tape_wing_thickness",
             "ContinuousRail",
-            (0, 12, -0.01),
-            (0, 12, 1.3),
-            1.2,
+            (0, 22, -0.01),
+            (0, 22, 1.3),
+            rail.PAD_THICKNESS,
         ),
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
         (
-            "battery_mount_deck_thickness",
-            "BatteryMount",
-            (0, 20, mounts.DECK_BOTTOM_Z - 0.01),
-            (0, 20, mounts.SUPPORT_FACE_Z + 0.01),
-            mounts.DECK_THICKNESS,
-        ),
-        (
-            "fc_support_deck_thickness",
-            "ElectronicsMount",
-            (8, 0, mounts.FC_SADDLE_BOTTOM_Z - 0.01),
-            (8, 0, mounts.FC_SADDLE_BOTTOM_Z + mounts.FC_SADDLE_THICKNESS + 0.01),
-            mounts.DECK_THICKNESS,
-        ),
-        (
-            "accessory_plate_thickness",
-            "AccessoryMount",
-            (14, -24, mounts.DECK_BOTTOM_Z - 0.01),
-            (14, -24, mounts.SUPPORT_FACE_Z + 0.01),
-            mounts.DECK_THICKNESS,
-        ),
-        (
-            "central_servo_seat_over_nut_pocket",
+            "central_servo_support_web",
             "PropulsionFixedFrame",
-            (
-                4,
-                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
-                rail.CLAMP_Z + rail.NUT_POCKET_AF / 2 - 0.01,
-            ),
-            (
-                4,
-                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
-                servo_bridge.CONNECTOR_PLATE_BOTTOM_Z + 0.01,
-            ),
-            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z
-            - rail.CLAMP_Z
-            - rail.NUT_POCKET_AF / 2,
+            (0, -2.51, 8),
+            (0, 2.51, 8),
+            5.0,
+        ),
+        (
+            "direct_rail_foot_thickness",
+            "PropulsionFixedFrame",
+            (5, 10, propulsion.BASE_Z - 0.01),
+            (5, 10, propulsion.BASE_Z + propulsion.RAIL_FOOT_THICKNESS + 0.01),
+            propulsion.RAIL_FOOT_THICKNESS,
         ),
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (8.0, propulsion.PIVOT_HALF_SPAN, propulsion.BASE_Z - 0.01),
+            (8, propulsion.PIVOT_HALF_SPAN, propulsion.BASE_Z - 0.01),
             (
-                8.0,
+                8,
                 propulsion.PIVOT_HALF_SPAN,
                 propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01,
             ),
@@ -160,9 +136,9 @@ def review(doc, registry):
         ),
         (
             "optical_base_pivot_wall",
-            stack_interface.SUPPORTED_HOSTS[doc.OpticalFlowModule.StackHostName],
-            (-optical_mount.EAR_THICKNESS - 0.01, 0, stack_interface.STACK_TOP_Z + 4),
-            (0.01, 0, stack_interface.STACK_TOP_Z + 4),
+            "OpticalMountBase",
+            (-optical_mount.EAR_THICKNESS - 0.01, 0, 4),
+            (0.01, 0, 4),
             optical_mount.EAR_THICKNESS,
         ),
         (
@@ -235,19 +211,11 @@ def review(doc, registry):
         "rail_flexure_target_mm": rail.PAD_THICKNESS,
         "short_50mm_guidance_mm": 1.0,
         "equipment_mount_assessment": {
-            "deck_mm": mounts.DECK_THICKNESS,
-            "fc_support_deck_size_mm": [
-                *mounts.ELECTRONICS_DECK_SIZE,
-                mounts.DECK_THICKNESS,
+            "printed_role_deck_or_shoe_count": 0,
+            "purchased_carbon_plates": [
+                stock_adapter.mounting_contract(kind) for kind in mounts.MOUNT_NAMES
             ],
-            "accessory_deck_size_mm": mounts.ACCESSORY_DECK_SIZE,
-            "hole_pad_diameters_mm": {
-                kind: sorted(
-                    {row["pad_diameter_mm"] for row in mounts.carrier_hole_rows(kind)}
-                )
-                for kind in mounts.MOUNT_NAMES
-            },
-            "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],
+            "carbon_scope": "Purchased laminate is not part of the PA12 wall screen. Its filled square CAD is a collision envelope, not proof of material/contact at undimensioned cutouts. Received support lands, fastener bearing, insulation, flatness and strength remain unqualified.",
             "independent_optical_mount_contract": optical_mount.mount_contract(),
         },
         "rail_functional_flexure_exception": exception,

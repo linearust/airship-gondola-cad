@@ -48,6 +48,73 @@ class MeshSurfaceTests(unittest.TestCase):
         result = compare_mesh_surfaces(actual, expected)
         self.assertTrue(result["passed"], result)
 
+    def test_rail_float32_retriangulation_uses_coordinate_rounding_bound(self):
+        # Actual STL/native rail facets, not a hand-tuned tolerance example.
+        # Y >256mm has twice the float32 spacing of X <256mm.
+        a = (242.2854766845703, 256.1641540527344, 1.1789947748184204)
+        b = (242.30499267578125, 256.1836853027344, 1.1698462963104248)
+        c = (242.32411193847656, 256.2027893066406, 1.15910804271698)
+        d = (242.34274291992188, 256.221435546875, 1.146816372871399)
+        result = compare_mesh_surfaces(
+            mesh((a, b, c), (a, c, d)), mesh((a, b, d), (b, c, d))
+        )
+        self.assertTrue(result["passed"], result)
+        self.assertTrue(result["exact_serialized_vertex_sets_match"])
+        # Twice the 3-axis nearest-rounding-cell radius, without a fitted factor.
+        rounding_bound = ((2**-16) ** 2 + (2**-15) ** 2 + (2**-23) ** 2) ** 0.5
+        self.assertAlmostEqual(
+            result["maximum_rounding_cell_allowance_mm"], rounding_bound
+        )
+        self.assertEqual(result["plane_tolerance_mm"], 1e-5)
+
+    def test_changed_vertices_cannot_use_retriangulation_rounding_allowance(self):
+        square = [
+            tuple((x + 240, y + 260, z) for x, y, z in facet.Points)
+            for facet in self.square.Facets
+        ]
+        for displacement in (2e-5, 0.001):
+            with self.subTest(displacement=displacement):
+                shifted = [
+                    tuple((x, y, z + displacement) for x, y, z in triangle)
+                    for triangle in square
+                ]
+                result = compare_mesh_surfaces(mesh(*square), mesh(*shifted))
+                self.assertFalse(result["passed"], result)
+                self.assertFalse(result["exact_serialized_vertex_sets_match"])
+                self.assertEqual(result["maximum_rounding_cell_allowance_mm"], 0)
+                self.assertEqual(result["maximum_plane_tolerance_mm"], 1e-5)
+
+    def test_same_vertex_nonplanar_flip_beyond_rounding_bound_is_rejected(self):
+        a, b = (240, 260, 0), (241, 260, 0)
+        c, d = (241, 261, 0.0001), (240, 261, 0)
+        result = compare_mesh_surfaces(
+            mesh((a, b, c), (a, c, d)), mesh((a, b, d), (b, c, d))
+        )
+        self.assertTrue(result["exact_serialized_vertex_sets_match"])
+        # The changed diagonal lifts the center by about50nm, exceeding the
+        # roughly34nm serialized-coordinate bound, despite identical vertices.
+        self.assertGreater(0.0001 / 2, result["maximum_plane_tolerance_mm"])
+        self.assertFalse(result["passed"], result)
+
+    def test_shared_vertex_set_does_not_hide_a_missing_face(self):
+        a, b = (240, 260, 0), (241, 260, 0)
+        c, d, center = (241, 261, 0), (240, 261, 0), (240.5, 260.5, 0)
+        triangles = [(a, b, center), (b, c, center), (c, d, center), (d, a, center)]
+        for first, second in ((triangles, triangles[1:]), (triangles[1:], triangles)):
+            result = compare_mesh_surfaces(mesh(*first), mesh(*second))
+            self.assertTrue(result["exact_serialized_vertex_sets_match"])
+            self.assertFalse(result["passed"], result)
+
+    def test_far_unchanged_geometry_does_not_enlarge_local_rounding_bound(self):
+        raised = (1, 1, 0.00004)
+        distant = ((1e6, 0, 0), (1e6 + 1, 0, 0), (1e6, 1, 0))
+        first = mesh((self.a, self.b, raised), (self.a, raised, self.d), distant)
+        second = mesh((self.a, self.b, self.d), (self.b, raised, self.d), distant)
+        result = compare_mesh_surfaces(first, second)
+        self.assertTrue(result["exact_serialized_vertex_sets_match"])
+        self.assertEqual(result["maximum_plane_tolerance_mm"], 1e-5)
+        self.assertFalse(result["passed"], result)
+
     def test_missing_or_extra_surface_is_rejected_in_either_direction(self):
         missing = mesh((self.a, self.b, self.c))
         for actual, expected in ((self.square, missing), (missing, self.square)):

@@ -56,6 +56,21 @@ class NativeHardwareProcurementTests(unittest.TestCase):
 
 
 class HardwareSpecificationTests(unittest.TestCase):
+    def test_carbon_order_scope_counts_four_default_and_two_optional_boards(self):
+        from gondola.contracts import stack_adapter
+
+        spec = procurement_spec(stack_adapter.PART_SKU)
+        self.assertEqual(PURCHASED_HARDWARE_QUANTITIES[stack_adapter.PART_SKU], 4)
+        self.assertEqual(stack_adapter.SELECTED_OPTION_BOARD_COUNT, 5)
+        self.assertIn("six total", spec["requirements"])
+        self.assertIn("insufficient", spec["requirements"])
+        self.assertIn("actual contact lands", spec["requirements"])
+        self.assertFalse(
+            stack_adapter.stack_adapter_contract()[
+                "included_hardware_quantities_confirmed"
+            ]
+        )
+
     def test_selected_shaft_evidence_matches_preparation_and_materials(self):
         from gondola.contracts.design import HARDWARE_MATERIALS
         from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE

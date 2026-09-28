@@ -97,7 +97,7 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, carbon plate clamp and optical pivots. No washers. Finish the nominal-4.15mm rail hex seat/port to 4.05-4.25 mm across flats and verify capture with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee anti-rotation. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by rail clamps, propulsion mounts, carbon plate clamps and optical pivots. No washers. Finish the nominal4.15mm open-bottom rail nut guides to4.05–4.25mm across flats and verify anti-rotation with the physical coupon: raw PA12 dimensional tolerance alone does not guarantee fit. These guides do not retain unbolted nuts; support them during insertion before taping the rail. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
 }
@@ -243,6 +243,6 @@ def procurement_spec(sku, *, allow_unknown=False):
 PROCUREMENT_SPECS[_STACK_ADAPTER_SKU] = {
     "search_query": "carbon FPV stack adapter 30x30x1mm 25.5 20 16 M2",
     "candidate_url": _STACK_ADAPTER_URL,
-    "requirements": "Selected 5PCS carbon adapter; one installed at the FC. Nominal 30x30x1mm, three square 25.5/20/16mm patterns with nominal 2mm through holes. Electrically insulate PCB and wiring. Inspect received hole clearance, burrs, flatness, outline and cutouts; use factory axes without assuming tapped holes. Other package plates are spares, not installed inventory.",
+    "requirements": "Selected5PCS carbon adapter. Four boards are installed by default: battery, FC, navigation and Mini. The modeled optional power portal adds two upper boards while retaining all four lower boards, for six total; one5PCS pack alone is insufficient for that configuration. Nominal30x30x1mm, three square25.5/20/16mm patterns with nominal2mm unthreaded through-holes. Electrically insulate PCB, wiring and battery. Inspect received hole clearance, burrs, flatness, outline, cutouts and actual contact lands. Do not infer structural or adhesive support from the filled CAD envelope, simultaneous pattern usability, or included fastener quantities.",
     "evidence_notes": "User-selected product drawing and saved page retained in references/stock_stack_adapter/. Seller lists0.72g perplate. Pattern vertical pitches inferred from square symmetry; tolerances/cutout contours and package fastener quantities unverified.",
 }

@@ -64,14 +64,14 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         finally:
             lane.Shape = original
 
-    def test_radio_support_uses_actual_overlap_and_rejects_missing_material(self):
+    def test_radio_reservation_checks_identity_without_inventing_contact(self):
         from gondola.contracts.equipment_options import get_radio_profile
         from gondola.parts import equipment_envelopes
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment_options import adhesive_support_check
         from gondola.validation.geometry import local_shape
 
-        support = local_shape(self.doc.AccessoryMount)
+        support = local_shape(self.doc.StockRadioAdapter)
         body = equipment_envelopes.radio_envelope_shape(get_radio_profile("LR24FMINI"))
         report = adhesive_support_check(
             support,
@@ -82,15 +82,17 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         )
         self.assertTrue(report["passed"])
         self.assertEqual(report["support_face"], "top")
-        self.assertAlmostEqual(report["continuous_support_area_mm2"], 308)
-        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 308)
+        self.assertFalse(report["continuous_support_area_verified"])
+        self.assertFalse(report["physical_contact_qualified"])
+        self.assertAlmostEqual(report["reserved_pad_area_mm2"], 308)
+        self.assertAlmostEqual(report["nominal_body_pad_overlap_mm2"], 308)
         x, y = mounts.RADIO_CENTRE_XY
         damaged = support.cut(
             Part.makeBox(
                 2,
                 2,
-                mounts.DECK_THICKNESS + 2,
-                App.Vector(x - 1, y - 1, mounts.DECK_BOTTOM_Z - 1),
+                3,
+                App.Vector(x - 1, y - 1, 6),
             )
         )
         self.assertFalse(

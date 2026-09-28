@@ -6,7 +6,6 @@ from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.contracts.design import MODULE_STATIONS
 from gondola.contracts.drive import drive_for_document
-from gondola.parts import rail
 
 from .geometry import intersection_volume
 from .rotation_envelope import full_orbit_envelope
@@ -60,16 +59,7 @@ def _static_expression_contract(doc, spec):
     """
     allowed = {}
     for station in MODULE_STATIONS:
-        control = "AssemblySettings." + station.clamp_control
-        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
-        allowed[station.object_name] = {
-            "Placement.Base.x": "RailPositionX",
-            "Placement.Base.y": f"{control}==0?{shift:g}mm:{-shift:g}mm",
-        }
-        for suffix in ("Screw", "Nut"):
-            allowed[station.object_name + "RailClamp" + suffix] = {
-                "Placement.Rotation.Angle": control + "==0?0deg:180deg"
-            }
+        allowed[station.object_name] = {"Placement.Base.x": "RailPositionX"}
     for prefix in ("Port", "Starboard"):
         allowed[prefix + "Pod"] = {
             "Placement.Rotation.Angle": "min(MaximumTilt;max(MinimumTilt;Tilt))"

@@ -15,24 +15,27 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class PowerMountTests(unittest.TestCase):
-    def test_integral_variants_support_both_board_contact_areas(self):
-        from gondola.parts import equipment_mounts, stack_interface
+    def test_portal_supports_upper_carbon_without_copying_the_lower_carrier(self):
         from gondola.parts import power_mount as p
+        from gondola.parts import stack_interface, stock_adapter
 
-        for host, part_name in stack_interface.MECHANICAL_HOSTS.items():
+        for host in stack_interface.MECHANICAL_HOSTS:
             with self.subTest(host=host):
                 shape = p.platform_shape(host)
                 self.assertTrue(shape.isValid())
                 self.assertEqual(len(shape.Solids), 1)
                 self.assertLess(p.deck_shape().cut(shape).Volume, 1e-6)
-                kind = next(
-                    k for k, v in equipment_mounts.MOUNT_NAMES.items() if v == part_name
-                )
-                lower = equipment_mounts.mount_shape(kind).copy()
+                lower = stock_adapter.plate_shape().copy()
                 lower.translate(App.Vector(0, 0, -stack_interface.STACK_TOP_Z))
-                self.assertLess(lower.cut(shape).Volume, 1e-6)
-                self.assertGreater(shape.Volume, lower.Volume + p.deck_shape().Volume)
-                self.assertEqual(p.platform_contract()["attachment_hardware_added"], 0)
+                self.assertLess(lower.common(shape).Volume, 1e-6)
+                self.assertGreater(shape.Volume, p.deck_shape().Volume)
+                contract = p.platform_contract(host)
+                self.assertFalse(contract["replacement_carrier"])
+                self.assertEqual(contract["bought_upper_carbon_count"], 2)
+                self.assertEqual(
+                    len(p.hardware_inventory(host)),
+                    10 if host == "ElectronicsEquipmentModule" else 14,
+                )
                 self.assertLessEqual(
                     max(
                         shape.BoundBox.XLength,
@@ -41,6 +44,13 @@ class PowerMountTests(unittest.TestCase):
                     ),
                     340,
                 )
+                for row in p.standard_hole_rows():
+                    bore = Part.makeCylinder(
+                        row["diameter_mm"] / 2,
+                        3.2,
+                        App.Vector(*row["centre_xy_mm"], -0.1),
+                    )
+                    self.assertLess(shape.common(bore).Volume, 1e-6)
 
     def test_regulator_bodies_and_connection_lanes_do_not_intersect_deck(self):
         from gondola.parts import power_mount as p
@@ -65,7 +75,7 @@ class PowerMountTests(unittest.TestCase):
                         1e-6,
                     )
                 self.assertEqual(
-                    sum(name.startswith("PowerFoot") for name in physical), 0
+                    sum(name.startswith("PowerFoot") for name in physical), 4
                 )
                 self.assertNotIn("TetherDepartureReserve", reserves)
         with self.assertRaises(ValueError):
@@ -75,7 +85,12 @@ class PowerMountTests(unittest.TestCase):
         from gondola.parts import power_mount, stack_interface, wiring_reserves
 
         platform = power_mount.platform_shape("AccessoryEquipmentModule").copy()
-        platform.translate(App.Vector(0, 0, stack_interface.STACK_TOP_Z))
+        platform.translate(
+            App.Vector(
+                *stack_interface.host_origin_xy("AccessoryEquipmentModule"),
+                stack_interface.STACK_TOP_Z,
+            )
+        )
         lanes = wiring_reserves.reserve_shapes()
         for name in (
             "RadioNegativeXConnectorReserve",
@@ -117,7 +132,7 @@ class PowerMountTests(unittest.TestCase):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.contracts.power_options import power_option_contract
-        from gondola.parts import equipment_mounts, stack_interface
+        from gondola.parts import equipment_mounts, optical_mount, stock_adapter
         from gondola.power_export import (
             ARTIFACT_NAMES,
             audit_power_options,
@@ -134,7 +149,7 @@ class PowerMountTests(unittest.TestCase):
             out = Path(temporary)
             doc = App.newDocument("PowerExportFixture")
             try:
-                mounts = []
+                hardware = []
                 stations = {station.object_name: station for station in MODULE_STATIONS}
                 for kind, name in equipment_mounts.MOUNT_NAMES.items():
                     host_name = kind.capitalize() + "EquipmentModule"
@@ -147,10 +162,12 @@ class PowerMountTests(unittest.TestCase):
                         App.Vector(station.x_mm, 0, 0),
                         App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                     )
-                    obj = equipment_mounts.build_mount(doc, host, kind)
-                    mounts.append(obj)
-                optical = doc.addObject("App::Part", "OpticalFlowModule")
-                stack_interface.attach_to_host(optical, doc.BatteryEquipmentModule)
+                    kit = stock_adapter.build_stock_adapter(doc, host, kind)
+                    hardware.extend(kit["hardware"])
+                optical = optical_mount.build_optical_mount(
+                    doc, doc.BatteryEquipmentModule
+                )
+                hardware.extend(optical["hardware"])
                 registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(
@@ -166,9 +183,14 @@ class PowerMountTests(unittest.TestCase):
                     "ClearanceVolumes",
                 ):
                     registry.addProperty("App::PropertyLinkListGlobal", category)
-                    setattr(
-                        registry, category, mounts if category == "PrintedParts" else []
+                    objects = (
+                        optical["printed"]
+                        if category == "PrintedParts"
+                        else hardware
+                        if category == "HardwareParts"
+                        else []
                     )
+                    setattr(registry, category, objects)
                 doc.recompute()
                 source = out / "gondola.FCStd"
                 doc.saveAs(str(source))
@@ -209,6 +231,30 @@ class PowerMountTests(unittest.TestCase):
             self.assertFalse(changed_source["source_code_unchanged"])
             self.assertTrue(changed_source["alternate_optical_hosts_passed"])
             self.assertTrue(changed_source["read_only_artifacts"])
+            manifest = json.loads((out / ARTIFACT_NAMES[3]).read_text())
+            self.assertEqual(
+                manifest["additional_hardware"],
+                {
+                    "CARBON_STACK_ADAPTER_30MM": 2,
+                    "M2X8_BUTTON_HEAD": 4,
+                    "M2X6_BUTTON_HEAD": 2,
+                    "M2_HEX_NUT": 6,
+                },
+            )
+            self.assertIsNone(manifest["replaces_print"])
+            self.assertAlmostEqual(manifest["additional_carbon_listed_mass_g"], 1.44)
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            original_mass = optional.PowerCarbon0.ReferenceMassGrams
+            optional.PowerCarbon0.ReferenceMassGrams = 0
+            optional.save()
+            App.closeDocument(optional.Name)
+            bad_mass = audit_power_options(source, out)
+            self.assertFalse(bad_mass["passed"])
+            self.assertFalse(bad_mass["optional_hardware_metadata_matches"])
+            optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            optional.PowerCarbon0.ReferenceMassGrams = original_mass
+            optional.save()
+            App.closeDocument(optional.Name)
             optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
             original_plan = optional.PowerOptionModule.PowerPlanContract
             optional.PowerOptionModule.PowerPlanContract = "{}"
@@ -227,7 +273,7 @@ class PowerMountTests(unittest.TestCase):
             # A modified main carrier must be rejected before the alternate
             # host probe can replace it with a fresh, apparently valid shape.
             changed_main = App.openDocument(str(source))
-            changed_main.AccessoryMount.Shape = Part.makeBox(100, 100, 100)
+            changed_main.StockNavigationAdapter.Shape = Part.makeBox(100, 100, 100)
             changed_main.recompute()
             changed_path = out / "modified_main.FCStd"
             changed_main.saveAs(str(changed_path))

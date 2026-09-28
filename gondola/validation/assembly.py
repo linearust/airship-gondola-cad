@@ -4,9 +4,7 @@ This audit tests rigid CAD envelopes. It does not certify friction retention,
 metric-thread strength, printed running fits, tape adhesion or hinge fatigue.
 """
 
-import itertools
 import json
-import math
 import os
 import sys
 from pathlib import Path
@@ -56,7 +54,6 @@ from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
 from . import manufacturing, propulsion_wiring
-from .baseline import module_clamp_pose, module_control_bindings
 from .equipment import mounting_check
 from .evidence import overlap_failures
 from .geometry import (
@@ -64,12 +61,25 @@ from .geometry import (
     compare_mesh_surfaces,
     intersection_volume,
     local_shape,
+    translation_sweep,
 )
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
-from .rail_access import rail_key_service_check
+from .rail_access import top_key_service_check
 
 TOL = 1e-5
 V = App.Vector
+
+
+def _physical_objects(registry):
+    """Acquire live native handles after optional host transfers recreate hardware."""
+    return list(
+        dict.fromkeys(
+            list(registry.PrintedParts)
+            + list(registry.ReferenceParts)
+            + list(registry.HardwareParts)
+            + list(registry.TapeReferences)
+        )
+    )
 
 
 def expected_pair(a, b):
@@ -133,189 +143,274 @@ def neutral_check(objects, shapes):
     }
 
 
-def rail_shoe_section(shapes, centre_y=0):
-    """Isolate actual printed capture material below the board/frame deck."""
-    compound = Part.makeCompound(shapes)
-    bounds = compound.optimalBoundingBox(False, False)
-    band = Part.makeBox(
-        bounds.XLength + 2,
-        rail.SHOE_WIDTH,
-        rail.HEAD_TOP + rail.HEAD_VERTICAL_CLEARANCE - rail.SHOE_BOTTOM,
-        V(bounds.XMin - 1, centre_y - rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
+def _direct_joint_specs():
+    from gondola.parts import stock_adapter
+
+    return stock_adapter.joint_specs() + [
+        {
+            "key": "propulsion",
+            "kind": "propulsion",
+            "parent_name": "MainPropulsionModule",
+            "plate_name": "PropulsionFixedFrame",
+            "local_centre_xy": (0.0, 0.0),
+            "plate_thickness_mm": 3.0,
+            "parent_z_mm": propulsion.MODULE_Z_OFFSET,
+            "clamp_prefix": "MainPropulsionModule",
+            "covering_devices": (),
+        }
+    ]
+
+
+def _joint_rows(spec):
+    return rail.clamp_rows(
+        plate_thickness_mm=spec["plate_thickness_mm"],
+        centre_xy_mm=spec["local_centre_xy"],
+        parent_z_mm=spec["parent_z_mm"],
     )
-    return compound.common(band)
 
 
-def rail_check(registry, shapes):
-    objects = list(registry.RailSegments)
+def _placed(shape, placement):
+    result = shape.copy()
+    result.Placement = placement.multiply(result.Placement)
+    return result
+
+
+def roof_load_path_check(shape, x):
+    """Actual roof and sidewall material below both fastener bearing regions.
+
+    Only the PA12 load path is established. These probes do not claim that an
+    undimensioned carbon cutout contains laminate above the entire roof patch.
+    The infinite slot exclusion conservatively keeps probes clear of both
+    straight sides and the rounded ends at every accepted trim position.
+    """
+    from gondola.contracts import fasteners
+
+    half = fasteners.SCREW_HEAD_DIAMETER / 2
     rows = []
-    for obj in objects:
-        rail_shape = local_shape(obj)
-        comparison = geometry_comparison(rail_shape, rail.rail_shape())
-        base_samples = []
-        sample_count = math.ceil(rail.LENGTH / 3)
-        for index in range(sample_count):
-            x = -rail.LENGTH / 2 + (index + 0.5) * rail.LENGTH / sample_count
-            base_samples.append(
-                {
-                    "x_mm": x,
-                    "in_unbroken_base": rail_shape.isInside(V(x, 0, 0.5), TOL, True),
-                }
+    for y in rail.TRACK_CENTRES_Y:
+        pieces = []
+        for sign in (-1, 1):
+            low_y = y + rail.SLOT_WIDTH / 2 if sign > 0 else y - half
+            pieces.append(
+                Part.makeBox(
+                    2 * half,
+                    half - rail.SLOT_WIDTH / 2,
+                    rail.ROOF_THICKNESS,
+                    V(x - half, low_y, rail.NUT_TOP_Z),
+                )
             )
-        flex_reliefs = rail.flex_relief_check(rail_shape, rail.LENGTH)
-        bounds = rail_shape.optimalBoundingBox(False, False)
-        pad_rows = []
-        for x in rail.PAD_CENTRES:
-            pad = rail.rounded_plate(x)
-            pad_bounds = pad.optimalBoundingBox(False, False)
-            margin = min(pad_bounds.XMin - bounds.XMin, bounds.XMax - pad_bounds.XMax)
-            missing_volume = abs(pad.cut(rail_shape).Volume)
-            pad_rows.append(
-                {
-                    "centre_x_mm": x,
-                    "pad_x_bounds_mm": [pad_bounds.XMin, pad_bounds.XMax],
-                    "nearest_rail_end_margin_mm": margin,
-                    "missing_pad_material_mm3": missing_volume,
-                    "passed": margin >= -TOL and missing_volume < TOL,
-                }
+            low_wall = (
+                y + rail.NUT_GUIDE_WIDTH / 2 if sign > 0 else y - rail.TRACK_WIDTH / 2
             )
-        rail_world_bounds = shapes[obj.Name].optimalBoundingBox(False, False)
-        installed_shoes = []
-        for module in registry.Modules:
-            shoe = rail_shoe_section(
-                [
-                    shapes[part.Name]
-                    for part in registry.PrintedParts
-                    if belongs_to_group(part, module)
-                ],
-                module.Placement.Base.y,
+            pieces.append(
+                Part.makeBox(
+                    2 * half,
+                    (rail.TRACK_WIDTH - rail.NUT_GUIDE_WIDTH) / 2,
+                    rail.TOP_Z,
+                    V(x - half, low_wall, 0),
+                )
             )
-            shoe_bounds = shoe.optimalBoundingBox(False, False)
-            margin = min(
-                shoe_bounds.XMin - rail_world_bounds.XMin,
-                rail_world_bounds.XMax - shoe_bounds.XMax,
-            )
-            installed_shoes.append(
-                {
-                    "module": module.Name,
-                    "actual_capture_material_x_bounds_mm": [
-                        shoe_bounds.XMin,
-                        shoe_bounds.XMax,
-                    ],
-                    "nearest_rail_end_margin_mm": margin,
-                    "passed": shoe.Volume > TOL and margin >= -TOL,
-                }
-            )
+        missing = sum(abs(probe.cut(shape).Volume) for probe in pieces)
         rows.append(
             {
-                "object": obj.Name,
-                "source_comparison": comparison,
-                "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
-                "unbroken_base_samples": base_samples,
-                "full_height_flex_reliefs": flex_reliefs,
-                "pad_end_margins": pad_rows,
-                "installed_shoe_end_margins": installed_shoes,
-                "fully_supported_nominal_shoe_centre_x_range_mm": [
-                    bounds.XMin + rail.SHOE_LENGTH / 2,
-                    bounds.XMax - rail.SHOE_LENGTH / 2,
-                ],
-                "single_valid_solid": rail_shape.isValid()
-                and len(rail_shape.Solids) == 1,
-                "passed": rail_shape.isValid()
-                and len(rail_shape.Solids) == 1
-                and comparison["difference_mm3"] < TOL
-                and abs(bounds.XLength - rail.LENGTH) < TOL
-                and all(row["passed"] for row in pad_rows + installed_shoes)
-                and all(r["in_unbroken_base"] for r in base_samples)
-                and flex_reliefs["passed"],
-            }
-        )
-    nominal_shoe = rail.shoe_shape()
-    rail_section = rail.rail_shape(72, (-27, 27))
-    tapes = [(o.Name, shapes[o.Name]) for o in registry.TapeReferences]
-    phase_rows = []
-    # An entire relief pitch, including half-millimetre offsets, checks that
-    # the rigid short shoe bridges each gap throughout the sliding phase.
-    for j in range(37):
-        x = j * 0.5
-        shoe = translated_shape(nominal_shoe, x=x)
-        phase_rows.append(
-            {
-                "phase_x_mm": x,
-                "slide_intersection_mm3": intersection_volume(shoe, rail_section),
-                "lift_1mm_blocking_mm3": intersection_volume(
-                    translated_shape(shoe, z=1), rail_section
-                ),
-                "lateral_1mm_blocking_mm3": intersection_volume(
-                    translated_shape(shoe, y=1), rail_section
-                ),
-            }
-        )
-    finished_capture = rail.hex_nut_capture_check()
-    matched_head_fit = rail.head_fit_check()
-    fit_annotations = []
-    for obj in (
-        list(registry.Modules)
-        + objects
-        + [
-            registry.Document.getObject("RailFitSample"),
-            registry.Document.getObject("ShoeFitSample"),
-        ]
-    ):
-        try:
-            contract = json.loads(obj.RailFitContract)
-        except (AttributeError, TypeError, ValueError):
-            contract = None
-        fit_annotations.append(
-            {
-                "object": obj.Name if obj is not None else "missing_coupon",
-                "matches_current_fit_contract": contract == rail.fit_contract(),
-            }
-        )
-    tape_rows = []
-    for name, shape in tapes:
-        bounds = shape.optimalBoundingBox(False, False)
-        centre = shape.CenterOfMass
-        inner = min(abs(bounds.YMin), abs(bounds.YMax))
-        tape_rows.append(
-            {
-                "tape": name,
-                "minimum_z_mm": bounds.ZMin,
-                "central_rail_head_clearance_y_mm": inner - rail.HEAD_WIDTH / 2,
-                "x_width_mm": bounds.XLength,
-                "centre_x_mm": centre.x,
-                "rail_intersection_mm3": (
-                    intersection_volume(shape, shapes[objects[0].Name])
-                    if objects
-                    else -1
-                ),
-                "passed": bounds.ZMin >= -TOL
-                and inner >= 6 - TOL
-                and bounds.XLength <= rail.PAD_LENGTH + TOL,
+                "centre_xy_mm": [x, y],
+                "missing_load_material_mm3": missing,
+                "passed": missing < TOL,
             }
         )
     return {
-        "rail_count": len(objects),
-        "rails": rows,
-        "sliding_phase_checks": phase_rows,
-        "hex_nut_finished_capture": finished_capture,
-        "matched_head_fit": matched_head_fit,
-        "native_fit_annotations": fit_annotations,
-        "tape_over_wing_checks": tape_rows,
-        "head_is_uninterrupted": False,
-        "one_piece_unbroken_base": True,
-        "passed": len(objects) == 1
-        and all(r["passed"] for r in rows + tape_rows)
-        and len(tape_rows) == 2 * len(rail.PAD_CENTRES)
-        and finished_capture["passed"]
-        and matched_head_fit["passed"]
-        and all(row["matches_current_fit_contract"] for row in fit_annotations)
+        "rows": rows,
+        "passed": all(row["passed"] for row in rows),
+        "scope": "Complete nominal PA12 roof/sidewall strips under two screw-head-scale regions; no carbon bearing, stress or creep qualification.",
+    }
+
+
+def nut_guide_service_check(shape, x=0.0):
+    """Bare untaped rail: finite nut insertion and conditional antirotation."""
+    from gondola.contracts import fasteners
+
+    rows = []
+    for source in rail.clamp_rows(centre_xy_mm=(x, 0)):
+        if source["kind"] != "nut":
+            continue
+        nut = source["shape"]
+        travel = nut.BoundBox.ZMax + 2
+        swept, method = translation_sweep(nut, (0, 0, -travel))
+        overlap = intersection_volume(swept, shape)
+        # The minimum accepted AF nut is the limiting case for rotation.
+        small = nut.copy()
+        scale = fasteners.HEX_NUT_MIN_AF / fasteners.HEX_NUT_AF
+        # Scale only in-plane about the factory axis; preserve its real height.
+        cx, cy = source["centre_xy_mm"]
+        matrix = App.Matrix()
+        matrix.A11 = matrix.A22 = scale
+        matrix.A14, matrix.A24 = cx * (1 - scale), cy * (1 - scale)
+        small = small.transformGeometry(matrix)
+        rotations = []
+        for angle in (-30, 30):
+            rotated = small.copy()
+            rotated.rotate(V(cx, cy, 0), V(0, 0, 1), angle)
+            volume = intersection_volume(rotated, shape)
+            rotations.append(
+                {"angle_deg": angle, "blocking_mm3": volume, "passed": volume > TOL}
+            )
+        rows.append(
+            {
+                "centre_xy_mm": [cx, cy],
+                "insertion_method": method,
+                "downward_removal_mm": travel,
+                "path_overlap_mm3": overlap,
+                "rotation_cases": rotations,
+                "passed": overlap < TOL and all(row["passed"] for row in rotations),
+            }
+        )
+    return {
+        "rows": rows,
+        "unbolted_nut_captured": False,
+        "physical_fit_verified": False,
+        "prerequisite": "Bare rail detached from the balloon, before carbon/frame and tape installation. Nuts enter from below and can fall out when unbolted.",
+        "scope": "Nominal insertion and smallest accepted nut antirotation only; finish the guide to its declared acceptance range and inspect the received nut. No raw-print tolerance guarantee.",
+        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
+    }
+
+
+def rail_check(registry, shapes):
+    rail_objects = list(registry.RailSegments)
+    if len(rail_objects) != 1:
+        return {
+            "passed": False,
+            "error": "Exactly one physical twin-track rail is required",
+        }
+    obj = rail_objects[0]
+    actual = local_shape(obj)
+    source = rail.rail_shape()
+    comparison = geometry_comparison(actual, source)
+    flexures = rail.flex_relief_check(actual, rail.LENGTH)
+    support_rows = []
+    for centre in rail.BAY_CENTRES:
+        for trim in (-rail.TRIM_LIMIT, 0.0, rail.TRIM_LIMIT):
+            x = centre + trim
+            support = rail.rail_support_check(actual, x)
+            load = roof_load_path_check(actual, x)
+            guide = nut_guide_service_check(actual, x)
+            support_rows.append(
+                {
+                    "bay_centre_mm": centre,
+                    "trim_mm": trim,
+                    "support": support,
+                    "load_path": load,
+                    "nut_service": guide,
+                    "passed": support["passed"] and load["passed"] and guide["passed"],
+                }
+            )
+    installed = []
+    rail_frame = obj.getGlobalPlacement()
+    for spec in _direct_joint_specs():
+        parent = registry.Document.getObject(spec["parent_name"])
+        plate = registry.Document.getObject(spec["plate_name"])
+        if parent is None or plate is None:
+            installed.append(
+                {
+                    "joint": spec["key"],
+                    "passed": False,
+                    "error": "Missing plate/frame or parent",
+                }
+            )
+            continue
+        local_pose = rail_frame.inverse().multiply(parent.getGlobalPlacement())
+        centre = local_pose.multVec(V(*spec["local_centre_xy"], -spec["parent_z_mm"]))
+        station = next(
+            item for item in MODULE_STATIONS if item.object_name == spec["parent_name"]
+        )
+        nominal = (
+            station.x_mm
+            + (1 if station.yaw_deg == 0 else -1) * spec["local_centre_xy"][0]
+        )
+        pose_ok = (
+            abs(centre.y) < TOL
+            and abs(centre.z) < TOL
+            and local_pose.Rotation.isSame(
+                App.Rotation(V(0, 0, 1), station.yaw_deg), 1e-7
+            )
+        )
+        support = rail.rail_support_check(
+            actual,
+            centre.x,
+            half_contact_length_mm=9.0
+            if spec["kind"] == "propulsion"
+            else rail.CARBON_CONTACT_HALF_LENGTH,
+        )
+        installed.append(
+            {
+                "joint": spec["key"],
+                "plate": plate.Name,
+                "rail_frame_centre_mm": [centre.x, centre.y, centre.z],
+                "source_bay_x_mm": rail.nearest_bay(nominal),
+                "source_nominal_station_x_mm": nominal,
+                "source_pose_matches": pose_ok,
+                "support": support,
+                "passed": pose_ok
+                and abs(centre.x - rail.nearest_bay(nominal)) <= rail.TRIM_LIMIT + TOL
+                and support["passed"],
+            }
+        )
+    annotations = []
+    for item in [obj, *registry.Modules, registry.Document.getObject("RailFitSample")]:
+        try:
+            matches = json.loads(item.RailFitContract) == json.loads(
+                json.dumps(rail.fit_contract())
+            )
+        except (AttributeError, TypeError, ValueError):
+            matches = False
+        annotations.append(
+            {"object": item.Name if item else "missing_coupon", "passed": matches}
+        )
+    tape_rows = []
+    expected_tapes = {
+        f"TapeWing{index}{'L' if sign < 0 else 'R'}": rail.tape_shape(x, sign)
+        for index, x in enumerate(rail.PAD_CENTRES)
+        for sign in (-1, 1)
+    }
+    for tape in registry.TapeReferences:
+        expected = expected_tapes.get(tape.Name)
+        check = (
+            geometry_comparison(shapes[tape.Name], _placed(expected, rail_frame))
+            if expected is not None
+            else None
+        )
+        tape_rows.append(
+            {
+                "object": tape.Name,
+                "source_comparison": check,
+                "passed": check is not None
+                and check["difference_mm3"] < TOL
+                and intersection_volume(shapes[tape.Name], shapes[obj.Name]) < TOL,
+            }
+        )
+    bounds = actual.optimalBoundingBox(False, False)
+    return {
+        "rail_count": 1,
+        "source_comparison": comparison,
+        "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
+        "flexures": flexures,
+        "full_bay_trim_checks": support_rows,
+        "installed_direct_joints": installed,
+        "fit_annotations": annotations,
+        "tape_over_outer_wings": tape_rows,
+        "no_obsolete_shoe_coupon": registry.Document.getObject("ShoeFitSample") is None,
+        "scope": "Rigid flat bays with local trim, direct vertical M2 clamping and untaped-rail underside nut access. No sliding shoe or full-length running fit. Printed flexure life, carbon contact and strength remain unqualified.",
+        "passed": actual.isValid()
+        and len(actual.Solids) == 1
+        and comparison["difference_mm3"] < TOL
+        and abs(bounds.XLength - rail.LENGTH) < TOL
+        and flexures["passed"]
+        and len(flexures["rows"]) == 2 * (len(rail.BAY_CENTRES) - 1)
         and all(
-            r["slide_intersection_mm3"] < TOL
-            and r["lift_1mm_blocking_mm3"] > TOL
-            and r["lateral_1mm_blocking_mm3"] > TOL
-            for r in phase_rows
-        ),
+            row["passed"] for row in support_rows + installed + annotations + tape_rows
+        )
+        and len(installed) == 5
+        and len(tape_rows) == len(expected_tapes)
+        and registry.Document.getObject("ShoeFitSample") is None,
     }
 
 
@@ -419,302 +514,294 @@ def hardware_check(registry):
     }
 
 
-def module_removal_plan(modules, exit_directions=None):
-    """Remove the outermost module toward each requested rail end first."""
-    modules = list(modules)
-    directions = {
-        module.Name: 1 if module.Placement.Base.x > 1 else -1 for module in modules
+def _propulsion_release_prerequisite(doc, registry, objects, shapes):
+    """Bind the local ordered input-module proof to the remaining whole vehicle."""
+    from .propulsion_service import continuous_path, fastener_service_check
+    from .servo_module import servo_module_service_check
+
+    group = doc.MainPropulsionModule
+    module = {
+        "group": group,
+        "printed": list(registry.PrintedParts),
+        "hardware": list(registry.HardwareParts),
+        "references": list(registry.ReferenceParts),
     }
-    if exit_directions is not None:
-        if set(exit_directions) != set(directions) or any(
-            value not in (-1, 1) for value in exit_directions.values()
-        ):
-            raise ValueError("Provide exactly one -1/+1 rail exit for every module")
-        directions = dict(exit_directions)
-    ordered = sorted(
-        modules,
-        key=lambda m: (
-            directions[m.Name],
-            -directions[m.Name] * m.Placement.Base.x,
-            m.Name,
-        ),
-    )
-    return [(module, directions[module.Name]) for module in ordered]
-
-
-def module_service(registry, objects, shapes):
-    try:
-        bindings = module_control_bindings(registry.Document)
-    except (AttributeError, ValueError) as error:
-        return {"modules": [], "passed": False, "error": str(error)}
-    service_rows, removed_names = [], set()
-    sequence = module_removal_plan(module for _, module in bindings)
-    stations = {module.Name: station for station, module in bindings}
-    for module, direction in sequence:
-        station = stations[module.Name]
-        approach = str(
-            getattr(registry.Document.AssemblySettings, station.clamp_control)
-        )
-        pose = module_clamp_pose(station, module, approach)
-        if not pose["passed"]:
-            service_rows.append(
-                {
-                    "module": module.Name,
-                    "native_clamp_pose": pose,
-                    "passed": False,
-                    "error": "Carrier pose does not match its local clamp approach",
-                }
-            )
-            continue
-        members = [o for o in objects if belongs_to_group(o, module)]
-        clamps = [o for o in registry.RailLocks if belongs_to_group(o, module)]
-        screw = next(o for o in clamps if "Screw" in o.Name)
-        nut = next(o for o in clamps if "Nut" in o.Name)
-        fixed = [
-            (o.Name, shapes[o.Name])
-            for o in objects
-            if o != screw and o.Name not in removed_names
+    local = servo_module_service_check(doc, module)
+    inverse = group.getGlobalPlacement().inverse()
+    local_shapes = {name: _placed(shape, inverse) for name, shape in shapes.items()}
+    external = {
+        obj.Name: local_shapes[obj.Name]
+        for obj in objects
+        if not belongs_to_group(obj, group)
+    }
+    rows = []
+    for row in local.get("output_gear_removal", []):
+        points = [row["segments"][0]["start_mm"]] + [
+            item["end_mm"] for item in row["segments"]
         ]
-        side = pose["world_approach_side_y"]
-        screw_release = path_checks(
-            [(screw.Name, shapes[screw.Name])],
-            fixed,
-            [(0, side * y, 0) for y in (0, 0.25, 0.5, 1, rail.RELEASE_TRAVEL)],
+        rows.append(
+            {
+                "part": row["part"],
+                **continuous_path(local_shapes[row["part"]], points, external),
+            }
         )
-        nut_obstacles = [
-            (o.Name, shapes[o.Name])
-            for o in objects
-            if o not in (screw, nut) and o.Name not in removed_names
-        ]
-        nut_load = path_checks(
-            [(nut.Name, shapes[nut.Name])],
-            nut_obstacles,
-            [(side * x, 0, 0) for x in (0, 1, 2, 4, 6, 9, 12, 18, 24)],
-        )
-        key_service = rail_key_service_check(
-            {o.Name: shapes[o.Name] for o in objects if o.Name not in removed_names},
-            side=pose["local_approach_side_y"],
-            placement=module.getGlobalPlacement(),
-            screw=shapes[screw.Name],
-            screw_name=screw.Name,
-            inserted_leg="short" if module.Name == "MainPropulsionModule" else "long",
-        )
-        moving = [
-            (
-                o.Name,
-                translated_shape(
-                    shapes[o.Name], y=side * rail.RELEASE_TRAVEL if o == screw else 0
+    for row in local.get("mount_fastener_release", []):
+        sign = 1 if "Port" in row["bolt"] else -1
+        rows.append(
+            {
+                "part": row["bolt"],
+                **fastener_service_check(
+                    local_shapes[row["bolt"]],
+                    local_shapes[row["nut"]],
+                    external,
+                    nut_lateral_direction=(sign, 0, 0),
                 ),
-            )
-            for o in members
-        ]
-        obstacles = [
-            (o.Name, shapes[o.Name])
-            for o in objects
-            if o not in members and o.Name not in removed_names
-        ]
-        centre_release = path_checks(
-            moving,
-            obstacles,
-            [
-                (0, -side * rail.CLAMP_SHIFT_Y * fraction, 0)
-                for fraction in (0, 1 / 3, 2 / 3, 1)
-            ],
+            }
         )
-        moving = [
-            (name, translated_shape(s, y=-side * rail.CLAMP_SHIFT_Y))
-            for name, s in moving
-        ]
-        target_x = direction * (rail.LENGTH / 2 + rail.SHOE_LENGTH / 2 + 2)
-        travel = target_x - module.Placement.Base.x
-        distances = sorted(
-            set(
-                [0.0, abs(travel)]
-                + [float(x) for x in range(0, int(abs(travel)) + 1, 6)]
-            )
+    for row in local.get("part_paths", []):
+        rows.append(
+            {
+                "part": row["part"],
+                **continuous_path(
+                    local_shapes[row["part"]], row["waypoints_mm"], external
+                ),
+            }
         )
-        slide = path_checks(
-            moving, obstacles, [(math.copysign(d, travel), 0, 0) for d in distances]
-        )
-        moved = [(name, translated_shape(s, x=travel)) for name, s in moving]
-        printed_names = {obj.Name for obj in registry.PrintedParts}
-        exited_shoe = rail_shoe_section(
-            [shape for name, shape in moved if name in printed_names]
-        )
-        exited_bounds = exited_shoe.optimalBoundingBox(False, False)
-        rail_bounds = Part.makeCompound(
-            [shapes[obj.Name] for obj in registry.RailSegments]
-        ).optimalBoundingBox(False, False)
-        end_gap = (
-            exited_bounds.XMin - rail_bounds.XMax
-            if direction > 0
-            else rail_bounds.XMin - exited_bounds.XMax
-        )
-        end_exit = {
-            "actual_capture_material_x_bounds_mm": [
-                exited_bounds.XMin,
-                exited_bounds.XMax,
-            ],
-            "rail_x_bounds_mm": [rail_bounds.XMin, rail_bounds.XMax],
-            "axial_clearance_before_lifting_mm": end_gap,
-            "required_clearance_mm": 2.0,
-            "passed": exited_shoe.Volume > TOL and end_gap >= 2 - TOL,
-        }
-        lift = path_checks(
-            moved, obstacles, [(0, 0, z) for z in (0, 0.5, 1, 2, 4, 8, 16, 32)]
-        )
-        # No key or positive axial tooth: an ideal frictionless CAD model must
-        # not be misconstrued as demonstrating axial holding force.
-        phase_x = module.Placement.Base.x % rail.LAND_PITCH
-        land_offset = min(phase_x, rail.LAND_PITCH - phase_x)
-        row = {
-            "module": module.Name,
-            "native_clamp_pose": pose,
-            "removed_before_this_step": sorted(removed_names),
-            "clamp_screw": screw.Name,
-            "clamp_nut": nut.Name,
-            "approach_side_y": side,
-            "screw_release_three_turns": screw_release,
-            "nut_insertion_before_screw": nut_load,
-            "continuous_l_key_service": key_service,
-            "recentering_after_loosening": centre_release,
-            "end_slide": slide,
-            "lift_after_end_exit": lift,
-            "recommended_exit_direction_x": direction,
-            "module_centre_at_exit_x_mm": target_x,
-            "shoe_fully_past_rail_end": end_exit,
-            "clamp_land_centre_offset_mm": land_offset,
-            "axial_lock_type": "Coupon-matched friction fit plus additional screw lock; no numerical holding-force proof",
-            "passed": screw_release["passed"]
-            and nut_load["passed"]
-            and key_service["passed"]
-            and centre_release["passed"]
-            and slide["passed"]
-            and end_exit["passed"]
-            and lift["passed"]
-            and land_offset <= rail.CLAMP_LAND_OFFSET + TOL,
-        }
-        service_rows.append(row)
-        print(
-            json.dumps(
-                {
-                    "module_service_complete": module.Name,
-                    "passed": row["passed"],
-                    "exit_direction_x": direction,
-                }
-            ),
-            flush=True,
-        )
-        removed_names.update(o.Name for o in members)
+    removed = (
+        set(local.get("moving_parts", []))
+        | set(local.get("removed_output_gears", []))
+        | set(local.get("released_fasteners", []))
+    )
     return {
-        "removal_order": [m.Name for m, _ in sequence],
-        "modules": service_rows,
-        "scope": "Disconnect external leads first. Sampled bare-module positions along straight saved-rail removal paths, not a connected-harness or continuous-motion proof. The separate finite L-key envelope proves continuous nominal working and service access. Curved-rail sliding, actual tool/socket fit, hand clearance, clamp force and tape adhesion require a physical trial.",
-        "passed": len(service_rows) == len(MODULE_STATIONS)
-        and all(r["passed"] for r in service_rows),
+        "local_ordered_service": local,
+        "installed_external_paths": rows,
+        "removed_parts": sorted(removed),
+        "external_obstacles": sorted(external),
+        "scope": "After the preceding independently proven equipment removals, disconnect leads, remove both small output gears and bridge mounting pairs, then lift and slide the intentionally separate input module. Local propulsion and remaining installed vehicle obstacles are both certified; no unproven whole-carrier bench exemption.",
+        "passed": local["passed"] and bool(rows) and all(row["passed"] for row in rows),
     }
 
 
-def bidirectional_service(doc, registry, objects):
-    try:
-        bindings = module_control_bindings(doc)
-    except (AttributeError, ValueError) as error:
-        return {"passed": False, "error": str(error)}
-    controls = [station.clamp_control for station, _ in bindings]
-    original = {name: str(getattr(doc.AssemblySettings, name)) for name in controls}
-    combinations, services = [], []
-    try:
-        for choices in itertools.product(
-            ("PositiveY", "NegativeY"), repeat=len(bindings)
-        ):
-            for name, choice in zip(controls, choices):
-                setattr(doc.AssemblySettings, name, choice)
-            doc.recompute()
-            shapes = {o.Name: world_shape(o) for o in objects}
-            neutral = neutral_check(objects, shapes)
-            poses = []
-            for (station, module), choice in zip(bindings, choices):
-                pose = module_clamp_pose(station, module, choice)
-                side = pose["local_approach_side_y"]
-                clamps = [o for o in registry.RailLocks if belongs_to_group(o, module)]
-                expected_rot = App.Rotation(V(0, 0, 1), 0 if side > 0 else 180)
-                poses.append(
+def direct_joint_service(doc, registry, objects):
+    """Ordered top release of five direct joints; every prerequisite is checked.
+
+    The battery/portal is removed before the input module's +X service path.
+    The two accessory carbon plates are separate joints even though they share
+    a parent frame. Nut insertion is an earlier bare-rail assembly operation.
+    """
+    from gondola.parts import stack_interface, stock_adapter
+
+    from .equipment import device_service_check
+    from .optical import _head_service_check
+    from .propulsion_service import continuous_path
+
+    shapes = {obj.Name: world_shape(obj) for obj in objects}
+    removed = set()
+    expected_clamps = set()
+    rows = []
+    for spec in _direct_joint_specs():
+        parent = doc.getObject(spec["parent_name"])
+        names = {spec["clamp_prefix"] + row["suffix"] for row in _joint_rows(spec)}
+        expected_clamps.update(names)
+        identity = []
+        for source in _joint_rows(spec):
+            name = spec["clamp_prefix"] + source["suffix"]
+            obj = doc.getObject(name)
+            if obj is None or name not in shapes:
+                identity.append(
                     {
-                        "module": module.Name,
-                        "control": choice,
-                        **pose,
-                        "seated_y_mm": module.Placement.Base.y,
-                        "hardware_rotation_matches": all(
-                            o.Placement.Rotation.isSame(expected_rot, 1e-7)
-                            for o in clamps
-                        ),
-                        "passed": pose["passed"]
-                        and len(clamps) == 2
-                        and all(
-                            o.Placement.Rotation.isSame(expected_rot, 1e-7)
-                            for o in clamps
-                        ),
+                        "part": name,
+                        "passed": False,
+                        "error": "Missing actual rail fastener",
                     }
                 )
-            combinations.append(
+                continue
+            comparison = geometry_comparison(
+                shapes[name], _placed(source["shape"], parent.getGlobalPlacement())
+            )
+            contract = {key: value for key, value in source.items() if key != "shape"}
+            try:
+                metadata_matches = json.loads(obj.RailClampContract) == json.loads(
+                    json.dumps(contract)
+                )
+            except (AttributeError, TypeError, ValueError):
+                metadata_matches = False
+            identity.append(
                 {
-                    "choices": dict(zip(controls, choices)),
-                    "native_poses": poses,
-                    "neutral_assembly": neutral,
-                    "passed": neutral["passed"] and all(p["passed"] for p in poses),
+                    "part": name,
+                    "source_comparison": comparison,
+                    "native_contract_matches": metadata_matches,
+                    "passed": obj in registry.RailLocks
+                    and obj in registry.HardwareParts
+                    and belongs_to_group(obj, parent)
+                    and str(obj.HardwareSKU) == source["sku"]
+                    and str(getattr(obj, "RailClampJoint", "")) == spec["clamp_prefix"]
+                    and metadata_matches
+                    and all(
+                        comparison[key] < TOL
+                        for key in (
+                            "difference_mm3",
+                            "volume_difference_mm3",
+                            "bounds_difference_mm",
+                        )
+                    ),
                 }
             )
-            if len(set(choices)) == 1:
-                services.append(
-                    {
-                        "approach": choices[0],
-                        **module_service(registry, objects, shapes),
-                    }
-                )
-        # Dedicated equipment supports may be asymmetric. Their actual shared
-        # capture/nut geometry must still be exact, not just non-interfering.
-        shoe = rail.shoe_shape()
-        shoe_box = Part.makeBox(
-            rail.SHOE_LENGTH,
-            rail.SHOE_WIDTH,
-            rail.TOP_Z - rail.SHOE_BOTTOM,
-            V(-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
-        )
-        captures = []
-        for obj in list(registry.EquipmentMounts) + [doc.PropulsionFixedFrame]:
-            actual = local_shape(obj).common(shoe_box)
-            comparison = geometry_comparison(actual, shoe)
-            captures.append({"part": obj.Name, **comparison})
-        symmetry = []
-        rotated = shoe.copy()
-        rotated.rotate(V(), V(0, 0, 1), 180)
-        symmetry.append(
-            {"part": "common_shoe_source", **geometry_comparison(shoe, rotated)}
-        )
-        return {
-            "native_approach_combinations": combinations,
-            "full_service_sequences": services,
-            "common_shoe_half_turn_symmetry": symmetry,
-            "saved_integral_shoes_match_source": captures,
-            "unused_port_has_no_extra_hardware": len(registry.RailLocks)
-            == 2 * len(bindings),
-            "scope": "Choice is made before clamp assembly. Changing the enum is not a physical screw-transfer path. Each port separately has a nut loading, tool approach, loosening and end-removal route.",
-            "passed": len(combinations) == 2 ** len(bindings)
-            and len(services) == 2
-            and all(row["passed"] for row in combinations + services)
-            and len(captures) == len(bindings)
-            and all(
-                row["difference_mm3"] < TOL
-                and row["bounds_difference_mm"] < TOL
-                and row["volume_difference_mm3"] < TOL
-                for row in symmetry + captures
+        if parent is None or not all(row["passed"] for row in identity):
+            rows.append(
+                {"joint": spec["key"], "hardware_identity": identity, "passed": False}
             )
-            and len(registry.RailLocks) == 2 * len(bindings),
+            break
+        prior = sorted(removed)
+        prerequisites = []
+        stack = doc.getObject("OpticalFlowModule")
+        has_stack = (
+            stack is not None
+            and stack.getParentGeoFeatureGroup() == parent
+            and spec["key"] in ("battery", "electronics")
+        )
+        if has_stack:
+            kit = [
+                obj
+                for obj in objects
+                if obj.Name not in removed
+                and stack_interface.is_removable_head_part(obj, stack)
+            ]
+            kit_names = {obj.Name for obj in kit}
+            fixed = {
+                name: shape
+                for name, shape in shapes.items()
+                if name not in removed | kit_names
+            }
+            head = _head_service_check(doc, fixed, kit)
+            prerequisites.append({"step": "remove movable optical head", **head})
+            if head["passed"]:
+                removed.update(kit_names)
+        for name in spec["covering_devices"]:
+            remaining = [obj for obj in objects if obj.Name not in removed]
+            device = device_service_check(doc, name, remaining, shapes)
+            installed = (
+                not device["bench_access_required"]
+                and not device["off_carrier_parts_excluded_for_bench_service"]
+            )
+            prerequisites.append(
+                {
+                    "step": "remove covering device",
+                    **device,
+                    "installed_scope_verified": installed,
+                    "passed": installed and device["passed"],
+                }
+            )
+            if installed and device["passed"]:
+                removed.add(name)
+        if spec["kind"] == "propulsion":
+            remaining = [obj for obj in objects if obj.Name not in removed]
+            prerequisite = _propulsion_release_prerequisite(
+                doc,
+                registry,
+                remaining,
+                {name: shape for name, shape in shapes.items() if name not in removed},
+            )
+            prerequisites.append(
+                {"step": "remove paired servo/input module", **prerequisite}
+            )
+            if prerequisite["passed"]:
+                removed.update(prerequisite["removed_parts"])
+        if not all(row["passed"] for row in prerequisites):
+            rows.append(
+                {
+                    "joint": spec["key"],
+                    "prior_removed_parts": prior,
+                    "hardware_identity": identity,
+                    "prerequisites": prerequisites,
+                    "passed": False,
+                }
+            )
+            break
+        keys = []
+        screw_names = set()
+        for source in _joint_rows(spec):
+            if source["kind"] != "screw":
+                continue
+            name = spec["clamp_prefix"] + source["suffix"]
+            retained = {
+                key: shape for key, shape in shapes.items() if key not in removed
+            }
+            # Point the finite L handle away from the centre of the two tracks.
+            clock = 90.0 if source["centre_xy_mm"][1] < 0 else 270.0
+            key = top_key_service_check(
+                retained,
+                screw=shapes[name],
+                screw_name=name,
+                placement=parent.getGlobalPlacement(),
+                inserted_leg="long",
+                clock_deg=clock,
+            )
+            keys.append({"part": name, **key})
+            screw_names.add(name)
+            if key["passed"]:
+                removed.add(name)
+        moving = {spec["plate_name"]}
+        if spec["kind"] == "electronics":
+            moving.update(
+                stock_adapter.BOLT_OBJECT_NAMES + stock_adapter.NUT_OBJECT_NAMES
+            )
+        if has_stack:
+            moving.update(obj.Name for obj in objects if belongs_to_group(obj, stack))
+        if spec["kind"] == "propulsion":
+            moving = {obj.Name for obj in objects if belongs_to_group(obj, parent)}
+        moving -= removed | names
+        fixed = {
+            name: shape
+            for name, shape in shapes.items()
+            if name not in removed | moving
         }
-    finally:
-        for name, choice in original.items():
-            setattr(doc.AssemblySettings, name, choice)
-        doc.recompute()
+        vector = parent.getGlobalPlacement().Rotation.multVec(V(0, 0, 40))
+        lifts = [
+            {
+                "part": name,
+                **continuous_path(shapes[name], [(0, 0, 0), tuple(vector)], fixed),
+            }
+            for name in sorted(moving)
+        ]
+        passed = (
+            len(identity) == 4
+            and all(row["passed"] for row in identity + prerequisites + keys + lifts)
+            and len(keys) == 2
+            and bool(lifts)
+        )
+        rows.append(
+            {
+                "joint": spec["key"],
+                "prior_removed_parts": prior,
+                "hardware_identity": identity,
+                "prerequisites": prerequisites,
+                "top_fastener_service": keys,
+                "plate_or_frame_lift": lifts,
+                "retained_rail_nuts": sorted(names - screw_names),
+                "passed": passed,
+            }
+        )
+        if not passed:
+            break
+        removed.update(moving)
+    actual_clamps = {obj.Name for obj in registry.RailLocks}
+    # Establish the complete source inventory even if an earlier service fails.
+    expected_clamps = {
+        spec["clamp_prefix"] + row["suffix"]
+        for spec in _direct_joint_specs()
+        for row in _joint_rows(spec)
+    }
+    return {
+        "joints": rows,
+        "expected_clamp_names": sorted(expected_clamps),
+        "actual_clamp_names": sorted(actual_clamps),
+        "scope": "Ordered unpowered service: battery, FC, navigation, radio, then propulsion. Disconnect leads and remove covering devices before their two top screws. Retain every other installed solid until its own proven removal. Lift each released plate/frame40mm; never slide across flexure gaps. Rail nuts remain below the roof and require holding/retrieval if loosened; underside insertion is only qualified on the bare untaped rail. Hand room, received carbon cutouts/contact, clamp force and print fits remain physically unqualified.",
+        "passed": len(rows) == 5
+        and len(expected_clamps) == 20
+        and actual_clamps == expected_clamps
+        and all(row["passed"] for row in rows),
+    }
 
 
 def equipment_scope_check(doc, registry, objects, shapes):
@@ -907,10 +994,10 @@ def battery_check(doc, objects):
     fixed_support.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
         fixed_support.Placement
     )
-    support_name = stack_interface.SUPPORTED_HOSTS[doc.OpticalFlowModule.StackHostName]
-    actual_support = next((obj for obj in objects if obj.Name == support_name), None)
+    actual_support = stack_interface.host_print(doc.OpticalFlowModule)
     support_present = (
         actual_support is not None
+        and actual_support in objects
         and abs(fixed_support.cut(world_shape(actual_support)).Volume) < TOL
     )
     tower_gap = swept.distToShape(fixed_support)[0]
@@ -931,10 +1018,10 @@ def battery_check(doc, objects):
         "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
-        "integral_support_minimum_gap_mm": tower_gap,
-        "integral_support_present": support_present,
-        "integral_support_components": component_rows,
-        "support_scope": "Fixed integral support, no separate foot registration or operating float. Actual print distortion remains unqualified.",
+        "fixed_portal_minimum_gap_mm": tower_gap,
+        "fixed_portal_present": support_present,
+        "fixed_portal_components": component_rows,
+        "support_scope": "Fixed portal and its two carbon attachment feet. Nominal seated geometry only; laminate support, assembly registration and print distortion remain unqualified.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": support_present
         and not swept_hits
@@ -1315,14 +1402,8 @@ def validate(source=None):
         validate_propulsion(source, drive=configuration)
         r = doc.DesignRegistry
         printed = list(r.PrintedParts)
-        objects = list(
-            dict.fromkeys(
-                printed
-                + list(r.ReferenceParts)
-                + list(r.HardwareParts)
-                + list(r.TapeReferences)
-            )
-        )
+        objects = _physical_objects(r)
+        original_physical_names = {obj.Name for obj in objects}
         shapes = {o.Name: world_shape(o) for o in objects}
         report = {
             "gear_configuration": configuration.key,
@@ -1355,15 +1436,24 @@ def validate(source=None):
         report["continuous_rail"] = rail_check(r, shapes)
         report["equipment_mounts"] = mounting_check(doc)
         report["equipment_options"] = compatibility_check(doc)
+        # Host transfers restore the same named parts, but battery foot objects
+        # have new native identities. Never reuse deleted handles in later gates.
+        objects = _physical_objects(r)
+        physical_names_restored = {
+            obj.Name for obj in objects
+        } == original_physical_names
+        shapes = {obj.Name: world_shape(obj) for obj in objects}
         report["propulsion_wire_planning"] = propulsion_wiring.check(doc)
         report["purchased_hardware"] = hardware_check(r)
         report["assembly_inventory"] = {
+            "physical_names_restored_after_options": physical_names_restored,
             "installed_printed_parts": len(printed),
             "purchased_hardware_items": len(r.HardwareParts),
             "fit_sample_prints": len(r.FitCoupons),
             "equipment_mount_count": len(r.EquipmentMounts),
             "single_rail_count": len(r.RailSegments),
-            "passed": len(printed) == EXPECTED_INVENTORY["installed_prints"]
+            "passed": physical_names_restored
+            and len(printed) == EXPECTED_INVENTORY["installed_prints"]
             and len(r.HardwareParts) == EXPECTED_INVENTORY["purchased_hardware"]
             and len(r.FitCoupons) == EXPECTED_INVENTORY["fit_coupons"]
             and len(r.EquipmentMounts) == EXPECTED_INVENTORY["equipment_mounts"]
@@ -1379,10 +1469,10 @@ def validate(source=None):
             flush=True,
         )
         print(
-            "Checking complete end-removal sequence and clamp/nut/tool access",
+            "Checking ordered device removal, direct top clamps and plate/frame lifts",
             flush=True,
         )
-        report["module_service"] = bidirectional_service(doc, r, objects)
+        report["module_service"] = direct_joint_service(doc, r, objects)
         print("Checking independent tilt and equipment service clearances", flush=True)
         report["independent_tilt"] = tilt_check(doc, r, objects)
         external = [

@@ -63,48 +63,41 @@ def _matches(first, second):
 
 
 def adhesive_support_check(support, body, centre, size, *, face="top"):
-    """Check intact printed pad and actual nominal plan overlap, not full coverage.
+    """Check pad/body placement and plate identity, never inferred carbon contact."""
+    from gondola.parts import stock_adapter
 
-    Adhesive contact may be smaller than the purchased module footprint. Check
-    the declared intact patch without enlarging the purchased module envelope.
-    All shapes are expressed in the same carrier-local frame.
-    """
     if face not in ("top", "bottom"):
         raise ValueError("Adhesive support face must be 'top' or 'bottom'")
-    pad = Part.makeBox(
-        *size,
-        mounts.DECK_THICKNESS,
-        V(centre[0] - size[0] / 2, centre[1] - size[1] / 2, mounts.DECK_BOTTOM_Z),
+    comparison, source_ok = _matches(
+        support, stock_adapter.plate_shape(centre_xy_mm=centre)
     )
+    pad = Part.makeBox(*size, 1, V(centre[0] - size[0] / 2, centre[1] - size[1] / 2, 0))
     bounds = body.BoundBox
     footprint = Part.makeBox(
-        bounds.XLength,
-        bounds.YLength,
-        mounts.DECK_THICKNESS,
-        V(bounds.XMin, bounds.YMin, mounts.DECK_BOTTOM_Z),
+        bounds.XLength, bounds.YLength, 1, V(bounds.XMin, bounds.YMin, 0)
     )
-    missing = abs(pad.cut(support).Volume)
-    overlap = intersection_volume(pad, footprint) / mounts.DECK_THICKNESS
+    overlap = intersection_volume(pad, footprint)
     expected = min(size[0], bounds.XLength) * min(size[1], bounds.YLength)
     gap = (
         bounds.ZMin - mounts.SUPPORT_FACE_Z
         if face == "top"
-        else mounts.DECK_BOTTOM_Z - bounds.ZMax
+        else stock_adapter.PLATE_BOTTOM_Z - bounds.ZMax
     )
-    correct_side = gap >= -TOL
     return {
         "support_face": face,
-        "continuous_support_area_mm2": size[0] * size[1],
-        "nominal_supported_overlap_mm2": overlap,
+        "reserved_pad_area_mm2": size[0] * size[1],
+        "nominal_body_pad_overlap_mm2": overlap,
         "required_centered_overlap_mm2": expected,
-        "missing_pad_material_mm3": missing,
+        "source_plate_comparison": comparison,
         "adhesive_allowance_mm": gap,
-        "body_on_requested_side": correct_side,
-        "scope": "Nominal plan overlap only. Trim adhesive to supported contact; actual backside contact, component loading, insulation and retention are unqualified.",
-        "passed": missing < TOL
+        "continuous_support_area_verified": False,
+        "received_contact_area_mm2": None,
+        "physical_contact_qualified": False,
+        "scope": "Insulating-pad/body placement reservation and conservative source-plate identity only. Actual cutouts, contact, insulation, compressed pad height, strap retention and bending remain unverified; no filled-model material is treated as a continuous adhesive patch.",
+        "passed": source_ok
+        and face == "top"
         and expected > 0
         and abs(overlap - expected) < TOL
-        and correct_side
         and abs(gap - mounts.ADHESIVE_ALLOWANCE) < TOL,
     }
 
@@ -216,9 +209,19 @@ def _optical_screens(doc):
             )
             mounts.build_mount(temporary, hosts[name], kind)
         kit = optical_mount.build_optical_mount(temporary, next(iter(hosts.values())))
-        physical = kit["printed"] + kit["hardware"]
         for name, host in hosts.items():
             stack_interface.attach_to_host(kit["group"], host)
+            # Host changes recreate portal-foot hardware. Reacquire live native
+            # objects instead of retaining handles to removed features.
+            physical = [
+                obj
+                for obj in temporary.Objects
+                if belongs_to_group(obj, kit["group"])
+                and (
+                    bool(getattr(obj, "PrintPart", False))
+                    or "HardwareSKU" in obj.PropertiesList
+                )
+            ]
             placement = kit["group"].getGlobalPlacement()
             for profile in SENSOR_PROFILES.values():
                 poses = []
@@ -226,9 +229,6 @@ def _optical_screens(doc):
                     optical_mount.set_angles(temporary, roll, pitch)
                     pitch_placement = kit["pitch_stage"].getGlobalPlacement()
                     shapes = {obj.Name: world_shape(obj) for obj in physical}
-                    shapes["IntegralOpticalCarrier"] = world_shape(
-                        stack_interface.host_print(kit["group"])
-                    )
                     shapes["ModuleMTF02PEnvelope"] = _placed(
                         optical_sensor.envelope_shape(profile), pitch_placement
                     )
@@ -250,14 +250,19 @@ def _optical_screens(doc):
                 optical_mount.set_angles(temporary, 0, 0)
                 bound, _ = _external_field_bound(kit["group"], profile)
                 # Pivot fasteners are released first. Only the movable head
-                # and sensor lift; the portal stays fused to its carrier.
+                # and sensor lift; the fixed portal stays attached to carbon.
                 neutral_sensor = _placed(
                     optical_sensor.envelope_shape(profile),
                     kit["pitch_stage"].getGlobalPlacement(),
                 )
                 head_sweep, _ = translation_sweep(
                     Part.makeCompound(
-                        [world_shape(obj) for obj in kit["printed"]] + [neutral_sensor]
+                        [
+                            world_shape(obj)
+                            for obj in kit["printed"]
+                            if stack_interface.is_removable_head_part(obj, kit["group"])
+                        ]
+                        + [neutral_sensor]
                     ),
                     tuple(placement.Rotation.multVec(V(0, 0, 32))),
                 )
@@ -383,7 +388,10 @@ def compatibility_check(doc):
         if obj.Name not in OPTION_RESERVES
         and not belongs_to_group(obj, doc.OpticalFlowModule)
     }
-    support = local_shape(doc.AccessoryMount)
+    supports = {
+        BODY_NAMES[0]: local_shape(doc.StockNavigationAdapter),
+        BODY_NAMES[1]: local_shape(doc.StockRadioAdapter),
+    }
     screens = _optical_screens(doc)
     validation_cache = {}
     rows = []
@@ -445,7 +453,7 @@ def compatibility_check(doc):
             {
                 "device": BODY_NAMES[1],
                 **adhesive_support_check(
-                    support,
+                    supports[BODY_NAMES[1]],
                     local_bodies[BODY_NAMES[1]],
                     mounts.RADIO_CENTRE_XY,
                     mounts.RADIO_ADHESIVE_SIZE,
@@ -453,18 +461,17 @@ def compatibility_check(doc):
                 ),
             }
         ]
-        if navigation.key != "PAS":
-            support_rows.append(
-                {
-                    "device": BODY_NAMES[0],
-                    **adhesive_support_check(
-                        support,
-                        local_bodies[BODY_NAMES[0]],
-                        mounts.NAVIGATION_CENTRE_XY,
-                        mounts.GPS_ADHESIVE_SIZE,
-                    ),
-                }
-            )
+        support_rows.append(
+            {
+                "device": BODY_NAMES[0],
+                **adhesive_support_check(
+                    supports[BODY_NAMES[0]],
+                    local_bodies[BODY_NAMES[0]],
+                    mounts.NAVIGATION_CENTRE_XY,
+                    mounts.GPS_ADHESIVE_SIZE,
+                ),
+            }
+        )
         service = []
         for name, shape in bodies.items():
             service_fixed = fixed
@@ -489,11 +496,11 @@ def compatibility_check(doc):
                     "local_removal_vector_mm": tuple(local_travel),
                     "world_removal_vector_mm": tuple(world_travel),
                     "bench_access_required": False,
-                    "service_collision_scope": "Installed assembly; integral carriers retained",
+                    "service_collision_scope": "Installed assembly; carbon plates retained",
                     "off_carrier_parts_excluded_for_bench_service": sorted(
                         set(fixed) - set(service_fixed)
                     ),
-                    "prerequisite": "Disconnect leads and release retention; lift the bare device from the outer support face. Integral carriers and all other mounted parts remain. No connected-harness service is claimed.",
+                    "prerequisite": "Disconnect leads and release retention; lift the bare device from the outer support face. Carbon plates and all other mounted parts remain. No connected-harness service is claimed.",
                     "method": method,
                     "collisions": collisions,
                     "passed": not collisions,
@@ -552,7 +559,7 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Three mutually exclusive navigation choices with the LR24-F-Mini on the same outer face, both optical models and both integral carrier variants. One accessory plate supports navigation and radio. Integral portals remain fixed; only movable optical heads can be released. This audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. The accessory plate is not an optical host.",
+        "scope": "Three mutually exclusive navigation choices with the LR24-F-Mini on the same outer face, both optical models and both carbon-mounted optical hosts. Separate identical bought plates support navigation and radio. Fixed portals remain; only movable optical heads can be released. This audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. The accessory plates are not optical hosts.",
         "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
         and bool(rows)
         and all(row["passed"] for row in rows),

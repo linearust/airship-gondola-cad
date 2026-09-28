@@ -13,12 +13,7 @@ def navigation_centre():
 
 def navigation_bottom(profile=None):
     profile = profile or get_navigation_profile()
-    clearance = (
-        mounts.PAS_SERVICE_CLEARANCE
-        if profile.key == "PAS"
-        else mounts.ADHESIVE_ALLOWANCE
-    )
-    return mounts.SUPPORT_FACE_Z + clearance
+    return mounts.SUPPORT_FACE_Z + mounts.ADHESIVE_ALLOWANCE
 
 
 def navigation_hole_centres(profile=None):
@@ -36,7 +31,7 @@ def radio_placement():
     """Radio beside navigation on the accessible outer face of the shared deck."""
     return App.Placement(
         App.Vector(*mounts.RADIO_CENTRE_XY, adhesive_bottom()),
-        App.Rotation(),
+        App.Rotation(App.Vector(0, 0, 1), 90),
     )
 
 

@@ -12,7 +12,7 @@ import Part
 from PySide import QtCore
 
 from gondola.assembly import style_assembly
-from gondola.cad import belongs_to_group, create_group, translated_shape, world_shape
+from gondola.cad import belongs_to_group, create_group, world_shape
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import DESIGN_REVISION
 from gondola.parts import stack_interface
@@ -54,44 +54,33 @@ def frame_for_export(active, view, width, height):
 
 
 def create_attachment_detail_document(side=1):
-    from gondola.parts import rail
+    """Two views of the same direct plate joint; side changes presentation only."""
+    from gondola.parts import rail, stock_adapter
 
-    doc = App.newDocument("AttachmentDetail" + ("Negative" if side < 0 else "Positive"))
-    doc.Label = f"Rev {DESIGN_REVISION} | tape OVER wings and M2 clamp " + (
-        "NegativeY" if side < 0 else "PositiveY"
+    doc = App.newDocument("AttachmentDetail" + ("Reverse" if side < 0 else "Forward"))
+    doc.Label = (
+        f"Rev {DESIGN_REVISION} | direct carbon plate, twin top clamps and tape wings"
     )
-    g = create_group(doc, "Attachment", "Attachment detail | not a print assembly")
+    group = create_group(doc, "Attachment", "Attachment detail | not a print assembly")
 
     def add_detail_object(name, shape, color, alpha=0):
-        o = doc.addObject("Part::Feature", name)
-        g.addObject(o)
-        o.Shape = shape
-        o.ViewObject.ShapeColor = color
-        o.ViewObject.DisplayMode = "Flat Lines"
-        o.ViewObject.Transparency = alpha
-        return o
+        obj = doc.addObject("Part::Feature", name)
+        group.addObject(obj)
+        obj.Shape = shape
+        obj.ViewObject.ShapeColor = color
+        obj.ViewObject.DisplayMode = "Flat Lines"
+        obj.ViewObject.Transparency = alpha
+        return obj
 
     add_detail_object("RailSection", rail.rail_shape(48, (0,)), (0.7, 0.76, 0.79))
-    add_detail_object(
-        "IntegratedShoe",
-        translated_shape(rail.shoe_shape(), y=side * rail.CLAMP_SHIFT_Y),
-        (0.31, 0.66, 0.76),
-        65,
+    plate = add_detail_object(
+        "BoughtCarbonPlate", stock_adapter.plate_shape(), (0.18, 0.2, 0.23), 40
     )
-
-    def orient(shape):
-        return shape if side > 0 else rail.half_turn(shape)
-
-    add_detail_object(
-        "PurchasedRailClamp",
-        translated_shape(orient(rail.clamp_screw_shape()), y=side * rail.CLAMP_SHIFT_Y),
-        (0.92, 0.64, 0.19),
+    plate.Label = (
+        "BUY | conservative full-square carbon envelope; actual cutouts unmodeled"
     )
-    add_detail_object(
-        "PurchasedM2Nut",
-        translated_shape(orient(rail.nut_shape()), y=side * rail.CLAMP_SHIFT_Y),
-        (0.92, 0.64, 0.19),
-    )
+    for row in rail.clamp_rows():
+        add_detail_object("Purchased" + row["suffix"], row["shape"], (0.92, 0.64, 0.19))
     for sign in (-1, 1):
         add_detail_object(
             "TapeOverWing" + ("L" if sign < 0 else "R"),
@@ -101,11 +90,15 @@ def create_attachment_detail_document(side=1):
         )
     surface = add_detail_object(
         "EnvelopeSurfaceIllustration",
-        Part.makeBox(58, 82, 0.4, App.Vector(-29, -41, -0.4)),
+        Part.makeBox(58, 104, 0.4, App.Vector(-29, -52, -0.4)),
         (0.82, 0.91, 0.94),
         72,
     )
-    surface.Label = "REFERENCE | balloon surface, locally flat illustration"
+    surface.Label = (
+        "REFERENCE | balloon locally flat; detach rail for underside nut service"
+    )
+    if side < 0:
+        group.Placement.Rotation = App.Rotation(App.Vector(0, 0, 1), 180)
     doc.recompute()
     return doc
 
@@ -213,12 +206,6 @@ def render_previews(close_after=False):
             (layout, "top", "_print_parts.png", "all", 1800, 2000),
             (power, "axon", "_power_options.png", "all", 1500, 1400),
         ]
-        allparts = (
-            list(doc.DesignRegistry.PrintedParts)
-            + list(doc.DesignRegistry.HardwareParts)
-            + list(doc.DesignRegistry.ReferenceParts)
-            + list(doc.DesignRegistry.TapeReferences)
-        )
 
         def render_next_view(i=0):
             if i == len(jobs):
@@ -237,6 +224,15 @@ def render_previews(close_after=False):
                         doc.OpticalFlowModule, requested_host
                     )
                 style_assembly(doc)
+                # Host transfer can delete/recreate optional foot fasteners.
+                # Resolve the live registry after each transfer, never retain
+                # feature handles across the asynchronous render callbacks.
+                allparts = (
+                    list(doc.DesignRegistry.PrintedParts)
+                    + list(doc.DesignRegistry.HardwareParts)
+                    + list(doc.DesignRegistry.ReferenceParts)
+                    + list(doc.DesignRegistry.TapeReferences)
+                )
                 for o in allparts:
                     if scope == "rail":
                         o.ViewObject.Visibility = (

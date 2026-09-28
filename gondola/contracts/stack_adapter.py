@@ -55,6 +55,13 @@ def hole_centres(pitch_mm, rotation_deg=0.0):
 
 
 COMMON_HOLE_CENTRES = hole_centres(COMMON_PITCH_MM, COMMON_ROTATION_DEG)
+RAIL_FIX_PITCH_MM = 16.0
+RAIL_FIX_CENTRES = tuple(
+    (x, y)
+    for x, y in hole_centres(RAIL_FIX_PITCH_MM, COMMON_ROTATION_DEG)
+    if abs(y) > 1
+)
+RAIL_TRACK_SPACING_MM = 2 * abs(RAIL_FIX_CENTRES[0][1])
 
 
 def stack_adapter_contract():
@@ -87,7 +94,15 @@ def stack_adapter_contract():
             "rotation_deg": COMMON_ROTATION_DEG,
             "centres_xy_mm": COMMON_HOLE_CENTRES,
             "fastener_nominal": "M2",
-            "clamp_scope": "This25.5mm pattern identifies FC axes, not the smaller16mm saddle fixation. Rigid carbon-to-carrier/spacer clamping must be independent of the FC's soft support. Do not use PCB or damper compression as the carbon plate's clamp stop; retain the FC separately.",
+            "clamp_scope": "This25.5mm pattern identifies FC and selected optional portal axes, not the16mm rail fixation. Carbon-to-rail clamping is independent of FC soft support. Do not use PCB or damper compression as a rigid clamp stop; retain the FC separately.",
+        },
+        "project_rail_interface": {
+            "square_pitch_mm": RAIL_FIX_PITCH_MM,
+            "rotation_deg": COMMON_ROTATION_DEG,
+            "selected_centres_xy_mm": RAIL_FIX_CENTRES,
+            "track_spacing_mm": RAIL_TRACK_SPACING_MM,
+            "fastener": "Two owned ordinary M2x6 screws, downwards into rail hex-nut guides",
+            "scope": "Project installation uses the opposed Y pair of the purchased16mm pattern. It does not add a seller feature, qualify contact material or make neighboring patterns simultaneously usable.",
         },
         "electrical": "Carbon fiber is conductive. Isolate exposed conductors and FC underside from the plate; required wiring height and insulating hardware are separate assembly constraints.",
         "simultaneous_hole_use": "Pattern existence does not prove simultaneous hardware clearance. Same-corner centre spacing is 2.828 mm for 16/20, 3.889 mm for 20/25.5 and 6.718 mm for 16/25.5. Heads, nuts and standoffs on adjacent patterns can overlap; check actual hardware and occupied faces/heights.",

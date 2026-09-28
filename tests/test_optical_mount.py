@@ -15,11 +15,13 @@ except ImportError:
 class OpticalMountTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import equipment_mounts, optical_mount
+        from gondola.parts import optical_mount, stock_adapter
 
         cls.doc = App.newDocument("OpticalMountRegression")
         cls.parent = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
-        equipment_mounts.build_mount(cls.doc, cls.parent, "battery")
+        stock_adapter.build_stock_adapter(cls.doc, cls.parent, "battery")
+        fc = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
+        stock_adapter.build_stock_adapter(cls.doc, fc, "electronics")
         cls.module = optical_mount.build_optical_mount(cls.doc, cls.parent)
 
     @classmethod
@@ -35,8 +37,8 @@ class OpticalMountTests(unittest.TestCase):
     def test_two_moving_solids_and_four_purchased_fasteners(self):
         from gondola.contracts import fasteners
 
-        self.assertEqual(len(self.module["printed"]), 2)
-        self.assertEqual(len(self.module["hardware"]), 4)
+        self.assertEqual(len(self.module["printed"]), 3)
+        self.assertEqual(len(self.module["hardware"]), 8)
         for obj in self.module["printed"] + self.module["hardware"]:
             self.assertTrue(obj.Shape.isValid(), obj.Name)
             self.assertEqual(len(obj.Shape.Solids), 1, obj.Name)
@@ -44,7 +46,10 @@ class OpticalMountTests(unittest.TestCase):
             self.assertFalse(obj.PrintPart, obj.Name)
             self.assertNotIn("WASHER", obj.HardwareSKU)
             if "Bolt" in obj.Name:
-                self.assertEqual(obj.HardwareSKU, "M2X8_BUTTON_HEAD")
+                self.assertEqual(
+                    obj.HardwareSKU,
+                    "M2X6_BUTTON_HEAD" if "Foot" in obj.Name else "M2X8_BUTTON_HEAD",
+                )
                 self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
             else:
                 self.assertEqual(obj.HardwareSKU, "M2_HEX_NUT")
@@ -72,7 +77,7 @@ class OpticalMountTests(unittest.TestCase):
         # Device space above the low roots remains open.
         centre = Part.makeBox(30, 30, 29, App.Vector(-15, -15, -30))
         self.assertLess(abs(base.common(centre).Volume), 1e-5)
-        self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 0)
+        self.assertEqual(sum("Foot" in obj.Name for obj in self.module["hardware"]), 4)
 
     def test_full_pivot_root_bears_on_the_straight_top_beam(self):
         from gondola.parts import optical_mount, stack_interface
@@ -146,9 +151,7 @@ class OpticalMountTests(unittest.TestCase):
         from gondola.parts.optical_mount import set_angles
         from gondola.validation.geometry import intersection_volume
 
-        objects = (
-            [self.module["base"]] + self.module["printed"] + self.module["hardware"]
-        )
+        objects = self.module["printed"] + self.module["hardware"]
         for roll, pitch in itertools.product((-20, -10, 0, 10, 20), repeat=2):
             set_angles(self.doc, roll, pitch)
             shapes = [(o.Name, world_shape(o)) for o in objects]

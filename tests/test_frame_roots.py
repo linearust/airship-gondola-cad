@@ -73,50 +73,68 @@ class FrameRootTests(unittest.TestCase):
                 )
                 self.assertLess(solid_foot.cut(frame).Volume, 1e-7)
 
-    def test_central_shoe_roof_reaches_the_common_servo_wall_plate(self):
-        from gondola.parts import rail, servo_bridge
+    def test_central_web_reaches_only_the_actual_common_servo_wall(self):
+        from gondola.parts import propulsion, servo_bridge
 
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
+        bottom = propulsion.BASE_Z + propulsion.RAIL_FOOT_THICKNESS
         support = Part.makeBox(
-            18,
-            22,
-            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - rail.TOP_Z,
-            App.Vector(-9, -11, rail.TOP_Z),
+            26.8,
+            5,
+            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - bottom,
+            App.Vector(-13.4, -2.5, bottom),
         )
         contact = Part.makePlane(
-            18,
-            22,
-            App.Vector(-9, -11, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
+            26.8, 5, App.Vector(-13.4, -2.5, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z)
         )
         self.assertLess(support.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(contact.common(frame).Area, 396, places=5)
-        self.assertAlmostEqual(contact.common(bridge).Area, 396, places=5)
+        self.assertAlmostEqual(contact.common(frame).Area, 134, places=5)
+        self.assertAlmostEqual(contact.common(bridge).Area, 134, places=5)
         self.assertLess(frame.common(bridge).Volume, 1e-7)
 
-    def test_raised_head_clears_bridge_and_intact_two_mm_foot_floor(self):
-        from gondola.contracts import fasteners
-        from gondola.parts import rail
+    def test_vertical_clamps_clear_frame_and_bridge_without_a_shoe(self):
+        from gondola.parts import propulsion, rail
 
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
-        head_start = rail.HEAD_WIDTH / 2 - rail.CLAMP_SHIFT_Y + rail.SCREW_LENGTH
-        head = Part.makeCylinder(
-            fasteners.SCREW_HEAD_DIAMETER / 2,
-            fasteners.SCREW_HEAD_HEIGHT,
-            App.Vector(0, head_start, rail.CLAMP_Z),
-            App.Vector(0, 1, 0),
+        rows = rail.clamp_rows(
+            plate_thickness_mm=3, parent_z_mm=propulsion.MODULE_Z_OFFSET
         )
-        floor = Part.makeBox(6.4, 6, 2, App.Vector(-3.2, 11.1, rail.SHOE_BOTTOM))
-        for sign in (1, -1):
-            side_head = head if sign > 0 else rail.half_turn(head)
-            side_floor = floor if sign > 0 else rail.half_turn(floor)
-            with self.subTest(side=sign):
-                self.assertLess(side_floor.cut(frame).Volume, 1e-7)
-                # The circular 4.5 mm design head clears the continuous floor
-                # by 0.45 mm and the plain seating feet by at least 1.6 mm.
-                self.assertGreaterEqual(side_head.distToShape(frame)[0], 0.45 - 1e-7)
-                self.assertGreaterEqual(side_head.distToShape(bridge)[0], 1.6 - 1e-7)
+        for row in rows:
+            with self.subTest(joint=row["suffix"]):
+                self.assertLess(row["shape"].common(frame).Volume, 1e-7)
+                self.assertLess(row["shape"].common(bridge).Volume, 1e-7)
+                if row["kind"] == "screw":
+                    self.assertEqual(row["sku"], "M2X8_BUTTON_HEAD")
+                    self.assertAlmostEqual(row["bearing_z_mm"], propulsion.BASE_Z + 3)
+        self.assertFalse(self.doc.PropulsionFixedFrame.IntegratedRailShoe)
+
+    def test_module_raise_preserves_local_mechanism_and_seats_foot_at_rail_top(self):
+        from gondola.cad import world_shape
+        from gondola.parts import propulsion, rail
+        from gondola.validation.servo_module import bridge_joint_check
+
+        group = self.module["group"]
+        original = App.Placement(group.Placement)
+        relative = App.Placement(self.doc.ServoDriveBridge.Placement)
+        try:
+            group.Placement.Base.z = propulsion.MODULE_Z_OFFSET
+            self.doc.recompute()
+            self.assertAlmostEqual(
+                world_shape(self.doc.PropulsionFixedFrame).BoundBox.ZMin, rail.TOP_Z
+            )
+            self.assertTrue(self.doc.ServoDriveBridge.Placement.isSame(relative, 1e-7))
+            self.assertTrue(bridge_joint_check(self.doc, self.module)["passed"])
+            self.assertLess(
+                world_shape(self.doc.PropulsionFixedFrame)
+                .common(rail.rail_shape())
+                .Volume,
+                1e-7,
+            )
+        finally:
+            group.Placement = original
+            self.doc.recompute()
 
     def test_open_connector_plate_keeps_bulkhead_support_and_mounting_seats(self):
         from gondola.parts import servo_bridge

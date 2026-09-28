@@ -20,6 +20,7 @@ from gondola.parts import (
     optical_mount,
     optical_sensor,
     stack_interface,
+    stock_adapter,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
@@ -69,7 +70,7 @@ def _native_structure_check(doc):
             "OpticalMountContract",
             "StackInterfaceContract",
             "StackHostName",
-            "IntegratedCarrierName",
+            "HostPlateName",
             "HoldingTorqueVerified",
             "SelfLevelling",
             "StackFitVerified",
@@ -92,7 +93,7 @@ def _native_structure_check(doc):
     required.update({name: () for name in stack_interface.SUPPORTED_HOSTS})
     required.update(
         {
-            name: ("Shape", "IntegralOpticalSupport", "PrintSKU")
+            name: ("Shape", "HardwareSKU", "PrintPart")
             for name in stack_interface.SUPPORTED_HOSTS.values()
         }
     )
@@ -105,7 +106,9 @@ def _native_structure_check(doc):
             missing = [key for key in properties if key not in obj.PropertiesList]
             if missing:
                 errors.append({"object": name, "missing_properties": missing})
+    required["OpticalMountBase"] = ("Shape", "PrintSKU", "StackInterfaceContract")
     parents = {
+        "OpticalMountBase": {"OpticalFlowModule"},
         "OpticalFlowModule": set(stack_interface.SUPPORTED_HOSTS),
         "OpticalRollStage": {"OpticalFlowModule"},
         "OpticalPitchStage": {"OpticalRollStage"},
@@ -150,8 +153,15 @@ def _source_evidence(doc):
     expected_doc = App.newDocument("OpticalEvidenceReference")
     rows = []
     try:
-        host = expected_doc.addObject("App::Part", "BatteryEquipmentModule")
-        equipment_mounts.build_mount(expected_doc, host, "battery")
+        for host_name, kind in (
+            ("BatteryEquipmentModule", "battery"),
+            ("ElectronicsEquipmentModule", "electronics"),
+        ):
+            expected_host = expected_doc.addObject("App::Part", host_name)
+            equipment_mounts.build_mount(expected_doc, expected_host, kind)
+        host = expected_doc.getObject(
+            doc.OpticalFlowModule.getParentGeoFeatureGroup().Name
+        )
         kit = optical_mount.build_optical_mount(expected_doc, host)
         stack_interface.attach_to_host(kit["group"], host)
         refs, reserves = optical_sensor.build_sensor(
@@ -281,8 +291,9 @@ def _source_evidence(doc):
             and not group.StackFitVerified
             and group.getParentGeoFeatureGroup().Name in stack_interface.SUPPORTED_HOSTS
             and group.StackHostName == group.getParentGeoFeatureGroup().Name
-            and group.IntegratedCarrierName == stack_interface.host_print(group).Name
-            and doc.getObject("OpticalMountBase") is None
+            and group.HostPlateName
+            == stack_interface.SUPPORTED_HOSTS[group.StackHostName]
+            and doc.getObject("OpticalMountBase") is not None
             and not any(o.Name.startswith("OpticalStackFoot") for o in doc.Objects)
             and _same_placement(group.Placement, kit["group"].Placement)
             and {obj.Name for obj in registry.OpticalMountParts}
@@ -302,38 +313,20 @@ def _source_evidence(doc):
             )
             controls.append({"stage": name, "passed": valid})
         host_rows = []
-        for name, kind in (
-            ("BatteryMount", "battery"),
-            ("ElectronicsMount", "electronics"),
-        ):
+        for host_name, name in stack_interface.SUPPORTED_HOSTS.items():
             obj = doc.getObject(name)
-            comparison, ok = _matches(
-                local_shape(obj),
-                stack_interface.carrier_shape(
-                    kind, obj == stack_interface.host_print(group)
-                ),
+            comparison, ok = _matches(local_shape(obj), stock_adapter.plate_shape())
+            correct_role = (
+                not obj.PrintPart
+                and obj.HardwareSKU == stock_adapter.specification.PART_SKU
+                and obj.getParentGeoFeatureGroup().Name == host_name
             )
-            selected = obj == stack_interface.host_print(group)
-            contract_ok = (
-                obj.IntegralOpticalSupport == selected
-                and obj.PrintSKU == stack_interface.carrier_print_sku(kind, selected)
-            )
-            if selected:
-                contract_ok = contract_ok and _json_equal(
-                    obj.StackInterfaceContract,
-                    json.dumps(stack_interface.interface_contract()),
-                )
             host_rows.append(
                 {
                     "object": name,
                     "source_comparison": comparison,
-                    "interface_contract_matches": contract_ok,
-                    "carrier_local_placement_matches": _same_placement(
-                        obj.Placement, App.Placement()
-                    ),
-                    "passed": ok
-                    and contract_ok
-                    and _same_placement(obj.Placement, App.Placement()),
+                    "bought_role_and_parent": correct_role,
+                    "passed": ok and correct_role,
                 }
             )
         return {
@@ -397,97 +390,71 @@ def _external_field_bound(group, profile=None):
 
 
 def tower_attachment_check(doc, host):
-    """Require the complete integral print, actual root overlap and one solid."""
-    carrier = doc.getObject(stack_interface.SUPPORTED_HOSTS[host.Name])
-    kind = next(
-        k for k, name in equipment_mounts.MOUNT_NAMES.items() if name == carrier.Name
-    )
-    expected = stack_interface.carrier_shape(kind, True)
-    comparison, matches = _matches(local_shape(carrier), expected)
-    missing_world_support = abs(
-        optical_mount.fixed_base_shape(doc).cut(world_shape(carrier)).Volume
-    )
-    local_pose_matches = _same_placement(carrier.Placement, App.Placement())
+    """Check the true single-piece portal and both nominal purchased-hole axes."""
+    base = stack_interface.host_print(doc.OpticalFlowModule)
+    comparison, matches = _matches(local_shape(base), optical_mount.base_shape())
+    plate = doc.getObject(stack_interface.SUPPORTED_HOSTS[host.Name])
+    pose_ok = _same_placement(base.Placement, App.Placement())
     rows = []
-    low = equipment_mounts.mount_shape(kind)
-    for name, root in stack_interface.structural_component_shapes():
-        if not name.startswith("root_arm_"):
-            continue
-        root.translate(V(0, 0, stack_interface.STACK_TOP_Z))
-        overlap = intersection_volume(low, root)
-        missing = abs(root.cut(local_shape(carrier)).Volume)
+    for index, (x, y) in enumerate(stack_interface.FOOT_CENTRES):
+        bore = Part.makeCylinder(
+            stack_interface.FOOT_HOLE_DIAMETER / 2,
+            stack_interface.ROOT_ARM_THICKNESS,
+            V(x, y, stack_interface.LEG_BOTTOM_Z),
+        )
+        blocked = intersection_volume(local_shape(base), bore)
+        root = next(
+            sh
+            for name, sh in stack_interface.structural_component_shapes()
+            if name == f"root_arm_{index}"
+        )
+        missing = abs(root.cut(local_shape(base)).Volume)
         rows.append(
             {
-                "root": name,
-                "carrier_overlap_mm3": overlap,
+                "axis_xy_mm": (x, y),
+                "bore_blocked_mm3": blocked,
                 "missing_root_mm3": missing,
-                "passed": overlap > 1 and missing < TOL,
+                "passed": blocked < TOL and missing < TOL,
             }
         )
+    foot_hardware = {
+        name for name in stack_interface.FOOT_HARDWARE_NAMES if doc.getObject(name)
+    }
+    hardware_ok = (
+        foot_hardware == set(stack_interface.FOOT_HARDWARE_NAMES)
+        if host.Name == "BatteryEquipmentModule"
+        else not foot_hardware
+    )
+    if host.Name == "ElectronicsEquipmentModule":
+        hardware_ok = hardware_ok and bool(doc.StockFCAdapter.FCPortalInstalled)
     return {
         "source_comparison": comparison,
-        "fixed_support_missing_from_actual_carrier_mm3": missing_world_support,
-        "carrier_local_placement_matches": local_pose_matches,
-        "integral_roots": rows,
-        "carrier": carrier.Name,
-        "valid_single_solid": carrier.Shape.isValid()
-        and len(carrier.Shape.Solids) == 1,
-        "scope": "Exact source-matching carrier and overlapping lower root arms; no detachable foot interface or registration float. Material continuity does not qualify print strength, creep or pointing stiffness.",
+        "portal_placement_matches": pose_ok,
+        "portal": base.Name,
+        "host_plate": plate.Name,
+        "bought_plate_not_printed": not plate.PrintPart,
+        "nominal_foot_axes": rows,
+        "hardware_mode_matches_host": hardware_ok,
+        "valid_single_solid": base.Shape.isValid() and len(base.Shape.Solids) == 1,
+        "scope": "Geometric portal identity, open attachment bores and correct hardware mode only. Carbon contact area/laminate stiffness and strength, print/fastener fit and load capacity remain physically unverified.",
         "passed": matches
-        and local_pose_matches
-        and missing_world_support < TOL
-        and carrier.Shape.isValid()
-        and len(carrier.Shape.Solids) == 1
-        and len(rows) == 2
-        and all(row["passed"] for row in rows),
+        and pose_ok
+        and not plate.PrintPart
+        and hardware_ok
+        and base.Shape.isValid()
+        and len(base.Shape.Solids) == 1
+        and all(r["passed"] for r in rows),
     }
 
 
 def _bench_service_obstacles(doc, fixed):
-    """Separate only named vehicle assemblies after complete carrier removal.
-
-    Native ancestry, not an obstacle's label or name prefix, defines what stays
-    on the bench. Unknown/synthetic obstacles are retained conservatively.
-    """
+    """Retain the installed vehicle; covered rail clamps require device removal first."""
     stack = doc.OpticalFlowModule
     host = stack.getParentGeoFeatureGroup()
     valid_host = host is not None and host.Name in stack_interface.SUPPORTED_HOSTS
-    separated_names = (
-        "ContinuousRailSystem",
-        "TapeAttachmentReference",
-        "MainPropulsionModule",
-        *stack_interface.MECHANICAL_HOSTS,
-    )
-    separated = (
-        [
-            obj
-            for name in separated_names
-            if (obj := doc.getObject(name)) is not None and obj != host
-        ]
-        if valid_host
-        else []
-    )
-    retained, removed = {}, []
-    for name, shape in fixed.items():
-        if name == "MaximumBatteryEnvelope":
-            continue
-        obj = doc.getObject(name)
-        # A host descendant takes precedence even if a corrupted hierarchy
-        # places another named assembly beneath the current carrier.
-        owner = next(
-            (
-                group
-                for group in separated
-                if obj is not None
-                and not belongs_to_group(obj, host)
-                and belongs_to_group(obj, group)
-            ),
-            None,
-        )
-        if owner is None:
-            retained[name] = shape
-        else:
-            removed.append({"object": name, "separated_vehicle_group": owner.Name})
+    retained = {
+        name: shape for name, shape in fixed.items() if name != "MaximumBatteryEnvelope"
+    }
     # Include all actual host descendants independently of the caller's mapping;
     # a shortened obstacle map cannot silently omit carried equipment or wires.
     if valid_host:
@@ -502,10 +469,10 @@ def _bench_service_obstacles(doc, fixed):
     return retained, {
         "host": host.Name if host is not None else None,
         "valid_supported_host": valid_host,
-        "required_prior_step": "Disconnect external leads and remove the complete carrier from the rail using the separately audited module-removal sequence; support carrier on a bench before releasing the moving optical head or extracting the host device.",
+        "required_prior_step": "Disconnect external leads. Device extraction is checked with the fixed portal and its foot joints retained. Covered rail-clamp access requires device removal first; no whole populated carrier removal is assumed.",
         "retained_obstacles": sorted(retained),
-        "removed_nonhost_objects": sorted(removed, key=lambda row: row["object"]),
-        "scope": "Only descendants of explicitly identified separate vehicle assemblies are absent on the bench. Current-host equipment, wires, carrier hardware and unknown obstacles remain. This filtering applies only to bench service; installed motion, registration, optical field and connector audits retain the whole vehicle.",
+        "removed_nonhost_objects": [],
+        "scope": "No vehicle group is removed. Current-host equipment is independently restored to the obstacle map; supplied nonhost and unknown obstacles remain. MaximumBatteryEnvelope is an alternative envelope, not a simultaneously installed solid.",
     }
 
 
@@ -613,11 +580,7 @@ def _head_service_check(doc, fixed, kit):
 def _integral_support_clearance_check(doc, host, obstacles):
     """Inspect exact integrated support with all installed external obstacles."""
     find_hits = partial(collision_hits, tolerance=TOL, validation_cache={})
-    external = {
-        n: s
-        for n, s in obstacles.items()
-        if n != stack_interface.SUPPORTED_HOSTS[host.Name]
-    }
+    external = {n: s for n, s in obstacles.items() if n != "OpticalMountBase"}
     support = optical_mount.fixed_base_shape(doc)
     hits = find_hits(support, external)
     gaps = {}
@@ -628,7 +591,7 @@ def _integral_support_clearance_check(doc, host, obstacles):
         "collisions": hits,
         "minimum_required_gap_mm": 1.5,
         "named_gaps_mm": gaps,
-        "scope": "Actual fixed portal and roll support, excluding intentional root/carrier union. Whole installed vehicle and reservations retained. No detachable-joint registration exists.",
+        "scope": "Actual removable fixed portal and roll support. Whole installed vehicle and reservations retained; intended carbon-foot contact is at a common plane.",
         "passed": not hits
         and all(g is not None and g >= 1.5 - TOL for g in gaps.values()),
     }
@@ -692,7 +655,7 @@ def _device_service_check(doc, host, fixed):
     return {
         "bench_service_frame": frame,
         "devices": rows,
-        "scope": "Remove movable optical head; disconnect leads, release device hold-down hardware/adhesive. FC lifts12 mm, battery lifts5 mm, then each travels diagonally through the open portal side. Integral carrier stays on the bench. No connected-harness extraction claim.",
+        "scope": "Remove movable optical head; disconnect leads, release device hold-down hardware/adhesive. FC lifts12 mm, battery lifts5 mm, then each travels diagonally through the open portal side. The carbon plate and fixed portal remain on the installed vehicle. No connected-harness extraction claim.",
         "passed": frame["valid_supported_host"]
         and bool(rows)
         and all(r["passed"] for r in rows),
@@ -707,6 +670,17 @@ def _host_checks(doc, host, physical, kit, *, profile=None):
         collision_hits, tolerance=TOL, validation_cache=validation_cache
     )
     stack_interface.attach_to_host(group, host)
+    # A host transfer substitutes only the real foot fasteners. Read the live
+    # registry after the change; never reuse deleted Python object handles.
+    physical = (
+        list(doc.DesignRegistry.PrintedParts)
+        + list(doc.DesignRegistry.HardwareParts)
+        + list(doc.DesignRegistry.ReferenceParts)
+        + list(doc.DesignRegistry.TapeReferences)
+    )
+    kit = [
+        obj for obj in physical if stack_interface.is_removable_head_part(obj, group)
+    ]
     fixed = {obj.Name: world_shape(obj) for obj in physical if obj not in kit}
     rotor = {
         obj.Name: world_shape(obj)
@@ -948,7 +922,7 @@ def mtf_sensor_check(doc):
         report["sensor_alternatives"] = alternatives
         report["hosts"] = alternatives[saved_properties["SensorModel"]]["hosts"]
         report["service_prerequisite"] = (
-            "Disconnect leads and remove complete carrier from rail using its independent service sequence. Bench-support the carrier, remove only the movable optical head, release device hold-down hardware/adhesive, then use its ordered upward/sideways extraction path. Integral portal stays with carrier. No connected-harness or on-balloon service claim."
+            "Support the vehicle and disconnect leads. Remove only the movable optical head, release device hold-down hardware/adhesive, then use the ordered upward/sideways device path. Carbon plate and fixed portal stay on the rail. Only then access the covered rail clamps. No connected-harness or on-balloon hand-access claim."
         )
         report["passed"] = all(row["passed"] for row in alternatives.values())
         return report

@@ -73,7 +73,7 @@ def route_points(sign, propulsion_placement, electronics_placement):
         # Come inward above the FC band before descending into its final entry.
         # Keep the final FC-band entry inside its existing terminal region while
         # clearing either fixed optical portal; module moves require rechecking.
-        (-40.0, sign * 12.0, 42.0),
+        (-40.0, sign * 12.0, 37.2),
         (endpoint.x, endpoint.y, endpoint.z),
     ]
 
@@ -124,7 +124,7 @@ def route_contract(sign, propulsion_placement, electronics_placement):
             "qualification": "Tie, tie head, wire exit and full moving cable geometry are unmodeled. The crossbar is a candidate attachment member, not a verified tie location.",
         },
         "fixed_attachment_candidate": {
-            "object": "ElectronicsMount",
+            "object": "StockFCAdapter",
             "region": "Existing carrier edge before FC entry; wrap the plate without obstructing the eight-mm underbody corridor, standard holes or board damping.",
             "qualification": "This candidate fixes the FC end to the stationary electronics carrier. It does not claim a separate proven tie on the propulsion frame. Retain slack between independently sliding modules; actual tie fit and load path need a bench check.",
         },

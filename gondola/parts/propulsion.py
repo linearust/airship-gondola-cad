@@ -53,9 +53,11 @@ from . import (
 )
 
 V = App.Vector
-BASE_Z = rail.SHOE_BOTTOM
+BASE_Z = servo_bridge.FRAME_BASE_Z
+MODULE_Z_OFFSET = rail.TOP_Z - BASE_Z
+RAIL_FOOT_THICKNESS = 3.0
 FOOT_THICKNESS = 3.0
-RAIL_SERVICE_FLOOR_THICKNESS = 2.0
+RAIL_SERVICE_FLOOR_THICKNESS = RAIL_FOOT_THICKNESS
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = 65.5
 GUARD_OUTER_RADIUS = 24.3
@@ -189,8 +191,8 @@ def _output_support(sign):
             PIVOT_Z - BASE_Z - FOOT_THICKNESS,
             (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
         )
-        # Keep the full post and its root solid. Rail-key access stays in the
-        # central service bay rather than passing through these bearing feet.
+        # Keep the full post and its root solid. The vertical rail clamps stay in the
+        # central base rather than passing through these bearing feet.
         cup = _bearing_cup(side * BEARING_START_Y, positive_side=side > 0)
         cup = translated_shape(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
         relief = mirrored_y(bearing_retention.post_clearance_tool(), side)
@@ -207,33 +209,41 @@ def _output_support(sign):
     return result
 
 
+def rail_mount_hole_centres():
+    return rail.CLAMP_CENTRES
+
+
 def fixed_frame_shape():
-    """Common rail shoe, output supports and fixed servo-bridge seats."""
-    # The short central floor stays below the rail screw head. The outboard
-    # bearing feet are thicker and overlap it without separate connectors.
-    wings = box(18, 70, RAIL_SERVICE_FLOOR_THICKNESS, (-9, -35, BASE_Z)).cut(
-        box(20, rail.SHOE_WIDTH, 20, (-10, -rail.SHOE_WIDTH / 2, 0))
-    )
-    # Raise the already solid shoe roof to carry the common servo wall through
-    # its plate directly, instead of spanning between the two outboard feet.
-    central_seat = box(
-        rail.SHOE_LENGTH,
-        rail.SHOE_WIDTH,
-        servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - rail.TOP_Z,
-        (-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.TOP_Z),
+    """Plain direct-rail base and a web directly below the removable servo wall.
+
+    The module moves up4.8mm as a whole: localbaseZ2.2 lands on worldrailZ7.
+    Output geometry, gearbox and the removable servo assembly keep their local
+    coordinates. TwoM2x8 vertical joints fix this3mm foot directly to the rail.
+    """
+    foot = box(18, 70, RAIL_FOOT_THICKNESS, (-9, -35, BASE_Z))
+    support_bottom = BASE_Z + RAIL_FOOT_THICKNESS
+    width = servo_bridge.bulkhead_width()
+    central_web = box(
+        width,
+        servo_bridge.MOUNT_DEPTH,
+        servo_bridge.CONNECTOR_PLATE_BOTTOM_Z - support_bottom,
+        (-width / 2, -servo_bridge.MOUNT_DEPTH / 2, support_bottom),
     )
     frame = union(
         [
-            rail.shoe_shape(),
-            central_seat,
-            wings,
+            foot,
+            central_web,
             _output_support(1),
             _output_support(-1),
             servo_bridge.frame_seats(),
         ]
     )
+    for x, y in rail_mount_hole_centres():
+        frame = frame.cut(
+            Part.makeCylinder(1.3, RAIL_FOOT_THICKNESS + 2, V(x, y, BASE_Z - 1))
+        )
     return _checked(
-        servo_bridge.cut_mounting_holes(frame), "Common output-bearing frame"
+        servo_bridge.cut_mounting_holes(frame), "Direct twin-track output-bearing frame"
     )
 
 
@@ -667,11 +677,11 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 4.5 mm bearing posts with continuous roots. The output axes are 131 mm apart. An 18 by 22 mm central shoe roof reaches the bridge plate at Z11.4 and supports its common servo wall directly; the two broad rectangular outboard seats remain. These contact faces must all seat without rocking or drawing a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One inside Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
+        "A plain18 by70 by3mm direct-rail foot with two verticalM2x8 clamp axes and a26.8 by5mm support web below the removable servo wall. The module is raised4.8mm so its local2.2mm foot datum rests on the7mm twin-track roof. Full-width18 by3mm solid output-support feet and four9.6 by4.5mm bearing posts retain their local geometry. The output axes are 131 mm apart. The central web reaches the bridge plate at localZ11.4 directly below its5mm-deep common servo wall; the two broad rectangular outboard seats remain. These contact faces must all seat without rocking or drawing a warped bridge flat with the bolts. The direct foot is3mm thick throughout; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One inside Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
-    set_property(frame, "IntegratedRailShoe", True, "App::PropertyBool")
+    set_property(frame, "IntegratedRailShoe", False, "App::PropertyBool")
     set_property(frame, "CarriageContactZ", BASE_Z, "App::PropertyLength")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
@@ -959,7 +969,11 @@ def _module_metrics(printed, hardware, references, spec):
         "tilt_range_deg": [-180, 180],
         "independent_native_tilt": True,
         "single_rail_center_y_mm": 0,
-        "integrated_rail_shoe": True,
+        "integrated_rail_shoe": False,
+        "direct_twin_track_foot": True,
+        "module_z_offset_mm": MODULE_Z_OFFSET,
+        "rail_foot_thickness_mm": RAIL_FOOT_THICKNESS,
+        "rail_clamp_centres_local_xy_mm": rail_mount_hole_centres(),
         "printed_part_count": len(printed),
         "purchased_mechanism_hardware_count": len(hardware),
         "device_reference_count": len(references),
@@ -985,7 +999,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on one removable paired bridge with a common central servo wall. The integral central shoe roof directly supports its central plate, joined to the mounting feet by two broad straight arms with open sides; two broad outboard seats and unilateral locating datums establish the fixed position, with two M2 mount pairs providing clamping. All support faces must seat without rocking. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
+            "input_mount": "Prepared stock-horn drives on one removable paired bridge with a common central servo wall. A simple fixed vertical web directly supports the central servo wall, joined to the mounting feet by two broad straight arms with open sides; two broad outboard seats and unilateral locating datums establish the fixed position, with two M2 mount pairs providing clamping. All support faces must seat without rocking. Only the selected 48T/16T configuration is supported. A future ratio change requires sourced replacement parts, redesign and validation of the complete transmission.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -1076,7 +1090,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a 26.8 by 22 by 2 mm central plate on the frame's central shoe roof. Two broad 15.6 by 18 by 2 mm straight arms connect the outboard feet with 3 mm overlap onto the central plate; unused side regions are open within the unchanged 39 by 52 mm footprint. Two R2.05 open edge reliefs clear the prepared example horn screws and retain 1.95 mm side ligaments; recheck service for other transferred hole positions. The plate clears the rail-key elbow and the feet stand outside the rail head screw; no thin perimeter ring or local service tunnels remain. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
+        "One removable paired bridge with a single 26.8 mm-wide by 5 mm-deep central servo wall: two 8 by 21 mm case windows, 3 mm outer sides and a shared 4.8 mm middle web. The common wall joins a 26.8 by 22 by 2 mm central plate over the frame's central support web. Two broad 15.6 by 18 by 2 mm straight arms connect the outboard feet with 3 mm overlap onto the central plate; unused side regions are open within the unchanged 39 by 52 mm footprint. Two R2.05 open edge reliefs clear the prepared example horn screws and retain 1.95 mm side ligaments; recheck service for other transferred hole positions. The plate stands above the independent vertical rail-clamp heads; no separate shoe or lateral rail-key path remains. Two open 6 mm head-access counterbores retain the existing M2x8 mounting screws and 5 mm grip against fixed X/Y datums. Nominal clearance below the servo body exceeds 5 mm; actual lead exit and bend requirements need the supplied hardware. For bench replacement remove both small output gears, then the mount pairs; lift 0.5 mm and slide 80 mm in +X with servos, horns and large gears assembled. All output shafts, bearings and motor carriers remain installed. Verify all support faces seat without rocking, actual centre distance and handling; do not force a warped bridge flat with its screws.",
         sku=drive.bridge_sku,
     )
     mount_hardware = []

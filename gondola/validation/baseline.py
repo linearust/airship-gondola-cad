@@ -28,7 +28,6 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
-from gondola.parts import rail
 from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
 
@@ -77,44 +76,16 @@ def registry_contents(registry):
 
 
 def module_control_bindings(doc):
-    """Bind controls by stable object identity, never registry list position."""
+    """Every native trim control is bound to its declared module identity."""
     modules = list(doc.DesignRegistry.Modules)
     names = [obj.Name for obj in modules]
     expected = [station.object_name for station in MODULE_STATIONS]
-    controls = [station.clamp_control for station in MODULE_STATIONS]
-    if (
-        not expected
-        or len(set(expected)) != len(expected)
-        or len(set(controls)) != len(controls)
-        or len(set(names)) != len(names)
-        or set(names) != set(expected)
-    ):
-        raise ValueError("Registered modules do not match the unique station contract")
-    if any(name not in doc.AssemblySettings.PropertiesList for name in controls):
-        raise ValueError("A registered module has no native clamp approach control")
+    if len(set(names)) != len(names) or set(names) != set(expected):
+        raise ValueError("Registered modules do not match unique stations")
     by_name = {obj.Name: obj for obj in modules}
+    if any("RailPositionX" not in obj.PropertiesList for obj in modules):
+        raise ValueError("A registered module has no native trim control")
     return [(station, by_name[station.object_name]) for station in MODULE_STATIONS]
-
-
-def module_clamp_pose(station, module, approach):
-    """A clamp side is carrier-local; its seated offset follows carrier yaw."""
-    if approach not in ("PositiveY", "NegativeY"):
-        raise ValueError("Unknown local rail-clamp approach")
-    local_side = 1 if approach == "PositiveY" else -1
-    world_side = local_side * station.transverse_sign
-    expected_y = world_side * rail.CLAMP_SHIFT_Y
-    rotation_matches = module.Placement.Rotation.isSame(
-        App.Rotation(App.Vector(0, 0, 1), station.yaw_deg), 1e-7
-    )
-    return {
-        "local_approach_side_y": local_side,
-        "world_approach_side_y": world_side,
-        "expected_seated_y_mm": expected_y,
-        "result_y_mm": module.Placement.Base.y,
-        "expected_carrier_yaw_deg": station.yaw_deg,
-        "carrier_rotation_matches": rotation_matches,
-        "passed": rotation_matches and abs(module.Placement.Base.y - expected_y) < TOL,
-    }
 
 
 def control_behavior(doc):
@@ -134,42 +105,7 @@ def control_behavior(doc):
         {pod.Name for pod in pods}
     ) != len(pods):
         return {"cases": [], "error": "Tilting pod inventory mismatch", "passed": False}
-    clamp_names = [station.clamp_control for station, _ in bindings]
-    originals = {name: str(getattr(doc.AssemblySettings, name)) for name in clamp_names}
     rows = []
-    try:
-        for station, module in bindings:
-            key = station.clamp_control
-            other_modules = {
-                other.Name: other.Placement.copy()
-                for other in modules
-                if other != module
-            }
-            for value in ("PositiveY", "NegativeY"):
-                setattr(doc.AssemblySettings, key, value)
-                doc.recompute()
-                pose = module_clamp_pose(station, module, value)
-                rows.append(
-                    {
-                        "object": module.Name,
-                        "property": key,
-                        "input": value,
-                        **pose,
-                        "other_modules_unchanged": all(
-                            doc.getObject(name).Placement.isSame(placement, 1e-7)
-                            for name, placement in other_modules.items()
-                        ),
-                        "passed": pose["passed"]
-                        and all(
-                            doc.getObject(name).Placement.isSame(placement, 1e-7)
-                            for name, placement in other_modules.items()
-                        ),
-                    }
-                )
-    finally:
-        for key, value in originals.items():
-            setattr(doc.AssemblySettings, key, value)
-        doc.recompute()
     for pod in pods:
         original = float(pod.Tilt)
         other_pods = {
@@ -304,9 +240,7 @@ def control_behavior(doc):
         finally:
             setattr(stage, property_name, original)
             doc.recompute()
-    expected_cases = (
-        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 10
-    )
+    expected_cases = len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 10
     return {
         "cases": rows,
         "module_control_mapping_valid": True,

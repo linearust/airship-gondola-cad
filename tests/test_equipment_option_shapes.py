@@ -20,8 +20,15 @@ class EquipmentOptionShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         pas = options.get_navigation_profile("PAS")
-        self.assertEqual(
-            layout.navigation_hole_centres(pas), mounts.mount_hole_centres("accessory")
+        # The device's real 23 mm holes remain visible as evidence. The bought
+        # 16 mm pattern's 22.627 mm diagonal is not a matching attachment pair.
+        self.assertEqual(mounts.mount_hole_centres("accessory"), ())
+        holes = layout.navigation_hole_centres(pas)
+        self.assertEqual(len(holes), 2)
+        self.assertAlmostEqual(
+            ((holes[0][0] - holes[1][0]) ** 2 + (holes[0][1] - holes[1][1]) ** 2)
+            ** 0.5,
+            23,
         )
         for key in ("MGA01", "MGF10A"):
             profile = options.get_navigation_profile(key)
@@ -54,11 +61,11 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                     self.assertLess(abs(lane.common(body).Volume), 1e-7)
                     self.assertAlmostEqual(lane.distToShape(body)[0], 0)
                     self.assertAlmostEqual(
-                        lane.BoundBox.YLength,
-                        body.BoundBox.YLength + 2 * wiring.CONNECTOR_SIDE_MARGIN_MM,
+                        lane.BoundBox.XLength,
+                        body.BoundBox.XLength + 2 * wiring.CONNECTOR_SIDE_MARGIN_MM,
                     )
-                self.assertAlmostEqual(negative.BoundBox.XMax, body.BoundBox.XMin)
-                self.assertAlmostEqual(positive.BoundBox.XMin, body.BoundBox.XMax)
+                self.assertAlmostEqual(negative.BoundBox.YMax, body.BoundBox.YMin)
+                self.assertAlmostEqual(positive.BoundBox.YMin, body.BoundBox.YMax)
 
     def test_gps_connector_lane_covers_short_edge_and_follows_device_height(self):
         from gondola.parts import equipment_envelopes as envelopes

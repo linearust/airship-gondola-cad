@@ -5,6 +5,7 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 """
 
 import json
+from collections import Counter
 from itertools import combinations
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def _internal_collisions(physical, reserves):
     conflicts = _collisions(reserves, physical)
     for (name, shape), (other, obstacle) in combinations(physical.items(), 2):
         # Nominal threaded fasteners deliberately engage their corresponding nuts.
-        if name.startswith("PowerFootBolt") and other == name.replace("Bolt", "Nut"):
+        if "Bolt" in name and other == name.replace("Bolt", "Nut"):
             continue
         volume = intersection_volume(shape, obstacle)
         if volume > TOL:
@@ -93,15 +94,22 @@ def _internal_collisions(physical, reserves):
 def _configuration_conflicts(plan_key, pose, context, host_name):
     physical, reserves = power_mount.local_shapes(plan_key, host_name)
     physical, reserves = _placed(physical, pose), _placed(reserves, pose)
-    # The entire integral variant REPLACES the old carrier, including its shoe.
-    # All other baseline objects, bought clamps and reservations remain obstacles.
-    obstacles = {
-        name: shape
-        for name, shape in context.items()
-        if name != stack_interface.MECHANICAL_HOSTS[host_name]
-    }
+    # Keep every lower bought plate, rail joint and device. At the FC only the
+    # two intermediate nuts move upward onto the portal feet; compare that actual
+    # installed state rather than exempting the plate or whole FC hardware.
+    obstacles = {name: shape.copy() for name, shape in context.items()}
+    if host_name == "ElectronicsEquipmentModule":
+        from .parts import stock_adapter
+
+        for index, (x, _) in enumerate(stock_adapter.specification.COMMON_HOLE_CENTRES):
+            if abs(x) > 1:
+                name = stock_adapter.NUT_OBJECT_NAMES[index]
+                if name in obstacles:
+                    obstacles[name].translate(
+                        App.Vector(0, 0, stock_adapter.PORTAL_FOOT_THICKNESS_MM)
+                    )
     return [
-        {**row, "phase": "nominal integral replacement"}
+        {**row, "phase": "nominal carbon-mounted option"}
         for row in (
             _collisions(physical, obstacles)
             + _collisions(reserves, obstacles)
@@ -209,8 +217,8 @@ def screen_configurations(main_doc):
         "default_configuration_clear": default["permitted"],
         "source_selected_navigation": get_navigation_profile().key,
         "navigation_compatibility_probes": navigation_rows,
-        "seated_registration_scope": "Integral carrier variant has no foot clamp or foot registration freedom. Rail fit and real print distortion remain separate physical checks.",
-        "scope": "Exact nominal optional bodies and local terminal/top allowances versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. Only the replaced low carrier is excluded; other intentional mating contact has zero volume and positive interference rejects a configuration. No tether route or guide is modeled; tether clearance/retention, cooling and electrical operation are not qualified.",
+        "seated_registration_scope": "The removable portal seats on two opposed25.5mm carbon axes. Nominal source placement is checked; screw clearance, actual laminate lands, clamp slip, printed distortion and physical stiffness remain unqualified. Lower16mm rail clamps stay independent.",
+        "scope": "Exact nominal optional bodies and local terminal/top allowances versus all saved solid bodies and reservations, including full propulsion sweep bounds. Additional conservative cones enclose both optical profiles throughout their declared manual angle range on the currently saved optical host. Other host/antenna/rail arrangements require another audit. No lower plate is excluded; the FC shared foot nuts are moved to their actual raised seats; other intentional mating contact has zero volume and positive interference rejects a configuration. No tether route or guide is modeled; tether clearance/retention, cooling and electrical operation are not qualified.",
         "passed": default["permitted"]
         and len(rows) == len(stack_interface.MECHANICAL_HOSTS) * len(OPTIONAL_PLANS),
     }
@@ -239,8 +247,16 @@ def _manifest(doc):
             "g_cm3": DENSITIES_G_CM3["PA12"],
             "source": PA12_DENSITY_SOURCE,
         },
-        "additional_hardware": {},
-        "replaces_print": stack_interface.MECHANICAL_HOSTS[power_mount.DEFAULT_HOST],
+        "additional_hardware": dict(Counter(power_mount.hardware_inventory().values())),
+        "additional_hardware_instances": power_mount.hardware_inventory(),
+        "additional_carbon_listed_mass_g": 2
+        * power_mount.stock_adapter.specification.LISTED_MASS_G,
+        "additional_carbon_mass_basis": "Seller reference mass for two upper boards; unmeasured, excluded from printed mass, independent of the filled clearance-envelope volume",
+        "additional_carbon_mass_source": power_mount.stock_adapter.specification.PRODUCT_URL,
+        "replaces_print": None,
+        "retains_lower_host_plate": stack_interface.MECHANICAL_HOSTS[
+            power_mount.DEFAULT_HOST
+        ],
         "size_mm": sizes,
         "size_check": print_size_check(
             [local.XLength, local.YLength, local.ZLength], sizes
@@ -315,24 +331,15 @@ def audit_power_options(source=None, output_dir=None):
     main = App.openDocument(str(source))
     option = None
     try:
-        from .parts import equipment_mounts
+        from .parts import stock_adapter
 
-        optical_host = (
-            main.OpticalFlowModule.getParentGeoFeatureGroup()
-            if main.getObject("OpticalFlowModule") is not None
-            else None
-        )
         report["main_carriers_match"] = all(
-            main.getObject(name) is not None
+            main.getObject(row["plate_name"]) is not None
             and _same_shape(
-                main.getObject(name).Shape,
-                stack_interface.carrier_shape(
-                    kind,
-                    optical_host is not None
-                    and main.getObject(name).getParentGeoFeatureGroup() == optical_host,
-                ),
+                main.getObject(row["plate_name"]).Shape,
+                stock_adapter.plate_shape(centre_xy_mm=row["local_centre_xy"]),
             )
-            for kind, name in equipment_mounts.MOUNT_NAMES.items()
+            for row in stock_adapter.joint_specs()
         )
         if not report["main_carriers_match"]:
             report["error"] = (
@@ -383,6 +390,28 @@ def audit_power_options(source=None, output_dir=None):
             and _same_shape(option.getObject(name).Shape, shape)
             for name, shape in expected.items()
         }
+        inventory = power_mount.hardware_inventory()
+        report["optional_hardware_metadata_matches"] = all(
+            option.getObject(name) is not None
+            and getattr(option.getObject(name), "HardwareSKU", None) == sku
+            and getattr(option.getObject(name), "OptionalAdditionalHardware", False)
+            is True
+            and getattr(option.getObject(name), "IncludedInDefaultBOM", True) is False
+            and not getattr(option.getObject(name), "PrintPart", False)
+            for name, sku in inventory.items()
+        ) and all(
+            getattr(option.getObject(f"PowerCarbon{i}"), "ReferenceMassGrams", None)
+            == stock_adapter.specification.LISTED_MASS_G
+            and getattr(
+                option.getObject(f"PowerCarbon{i}"), "ReferenceMassSource", None
+            )
+            == stock_adapter.specification.PRODUCT_URL
+            and getattr(
+                option.getObject(f"PowerCarbon{i}"), "ExactContourModeled", True
+            )
+            is False
+            for i in range(2)
+        )
         report["native_inventory_matches"] = {
             obj.Name for obj in group.Group if hasattr(obj, "Shape")
         } == set(expected)
@@ -474,6 +503,7 @@ def audit_power_options(source=None, output_dir=None):
                     "option_contract_matches",
                     "power_plan_contract_matches",
                     "native_inventory_matches",
+                    "optional_hardware_metadata_matches",
                     "context_names_unique",
                     "complete_shape_inventory_matches",
                     "optional_print_inventory_matches",

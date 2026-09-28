@@ -3,11 +3,12 @@
 This file and [HANDOFF.md](HANDOFF.md) are for AI agents, not assembly instructions.
 Read the latest user request first; it supersedes historical design choices.
 
-AZ verification is recorded in [the revision review](tests/fixtures/rev_az_review.json)
-and [the persisted-artifact review](tests/fixtures/rev_az_artifact_review.json).
-The frozen revision passed 448 native tests without skips and all five artifact
-stages. These are CAD checks, not physical fit or manufacturing approval; later
-source edits require fresh matching evidence.
+BA is the current CAD prototype: [revision review](tests/fixtures/rev_ba_review.json),
+[persisted-artifact review](tests/fixtures/rev_ba_artifact_review.json).
+The final frozen revision passed 450 native tests and the build, preview,
+baseline comparison, validation and bundle sequence. This is not physical or
+manufacturing qualification. Earlier AZ and incomplete BA attempts are historical;
+check matching fingerprints before using generated files.
 
 ## Establish state
 
@@ -34,9 +35,9 @@ source edits require fresh matching evidence.
 | Verification and identity | [validation/](gondola/validation/), [tests/](tests/), [config.py](gondola/config.py), [provenance.py](gondola/provenance.py) |
 
 Historical references and revision fixtures preserve the evidence for their own
-revision. In particular, old universal 54×74 mm carriers, optical foot clamps and
-underside radio layouts are superseded by the purchased-adapter redesign. Do not
-restore them merely to satisfy an obsolete assertion or document.
+revision. Old universal 54×74 mm carriers, their carrier-foot interfaces and underside
+radio layouts are superseded. BA deliberately uses detachable 25.5 mm carbon-foot
+joints; do not restore the older interfaces to satisfy an obsolete assertion.
 
 ## Editing boundaries
 
@@ -56,22 +57,32 @@ restore them merely to satisfy an obsolete assertion or document.
   Use the seller's listed mass independently of that envelope volume. Nominal Ø2
   holes are unthreaded and do not guarantee received M2 clearance. Insulate carbon
   from PCB, solder and wiring. Do not imply all hole patterns can be populated
-  simultaneously or that the installed saddle leaves every pattern accessible.
+  simultaneously or that every pattern remains accessible after installation.
 - Carbon retention must be rigid independently of FC damping. FC lowest-component
   clearance does not establish the actual PCB bearing plane, damper compression,
   spacer length or complete fastening stack. Preserve these unresolved interfaces.
-- Role carriers share a rail interface rather than an oversized identical deck.
-  Tape-mounted equipment needs supported insulating contact, not a perforated
-  carbon envelope assumed to be solid. Retain real device holes where documented;
-  omit dedicated tie-only slots and tabs.
-- The selected optical portal is fused into its carrier. A host change requires the
-  appropriate replacement carrier; transfer the movable head and recalibrate.
-  Do not invent a detachable tower or upward removal through its fixed beam.
-  Verify staged device extraction, both optical hosts and both sensor profiles.
-- Optional power uses an integral replacement carrier, not a duplicate carrier
-  stacked on the original. Exclude only that replaced print from interference
-  checks. Optical and power upper structures are mutually exclusive at a host.
-  Optional prints/boards are separate from the default installed inventory.
+- Four identical bought carbon adapters carry battery, FC, navigation and Mini
+  directly on two PA12 tracks. There are no printed equipment decks, shoes or FC
+  saddle. Tape-mounted equipment needs real supported insulating contact; the
+  filled carbon envelope does not establish it. Nominal 3 mm padding clears the
+  modeled clamp heads; verify compressed clearance and adhesive/strap retention.
+- Two downward M2 clamps use each carbon plate's rotated 16 mm Y axes. Bay trim
+  is limited to ±6 mm about each bay centre, not about every saved module pose.
+  Keep nuts threaded during fine trim; lift/reinstall for coarse relocation.
+  Unbolted nuts are not captive. Load them from below before taping the rail;
+  tape only external wings. Remove covering equipment before top-clamp access.
+- One removable optical portal uses the carbon plate's two 25.5 mm X axes. FC
+  reuses its two X-axis studs and raises their intermediate nuts above the feet;
+  battery adds two M2×6 pairs. Portal legs at diagonal
+  ±24 mm are separate structural datums, not purchased mounting-hole positions.
+  Transfer the complete portal/head and recalibrate. Verify staged extraction
+  with the fixed portal and other installed modules retained, both optical hosts
+  and both sensor profiles. Do not assume upward device extraction through a beam.
+- Optional power adds a separate portal and two upper bought carbon plates; it
+  does not replace or omit lower carrier obstacles. Optical and power are mutually
+  exclusive at one host. Optional hardware is separate from baseline inventory.
+  Six carbon boards are installed if all four lower boards and the power option
+  are retained; the selected five-piece pack alone is insufficient for that case.
 - Validate all local and print-oriented bounds against the 340 mm limit. Published
   Creallo sizes are screening inputs, not guaranteed one-piece acceptance. Qualify
   rail/bearing coupons in the chosen PA12 process; nominal fit does not establish
@@ -102,8 +113,8 @@ Freeze source before generating final artifacts, and stop the sequence on failur
 ```sh
 python3 -m gondola build
 python3 -m gondola preview
-python3 -m gondola validate
 python3 -m gondola compare
+python3 -m gondola validate
 python3 -m gondola bundle
 ```
 

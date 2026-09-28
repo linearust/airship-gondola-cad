@@ -59,7 +59,9 @@ def style_assembly(doc):
         )
     for obj in registry.HardwareParts:
         obj.ViewObject.ShapeColor = (
-            (0.18, 0.20, 0.22) if obj.Name == "StockFCAdapter" else (0.92, 0.64, 0.19)
+            (0.18, 0.20, 0.22)
+            if obj.Name.startswith("Stock") and obj.Name.endswith("Adapter")
+            else (0.92, 0.64, 0.19)
         )
         obj.ViewObject.LineColor = (0.35, 0.24, 0.07)
     for obj in registry.ReferenceParts:
@@ -105,13 +107,6 @@ def build_assembly():
     rail_assembly = rail.build_rail(doc)
     # 45deg flat orientation leaves margin within both published size screens.
     rail_assembly["printed"][0].PrintRotation = App.Rotation(V(0, 0, 1), 45)
-    settings = doc.addObject("App::FeaturePython", "AssemblySettings")
-    settings.Label = "EDIT | clamp approach for each module"
-    for station in MODULE_STATIONS:
-        key, default = station.clamp_control, station.default_approach
-        settings.addProperty("App::PropertyEnumeration", key, "Clamp direction")
-        setattr(settings, key, ["PositiveY", "NegativeY"])
-        setattr(settings, key, default)
     battery_module = create_group(
         doc, "BatteryEquipmentModule", "Battery | compact adhesive mount"
     )
@@ -128,11 +123,14 @@ def build_assembly():
     propulsion_module = propulsion.build_propulsion_module(doc)
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
-        x, clamp_control = station.x_mm, station.clamp_control
         if module is None:
             raise RuntimeError("Missing rail module: " + station.object_name)
         set_property(
-            module, "RailPositionX", x, "App::PropertyDistance", "Rail adjustment"
+            module,
+            "RailPositionX",
+            station.x_mm,
+            "App::PropertyDistance",
+            "Rail adjustment",
         )
         set_property(
             module, "RailFitContract", json.dumps(rail.fit_contract(), sort_keys=True)
@@ -140,44 +138,46 @@ def build_assembly():
         set_property(
             module,
             "RailPositionNotes",
-            f"Default X={x:g}mm. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
+            "Fine trim only within a supported rigid bay; lift/reinstall for coarse relocation. Disconnect wiring and remove overlying devices to access the top screws. Check collisions after repositioning.",
         )
-        module.Placement.Rotation = App.Rotation(V(0, 0, 1), station.yaw_deg)
+        module.Placement = App.Placement(
+            V(station.x_mm, 0, station.z_mm), App.Rotation(V(0, 0, 1), station.yaw_deg)
+        )
         set_property(
             module,
             "ModulePlacementContract",
             json.dumps(asdict(station), sort_keys=True),
         )
         module.setExpression("Placement.Base.x", "RailPositionX")
-        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
-        module.setExpression(
-            "Placement.Base.y",
-            f"AssemblySettings.{clamp_control} == 0 ? {shift:g} mm : {-shift:g} mm",
+    carbon_installations = [
+        stock_adapter.build_stock_adapter(doc, parent, kind)
+        for parent, kind in (
+            (battery_module, "battery"),
+            (electronics_module, "electronics"),
+            (accessory_module, "accessory"),
         )
-        set_property(
-            module,
-            "ClampDirectionControl",
-            "AssemblySettings."
-            + clamp_control
-            + "; module-local directions, before assembling. PositiveY nut loads local+X, NegativeY nut loads local-X. The module's fixed 0/180deg orientation maps these into the rail frame.",
-        )
-    mount_parts = [
-        mounts.build_mount(doc, battery_module, "battery"),
-        mounts.build_mount(doc, electronics_module, "electronics"),
-        mounts.build_mount(doc, accessory_module, "accessory"),
     ]
-    carbon_installation = stock_adapter.build_stock_adapter(doc, electronics_module)
+    mount_parts = [plate for kit in carbon_installations for plate in kit["plates"]]
     optical_assembly = optical_mount.build_optical_mount(
         doc, doc.getObject(OPTICAL_STACK_HOST)
     )
-    stack_interface.attach_to_host(
-        optical_assembly["group"], doc.getObject(OPTICAL_STACK_HOST)
-    )
     rail_clamps = []
-    for module, station in zip(modules, MODULE_STATIONS, strict=True):
+    for row in stock_adapter.joint_specs():
         rail_clamps += rail.build_clamp_hardware(
-            doc, module, module.Name, "AssemblySettings." + station.clamp_control
+            doc,
+            doc.getObject(row["parent_name"]),
+            row["clamp_prefix"],
+            centre_xy_mm=row["local_centre_xy"],
+            plate_thickness_mm=row["plate_thickness_mm"],
+            parent_z_mm=row["parent_z_mm"],
         )
+    rail_clamps += rail.build_clamp_hardware(
+        doc,
+        propulsion_module["group"],
+        "MainPropulsionModule",
+        plate_thickness_mm=3.0,
+        parent_z_mm=4.8,
+    )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:
             set_print_sku(obj, "MotorCarrier")
@@ -197,7 +197,6 @@ def build_assembly():
     fit_coupons["printed"] += propulsion.build_fit_coupons(doc)["printed"]
     printed_parts = (
         rail_assembly["printed"]
-        + mount_parts
         + propulsion_module["printed"]
         + optical_assembly["printed"]
     )
@@ -205,11 +204,10 @@ def build_assembly():
         rail_clamps
         + propulsion_module.get("hardware", [])
         + optical_assembly["hardware"]
-        + carbon_installation["hardware"]
+        + [obj for kit in carbon_installations for obj in kit["hardware"]]
     )
     for objects, category in [
         (rail_assembly["printed"], "Rail"),
-        (mount_parts, "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
         (optical_assembly["printed"], "Adjustable optical stack"),
         (fit_coupons["printed"], "Fit samples"),
@@ -299,7 +297,7 @@ def build_assembly():
         "mass_budget": mass_budget(printed_parts, hardware_parts),
         "rail_length_mm": rail.LENGTH,
         "rail_count": 1,
-        "rail_head_relief_gap_mm": rail.FLEX_GAP,
+        "rail_flexure_gap_mm": rail.FLEX_GAP,
         "rail_land_pitch_mm": rail.LAND_PITCH,
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
