@@ -17,20 +17,26 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 90)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -54)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
-        self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -158)
+        self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         self.assertNotIn("OpticalFlowModule", stations)
 
-    def test_accessory_station_keeps_whole_shoe_on_the_end_land(self):
-        from gondola.contracts.design import RAIL_LENGTH_MM
+    def test_compact_rail_preserves_shoe_end_margin_and_manufacturing_limit(self):
+        from gondola.contracts.design import (
+            MAX_PRINT_PART_DIMENSION_MM,
+            RAIL_LENGTH_MM,
+        )
 
         accessory = next(
             station
             for station in MODULE_STATIONS
             if station.object_name == "AccessoryEquipmentModule"
         )
-        self.assertLessEqual(abs(accessory.x_mm) + 9, RAIL_LENGTH_MM / 2)
-        self.assertEqual(abs(accessory.x_mm - (-162)), 4)
+        self.assertEqual(RAIL_LENGTH_MM, 300)
+        self.assertEqual(MAX_PRINT_PART_DIMENSION_MM, 340)
+        self.assertEqual(RAIL_LENGTH_MM / 2 - abs(accessory.x_mm) - 9, 1)
+        self.assertEqual(abs(accessory.x_mm - (-144)), 4)
+        self.assertEqual(abs(accessory.x_mm - (-135)), 5)
 
     def test_transverse_clamp_direction_tracks_fixed_half_turn(self):
         forward = ModuleStation("Forward", 0, "Clamp", "PositiveY")

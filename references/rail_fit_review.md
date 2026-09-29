@@ -27,30 +27,30 @@ geometry measurements, not load, indentation, friction or creep ratings.
 
 ## Repeated attachment wings
 
-The user's fabrication review requires a nominal minimum 1.5 mm tape-attachment
-thickness. Both the one-piece rail base and every tape wing now use 1.5 mm;
-the 340 mm length, head, shoe and all equipment/propulsor datums stay unchanged.
+The rail is 300 mm long; the manufacturing size limit remains 340 mm. The base
+and all tape wings retain the fabrication-review minimum of 1.5 mm nominal.
+Seven identical rounded 14 × 32 mm wing pairs repeat at 45 mm pitch, centred
+at X −135, −90, −45, 0, +45, +90 and +135 mm. Both ends and sides are symmetric.
+Fourteen separate 12 mm-wide tape strips leave 0.55 mm nominal clearance below
+the shoes. Keep tape off the head and sliding surfaces.
 
-Ten identical rounded 14 × 32 mm wing pairs repeat at 36 mm pitch, centred at
-X −162, −126, −90, −54, −18, +18, +54, +90, +126 and +162 mm. Both ends and
-both sides are symmetric. Every wing centre meets a full head land. Adjacent
-wing footprints leave the same 22 mm longitudinal gap; no extra local wings
-or thin adhesive ledges are used. The existing 12 mm-wide tape references
-are raised with the wings, leaving 0.55 mm nominal clearance below the shoe.
+The propulsion and battery stations at X0 and X90 have centred attachment
+wings. The FC at X−54 is 9 mm from the nearest wing centre: its shoe overlaps
+the wing footprint by 7 mm, but the clamp centre is outside the tape strip.
+The navigation station moves to X−140, 5 mm from its end wing centre and inside
+the tape strip. Its 18 mm shoe ends 1 mm before the rail end; this is a nominal
+assembly datum, not a manufacturing error allowance or permission to slide it
+farther outward. Verify the received end, full shoe engagement and solid clamp
+land before tightening. The underside radio and its connector reserve must
+stay beyond the rail end, so rail length and navigation position change together.
 
-The propulsion shoe at X0 is bracketed by the wings at X±18. Its 18 mm
-footprint ends 2 mm from their inner edges. Battery X90 and FC X−54 retain
-centred tape support; navigation X−158 stays 4 mm from the end wing centre
-and within that 12 mm tape reference. This is support proximity, not a
-strength or adhesion qualification. A wing on every 18 mm head land would
-add avoidable material and tape application work; the uniform 36 mm pattern
-retains nearby support without that duplication.
-
-The thicker base increases bending stiffness; the unchanged 4.5 mm head/web
-reliefs and 0.5 mm roots do not guarantee the previous curvature response.
-Print the updated rail coupon, then test the full rail at the actual envelope
-curvature and loading. Nominal 1.5 mm geometry is not a delivered-thickness,
-fatigue or minimum-bend-radius guarantee.
+The 31 mm open spans between wing footprints reduce attachment material and
+tape operations. Wing pitch is independent of the unchanged 18 mm head-land
+pitch; some wings cross a relieved head section without filling that relief.
+Support proximity alone is not a strength or adhesive qualification. Check full
+rail bending, tape peel and twist at the actual envelope curvature with populated
+carriers, especially the off-centre FC. A matched straight coupon qualifies only
+local fit. Nominal 1.5 mm thickness does not establish fatigue life or bend radius.
 
 ## Manufacture and acceptance
 

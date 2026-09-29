@@ -43,20 +43,35 @@ class PowerBenchServiceTests(unittest.TestCase):
             raise AssertionError("Saved fixture changed during read-only bench audit")
 
     def test_off_rail_contract_excludes_only_the_absent_rail_and_tape(self):
-        from gondola.power_export import _collisions, _portal_foot_service_conflicts
+        from gondola.power_export import _portal_foot_service_conflicts
 
-        old_hits = _collisions(self.tools, self.context)
-        self.assertTrue(any(row["second"] == "TapeWing1R" for row in old_hits))
         self.assertEqual(
             _portal_foot_service_conflicts(
                 self.physical, self.pose, self.context, self.off_rail
             ),
             [],
         )
-        # Omitting the explicit off-rail set must still expose the on-rail hit.
-        self.assertTrue(
-            _portal_foot_service_conflicts(self.physical, self.pose, self.context, ())
-        )
+        # Force an overlap for every registered rail/tape obstacle instead of
+        # relying on a particular wing pitch or carrier position to collide.
+        self.assertTrue(self.off_rail)
+        injection = self.tools["key_0"]
+        for name in sorted(self.off_rail):
+            with self.subTest(obstacle=name):
+                self.assertIn(name, self.context)
+                context = {
+                    **self.context,
+                    name: self.context[name].fuse(injection),
+                }
+                hits = _portal_foot_service_conflicts(
+                    self.physical, self.pose, context, ()
+                )
+                self.assertTrue(any(row["second"] == name for row in hits), hits)
+                self.assertEqual(
+                    _portal_foot_service_conflicts(
+                        self.physical, self.pose, context, self.off_rail
+                    ),
+                    [],
+                )
 
     def test_host_attached_and_unknown_obstacles_remain_blocking(self):
         from gondola.power_export import _portal_foot_service_conflicts

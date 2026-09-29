@@ -21,6 +21,12 @@ The radio uses the navigation carrier's opposite face beside the shoe; no
 separate long branch or projecting tab is required. Tape regions must remain
 fully backed by material; see the [plate interface](dense_mount_review.md).
 
+The default rail is 300 mm long. Navigation at X−140 and FC at X−54 leave
+22 mm between their 64 mm decks. Keep the radio outboard of the negative rail
+end; moving navigation inward without checking this underside envelope can
+cause a collision even when the two decks remain clear. These positions also
+require connector, optical relocation and optional-power service checks.
+
 Measured masses and lever arms must determine final trim. Neither equal spacing
 nor three regions imply equal mass. Battery envelopes describe the selected
 pack, not every capacity. With another pack or external supply, recheck supports,

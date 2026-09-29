@@ -12,7 +12,7 @@ def build_argument_parser():
     parser = argparse.ArgumentParser(
         prog="python3 -m gondola",
         description="PA12 airship gondola fit prototype. Run offline from this folder.",
-        epilog="Workflow: python3 -m gondola build → preview → validate → compare → bundle. "
+        epilog="Workflow: python3 -m gondola build → preview → compare → validate → bundle. "
         "build/preview overwrite generated files in build; "
         "preview must precede validate because it saves CAD display properties. "
         "Shape parameters: gondola/parts/. Unresolved interfaces: gondola/contracts/design.py. "

@@ -26,7 +26,7 @@ class BatteryPlacementTests(unittest.TestCase):
         electronics = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
         electronics.Placement.Base.x = -54
         accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
-        accessory.Placement.Base.x = -158
+        accessory.Placement.Base.x = -140
         mount = equipment_mounts.build_mount(cls.doc, cls.host, "battery")
         references, _ = equipment_envelopes.build_equipment(
             cls.doc, cls.host, electronics, accessory

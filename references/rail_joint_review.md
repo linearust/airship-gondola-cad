@@ -13,14 +13,13 @@ head lands at both clamp stations and inspect the actual screw tip for burrs.
 Tighten only enough to prevent slip, then check indentation, settling and creep
 under actual loads. A general-purpose screw is not a qualified pressure screw.
 
-The lower base and tape wings are 1.5 mm thick, incorporating the user's print
-review minimum. Ten identical paired wings use 36 mm pitch at X = ±18, ±54, ±90,
-±126 and ±162 mm. Their 14 mm longitudinal length leaves 22 mm between wings.
-They retain the continuous lower flexure and regular head lands. Default equipment
-stations align with wings; the central propulsion station is bracketed by ±18 mm
-wings. This geometry does not establish an acceptable balloon curvature, tape
-bond or flexure life. Qualify the matched rail/shoe coupon and full rail at the
-actual installed curvature with the selected PA12 process and finish.
+The 300 mm rail retains its 1.5 mm lower base and seven paired tape wings at
+45 mm pitch. The head, shoe and clamp interfaces remain unchanged. Wing spacing
+is independent of the head lands; the propulsion station now has a central wing.
+See [attachment geometry and support limits](rail_fit_review.md) for off-centre
+FC support and the navigation shoe's end margin. Qualify the matched rail/shoe
+coupon and full rail at the actual installed curvature, load and tape application
+with the selected PA12 process and finish.
 
 ## Fixed frame and postprocessing
 

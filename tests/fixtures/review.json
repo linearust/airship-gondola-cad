@@ -1,76 +1,95 @@
 {
-  "revision": "BK",
-  "independent_review": "Approved for fixture promotion after complete saved-native comparison; this is not physical qualification or a substitute for the final release pipeline.",
-  "before": {
-    "git_revision": "2803a9ad1398af739f0fb238108862d65952c5a6",
-    "path": "tests/fixtures/rev_bj_geometry.FCStd",
-    "sha256": "3fb50bda82e4bf78d4020d2f1de777f742868ab6ce1dd7714cabf6a78075ba08"
+  "revision": "BL",
+  "passed": true,
+  "fixture_promotion_approved": true,
+  "before_git_revision": "178a323662e2958950e60a238448c0ef6278585c",
+  "previous_fixture": {
+    "path": "tests/fixtures/geometry.FCStd",
+    "sha256": "18381282cc63cf5fbd52d85c7a757666d394cc6a488e1d099ef925852d08b611",
+    "revision": "BK"
   },
   "reviewed_candidate": {
-    "path": "/tmp/gondola-bk-candidate/gondola.FCStd",
-    "sha256": "18381282cc63cf5fbd52d85c7a757666d394cc6a488e1d099ef925852d08b611",
-    "source_fingerprint_before_fixture_promotion": "ca8773a1048f824963558bb9c286d9252ab0dccac12c8c831445fc2eb327626b"
+    "path": "/tmp/gondola-bl-candidate/gondola.FCStd",
+    "sha256": "13afa4689da8d6645d4db1dd6a1afc2860dd7f65a599d5043e89a650cdd7637f",
+    "source_fingerprint": "a7531bacc251dda07c837cdbffc1f121caad57c069bd989d0f61b41b171679cb"
   },
-  "shape_review": {
-    "before_shapes": 134,
-    "after_shapes": 136,
-    "existing_local_and_world_shapes_unchanged": 113,
-    "intended_existing_changes": {
-      "ContinuousRail": "Nominal base and tape wings 1.2→1.5 mm; ten identical wing pairs at36 mm pitch, mirrored about centre. Rail running head and datum preserved.",
-      "RailFitSample": "Matching1.5 mm base; rail/shoe fitting geometry preserved.",
-      "PropulsionFixedFrame": "Only four top/bottom entrance bevel prisms removed; no lateral Y wall widening.",
-      "TapeWing0L..TapeWing8R": "18 reference tape solids follow the new regular positions and1.5 mm wing top."
-    },
-    "added_shapes": [
+  "intended_geometry": {
+    "rail_length_mm": 300,
+    "rail_tape_wing_pairs": 7,
+    "wing_pitch_mm": 45,
+    "base_and_wing_thickness_mm": 1.5,
+    "accessory_station_x_mm": -140,
+    "estimated_printed_PA12_mass_saving_g": 3.289669959952812
+  },
+  "review": {
+    "permitted_local_shape_changes": [
+      "ContinuousRail",
+      "TapeWing0L",
+      "TapeWing0R",
+      "TapeWing1L",
+      "TapeWing1R",
+      "TapeWing2L",
+      "TapeWing2R",
+      "TapeWing3L",
+      "TapeWing3R",
+      "TapeWing4L",
+      "TapeWing4R",
+      "TapeWing5L",
+      "TapeWing5R",
+      "TapeWing6L",
+      "TapeWing6R"
+    ],
+    "permitted_shape_removals": [
+      "TapeWing7L",
+      "TapeWing7R",
+      "TapeWing8L",
+      "TapeWing8R",
       "TapeWing9L",
       "TapeWing9R"
     ],
-    "removed_shapes": [],
-    "all_existing_placements_types_parents_solid_counts_and_print_blanks_preserved": true,
-    "frame_cut_independent_probe": {
-      "construction": "Four literal triangular prisms,0.6x0.6mm XZ right triangle extruded2.2mm inY; two at x8.4..9,y6.95..9.15,z4.825/8.975 and two mirrored180deg aboutZ. No current-source chamfer helper used.",
-      "removed_volume_mm3": 1.5839999999999923,
-      "added_volume_mm3": 0.0,
-      "expected_removed_volume_mm3": 1.584,
-      "symmetric_difference_to_literal_prisms_mm3": 0.0,
-      "passed": true
-    }
-  },
-  "native_review": {
-    "expressions_identical": true,
-    "independent_literal_control_cases_per_document": 34,
-    "baseline_control_cases_per_document": 29,
-    "all_control_checks_passed": true,
-    "control_behavior_identical": true,
-    "control_values_and_placements_restored": true,
-    "registry_change": "TapeReferences appends onlyTapeWing9L/R; every other registry list unchanged.",
-    "custom_property_changes": [
-      "Remove obsolete DesignRegistry.NotionSource/NotionLastEdited; no remaining native property schema changes on existing objects.",
-      "Rail and frame manufacturing/print notes and rail1.5 mm unresolved-fit wording.",
-      "CapacitorServiceReserve.SourceURL becomes an explicit local user design-reserve reference.",
-      "Four M1.4 horn nuts cite the preserved final2026-09-29 cart; physical nut claims unchanged.",
-      "Generated source fingerprint/UID and preview visibility differences only otherwise."
+    "unchanged_existing_local_shape_count": 115,
+    "unchanged_existing_world_shape_count": 107,
+    "accessory_translation_mm": [
+      18,
+      0,
+      0
     ],
-    "property_capture_errors": 0
+    "native_controls": "Both documents pass 34 independent literal cases and 29 baseline control cases. Only raw absolute +18 mm accessory test coordinates differ because the saved station moved; behavior and expressions are unchanged.",
+    "metadata": "All retained types, parentage, property schemas, procurement metadata and print blanks unchanged. Reviewed rail labels/manufacturing notes/print-layout origin/rail-travel limits, accessory station contract, generated UUIDs, source hash, tape registry, rail-flexure release text and removal of stale power-plan world-X wording. No unrelated source selection changes.",
+    "release_limit": "Geometric source-fixture promotion only. Full fresh final CAD validation and physical prototype qualification remain separate."
   },
-  "evidence": {
-    "full_audit_sha256": "5e184ac117ffeef9eca459ac703fccfc2b20d013daa5bd2a37853ed0d213f679",
-    "audit_script_sha256": "444d14da6f7ab6b95e27cde41931d4c9849315c1d78fecf155aa6f5fd2cc25ab",
-    "read_only_files_unchanged": true,
-    "source_unchanged_during_capture": true,
-    "storage": "Full transition audit and audit script are retained in references/design_checks.json.gz after final collection; old revisions remain in Git history.",
-    "current_archive": "references/design_checks.json.gz"
+  "checks": {
+    "old_shape_count": 136,
+    "new_shape_count": 130,
+    "independent_control_cases_per_document": 34,
+    "baseline_control_cases_per_document": 29,
+    "retained_expressions_equal": true,
+    "retained_property_schemas_equal": true,
+    "printed_and_purchased_inventory_unchanged": true,
+    "files_read_only": true,
+    "source_unchanged_during_audit": true,
+    "rail_interface_interior_above_z2_2_unchanged": true,
+    "radio_to_rail_mm": 6.900000000000006,
+    "radio_connector_to_rail_mm": 4.900000000000006,
+    "accessory_to_FC_plates_mm": 22.0
   },
-  "limits": [
-    "No source geometry whitelist was installed and no baseline fixture was changed by this audit.",
-    "First all-edge bevel candidate was superseded before approval; final frame removes1.584 mm³ only and preserves lateral capture walls.",
-    "Final native suite, saved-CAD checks, motion/service checks, export and visual review must bind the promoted source/file.",
-    "Printed fit, bending/creep/fatigue, tape strength, tool dimensions and assembly loads remain physical qualification work."
+  "physical_limits": [
+    "Accessory shoe has 1 mm nominal end margin, not a guaranteed received-parts tolerance margin; inspect engagement and matched fit on the actual curved rail.",
+    "Seven wing pairs retain full 1.5 mm material but reduce adhesive support and increase open longitudinal spans to 31 mm. Loaded tape retention, PA12 curvature/fatigue and local support stiffness are unqualified.",
+    "Mass saving uses CAD volume and provisional PA12 density 1.01 g/cm3; excludes tape mass and is not a measured vehicle saving."
   ],
-  "passed": true,
-  "fixture_promotion_approved": true,
+  "evidence": {
+    "full_audit_path": "/tmp/bl-layout-transition-audit.json",
+    "full_audit_sha256": "44670f548451c670b391950abc547609b48e11e6a2de483c116280bfda3f5af8",
+    "audit_script_path": "/tmp/bl-layout-transition-audit.py",
+    "audit_script_sha256": "f478218ea1edbff9dce70dcf0f18f86dc468b3f6c534cfcd4c8dd0016b2a5bed",
+    "rail_facts_script_sha256": "b7a704f69449d6cc5543dd0a4524a9561c127ab8d9a6a8335aeb754ebc4d4415",
+    "rail_facts_sha256": "64f64977ff5283ff4a22dbb64d492477cc4f4f51cf6b43033a8fb2cb30cd3232",
+    "review_finalize_script_sha256": "a8b3db1fd2b55081b6f8cfb45d585b02467d791bc45ab4ff77199cdad29dfc91",
+    "storage": "Full audit, classification and independent rail facts retained in references/design_checks.json.gz; prior revisions remain in Git history."
+  },
   "promoted_fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "18381282cc63cf5fbd52d85c7a757666d394cc6a488e1d099ef925852d08b611"
+    "sha256": "13afa4689da8d6645d4db1dd6a1afc2860dd7f65a599d5043e89a650cdd7637f"
   }
 }

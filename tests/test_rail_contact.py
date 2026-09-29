@@ -20,16 +20,16 @@ class RailContactTests(unittest.TestCase):
         current = rail.rail_shape()
         self.assertTrue(current.isValid())
         self.assertEqual(len(current.Solids), 1)
-        self.assertEqual(len(rail.PAD_CENTRES), 10)
+        self.assertEqual(rail.PAD_CENTRES, (-135, -90, -45, 0, 45, 90, 135))
         self.assertEqual(
             [b - a for a, b in zip(rail.PAD_CENTRES, rail.PAD_CENTRES[1:])],
-            [36] * 9,
+            [45] * 6,
         )
         self.assertEqual(rail.PAD_CENTRES, tuple(-x for x in rail.PAD_CENTRES[::-1]))
         # Probe actual BRep material, including both wings and every relieved
         # base section; a nominal constant alone must not certify thickness.
         locations = [(x, y) for x in rail.PAD_CENTRES for y in (-12, 12)]
-        locations += [(9 + 18 * i, 0) for i in range(-9, 9)]
+        locations += [(9 + 18 * i, 0) for i in range(-8, 8)]
         for x, y in locations:
             with self.subTest(x=x, y=y):
                 witness = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
@@ -38,13 +38,13 @@ class RailContactTests(unittest.TestCase):
                     1.5,
                 )
         self.assertLess(current.cut(rail.half_turn(current)).Volume, 1e-6)
-        self.assertAlmostEqual(current.BoundBox.XLength, 340)
+        self.assertAlmostEqual(current.BoundBox.XLength, 300)
         self.assertAlmostEqual(current.BoundBox.YLength, 32)
         self.assertAlmostEqual(current.BoundBox.ZLength, 8.4)
         # Regular wings do not bridge any raised head/web relief.
-        self.assertTrue(rail.flex_relief_check(current, 340)["passed"])
+        self.assertTrue(rail.flex_relief_check(current, 300)["passed"])
 
-    def test_ten_paired_tape_stations_keep_the_single_wing_coupon(self):
+    def test_seven_paired_tape_stations_keep_the_single_wing_coupon(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
@@ -52,14 +52,14 @@ class RailContactTests(unittest.TestCase):
         try:
             kit = rail.build_rail(doc)
             self.assertEqual(len(kit["printed"]), 1)
-            self.assertEqual(len(kit["tapes"]), 20)
+            self.assertEqual(len(kit["tapes"]), 14)
             centres = sorted(
                 round((obj.Shape.BoundBox.XMin + obj.Shape.BoundBox.XMax) / 2, 6)
                 for obj in kit["tapes"]
             )
             self.assertEqual(
                 centres,
-                sorted([-162, -126, -90, -54, -18, 18, 54, 90, 126, 162] * 2),
+                sorted([-135, -90, -45, 0, 45, 90, 135] * 2),
             )
             solid = kit["printed"][0].Shape
             for tape in kit["tapes"]:
@@ -78,6 +78,31 @@ class RailContactTests(unittest.TestCase):
             self.assertAlmostEqual(coupon.BoundBox.XLength, 48)
         finally:
             App.closeDocument(doc.Name)
+
+    def test_invalid_rail_arguments_fail_before_geometry_construction(self):
+        from gondola.parts import rail
+
+        for length in (0, -1, math.nan, math.inf, -math.inf, True, None, "300"):
+            with self.subTest(length=length), self.assertRaises(ValueError):
+                rail.rail_shape(length, ())
+        for pads in ((math.nan,), (math.inf,), (True,), ("0",), None, (0, 0)):
+            with self.subTest(pads=pads), self.assertRaises(ValueError):
+                rail.rail_shape(48, pads)
+        # A short coupon must explicitly choose compatible wing positions;
+        # otherwise the defaults would silently extend its physical length.
+        for pads in ((-18,), (18,), rail.PAD_CENTRES):
+            with self.subTest(pads=pads), self.assertRaises(ValueError):
+                rail.rail_shape(48, pads)
+
+    def test_wing_limit_and_unwinged_sections_preserve_requested_length(self):
+        from gondola.parts import rail
+
+        for pads in ((), (-17, 17)):
+            with self.subTest(pads=pads):
+                section = rail.rail_shape(48, pads)
+                self.assertTrue(section.isValid())
+                self.assertEqual(len(section.Solids), 1)
+                self.assertAlmostEqual(section.BoundBox.XLength, 48)
 
     def test_flex_reliefs_are_open_through_the_entire_raised_head(self):
         from gondola.parts import rail

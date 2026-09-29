@@ -8,9 +8,9 @@
   },
   "basis": {
     "cad_file": "gondola.FCStd",
-    "cad_sha256": "cbccb4dc054afb69438b659f7922a2a06f1893c2bc3d74ce6d37cc2f3e2141af",
-    "source_fingerprint": "62ddd8ffacc5841b7e3e56f1dc2c7841fe2517ce4bb05fef788759dfdc2f4f7d",
-    "validation_sha256": "940486cbf2be5c167bc553c9c44e59a6d1d3438b393b277513523eea9eb9a6a2",
+    "cad_sha256": "526d46d7a03463bd6652a7876cdd39119ad24e9b6b3d6e303ef53b3249abd85c",
+    "source_fingerprint": "5a252cb9a488a597a9c02ca1d8d36ac74b5ad38060857122d0f121121af5e9b6",
+    "validation_sha256": "72bf38279a04ce40f2dac77addf23e946db34c4767000a6692df5d8e8f2b9988",
     "exporter_sha256": "fe93dd5e0926105d3de7a2a129c00fdc04ad78d6059a335053ca5a0a94dd5300"
   },
   "frame": {
@@ -141,7 +141,7 @@
         0.0
       ],
       "AccessoryEquipmentModule": [
-        -0.158,
+        -0.14,
         -0.0001,
         0.0
       ]
@@ -166,7 +166,7 @@
       "ModulePASEnvelope": {
         "label": "REFERENCE | LinkTrack P-AS | interchangeable navigation slot",
         "position_m": [
-          -0.158,
+          -0.14,
           0.0021,
           0.0229
         ]
@@ -174,7 +174,7 @@
       "ModuleRadioEnvelope": {
         "label": "REFERENCE | LR24-F-Mini | onboard radio",
         "position_m": [
-          -0.184,
+          -0.166,
           0.0109,
           0.0095
         ]
@@ -197,7 +197,7 @@
       -0.0001,
       0.035
     ],
-    "rail_length_m": 0.34
+    "rail_length_m": 0.3
   },
   "whole_airship": {
     "ready_for_system_identification": false,
