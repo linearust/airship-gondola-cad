@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "inertia": "kg*m^2",
+    "angle": "rad except explicitly named *_deg fields"
+  },
+  "basis": {
+    "cad_file": "gondola.FCStd",
+    "cad_sha256": "59a6fafe1e0fa403518e18ee459a90224f5c5a14bed51808453370ff97709e94",
+    "source_fingerprint": "1cd32f916195e2f6e89761bdd73ec4da58f1f4ec4f53ce5da0bf2f0b051e8326",
+    "validation_sha256": "dc6f2f709f2f96b4ba84b75f6dad6fde598d0d17ffd545d99dd322fe5b2324fe",
+    "exporter_sha256": "1cc4d1a2d37d9670e029634023957c91f38a851bb00b2daee3acdc14201979dc"
+  },
+  "frame": {
+    "name": "native_CAD",
+    "handedness": "right",
+    "origin": "Straight rail midpoint at its nominal envelope-contact plane, Z=0. Not CV or CG; installed rail curvature is not represented.",
+    "positive_x": "Along the rail and neutral motor geometric axes; vehicle-forward and thrust sign unverified.",
+    "positive_y": "Toward the CAD object labelled Port; do not infer an FRD vehicle frame from side names.",
+    "positive_z": "Away from the envelope, nominally downward."
+  },
+  "exact_geometry": {
+    "main_propulsors": {
+      "Port": {
+        "cad_label_not_verified_vehicle_side": true,
+        "pivot_cad_m": [
+          0.0,
+          0.0656,
+          0.0482
+        ],
+        "motor_envelope_centre_cad_m": [
+          0.0,
+          0.0656,
+          0.0482
+        ],
+        "propeller_envelope_centre_cad_m": [
+          0.012,
+          0.0656,
+          0.0482
+        ],
+        "neutral_geometric_axis_cad": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "positive_tilt_axis_cad": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "positive_thrust_sign": null
+      },
+      "Starboard": {
+        "cad_label_not_verified_vehicle_side": true,
+        "pivot_cad_m": [
+          0.0,
+          -0.0654,
+          0.0482
+        ],
+        "motor_envelope_centre_cad_m": [
+          0.0,
+          -0.0654,
+          0.0482
+        ],
+        "propeller_envelope_centre_cad_m": [
+          0.012,
+          -0.0654,
+          0.0482
+        ],
+        "neutral_geometric_axis_cad": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "positive_tilt_axis_cad": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "positive_thrust_sign": null
+      }
+    },
+    "main_pivot_span_m": 0.131,
+    "pivot_height_from_rail_contact_m": 0.0482,
+    "servo_to_output_angle_ratio": -3.0,
+    "module_origins_cad_m": {
+      "MainPropulsionModule": [
+        0.0,
+        0.0001,
+        0.0
+      ],
+      "BatteryEquipmentModule": [
+        0.09,
+        -0.0001,
+        0.0
+      ],
+      "ElectronicsEquipmentModule": [
+        -0.054,
+        -0.0001,
+        0.0
+      ],
+      "AccessoryEquipmentModule": [
+        -0.158,
+        -0.0001,
+        0.0
+      ]
+    },
+    "device_envelope_box_centres_cad_m": {
+      "ModuleBatteryEnvelope": {
+        "label": "REFERENCE | provisional2S battery, long axisY",
+        "position_m": [
+          0.09,
+          -0.0001,
+          0.0239
+        ]
+      },
+      "ModuleFCEnvelope": {
+        "label": "REFERENCE | MicoAir743v2-AIO-45A",
+        "position_m": [
+          -0.054,
+          -0.0001,
+          0.0274
+        ]
+      },
+      "ModulePASEnvelope": {
+        "label": "REFERENCE | LinkTrack P-AS | interchangeable navigation slot",
+        "position_m": [
+          -0.158,
+          0.0021,
+          0.0229
+        ]
+      },
+      "ModuleRadioEnvelope": {
+        "label": "REFERENCE | LR24-F-Mini | onboard radio",
+        "position_m": [
+          -0.184,
+          0.0109,
+          0.0095
+        ]
+      },
+      "ModuleMTF02PEnvelope": {
+        "label": "MTF-02P | independently leveled optical face",
+        "position_m": [
+          0.14,
+          -0.0001,
+          0.04815
+        ]
+      }
+    },
+    "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
+    "optical_host": "BatteryEquipmentModule",
+    "optical_pitch_deg": 0.0,
+    "optical_pitch_pivot_cad_m": [
+      0.14,
+      -0.0001,
+      0.0374
+    ],
+    "rail_length_m": 0.34
+  },
+  "simplified_geometry": {
+    "available": true,
+    "status": "Optional preliminary model only; CAD and manufacturing dimensions are unchanged.",
+    "pivot_positions_cad_m": {
+      "Port": [
+        0,
+        0.065,
+        0.05
+      ],
+      "Starboard": [
+        0,
+        -0.065,
+        0.05
+      ]
+    },
+    "span_m": 0.13,
+    "rail_contact_to_pivot_m": 0.05,
+    "position_error_m": {
+      "Port": 0.0018973665961010315,
+      "Starboard": 0.00184390889145858
+    },
+    "absolute_moment_error_bound_Nm_per_N": {
+      "Port": 0.0018973665961010315,
+      "Starboard": 0.00184390889145858
+    },
+    "error_scope": "Per motor: |delta torque| <= |delta position| * |force| in the same frame. Not a relative error bound or an inertia approximation."
+  },
+  "whole_airship": {
+    "ready_for_system_identification": false,
+    "cv_definition": "Proposed: centre of displaced volume of the inflated fitted ellipsoid; confirm with the simulation team.",
+    "cv_to_cad_origin_vehicle_m": null,
+    "cad_to_vehicle_rotation_matrix": null,
+    "ellipsoid_full_diameters_m": null,
+    "ellipsoid_to_vehicle_rotation_matrix": null,
+    "inflated_volume_m3": null,
+    "helium_mole_fraction": null,
+    "gas_temperature_K": null,
+    "gas_absolute_pressure_Pa": null,
+    "dry_mass_kg": null,
+    "gas_mass_kg": null,
+    "total_mass_including_gas_kg": null,
+    "cv_to_cg_vehicle_m": null,
+    "inertia_about_cg_vehicle_diagonal_kg_m2": null,
+    "gas_inertia_convention": null,
+    "cv_to_gondola_cg_vehicle_m": null,
+    "cv_to_main_motor_pivots_vehicle_m": null,
+    "aft_yaw_motor_position_vehicle_m": null,
+    "aft_yaw_motor_axis_vehicle": null,
+    "scope": "Fins and aft yaw installation are outside gondola CAD. A bare-hull aerodynamic approximation does not remove physically installed items from mass/CG/inertia. Null means unknown, never zero."
+  }
+}

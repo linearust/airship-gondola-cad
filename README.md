@@ -18,6 +18,8 @@ Source defines implementation, not physical qualification or immutable requireme
   or operating looseness. Favor reusable mounting interfaces where practical.
 - Consider assembly, wiring, motion clearance and balance together; use realistic
   manufacturing margins and distinguish verified interfaces from assumptions.
+- Prefer simple major layout dimensions when mechanically equivalent; keep simulation
+  approximations explicit and separate from manufacturing dimensions.
 - Redesign/reselect when the whole assembly improves. Existing geometry and methods
   are means, not goals.
 
@@ -166,7 +168,7 @@ from gondola.freecad_runtime import locate_appimage, mounted_appimage
 with mounted_appimage(locate_appimage()) as mount:
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join((str(REPO_ROOT), str(mount / "usr/lib")))
-    for folder in ("tests", "tools/blender_review"):
+    for folder in ("tests", "tools/blender_review", "tools/simulation"):
         subprocess.run([str(mount / "AppRun"), "python", "-m", "unittest",
                         "discover", "-s", folder, "-v"],
                        cwd=REPO_ROOT, env=env, check=True)
@@ -214,6 +216,13 @@ rigid motion, not continuous collisions, dynamics, wires or strength. No optical
 host transfer/powered alignment; optional power is reviewed in FreeCAD. Display uses
 a whole-scene X half-turn without changing native coordinates. Blender-only changes
 do not justify re-pinning CAD.
+
+Simulation: [parameter sheet](references/simulation_parameters.md) and its linked
+SI snapshot separate CAD datums, optional rounding and unmeasured whole-airship inputs.
+`python3 tools/simulation/export_parameters.py` reads validated saved CAD without
+modifying it. Re-export after layout changes; native coordinates are not automatically
+CV/FRD coordinates. Exporter-only changes need its native tests and a fresh extraction,
+not a CAD re-pin; do not infer physical mass/CG from equipment-envelope volumes.
 
 ## Collaboration
 
