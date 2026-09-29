@@ -44,16 +44,16 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BG:** actual 150 mm main-axis spacing and 50 mm rail-contact-to-axis height;
-two driven output stubs lengthened to 34 mm, with existing gears/servo placement
-in Y and 14/18 mm idler/input stubs retained. Longer gear overhang needs loaded
-mesh verification. No additional parts. Retains BF manufacturer X06 half arm 1,
-round-hole/slot adapters, symmetric common plates and centreline optical support.
-[Horn interface](references/servo_horn_compatibility.md),
-[plate](references/dense_mount_review.md),
-[optical support](references/centreline_optical_review.md),
-[dimension decision](references/propulsion_dimensions_review.md),
-[review and verification](references/bg_design_verification.json).
+**BH:** retains actual 150 mm main-axis spacing and 50 mm contact-plane-to-axis
+height. Independent centreline optical shoe/post replaces the carrier-mounted foot;
+one rail clamp and one pitch clamp. Universal carriers gain a central M2 bore,
+side-loaded nut seat and protective blind floor. The OEM-horn adapter now has a
+rounded taper; its locating seat and round-hole/short-slot joint remain. Output
+bearings move nearer the gears: 75.5 mm pair spacing, 13.5 mm shaft grips and
+straight 6 mm posts. Driven/idler/input rods are 34/22/18 mm; bearing count stays four.
+[Current design review](references/bh_design_review.md),
+[verification](references/bh_design_verification.json),
+[OEM horn evidence](references/servo_horn_compatibility.md).
 Existing rail supports and removable servo-module architecture remain.
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
@@ -97,7 +97,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BG. Preserve them during refactors;
+The architecture-specific checks below describe BH. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -115,17 +115,19 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   slot seats/datum offset and continuous lands/tape patches. M2 heads are unqualified
   for M3-width slots. Mini body/tape/connector datums jointly clear both rail-clamp and
   power-foot service paths. Bench-service off rail; tape wings are not equipment pads.
-- Optical/raised-power feet share outer slots, not datums/supports. Bound permitted
-  translation/yaw; openings must pass through fused supports. Direct tether boards
-  replace the battery on its carrier; move optics to the FC host. Raised power is
-  a separate option. Compose power, navigation and optical checks; matching slots
-  do not permit arbitrary stacking or simultaneous devices. Keep optional inventory separate.
-- Optical uses `optical_interface.attach_to_host()` / `optical_mount.set_pitch()`:
-  pitch-Y only, bonded uninterrupted tray, clamped foot/pivot. Without optional power,
-  P-AS/MG-A01 allow battery/FC hosts; direct MG-F10-A allows battery only due to FC-host
-  view obstruction. Power can further restrict hosts: follow its report. Navigation/
-  propulsion hosts and arbitrary corners are unqualified. Retain rejected cases;
-  the saved selected configuration must pass.
+- The central M2 hole has a side-loaded ordinary nut and blind floor above the
+  rail. Load the nut off rail; select screw length from the actual stack. A bare
+  plate's nominal M2×5 example leaves 0.4 mm floor clearance. Check the received
+  nut in this vertical printed seat; the rail coupon has a different orientation.
+  Do not bottom the screw or
+  assume the floor is a torque stop. This optional joint is excluded from baseline
+  hardware. Preserve continuous adhesive strips around the central opening.
+- Optical is an independent rail module with `RailPositionX` and pitch-Y only
+  (`optical_mount.set_pitch`). Default X144 mm; direct tether uses X158 mm.
+  Moving the shoe changes clearance and field of view: follow composed power/
+  navigation/sensor checks, including rejected configurations. Raised power uses
+  the outer plate slots; rail position alone does not qualify arbitrary stacking.
+  No roll correction, self-levelling or physical pointing qualification is claimed.
 - Check the selected manufacturer horn against its retained STEP, the two prepared
   horn holes, round/slot interface, seating/concentricity, screw/nut direction/access,
   servo clearance and ordered removal. Nominal geometry is not physical measurement.
@@ -198,7 +200,7 @@ python3 -m gondola bundle
 
 Build/preview overwrite outputs; preserve manual edits first. Preview needs a display
 and saves the previewed CAD files, so it precedes file-bound checks. Inspect assembly, print
-layout and both optical-host views; restore configured host before saving. Alternate
+layout and the optical-rail view; preserve the configured rail station before saving. Alternate
 paths: put `--output-dir PATH` / `--freecad-appimage PATH` before the subcommand;
 use the output directory consistently. Retain exact-source/file verification in Git.
 Fingerprint covers `gondola/**/*.py`, files in `gondola/data/` and root `.FCMacro`,
@@ -217,7 +219,7 @@ After native validation, `python3 tools/blender_review/run.py --render-stills`
 creates `build/blender_review/cad_review.blend`; add `--open` when requested.
 Verify source/CAD hashes and `verification.json`. This checks sampled prescribed
 rigid motion, not continuous collisions, dynamics, wires or strength. No optical
-host transfer/powered alignment; optional power is reviewed in FreeCAD. Display uses
+rail transfer/powered alignment; optional power is reviewed in FreeCAD. Display uses
 a whole-scene X half-turn without changing native coordinates. Blender-only changes
 do not justify re-pinning CAD.
 

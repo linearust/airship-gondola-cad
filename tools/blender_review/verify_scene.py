@@ -14,6 +14,14 @@ TRANSLATION_TOLERANCE_M = 1e-7
 ROTATION_TOLERANCE_RAD = 1e-5
 MATRIX_TOLERANCE = 1e-5
 MAX_DISCREPANCIES = 30
+EXPECTED_SCENE_NAMES = (
+    "01 Assembly",
+    "02 Independent tilt",
+    "03 Gear and horn",
+    "04 Axial allowance",
+    "05 Optical rail trim",
+    "06 Servo module removal",
+)
 
 
 def file_sha256(path):
@@ -119,8 +127,12 @@ def verify(payload, blend):
 
     definitions = payload["scenes"]
     expected_names = [definition["name"] for definition in definitions]
-    if len(definitions) != 7 or len(set(expected_names)) != 7:
-        fail("source_scene_inventory", names=expected_names)
+    if tuple(expected_names) != EXPECTED_SCENE_NAMES:
+        fail(
+            "source_scene_inventory",
+            expected=list(EXPECTED_SCENE_NAMES),
+            names=expected_names,
+        )
     if set(bpy.data.scenes.keys()) != set(expected_names):
         fail(
             "scene_inventory",

@@ -49,7 +49,7 @@ class SavedGeometryTests(unittest.TestCase):
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.14, -0.0001, 0.0374])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.144, 0.0001, 0.03])
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
         for name in ("Port", "Starboard"):
             self.assertEqual(
@@ -160,7 +160,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 2)
+                self.assertEqual(snapshot["schema_version"], 3)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

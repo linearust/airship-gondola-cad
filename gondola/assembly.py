@@ -20,7 +20,6 @@ from gondola.contracts.design import (
     MODULE_STATIONS,
     NOTION_LAST_EDITED,
     NOTION_URL,
-    OPTICAL_STACK_HOST,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     WIRING_PURCHASE_PLAN,
     release_status,
@@ -115,7 +114,7 @@ def build_assembly():
     electronics_module = create_group(
         doc,
         "ElectronicsEquipmentModule",
-        "FC | compact carrier and optical-stack host",
+        "FC | common rail carrier",
     )
     accessory_module = create_group(
         doc,
@@ -123,6 +122,7 @@ def build_assembly():
         "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
+    optical_assembly = optical_mount.build_optical_mount(doc)
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         x, clamp_control = station.x_mm, station.clamp_control
@@ -163,12 +163,6 @@ def build_assembly():
         mounts.build_mount(doc, electronics_module, "electronics"),
         mounts.build_mount(doc, accessory_module, "accessory"),
     ]
-    optical_assembly = optical_mount.build_optical_mount(
-        doc, doc.getObject(OPTICAL_STACK_HOST)
-    )
-    optical_interface.attach_to_host(
-        optical_assembly["group"], doc.getObject(OPTICAL_STACK_HOST)
-    )
     rail_clamps = []
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         rail_clamps += rail.build_clamp_hardware(
@@ -206,7 +200,7 @@ def build_assembly():
         (rail_assembly["printed"], "Rail"),
         (mount_parts, "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
-        (optical_assembly["printed"], "Adjustable optical stack"),
+        (optical_assembly["printed"], "Independent optical rail mount"),
         (fit_coupons["printed"], "Fit samples"),
     ]:
         set_print_category(objects, category)
@@ -300,8 +294,7 @@ def build_assembly():
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
         "optical_mount": optical_mount.mount_contract(),
-        "optical_stack": optical_interface.interface_contract(),
-        "optical_stack_host": OPTICAL_STACK_HOST,
+        "optical_rail_interface": optical_interface.interface_contract(),
         "installed_printed_part_count": len(printed_parts),
         "purchased_hardware_count": len(hardware_parts),
         "unique_stl_count": manifest["unique_stl_count"],

@@ -114,7 +114,9 @@ class IntegralBearingCaptureTests(unittest.TestCase):
             translated_shape(p.bearing_shape(), y=p.BEARING_START_Y)
             if bearing is None
             else bearing,
-            p.cylinder(1.5, 14, (0, 20, 0)) if shaft is None else shaft,
+            p.cylinder(1.5, p.OUTPUT_IDLE_SHAFT_LENGTH, (0, p.OUTPUT_SHAFT_INNER_Y, 0))
+            if shaft is None
+            else shaft,
             seat,
             self.carrier,
         )
@@ -153,7 +155,7 @@ class IntegralBearingCaptureTests(unittest.TestCase):
         from gondola.validation.bearing_capture import bearing_stack_check
 
         # A deliberately shortened journal isolates both axial coverage limits.
-        shaft = self.p.cylinder(1.5, 6.1, (0, 27.9, 0))
+        shaft = self.p.cylinder(1.5, 6.1, (0, self.p.BEARING_START_Y - 0.6, 0))
         for toward, away, expected_coverage, passed in (
             (0.25, 2.5, 2.7, True),
             (0.5, 2.5, 2.6, False),
@@ -211,7 +213,11 @@ class IntegralBearingCaptureTests(unittest.TestCase):
         bearing, shaft, frame, carrier = self._stack()
         for candidate in (
             translated_shape(shaft, x=0.1),
-            self.p.cylinder(1.4, 14, (0, 20, 0)),
+            self.p.cylinder(
+                1.4,
+                self.p.OUTPUT_IDLE_SHAFT_LENGTH,
+                (0, self.p.OUTPUT_SHAFT_INNER_Y, 0),
+            ),
         ):
             report = bearing_stack_check(
                 bearing, candidate, frame, carrier, toward_travel=0.5, away_travel=0.5
@@ -228,9 +234,9 @@ class IntegralBearingCaptureTests(unittest.TestCase):
     def test_broad_carrier_stop_face_remains_rotation_invariant(self):
         p = self.p
         for side in (-1, 1):
-            witness = p.cylinder(3.55, 0.01, (0, side * 26 - 0.005, 0)).cut(
-                p.cylinder(3.25, 0.01, (0, side * 26 - 0.005, 0))
-            )
+            witness = p.cylinder(
+                3.55, 0.01, (0, side * p.CARRIER_END_Y - 0.005, 0)
+            ).cut(p.cylinder(3.25, 0.01, (0, side * p.CARRIER_END_Y - 0.005, 0)))
             volumes = []
             for angle in range(0, 360, 30):
                 rotated = self.carrier.copy()

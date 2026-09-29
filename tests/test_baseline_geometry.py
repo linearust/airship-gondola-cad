@@ -102,6 +102,7 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc = App.newDocument("ManualControlRegression")
         self.addCleanup(App.closeDocument, doc.Name)
         settings = doc.addObject("App::FeaturePython", "AssemblySettings")
+        optical = build_optical_mount(doc)["group"]
         modules = []
         for station in MODULE_STATIONS:
             set_property(
@@ -110,7 +111,11 @@ class ModuleControlMappingTests(unittest.TestCase):
                 ["PositiveY", "NegativeY"],
                 "App::PropertyEnumeration",
             )
-            module = create_group(doc, station.object_name, station.object_name)
+            module = (
+                optical
+                if station.object_name == "OpticalFlowModule"
+                else create_group(doc, station.object_name, station.object_name)
+            )
             module.Placement.Rotation = App.Rotation(
                 App.Vector(0, 0, 1), station.yaw_deg
             )
@@ -133,7 +138,6 @@ class ModuleControlMappingTests(unittest.TestCase):
         registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         set_property(registry, "Modules", modules, "App::PropertyLinkListGlobal")
         set_property(registry, "TiltingPods", pods, "App::PropertyLinkListGlobal")
-        build_optical_mount(doc, doc.BatteryEquipmentModule)
         doc.recompute()
         result = control_behavior(doc)
         self.assertTrue(result["passed"], result)
@@ -185,14 +189,14 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc = App.newDocument("StackGroupMetadataRegression")
         self.addCleanup(App.closeDocument, doc.Name)
         group = create_group(doc, "OpticalFlowModule", "Optical head")
-        set_property(group, "StackHostName", "BatteryEquipmentModule")
+        set_property(group, "OpticalInterfaceContract", '{"default_station_x_mm":144}')
         set_property(group, "HoldingTorqueVerified", False, "App::PropertyBool")
         original = native_interface_metadata(doc)
         self.assertIn(group.Name, original)
         group.HoldingTorqueVerified = True
         self.assertNotEqual(original, native_interface_metadata(doc))
         group.HoldingTorqueVerified = False
-        group.StackHostName = "ElectronicsEquipmentModule"
+        group.OpticalInterfaceContract = '{"default_station_x_mm":158}'
         self.assertNotEqual(original, native_interface_metadata(doc))
         carrier = create_group(doc, "BatteryEquipmentModule", "Rail carrier")
         set_property(carrier, "RailFitContract", '{"physical_fit_verified": false}')
@@ -397,11 +401,10 @@ class FrozenBaselineTests(unittest.TestCase):
             (
                 "OpticalInterfaceContract",
                 "App::PropertyString",
-                '{"foot_width":8}',
+                '{"default_station_x_mm":144}',
                 "{}",
             ),
             ("OpticalFitVerified", "App::PropertyBool", False, True),
-            ("OpticalFootEnd", "App::PropertyInteger", 0, 1),
         )
         for name, kind, original, changed in properties:
             for obj in (expected, actual):

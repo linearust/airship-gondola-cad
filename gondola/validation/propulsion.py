@@ -1287,20 +1287,21 @@ def bearing_post_roots_check(doc):
     rows = []
     bottom, top = propulsion.BASE_Z + propulsion.FOOT_THICKNESS, 14.0
     for sign in (-1, 1):
-        for local_y in (-28.75, 28.75):
+        centre = propulsion.BEARING_GUIDE_START_Y + propulsion.BEARING_POST_DEPTH / 2
+        for local_y in (-centre, centre):
             centre_y = sign * (propulsion.PIVOT_HALF_SPAN + local_y)
             witness = Part.makeBox(
                 9.6,
-                4.5,
+                propulsion.BEARING_POST_DEPTH,
                 top - bottom,
-                App.Vector(-4.8, centre_y - 2.25, bottom),
+                App.Vector(-4.8, centre_y - propulsion.BEARING_POST_DEPTH / 2, bottom),
             )
             missing = abs(witness.cut(shape).Volume)
             rows.append(
                 {
                     "side": sign,
                     "post_local_y_mm": local_y,
-                    "root_section_mm": [9.6, 4.5],
+                    "root_section_mm": [9.6, propulsion.BEARING_POST_DEPTH],
                     "root_height_range_mm": [bottom, top],
                     "missing_root_material_mm3": missing,
                     "scope": "Complete nominal root section, not a stress or fatigue qualification.",
@@ -1372,6 +1373,9 @@ def _record_drive_motion_checks(report, doc, module, prefix):
 
 def _record_output_stub_checks(report, prefix, pod, physical, frame):
     """Check the two separate output stubs and describe their bearing stacks."""
+    withdrawal = (
+        propulsion.SHAFT_ASSEMBLY_RETRACTION + propulsion.SHAFT_FINAL_WITHDRAWAL
+    )
     for side, suffix in ((-1, "Negative"), (1, "Positive")):
         shaft_name = prefix + "OutputShaft" + suffix
         report["output_stub_clearance"].append(
@@ -1392,7 +1396,19 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
                 "scope": "Remove the output gear and release its selected set screw, loosen the carrier split clamp, then withdraw this separate stub axially. Nominal unclamped bore; not clamp closure or grip proof.",
                 **continuous_path(
                     physical[shaft_name],
-                    [(0, 0, 0), (0, side * 35, 0), (40, side * 35, 0)],
+                    [
+                        (0, 0, 0),
+                        (
+                            0,
+                            side * withdrawal,
+                            0,
+                        ),
+                        (
+                            40,
+                            side * withdrawal,
+                            0,
+                        ),
+                    ],
                     retained_obstacles(physical, excluded),
                 ),
             }
@@ -1444,7 +1460,11 @@ def output_carrier_service_check(doc, module, prefix):
         name = prefix + "OutputShaft" + suffix
         path = continuous_path(
             staged[name],
-            [(0, 0, 0), (0, side * 35, 0), (40, side * 35, 0)],
+            [
+                (0, 0, 0),
+                (0, side * propulsion.SHAFT_FINAL_WITHDRAWAL, 0),
+                (40, side * propulsion.SHAFT_FINAL_WITHDRAWAL, 0),
+            ],
             retained_obstacles(staged, {name}),
         )
         full_shaft_paths.append({"part": name, **path})
@@ -1458,7 +1478,7 @@ def output_carrier_service_check(doc, module, prefix):
         "carrier_removal": paths,
         "full_shaft_removal": full_shaft_paths,
         "retained_parts": sorted(fixed),
-        "scope": "Unpowered bench sequence with leads freed: remove the small gear, loosen the carrier clamps, retract each stub 6.5 mm, then slide the complete motor/carrier and clamp fasteners 40 mm in +X. Bearings remain captured by the fixed frame. After removing the rotor, withdraw each stub 35 mm axially and 40 mm in +X. Reverse for assembly and verify shaft clamping. Physical fits and tool handling require a prototype.",
+        "scope": "Unpowered bench sequence with leads freed: remove the small gear, loosen the carrier clamps, retract each stub 14.5 mm, then slide the complete motor/carrier and clamp fasteners 40 mm in +X. Bearings remain captured by the fixed frame. After removing the rotor, withdraw each staged stub a further 20 mm axially and 40 mm in +X. Reverse for assembly and verify shaft clamping. Physical fits and tool handling require a prototype.",
         "passed": gear_path["passed"]
         and bool(moving)
         and all(row["passed"] for row in shaft_paths + paths + full_shaft_paths),

@@ -250,7 +250,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
         Part.makeCylinder(
             5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.adhesive_bottom())
         ),
-        "Provisional space for the specified35V220uF capacitor, near the FC and clear of optical foot hardware service. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
+        "Provisional space for the specified35V220uF capacitor, near the FC, with wiring and device-service clearance checked separately. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
         NOTION_URL,
     )
     capacitor.Role = "Clearance"

@@ -20,7 +20,6 @@ class WiringReserveTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
-            optical_interface,
             optical_mount,
             optical_sensor,
             wiring_reserves,
@@ -51,8 +50,7 @@ class WiringReserveTests(unittest.TestCase):
         refs, reserves = equipment_envelopes.build_equipment(
             cls.doc, battery, electronics, accessory
         )
-        optical = optical_mount.build_optical_mount(cls.doc, battery)
-        optical_interface.attach_to_host(optical["group"], battery)
+        optical = optical_mount.build_optical_mount(cls.doc)
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )

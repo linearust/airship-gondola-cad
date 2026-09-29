@@ -170,29 +170,27 @@ class PropulsionWiringTests(unittest.TestCase):
         finally:
             route.MovingWireSweepVerified = False
 
-    def _optical_host_obstacles(self, host_placement):
+    def _optical_rail_obstacles(self, station_x):
         from gondola.parts import optical_interface, optical_mount
 
-        tower_placement = host_placement.multiply(optical_interface.host_placement())
+        tower_placement = optical_interface.placement(station_x)
         obstacles = {"OpticalMountBase": optical_mount.base_shape()}
-        obstacles.update(dict(optical_interface.rigid_float_component_bounds()))
+        obstacles.update(dict(optical_interface.base_component_proxies()))
         for shape in obstacles.values():
             shape.Placement = tower_placement.multiply(shape.Placement)
         return obstacles
 
-    def test_both_optical_hosts_leave_registration_margin(self):
+    def test_supported_optical_rail_stations_clear_motor_routes(self):
         from gondola.cad import world_shape
 
-        hosts = {
-            "Battery": App.Placement(App.Vector(90, -0.1, 0), App.Rotation()),
-            "Electronics": self.electronics.getGlobalPlacement(),
-        }
-        for host, placement in hosts.items():
-            obstacles = self._optical_host_obstacles(placement)
+        for station_x in (144, 158):
+            obstacles = self._optical_rail_obstacles(station_x)
             for route in self.routes:
                 shape = world_shape(route)
                 for name, obstacle in obstacles.items():
-                    with self.subTest(host=host, route=route.Name, obstacle=name):
+                    with self.subTest(
+                        station=station_x, route=route.Name, obstacle=name
+                    ):
                         self.assertLess(shape.common(obstacle).Volume, 1e-6)
                         self.assertGreaterEqual(shape.distToShape(obstacle)[0], 1.5)
 

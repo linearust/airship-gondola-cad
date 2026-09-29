@@ -436,7 +436,6 @@ def procurement_and_scope_metadata(obj):
         "OpticalMountContract",
         "OpticalInterfaceContract",
         "OpticalFitVerified",
-        "OpticalFootEnd",
         "StackInterfaceContract",
         "BatteryPlacementContract",
         "RailFitContract",

@@ -42,10 +42,10 @@ class PowerMountTests(unittest.TestCase):
             through_depth=p.SUPPORT_Z,
         )
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 24))
-        # Central board support and both broad end regions are continuous. No
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 24))
+        # The new centre bore leaves surrounding board support intact. No
         # dedicated cable-tie slots are required for straps around the outline.
-        for x, y in ((0, 0), (0, -23), (0, 23), (0, -29), (0, 29)):
+        for x, y in ((0, 3), (0, -23), (0, 23), (0, -29), (0, 29)):
             region = Part.makeCylinder(0.5, 2, App.Vector(x, y, p.DECK_BOTTOM_Z))
             self.assertLess(region.cut(shape).Volume, 1e-6)
         bounds = shape.BoundBox
@@ -112,7 +112,7 @@ class PowerMountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             p.local_shapes("BATTERY", packaging="PORTAL")
 
-    def test_host_translation_and_occupied_optical_rejection(self):
+    def test_host_translation_and_independent_optical_module(self):
         from gondola.parts import power_mount as p
         from gondola.parts import stack_interface as s
 
@@ -122,9 +122,10 @@ class PowerMountTests(unittest.TestCase):
                 name: doc.addObject("App::Part", name) for name in s.MECHANICAL_HOSTS
             }
             optical = doc.addObject("App::Part", "OpticalFlowModule")
-            hosts["BatteryEquipmentModule"].addObject(optical)
-            with self.assertRaises(ValueError):
+            self.assertIsNone(optical.getParentGeoFeatureGroup())
+            self.assertIsNotNone(
                 p.host_placement(doc, "BatteryEquipmentModule", packaging="PORTAL")
+            )
             host = hosts["AccessoryEquipmentModule"]
             host.Placement = App.Placement(
                 App.Vector(80, 20, 7), App.Rotation(App.Vector(0, 0, 1), 180)
@@ -265,7 +266,14 @@ class PowerMountTests(unittest.TestCase):
                     host.addObject(obj)
                     mounts.append(obj)
                 optical = doc.addObject("App::Part", "OpticalFlowModule")
-                optical_interface.attach_to_host(optical, doc.BatteryEquipmentModule)
+                set_property(
+                    optical,
+                    "RailPositionX",
+                    optical_interface.DEFAULT_STATION_X,
+                    "App::PropertyDistance",
+                )
+                optical.Placement = optical_interface.placement()
+                optical.setExpression("Placement.Base.x", "RailPositionX")
                 registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(
@@ -306,26 +314,11 @@ class PowerMountTests(unittest.TestCase):
             App.closeDocument(optional.Name)
             with patch(
                 "gondola.power_export.screen_configurations",
-                side_effect=(
-                    {"passed": True, "default_configuration_clear": True},
-                    {"passed": True, "default_configuration_clear": True},
-                    {"passed": False},
-                ),
-            ):
-                rejected_alternate = audit_power_options(source, out)
-            self.assertFalse(rejected_alternate["passed"])
-            self.assertFalse(rejected_alternate["alternate_optical_hosts_passed"])
-            self.assertTrue(rejected_alternate["configuration_screen"]["passed"])
-            self.assertTrue(rejected_alternate["read_only_artifacts"])
-
-            with patch(
-                "gondola.power_export.screen_configurations",
                 return_value={"passed": True, "default_configuration_clear": False},
             ):
                 blocked_illustrated = audit_power_options(source, out)
             self.assertFalse(blocked_illustrated["passed"])
             self.assertFalse(blocked_illustrated["illustrated_configuration_clear"])
-            self.assertTrue(blocked_illustrated["alternate_optical_hosts_passed"])
 
             source_changed = False
 
@@ -347,7 +340,6 @@ class PowerMountTests(unittest.TestCase):
                 changed_source = audit_power_options(source, out)
             self.assertFalse(changed_source["passed"])
             self.assertFalse(changed_source["source_code_unchanged"])
-            self.assertTrue(changed_source["alternate_optical_hosts_passed"])
             self.assertTrue(changed_source["read_only_artifacts"])
             optional = App.openDocument(str(out / ARTIFACT_NAMES[0]))
             original_plan = optional.PowerOptionModule.PowerPlanContract

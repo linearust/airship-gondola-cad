@@ -15,7 +15,6 @@ from gondola.assembly import style_assembly
 from gondola.cad import belongs_to_group, create_group, translated_shape, world_shape
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import DESIGN_REVISION
-from gondola.parts import optical_interface
 from gondola.provenance import file_sha256, source_fingerprint
 
 
@@ -189,12 +188,6 @@ def render_previews(close_after=False):
         if doc.DesignRegistry.SourceFingerprint != fingerprint:
             raise RuntimeError("Saved CAD is stale; build before preview.")
         style_assembly(doc)
-        default_stack_host = doc.OpticalFlowModule.getParentGeoFeatureGroup()
-        alternative_stack_host = (
-            doc.ElectronicsEquipmentModule
-            if default_stack_host == doc.BatteryEquipmentModule
-            else doc.BatteryEquipmentModule
-        )
         layout = App.openDocument(
             str(OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd"))
         )
@@ -213,8 +206,7 @@ def render_previews(close_after=False):
             (doc, "axon", "_rail.png", "rail", 1900, 800),
             (doc, "axon", "_electronics.png", "electronics", 1400, 1400),
             (doc, "axon", "_wiring.png", "wiring", 1600, 1400),
-            (doc, "axon", "_optical_stack.png", "optical", 1400, 1600),
-            (doc, "axon", "_optical_fc_stack.png", "optical_alternate", 1500, 1600),
+            (doc, "axon", "_optical_rail.png", "optical", 1400, 1600),
             (doc, "axon", "_propulsion.png", "propulsion", 1800, 1300),
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),
@@ -237,12 +229,6 @@ def render_previews(close_after=False):
             active, pose, suffix, scope, w, h = jobs[i]
             App.setActiveDocument(active.Name)
             if active == doc:
-                optical_interface.attach_to_host(
-                    doc.OpticalFlowModule,
-                    alternative_stack_host
-                    if scope == "optical_alternate"
-                    else default_stack_host,
-                )
                 style_assembly(doc)
                 for o in allparts:
                     if scope == "rail":
@@ -256,9 +242,10 @@ def render_previews(close_after=False):
                             or scope == "wiring"
                             and belongs_to_group(o, doc.OpticalFlowModule)
                         )
-                    elif scope in ("optical", "optical_alternate"):
-                        host = doc.OpticalFlowModule.getParentGeoFeatureGroup()
-                        o.ViewObject.Visibility = belongs_to_group(o, host)
+                    elif scope == "optical":
+                        o.ViewObject.Visibility = belongs_to_group(
+                            o, doc.OpticalFlowModule
+                        )
                     elif scope == "structure":
                         o.ViewObject.Visibility = (
                             o in doc.DesignRegistry.PrintedParts
@@ -310,7 +297,6 @@ def render_previews(close_after=False):
                 str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_opposite.FCStd"))
             )
             App.setActiveDocument(doc.Name)
-            optical_interface.attach_to_host(doc.OpticalFlowModule, default_stack_host)
             style_assembly(doc)
             Gui.activeDocument().activeView().viewAxonometric()
             Gui.updateGui()

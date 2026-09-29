@@ -36,23 +36,30 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
         try:
-            frame.Shape = frame.Shape.cut(
-                Part.makeBox(
-                    6.4,
-                    4,
-                    4,
-                    App.Vector(
-                        -3.2,
-                        propulsion.PIVOT_HALF_SPAN + 26.5,
-                        propulsion.BASE_Z + propulsion.FOOT_THICKNESS,
-                    ),
-                )
+            corridor = Part.makeBox(
+                6.4,
+                propulsion.BEARING_POST_DEPTH,
+                4,
+                App.Vector(
+                    -3.2,
+                    propulsion.PIVOT_HALF_SPAN + propulsion.BEARING_GUIDE_START_Y,
+                    propulsion.BASE_Z + propulsion.FOOT_THICKNESS,
+                ),
             )
+            removed_volume = original.common(corridor).Volume
+            self.assertGreater(removed_volume, 90)
+            self.assertAlmostEqual(removed_volume, corridor.Volume, places=6)
+            frame.Shape = original.cut(corridor)
             self.doc.recompute()
+            self.assertTrue(frame.Shape.isValid())
+            self.assertEqual(len(frame.Shape.Solids), 1)
             rows = bearing_post_roots_check(self.doc)
-            self.assertEqual(sum(not row["passed"] for row in rows), 1, rows)
-            self.assertGreater(
-                max(row["missing_root_material_mm3"] for row in rows), 90
+            failed = [row for row in rows if not row["passed"]]
+            self.assertEqual(len(failed), 1, rows)
+            self.assertEqual(failed[0]["side"], 1)
+            self.assertGreater(failed[0]["post_local_y_mm"], 0)
+            self.assertAlmostEqual(
+                failed[0]["missing_root_material_mm3"], removed_volume, places=6
             )
         finally:
             frame.Shape = original
@@ -62,7 +69,14 @@ class FrameRootTests(unittest.TestCase):
         from gondola.parts import propulsion
 
         frame = self.doc.PropulsionFixedFrame.Shape
-        outer_y = propulsion.PIVOT_HALF_SPAN + 33
+        outer_y = (
+            propulsion.PIVOT_HALF_SPAN
+            + propulsion.BEARING_SHOULDER_Y
+            + propulsion.BEARING_SHOULDER_THICKNESS
+            + 0.5
+        )
+        self.assertAlmostEqual(frame.BoundBox.YMin, -outer_y, places=6)
+        self.assertAlmostEqual(frame.BoundBox.YMax, outer_y, places=6)
         for start_y in (20, -outer_y):
             with self.subTest(start_y=start_y):
                 solid_foot = Part.makeBox(

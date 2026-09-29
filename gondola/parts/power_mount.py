@@ -37,7 +37,7 @@ CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
 DEFAULT_HOST = "BatteryEquipmentModule"
 DEFAULT_PLAN = DEFAULT_OPTIONAL_POWER_PLAN_KEY
 DEFAULT_PACKAGING = DIRECT_CARRIER
-DEFAULT_OPTICAL_HOST = "ElectronicsEquipmentModule"
+DEFAULT_OPTICAL_STATION_X = 158.0
 DIRECT_BAY_CENTRES = ((0.0, -14.0), (0.0, 14.0))
 DIRECT_ADHESIVE_REGIONS = (
     (((0.0, -23.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
@@ -96,7 +96,7 @@ def platform_contract():
         "connection_height_allowance_mm": CONNECTION_HEIGHT_ALLOWANCE_MM,
         "terminal_end_allowance_mm": TERMINAL_TRAVEL_MM,
         "support_scope": "Flat open deck with two board regions, no dedicated tie slots, board pockets or invented board holes. Use suitable adhesive or wrap the existing structure with a removable strap. One mm nominal insulating support allowance is not measured underside-component clearance or thermal qualification. Position ties clear of hot components, solder and headers after inspecting received boards.",
-        "stack_scope": "One optional platform per unoccupied structural host. Do not occupy the installed optical head host or stack platforms on one another. Remove the host from the rail for foot-fastener service; the balloon is not modeled.",
+        "stack_scope": "One optional platform per supported carrier; use only composed configurations whose equipment, wiring and independent optical field screens pass. Do not stack platforms on one another. Remove the carrier from the rail for foot-fastener service; the balloon is not modeled.",
     }
 
 
@@ -263,9 +263,6 @@ def host_placement(
     host = main_doc.getObject(host_name)
     if host is None:
         raise ValueError("Missing power-platform host")
-    optical = main_doc.getObject("OpticalFlowModule")
-    if optical is not None and optical.getParentGeoFeatureGroup() == host:
-        raise ValueError("Power platform cannot occupy the installed optical host")
     return host.getGlobalPlacement().multiply(
         stack_interface.host_placement(
             host_name,
@@ -294,8 +291,8 @@ def create_option_document(
         ("PowerPlan", plan_key),
         ("PowerPackaging", packaging),
         (
-            "OpticalHostName",
-            getattr(main_doc.getObject("OpticalFlowModule"), "StackHostName", ""),
+            "OpticalRailStationX",
+            str(main_doc.OpticalFlowModule.RailPositionX.Value),
         ),
         (
             "PowerInstallationContract",

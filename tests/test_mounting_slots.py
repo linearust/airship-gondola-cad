@@ -106,7 +106,7 @@ class MountingSlotTests(unittest.TestCase):
             len(report["patches"]),
             len(mounts.BATTERY_ADHESIVE_REGIONS)
             + len(mounts.RADIO_ADHESIVE_REGIONS)
-            + 1,
+            + len(mounts.GPS_ADHESIVE_REGIONS),
         )
         self.assertTrue(report["passed"])
         for row in report["patches"]:
@@ -267,6 +267,38 @@ class MountingSlotTests(unittest.TestCase):
                     damaged, body, centre, size, face="bottom"
                 )
                 self.assertFalse(report["passed"])
+
+    def test_both_gps_strips_preserve_area_and_full_backing_under_each_alternative(
+        self,
+    ):
+        from gondola.contracts.equipment_options import NAVIGATION_PROFILES
+        from gondola.parts import equipment_envelopes
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment_options import adhesive_support_check
+
+        self.assertEqual(
+            mounts.GPS_ADHESIVE_REGIONS,
+            (((0.0, -5.5), (12.0, 7.0)), ((0.0, 5.5), (12.0, 7.0))),
+        )
+        self.assertEqual(
+            sum(size[0] * size[1] for _, size in mounts.GPS_ADHESIVE_REGIONS), 168
+        )
+        support = mounts.mount_shape("accessory")
+        for key in ("MGA01", "MGF10A"):
+            body = equipment_envelopes.navigation_envelope_shape(
+                NAVIGATION_PROFILES[key]
+            )
+            for centre, size in mounts.GPS_ADHESIVE_REGIONS:
+                with self.subTest(profile=key, patch=centre):
+                    self.assertTrue(
+                        adhesive_support_check(support, body, centre, size)["passed"]
+                    )
+                    defect = Part.makeCylinder(0.2, 2, App.Vector(*centre, 13.4))
+                    self.assertFalse(
+                        adhesive_support_check(support.cut(defect), body, centre, size)[
+                            "passed"
+                        ]
+                    )
 
     def test_void_probe_cannot_omit_part_of_declared_deck_thickness(self):
         from gondola.parts import equipment_mounts as mounts

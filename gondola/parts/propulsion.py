@@ -85,17 +85,24 @@ def gear_axial_span(teeth):
     )
 
 
-BEARING_START_Y = 28.5
+BEARING_START_Y = 36.5
 BEARING_WINDOW_DIAMETER = bearing_retention.SHIELD_OPENING_DIAMETER
 BEARING_GUIDE_START_Y = BEARING_START_Y + bearing_retention.GUIDE_START_Y
 BEARING_SHOULDER_Y = BEARING_START_Y + bearing_retention.SHOULDER_START_Y
 BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
-CARRIER_END_Y = 26.0
+BEARING_POST_DEPTH = (
+    BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS - BEARING_GUIDE_START_Y
+)
+CARRIER_END_Y = 34.0
+CARRIER_CLAMP_START_Y = 20.5
+CARRIER_CLAMP_LENGTH = CARRIER_END_Y - CARRIER_CLAMP_START_Y
+CARRIER_CLAMP_BOLT_Y = (CARRIER_CLAMP_START_Y + CARRIER_END_Y) / 2
 CARRIER_STOP_RADIUS = 3.8
-SHAFT_ASSEMBLY_RETRACTION = 6.5
+SHAFT_ASSEMBLY_RETRACTION = 14.5
+SHAFT_FINAL_WITHDRAWAL = 20.0
 OUTPUT_SHAFT_INNER_Y = 20.0
 OUTPUT_DRIVEN_SHAFT_LENGTH = 34.0
-OUTPUT_IDLE_SHAFT_LENGTH = 14.0
+OUTPUT_IDLE_SHAFT_LENGTH = 22.0
 OUTPUT_SHAFT_FLAT_LENGTH = 5.0
 OUTPUT_SHAFT_SWEEP_HALF_LENGTH = OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
 CLAMP_SCREW_SKU = "M2X8_BUTTON_HEAD"
@@ -136,18 +143,20 @@ def _carrier_side_shape():
     """
     body = union(
         [
-            cylinder(3.1, 5.5, (0, 20.5, 0)),
+            cylinder(3.1, CARRIER_CLAMP_LENGTH, (0, CARRIER_CLAMP_START_Y, 0)),
             cylinder(CARRIER_STOP_RADIUS, 1.5, (0, CARRIER_END_Y - 1.5, 0)),
-            box(6, 5.5, 6, (1, 20.5, -3)),
-            box(18, 5.5, 6.4, (-7, 20.5, -3.2)),
+            box(6, CARRIER_CLAMP_LENGTH, 6, (1, CARRIER_CLAMP_START_Y, -3)),
+            box(18, CARRIER_CLAMP_LENGTH, 6.4, (-7, CARRIER_CLAMP_START_Y, -3.2)),
         ]
     )
-    body = body.cut(cylinder(1.6, 6, (0, 20.25, 0)))
-    body = body.cut(box(12, 6, 0.8, (0, 20.25, -0.4)))
-    body = body.cut(cylinder(1.1, 8, (4.2, 23.25, -4), (0, 0, 1)))
+    passage_start = CARRIER_CLAMP_START_Y - 0.25
+    passage_length = CARRIER_CLAMP_LENGTH + 0.5
+    body = body.cut(cylinder(1.6, passage_length, (0, passage_start, 0)))
+    body = body.cut(box(12, passage_length, 0.8, (0, passage_start, -0.4)))
+    body = body.cut(cylinder(1.1, 8, (4.2, CARRIER_CLAMP_BOLT_Y, -4), (0, 0, 1)))
     # Open complete head/nut seats without leaving thin cylindrical crescents.
     for z in (2.5, -4.5):
-        body = body.cut(box(5.8, 6, 2, (1.3, 20.25, z)))
+        body = body.cut(box(5.8, passage_length, 2, (1.3, passage_start, z)))
     return _checked(body, "Integral carrier strut and split shaft clamp")
 
 
@@ -155,7 +164,7 @@ def moving_carrier_shape():
     rear = union(
         [
             cylinder(8.2, 1.5, (-8.5, 0, 0), (1, 0, 0)),
-            box(1.5, 52, 6.4, (-8.5, -26, -3.2)),
+            box(1.5, 2 * CARRIER_END_Y, 6.4, (-8.5, -CARRIER_END_Y, -3.2)),
         ]
     )
     rear = rear.cut(cylinder(2.2, 3, (-9, 0, 0), (1, 0, 0)))
@@ -175,7 +184,11 @@ def moving_carrier_shape():
         cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
     )
     parts.extend(
-        [guard, box(2, 4, 6.4, (11, -26, -3.2)), box(2, 4, 6.4, (11, 22, -3.2))]
+        [
+            guard,
+            box(2, CARRIER_END_Y - 22, 6.4, (11, -CARRIER_END_Y, -3.2)),
+            box(2, CARRIER_END_Y - 22, 6.4, (11, 22, -3.2)),
+        ]
     )
     return _checked(union(parts), "Motor carrier with split shaft clamps")
 
@@ -184,14 +197,20 @@ def _output_support(sign):
     parts = []
     # A plain full-width foot distributes the bearing-post loads without long
     # lightening windows, separate ribs or narrow perimeter strips.
-    foot_length = PIVOT_HALF_SPAN + 33 - 20
+    foot_length = (
+        PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5 - 20
+    )
     foot = box(18, foot_length, FOOT_THICKNESS, (-9, 20, BASE_Z))
     parts.append(foot)
     for side in (-1, 1):
-        y_start = BEARING_GUIDE_START_Y if side > 0 else -BEARING_SHOULDER_Y
+        y_start = (
+            BEARING_GUIDE_START_Y
+            if side > 0
+            else -BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS
+        )
         post = box(
             9.6,
-            BEARING_SHOULDER_Y - BEARING_GUIDE_START_Y,
+            BEARING_POST_DEPTH,
             PIVOT_Z - BASE_Z - FOOT_THICKNESS,
             (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
         )
@@ -578,11 +597,14 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
                 f"{prefix}_bearing_post_{suffix}",
                 "PropulsionFixedFrame",
                 (0, sign * (PIVOT_HALF_SPAN + local_y - 0.01), 24),
-                (0, sign * (PIVOT_HALF_SPAN + local_y + 4.51), 24),
-                4.5,
+                (0, sign * (PIVOT_HALF_SPAN + local_y + BEARING_POST_DEPTH + 0.01), 24),
+                BEARING_POST_DEPTH,
             )
             for sign, prefix in ((1, "port"), (-1, "starboard"))
-            for local_y, suffix in ((-31.0, "inner"), (26.5, "outer"))
+            for local_y, suffix in (
+                (-BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS, "inner"),
+                (BEARING_GUIDE_START_Y, "outer"),
+            )
         ]
         + [
             (
@@ -598,15 +620,22 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "output_bearing_outer_wall",
                 "PropulsionFixedFrame",
-                (-4.81, PIVOT_HALF_SPAN + 30, PIVOT_Z),
-                (-2.99, PIVOT_HALF_SPAN + 30, PIVOT_Z),
+                (-4.81, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
+                (-2.99, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
                 1.8,
             ),
             (
                 "bearing_integral_outer_shoulder",
                 "PropulsionFixedFrame",
-                (-2.9, PIVOT_HALF_SPAN + 30.99, PIVOT_Z),
-                (-2.9, PIVOT_HALF_SPAN + 32.51, PIVOT_Z),
+                (-2.9, PIVOT_HALF_SPAN + BEARING_SHOULDER_Y - 0.01, PIVOT_Z),
+                (
+                    -2.9,
+                    PIVOT_HALF_SPAN
+                    + BEARING_SHOULDER_Y
+                    + BEARING_SHOULDER_THICKNESS
+                    + 0.01,
+                    PIVOT_Z,
+                ),
                 1.5,
             ),
             (
@@ -676,7 +705,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 4.5 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
+        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 6 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -721,7 +750,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(),
-        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. The remaining clamp body retains its original section to avoid unnecessary stiffening around the clamp bolt. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Integral outer-ring hooks capture each bearing independently of the shaft and carrier. Assemble bearings with both hooks open, retract output shafts 6.5 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 13.5 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 75.5 mm apart, and the gear face centre is 8.25 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Integral outer-ring hooks capture each bearing independently of the shaft and carrier. Assemble bearings with both hooks open, retract output shafts 14.5 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
         App.Rotation(V(0, 1, 0), -90),
         sku="GearedMotorCarrier",
     )
@@ -753,7 +782,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 prefix + "OutputShaft" + suffix,
                 shaft,
                 sku,
-                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 14 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The wider 150 mm axis spacing increases gear overhang; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
+                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 22 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The symmetric supports retain the 150 mm motor-axis spacing while reducing gear overhang to 8.25 mm; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
                 SHAFT_SOURCE,
                 "304 stainless steel (seller claim)",
             )
@@ -763,7 +792,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 doc,
                 pod,
                 prefix + "OutputClamp" + suffix,
-                (4.2, side * 23.25, -2.5),
+                (4.2, side * CARRIER_CLAMP_BOLT_Y, -2.5),
                 (0, 0, 1),
                 grip=5,
             )
@@ -936,7 +965,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
     """Create the separate clearance reference for external vehicle equipment."""
     bound = union(
         [
-            cylinder(30, 52, (0, -26, 0)),
+            cylinder(30, 2 * CARRIER_END_Y, (0, -CARRIER_END_Y, 0)),
             cylinder(
                 10,
                 2 * OUTPUT_SHAFT_SWEEP_HALF_LENGTH,
@@ -951,7 +980,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
         prefix + "SweepBound",
         "Conservative complete output rotation reserve",
         bound,
-        f"Main motor/guard radius30 overY±26, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
+        f"Main motor/guard/carrier radius30 overY±{CARRIER_END_Y:g}, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
         clearance=True,
     )
 
@@ -1023,12 +1052,24 @@ def _module_metrics(printed, hardware, references, spec):
             "output_stub_count": 4,
             "output_driven_length_mm": OUTPUT_DRIVEN_SHAFT_LENGTH,
             "output_idle_length_mm": OUTPUT_IDLE_SHAFT_LENGTH,
+            "carrier_grip_length_mm": CARRIER_CLAMP_LENGTH,
+            "assembly_retraction_mm": SHAFT_ASSEMBLY_RETRACTION,
+            "staged_final_withdrawal_mm": SHAFT_FINAL_WITHDRAWAL,
             "input_count": 2,
             "input_length_mm": servo_coupling.SHAFT_LENGTH,
             "through_shaft_allowed": False,
             "reason": "A through-shaft crosses the motor. Separate stubs leave the motor bay clear.",
         },
         "bearing_seats": {
+            "support_centre_span_mm": 2
+            * (BEARING_START_Y + bearing_retention.BEARING_WIDTH / 2),
+            "post_section_mm": [9.6, BEARING_POST_DEPTH],
+            "gear_face_centre_overhang_mm": (
+                PIVOT_HALF_SPAN
+                - BEARING_START_Y
+                - bearing_retention.BEARING_WIDTH / 2
+                - sum(gear_axial_span(spec.output.teeth)[1:]) / 2
+            ),
             "count": 4,
             "dimensions_mm": [3, 6, 2.5],
             "nominal_bore_mm": 6,
@@ -1042,7 +1083,7 @@ def _module_metrics(printed, hardware, references, spec):
             "release_per_hook_mm": bearing_retention.RELEASE_MM,
             "finishing": "Print matching coupon first. Finish and measure the bearing seat; verify actual outer-ring land, shield clearance, hook deflection/recovery and retention. Nominal geometry and kinematic release are not PA12 strain, fatigue or fit qualification. Do not preload bearings or force them through closed hooks.",
             "running_axial_clearance_mm": 0.5,
-            "assembly": "Open both hooks and insert bearings from the empty carrier bay. Remove the output gear, loosen carrier clamps and retract output shafts 6.5 mm. Insert carrier transversely, then advance shafts and clamp. Bearing replacement reverses this sequence with shafts removed; the paired servo module stays installed.",
+            "assembly": "Open both hooks and insert bearings from the empty carrier bay. Remove the output gear, loosen carrier clamps and retract output shafts 14.5 mm. Insert carrier transversely, then advance shafts and clamp. Bearing replacement reverses this sequence with shafts removed; the paired servo module stays installed.",
         },
         "process_design_reference": {
             "source": CREALLO_SOURCE,

@@ -29,13 +29,15 @@ FC_HOLE_CENTRES = (
     (0.0, _FC_AXIS_OFFSET),
     (_FC_AXIS_OFFSET, 0.0),
 )
+CENTRE_HOLE_DIAMETER_MM = FIXED_HOLE_DIAMETER_MM
+FIXED_HOLE_CENTRES = (*FC_HOLE_CENTRES, (0.0, 0.0))
 
 
 def cutters(bottom, depth):
-    """Four fixed FC bores and the shared slot array, independent of support."""
+    """Four FC bores, one spare centre bore and the shared slot array."""
     return [
         Part.makeCylinder(FIXED_HOLE_DIAMETER_MM / 2, depth, V(x, y, bottom))
-        for x, y in FC_HOLE_CENTRES
+        for x, y in FIXED_HOLE_CENTRES
     ] + mounting_slots.shapes(bottom, depth)
 
 

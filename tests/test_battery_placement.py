@@ -1,4 +1,4 @@
-"""Native regressions for the declared pack placement and integral tower gap."""
+"""Native regressions for the declared pack placement and independent optical post gap."""
 
 import json
 import unittest
@@ -22,17 +22,17 @@ class BatteryPlacementTests(unittest.TestCase):
 
         cls.doc = App.newDocument("BatteryPlacementRegression")
         cls.host = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
-        cls.host.Placement.Base.x = -90
+        cls.host.Placement.Base.x = 90
         electronics = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
-        electronics.Placement.Base.x = 90
+        electronics.Placement.Base.x = -54
         accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
-        accessory.Placement.Base.x = 180
+        accessory.Placement.Base.x = -158
         mount = equipment_mounts.build_mount(cls.doc, cls.host, "battery")
         references, _ = equipment_envelopes.build_equipment(
             cls.doc, cls.host, electronics, accessory
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
-        optical_interface.attach_to_host(stack, cls.host)
+        stack.Placement = optical_interface.placement()
         base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
         stack.addObject(base)
         base.Shape = optical_mount.base_shape()
@@ -60,7 +60,7 @@ class BatteryPlacementTests(unittest.TestCase):
         floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
         self.assertEqual(
             {row["component"] for row in floats},
-            {"foot", "outboard_arm", "return_arm", "upright", "fixed_pitch_ear"},
+            {"rail_shoe", "upright", "fixed_pitch_ear"},
         )
         self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
@@ -132,11 +132,21 @@ class BatteryPlacementTests(unittest.TestCase):
     def test_tower_gap_fails_before_geometric_contact(self):
         tower = self.doc.OpticalMountBase
         before = App.Placement(tower.Placement)
-        # Move the complete base until its closest foot/leg enters the declared
-        # reserve, but stop short of contact with the continuous pack envelope.
-        result = self.check()
-        gap = result["continuous_translation"]["stack_tower_gaps"][0]["minimum_gap_mm"]
-        tower.Placement.Base.x -= gap - 0.5
+        # Shift along the exact closest-point direction, not just X: the rail
+        # shoe lies below the pack and can be the closest component diagonally.
+        import Part
+
+        from gondola.cad import world_shape
+        from gondola.parts import equipment_mounts
+
+        sweep = Part.makeBox(
+            28, 74, 17, App.Vector(-14, -37, equipment_mounts.SUPPORT_FACE_Z + 1)
+        )
+        sweep.Placement = self.host.getGlobalPlacement().multiply(sweep.Placement)
+        gap, pairs, _ = world_shape(tower).distToShape(sweep)
+        direction = pairs[0][1] - pairs[0][0]
+        direction.normalize()
+        tower.Placement.Base += direction * (gap - 0.5)
         self.doc.recompute()
         try:
             result = self.check()

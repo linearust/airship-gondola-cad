@@ -29,7 +29,6 @@ class PreviewCallbacks(unittest.TestCase):
             "Part": Mock(),
             "PySide": types.SimpleNamespace(QtCore=qt),
             "gondola.assembly": types.SimpleNamespace(style_assembly=Mock()),
-            "gondola.parts.optical_interface": Mock(),
             "gondola.cad": types.SimpleNamespace(
                 create_group=Mock(),
                 world_shape=Mock(),
@@ -42,8 +41,6 @@ class PreviewCallbacks(unittest.TestCase):
         self.preview = importlib.util.module_from_spec(spec)
         with patch.dict(sys.modules, modules):
             spec.loader.exec_module(self.preview)
-        # A previously imported native submodule may remain on its package.
-        self.preview.optical_interface = modules["gondola.parts.optical_interface"]
         self.preview.OUTPUT_DIR = self.output
         self.preview.source_fingerprint = Mock(return_value="current source")
 

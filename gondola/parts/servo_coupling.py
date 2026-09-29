@@ -5,6 +5,8 @@ short slot accommodates hole-pitch variation before both joints are tightened.
 Local rotation is +Y and the arm points +X; shaft and gear planes stay fixed.
 """
 
+import math
+
 import FreeCAD as App
 import Part
 
@@ -35,8 +37,10 @@ HORN_MIN_HEAD_BEARING_DIAMETER = 3.0
 
 # Preserve the selected gears' established axial plane and output shaft fit.
 PLATE_FRONT_Y = 7.1
-PLATE_X_MIN, PLATE_X_MAX = -6.5, 16.0
 PLATE_HALF_WIDTH = 5.15
+PLATE_TIP_RADIUS = 2.8
+PLATE_TIP_X = HORN_BOLT_CENTRES[-1][0]
+PLATE_X_MIN, PLATE_X_MAX = -PLATE_HALF_WIDTH, PLATE_TIP_X + PLATE_TIP_RADIUS
 REGISTER_RADIUS = max(p.root_diameter_mm / 2 for p in servo_horns.PROFILES.values())
 REGISTER_CLEARANCE = 0.15
 REGISTER_INNER_RADIUS = REGISTER_RADIUS + REGISTER_CLEARANCE
@@ -147,6 +151,32 @@ def capsule(radius, allowance, start_y, length, x, z=0):
     )
 
 
+def plate_blank():
+    """Tangent rounded taper follows the selected horn and its two nut seats."""
+    radius, tip_radius = PLATE_HALF_WIDTH, PLATE_TIP_RADIUS
+    slope = (radius - tip_radius) / PLATE_TIP_X
+    normal_z = math.sqrt(1 - slope**2)
+    x0, z0 = radius * slope, radius * normal_z
+    x1, z1 = PLATE_TIP_X + tip_radius * slope, tip_radius * normal_z
+    corners = [
+        V(x0, HORN_HEIGHT, -z0),
+        V(x1, HORN_HEIGHT, -z1),
+        V(x1, HORN_HEIGHT, z1),
+        V(x0, HORN_HEIGHT, z0),
+    ]
+    thickness = PLATE_FRONT_Y - HORN_HEIGHT
+    web = Part.Face(Part.makePolygon(corners + [corners[0]])).extrude(
+        V(0, thickness, 0)
+    )
+    return union(
+        [
+            _cylinder(radius, thickness, (0, HORN_HEIGHT, 0)),
+            _cylinder(tip_radius, thickness, (PLATE_TIP_X, HORN_HEIGHT, 0)),
+            web,
+        ]
+    ).removeSplitter()
+
+
 def adapter_shape():
     """One piece, a near round hole and far short slot, with flat nut seats."""
     root = (
@@ -169,12 +199,7 @@ def adapter_shape():
     )
     shape = union(
         [
-            box(
-                PLATE_X_MAX - PLATE_X_MIN,
-                PLATE_FRONT_Y - HORN_HEIGHT,
-                2 * PLATE_HALF_WIDTH,
-                (PLATE_X_MIN, HORN_HEIGHT, -PLATE_HALF_WIDTH),
-            ),
+            plate_blank(),
             root,
             _cylinder(3.8, SHAFT_SOCKET_LENGTH, (0, SHAFT_START_Y, 0)),
             shaft_frame_shape(
@@ -251,12 +276,7 @@ def service_envelope(*, retain_screws=False):
             (b.XMin - 1, BODY_BACK_Y, b.ZMin - 1),
         )
     )
-    plate = box(
-        PLATE_X_MAX - PLATE_X_MIN,
-        PLATE_FRONT_Y - HORN_HEIGHT,
-        2 * PLATE_HALF_WIDTH,
-        (PLATE_X_MIN, HORN_HEIGHT, -PLATE_HALF_WIDTH),
-    )
+    plate = plate_blank()
     plate = plate.cut(
         _cylinder(
             OEM_HEAD_CAVITY_RADIUS,
@@ -370,6 +390,7 @@ def assembly_contract(profile=None):
         "nominal_axial_geometry_sourced": True,
         "axial_envelope_scope": "Manufacturer STEP establishes nominal 3.5 mm total height, 2 mm blade and 2.5 mm spline cavity. Physical installed seating, centre screw and delivered tolerances are unmeasured. The 0.2 mm case gap remains a design allowance.",
         "nominal_arm_thickness_mm": profile.arm_thickness_mm,
+        "adapter_backing_outline": "Tangent rounded taper: root radius5.15mm, tip radius2.8mm centred at13.2mm. Retains nominal OEM blade support and both nut seats; no enclosing arm walls.",
         "adapter_round_hole_x_mm": profile.attachment_radii_mm[0],
         "adapter_round_hole_diameter_mm": SLOT_WIDTH,
         "adapter_slot_width_mm": SLOT_WIDTH,

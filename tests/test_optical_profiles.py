@@ -68,7 +68,7 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                 self.assertTrue(screen.isInside(point, 1e-7, True))
 
     def test_continuous_external_cone_contains_both_fields_and_registration(self):
-        from gondola.parts import optical_interface, optical_mount, optical_sensor
+        from gondola.parts import optical_mount, optical_sensor, rail
         from gondola.validation.optical import _external_field_bound
 
         doc = App.newDocument("OpticalFullFieldBound")
@@ -93,32 +93,14 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                             point = rotation.multVec(start) + App.Vector(
                                 *optical_mount.PIVOT_CENTRE
                             )
-                            for yaw in (
-                                -optical_interface.MAX_REGISTRATION_YAW_RAD,
-                                0,
-                                optical_interface.MAX_REGISTRATION_YAW_RAD,
+                            for ty in (
+                                -rail.HEAD_SIDE_CLEARANCE,
+                                rail.HEAD_SIDE_CLEARANCE,
                             ):
-                                registered = App.Rotation(
-                                    App.Vector(0, 0, 1), math.degrees(yaw)
-                                ).multVec(point)
-                                for tx, ty in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
-                                    shifted = registered + App.Vector(
-                                        tx * optical_interface.MAX_REGISTRATION_X,
-                                        ty * optical_interface.MAX_REGISTRATION_Y,
-                                        0,
-                                    )
-                                    self.assertTrue(
-                                        bound.isInside(shifted, 1e-7, True),
-                                        (
-                                            profile.key,
-                                            pitch,
-                                            distance,
-                                            sx,
-                                            sy,
-                                            yaw,
-                                            tx,
-                                            ty,
-                                        ),
-                                    )
+                                shifted = point + App.Vector(0, ty, 0)
+                                self.assertTrue(
+                                    bound.isInside(shifted, 1e-7, True),
+                                    (profile.key, pitch, distance, sx, sy, ty),
+                                )
         finally:
             App.closeDocument(doc.Name)

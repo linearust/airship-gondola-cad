@@ -117,23 +117,15 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["combinations"]), 3)
         for row in result["combinations"]:
-            self.assertEqual(len(row["optical_compatibility"]["hosts_and_sensors"]), 4)
+            self.assertEqual(len(row["optical_compatibility"]["sensor_screens"]), 2)
             if row["navigation_model"] == "MGF10A":
                 antenna = row["direct_antenna"]["optical_clearance"]
-                self.assertEqual(
-                    antenna["permitted_optical_hosts"], ["BatteryEquipmentModule"]
+                self.assertEqual(len(antenna["sensor_screens"]), 2)
+                self.assertTrue(
+                    all(pose_row["passed"] for pose_row in antenna["sensor_screens"])
                 )
-                self.assertEqual(
-                    antenna["blocked_optical_hosts"], ["ElectronicsEquipmentModule"]
-                )
-                self.assertEqual(len(antenna["hosts_and_sensors"]), 4)
-                for pose_row in antenna["hosts_and_sensors"]:
-                    self.assertEqual(
-                        pose_row["passed"], pose_row["host"] == "BatteryEquipmentModule"
-                    )
             services = {
-                service["device"]: service
-                for service in row["bare_device_service_after_tower_release"]
+                service["device"]: service for service in row["bare_device_service"]
             }
             self.assertEqual(
                 services["ModuleRadioEnvelope"]["local_removal_vector_mm"],
@@ -178,7 +170,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_direct_helix_requires_clear_battery_optical_host(self):
+    def test_direct_helix_is_screened_at_actual_independent_station(self):
         from gondola.cad import placed_shape
         from gondola.contracts.equipment_options import get_navigation_profile
         from gondola.parts import wiring_reserves
@@ -188,45 +180,25 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         )
 
         screens = _optical_screens(self.doc)
-        direct = wiring_reserves.direct_antenna_reserve_shape(
-            get_navigation_profile("MGF10A")
-        )
         direct = placed_shape(
-            direct, self.doc.AccessoryEquipmentModule.getGlobalPlacement()
+            wiring_reserves.direct_antenna_reserve_shape(
+                get_navigation_profile("MGF10A")
+            ),
+            self.doc.AccessoryEquipmentModule.getGlobalPlacement(),
         )
-        cache = {}
-        for host, expected in (
-            ("BatteryEquipmentModule", True),
-            ("ElectronicsEquipmentModule", False),
-        ):
-            with self.subTest(installed_host=host):
-                report = _optical_option_check(
-                    screens,
-                    {"NavigationDirectAntennaReserve": direct},
-                    antenna=True,
-                    navigation_key="MGF10A",
-                    required_host=host,
-                    validation_cache=cache,
-                )
-                self.assertEqual(report["passed"], expected, report)
-                self.assertEqual(report["installed_host_passed"], expected)
-                self.assertEqual(report["required_installed_optical_host"], host)
-                self.assertEqual(
-                    report["geometrically_clear_optical_hosts"],
-                    ["BatteryEquipmentModule"],
-                )
-
-        # The known MG-F10-A restriction must not silently qualify other
-        # antenna profiles when the same physical obstacle blocks their FC host.
-        unknown = _optical_option_check(
-            screens,
-            {"OtherNavigationAntenna": direct},
-            antenna=True,
-            navigation_key="UNKNOWN",
-            required_host="BatteryEquipmentModule",
+        for required, expected in ((144, True), (-108, False)):
+            report = _optical_option_check(
+                screens,
+                {"NavigationDirectAntennaReserve": direct},
+                antenna=True,
+                required_station=required,
+            )
+            self.assertEqual(report["passed"], expected, report)
+        # Unknown obstacles remain geometric inputs; no profile-name allowlist.
+        blocked = _optical_option_check(
+            screens, {"Unknown": screens[0]["continuous_field"]}
         )
-        self.assertFalse(unknown["passed"])
-        self.assertEqual(len(unknown["permitted_optical_hosts"]), 2)
+        self.assertFalse(blocked["passed"])
 
     def test_detached_radio_service_still_rejects_an_attached_carrier_obstacle(self):
         from gondola.parts import equipment_envelopes

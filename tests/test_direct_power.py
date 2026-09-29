@@ -112,7 +112,7 @@ class DirectPowerTests(unittest.TestCase):
                         (profile.key, factory.__name__, angle),
                     )
 
-    def test_composed_matrix_rejects_direct_helix_with_fc_optics(self):
+    def test_composed_matrix_keeps_direct_tether_with_independent_optics(self):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts, optical_interface
@@ -137,7 +137,16 @@ class DirectPowerTests(unittest.TestCase):
             doc.BatteryEquipmentModule.addObject(battery)
             battery.Shape = Part.makeBox(16, 61, 15, App.Vector(-8, -30.5, 16.4))
             optical = doc.addObject("App::Part", "OpticalFlowModule")
-            optical_interface.attach_to_host(optical, doc.ElectronicsEquipmentModule)
+            set_property(
+                optical,
+                "RailPositionX",
+                optical_interface.DIRECT_POWER_STATION_X,
+                "App::PropertyDistance",
+            )
+            optical.Placement = optical_interface.placement(
+                optical_interface.DIRECT_POWER_STATION_X
+            )
+            optical.setExpression("Placement.Base.x", "RailPositionX")
             registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
             for category in (
                 "PrintedParts",
@@ -173,14 +182,7 @@ class DirectPowerTests(unittest.TestCase):
                 and r["antenna_installation"] == "direct_sma"
             ]
             self.assertEqual(len(blocked), 12)
-            self.assertTrue(all(not r["permitted"] for r in blocked))
-            self.assertTrue(
-                any(
-                    r.get("phase") == "navigation and retained assembly"
-                    for choice in blocked
-                    for r in choice["collisions"]
-                )
-            )
+            self.assertTrue(any(r["permitted"] for r in blocked))
             direct = [
                 r
                 for r in screen["navigation_compatibility_probes"]
@@ -192,6 +194,7 @@ class DirectPowerTests(unittest.TestCase):
                     ("PAS", "integrated"),
                     ("MGA01", "integrated"),
                     ("MGF10A", "remote_sma"),
+                    ("MGF10A", "direct_sma"),
                 },
             )
         finally:

@@ -13,18 +13,16 @@ from gondola.cad import box, create_group, create_printed_part, set_property, un
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
-from . import optical_interface, purchased_hardware
+from . import optical_interface, purchased_hardware, rail
 
 V = App.Vector
-PIVOT_CENTRE = (23.0, -18.0, 22.0)
+PIVOT_CENTRE = (0.0, 0.0, 30.0)
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 4.0
 EAR_THICKNESS = 2.0
-UPRIGHT_WIDTH = 6.0
+UPRIGHT_WIDTH = 8.0
 GUSSET_DEPTH = 2.0
-GUSSET_TOP_Z = 10.0
-LOW_ARM_THICKNESS = 3.0
-LOW_ARM_WIDTH = 5.0
+GUSSET_TOP_Z = 17.0
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -48,9 +46,9 @@ def _finished(shape, name):
 
 
 def upright_shape():
-    """Broad post and one low integral buttress, clear of both foot nuts."""
+    """Straight transverse ear support, with a short integral root buttress."""
     x, y, z = PIVOT_CENTRE
-    bottom = LOW_ARM_THICKNESS
+    bottom = rail.TOP_Z
     left = x - UPRIGHT_WIDTH / 2
     post = box(
         UPRIGHT_WIDTH,
@@ -69,34 +67,8 @@ def upright_shape():
     return union([post, buttress]).removeSplitter()
 
 
-def low_arm_components():
-    """Two broad rectangular beams link the corner foot to the centred post."""
-    x, y, _ = PIVOT_CENTRE
-    left = x - UPRIGHT_WIDTH / 2
-    return [
-        (
-            "outboard_arm",
-            box(
-                x + UPRIGHT_WIDTH / 2 - 2,
-                LOW_ARM_WIDTH,
-                LOW_ARM_THICKNESS,
-                (2, -LOW_ARM_WIDTH / 2, 0),
-            ),
-        ),
-        (
-            "return_arm",
-            box(
-                UPRIGHT_WIDTH,
-                -y + LOW_ARM_WIDTH / 2 + EAR_THICKNESS,
-                LOW_ARM_THICKNESS,
-                (left, y - EAR_THICKNESS, 0),
-            ),
-        ),
-    ]
-
-
 def base_shape():
-    """One corner foot, low L arm and braced upright ending in a pitch ear."""
+    """Common rail shoe fused to one straight braced upright and pitch ear."""
     x, y, z = PIVOT_CENTRE
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
     post = upright_shape()
@@ -109,8 +81,7 @@ def base_shape():
     return _finished(
         union(
             [
-                optical_interface.foot_shape(),
-                *[shape for _, shape in low_arm_components()],
+                rail.shoe_shape(),
                 ear,
                 post,
             ]
@@ -134,51 +105,35 @@ def sensor_tray_shape():
 
 def mount_contract():
     return {
-        "mechanism": "One manual pitch-Y friction clamp on an outboard L pedestal with carrier-centred sensor",
+        "mechanism": "Independent rail shoe with one manual pitch-Y friction clamp",
         "adjustment_degrees_of_freedom": 1,
-        "pivot_centre_in_pedestal_mm": PIVOT_CENTRE,
-        "pivot_centre_in_carrier_mm": tuple(
-            a + b
-            for a, b in zip(
-                PIVOT_CENTRE,
-                (*optical_interface.HOST_ORIGIN_XY, optical_interface.HOST_SUPPORT_Z),
-            )
-        ),
+        "pivot_centre_in_module_mm": PIVOT_CENTRE,
         "planning_angle_limit_deg": ANGLE_LIMIT_DEG,
-        "axis": "Carrier-local Y, transverse to the longitudinal rail. The FC carrier's 180 degree yaw reverses the angle sign, not the physical axis.",
+        "axis": "Rail-local Y, transverse to the longitudinal rail",
         "physical_angle_stops_modeled": False,
         "self_levelling": False,
         "holding_torque_verified": False,
-        "integral_common_rail_shoe": False,
-        "carrier_interface": optical_interface.interface_contract(),
+        "integral_common_rail_shoe": True,
+        "rail_interface": optical_interface.interface_contract(),
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
         "nominal_ear_radial_wall_mm": EAR_RADIUS - PIVOT_HOLE_DIAMETER / 2,
         "upright_section_mm": (UPRIGHT_WIDTH, EAR_THICKNESS),
-        "low_arm_sections_mm": {
-            "outboard": (LOW_ARM_WIDTH, LOW_ARM_THICKNESS),
-            "return": (UPRIGHT_WIDTH, LOW_ARM_THICKNESS),
-        },
-        "relocation_scope": "The original corner slot and its two clamps remain. A low integral L arm places the nominal sensor pivot at carrier Y=0, outside both host wiring envelopes. The larger cantilever and footprint are not strength, stiffness or pointing qualifications.",
-        "integral_base_buttress": {
-            "depth_mm": GUSSET_DEPTH,
-            "top_z_mm": GUSSET_TOP_Z,
-            "scope": "Low triangular reinforcement on the positive-Y side; no additional part or fastener. Geometric section improvement, not measured strength or pointing stiffness.",
-        },
+        "integral_base_buttress": {"depth_mm": GUSSET_DEPTH, "top_z_mm": GUSSET_TOP_Z},
         "tray_size_mm": TRAY_SIZE_MM,
         "tray_bottom_z_in_pitch_frame_mm": TRAY_BOTTOM_Z,
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware": "Three kit steel M2x8 button-head screw / M2 hex nut pairs total: two pedestal clamps and one pitch clamp. No washers.",
+        "hardware": "Two kit steel M2x8 button-head screw / M2 hex nut pairs total: one common rail clamp and one pitch clamp. No washers.",
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the pedestal and sensor tray separately. Seat and clamp the pedestal on the original corner carrier slot, placing the sensor on carrier Y=0 through the low L arm; clamp the two plain 2 mm pitch ears with the third M2 pair. No intermediate roll bracket or broad tower remains.",
-        "adjustment": "Place the rail along the balloon bottom centreline. Support the sensor, loosen its pitch screw while holding the nut, align downward at flight trim, and hand-snug. There is no roll correction or operating play. Native angle limits are planning controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
-        "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. Do not invent sensor fixing holes or cover its optical apertures.",
+        "assembly": "Print the integral rail shoe/post and sensor tray separately. Slide the shoe onto the common rail and lock on a solid land; clamp the two plain 2 mm pitch ears with the second M2 pair.",
+        "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while holding the nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
+        "sensor_interface": "Continuous insulating adhesive pad for either MTF-01P or MTF-02P. OEM backside contact, retention and connector/wire fit remain unverified; no invented sensor fixing holes.",
     }
 
 
@@ -219,12 +174,13 @@ def _pivot_hardware(doc, parent):
     return objects
 
 
-def build_optical_mount(doc, parent):
+def build_optical_mount(doc):
     group = create_group(
-        doc, "OpticalFlowModule", "Optical flow | compact single-axis pedestal"
+        doc,
+        "OpticalFlowModule",
+        "Optical flow | independent rail shoe and manual pitch",
     )
-    parent.addObject(group)
-    group.Placement = optical_interface.host_placement()
+    group.Placement = optical_interface.placement()
     contract = json.dumps(mount_contract(), sort_keys=True)
     set_property(group, "OpticalMountContract", contract)
     set_property(
@@ -261,7 +217,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF compact optical support, two separately printed pieces. One corner foot, low L arm, broad upright and integral low buttress support a sensor on carrier Y=0. Existing M2x8 / M2 nut pairs seat the foot and lock the single pitch joint. Check actual print, contact, clamping, adhesive and optical alignment before use.",
+            "PA12 SLS/MJF common rail shoe with straight braced post and separate adhesive tray. Two M2x8/M2 nut pairs lock the rail and single pitch joint. Check received print fit, clamp retention, adhesive and optical alignment before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
@@ -270,9 +226,7 @@ def build_optical_mount(doc, parent):
         if name == "OpticalMountBase":
             optical_interface.annotate_interface(obj)
         printed.append(obj)
-    hardware = _pivot_hardware(doc, group) + optical_interface.build_hardware(
-        doc, group
-    )
+    hardware = _pivot_hardware(doc, group)
     doc.recompute()
     return {
         "group": group,

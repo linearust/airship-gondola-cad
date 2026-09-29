@@ -119,6 +119,34 @@ class ServoCouplingTests(unittest.TestCase):
             self.assertGreater(_plane_contact(c.horn_shape(), screw, 1.5), 1.0)
             self.assertGreater(_plane_contact(c.adapter_shape(), nut, 7.1), 1.0)
 
+    def test_taper_keeps_oem_face_support_and_far_nut_seat_at_slot_limits(self):
+        from gondola.parts import servo_coupling as c
+
+        blank = c.plate_blank()
+        self.assertTrue(blank.isValid())
+        self.assertEqual(len(blank.Solids), 1)
+        # The entire supplied blade top silhouette remains within the new taper;
+        # root-screw cavity and fastener openings are tested separately.
+        face_slice = c.horn_shape().common(
+            Part.makeBox(40, 0.001, 20, App.Vector(-10, 3.499, -10))
+        )
+        face_slice.translate(App.Vector(0, 0.002, 0))
+        self.assertLess(face_slice.cut(blank).Volume, 1e-8)
+        old_rectangle = Part.makeBox(22.5, 3.6, 10.3, App.Vector(-6.5, 3.5, -5.15))
+        self.assertGreater(old_rectangle.cut(blank).Volume, 250)
+        # A circumscribed circle conservatively covers an AF3 nut at every yaw.
+        # Include the slot's complete nominal shank-centre envelope.
+        nut_radius = 3.0 / math.sqrt(3)
+        for x in (12.7, 13.2, 13.7):
+            for z in (-0.2, 0, 0.2):
+                seat = Part.makeCylinder(
+                    nut_radius, 0.01, App.Vector(x, 7.09, z), App.Vector(0, 1, 0)
+                )
+                self.assertLess(seat.cut(blank).Volume, 1e-8)
+        self.assertGreaterEqual(
+            c.PLATE_TIP_RADIUS - c.SLOT_WIDTH / 2 - c.HORN_ADAPTER_SLOT_ALLOWANCE, 1.5
+        )
+
     def test_only_two_selected_factory_holes_are_prepared(self):
         from gondola.parts import servo_coupling as c
         from gondola.parts.oem_servo_horn import normalized_shape

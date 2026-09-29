@@ -1,8 +1,6 @@
-"""Negative native-CAD regressions for the pinned adjustable optical stack."""
+"""Negative native-CAD regressions for the pinned independent optical rail mount."""
 
-import json
 import unittest
-from types import SimpleNamespace
 from unittest.mock import patch
 
 try:
@@ -69,10 +67,10 @@ class OpticalClearanceTests(unittest.TestCase):
                     setattr(obj, name, original)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_changed_foot_hardware_geometry_or_hierarchy_is_rejected(self):
+    def test_changed_pitch_hardware_geometry_or_hierarchy_is_rejected(self):
         from gondola.validation.optical import _source_evidence
 
-        bolt = self.doc.OpticalFootBolt0
+        bolt = self.doc.OpticalPitchBolt
         shape = bolt.Shape.copy()
         parent = bolt.getParentGeoFeatureGroup()
         try:
@@ -90,368 +88,84 @@ class OpticalClearanceTests(unittest.TestCase):
             parent.addObject(bolt)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_obsolete_optical_washer_cannot_remain_in_the_purchase_registry(self):
+    def test_obsolete_foot_hardware_cannot_remain_in_registry(self):
         from gondola.validation.optical import _source_evidence
 
-        old = list(self.doc.DesignRegistry.HardwareParts)
-        obsolete = self.doc.addObject("Part::Feature", "ObsoleteOpticalWasher")
-        obsolete.Shape = Part.makeCylinder(2.5, 0.3)
+        original = list(self.doc.DesignRegistry.HardwareParts)
+        obsolete = self.doc.addObject("Part::Feature", "OpticalFootBolt0")
+        obsolete.Shape = Part.makeCylinder(1, 8)
         self.doc.OpticalFlowModule.addObject(obsolete)
         try:
-            self.doc.DesignRegistry.HardwareParts = old + [obsolete]
-            result = _source_evidence(self.doc)
-            self.assertFalse(result["passed"])
-            self.assertFalse(
-                result["registered_kit_inventory_matches_factory"]["HardwareParts"]
-            )
+            self.doc.DesignRegistry.HardwareParts = original + [obsolete]
+            self.assertFalse(_source_evidence(self.doc)["passed"])
         finally:
-            self.doc.DesignRegistry.HardwareParts = old
+            self.doc.DesignRegistry.HardwareParts = original
             self.doc.removeObject(obsolete.Name)
 
-    def test_early_failure_restores_fc_host_angles_and_saved_file(self):
-        from gondola.parts import optical_interface, optical_mount
-        from gondola.provenance import file_sha256
+    def test_wrong_parent_and_missing_controls_are_rejected_without_mutation(self):
         from gondola.validation.optical import mtf_sensor_check
 
         group = self.doc.OpticalFlowModule
-        host = self.doc.ElectronicsEquipmentModule
-        optical_interface.attach_to_host(group, host)
-        optical_mount.set_pitch(self.doc, -9)
-        placement = group.Placement.copy()
-        metadata = {
-            name: getattr(group, name)
-            for name in (
-                "StackHostName",
-                "OpticalInterfaceContract",
-                "OpticalFitVerified",
-            )
-        }
-        original = self.doc.MTF02POpticalClearanceReserve.InstalledOpticalFieldVerified
+        original = group.Placement.copy()
+        self.doc.BatteryEquipmentModule.addObject(group)
         try:
-            self.doc.MTF02POpticalClearanceReserve.InstalledOpticalFieldVerified = True
             result = mtf_sensor_check(self.doc)
             self.assertFalse(result["passed"])
-            self.assertFalse(result["source_evidence"]["passed"])
-            self.assertIs(group.getParentGeoFeatureGroup(), host)
-            self.assertLess((group.Placement.Base - placement.Base).Length, 1e-9)
-            self.assertTrue(group.Placement.Rotation.isSame(placement.Rotation, 1e-9))
-
-            self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
-            for name, value in metadata.items():
-                self.assertEqual(getattr(group, name), value)
-            self.assertEqual(file_sha256(self.path), self.original_sha)
+            self.assertEqual(
+                group.getParentGeoFeatureGroup(), self.doc.BatteryEquipmentModule
+            )
+            self.assertTrue(group.Placement.isSame(original, 1e-7))
         finally:
-            self.doc.MTF02POpticalClearanceReserve.InstalledOpticalFieldVerified = (
-                original
-            )
+            self.doc.BatteryEquipmentModule.removeObject(group)
+        group.removeProperty("OpticalMountContract")
+        self.assertFalse(mtf_sensor_check(self.doc)["passed"])
 
-    def test_invalid_host_fails_without_reparenting_or_changing_controls(self):
-        from gondola.parts import optical_interface, optical_mount
-        from gondola.validation.optical import mtf_sensor_check
-
-        group = self.doc.OpticalFlowModule
-        host = group.getParentGeoFeatureGroup()
-        unsupported = self.doc.addObject("App::Part", "UnsupportedOpticalHost")
-        optical_mount.set_pitch(self.doc, -9)
-        placement = group.Placement.copy()
-        for changed_parent in (None, unsupported):
-            with self.subTest(parent=changed_parent):
-                host.removeObject(group)
-                if changed_parent is not None:
-                    changed_parent.addObject(group)
-                try:
-                    result = mtf_sensor_check(self.doc)
-                    self.assertFalse(result["passed"])
-                    self.assertFalse(
-                        result["source_evidence"]["native_structure"]["passed"]
-                    )
-                    self.assertIs(group.getParentGeoFeatureGroup(), changed_parent)
-                    self.assertLess(
-                        (group.Placement.Base - placement.Base).Length, 1e-9
-                    )
-                    self.assertTrue(
-                        group.Placement.Rotation.isSame(placement.Rotation, 1e-9)
-                    )
-
-                    self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
-                finally:
-                    optical_interface.attach_to_host(group, host)
-
-    def test_missing_host_support_or_native_metadata_returns_a_failed_report(self):
-        from gondola.validation.optical import mtf_sensor_check
-
-        self.doc.removeObject("BatteryMount")
-        self.doc.OpticalFlowModule.removeProperty("OpticalInterfaceContract")
-        result = mtf_sensor_check(self.doc)
-        self.assertFalse(result["passed"])
-        errors = result["source_evidence"]["native_structure"]["errors"]
-        self.assertIn({"object": "BatteryMount", "error": "missing object"}, errors)
-        self.assertIn(
-            {
-                "object": "OpticalFlowModule",
-                "missing_properties": ["OpticalInterfaceContract"],
-            },
-            errors,
-        )
-
-    def test_tilted_reservations_detect_wire_conflicts_without_body_collisions(self):
-        from gondola.cad import belongs_to_group, world_shape
-        from gondola.parts import optical_interface, optical_mount, optical_sensor
+    def test_both_sensors_visit_actual_station_and_restore_state_on_exception(self):
+        from gondola.parts.optical_mount import set_pitch
         from gondola.validation import optical
 
         group = self.doc.OpticalFlowModule
-        host = self.doc.ElectronicsEquipmentModule
-        optical_interface.attach_to_host(group, host)
-        registry = self.doc.DesignRegistry
-        physical = (
-            list(registry.PrintedParts)
-            + list(registry.HardwareParts)
-            + list(registry.ReferenceParts)
-            + list(registry.TapeReferences)
-        )
-        kit = [obj for obj in physical if belongs_to_group(obj, group)]
-        reserve = self.doc.CapacitorServiceReserve
-        inverse = reserve.getParentGeoFeatureGroup().getGlobalPlacement().inverse()
-        sensor_midpoint = (
-            optical_sensor.SENSOR_BOTTOM_Z
-            + optical_sensor.profile_for_document(self.doc).size_mm[2] / 2
-        )
-        for kind, local_point in (
-            ("connector_intersection", App.Vector(20, 0, sensor_midpoint)),
-            ("connector_gap", App.Vector(23.55, 0, sensor_midpoint)),
-            ("optical_field", App.Vector(0, 0, sensor_midpoint + 80)),
-        ):
-            with self.subTest(kind=kind):
-                optical_mount.set_pitch(self.doc, 20)
-                point = self.doc.OpticalPitchStage.getGlobalPlacement().multVec(
-                    local_point
-                )
-                blocker = Part.makeSphere(0.25, point)
-                self.assertTrue(
-                    all(
-                        world_shape(obj).common(blocker).Volume < 1e-6
-                        for obj in physical
-                    )
-                )
-                if kind.startswith("connector"):
-                    lane = world_shape(self.doc.MTF02PConnectorReserve)
-                    if kind == "connector_intersection":
-                        self.assertGreater(lane.common(blocker).Volume, 0.06)
-                    else:
-                        self.assertLess(lane.common(blocker).Volume, 1e-6)
-                        self.assertAlmostEqual(
-                            lane.distToShape(blocker)[0], 0.5, places=6
-                        )
-                    optical_mount.set_pitch(self.doc, 0)
-                    self.assertLess(
-                        world_shape(self.doc.MTF02PConnectorReserve)
-                        .common(blocker)
-                        .Volume,
-                        1e-6,
-                    )
-                reserve.Shape = Part.makeSphere(0.25, inverse.multVec(point))
-                reserve.Placement = App.Placement()
-                with patch.object(optical, "ANGLES", (20,)):
-                    result = optical._host_checks(self.doc, host, physical, kit)
-                row = result["sampled_attitudes"][0]
-                if kind == "optical_field":
-                    self.assertIn(
-                        reserve.Name,
-                        [
-                            hit["object"]
-                            for hit in row["optical_reserved_space_intrusions"]
-                        ],
-                    )
-                    self.assertIn(
-                        reserve.Name,
-                        [
-                            hit["object"]
-                            for hit in result["continuous_external_optical_bound"][
-                                "external_reserved_space_intrusions"
-                            ]
-                        ],
-                    )
-                else:
-                    failure = next(
-                        check
-                        for check in row["connector_reserved_space_clearances"]
-                        if check["object"] == reserve.Name
-                    )
-                    self.assertFalse(failure["passed"])
-                    if kind == "connector_intersection":
-                        self.assertGreater(failure["intersection_mm3"], 0.06)
-                    else:
-                        self.assertAlmostEqual(
-                            failure["measured_gap_mm"], 0.5, places=6
-                        )
-                self.assertFalse(result["passed"])
-
-    def test_late_failure_or_exception_restores_host_angles_and_metadata(self):
-        from gondola.parts import optical_interface, optical_mount
-        from gondola.validation import optical
-
-        group = self.doc.OpticalFlowModule
-        host = self.doc.ElectronicsEquipmentModule
-        optical_interface.attach_to_host(group, host)
-        optical_mount.set_pitch(self.doc, -9)
-        placement = group.Placement.copy()
-        metadata = {
-            name: getattr(group, name)
-            for name in (
-                "StackHostName",
-                "OpticalInterfaceContract",
-                "OpticalFitVerified",
-            )
-        }
-        for raises in (False, True):
-            with self.subTest(raises=raises):
-
-                def late_failure(doc, probe_host, physical, kit, *, profile=None):
-                    optical_interface.attach_to_host(group, probe_host)
-                    optical_mount.set_pitch(doc, 20)
-                    if raises:
-                        raise RuntimeError("injected late clearance failure")
-                    return {"passed": False}
-
-                with (
-                    patch.object(
-                        optical, "_source_evidence", return_value={"passed": True}
-                    ),
-                    patch.object(optical, "_host_checks", side_effect=late_failure),
-                ):
-                    if raises:
-                        with self.assertRaisesRegex(RuntimeError, "injected late"):
-                            optical.mtf_sensor_check(self.doc)
-                    else:
-                        self.assertFalse(optical.mtf_sensor_check(self.doc)["passed"])
-                self.assertIs(group.getParentGeoFeatureGroup(), host)
-                self.assertLess((group.Placement.Base - placement.Base).Length, 1e-9)
-                self.assertTrue(
-                    group.Placement.Rotation.isSame(placement.Rotation, 1e-9)
-                )
-
-                self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
-                for name, value in metadata.items():
-                    self.assertEqual(getattr(group, name), value)
-
-    def assert_sensor_state_matches(self, before):
-        from gondola.validation.optical import _saved_sensor_state
-
-        after = _saved_sensor_state(self.doc)
-        self.assertEqual(set(before), set(after))
-        for name, properties in before.items():
-            self.assertEqual(set(properties), set(after[name]))
-            for key, expected in properties.items():
-                actual = after[name][key]
-                with self.subTest(object=name, property=key):
-                    if key == "Shape":
-                        self.assertLess(expected.cut(actual).Volume, 1e-7)
-                        self.assertLess(actual.cut(expected).Volume, 1e-7)
-                    elif key == "Placement":
-                        self.assertTrue(actual.isSame(expected, 1e-9))
-                    else:
-                        self.assertEqual(actual, expected)
-
-    def test_all_alternatives_visit_both_hosts_and_restore_exact_selected_state(self):
-        from gondola.contracts.optical_sensors import SENSOR_PROFILES
-        from gondola.parts import optical_interface, optical_mount, optical_sensor
-        from gondola.validation import optical
-
-        group = self.doc.OpticalFlowModule
-        host = self.doc.ElectronicsEquipmentModule
-        optical_interface.attach_to_host(group, host)
-        optical_mount.set_pitch(self.doc, -9)
-        before = optical._saved_sensor_state(self.doc)
-        object_names = {obj.Name for obj in self.doc.Objects}
-        selected = group.SensorModel
-        placements = group.Placement.copy()
-        registry_names = {
-            key: [obj.Name for obj in getattr(self.doc.DesignRegistry, key)]
-            for key in (
-                "PrintedParts",
-                "HardwareParts",
-                "ReferenceParts",
-                "ClearanceVolumes",
-            )
-        }
-        for fail_alternative in (False, True):
-            with self.subTest(fail_alternative=fail_alternative):
-                visited = []
-
-                def probe(doc, probe_host, physical, kit, *, profile):
-                    visited.append((profile.key, probe_host.Name))
-                    self.assertEqual(group.SensorModel, profile.key)
-                    self.assertEqual(optical_sensor.profile_for_document(doc), profile)
-                    self.assertEqual(
-                        json.loads(str(doc.ModuleMTF02PEnvelope.SensorProfileContract)),
-                        json.loads(json.dumps(profile.contract())),
-                    )
-                    self.assertAlmostEqual(
-                        doc.ModuleMTF02PEnvelope.Shape.BoundBox.ZLength,
-                        profile.size_mm[2],
-                    )
-                    self.assertEqual({obj.Name for obj in doc.Objects}, object_names)
-                    for key, names in registry_names.items():
-                        self.assertEqual(
-                            [obj.Name for obj in getattr(doc.DesignRegistry, key)],
-                            names,
-                        )
-                    optical_interface.attach_to_host(group, probe_host)
-                    optical_mount.set_pitch(doc, 20)
-                    return {
-                        "host": probe_host.Name,
-                        "sensor_model": profile.key,
-                        "passed": not (fail_alternative and profile.key == "MTF01P"),
-                    }
-
-                with patch.object(optical, "_host_checks", side_effect=probe):
-                    result = optical.mtf_sensor_check(self.doc)
-                self.assertEqual(
-                    visited,
-                    [
-                        (key, host_name)
-                        for key in SENSOR_PROFILES
-                        for host_name in optical_interface.SUPPORTED_HOSTS
-                    ],
-                )
-                self.assertEqual(result["passed"], not fail_alternative)
-                self.assertEqual(result["selected_sensor_model"], selected)
-                self.assertEqual(
-                    result["hosts"], result["sensor_alternatives"][selected]["hosts"]
-                )
-                self.assert_sensor_state_matches(before)
-                self.assertEqual(group.SensorModel, selected)
-                self.assertIs(group.getParentGeoFeatureGroup(), host)
-                self.assertTrue(group.Placement.isSame(placements, 1e-9))
-
-                self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
-
-    def test_alternative_exception_restores_sensor_shapes_metadata_and_controls(self):
-        from gondola.parts import optical_interface, optical_mount
-        from gondola.validation import optical
-
-        group = self.doc.OpticalFlowModule
-        host = self.doc.ElectronicsEquipmentModule
-        optical_interface.attach_to_host(group, host)
-        optical_mount.set_pitch(self.doc, -9)
+        set_pitch(self.doc, 11)
         before = optical._saved_sensor_state(self.doc)
         selected = group.SensorModel
+        station = group.RailPositionX.Value
+        calls = []
 
-        def probe(doc, probe_host, physical, kit, *, profile):
-            optical_interface.attach_to_host(group, probe_host)
-            optical_mount.set_pitch(doc, -20)
-            if profile.key == "MTF01P":
-                raise RuntimeError("injected alternative failure")
+        def screen(doc, physical, kit, *, profile):
+            calls.append((profile.key, doc.OpticalFlowModule.RailPositionX.Value))
+            if len(calls) == 2:
+                raise RuntimeError("deliberate validation failure")
             return {"passed": True}
 
-        with patch.object(optical, "_host_checks", side_effect=probe):
-            with self.assertRaisesRegex(RuntimeError, "injected alternative"):
+        with patch.object(optical, "_placement_checks", side_effect=screen):
+            with self.assertRaisesRegex(RuntimeError, "deliberate"):
                 optical.mtf_sensor_check(self.doc)
-        self.assert_sensor_state_matches(before)
+        self.assertEqual(calls, [("MTF02P", station), ("MTF01P", station)])
         self.assertEqual(group.SensorModel, selected)
-        self.assertIs(group.getParentGeoFeatureGroup(), host)
+        self.assertEqual(group.RailPositionX.Value, station)
+        self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, 11)
+        after = optical._saved_sensor_state(self.doc)
+        for name, values in before.items():
+            for key, value in values.items():
+                if key == "Shape":
+                    self.assertLess(abs(value.cut(after[name][key]).Volume), 1e-7)
+                    self.assertLess(abs(after[name][key].cut(value).Volume), 1e-7)
+                elif key == "Placement":
+                    self.assertTrue(value.isSame(after[name][key], 1e-7))
+                else:
+                    self.assertEqual(value, after[name][key], (name, key))
 
-        self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, -9)
+    def test_continuous_field_does_not_filter_unknown_obstacles(self):
+        from gondola.validation.optical import _external_field_bound
+        from gondola.validation.wiring import collision_hits
+
+        group = self.doc.OpticalFlowModule
+        bound, _ = _external_field_bound(group)
+        block = Part.makeBox(1, 1, 1, App.Vector(0, 0, 50))
+        block.Placement = group.getGlobalPlacement()
+        hits = collision_hits(bound, {"UnknownBlock": block}, tolerance=1e-5)
+        self.assertEqual(len(hits), 1)
+        self.assertAlmostEqual(hits[0]["intersection_mm3"], 1)
 
     def test_mtf01p_long_edge_connector_detects_external_obstruction(self):
         from gondola.cad import belongs_to_group, world_shape
@@ -472,7 +186,6 @@ class OpticalClearanceTests(unittest.TestCase):
         kit = [
             obj for obj in physical if belongs_to_group(obj, self.doc.OpticalFlowModule)
         ]
-        host = self.doc.BatteryEquipmentModule
         point = self.doc.OpticalPitchStage.getGlobalPlacement().multVec(
             App.Vector(
                 0, profile.size_mm[1] / 2 + 5, optical_sensor.SENSOR_BOTTOM_Z + 8
@@ -495,9 +208,7 @@ class OpticalClearanceTests(unittest.TestCase):
         )
         reserve.Placement = App.Placement()
         with patch.object(optical, "ANGLES", (0,)):
-            result = optical._host_checks(
-                self.doc, host, physical, kit, profile=profile
-            )
+            result = optical._placement_checks(self.doc, physical, kit, profile=profile)
         self.assertFalse(result["passed"])
         clearance = next(
             row
@@ -508,85 +219,3 @@ class OpticalClearanceTests(unittest.TestCase):
         )
         self.assertFalse(clearance["passed"])
         self.assertGreater(clearance["intersection_mm3"], 0.06)
-
-    def test_continuous_field_bound_detects_a_small_external_obstruction(self):
-        from gondola.validation.optical import _external_field_bound
-        from gondola.validation.wiring import collision_hits
-
-        group = self.doc.OpticalFlowModule
-        bound, _ = _external_field_bound(group)
-        obstruction = Part.makeBox(1, 1, 1, App.Vector(0, 0, 50))
-        obstruction.Placement = group.getGlobalPlacement()
-        result = collision_hits(
-            bound, {"IntroducedOpticalObstruction": obstruction}, tolerance=1e-5
-        )
-        self.assertEqual(len(result), 1)
-        self.assertAlmostEqual(result[0]["intersection_mm3"], 1.0, places=6)
-
-    def test_direct_helix_policy_keeps_blocked_rows_and_requires_saved_host(self):
-        from gondola.parts import optical_interface
-        from gondola.validation import optical
-
-        group = self.doc.OpticalFlowModule
-        original = group.getParentGeoFeatureGroup()
-        navigation = SimpleNamespace(key="MGF10A", external_antenna=object())
-
-        def host_probe(doc, host, physical, kit, *, profile):
-            return {
-                "host": host.Name,
-                "sensor_model": profile.key,
-                "passed": host.Name == "BatteryEquipmentModule",
-            }
-
-        try:
-            for host_name, accepted in (
-                ("BatteryEquipmentModule", True),
-                ("ElectronicsEquipmentModule", False),
-            ):
-                optical_interface.attach_to_host(group, self.doc.getObject(host_name))
-                with (
-                    patch.object(
-                        optical, "_source_evidence", return_value={"passed": True}
-                    ),
-                    patch.object(
-                        optical, "get_navigation_profile", return_value=navigation
-                    ),
-                    patch.object(optical, "_host_checks", side_effect=host_probe),
-                ):
-                    report = optical.mtf_sensor_check(self.doc)
-                self.assertEqual(report["passed"], accepted)
-                self.assertEqual(
-                    report["permitted_optical_hosts"], ["BatteryEquipmentModule"]
-                )
-                for alternative in report["sensor_alternatives"].values():
-                    blocked = next(
-                        row
-                        for row in alternative["hosts"]
-                        if row["host"] == "ElectronicsEquipmentModule"
-                    )
-                    self.assertFalse(blocked["passed"])
-            navigation.key = "UNREVIEWED_ANTENNA_MODEL"
-            optical_interface.attach_to_host(group, self.doc.BatteryEquipmentModule)
-            with (
-                patch.object(
-                    optical, "_source_evidence", return_value={"passed": True}
-                ),
-                patch.object(
-                    optical, "get_navigation_profile", return_value=navigation
-                ),
-                patch.object(optical, "_host_checks", side_effect=host_probe),
-            ):
-                self.assertFalse(optical.mtf_sensor_check(self.doc)["passed"])
-            with (
-                patch.object(
-                    optical, "_source_evidence", return_value={"passed": True}
-                ),
-                patch.object(optical, "_host_checks", return_value={"passed": True}),
-            ):
-                self.assertFalse(optical.mtf_sensor_check(self.doc)["passed"])
-        finally:
-            optical_interface.attach_to_host(group, original)
-
-
-if __name__ == "__main__":
-    unittest.main()

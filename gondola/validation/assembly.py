@@ -682,6 +682,89 @@ def module_service(registry, objects, shapes):
     }
 
 
+def saved_integral_shoe_checks(doc, registry):
+    """Compare all five saved captures, allowing only the declared centre pocket.
+
+    The independent literal pocket removes only the top 0.8 mm of the common
+    shoe. Everything at or below Z10, including the complete 1.5 mm roof above
+    the rail channel, remains identical to the original common shoe.
+    """
+    bindings = (
+        ("BatteryMount", "BatteryEquipmentModule", True),
+        ("ElectronicsMount", "ElectronicsEquipmentModule", True),
+        ("AccessoryMount", "AccessoryEquipmentModule", True),
+        ("PropulsionFixedFrame", "MainPropulsionModule", False),
+        ("OpticalMountBase", "OpticalFlowModule", False),
+    )
+    equipment_names = [obj.Name for obj in registry.EquipmentMounts]
+    expected_equipment = [name for name, _, pocket in bindings if pocket]
+    equipment_binding_matches = sorted(equipment_names) == sorted(
+        expected_equipment
+    ) and all(obj == doc.getObject(obj.Name) for obj in registry.EquipmentMounts)
+    printed_parts = list(registry.PrintedParts)
+    shoe = rail.shoe_shape()
+    origin = V(-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM)
+    shoe_box = Part.makeBox(
+        rail.SHOE_LENGTH, rail.SHOE_WIDTH, rail.TOP_Z - rail.SHOE_BOTTOM, origin
+    )
+    protected_box = Part.makeBox(
+        rail.SHOE_LENGTH, rail.SHOE_WIDTH, 10.0 - rail.SHOE_BOTTOM, origin
+    )
+    protected_shoe = shoe.common(protected_box)
+    radius = 4.15 / math.sqrt(3)
+    points = [
+        V(radius * math.cos(math.radians(a)), radius * math.sin(math.radians(a)), 10.0)
+        for a in range(0, 360, 60)
+    ]
+    pocket = Part.Face(Part.makePolygon(points + [points[0]])).extrude(V(0, 0, 2.4))
+    pocket = pocket.fuse(Part.makeBox(12.0, 4.15, 2.4, V(-12.0, -2.075, 10.0)))
+    centre_shoe = shoe.cut(pocket)
+    rows = []
+    for name, parent_name, has_centre_pocket in bindings:
+        obj = doc.getObject(name)
+        if obj is None:
+            rows.append(
+                {"part": name, "passed": False, "error": "Missing integral shoe"}
+            )
+            continue
+        actual = local_shape(obj).common(shoe_box)
+        comparison = geometry_comparison(
+            actual, centre_shoe if has_centre_pocket else shoe
+        )
+        protected = geometry_comparison(actual.common(protected_box), protected_shoe)
+        expected_parent = doc.getObject(parent_name)
+        parent_matches = (
+            expected_parent is not None
+            and obj.getParentGeoFeatureGroup() == expected_parent
+        )
+        registered_once = printed_parts.count(obj) == 1
+        rows.append(
+            {
+                "part": name,
+                **comparison,
+                "declared_central_nut_pocket": has_centre_pocket,
+                "protected_capture_at_or_below_z10": protected,
+                "expected_parent": parent_name,
+                "parent_matches": parent_matches,
+                "registered_once_as_print": registered_once,
+                "equipment_registry_matches": equipment_binding_matches,
+                "passed": parent_matches
+                and registered_once
+                and equipment_binding_matches
+                and all(
+                    check[key] < TOL
+                    for check in (comparison, protected)
+                    for key in (
+                        "difference_mm3",
+                        "bounds_difference_mm",
+                        "volume_difference_mm3",
+                    )
+                ),
+            }
+        )
+    return rows
+
+
 def bidirectional_service(doc, registry, objects):
     try:
         bindings = module_control_bindings(doc)
@@ -738,20 +821,9 @@ def bidirectional_service(doc, registry, objects):
                         **module_service(registry, objects, shapes),
                     }
                 )
-        # Dedicated equipment supports may be asymmetric. Their actual shared
-        # capture/nut geometry must still be exact, not just non-interfering.
+        # Every integral capture is bound to its named saved part and module.
+        captures = saved_integral_shoe_checks(doc, registry)
         shoe = rail.shoe_shape()
-        shoe_box = Part.makeBox(
-            rail.SHOE_LENGTH,
-            rail.SHOE_WIDTH,
-            rail.TOP_Z - rail.SHOE_BOTTOM,
-            V(-rail.SHOE_LENGTH / 2, -rail.SHOE_WIDTH / 2, rail.SHOE_BOTTOM),
-        )
-        captures = []
-        for obj in list(registry.EquipmentMounts) + [doc.PropulsionFixedFrame]:
-            actual = local_shape(obj).common(shoe_box)
-            comparison = geometry_comparison(actual, shoe)
-            captures.append({"part": obj.Name, **comparison})
         symmetry = []
         rotated = shoe.copy()
         rotated.rotate(V(), V(0, 0, 1), 180)
@@ -774,8 +846,9 @@ def bidirectional_service(doc, registry, objects):
                 row["difference_mm3"] < TOL
                 and row["bounds_difference_mm"] < TOL
                 and row["volume_difference_mm3"] < TOL
-                for row in symmetry + captures
+                for row in symmetry
             )
+            and all(row["passed"] for row in captures)
             and len(registry.RailLocks) == 2 * len(bindings),
         }
     finally:
@@ -980,7 +1053,7 @@ def battery_check(doc, objects):
 
     float_rows = []
     tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
-    component_bounds = optical_interface.rigid_float_component_bounds()
+    component_bounds = optical_interface.base_component_proxies()
     expected_components = {name for name, _ in component_bounds}
     if tower is not None:
         for component, envelope in component_bounds:
@@ -999,7 +1072,7 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Continuous conservative bounds for every segment of the one-piece optical support on the shared slot interface. No operating play is allowed: the foot must seat and be clamped. Physical pointing stability and clamp friction require verification.",
+        "tower_registration_scope": "Conservative component envelopes of the straight optical post and integral rail shoe at the selected independent station. Shared rail-fit allowance is not deliberate operating looseness; qualify shoe fit, pointing retention and clamp friction.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
         and bool(expected_components)

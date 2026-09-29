@@ -250,11 +250,14 @@ class BearingCaptureTests(unittest.TestCase):
         self.assertFalse(self.check()["passed"])
 
     def test_missing_guide_or_outer_shoulder_sector_cannot_claim_complete_support(self):
-        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.parts.propulsion import BEARING_START_Y, PIVOT_HALF_SPAN, PIVOT_Z
 
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
-        for local_y, depth in ((28.91, 1.5), (31.01, 0.5)):
+        for local_y, depth in (
+            (BEARING_START_Y + 0.41, 1.5),
+            (BEARING_START_Y + 2.51, 0.5),
+        ):
             with self.subTest(local_y=local_y):
                 frame.Shape = original.cut(
                     Part.makeBox(
@@ -271,9 +274,13 @@ class BearingCaptureTests(unittest.TestCase):
         self.assertFalse(self.check()["passed"])
 
     def test_carrier_protrusion_toward_bearing_shield_is_rejected(self):
+        from gondola.parts.propulsion import CARRIER_END_Y
+
         carrier = self.doc.PortMotorCarrier
         carrier.Shape = carrier.Shape.fuse(
-            Part.makeCylinder(2.7, 2.6, App.Vector(0, 26, 0), App.Vector(0, 1, 0))
+            Part.makeCylinder(
+                2.7, 2.6, App.Vector(0, CARRIER_END_Y, 0), App.Vector(0, 1, 0)
+            )
         )
         self.doc.recompute()
         result = self.check()
@@ -390,6 +397,86 @@ class NativeGearedDriveTests(unittest.TestCase):
                 1e-7,
             )
 
+    def test_wide_support_and_long_grips_use_two_common_carriers(self):
+        from gondola.cad import world_shape
+        from gondola.parts import propulsion
+
+        carriers = [
+            self.doc.getObject(prefix + "MotorCarrier")
+            for prefix in ("Port", "Starboard")
+        ]
+        self.assertLess(carriers[0].Shape.cut(carriers[1].Shape).Volume, 1e-7)
+        for prefix, sign in (("Port", 1), ("Starboard", -1)):
+            carrier = self.doc.getObject(prefix + "MotorCarrier")
+            self.assertAlmostEqual(carrier.Shape.BoundBox.YLength, 68)
+            bearings = [
+                world_shape(self.doc.getObject(prefix + "OutputBearing" + suffix))
+                for suffix in ("Negative", "Positive")
+            ]
+            self.assertAlmostEqual(
+                abs(
+                    (
+                        bearings[1].BoundBox.YMin
+                        + bearings[1].BoundBox.YMax
+                        - bearings[0].BoundBox.YMin
+                        - bearings[0].BoundBox.YMax
+                    )
+                    / 2
+                ),
+                75.5,
+            )
+            inner = bearings[0] if sign > 0 else bearings[1]
+            self.assertAlmostEqual(
+                abs((inner.BoundBox.YMin + inner.BoundBox.YMax) / 2 - sign * 29), 8.25
+            )
+            idle_suffix = "Positive" if sign > 0 else "Negative"
+            self.assertEqual(
+                self.doc.getObject(prefix + "OutputShaft" + idle_suffix).HardwareSKU,
+                "SS304_CUT3_L22",
+            )
+            for side, suffix in ((-1, "Negative"), (1, "Positive")):
+                # A half annulus avoids the intentional split and proves that
+                # the actual long clamping land was not left as a short collar.
+                start = 20.6 if side > 0 else -33.9
+                witness = propulsion.cylinder(2.8, 13.3, (0, start, 0)).cut(
+                    propulsion.cylinder(1.7, 13.3, (0, start, 0))
+                )
+                witness = witness.common(
+                    Part.makeBox(3, 13.3, 6, App.Vector(-3, start, -3))
+                )
+                self.assertGreater(witness.Volume, 90)
+                self.assertLess(witness.cut(carrier.Shape).Volume, 1e-7)
+                bolt = self.doc.getObject(prefix + "OutputClamp" + suffix + "Bolt")
+                self.assertAlmostEqual(
+                    (bolt.Shape.BoundBox.YMin + bolt.Shape.BoundBox.YMax) / 2,
+                    side * 27.25,
+                )
+
+    def test_overlong_staged_shaft_withdrawal_hits_the_opposite_drive(self):
+        from gondola.cad import translated_shape, world_shape
+        from gondola.parts import propulsion
+        from gondola.validation.propulsion_service import continuous_path
+
+        shaft = translated_shape(
+            world_shape(self.doc.PortOutputShaftNegative),
+            y=-propulsion.SHAFT_ASSEMBLY_RETRACTION,
+        )
+        opposite = {
+            "opposite_shaft": world_shape(self.doc.StarboardOutputShaftPositive)
+        }
+        excessive = continuous_path(shaft, [(0, 0, 0), (0, -35, 0)], opposite)
+        self.assertFalse(excessive["passed"], excessive)
+        actual = continuous_path(
+            shaft,
+            [
+                (0, 0, 0),
+                (0, -propulsion.SHAFT_FINAL_WITHDRAWAL, 0),
+                (40, -propulsion.SHAFT_FINAL_WITHDRAWAL, 0),
+            ],
+            opposite,
+        )
+        self.assertTrue(actual["passed"], actual)
+
     def test_plain_bearing_post_roots_keep_the_complete_load_section(self):
         from gondola.validation.propulsion import bearing_post_roots_check
 
@@ -397,10 +484,11 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         for row in rows:
             self.assertTrue(row["passed"], row)
+            self.assertEqual(row["root_section_mm"], [9.6, 6])
 
     def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
         from gondola.cad import belongs_to_group, world_shape
-        from gondola.parts import bearing_retention
+        from gondola.parts import bearing_retention, propulsion
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         # Rotation preserves axial Y. A moving solid must stay entirely clear
@@ -429,7 +517,18 @@ class NativeGearedDriveTests(unittest.TestCase):
                 high = bounds.YMax + travel["positive_mm"]
                 clears_both_post_bands = all(
                     high <= start + 1e-7 or low >= end - 1e-7
-                    for start, end in ((-32.5, -26.5), (26.5, 32.5))
+                    for start, end in (
+                        (
+                            -propulsion.BEARING_SHOULDER_Y
+                            - propulsion.BEARING_SHOULDER_THICKNESS,
+                            -propulsion.BEARING_GUIDE_START_Y,
+                        ),
+                        (
+                            propulsion.BEARING_GUIDE_START_Y,
+                            propulsion.BEARING_SHOULDER_Y
+                            + propulsion.BEARING_SHOULDER_THICKNESS,
+                        ),
+                    )
                 )
                 radial_bound = math.hypot(
                     max(abs(bounds.XMin), abs(bounds.XMax)),
@@ -1822,7 +1921,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 equipment_mounts.build_mount(doc, electronics, "electronics")
                 accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
                 equipment_mounts.build_mount(doc, accessory, "accessory")
-                optical_mount.build_optical_mount(doc, host)
+                optical_mount.build_optical_mount(doc)
                 doc.recompute()
                 doc.saveAs(str(path))
             finally:

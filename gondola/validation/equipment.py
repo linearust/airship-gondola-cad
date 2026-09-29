@@ -224,7 +224,10 @@ def carrier_contact_patch_checks(shape, *, bottom, thickness):
         (f"battery_{index}", centre, size)
         for index, (centre, size) in enumerate(mounts.BATTERY_ADHESIVE_REGIONS)
     ] + [
-        ("navigation", mounts.NAVIGATION_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
+        *(
+            (f"navigation_{index}", centre, size)
+            for index, (centre, size) in enumerate(mounts.GPS_ADHESIVE_REGIONS)
+        ),
         *(
             (f"radio_{index}", centre, size)
             for index, (centre, size) in enumerate(mounts.RADIO_ADHESIVE_REGIONS)
@@ -252,6 +255,61 @@ def carrier_contact_patch_checks(shape, *, bottom, thickness):
         "patches": rows,
         "scope": "Alternative nominal contact allocations, not simultaneous equipment or physical adhesive qualification. Shifted batteries need not cover the entire nominal allocation.",
         "passed": all(row["passed"] for row in rows),
+    }
+
+
+def carrier_centre_mount_check(shape):
+    """Inspect the spare interface's intact floor, seat and full nut-loading path."""
+    from gondola.parts import purchased_hardware, rail
+
+    # Independent nominal witnesses: this optional interface is empty in the
+    # baseline. Filling the nut thread bore permits an exact planar sweep of
+    # its complete exterior, avoiding a rectangular bound at the hex stop.
+    nut = purchased_hardware.hex_prism(4.0, 1.6, 10.8)
+    start = nut.copy()
+    start.translate(App.Vector(-36, 0, 0))
+    sweep, method = translation_sweep(start, (36, 0, 0))
+    floor = Part.makeBox(4.8, 4.8, 1.5, App.Vector(-2.4, -2.4, 8.5))
+    seat = Part.makeCylinder(3.25, 3.0, App.Vector(0, 0, 12.4)).cut(
+        Part.makeCylinder(1.3, 3.0, App.Vector(0, 0, 12.4))
+    )
+    screw = purchased_hardware.screw_shape(5).copy()
+    screw.rotate(App.Vector(), App.Vector(1, 0, 0), 180)
+    screw.translate(App.Vector(0, 0, 15.4))
+    rail_head_bound = Part.makeBox(80, 10, 3, App.Vector(-40, -5, 5.4))
+    hardware = [rail.clamp_screw_shape(), rail.nut_shape()]
+    hardware += [rail.half_turn(item) for item in hardware]
+    rotation_blocks = []
+    for angle in (-30, 30):
+        rotated = purchased_hardware.hex_prism(3.8, 1.4, 11.0)
+        rotated.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
+        rotation_blocks.append(intersection_volume(rotated, shape))
+    missing_floor = floor.cut(shape).Volume
+    missing_seat = seat.cut(shape).Volume
+    obstruction = intersection_volume(sweep, shape)
+    screw_obstruction = intersection_volume(screw, shape)
+    clamp_hits = [intersection_volume(sweep, item) for item in hardware]
+    rail_gap = screw.distToShape(rail_head_bound)[0]
+    return {
+        "nominal_centre_xy_mm": [0.0, 0.0],
+        "nominal_optional_screw_length_mm": 5.0,
+        "nominal_tip_to_floor_mm": 0.4,
+        "missing_1_5mm_solid_floor_mm3": missing_floor,
+        "missing_nut_seat_and_roof_mm3": missing_seat,
+        "continuous_nut_loading_method": method,
+        "continuous_nut_loading_obstruction_mm3": obstruction,
+        "optional_screw_obstruction_mm3": screw_obstruction,
+        "nut_loading_rail_clamp_intersections_mm3": clamp_hits,
+        "optional_screw_to_continuous_rail_head_bound_mm": rail_gap,
+        "smallest_accepted_nut_30deg_rotation_blocks_mm3": rotation_blocks,
+        "scope": "Bare alternative centre interface only; no added baseline hardware. Nominal geometry does not qualify accessory loads, actual nut capture, bolt length or printed fit. Inspect the received nut/finished seat and leave measured screw-tip clearance above the blind floor; never tighten against the floor.",
+        "passed": missing_floor < TOL
+        and missing_seat < TOL
+        and obstruction < TOL
+        and screw_obstruction < TOL
+        and all(value < TOL for value in clamp_hits)
+        and rail_gap >= 2.0 - TOL
+        and all(value > TOL for value in rotation_blocks),
     }
 
 
@@ -398,6 +456,7 @@ def mounting_check(doc):
         except (AttributeError, ValueError, TypeError):
             stack_contract_matches = False
         openings = carrier_opening_checks(shape)
+        centre_interface = carrier_centre_mount_check(shape)
         shared_comparison = (
             geometry_comparison(shape, local_shape(shared_reference))
             if shared_reference is not None
@@ -424,6 +483,7 @@ def mounting_check(doc):
                 "shared_print_comparison": shared_comparison,
                 "shared_print_geometry_and_metadata_match": shared_print_matches,
                 "physical_plate_openings": openings,
+                "optional_centre_mount": centre_interface,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()
@@ -434,7 +494,8 @@ def mounting_check(doc):
                 and unverified_stack
                 and stack_contract_matches
                 and shared_print_matches
-                and openings["passed"],
+                and openings["passed"]
+                and centre_interface["passed"],
             }
         )
     carriers = {
@@ -551,14 +612,15 @@ def mounting_check(doc):
         ),
     ]
     if navigation_profile.key != "PAS":
-        adhesive_specs.append(
+        adhesive_specs.extend(
             (
                 "AccessoryMount",
                 "ModulePASEnvelope",
-                mounts.NAVIGATION_CENTRE_XY,
-                mounts.GPS_ADHESIVE_SIZE,
+                centre,
+                size,
                 "top",
             )
+            for centre, size in mounts.GPS_ADHESIVE_REGIONS
         )
     for mount_name, device_name, centre, size, face in adhesive_specs:
         support = doc.getObject(mount_name)
@@ -688,22 +750,12 @@ def mounting_check(doc):
         "ModulePASEnvelope",
         "ModuleRadioEnvelope",
     ):
-        optical_group = doc.getObject("OpticalFlowModule")
         device_parent = doc.getObject(name).getParentGeoFeatureGroup()
         local_travel = App.Vector(*layout.device_removal_vector(name))
         world_travel = device_parent.getGlobalPlacement().Rotation.multVec(local_travel)
         sweep, sweep_method = translation_sweep(
             physical_shapes_by_name[name], tuple(world_travel)
         )
-        release_head = (
-            optical_group is not None
-            and optical_group.getParentGeoFeatureGroup() == device_parent
-        )
-        removed_head_names = {
-            obj.Name
-            for obj in physical_objects
-            if release_head and belongs_to_group(obj, optical_group)
-        }
         detached_carrier = name == "ModuleRadioEnvelope"
         off_carrier_names = {
             obj.Name
@@ -714,7 +766,6 @@ def mounting_check(doc):
             obj.Name
             for obj in physical_objects
             if obj.Name != name
-            and obj.Name not in removed_head_names
             and obj.Name not in off_carrier_names
             and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
         ]
@@ -723,18 +774,18 @@ def mounting_check(doc):
                 "device": name,
                 "local_removal_vector_mm": tuple(local_travel),
                 "world_removal_vector_mm": tuple(world_travel),
-                "bench_access_required": release_head or detached_carrier,
+                "bench_access_required": detached_carrier,
                 "service_collision_scope": "Detached carrier assembly only"
                 if detached_carrier
-                else "Installed assembly after declared tower release",
+                else "Installed assembly",
                 "off_carrier_parts_excluded_for_bench_service": sorted(
                     off_carrier_names
                 ),
-                "optical_head_must_be_removed_first": release_head,
-                "complete_optical_mount_removed": release_head,
-                "temporarily_removed_head_parts": sorted(removed_head_names),
+                "optical_head_must_be_removed_first": False,
+                "complete_optical_mount_removed": False,
+                "temporarily_removed_head_parts": [],
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. When this carrier hosts the optical mount, detach the carrier for bench access, support the complete optical assembly, release its foot clamps and lift it away before servicing the device. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. The independent optical module remains an obstacle for installed device removal. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -958,7 +1009,7 @@ def validate(source=None):
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack over the bounded -180 to +180 degree output range.",
-                "The optical mount can use either supported host. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
+                "The independent optical rail module retains a native longitudinal station. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }

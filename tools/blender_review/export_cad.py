@@ -16,7 +16,7 @@ import MeshPart
 
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
-from gondola.parts import optical_interface, optical_mount
+from gondola.parts import optical_mount
 from gondola.provenance import file_sha256, source_fingerprint
 from tools.blender_review.motion_plan import REVIEW_MOTION, curve
 
@@ -244,10 +244,9 @@ def export(cad_path, output):
         original_drive = App.Placement(doc.ServoDriveModule.Placement)
         scenes = []
 
-        def reset(host="BatteryEquipmentModule"):
+        def reset():
             doc.PortPod.Tilt = doc.StarboardPod.Tilt = 0
             doc.ServoDriveModule.Placement = original_drive
-            optical_interface.attach_to_host(doc.OpticalFlowModule, doc.getObject(host))
             optical_mount.set_pitch(doc, 0)
             doc.recompute()
 
@@ -260,9 +259,8 @@ def export(cad_path, output):
             focus,
             markers,
             pose,
-            host="BatteryEquipmentModule",
         ):
-            reset(host)
+            reset()
             samples = []
             # Every frame is sampled from native controls: interpolation never has
             # to infer a 360-degree path from equivalent endpoint quaternions.
@@ -395,34 +393,26 @@ def export(cad_path, output):
             optical_mount.set_pitch(doc, pitch)
             return {}, set()
 
-        for number, host, label in (
-            (5, "BatteryEquipmentModule", "Battery"),
-            (6, "ElectronicsEquipmentModule", "FC"),
-        ):
-            origin = doc.getObject(host).getGlobalPlacement().Base
-            scene(
-                f"0{number} Optical on {label}",
-                f"OPTICAL MANUAL TRIM / {label.upper()} HOST",
-                "One manual pitch axis +/-20 deg. Loosen, align and retighten the single pivot; no roll correction, actuation or self-levelling. Alternate installed host, not a transfer path. Sensor local +Z is the viewing direction.",
-                145,
-                all_names,
-                [
-                    [origin.x - 51, origin.y - 44, origin.z + 7],
-                    [origin.x + 51, origin.y + 44, origin.z + 67],
-                ],
-                [
-                    (1, "Aligned"),
-                    (37, "Pitch +20"),
-                    (73, "Pitch -20"),
-                    (109, "Pitch +20"),
-                    (145, "Aligned"),
-                ],
-                optical,
-                host,
-            )
+        origin = doc.OpticalFlowModule.getGlobalPlacement().Base
+        scene(
+            "05 Optical rail trim",
+            "OPTICAL MANUAL TRIM / INDEPENDENT RAIL SHOE",
+            "One manual pitch axis +/-20 deg. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. The installed rail station is fixed during this review. Sensor local +Z is the viewing direction.",
+            145,
+            all_names,
+            [[origin.x - 35, origin.y - 30, 0], [origin.x + 35, origin.y + 30, 60]],
+            [
+                (1, "Aligned"),
+                (37, "Pitch +20"),
+                (73, "Pitch -20"),
+                (109, "Pitch +20"),
+                (145, "Aligned"),
+            ],
+            optical,
+        )
 
         scene(
-            "07 Servo module removal",
+            "06 Servo module removal",
             "PAIRED SERVO MODULE / BENCH REMOVAL",
             REVIEW_MOTION.removal_description()
             + " Horns, adapters and their rear screws/front nuts stay on the servos throughout this module-removal scene.",

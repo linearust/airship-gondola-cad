@@ -80,7 +80,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                 self.assertAlmostEqual(stop["travel_mm"], 0.5)
 
     def test_a_small_remaining_stop_sector_cannot_claim_all_angle_contact(self):
-        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         doc, _ = self.module()
@@ -88,10 +88,10 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         # Keep one quarter of the annular stop, including real neutral contact,
         # while removing the other sectors through every possible cup face.
         remove_right = Part.makeBox(
-            8, 10, 16, App.Vector(0, PIVOT_HALF_SPAN + 26.4, PIVOT_Z - 8)
+            8, 10, 16, App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.4, PIVOT_Z - 8)
         )
         remove_upper_left = Part.makeBox(
-            8, 10, 8, App.Vector(-8, PIVOT_HALF_SPAN + 26.4, PIVOT_Z)
+            8, 10, 8, App.Vector(-8, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.4, PIVOT_Z)
         )
         frame.Shape = frame.Shape.cut(remove_right.fuse(remove_upper_left))
         doc.recompute()
@@ -144,7 +144,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         self.assertLess(row["continuous_clearance_lower_bound_mm"], 1.5)
 
     def test_removing_a_physical_stop_is_not_hidden_by_the_frame_bounds(self):
-        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         doc, _ = self.module()
@@ -153,7 +153,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             Part.makeCylinder(
                 3.7,
                 10,
-                App.Vector(0, PIVOT_HALF_SPAN + 26, PIVOT_Z),
+                App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y, PIVOT_Z),
                 App.Vector(0, 1, 0),
             )
         )
@@ -163,7 +163,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         self.assertIsNone(result["maximum_mm"])
 
     def test_extra_stop_travel_consumes_clearance_even_without_nominal_collision(self):
-        from gondola.parts.propulsion import PIVOT_HALF_SPAN, PIVOT_Z
+        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
@@ -172,7 +172,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             Part.makeCylinder(
                 4.7,
                 1,
-                App.Vector(0, PIVOT_HALF_SPAN + 26.5, PIVOT_Z),
+                App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.5, PIVOT_Z),
                 App.Vector(0, 1, 0),
             )
         )

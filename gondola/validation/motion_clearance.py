@@ -18,7 +18,7 @@ MINIMUM_METAL_RESERVE_MM = 1.5
 # Declared, reviewable envelope; changes to the live carrier must still fit it.
 GUARD_SPHERE_RADIUS_MM = math.hypot(13.0, 24.3)
 RIB_CYLINDER_RADIUS_MM = math.hypot(13.0, 3.2)
-CARRIER_HALF_WIDTH_MM = 26.0
+CARRIER_HALF_WIDTH_MM = 34.0
 # This band lies on the clamp end and the retained bearing-cup stop sectors.
 STOP_WITNESS_INNER_MM = 3.25
 STOP_WITNESS_OUTER_MM = 3.55
