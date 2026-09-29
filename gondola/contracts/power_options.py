@@ -225,7 +225,7 @@ def power_option_contract():
                 "battery_installed": False,
                 "additional_prints": 0,
                 "additional_screw_nut_pairs": 0,
-                "scope": "Reuse the vacated battery carrier with insulating adhesive allocations. Move the independent optical rail module to X158 mm and screen the complete navigation/optical/power combination. Board underside contact, adhesive, cooling and tether retention remain unqualified.",
+                "scope": "Reuse the vacated battery carrier with insulating adhesive allocations. Reattach the same optical foot to the existing navigation carrier NegativeX side (world X=-131 mm in the saved layout) and screen the complete navigation/optical/power combination. Board underside contact, adhesive, cooling and tether retention remain unqualified.",
             },
             PORTAL: {
                 "plans": list(OPTIONAL_POWER_PLAN_KEYS),

@@ -26,7 +26,7 @@ from .servo_horns import profile as horn_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BH"
+DESIGN_REVISION = "BI"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -40,7 +40,7 @@ STACK_ANCHOR_LOCATIONS = (
 )
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
-    "reviewed_on": "2026-09-23",
+    "reviewed_on": "2026-09-29",
     "supplier": "Creallo",
     "material": "Unfilled PA12 design basis; supplier grade/process/finish agreement pending. Do not substitute fibre-filled grades without redesign and renewed flexure qualification.",
     "preferred_process": None,
@@ -51,7 +51,7 @@ MANUFACTURING_DECISION = {
     "rationale": "PA12 is Creallo's documented functional powder-bed nylon and suits open integral supports and the rail flexure trial. Neither SLS nor MJF is established as superior for this assembly; choose with the supplier using fit, stiffness, straightness and mass requirements. A material/process change requires renewed fit and flexure qualification.",
     "supplier_process_policy": "Creallo integrates SLS/MJF quotations and selects the process unless separately agreed. No process is preselected here. Confirm the actual PA12 grade, process and finish before printing matched coupons and full parts.",
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
-    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the independent optical rail shoe and pitch seat for flatness, pointing stability and creep with actual fasteners.",
+    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": 1.2,
     "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
@@ -72,10 +72,10 @@ PART_SEPARATION_REASONS = {
     "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits. Battery, FC and navigation use three identical universal carriers with a 64 mm rounded square outline and a quarter-turn-symmetric shared bore/slot array. The navigation carrier supports navigation on its outer face and LR24-F-Mini on its rail-facing face outboard of the shoe, without a projecting utility tab. The FC and navigation carriers remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe and a broad circular deck support; the added rail clamp is required for independent position retention. Preserve the spare-slot head paths below the deck. Actual balloon clearance, installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
     "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. Retain the original tape wings and added symmetric wings at the battery land; larger trim changes require renewed support checks. Straight-coupon fit does not qualify sliding on the curved installed rail. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Both outboard seats and the central seat share one Z plane; the bridge underside is flat across these contacts. Unilateral X/Y datums locate it, and two existing M2x8 pairs clamp its plain 2 mm plate without head counterbores. Check the common seating plane for flatness; do not pull a warped part into contact with its screws.",
-    "bearings_and_frame": "Each rotor has two 3x6x2.5 bearings at 75.5mm centre spacing and 13.5mm shaft grips. Straight 6mm-deep posts bring the inboard bearing closer to the gear; the driven 34mm rod is unchanged and the idler rod is 22mm. The four bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Continuous seats and remaining fixed guide sectors support the bearings; separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep before manufacturing the frame.",
-    "motor_carriers_and_frame": "Independent powered rotation; each carrier already integrates the motor plate, guard, struts and shaft clamps.",
+    "bearings_and_frame": "Each rotor has two 3x6x2.5 bearings at 70 mm centre spacing and 10 mm shaft grips. Straight 6 mm-deep posts preserve support while allowing gear-module replacement space; driven/idler rods are 34/20 mm. The existing four bearings are captured at their outer rings by integral outer shoulders and releasable inward PA12 latches. No bought bearing spacers, push-on rings, separate caps or cap fasteners. Separate carrier/frame stops limit rotor travel. Insert or release bearings with the carrier and shafts removed; qualify the full-size coupon for actual fit, shield clearance, latch deflection, release access and creep. Two bearings do not eliminate shaft overhang bending or fit sensitivity.",
+    "motor_carriers_and_frame": "Independent powered rotation; each carrier integrates the motor plate, guard, struts and shaft clamps. The selected carrier remains for 40 mm propellers, with a 50 mm outside / 46 mm inside guard. A separately checked symmetric replacement-rotor space allowance supports planning for a future 50 mm propeller carrier; it does not establish unknown motor, propeller, mounting, wiring or thrust compatibility. Replace the carrier rather than fitting a 50 mm blade into the present guard.",
     "horn_and_adapter": "One rounded, tapered adapter follows the selected manufacturer X06 stock plastic half arm 1 on both sides, retaining the root and nut-bearing lands. Preserve the supplied STEP geometry and factory hole axes; enlarge only the existing diameter-1mm holes at radii6.8/13.2mm to1.5mm for rear M1.4x8 screws and front M1.4 nuts. A near diameter1.8mm round hole limits translation; a far1.8x2.4mm radial slot accommodates hole-pitch error without leaving both joints free along the arm. The nominal diameter7mm root uses an open diameter7.3mm seat; its0.15mm radial clearance is assembly allowance, not certified concentricity. Keep the purchased spline, OEM centre retaining screw, full shaft-stop floor, gear/stub planes and ordered removal. Tighten both joints before operation. Resin, mass, actual seating, runout, clamping and reversing-load strength remain unmeasured.",
-    "optical_head": "Two prints provide one lockable manual pitch-Y axis. The base integrates the standard rail shoe, a straight centreline post and pitch ear. One M2 pair clamps the rail and another clamps pitch; no carrier foot or host plate is needed. Slide the module for layout and sightline clearance, then validate the complete selected equipment/power configuration. Rail centring does not correct roll or actively level the sensor. Qualify pointing retention, shoe fit and PA12 creep.",
+    "optical_head": "Two prints provide one lockable manual pitch-Y axis. A small rectangular foot and straight pitch post attach to an existing universal carrier side slot with two M2 pairs; one more pair clamps pitch. No dedicated optical rail shoe or additional universal carrier is needed. Use the checked host/edge configurations and validate complete sensor, service and power clearances after relocation. Rail centring does not correct roll or actively level the sensor. Qualify foot seating, pointing retention and PA12 creep.",
 }
 
 
@@ -161,16 +161,16 @@ def _selected_horn_hardware():
 
 
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 12,
+    "M2X8_BUTTON_HEAD": 13,
     "M2X6_BUTTON_HEAD": 2,
-    "M2_HEX_NUT": 14,
+    "M2_HEX_NUT": 15,
     "M1_6X8_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "BEARING_3X6X2_5": 4,
     "SS304_CUT3_L34_FLAT5_A0": 2,
-    "SS304_CUT3_L22": 2,
+    "SS304_CUT3_L20": 2,
     "SS304_CUT3_L18_FLAT18_A0": 2,
     **_selected_horn_hardware(),
 }
@@ -185,7 +185,7 @@ HARDWARE_MATERIALS = {
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
     "BEARING_3X6X2_5": "Bearing steel",
     "SS304_CUT3_L34_FLAT5_A0": "304 stainless steel (seller claim)",
-    "SS304_CUT3_L22": "304 stainless steel (seller claim)",
+    "SS304_CUT3_L20": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
     "KST_X06_STOCK_HALF_ARM_1": "Supplied horn material unverified",
     "M1_4X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
@@ -209,10 +209,10 @@ EXPECTED_INVENTORY = {
 # and assembled sensor/controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
-    "layout": "Three main mass regions use four equipment/propulsion rail modules, with a fifth independently positioned optical module: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The electronics region comprises independent FC and navigation carriers of the same universal print used by the battery; the Mini uses the rail-facing side of the navigation plate outside the shoe.",
+    "layout": "Three main mass regions use four equipment/propulsion rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The optical head attaches to an existing universal carrier and follows that carrier. The electronics region comprises independent FC and navigation carriers of the same print used by the battery; the Mini uses the rail-facing side of the navigation plate outside the shoe.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
     "electronics": "Place the universal FC carrier behind the neutral motors and the identical navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
-    "optical": "One MTF-02P or MTF-01P shares the adhesive tray on the independent rail-centred pitch mount. Default X144mm/pivotZ30mm; relocation requires complete optical-view, service, power and navigation checks. Follow the accepted/rejected configuration report rather than assuming every free rail position is usable.",
+    "optical": "One MTF-02P or MTF-01P shares the adhesive tray on a carrier-mounted manual pitch head. Default is the battery carrier positive-X edge, with 35 mm global pivot height. Relocation requires complete optical-view, service, power and navigation checks; a common slot interface does not qualify every host or edge.",
     "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
 }
 
@@ -304,7 +304,6 @@ class ModuleStation:
 
 MODULE_STATIONS = (
     ModuleStation("BatteryEquipmentModule", 90, "BatteryClampApproach", "NegativeY"),
-    ModuleStation("OpticalFlowModule", 144, "OpticalClampApproach", "PositiveY"),
     ModuleStation("MainPropulsionModule", 0, "PropulsionClampApproach", "PositiveY"),
     ModuleStation(
         "ElectronicsEquipmentModule", -54, "ElectronicsClampApproach", "PositiveY", 180
@@ -350,7 +349,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
-        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The FC input-voltage conflict also applies to 8 V. The optical rail station must clear the selected power configuration; sharing the rail does not establish an unobstructed sensor view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
+        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The FC input-voltage conflict also applies to 8 V. The optical carrier host and edge must clear the selected power configuration; a shared mounting pattern does not establish an unobstructed sensor view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -378,11 +377,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_sensor_installation",
-        "Manually align the independent optical stack to downward vertical at flight trim, lock the single pitch clamp, then verify the selected MTF-02P/MTF-01P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
+        "Manually align the carrier-mounted optical head to downward vertical at flight trim, lock the single pitch clamp, then verify the selected MTF-02P/MTF-01P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Slide the independent optical shoe onto the rail and retain it with its M2 clamp; manually align and lock the single pitch joint. Verify the actual rail fit, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead and slide modules off a rail end for bench service. Recheck complete view cones after any relocation; free travel along the rail does not make every station acceptable.",
+        "Attach the optical foot through the existing carrier side slot with two M2 pairs; manually align and lock the single pitch joint. Verify foot seating, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead before removing or relocating the head. Recheck complete view cones after changing host, edge or rail station; common interfaces do not make every position acceptable.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
@@ -434,7 +433,7 @@ def project_status():
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Existing geometry and purchased-part selections are not constraints: redesign when the complete assembly improves in mass, simplicity, fit or serviceability. Allow modest mass increases for simpler integral parts and forgiving noncritical envelopes. Preserve the intentionally removable paired-servo/input-gear module. Use simple clearance or short slots where they reduce fit risk without adding parts; retain functional locating, torque and bearing surfaces. Do not add elaborate adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
         "part_separation_reasons": PART_SEPARATION_REASONS,
-        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. A fifth rail module carries the independently positioned, manually aligned optical sensor. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
+        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. An existing universal carrier supports the manually aligned optical head through its side slot. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "flight_controller": flight_controller_contract(),
         "optional_power": power_option_contract(),
@@ -449,7 +448,7 @@ def project_status():
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
-        "optical_stack_scope": "One integral rail shoe/post supports the adhesive tray and manual pitch-Y clamp. Native rail-centre placement corrects longitudinal curvature only; roll is not corrected. Rail station, optical view and optional power/navigation combinations must pass their composed checks. Physical pointing, fit, retention and creep remain unqualified.",
+        "optical_stack_scope": "One compact foot/post uses an existing universal carrier side slot and supports the adhesive tray through a manual pitch-Y clamp. There is no independent optical rail shoe. Pitch corrects longitudinal curvature only; roll is not corrected. Host, edge, optical view and optional power/navigation combinations must pass composed checks. Physical pointing, fit, retention and creep remain unqualified.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "module_layout_decision": MODULE_LAYOUT_DECISION,
         "notion_source": NOTION_URL,

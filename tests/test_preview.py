@@ -139,6 +139,20 @@ class PreviewCallbacks(unittest.TestCase):
         self.assertFalse(self.read_state()["passed"])
         self.gui.getMainWindow.assert_not_called()
 
+    def test_optical_detail_includes_actual_supporting_carrier(self):
+        host = types.SimpleNamespace(Name="BatteryEquipmentModule")
+        optical = types.SimpleNamespace(
+            CarrierHostName="BatteryEquipmentModule",
+            getParentGeoFeatureGroup=lambda: host,
+        )
+        self.assertIs(self.preview.optical_detail_host(optical), host)
+        optical.CarrierHostName = "ElectronicsEquipmentModule"
+        with self.assertRaisesRegex(RuntimeError, "declared carrier parent"):
+            self.preview.optical_detail_host(optical)
+        optical.getParentGeoFeatureGroup = lambda: None
+        with self.assertRaisesRegex(RuntimeError, "declared carrier parent"):
+            self.preview.optical_detail_host(optical)
+
 
 if __name__ == "__main__":
     unittest.main()

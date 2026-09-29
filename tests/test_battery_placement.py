@@ -1,4 +1,4 @@
-"""Native regressions for the declared pack placement and independent optical post gap."""
+"""Native regressions for the declared pack placement and carrier-mounted optical post gap."""
 
 import json
 import unittest
@@ -32,7 +32,7 @@ class BatteryPlacementTests(unittest.TestCase):
             cls.doc, cls.host, electronics, accessory
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
-        stack.Placement = optical_interface.placement()
+        optical_interface.attach_to_host(stack, cls.host)
         base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
         stack.addObject(base)
         base.Shape = optical_mount.base_shape()
@@ -60,7 +60,7 @@ class BatteryPlacementTests(unittest.TestCase):
         floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
         self.assertEqual(
             {row["component"] for row in floats},
-            {"rail_shoe", "upright", "fixed_pitch_ear"},
+            {"OpticalFoot", "OpticalPost", "OpticalEar"},
         )
         self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
@@ -132,8 +132,8 @@ class BatteryPlacementTests(unittest.TestCase):
     def test_tower_gap_fails_before_geometric_contact(self):
         tower = self.doc.OpticalMountBase
         before = App.Placement(tower.Placement)
-        # Shift along the exact closest-point direction, not just X: the rail
-        # shoe lies below the pack and can be the closest component diagonally.
+        # Use the actual closest-point direction to preserve a positive gap
+        # while making the separate minimum-clearance policy fail.
         import Part
 
         from gondola.cad import world_shape
@@ -159,6 +159,41 @@ class BatteryPlacementTests(unittest.TestCase):
             self.assertLess(gap, continuous["required_stack_tower_gap_mm"])
         finally:
             tower.Placement = before
+            self.doc.recompute()
+
+    def test_nominal_gap_does_not_replace_registration_clearance(self):
+        import Part
+
+        from gondola.cad import world_shape
+        from gondola.parts import equipment_mounts
+
+        tower = self.doc.OpticalMountBase
+        original = tower.Placement.copy()
+        sweep = Part.makeBox(
+            28, 74, 17, App.Vector(-14, -37, equipment_mounts.SUPPORT_FACE_Z + 1)
+        )
+        sweep.Placement = self.host.getGlobalPlacement().multiply(sweep.Placement)
+        gap, pairs, _ = world_shape(tower).distToShape(sweep)
+        direction = pairs[0][1] - pairs[0][0]
+        direction.normalize()
+        try:
+            tower.Placement.Base += direction * (gap - 2)
+            self.doc.recompute()
+            result = self.check()
+            continuous = result["continuous_translation"]
+            self.assertAlmostEqual(
+                continuous["stack_tower_gaps"][0]["minimum_gap_mm"], 2
+            )
+            self.assertEqual(continuous["collisions"], [])
+            self.assertFalse(
+                all(
+                    row["passed"]
+                    for row in continuous["tower_clamped_registration_gaps"]
+                )
+            )
+            self.assertFalse(result["passed"])
+        finally:
+            tower.Placement = original
             self.doc.recompute()
 
     def test_missing_tower_cannot_pass_clearance_check(self):

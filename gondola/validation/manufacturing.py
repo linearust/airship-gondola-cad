@@ -108,7 +108,7 @@ def review(doc, registry):
             (0, 12, 1.3),
             1.2,
         ),
-        ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.79), (12, 0, 24.31), 1.5),
+        ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.99), (12, 0, 25.01), 2.0),
         (
             "battery_mount_deck_thickness",
             "BatteryMount",

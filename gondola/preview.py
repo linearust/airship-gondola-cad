@@ -132,6 +132,14 @@ def style_power_option(doc):
         )
 
 
+def optical_detail_host(optical):
+    """Show the supporting populated carrier together with the attached head."""
+    parent = optical.getParentGeoFeatureGroup()
+    if parent is None or parent.Name != optical.CarrierHostName:
+        raise RuntimeError("Optical preview requires its declared carrier parent.")
+    return parent
+
+
 class _PreviewSession:
     """Carry failures across Qt callbacks and invalidate stale completion files."""
 
@@ -206,7 +214,7 @@ def render_previews(close_after=False):
             (doc, "axon", "_rail.png", "rail", 1900, 800),
             (doc, "axon", "_electronics.png", "electronics", 1400, 1400),
             (doc, "axon", "_wiring.png", "wiring", 1600, 1400),
-            (doc, "axon", "_optical_rail.png", "optical", 1400, 1600),
+            (doc, "axon", "_optical_carrier.png", "optical", 1400, 1600),
             (doc, "axon", "_propulsion.png", "propulsion", 1800, 1300),
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),
@@ -244,7 +252,7 @@ def render_previews(close_after=False):
                         )
                     elif scope == "optical":
                         o.ViewObject.Visibility = belongs_to_group(
-                            o, doc.OpticalFlowModule
+                            o, optical_detail_host(doc.OpticalFlowModule)
                         )
                     elif scope == "structure":
                         o.ViewObject.Visibility = (

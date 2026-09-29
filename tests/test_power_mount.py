@@ -112,7 +112,8 @@ class PowerMountTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             p.local_shapes("BATTERY", packaging="PORTAL")
 
-    def test_host_translation_and_independent_optical_module(self):
+    def test_host_translation_and_attached_optical_module(self):
+        from gondola.parts import optical_interface
         from gondola.parts import power_mount as p
         from gondola.parts import stack_interface as s
 
@@ -122,7 +123,10 @@ class PowerMountTests(unittest.TestCase):
                 name: doc.addObject("App::Part", name) for name in s.MECHANICAL_HOSTS
             }
             optical = doc.addObject("App::Part", "OpticalFlowModule")
-            self.assertIsNone(optical.getParentGeoFeatureGroup())
+            optical_interface.attach_to_host(optical, hosts["BatteryEquipmentModule"])
+            self.assertEqual(
+                optical.getParentGeoFeatureGroup(), hosts["BatteryEquipmentModule"]
+            )
             self.assertIsNotNone(
                 p.host_placement(doc, "BatteryEquipmentModule", packaging="PORTAL")
             )
@@ -266,14 +270,9 @@ class PowerMountTests(unittest.TestCase):
                     host.addObject(obj)
                     mounts.append(obj)
                 optical = doc.addObject("App::Part", "OpticalFlowModule")
-                set_property(
-                    optical,
-                    "RailPositionX",
-                    optical_interface.DEFAULT_STATION_X,
-                    "App::PropertyDistance",
+                optical_interface.attach_to_host(
+                    optical, doc.BatteryEquipmentModule, "PositiveX"
                 )
-                optical.Placement = optical_interface.placement()
-                optical.setExpression("Placement.Base.x", "RailPositionX")
                 registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(

@@ -44,17 +44,18 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BH:** retains actual 150 mm main-axis spacing and 50 mm contact-plane-to-axis
-height. Independent centreline optical shoe/post replaces the carrier-mounted foot;
-one rail clamp and one pitch clamp. Universal carriers gain a central M2 bore,
-side-loaded nut seat and protective blind floor. The OEM-horn adapter now has a
-rounded taper; its locating seat and round-hole/short-slot joint remain. Output
-bearings move nearer the gears: 75.5 mm pair spacing, 13.5 mm shaft grips and
-straight 6 mm posts. Driven/idler/input rods are 34/22/18 mm; bearing count stays four.
-[Current design review](references/bh_design_review.md),
-[verification](references/bh_design_verification.json),
+**BI:** retains actual 150 mm main-axis spacing and 50 mm contact-plane-to-axis
+height. The optical head uses an existing universal carrier side slot, eliminating
+its separate rail shoe; two foot fasteners and one pitch fastener use ordinary
+M2 hardware. Default: battery +X edge, pivot Z35 mm. Output supports balance service
+space with 70 mm bearing spacing, 10 mm grips and 6 mm posts; driven/idler/input
+rods are 34/20/18 mm. The current 40 mm propeller carrier has a Ø50/46 mm guard.
+A separate swept-space check reserves room for a future 50 mm replacement rotor;
+the current carrier does not accept that propeller. Central carrier attachment,
+OEM-horn adapter and detachable paired-servo architecture remain.
+[Current design review](references/bi_design_review.md),
+[verification](references/bi_design_verification.json),
 [OEM horn evidence](references/servo_horn_compatibility.md).
-Existing rail supports and removable servo-module architecture remain.
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
@@ -92,12 +93,14 @@ losses—not additive to SVPDB's output rating. Installed loads/transients/cooli
 FC input compatibility are unverified. Separate-regulator servo positives must be
 disconnected from FC 5 V; common ground, never parallel regulator positives.
 Battery/tether are alternatives, with no simultaneous-input/switching design.
+The illustrated direct-tether layout moves optics to accessory NegativeX; it rejects
+the MG-F10 direct helix there. Use its remote-antenna option or another checked layout.
 Power-board pads are electrical, not confirmed mounting holes. Verify insulation,
 terminal access and tether strain relief/routing clear of propellers and optical view.
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BH. Preserve them during refactors;
+The architecture-specific checks below describe BI. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -122,12 +125,14 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   Do not bottom the screw or
   assume the floor is a torque stop. This optional joint is excluded from baseline
   hardware. Preserve continuous adhesive strips around the central opening.
-- Optical is an independent rail module with `RailPositionX` and pitch-Y only
-  (`optical_mount.set_pitch`). Default X144 mm; direct tether uses X158 mm.
-  Moving the shoe changes clearance and field of view: follow composed power/
-  navigation/sensor checks, including rejected configurations. Raised power uses
-  the outer plate slots; rail position alone does not qualify arbitrary stacking.
-  No roll correction, self-levelling or physical pointing qualification is claimed.
+- Optical is a child of its carrier: `CarrierHostName` records the parent and
+  `MountSide` selects its existing ±X edge slots; there is no separate rail control.
+  `optical_interface.attach_to_host` changes host; `optical_mount.set_pitch` controls
+  manual pitch-Y only. Default battery +X clears both sensors. Shared slot geometry
+  does not qualify every populated host/edge or power stack: follow composed checks,
+  including rejected configurations. Recheck view, connector and service clearances
+  after relocation. No roll correction, self-levelling or physical pointing
+  qualification is claimed.
 - Check the selected manufacturer horn against its retained STEP, the two prepared
   horn holes, round/slot interface, seating/concentricity, screw/nut direction/access,
   servo clearance and ordered removal. Nominal geometry is not physical measurement.
@@ -200,7 +205,7 @@ python3 -m gondola bundle
 
 Build/preview overwrite outputs; preserve manual edits first. Preview needs a display
 and saves the previewed CAD files, so it precedes file-bound checks. Inspect assembly, print
-layout and the optical-rail view; preserve the configured rail station before saving. Alternate
+layout and the optical-carrier view; preserve the configured rail station before saving. Alternate
 paths: put `--output-dir PATH` / `--freecad-appimage PATH` before the subcommand;
 use the output directory consistently. Retain exact-source/file verification in Git.
 Fingerprint covers `gondola/**/*.py`, files in `gondola/data/` and root `.FCMacro`,
@@ -219,7 +224,7 @@ After native validation, `python3 tools/blender_review/run.py --render-stills`
 creates `build/blender_review/cad_review.blend`; add `--open` when requested.
 Verify source/CAD hashes and `verification.json`. This checks sampled prescribed
 rigid motion, not continuous collisions, dynamics, wires or strength. No optical
-rail transfer/powered alignment; optional power is reviewed in FreeCAD. Display uses
+carrier transfer/powered alignment; optional power is reviewed in FreeCAD. Display uses
 a whole-scene X half-turn without changing native coordinates. Blender-only changes
 do not justify re-pinning CAD.
 

@@ -168,6 +168,22 @@ class NativeModuleExpressionTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertGreater(result["checked_expression_count"], 20)
 
+    def test_optical_edge_formula_cannot_follow_propulsor_motion(self):
+        from gondola.validation.relative_motion import _static_expression_contract
+
+        optical = self.doc.OpticalFlowModule
+        original = dict(optical.ExpressionEngine)[".Placement.Base.x"]
+        try:
+            optical.setExpression(
+                "Placement.Base.x", "27 mm + PortPod.Tilt * 1 mm / 1 deg"
+            )
+            self.doc.recompute()
+            with self.assertRaisesRegex(ValueError, "OpticalFlowModule"):
+                _static_expression_contract(self.doc, self.spec)
+        finally:
+            optical.setExpression("Placement.Base.x", original)
+            self.doc.recompute()
+
     def test_opposite_seating_formula_is_rejected_for_both_carrier_orientations(self):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import rail

@@ -102,7 +102,6 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc = App.newDocument("ManualControlRegression")
         self.addCleanup(App.closeDocument, doc.Name)
         settings = doc.addObject("App::FeaturePython", "AssemblySettings")
-        optical = build_optical_mount(doc)["group"]
         modules = []
         for station in MODULE_STATIONS:
             set_property(
@@ -111,11 +110,7 @@ class ModuleControlMappingTests(unittest.TestCase):
                 ["PositiveY", "NegativeY"],
                 "App::PropertyEnumeration",
             )
-            module = (
-                optical
-                if station.object_name == "OpticalFlowModule"
-                else create_group(doc, station.object_name, station.object_name)
-            )
+            module = create_group(doc, station.object_name, station.object_name)
             module.Placement.Rotation = App.Rotation(
                 App.Vector(0, 0, 1), station.yaw_deg
             )
@@ -126,6 +121,7 @@ class ModuleControlMappingTests(unittest.TestCase):
                 f"AssemblySettings.{station.clamp_control} == 0 ? {station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm : {-station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm",
             )
             modules.append(module)
+        build_optical_mount(doc, doc.BatteryEquipmentModule)
         pods = []
         for name in ("PortPod", "StarboardPod"):
             pod = create_group(doc, name, name)
@@ -141,7 +137,7 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc.recompute()
         result = control_behavior(doc)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 15)
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 17)
         doc.OpticalPitchStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
 
@@ -189,14 +185,18 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc = App.newDocument("StackGroupMetadataRegression")
         self.addCleanup(App.closeDocument, doc.Name)
         group = create_group(doc, "OpticalFlowModule", "Optical head")
-        set_property(group, "OpticalInterfaceContract", '{"default_station_x_mm":144}')
+        set_property(
+            group,
+            "OpticalInterfaceContract",
+            '{"default_host":"BatteryEquipmentModule"}',
+        )
         set_property(group, "HoldingTorqueVerified", False, "App::PropertyBool")
         original = native_interface_metadata(doc)
         self.assertIn(group.Name, original)
         group.HoldingTorqueVerified = True
         self.assertNotEqual(original, native_interface_metadata(doc))
         group.HoldingTorqueVerified = False
-        group.OpticalInterfaceContract = '{"default_station_x_mm":158}'
+        group.OpticalInterfaceContract = '{"default_host":"ElectronicsEquipmentModule"}'
         self.assertNotEqual(original, native_interface_metadata(doc))
         carrier = create_group(doc, "BatteryEquipmentModule", "Rail carrier")
         set_property(carrier, "RailFitContract", '{"physical_fit_verified": false}')
@@ -283,7 +283,7 @@ class FrozenBaselineTests(unittest.TestCase):
 
         result = control_behavior(self.reference)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 15)
+        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 17)
 
     def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):
         from gondola.validation.baseline import unresolved_scope

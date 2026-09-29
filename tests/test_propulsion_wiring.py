@@ -170,26 +170,39 @@ class PropulsionWiringTests(unittest.TestCase):
         finally:
             route.MovingWireSweepVerified = False
 
-    def _optical_rail_obstacles(self, station_x):
-        from gondola.parts import optical_interface, optical_mount
+    def _optical_carrier_obstacles(self, host_name, side):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import optical_interface, optical_mount, rail
 
-        tower_placement = optical_interface.placement(station_x)
+        station = next(s for s in MODULE_STATIONS if s.object_name == host_name)
+        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
+        if station.default_approach == "NegativeY":
+            shift = -shift
+        host = App.Placement(
+            App.Vector(station.x_mm, shift, 0),
+            App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+        )
+        tower_placement = host.multiply(optical_interface.placement(side))
         obstacles = {"OpticalMountBase": optical_mount.base_shape()}
         obstacles.update(dict(optical_interface.base_component_proxies()))
         for shape in obstacles.values():
             shape.Placement = tower_placement.multiply(shape.Placement)
         return obstacles
 
-    def test_supported_optical_rail_stations_clear_motor_routes(self):
+    def test_selected_optical_carrier_attachments_clear_motor_routes(self):
         from gondola.cad import world_shape
+        from gondola.parts import power_mount
 
-        for station_x in (144, 158):
-            obstacles = self._optical_rail_obstacles(station_x)
+        for host, side in {
+            ("BatteryEquipmentModule", "PositiveX"),
+            (power_mount.DEFAULT_OPTICAL_HOST, power_mount.DEFAULT_OPTICAL_SIDE),
+        }:
+            obstacles = self._optical_carrier_obstacles(host, side)
             for route in self.routes:
                 shape = world_shape(route)
                 for name, obstacle in obstacles.items():
                     with self.subTest(
-                        station=station_x, route=route.Name, obstacle=name
+                        host=host, side=side, route=route.Name, obstacle=name
                     ):
                         self.assertLess(shape.common(obstacle).Volume, 1e-6)
                         self.assertGreaterEqual(shape.distToShape(obstacle)[0], 1.5)

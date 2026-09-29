@@ -82,20 +82,24 @@ def _main_shapes(doc):
 
 
 @contextmanager
-def _illustrated_optical_station(main):
+def _illustrated_optical_mount(main):
     """Copy the tether arrangement without saving or changing the main assembly."""
     optical = main.getObject("OpticalFlowModule")
     if optical is None:
         yield
         return
-    station = optical.RailPositionX.Value
+    from .parts import optical_interface
+
+    host, side = optical.getParentGeoFeatureGroup(), str(optical.MountSide)
     try:
-        optical.RailPositionX = power_mount.DEFAULT_OPTICAL_STATION_X
-        main.recompute()
+        optical_interface.attach_to_host(
+            optical,
+            main.getObject(power_mount.DEFAULT_OPTICAL_HOST),
+            power_mount.DEFAULT_OPTICAL_SIDE,
+        )
         yield
     finally:
-        optical.RailPositionX = station
-        main.recompute()
+        optical_interface.attach_to_host(optical, host, side)
 
 
 def _installation_context(main, plan_key):
@@ -134,7 +138,7 @@ def _pitch_bound(shape, angle_limit_deg):
 def _optical_motion_bounds(optical):
     """Both mutually exclusive sensors and connectors, continuous pitch."""
     from .contracts.optical_sensors import SENSOR_PROFILES
-    from .parts import optical_mount, optical_sensor
+    from .parts import optical_interface, optical_mount, optical_sensor
     from .validation.optical import _external_field_bound
 
     result = {}
@@ -149,6 +153,7 @@ def _optical_motion_bounds(optical):
         ):
             bound = _pitch_bound(shape, optical_mount.ANGLE_LIMIT_DEG)
             bound.translate(App.Vector(*optical_mount.PIVOT_CENTRE))
+            bound = optical_interface.registration_bound(bound)
             result[f"{key}Continuous{name}Bound"] = placed_shape(
                 bound, optical.getGlobalPlacement()
             )
@@ -298,7 +303,11 @@ def screen_configurations(main_doc):
     from .parts import equipment_envelopes, wiring_reserves
 
     optical = main_doc.getObject("OpticalFlowModule")
-    optical_station = optical.RailPositionX.Value if optical is not None else None
+    optical_attachment = (
+        {"host": optical.CarrierHostName, "side": str(optical.MountSide)}
+        if optical is not None
+        else None
+    )
     optical_bounds = _optical_motion_bounds(optical) if optical is not None else {}
     contexts = {}
     for plan_key in OPTIONAL_PLANS:
@@ -398,7 +407,7 @@ def screen_configurations(main_doc):
     selected = get_navigation_profile()
     selected_installation = "direct_sma" if selected.external_antenna else "integrated"
     # Default arrangement rows use exactly the same composed decisions as the
-    # navigation matrix, including saved optical rail placement.
+    # navigation matrix, including saved optical carrier attachment.
     for row in rows:
         match = next(
             probe
@@ -430,7 +439,7 @@ def screen_configurations(main_doc):
         and row["packaging"] == power_mount.DEFAULT_PACKAGING
     )
     return {
-        "saved_optical_station_x_mm": optical_station,
+        "saved_optical_carrier_attachment": optical_attachment,
         "configurations": rows,
         "default_configuration_clear": default["permitted"],
         "permitted_hosts_by_plan": {
@@ -441,7 +450,7 @@ def screen_configurations(main_doc):
         "source_selected_navigation": selected.key,
         "navigation_compatibility_probes": navigation_rows,
         "seated_registration_scope": "Portal choices retain the continuous conservative opposed-slot XY/yaw bounds. Direct boards are nominal adhesive placements on the vacated battery carrier, with measured intact land/body overlap; adhesive placement and retention remain physical checks.",
-        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and independent optical rail station. Both sensors' continuous field, body, tray and connector bounds include the full pitch range; the field additionally includes nominal transverse rail clearance. Actual fit and angular rocking are unqualified. Retained solid bodies/reserves and disconnected direct-board removal are screened. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
+        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and carrier-mounted optical attachment. Both sensors' continuous field, body, tray and connector bounds include the full pitch range; the field additionally includes carrier registration and nominal rail clearance. Actual fit and angular rocking are unqualified. Retained solid bodies/reserves and disconnected direct-board removal are screened. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
         "passed": all(permitted.values())
         and len(rows)
         == len(POWER_PACKAGINGS)
@@ -464,7 +473,10 @@ def _manifest(doc, manufacturing):
         "default_host": power_mount.DEFAULT_HOST,
         "illustrated_power_plan": get_power_plan(power_mount.DEFAULT_PLAN).contract(),
         "illustrated_packaging": power_mount.DEFAULT_PACKAGING,
-        "illustrated_optical_station_x_mm": power_mount.DEFAULT_OPTICAL_STATION_X,
+        "illustrated_optical_carrier_attachment": {
+            "host": power_mount.DEFAULT_OPTICAL_HOST,
+            "side": power_mount.DEFAULT_OPTICAL_SIDE,
+        },
         "installed_additional_printed_quantity": 0,
         "manufacturing_document": POWER_PLATFORM_DOCUMENT_NAME,
         "manufacturing_packaging": PORTAL,
@@ -512,7 +524,7 @@ def export_power_options(main_doc, output_dir=None):
     out.mkdir(parents=True, exist_ok=True)
     doc = manufacturing = None
     try:
-        with _illustrated_optical_station(main_doc):
+        with _illustrated_optical_mount(main_doc):
             doc = power_mount.create_option_document(main_doc)
             context = create_group(
                 doc, "AssemblyContext", "REFERENCE | installed optional arrangement"
@@ -608,7 +620,7 @@ def audit_power_options(source=None, output_dir=None):
         physical, reserves = power_mount.local_shapes()
         expected = {**physical, **reserves}
         group = option.getObject("PowerOptionModule")
-        with _illustrated_optical_station(main):
+        with _illustrated_optical_mount(main):
             pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
         report["option_pose_matches"] = group.Placement.isSame(pose, TOL)
         report["option_source_matches"] = (
@@ -618,8 +630,8 @@ def audit_power_options(source=None, output_dir=None):
             str(group.PowerPlan) == power_mount.DEFAULT_PLAN
             and str(group.StackHostName) == power_mount.DEFAULT_HOST
             and str(group.PowerPackaging) == power_mount.DEFAULT_PACKAGING
-            and float(group.OpticalRailStationX)
-            == power_mount.DEFAULT_OPTICAL_STATION_X
+            and str(group.OpticalCarrierHost) == power_mount.DEFAULT_OPTICAL_HOST
+            and str(group.OpticalCarrierSide) == power_mount.DEFAULT_OPTICAL_SIDE
         )
         report["option_contract_matches"] = json.loads(
             group.PowerPlatformContract
@@ -645,7 +657,7 @@ def audit_power_options(source=None, output_dir=None):
         report["native_inventory_matches"] = {
             obj.Name for obj in group.Group if hasattr(obj, "Shape")
         } == set(expected)
-        with _illustrated_optical_station(main):
+        with _illustrated_optical_mount(main):
             main_shapes = _installation_context(main, power_mount.DEFAULT_PLAN)
         context = {
             obj.SourceObjectName: obj
@@ -725,7 +737,7 @@ def audit_power_options(source=None, output_dir=None):
             "passed"
         ]
         report["configuration_screen"] = screen_configurations(main)
-        with _illustrated_optical_station(main):
+        with _illustrated_optical_mount(main):
             report["illustrated_configuration_screen"] = screen_configurations(main)
         report["illustrated_configuration_clear"] = report[
             "illustrated_configuration_screen"

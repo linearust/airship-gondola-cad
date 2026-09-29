@@ -122,7 +122,7 @@ def build_assembly():
         "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
-    optical_assembly = optical_mount.build_optical_mount(doc)
+    optical_assembly = optical_mount.build_optical_mount(doc, battery_module)
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         x, clamp_control = station.x_mm, station.clamp_control
@@ -200,7 +200,7 @@ def build_assembly():
         (rail_assembly["printed"], "Rail"),
         (mount_parts, "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
-        (optical_assembly["printed"], "Independent optical rail mount"),
+        (optical_assembly["printed"], "Carrier-mounted optical pitch"),
         (fit_coupons["printed"], "Fit samples"),
     ]:
         set_print_category(objects, category)
@@ -294,7 +294,7 @@ def build_assembly():
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
         "optical_mount": optical_mount.mount_contract(),
-        "optical_rail_interface": optical_interface.interface_contract(),
+        "optical_carrier_interface": optical_interface.interface_contract(),
         "installed_printed_part_count": len(printed_parts),
         "purchased_hardware_count": len(hardware_parts),
         "unique_stl_count": manifest["unique_stl_count"],

@@ -1362,6 +1362,9 @@ def _record_drive_motion_checks(report, doc, module, prefix):
         gear_engagement_check(doc, prefix, axial_stops)
     )
     report["tilt_clearance"].append(tilt_clearance_check(doc, module, prefix))
+    report["replacement_rotor_space"].append(
+        replacement_rotor_space_check(doc, module, prefix)
+    )
     input_service = input_drive_service_check(
         doc, module, prefix, module_release=report["servo_module_service"][0]
     )
@@ -1478,10 +1481,100 @@ def output_carrier_service_check(doc, module, prefix):
         "carrier_removal": paths,
         "full_shaft_removal": full_shaft_paths,
         "retained_parts": sorted(fixed),
-        "scope": "Unpowered bench sequence with leads freed: remove the small gear, loosen the carrier clamps, retract each stub 14.5 mm, then slide the complete motor/carrier and clamp fasteners 40 mm in +X. Bearings remain captured by the fixed frame. After removing the rotor, withdraw each staged stub a further 20 mm axially and 40 mm in +X. Reverse for assembly and verify shaft clamping. Physical fits and tool handling require a prototype.",
+        "scope": "Unpowered bench sequence with leads freed: remove the small gear, loosen the carrier clamps, retract each stub 12 mm, then slide the complete motor/carrier and clamp fasteners 40 mm in +X. Bearings remain captured by the fixed frame. After removing the rotor, withdraw each staged stub a further 20 mm axially and 40 mm in +X. Reverse for assembly and verify shaft clamping. Physical fits and tool handling require a prototype.",
         "passed": gear_path["passed"]
         and bool(moving)
         and all(row["passed"] for row in shaft_paths + paths + full_shaft_paths),
+    }
+
+
+def replacement_rotor_space_check(doc, module, prefix):
+    """Reserve replacement bulk through all tilt angles and both service paths.
+
+    This does not fit a 50 mm propeller to the current guard. The replacement
+    bulk is constrained to an independent radius34 / axial±30 cylinder; its
+    separate shaft and clamp interfaces retain the currently checked stops.
+    """
+    shapes, missing = module_service_shapes(doc, module)
+    pod = doc.getObject(prefix + "Pod")
+    drive = doc.getObject("ServoDriveModule")
+    if missing or pod is None or drive is None or "PropulsionFixedFrame" not in shapes:
+        return {"pod": prefix, "missing_parts": missing, "passed": False}
+    travel = carrier_axial_travel(doc, prefix)
+    if not travel["passed"]:
+        return {"pod": prefix, "axial_travel": travel, "passed": False}
+    origin = (
+        module["group"]
+        .getGlobalPlacement()
+        .inverse()
+        .multVec(pod.getGlobalPlacement().Base)
+    )
+    nominal = Part.makeCylinder(
+        34, 60, App.Vector(origin.x, origin.y - 30, origin.z), App.Vector(0, 1, 0)
+    )
+    moving = Part.makeCylinder(
+        34,
+        60 + travel["negative_mm"] + travel["positive_mm"],
+        App.Vector(origin.x, origin.y - 30 - travel["negative_mm"], origin.z),
+        App.Vector(0, 1, 0),
+    )
+    # Own rotor/clamps/shafts are the replacement interfaces, not obstacles.
+    # The output gear remains an obstacle; the ordinary service check also
+    # verifies removing that gear before the rotor or servo module is serviced.
+    excluded = {
+        name
+        for name in shapes
+        if belongs_to_group(doc.getObject(name), pod) and name != prefix + "OutputGear"
+    }
+    obstacles = retained_obstacles(shapes, excluded)
+    distances = {
+        name: moving.distToShape(shape)[0] for name, shape in obstacles.items()
+    }
+    gaps = []
+    for stop in travel["stops"]:
+        nominal_gap = abs(stop["frame_stop_y_mm"]) - 30
+        remaining = nominal_gap - stop["travel_mm"]
+        gaps.append(
+            {
+                "direction": stop["direction"],
+                "nominal_post_face_gap_mm": nominal_gap,
+                "gap_at_axial_stop_mm": remaining,
+                "passed": remaining >= 1.25 - TOL,
+            }
+        )
+    rotor_service = continuous_path(moving, [(0, 0, 0), (40, 0, 0)], obstacles)
+    servo_paths = [
+        {
+            "part": name,
+            **continuous_path(
+                shapes[name],
+                [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)],
+                {"replacement_rotor_bulk": moving},
+            ),
+        }
+        for name in sorted(servo_bench_members(doc, shapes))
+    ]
+    nominal_frame_gap = nominal.distToShape(shapes["PropulsionFixedFrame"])[0]
+    return {
+        "pod": prefix,
+        "future_propeller_reference_diameter_mm": 50,
+        "bulk_half_width_mm": 30,
+        "full_rotation_radius_mm": 34,
+        "axial_travel": travel,
+        "post_face_gaps": gaps,
+        "nominal_frame_gap_mm": nominal_frame_gap,
+        "all_angle_gaps_with_axial_travel_mm": distances,
+        "excluded_replacement_interface_parts": sorted(excluded),
+        "rotor_bulk_removal": rotor_service,
+        "servo_module_removal_past_future_bulk": servo_paths,
+        "scope": "Continuous enclosing cylinder for a future replacement rotor bulk, including measured current axial stops. Both post faces, every retained physical propulsion part and reciprocal rotor +X40 / servo module +Z0.5 then +X80 service paths are checked. Present 40 mm guard and struts are not 50 mm compatible. Replacement shaft/clamp interfaces, assembly strength, future motor/propeller hardware and wiring still require design and tests; this is a space reservation only.",
+        "passed": all(row["passed"] for row in gaps)
+        and bool(distances)
+        and min(distances.values()) >= 1.25 - TOL
+        and nominal_frame_gap >= 1.75 - TOL
+        and rotor_service["passed"]
+        and bool(servo_paths)
+        and all(row["passed"] for row in servo_paths),
     }
 
 
@@ -1800,9 +1893,9 @@ def _record_print_checks(report, module, physical):
         (
             "guard_radial",
             "PortMotorCarrier",
-            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 22.79),
-            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 24.31),
-            1.5,
+            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 22.99),
+            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 25.01),
+            2.0,
         ),
     ]
     from gondola.parts import servo_coupling as coupling

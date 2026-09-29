@@ -1,4 +1,4 @@
-"""Exact saved five-shoe capture with the bounded central carrier nut pocket."""
+"""Exact saved four-shoe capture with the bounded central carrier nut pocket."""
 
 import unittest
 from types import SimpleNamespace
@@ -33,7 +33,7 @@ class IntegralShoeValidationTests(unittest.TestCase):
 
         return saved_integral_shoe_checks(self.doc, registry or self.doc.DesignRegistry)
 
-    def test_saved_five_integral_shoes_match_exact_allowed_geometry(self):
+    def test_saved_four_integral_shoes_match_exact_allowed_geometry(self):
         rows = self.checks()
         self.assertEqual(
             {row["part"] for row in rows},
@@ -42,10 +42,9 @@ class IntegralShoeValidationTests(unittest.TestCase):
                 "ElectronicsMount",
                 "AccessoryMount",
                 "PropulsionFixedFrame",
-                "OpticalMountBase",
             },
         )
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 4)
         self.assertTrue(all(row["passed"] for row in rows), rows)
         for row in rows:
             self.assertEqual(
@@ -57,7 +56,7 @@ class IntegralShoeValidationTests(unittest.TestCase):
                 row["protected_capture_at_or_below_z10"]["difference_mm3"], 1e-5
             )
 
-    def test_extra_upper_cut_is_rejected_on_every_shoe_including_optical(self):
+    def test_extra_upper_cut_is_rejected_on_every_shoe(self):
         # Outside the declared nut port, but within the same upper 0.8-mm
         # band. A broad top-of-shoe exemption would wrongly accept this cut.
         cut = Part.makeBox(1, 1, 0.4, App.Vector(3, 3, 10.2))
@@ -66,7 +65,6 @@ class IntegralShoeValidationTests(unittest.TestCase):
             "ElectronicsMount",
             "AccessoryMount",
             "PropulsionFixedFrame",
-            "OpticalMountBase",
         ):
             with self.subTest(part=name):
                 obj = self.doc.getObject(name)
@@ -126,36 +124,36 @@ class IntegralShoeValidationTests(unittest.TestCase):
                 )
                 self.assertFalse(any(row["equipment_registry_matches"] for row in rows))
                 self.assertFalse(any(row["passed"] for row in rows))
-        without_optical = [
-            obj for obj in registry.PrintedParts if obj.Name != "OpticalMountBase"
+        without_frame = [
+            obj for obj in registry.PrintedParts if obj.Name != "PropulsionFixedFrame"
         ]
         rows = self.checks(
-            SimpleNamespace(EquipmentMounts=mounts, PrintedParts=without_optical)
+            SimpleNamespace(EquipmentMounts=mounts, PrintedParts=without_frame)
         )
-        optical = next(row for row in rows if row["part"] == "OpticalMountBase")
-        self.assertFalse(optical["registered_once_as_print"])
-        self.assertFalse(optical["passed"])
+        frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
+        self.assertFalse(frame["registered_once_as_print"])
+        self.assertFalse(frame["passed"])
 
-    def test_missing_optical_part_and_wrong_parent_fail_exact_binding(self):
-        optical = self.doc.OpticalMountBase
-        self.doc.OpticalFlowModule.removeObject(optical)
-        self.doc.BatteryEquipmentModule.addObject(optical)
-        row = next(row for row in self.checks() if row["part"] == optical.Name)
+    def test_missing_frame_part_and_wrong_parent_fail_exact_binding(self):
+        frame = self.doc.PropulsionFixedFrame
+        self.doc.MainPropulsionModule.removeObject(frame)
+        self.doc.BatteryEquipmentModule.addObject(frame)
+        row = next(row for row in self.checks() if row["part"] == frame.Name)
         self.assertFalse(row["parent_matches"])
         self.assertFalse(row["passed"])
-        self.doc.removeObject(optical.Name)
+        self.doc.removeObject(frame.Name)
         rows = self.checks()
-        self.assertEqual(len(rows), 5)
-        optical = next(row for row in rows if row["part"] == "OpticalMountBase")
-        self.assertFalse(optical["passed"])
-        self.assertEqual(optical["error"], "Missing integral shoe")
+        self.assertEqual(len(rows), 4)
+        frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
+        self.assertFalse(frame["passed"])
+        self.assertEqual(frame["error"], "Missing integral shoe")
 
     def test_bidirectional_gate_requires_the_complete_capture_result(self):
         from gondola.validation import assembly
 
         rows = self.checks()
         self.assertTrue(all(row["passed"] for row in rows))
-        # Keep native controls, bindings, all32 approach combinations, restoration
+        # Keep native controls, bindings, all16 approach combinations, restoration
         # and the final gate real. Only collision/service work is mocked here;
         # separate native geometry tests above exercise every capture result.
         with (
@@ -167,9 +165,9 @@ class IntegralShoeValidationTests(unittest.TestCase):
                 self.doc, self.doc.DesignRegistry, []
             )
             self.assertTrue(passed["passed"], passed)
-            self.assertEqual(len(passed["native_approach_combinations"]), 32)
+            self.assertEqual(len(passed["native_approach_combinations"]), 16)
             self.assertEqual(len(passed["full_service_sequences"]), 2)
-            self.assertEqual(len(passed["saved_integral_shoes_match_source"]), 5)
+            self.assertEqual(len(passed["saved_integral_shoes_match_source"]), 4)
             # A failed binding/protected-floor result must reject the assembly
             # even if the legacy top-level shape difference fields still pass.
             rows[0]["passed"] = False

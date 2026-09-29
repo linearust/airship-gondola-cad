@@ -683,7 +683,7 @@ def module_service(registry, objects, shapes):
 
 
 def saved_integral_shoe_checks(doc, registry):
-    """Compare all five saved captures, allowing only the declared centre pocket.
+    """Compare all four saved captures, allowing only the declared centre pocket.
 
     The independent literal pocket removes only the top 0.8 mm of the common
     shoe. Everything at or below Z10, including the complete 1.5 mm roof above
@@ -694,7 +694,6 @@ def saved_integral_shoe_checks(doc, registry):
         ("ElectronicsMount", "ElectronicsEquipmentModule", True),
         ("AccessoryMount", "AccessoryEquipmentModule", True),
         ("PropulsionFixedFrame", "MainPropulsionModule", False),
-        ("OpticalMountBase", "OpticalFlowModule", False),
     )
     equipment_names = [obj.Name for obj in registry.EquipmentMounts]
     expected_equipment = [name for name, _, pocket in bindings if pocket]
@@ -1057,6 +1056,7 @@ def battery_check(doc, objects):
     expected_components = {name for name, _ in component_bounds}
     if tower is not None:
         for component, envelope in component_bounds:
+            envelope = optical_interface.registration_bound(envelope)
             envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
             gap = swept.distToShape(envelope)[0]
             float_rows.append(
@@ -1072,7 +1072,7 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Conservative component envelopes of the straight optical post and integral rail shoe at the selected independent station. Shared rail-fit allowance is not deliberate operating looseness; qualify shoe fit, pointing retention and clamp friction.",
+        "tower_registration_scope": "Conservative XY/yaw assembly-registration component envelopes of the compact carrier foot and straight optical post at the selected host/side. Assembly clearance is not deliberate operating looseness; qualify foot seating, pointing retention and clamp friction.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
         and bool(expected_components)

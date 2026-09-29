@@ -27,6 +27,7 @@ from gondola.parts import (
     equipment_mounts as mounts,
 )
 from gondola.parts import (
+    optical_interface,
     optical_mount,
     optical_sensor,
     wiring_reserves,
@@ -193,12 +194,17 @@ def source_evidence(doc):
 
 
 def _optical_screens(doc):
-    """Both sensors at the saved independent rail station, without mutating CAD."""
+    """Both sensors at the saved carrier attachment, without mutating CAD."""
     temporary = App.newDocument("EquipmentOptionOpticalScreens")
     screens = []
     try:
-        kit = optical_mount.build_optical_mount(temporary)
-        kit["group"].Placement = doc.OpticalFlowModule.getGlobalPlacement()
+        selected = doc.OpticalFlowModule
+        parent = selected.getParentGeoFeatureGroup()
+        host = temporary.addObject("App::Part", parent.Name)
+        host.Placement = parent.getGlobalPlacement()
+        kit = optical_mount.build_optical_mount(
+            temporary, host, str(selected.MountSide)
+        )
         physical = kit["printed"] + kit["hardware"]
         for profile in SENSOR_PROFILES.values():
             poses = []
@@ -206,8 +212,16 @@ def _optical_screens(doc):
                 optical_mount.set_pitch(temporary, pitch)
                 pose = kit["pitch_stage"].getGlobalPlacement()
                 shapes = {obj.Name: world_shape(obj) for obj in physical}
-                shapes["ModuleMTF02PEnvelope"] = placed_shape(
-                    optical_sensor.envelope_shape(profile), pose
+
+                def registered_shape(shape):
+                    pitched = placed_shape(shape, kit["pitch_stage"].Placement)
+                    return placed_shape(
+                        optical_interface.registration_bound(pitched),
+                        kit["group"].getGlobalPlacement(),
+                    )
+
+                shapes["ModuleMTF02PEnvelope"] = registered_shape(
+                    optical_sensor.envelope_shape(profile)
                 )
                 poses.append(
                     {
@@ -216,8 +230,8 @@ def _optical_screens(doc):
                         "field": placed_shape(
                             optical_sensor.optical_reserve_shape(profile), pose
                         ),
-                        "connector": placed_shape(
-                            optical_sensor.connector_reserve_shape(profile), pose
+                        "connector": registered_shape(
+                            optical_sensor.connector_reserve_shape(profile)
                         ),
                     }
                 )
@@ -225,7 +239,10 @@ def _optical_screens(doc):
             bound, _ = _external_field_bound(kit["group"], profile)
             screens.append(
                 {
-                    "rail_station_x_mm": kit["group"].Placement.Base.x,
+                    "carrier_mount": (
+                        selected.CarrierHostName,
+                        str(selected.MountSide),
+                    ),
                     "sensor": profile.key,
                     "poses": poses,
                     "continuous_field": bound,
@@ -242,7 +259,7 @@ def _optical_option_check(
     *,
     antenna=False,
     validation_cache=None,
-    required_station=None,
+    required_mount=None,
     navigation_key=None,
 ):
     validation_cache = {} if validation_cache is None else validation_cache
@@ -294,7 +311,7 @@ def _optical_option_check(
         bound_hits = [row for row in bound_clearances if not row["passed"]]
         rows.append(
             {
-                "rail_station_x_mm": screen["rail_station_x_mm"],
+                "carrier_mount": screen["carrier_mount"],
                 "sensor_model": screen["sensor"],
                 "sampled_attitudes": samples,
                 "continuous_external_field_collisions": bound_hits,
@@ -303,14 +320,14 @@ def _optical_option_check(
                 "passed": not bound_hits and all(row["passed"] for row in samples),
             }
         )
-    selection_ok = required_station is None or all(
-        abs(row["rail_station_x_mm"] - required_station) < TOL for row in rows
+    selection_ok = required_mount is None or all(
+        row["carrier_mount"] == required_mount for row in rows
     )
     return {
         "sensor_screens": rows,
-        "required_installed_rail_station_x_mm": required_station,
-        "installed_station_matches": selection_ok,
-        "configuration_scope": "Independent rail mount at the saved station; all navigation substitutions are screened against both optical sensors. Remote antenna location and harness remain unmodeled. Rail relocation requires renewed checks.",
+        "required_installed_carrier_mount": required_mount,
+        "installed_carrier_mount_matches": selection_ok,
+        "configuration_scope": "Optical foot on the saved carrier and side, including conservative XY/yaw registration of both sensor bodies and connectors; all navigation substitutions are screened against both optical sensors. Remote antenna location and harness remain unmodeled. Carrier/side changes require renewed checks.",
         "passed": len(rows) == len(SENSOR_PROFILES)
         and all(row["passed"] for row in rows)
         and selection_ok,
@@ -500,8 +517,11 @@ def compatibility_check(doc):
                 antenna=True,
                 navigation_key=navigation.key,
                 validation_cache=validation_cache,
-                required_station=(
-                    doc.OpticalFlowModule.RailPositionX.Value
+                required_mount=(
+                    (
+                        doc.OpticalFlowModule.CarrierHostName,
+                        str(doc.OpticalFlowModule.MountSide),
+                    )
                     if navigation.key == get_navigation_profile().key
                     else None
                 ),
@@ -532,7 +552,7 @@ def compatibility_check(doc):
     return {
         "source_evidence": evidence,
         "combinations": rows,
-        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit and both optical models. Both optical sensors are screened at the saved independent rail station. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. Optical rail relocation is a separate assembly change requiring renewed checks.",
+        "scope": "Three mutually exclusive navigation choices with the underside LR24-F-Mini air unit and both optical models. Both optical sensors are screened at the saved carrier and side. One accessory plate supports navigation and radio; this geometry audit does not qualify adhesive, actual connectors, radio/compass performance, electrical capacity or a remote antenna installation. Disconnect leads and remove direct antenna before bare-device service. Detach the carrier for underside-radio bench access. Optical carrier relocation is a separate assembly change requiring renewed checks.",
         "passed": len(rows) == len(NAVIGATION_PROFILES) * len(RADIO_PROFILES)
         and bool(rows)
         and all(row["passed"] for row in rows),

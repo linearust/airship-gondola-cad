@@ -1,4 +1,4 @@
-"""Four equipment/propulsion modules and independent centreline optics."""
+"""Four rail modules; optics attach to an existing universal carrier."""
 
 import unittest
 
@@ -12,14 +12,14 @@ from gondola.contracts.design import (
 class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
-        self.assertEqual(len(stations), 5)
+        self.assertEqual(len(stations), 4)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, 0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 90)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -54)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -158)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
-        self.assertEqual(stations["OpticalFlowModule"].x_mm, 144)
+        self.assertNotIn("OpticalFlowModule", stations)
 
     def test_accessory_station_keeps_whole_shoe_on_the_end_land(self):
         from gondola.contracts.design import RAIL_LENGTH_MM

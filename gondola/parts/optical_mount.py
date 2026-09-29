@@ -13,16 +13,16 @@ from gondola.cad import box, create_group, create_printed_part, set_property, un
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
-from . import optical_interface, purchased_hardware, rail
+from . import optical_interface, purchased_hardware
 
 V = App.Vector
-PIVOT_CENTRE = (0.0, 0.0, 30.0)
+PIVOT_CENTRE = (0.0, 0.0, 35.0 - optical_interface.HOST_SUPPORT_Z)
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 4.0
 EAR_THICKNESS = 2.0
 UPRIGHT_WIDTH = 8.0
 GUSSET_DEPTH = 2.0
-GUSSET_TOP_Z = 17.0
+GUSSET_TOP_Z = 7.0
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -48,7 +48,7 @@ def _finished(shape, name):
 def upright_shape():
     """Straight transverse ear support, with a short integral root buttress."""
     x, y, z = PIVOT_CENTRE
-    bottom = rail.TOP_Z
+    bottom = optical_interface.FOOT_THICKNESS
     left = x - UPRIGHT_WIDTH / 2
     post = box(
         UPRIGHT_WIDTH,
@@ -68,7 +68,7 @@ def upright_shape():
 
 
 def base_shape():
-    """Common rail shoe fused to one straight braced upright and pitch ear."""
+    """Small rectangular carrier foot fused to a straight post and pitch ear."""
     x, y, z = PIVOT_CENTRE
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
     post = upright_shape()
@@ -81,7 +81,7 @@ def base_shape():
     return _finished(
         union(
             [
-                rail.shoe_shape(),
+                optical_interface.foot_shape(),
                 ear,
                 post,
             ]
@@ -105,7 +105,7 @@ def sensor_tray_shape():
 
 def mount_contract():
     return {
-        "mechanism": "Independent rail shoe with one manual pitch-Y friction clamp",
+        "mechanism": "Carrier-mounted straight pedestal with one manual pitch-Y friction clamp",
         "adjustment_degrees_of_freedom": 1,
         "pivot_centre_in_module_mm": PIVOT_CENTRE,
         "planning_angle_limit_deg": ANGLE_LIMIT_DEG,
@@ -113,8 +113,8 @@ def mount_contract():
         "physical_angle_stops_modeled": False,
         "self_levelling": False,
         "holding_torque_verified": False,
-        "integral_common_rail_shoe": True,
-        "rail_interface": optical_interface.interface_contract(),
+        "integral_common_rail_shoe": False,
+        "carrier_interface": optical_interface.interface_contract(),
         "ear_diameter_mm": 2 * EAR_RADIUS,
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
@@ -126,12 +126,12 @@ def mount_contract():
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware": "Two kit steel M2x8 button-head screw / M2 hex nut pairs total: one common rail clamp and one pitch clamp. No washers.",
+        "hardware": "Three kit steel M2x8 button-head screw / M2 hex nut pairs total: two carrier-foot clamps and one pitch clamp. No washers.",
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the integral rail shoe/post and sensor tray separately. Slide the shoe onto the common rail and lock on a solid land; clamp the two plain 2 mm pitch ears with the second M2 pair.",
+        "assembly": "Print the integral carrier foot/post and sensor tray separately. Clamp the foot to an existing carrier middle-side slot with two M2 pairs; clamp the plain 2 mm pitch ears with the third pair.",
         "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while holding the nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
         "sensor_interface": "Continuous insulating adhesive pad for either MTF-01P or MTF-02P. OEM backside contact, retention and connector/wire fit remain unverified; no invented sensor fixing holes.",
     }
@@ -174,13 +174,13 @@ def _pivot_hardware(doc, parent):
     return objects
 
 
-def build_optical_mount(doc):
+def build_optical_mount(doc, host, side=optical_interface.DEFAULT_SIDE):
     group = create_group(
         doc,
         "OpticalFlowModule",
-        "Optical flow | independent rail shoe and manual pitch",
+        "Optical flow | carrier foot and manual pitch",
     )
-    group.Placement = optical_interface.placement()
+    optical_interface.attach_to_host(group, host, side)
     contract = json.dumps(mount_contract(), sort_keys=True)
     set_property(group, "OpticalMountContract", contract)
     set_property(
@@ -217,7 +217,7 @@ def build_optical_mount(doc):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF common rail shoe with straight braced post and separate adhesive tray. Two M2x8/M2 nut pairs lock the rail and single pitch joint. Check received print fit, clamp retention, adhesive and optical alignment before use.",
+            "PA12 SLS/MJF compact carrier foot with straight braced post and separate adhesive tray. Three M2x8/M2 nut pairs lock the foot and single pitch joint. Check received print fit, clamp retention, adhesive and optical alignment before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
@@ -226,7 +226,9 @@ def build_optical_mount(doc):
         if name == "OpticalMountBase":
             optical_interface.annotate_interface(obj)
         printed.append(obj)
-    hardware = _pivot_hardware(doc, group)
+    hardware = _pivot_hardware(doc, group) + optical_interface.build_hardware(
+        doc, group
+    )
     doc.recompute()
     return {
         "group": group,

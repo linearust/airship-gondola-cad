@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "units": {
     "length": "m",
     "mass": "kg",
@@ -8,10 +8,10 @@
   },
   "basis": {
     "cad_file": "gondola.FCStd",
-    "cad_sha256": "1a13c5696857786d6f2d403e4257c271fc47ef607bf4f332b5e45c2cec8f31ff",
-    "source_fingerprint": "92bff9d85213c9698ea8f66acc7cbaa4f4de55a4fceebe80dac79f8878979bf8",
-    "validation_sha256": "bb177ef30804455cb6d9f094cad3247534e4cc8804877b8d89b4e4bbff2076e7",
-    "exporter_sha256": "37b94bad5989c55b0e5fb401d2cbebe9b706dde921b390b242ca95d9a66e10fc"
+    "cad_sha256": "bd2c7dc6f628c669428d3bbd9f0f5115a376aab6fe8045dd1a722e5dbee315ee",
+    "source_fingerprint": "f98068f29650fdb4a3322badfc832124f09917ae13efb24396cd1598f7372e73",
+    "validation_sha256": "8ec3911b033cb033d9181db11adb0001abbff4f8a37f6d89a2adce057c772881",
+    "exporter_sha256": "fe93dd5e0926105d3de7a2a129c00fdc04ad78d6059a335053ca5a0a94dd5300"
   },
   "frame": {
     "name": "native_CAD",
@@ -182,19 +182,20 @@
       "ModuleMTF02PEnvelope": {
         "label": "MTF-02P | independently leveled optical face",
         "position_m": [
-          0.144,
-          0.0001,
-          0.04075
+          0.117,
+          -0.0001,
+          0.04575
         ]
       }
     },
     "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
-    "optical_rail_station_x_mm": 144.0,
+    "optical_carrier_host": "BatteryEquipmentModule",
+    "optical_mount_side": "PositiveX",
     "optical_pitch_deg": 0.0,
     "optical_pitch_pivot_cad_m": [
-      0.144,
-      0.0001,
-      0.03
+      0.117,
+      -0.0001,
+      0.035
     ],
     "rail_length_m": 0.34
   },

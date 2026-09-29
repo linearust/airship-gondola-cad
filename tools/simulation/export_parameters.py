@@ -85,6 +85,17 @@ def extract(doc):
         "ModuleMTF02PEnvelope",
     )
     points = {name: row["pivot_cad_m"] for name, row in propulsion.items()}
+    optical = doc.OpticalFlowModule
+    optical_host = doc.getObject(getattr(optical, "CarrierHostName", ""))
+    optical_side = str(getattr(optical, "MountSide", ""))
+    if (
+        optical_host is None
+        or optical_host.Name not in module_ids[1:]
+        or optical.getParentGeoFeatureGroup() != optical_host
+        or optical_side not in ("PositiveX", "NegativeX")
+        or "RailPositionX" in optical.PropertiesList
+    ):
+        raise ValueError("Optical carrier binding changed; review host and side.")
     if (
         abs(points["Port"][0] - points["Starboard"][0]) > 1e-9
         or abs(points["Port"][2] - points["Starboard"][2]) > 1e-9
@@ -137,7 +148,8 @@ def extract(doc):
                 for name in centres
             },
             "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
-            "optical_rail_station_x_mm": doc.OpticalFlowModule.RailPositionX.Value,
+            "optical_carrier_host": optical_host.Name,
+            "optical_mount_side": optical_side,
             "optical_pitch_deg": float(doc.OpticalPitchStage.Pitch),
             "optical_pitch_pivot_cad_m": point(doc.OpticalPitchStage),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
@@ -193,7 +205,7 @@ def export(cad, output):
         if doc.DesignRegistry.SourceFingerprint != fingerprint:
             raise ValueError("Saved CAD is stale relative to current geometry source.")
         result = {
-            "schema_version": 3,
+            "schema_version": 4,
             "units": {
                 "length": "m",
                 "mass": "kg",

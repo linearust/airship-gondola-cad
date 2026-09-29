@@ -70,6 +70,10 @@ def _static_expression_contract(doc, spec):
             allowed[station.object_name + "RailClamp" + suffix] = {
                 "Placement.Rotation.Angle": control + "==0?0deg:180deg"
             }
+    allowed["OpticalFlowModule"] = {
+        "Placement.Base.x": "MountSide==0?27mm:-27mm",
+        "Placement.Rotation.Angle": "MountSide==0?0deg:180deg",
+    }
     for prefix in ("Port", "Starboard"):
         allowed[prefix + "Pod"] = {
             "Placement.Rotation.Angle": "min(MaximumTilt;max(MinimumTilt;Tilt))"

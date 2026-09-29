@@ -87,7 +87,7 @@ def connector_contract(profile=None):
         "edge_width_mm": profile.size_mm[1 if profile.connector_axis == "+X" else 0],
         "edge_height_mm": profile.size_mm[2],
         "design_outward_travel_mm": CONNECTOR_TRAVEL_MM,
-        "operating_scope": f"The {profile.model} documented connector edge is modeled as tray-local{profile.connector_axis}. The whole edge follows the single manual pitch axis and independent rail module; actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
+        "operating_scope": f"The {profile.model} documented connector edge is modeled as tray-local{profile.connector_axis}. The whole edge follows the single manual pitch axis on the selected carrier; actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
         "withdrawal_scope": "Continuous12mm lane is a design allowance, not measured withdrawal stroke or bend radius. Leave slack for pitch adjustment and secure the fixed lead. Disconnect before removing the module. Keep ties away from all optical openings.",
     }
 

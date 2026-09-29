@@ -37,7 +37,8 @@ CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
 DEFAULT_HOST = "BatteryEquipmentModule"
 DEFAULT_PLAN = DEFAULT_OPTIONAL_POWER_PLAN_KEY
 DEFAULT_PACKAGING = DIRECT_CARRIER
-DEFAULT_OPTICAL_STATION_X = 158.0
+DEFAULT_OPTICAL_HOST = "AccessoryEquipmentModule"
+DEFAULT_OPTICAL_SIDE = "NegativeX"
 DIRECT_BAY_CENTRES = ((0.0, -14.0), (0.0, 14.0))
 DIRECT_ADHESIVE_REGIONS = (
     (((0.0, -23.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
@@ -291,9 +292,10 @@ def create_option_document(
         ("PowerPlan", plan_key),
         ("PowerPackaging", packaging),
         (
-            "OpticalRailStationX",
-            str(main_doc.OpticalFlowModule.RailPositionX.Value),
+            "OpticalCarrierHost",
+            main_doc.OpticalFlowModule.CarrierHostName,
         ),
+        ("OpticalCarrierSide", str(main_doc.OpticalFlowModule.MountSide)),
         (
             "PowerInstallationContract",
             json.dumps(installation_contract(plan_key, packaging), sort_keys=True),

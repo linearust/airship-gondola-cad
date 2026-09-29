@@ -18,7 +18,8 @@ class OpticalMountTests(unittest.TestCase):
         from gondola.parts import optical_mount
 
         cls.doc = App.newDocument("OpticalMountRegression")
-        cls.module = optical_mount.build_optical_mount(cls.doc)
+        cls.host = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
+        cls.module = optical_mount.build_optical_mount(cls.doc, cls.host)
         cls.parent = cls.module["group"]
 
     @classmethod
@@ -27,14 +28,14 @@ class OpticalMountTests(unittest.TestCase):
 
     def setUp(self):
         self.module["pitch_stage"].Pitch = 0
-        self.parent.Placement = App.Placement()
+        self.host.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_two_prints_and_one_pitch_pair_plus_separate_common_rail_pair(self):
+    def test_two_prints_and_three_common_fastener_pairs(self):
         from gondola.contracts import fasteners
 
         self.assertEqual(len(self.module["printed"]), 2)
-        self.assertEqual(len(self.module["hardware"]), 2)
+        self.assertEqual(len(self.module["hardware"]), 6)
         self.assertIsNone(self.doc.getObject("OpticalRollStage"))
         self.assertIsNone(self.doc.getObject("OpticalRollBracket"))
         for obj in self.module["printed"] + self.module["hardware"]:
@@ -56,20 +57,15 @@ class OpticalMountTests(unittest.TestCase):
         ):
             self.assertFalse(contract[key])
 
-    def test_integral_shoe_preserves_open_channel_and_straight_post(self):
-        from gondola.parts import optical_mount, rail
+    def test_integral_foot_has_no_offset_arm_or_rail_shoe(self):
+        from gondola.parts import optical_interface, optical_mount
 
         shape = optical_mount.base_shape()
-        self.assertLess(abs(rail.shoe_shape().cut(shape).Volume), 1e-5)
-        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (18, 22))
-        post = Part.makeBox(8, 2, 14, App.Vector(-4, -2, rail.TOP_Z))
+        self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
+        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
+        post = Part.makeBox(8, 2, 15, App.Vector(-4, -2, 2))
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
-        shoe_region = Part.makeBox(
-            18, 22, rail.TOP_Z - rail.SHOE_BOTTOM, App.Vector(-9, -11, rail.SHOE_BOTTOM)
-        )
-        self.assertLess(
-            abs(shape.common(shoe_region).cut(rail.shoe_shape()).Volume), 1e-5
-        )
+        self.assertAlmostEqual(shape.BoundBox.ZMin, 0)
 
     def test_actual_base_thickness_matches_every_manufacturing_probe(self):
         from gondola.parts import optical_interface, optical_mount
@@ -88,11 +84,14 @@ class OpticalMountTests(unittest.TestCase):
                 material_length_on_line(shape, start, end), expected, places=5, msg=name
             )
 
-    def test_pivot_is_centred_on_its_rail_shoe(self):
+    def test_pivot_is_centred_on_foot_and_follows_carrier(self):
         from gondola.parts import optical_mount
 
-        self.assertEqual(optical_mount.PIVOT_CENTRE, (0, 0, 30))
-        self.assertIsNone(self.module["group"].getParentGeoFeatureGroup())
+        self.assertAlmostEqual(optical_mount.PIVOT_CENTRE[2], 19.6)
+        self.assertEqual(self.module["group"].getParentGeoFeatureGroup(), self.host)
+        self.assertAlmostEqual(
+            self.module["pitch_stage"].getGlobalPlacement().Base.z, 35
+        )
 
     def test_pitch_limit_is_native_and_every_part_follows_the_host(self):
         from gondola.cad import world_shape
@@ -117,7 +116,7 @@ class OpticalMountTests(unittest.TestCase):
             for obj in self.module["printed"] + self.module["hardware"]
         }
         shift = App.Vector(37, -9, 3)
-        self.parent.Placement.Base = shift
+        self.host.Placement.Base = shift
         self.doc.recompute()
         for obj in self.module["printed"] + self.module["hardware"]:
             self.assertLess(

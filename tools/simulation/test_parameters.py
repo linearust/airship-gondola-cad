@@ -49,7 +49,10 @@ class SavedGeometryTests(unittest.TestCase):
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.144, 0.0001, 0.03])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.117, -0.0001, 0.035])
+        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
+        self.assertEqual(geo["optical_mount_side"], "PositiveX")
+        self.assertNotIn("optical_rail_station_x_mm", geo)
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
         for name in ("Port", "Starboard"):
             self.assertEqual(
@@ -79,6 +82,27 @@ class SavedGeometryTests(unittest.TestCase):
         self.doc.PortPod.Placement.Base.z += 1
         self.doc.recompute()
         with self.assertRaisesRegex(ValueError, "Pivot alignment changed"):
+            extract(self.doc)
+
+    def test_optical_pose_follows_carrier_translation_and_selected_side(self):
+        self.doc.BatteryEquipmentModule.RailPositionX = 108
+        self.doc.OpticalFlowModule.MountSide = "NegativeX"
+        self.doc.OpticalPitchStage.Pitch = 20
+        self.doc.recompute()
+        geo = extract(self.doc)["exact_geometry"]
+        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
+        self.assertEqual(geo["optical_mount_side"], "NegativeX")
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.081, -0.0001, 0.035])
+        self.assertEqual(geo["optical_pitch_deg"], 20)
+
+    def test_optical_metadata_cannot_name_a_different_parent(self):
+        self.doc.OpticalFlowModule.CarrierHostName = "ElectronicsEquipmentModule"
+        with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
+            extract(self.doc)
+
+    def test_legacy_independent_optical_rail_control_is_rejected(self):
+        self.doc.OpticalFlowModule.addProperty("App::PropertyLength", "RailPositionX")
+        with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
             extract(self.doc)
 
     def test_unknown_vehicle_values_are_not_filled_with_zero(self):
@@ -160,7 +184,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 3)
+                self.assertEqual(snapshot["schema_version"], 4)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

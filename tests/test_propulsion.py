@@ -397,7 +397,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                 1e-7,
             )
 
-    def test_wide_support_and_long_grips_use_two_common_carriers(self):
+    def test_balanced_support_and_ten_mm_grips_use_two_common_carriers(self):
         from gondola.cad import world_shape
         from gondola.parts import propulsion
 
@@ -408,7 +408,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertLess(carriers[0].Shape.cut(carriers[1].Shape).Volume, 1e-7)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             carrier = self.doc.getObject(prefix + "MotorCarrier")
-            self.assertAlmostEqual(carrier.Shape.BoundBox.YLength, 68)
+            self.assertAlmostEqual(carrier.Shape.BoundBox.YLength, 62.5)
             bearings = [
                 world_shape(self.doc.getObject(prefix + "OutputBearing" + suffix))
                 for suffix in ("Negative", "Positive")
@@ -423,33 +423,33 @@ class NativeGearedDriveTests(unittest.TestCase):
                     )
                     / 2
                 ),
-                75.5,
+                70,
             )
             inner = bearings[0] if sign > 0 else bearings[1]
             self.assertAlmostEqual(
-                abs((inner.BoundBox.YMin + inner.BoundBox.YMax) / 2 - sign * 29), 8.25
+                abs((inner.BoundBox.YMin + inner.BoundBox.YMax) / 2 - sign * 29), 11
             )
             idle_suffix = "Positive" if sign > 0 else "Negative"
             self.assertEqual(
                 self.doc.getObject(prefix + "OutputShaft" + idle_suffix).HardwareSKU,
-                "SS304_CUT3_L22",
+                "SS304_CUT3_L20",
             )
             for side, suffix in ((-1, "Negative"), (1, "Positive")):
                 # A half annulus avoids the intentional split and proves that
                 # the actual long clamping land was not left as a short collar.
-                start = 20.6 if side > 0 else -33.9
-                witness = propulsion.cylinder(2.8, 13.3, (0, start, 0)).cut(
-                    propulsion.cylinder(1.7, 13.3, (0, start, 0))
+                start = 21.35 if side > 0 else -31.15
+                witness = propulsion.cylinder(2.8, 9.8, (0, start, 0)).cut(
+                    propulsion.cylinder(1.7, 9.8, (0, start, 0))
                 )
                 witness = witness.common(
-                    Part.makeBox(3, 13.3, 6, App.Vector(-3, start, -3))
+                    Part.makeBox(3, 9.8, 6, App.Vector(-3, start, -3))
                 )
-                self.assertGreater(witness.Volume, 90)
+                self.assertGreater(witness.Volume, 65)
                 self.assertLess(witness.cut(carrier.Shape).Volume, 1e-7)
                 bolt = self.doc.getObject(prefix + "OutputClamp" + suffix + "Bolt")
                 self.assertAlmostEqual(
                     (bolt.Shape.BoundBox.YMin + bolt.Shape.BoundBox.YMax) / 2,
-                    side * 27.25,
+                    side * 26.25,
                 )
 
     def test_overlong_staged_shaft_withdrawal_hits_the_opposite_drive(self):
@@ -476,6 +476,88 @@ class NativeGearedDriveTests(unittest.TestCase):
             opposite,
         )
         self.assertTrue(actual["passed"], actual)
+
+    def test_future_rotor_bulk_has_symmetric_clearance_and_reciprocal_service(self):
+        from gondola.validation.propulsion import replacement_rotor_space_check
+
+        for prefix in ("Port", "Starboard"):
+            with self.subTest(pod=prefix):
+                result = replacement_rotor_space_check(self.doc, self.module, prefix)
+                self.assertTrue(result["passed"], result)
+                self.assertEqual(result["future_propeller_reference_diameter_mm"], 50)
+                self.assertEqual(result["bulk_half_width_mm"], 30)
+                self.assertEqual(result["full_rotation_radius_mm"], 34)
+                self.assertAlmostEqual(result["nominal_frame_gap_mm"], 1.75)
+                for gap in result["post_face_gaps"]:
+                    self.assertAlmostEqual(gap["nominal_post_face_gap_mm"], 1.75)
+                    self.assertAlmostEqual(gap["gap_at_axial_stop_mm"], 1.25)
+                self.assertGreaterEqual(
+                    min(result["all_angle_gaps_with_axial_travel_mm"].values()),
+                    1.25 - 1e-7,
+                )
+                self.assertIn(
+                    prefix + "DriverGear",
+                    result["all_angle_gaps_with_axial_travel_mm"],
+                )
+                self.assertTrue(result["rotor_bulk_removal"]["passed"])
+                self.assertTrue(result["servo_module_removal_past_future_bulk"])
+
+    def test_future_space_does_not_claim_current_guard_accepts_fifty_mm_prop(self):
+        from gondola.parts import propulsion
+
+        carrier = self.doc.PortMotorCarrier.Shape
+        current_prop = propulsion.cylinder(20, 5, (9.5, 0, 0), (1, 0, 0))
+        future_prop = propulsion.cylinder(25, 5, (9.5, 0, 0), (1, 0, 0))
+        self.assertLess(carrier.common(current_prop).Volume, 1e-7)
+        self.assertGreater(carrier.common(future_prop).Volume, 100)
+        guard = carrier.common(Part.makeBox(1.8, 2, 5, App.Vector(11.1, -1, 21)))
+        self.assertAlmostEqual(guard.BoundBox.ZMax, 25, places=6)
+        self.assertGreater(guard.BoundBox.ZMin, 22.97)
+
+    def test_future_rotor_reserve_rejects_an_intruding_bearing_post(self):
+        from gondola.validation.propulsion import replacement_rotor_space_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            intrusion = Part.makeBox(1.4, 5, 1, App.Vector(-4.6, 105, 52.5))
+            frame.Shape = original.fuse(intrusion)
+            self.doc.recompute()
+            self.assertEqual(len(frame.Shape.Solids), 1)
+            self.assertGreater(frame.Shape.Volume - original.Volume, 2)
+            result = replacement_rotor_space_check(self.doc, self.module, "Port")
+            self.assertFalse(result["passed"], result)
+            self.assertLess(
+                result["all_angle_gaps_with_axial_travel_mm"]["PropulsionFixedFrame"],
+                1.25,
+            )
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
+
+    def test_future_rotor_service_rejects_obstacle_outside_its_stationary_orbit(self):
+        from gondola.validation.propulsion import replacement_rotor_space_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            # Connected low foot plus a post outside the installed full orbit,
+            # but inside the complete +X40 removal sweep.
+            foot = Part.makeBox(60, 4, 3, App.Vector(-8, 73, 4))
+            post = Part.makeBox(2, 4, 17, App.Vector(50, 73, 5))
+            frame.Shape = original.fuse(foot).fuse(post)
+            self.doc.recompute()
+            self.assertEqual(len(frame.Shape.Solids), 1)
+            result = replacement_rotor_space_check(self.doc, self.module, "Port")
+            self.assertGreaterEqual(
+                result["all_angle_gaps_with_axial_travel_mm"]["PropulsionFixedFrame"],
+                1.25 - 1e-7,
+            )
+            self.assertFalse(result["rotor_bulk_removal"]["passed"], result)
+            self.assertFalse(result["passed"])
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
 
     def test_plain_bearing_post_roots_keep_the_complete_load_section(self):
         from gondola.validation.propulsion import bearing_post_roots_check
@@ -1921,7 +2003,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 equipment_mounts.build_mount(doc, electronics, "electronics")
                 accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
                 equipment_mounts.build_mount(doc, accessory, "accessory")
-                optical_mount.build_optical_mount(doc)
+                optical_mount.build_optical_mount(doc, host)
                 doc.recompute()
                 doc.saveAs(str(path))
             finally:

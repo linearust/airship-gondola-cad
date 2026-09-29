@@ -170,7 +170,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_direct_helix_is_screened_at_actual_independent_station(self):
+    def test_direct_helix_is_screened_at_actual_carrier_attachment(self):
         from gondola.cad import placed_shape
         from gondola.contracts.equipment_options import get_navigation_profile
         from gondola.parts import wiring_reserves
@@ -186,12 +186,16 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             ),
             self.doc.AccessoryEquipmentModule.getGlobalPlacement(),
         )
-        for required, expected in ((144, True), (-108, False)):
+        for required, expected in (
+            (("BatteryEquipmentModule", "PositiveX"), True),
+            (("BatteryEquipmentModule", "NegativeX"), False),
+            (("ElectronicsEquipmentModule", "PositiveX"), False),
+        ):
             report = _optical_option_check(
                 screens,
                 {"NavigationDirectAntennaReserve": direct},
                 antenna=True,
-                required_station=required,
+                required_mount=required,
             )
             self.assertEqual(report["passed"], expected, report)
         # Unknown obstacles remain geometric inputs; no profile-name allowlist.

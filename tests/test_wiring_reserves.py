@@ -50,7 +50,7 @@ class WiringReserveTests(unittest.TestCase):
         refs, reserves = equipment_envelopes.build_equipment(
             cls.doc, battery, electronics, accessory
         )
-        optical = optical_mount.build_optical_mount(cls.doc)
+        optical = optical_mount.build_optical_mount(cls.doc, battery)
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
             cls.doc, optical["pitch_stage"]
         )

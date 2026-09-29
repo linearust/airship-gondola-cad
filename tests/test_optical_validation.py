@@ -1,4 +1,4 @@
-"""Negative native-CAD regressions for the pinned independent optical rail mount."""
+"""Negative native-CAD regressions for the pinned carrier-mounted optical pitch joint."""
 
 import unittest
 from unittest.mock import patch
@@ -22,7 +22,7 @@ class OpticalClearanceTests(unittest.TestCase):
         self.addCleanup(self.close_without_changing_baseline)
         self.assertIsNotNone(
             self.doc.getObject("OpticalFlowModule"),
-            "The pinned reference must include the reviewed adjustable optical stack.",
+            "The pinned reference must include the reviewed carrier-mounted optical joint.",
         )
 
     def close_without_changing_baseline(self):
@@ -88,11 +88,11 @@ class OpticalClearanceTests(unittest.TestCase):
             parent.addObject(bolt)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_obsolete_foot_hardware_cannot_remain_in_registry(self):
+    def test_obsolete_rail_hardware_cannot_remain_in_registry(self):
         from gondola.validation.optical import _source_evidence
 
         original = list(self.doc.DesignRegistry.HardwareParts)
-        obsolete = self.doc.addObject("Part::Feature", "OpticalFootBolt0")
+        obsolete = self.doc.addObject("Part::Feature", "OpticalRailClamp")
         obsolete.Shape = Part.makeCylinder(1, 8)
         self.doc.OpticalFlowModule.addObject(obsolete)
         try:
@@ -107,20 +107,23 @@ class OpticalClearanceTests(unittest.TestCase):
 
         group = self.doc.OpticalFlowModule
         original = group.Placement.copy()
-        self.doc.BatteryEquipmentModule.addObject(group)
+        host = group.getParentGeoFeatureGroup()
+        host.removeObject(group)
+        self.doc.ElectronicsEquipmentModule.addObject(group)
         try:
             result = mtf_sensor_check(self.doc)
             self.assertFalse(result["passed"])
             self.assertEqual(
-                group.getParentGeoFeatureGroup(), self.doc.BatteryEquipmentModule
+                group.getParentGeoFeatureGroup(), self.doc.ElectronicsEquipmentModule
             )
             self.assertTrue(group.Placement.isSame(original, 1e-7))
         finally:
-            self.doc.BatteryEquipmentModule.removeObject(group)
+            self.doc.ElectronicsEquipmentModule.removeObject(group)
+            host.addObject(group)
         group.removeProperty("OpticalMountContract")
         self.assertFalse(mtf_sensor_check(self.doc)["passed"])
 
-    def test_both_sensors_visit_actual_station_and_restore_state_on_exception(self):
+    def test_both_sensors_visit_actual_carrier_and_restore_state_on_exception(self):
         from gondola.parts.optical_mount import set_pitch
         from gondola.validation import optical
 
@@ -128,21 +131,34 @@ class OpticalClearanceTests(unittest.TestCase):
         set_pitch(self.doc, 11)
         before = optical._saved_sensor_state(self.doc)
         selected = group.SensorModel
-        station = group.RailPositionX.Value
+        mount = (group.CarrierHostName, str(group.MountSide))
         calls = []
 
         def screen(doc, physical, kit, *, profile):
-            calls.append((profile.key, doc.OpticalFlowModule.RailPositionX.Value))
+            calls.append(
+                (
+                    profile.key,
+                    (
+                        doc.OpticalFlowModule.CarrierHostName,
+                        str(doc.OpticalFlowModule.MountSide),
+                    ),
+                )
+            )
             if len(calls) == 2:
                 raise RuntimeError("deliberate validation failure")
             return {"passed": True}
 
-        with patch.object(optical, "_placement_checks", side_effect=screen):
+        with (
+            patch.object(optical, "_placement_checks", side_effect=screen),
+            patch.object(
+                optical, "_foot_service_checks", return_value={"passed": True}
+            ),
+        ):
             with self.assertRaisesRegex(RuntimeError, "deliberate"):
                 optical.mtf_sensor_check(self.doc)
-        self.assertEqual(calls, [("MTF02P", station), ("MTF01P", station)])
+        self.assertEqual(calls, [("MTF02P", mount), ("MTF01P", mount)])
         self.assertEqual(group.SensorModel, selected)
-        self.assertEqual(group.RailPositionX.Value, station)
+        self.assertEqual((group.CarrierHostName, str(group.MountSide)), mount)
         self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, 11)
         after = optical._saved_sensor_state(self.doc)
         for name, values in before.items():
@@ -154,6 +170,37 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertTrue(value.isSame(after[name][key], 1e-7))
                 else:
                     self.assertEqual(value, after[name][key], (name, key))
+
+    def test_carrier_support_and_clamp_axis_witnesses_reject_missing_material(self):
+        from gondola.validation.optical import _carrier_interface_checks
+
+        self.assertTrue(_carrier_interface_checks(self.doc)["passed"])
+        carrier = self.doc.BatteryMount
+        original = carrier.Shape.copy()
+        try:
+            # The supported outer strip lies at carrier X29..31, Y-8..8.
+            carrier.Shape = original.cut(Part.makeBox(2, 2, 2, App.Vector(29, 0, 13.4)))
+            result = _carrier_interface_checks(self.doc)
+            self.assertFalse(result["passed"])
+            self.assertTrue(
+                any(
+                    row.get("missing_material_mm3", 0) > 0.7
+                    for row in result["witnesses"]
+                )
+            )
+        finally:
+            carrier.Shape = original
+        foot = self.doc.OpticalMountBase
+        original = foot.Shape.copy()
+        try:
+            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, -5, 0)))
+            result = _carrier_interface_checks(self.doc)
+            self.assertFalse(result["passed"])
+            self.assertTrue(
+                any(row.get("obstruction_mm3", 0) > 6 for row in result["witnesses"])
+            )
+        finally:
+            foot.Shape = original
 
     def test_continuous_field_does_not_filter_unknown_obstacles(self):
         from gondola.validation.optical import _external_field_bound

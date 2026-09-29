@@ -638,6 +638,11 @@ class EquipmentServiceTests(unittest.TestCase):
             optical = doc.OpticalFlowModule
             host = doc.ElectronicsEquipmentModule
             world_placement = optical.getGlobalPlacement()
+            # This malformed saved-state fixture preserves the original world
+            # pose. Disable the new native edge expressions before reparenting
+            # so a later recompute cannot move the injected obstruction.
+            optical.setExpression("Placement.Base.x", None)
+            optical.setExpression("Placement.Rotation.Angle", None)
             old_parent = optical.getParentGeoFeatureGroup()
             if old_parent is not None:
                 old_parent.removeObject(optical)
@@ -656,6 +661,7 @@ class EquipmentServiceTests(unittest.TestCase):
                 2,
                 App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMax + 5),
             )
+            expected_world = obstruction.copy()
             obstruction.Placement = (
                 optical.getGlobalPlacement().inverse().multiply(obstruction.Placement)
             )
@@ -666,6 +672,11 @@ class EquipmentServiceTests(unittest.TestCase):
                 blocker
             ]
             doc.recompute()
+            actual_world = world_shape(blocker)
+            self.assertAlmostEqual(expected_world.Volume, 8.0, places=6)
+            self.assertAlmostEqual(
+                actual_world.common(expected_world).Volume, 8.0, places=6
+            )
             report = mounting_check(doc)
             row = next(
                 item

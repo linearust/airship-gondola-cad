@@ -64,18 +64,18 @@ class SavedPowerExportTests(unittest.TestCase):
             out = Path(directory)
             main = App.newDocument("PowerSerializationFixture")
             try:
-                main.addObject("App::Part", power_mount.DEFAULT_HOST)
                 from gondola.parts import optical_interface
 
+                for name in {
+                    power_mount.DEFAULT_HOST,
+                    power_mount.DEFAULT_OPTICAL_HOST,
+                    optical_interface.DEFAULT_HOST,
+                }:
+                    main.addObject("App::Part", name)
                 optical = main.addObject("App::Part", "OpticalFlowModule")
-                set_property(
-                    optical,
-                    "RailPositionX",
-                    optical_interface.DEFAULT_STATION_X,
-                    "App::PropertyDistance",
+                optical_interface.attach_to_host(
+                    optical, main.getObject(optical_interface.DEFAULT_HOST)
                 )
-                optical.Placement = optical_interface.placement()
-                optical.setExpression("Placement.Base.x", "RailPositionX")
                 registry = main.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(

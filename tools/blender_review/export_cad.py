@@ -159,6 +159,37 @@ def check_review_basis(doc, report):
     REVIEW_MOTION.check_basis(evidence)
 
 
+def check_optical_carrier_basis(doc):
+    """Keep the optical caption bound to its actual carrier parent and hardware."""
+    optical = doc.getObject("OpticalFlowModule")
+    host_name = getattr(optical, "CarrierHostName", "")
+    host = doc.getObject(host_name)
+    side = str(getattr(optical, "MountSide", ""))
+    if (
+        optical is None
+        or host_name
+        not in (
+            "BatteryEquipmentModule",
+            "ElectronicsEquipmentModule",
+            "AccessoryEquipmentModule",
+        )
+        or host is None
+        or optical.getParentGeoFeatureGroup() != host
+        or side not in ("PositiveX", "NegativeX")
+        or "RailPositionX" in optical.PropertiesList
+    ):
+        raise RuntimeError("Update optical carrier review for changed host binding.")
+    for name in ("OpticalFootBolt0", "OpticalFootBolt1", "OpticalPitchBolt"):
+        obj = doc.getObject(name)
+        if obj is None or getattr(obj, "HardwareSKU", "") != "M2X8_BUTTON_HEAD":
+            raise RuntimeError("Expected three M2x8 optical foot/pitch screws.")
+    for name in ("OpticalFootNut0", "OpticalFootNut1", "OpticalPitchNut"):
+        obj = doc.getObject(name)
+        if obj is None or getattr(obj, "HardwareSKU", "") != "M2_HEX_NUT":
+            raise RuntimeError("Expected three M2 optical foot/pitch nuts.")
+    return {"host": host_name, "side": side}
+
+
 def export(cad_path, output):
     original_hash = file_sha256(cad_path)
     fingerprint = source_fingerprint()
@@ -181,6 +212,7 @@ def export(cad_path, output):
                 "Validation report does not identify these exact saved CAD bytes."
             )
         check_review_basis(doc, report)
+        optical_attachment = check_optical_carrier_basis(doc)
         objects = review_objects(registry)
         rail_names = {obj.Name for obj in registry.RailSegments}
         parts = []
@@ -395,9 +427,13 @@ def export(cad_path, output):
 
         origin = doc.OpticalFlowModule.getGlobalPlacement().Base
         scene(
-            "05 Optical rail trim",
-            "OPTICAL MANUAL TRIM / INDEPENDENT RAIL SHOE",
-            "One manual pitch axis +/-20 deg. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. The installed rail station is fixed during this review. Sensor local +Z is the viewing direction.",
+            "05 Optical carrier pitch",
+            "OPTICAL MANUAL PITCH / CARRIER SIDE FOOT",
+            "One manual pitch axis +/-20 deg. Two M2 pairs fix the foot to "
+            + optical_attachment["host"]
+            + " ("
+            + optical_attachment["side"]
+            + "); a third pair locks pitch. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. Host and side remain fixed during this review. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
             145,
             all_names,
             [[origin.x - 35, origin.y - 30, 0], [origin.x + 35, origin.y + 30, 60]],

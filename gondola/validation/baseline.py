@@ -311,8 +311,55 @@ def control_behavior(doc):
         finally:
             setattr(stage, property_name, original)
             doc.recompute()
+    # The optical head follows one carrier and can use either existing X edge.
+    # Exercise the saved enum/expression without reattaching from current source.
+    host = optical.getParentGeoFeatureGroup()
+    if (
+        host not in modules
+        or "MountSide" not in optical.PropertiesList
+        or "CarrierHostName" not in optical.PropertiesList
+        or optical.CarrierHostName != host.Name
+        or "RailPositionX" in optical.PropertiesList
+    ):
+        return {
+            "cases": rows,
+            "error": "Optical carrier binding invalid",
+            "passed": False,
+        }
+    from gondola.parts import mounting_plate
+
+    original_side = str(optical.MountSide)
+    module_placements = {module.Name: module.Placement.copy() for module in modules}
+    try:
+        for side, x, angle in (("PositiveX", 27, 0), ("NegativeX", -27, 180)):
+            optical.MountSide = side
+            doc.recompute()
+            expected = App.Placement(
+                App.Vector(x, 0, mounting_plate.CARRIER_SUPPORT_Z),
+                App.Rotation(App.Vector(0, 0, 1), angle),
+            )
+            unchanged = all(
+                doc.getObject(name).Placement.isSame(pose, 1e-7)
+                for name, pose in module_placements.items()
+            )
+            parent_matches = optical.getParentGeoFeatureGroup() == host
+            local_matches = optical.Placement.isSame(expected, 1e-7)
+            rows.append(
+                {
+                    "object": optical.Name,
+                    "property": "MountSide",
+                    "input": side,
+                    "carrier_parent_matches": parent_matches,
+                    "local_placement_matches": local_matches,
+                    "modules_unchanged": unchanged,
+                    "passed": parent_matches and local_matches and unchanged,
+                }
+            )
+    finally:
+        optical.MountSide = original_side
+        doc.recompute()
     expected_cases = (
-        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 5
+        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 7
     )
     return {
         "cases": rows,
@@ -440,6 +487,8 @@ def procurement_and_scope_metadata(obj):
         "BatteryPlacementContract",
         "RailFitContract",
         "StackHostName",
+        "CarrierHostName",
+        "MountSide",
         "StackFitVerified",
         "HoldingTorqueVerified",
         "SelfLevelling",

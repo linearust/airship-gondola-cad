@@ -75,7 +75,19 @@ class NativeInterfaceTests(unittest.TestCase):
                     belongs_to_group(doc.PropulsionFixedFrame, doc.ServoDriveModule)
                 )
                 self.assertNotIn(doc.ServoDriveModule, doc.DesignRegistry.Modules)
-                self.assertEqual(len(doc.DesignRegistry.Modules), 5)
+                self.assertEqual(
+                    [module.Name for module in doc.DesignRegistry.Modules],
+                    [
+                        "BatteryEquipmentModule",
+                        "MainPropulsionModule",
+                        "ElectronicsEquipmentModule",
+                        "AccessoryEquipmentModule",
+                    ],
+                )
+                self.assertEqual(
+                    doc.OpticalFlowModule.getParentGeoFeatureGroup(),
+                    doc.BatteryEquipmentModule,
+                )
                 self.assertEqual(
                     len(doc.DesignRegistry.PrintedParts),
                     EXPECTED_INVENTORY["installed_prints"],

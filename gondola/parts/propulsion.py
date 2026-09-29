@@ -59,8 +59,13 @@ FOOT_THICKNESS = 3.0
 RAIL_SERVICE_FLOOR_THICKNESS = 2.0
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
-GUARD_OUTER_RADIUS = 24.3
-GUARD_INNER_RADIUS = 22.8
+GUARD_OUTER_RADIUS = 25.0
+GUARD_INNER_RADIUS = 23.0
+# Space for a later replacement rotor, not a fitted 50 mm propeller option.
+# The current guard and its forward struts remain specific to the 40 mm prop.
+FUTURE_ROTOR_PROPELLER_DIAMETER = 50.0
+FUTURE_ROTOR_HALF_WIDTH = 30.0
+FUTURE_ROTOR_ORBIT_RADIUS = 34.0
 MOTOR_NOMINAL_DIAMETER = 13.5
 MOTOR_DIAMETER = 13.6
 MOTOR_LENGTH = 14.0
@@ -85,7 +90,7 @@ def gear_axial_span(teeth):
     )
 
 
-BEARING_START_Y = 36.5
+BEARING_START_Y = 33.75
 BEARING_WINDOW_DIAMETER = bearing_retention.SHIELD_OPENING_DIAMETER
 BEARING_GUIDE_START_Y = BEARING_START_Y + bearing_retention.GUIDE_START_Y
 BEARING_SHOULDER_Y = BEARING_START_Y + bearing_retention.SHOULDER_START_Y
@@ -93,16 +98,16 @@ BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
 BEARING_POST_DEPTH = (
     BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS - BEARING_GUIDE_START_Y
 )
-CARRIER_END_Y = 34.0
-CARRIER_CLAMP_START_Y = 20.5
+CARRIER_END_Y = 31.25
+CARRIER_CLAMP_START_Y = 21.25
 CARRIER_CLAMP_LENGTH = CARRIER_END_Y - CARRIER_CLAMP_START_Y
 CARRIER_CLAMP_BOLT_Y = (CARRIER_CLAMP_START_Y + CARRIER_END_Y) / 2
 CARRIER_STOP_RADIUS = 3.8
-SHAFT_ASSEMBLY_RETRACTION = 14.5
+SHAFT_ASSEMBLY_RETRACTION = 12.0
 SHAFT_FINAL_WITHDRAWAL = 20.0
 OUTPUT_SHAFT_INNER_Y = 20.0
 OUTPUT_DRIVEN_SHAFT_LENGTH = 34.0
-OUTPUT_IDLE_SHAFT_LENGTH = 22.0
+OUTPUT_IDLE_SHAFT_LENGTH = 20.0
 OUTPUT_SHAFT_FLAT_LENGTH = 5.0
 OUTPUT_SHAFT_SWEEP_HALF_LENGTH = OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
 CLAMP_SCREW_SKU = "M2X8_BUTTON_HEAD"
@@ -750,7 +755,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(),
-        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 13.5 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 75.5 mm apart, and the gear face centre is 8.25 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Integral outer-ring hooks capture each bearing independently of the shaft and carrier. Assemble bearings with both hooks open, retract output shafts 14.5 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Integral outer-ring hooks capture each bearing independently of the shaft and carrier. Assemble bearings with both hooks open, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
         App.Rotation(V(0, 1, 0), -90),
         sku="GearedMotorCarrier",
     )
@@ -782,7 +787,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 prefix + "OutputShaft" + suffix,
                 shaft,
                 sku,
-                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 22 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The symmetric supports retain the 150 mm motor-axis spacing while reducing gear overhang to 8.25 mm; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
+                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 20 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The symmetric supports retain the 150 mm motor-axis spacing with 11 mm gear overhang and space on both sides of the rotor; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
                 SHAFT_SOURCE,
                 "304 stainless steel (seller claim)",
             )
@@ -967,6 +972,11 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
         [
             cylinder(30, 2 * CARRIER_END_Y, (0, -CARRIER_END_Y, 0)),
             cylinder(
+                FUTURE_ROTOR_ORBIT_RADIUS,
+                2 * FUTURE_ROTOR_HALF_WIDTH + 1,
+                (0, -FUTURE_ROTOR_HALF_WIDTH - 0.5, 0),
+            ),
+            cylinder(
                 10,
                 2 * OUTPUT_SHAFT_SWEEP_HALF_LENGTH,
                 (0, -OUTPUT_SHAFT_SWEEP_HALF_LENGTH, 0),
@@ -980,7 +990,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
         prefix + "SweepBound",
         "Conservative complete output rotation reserve",
         bound,
-        f"Main motor/guard/carrier radius30 overY±{CARRIER_END_Y:g}, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
+        f"Current motor/guard/carrier radius30 overY±{CARRIER_END_Y:g}, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Also reserves a replacement-rotor full-turn cylinder radius34 overY±30.5, including nominal ±0.5 axial travel. This allows space to design a future 50 mm propeller rotor, not compatibility of the present 40 mm guard or struts. Excludes the separately validated gear mesh and input mechanism; full bound is used against external vehicle equipment.",
         clearance=True,
     )
 
@@ -1083,13 +1093,20 @@ def _module_metrics(printed, hardware, references, spec):
             "release_per_hook_mm": bearing_retention.RELEASE_MM,
             "finishing": "Print matching coupon first. Finish and measure the bearing seat; verify actual outer-ring land, shield clearance, hook deflection/recovery and retention. Nominal geometry and kinematic release are not PA12 strain, fatigue or fit qualification. Do not preload bearings or force them through closed hooks.",
             "running_axial_clearance_mm": 0.5,
-            "assembly": "Open both hooks and insert bearings from the empty carrier bay. Remove the output gear, loosen carrier clamps and retract output shafts 14.5 mm. Insert carrier transversely, then advance shafts and clamp. Bearing replacement reverses this sequence with shafts removed; the paired servo module stays installed.",
+            "assembly": "Open both hooks and insert bearings from the empty carrier bay. Remove the output gear, loosen carrier clamps and retract output shafts 12 mm. Insert carrier transversely, then advance shafts and clamp. Bearing replacement reverses this sequence with shafts removed; the paired servo module stays installed.",
+        },
+        "replacement_rotor_space": {
+            "future_propeller_reference_diameter_mm": FUTURE_ROTOR_PROPELLER_DIAMETER,
+            "bulk_half_width_mm": FUTURE_ROTOR_HALF_WIDTH,
+            "full_rotation_radius_mm": FUTURE_ROTOR_ORBIT_RADIUS,
+            "included_axial_travel_each_way_mm": 0.5,
+            "scope": "Space allowance for a redesigned replacement rotor only. Its bulk must fit |Y|<=30 mm and radius34 about the tilt axis through every angle; retain the separate shaft/clamp stop interfaces. The current 40 mm guard and forward struts do not accept a 50 mm propeller. Future guard, motor, hub, fastening, wiring, thrust, balance and load capacity require selection and revalidation. Existing two-bearing support and 150 by 50 mm main-axis datums remain unchanged.",
         },
         "process_design_reference": {
             "source": CREALLO_SOURCE,
             "process": "PA12 SLS/MJF",
             "minimum_feature_wall_mm": 1.5,
-            "guard_radial_wall_mm": 1.5,
+            "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
             "frame_foot_thickness_mm": FOOT_THICKNESS,
             "rail_service_floor_thickness_mm": RAIL_SERVICE_FLOOR_THICKNESS,
         },
