@@ -37,9 +37,11 @@ COMMON_DEVICE_HOLE_CENTRES = FC_HOLE_CENTRES
 # Keep both the rail-clamp key path and diagonal stack-foot hardware accessible.
 RADIO_CENTRE_XY = (26.0, -11.0)
 RADIO_YAW_DEG = 90.0
-RADIO_ADHESIVE_CENTRE_XY = (26.0, -5.0)
 GPS_ADHESIVE_SIZE = (12.0, 14.0)
-RADIO_ADHESIVE_SIZE = (10.0, 12.0)
+RADIO_ADHESIVE_REGIONS = (
+    ((23.0, -7.5), (4.0, 15.0)),
+    ((30.0, -11.0), (3.0, 20.0)),
+)
 ACCESSORY_DECK_SIZE = COMMON_DECK_SIZE
 ACCESSORY_DECK_CENTRE_XY = (0.0, 0.0)
 BATTERY_DECK_SIZE = COMMON_DECK_SIZE
@@ -50,11 +52,11 @@ MOUNT_NAMES = {
     "accessory": "AccessoryMount",
 }
 # Keep continuous contact regions clear of every device bore and spare slot.
-# Three uninterrupted patches provide 536 mm² of nominal battery contact.
+# Three uninterrupted patches provide 376 mm² of nominal battery contact.
 BATTERY_ADHESIVE_REGIONS = (
     ((0.0, 0.0), (12.0, 18.0)),
-    ((0.0, -25.0), (16.0, 10.0)),
-    ((0.0, 25.0), (16.0, 10.0)),
+    ((0.0, -22.5), (16.0, 5.0)),
+    ((0.0, 22.5), (16.0, 5.0)),
 )
 BATTERY_PLACEMENT_CONTRACT = {
     "centre_x_limit_mm": 5.0,
@@ -134,10 +136,12 @@ def expansion_contract():
         "industry_standard_claimed": False,
         "row_spacing_mm": 2 * mounting_slots.SIDE_X,
         "centre_travel_y_mm": mounting_slots.SIDE_Y_RANGE,
+        "middle_centre_travel_y_mm": mounting_slots.SIDE_MIDDLE_Y_RANGE,
         "slots": expansion_slot_rows(),
+        "slot_count": len(expansion_slot_rows()),
         "fastener": "M2",
         "slot_width_mm": MOUNT_HOLE_DIAMETER,
-        "scope": "Eight outer slots on four sides of a 54 mm square. Each side has two ten-mm centre-travel intervals, 13 to 23 mm from its midpoint. This is a project provision, not an industry PCB standard. The optical foot uses one interval; the optional power feet use opposed intervals. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
+        "scope": "Twelve outer slots on four sides of a 54 mm square. Each side has three ten-mm centre-travel intervals: -23 to -13, -5 to 5, and 13 to 23 mm from its midpoint. This is a project provision, not an industry PCB standard. Optical and optional power feet use their separately reviewed positions within this array. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
     }
 
 
@@ -162,7 +166,7 @@ def common_plate_contract():
         "expansion": expansion_contract(),
         "fixed_bore_count": len(COMMON_DEVICE_HOLE_CENTRES),
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One rounded square plate with four fixed FC bores and sixteen slots. The outline and every mounting opening have quarter-turn and X/Y mirror symmetry; the integral rail shoe and clamp remain directional. The three rail carriers are identical physical prints. P-AS is shifted 2.2 mm along local negative Y so its verified holes use two diagonal-slot endpoints on a 23 mm square. Optical and optional-power feet use the outer slot array directly, without special clamp bores or projecting tabs. The optional power deck shares this plate template. Patterns are alternative uses, not permission to populate overlapping devices simultaneously. The optical tray remains a continuous adhesive pad.",
+        "scope": "One rounded square plate with four fixed FC bores and the shared inner-diagonal, outer-diagonal, arc and side slot families. The outline and every mounting opening have quarter-turn and X/Y mirror symmetry; the integral rail shoe and clamp remain directional. The three rail carriers are identical physical prints. P-AS is shifted 2.2 mm along local negative Y so its verified holes use two diagonal-slot endpoints on a 23 mm square. Optical and optional-power feet use the outer slot array directly, without special clamp bores or projecting tabs. The optional power deck shares this plate template. Patterns are alternative uses, not permission to populate overlapping devices simultaneously. The optical tray remains a continuous adhesive pad.",
     }
 
 
@@ -201,12 +205,15 @@ def mount_contract(kind):
         ],
         "electronics": [],
         "accessory": [
-            {
-                "device": "LR24-F-Mini",
-                "centre_xy_mm": RADIO_ADHESIVE_CENTRE_XY,
-                "size_mm": RADIO_ADHESIVE_SIZE,
-                "support_face": "bottom",
-            },
+            *(
+                {
+                    "device": "LR24-F-Mini",
+                    "centre_xy_mm": centre,
+                    "size_mm": size,
+                    "support_face": "bottom",
+                }
+                for centre, size in RADIO_ADHESIVE_REGIONS
+            ),
             {
                 "device": "MG-A01 / M10 Ultra or MG-F10-A",
                 "centre_xy_mm": NAVIGATION_CENTRE_XY,
@@ -217,7 +224,7 @@ def mount_contract(kind):
     scope = {
         "battery": "Universal carrier in battery role. Three declared continuous adhesive regions remain between the device bores and mounting slots. The common outer slots support separately screened optical or power feet, as on the other carriers.",
         "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
-        "accessory": "Universal navigation carrier. P-AS axes and mutually exclusive GPS alternatives share the local (0,-2.2) datum. The Mini body is centred at (26,-11) with its long axis along carrier Y. Its continuous 10 x 12 mm insulating-adhesive allocation is offset to (26,-5) on the rail-facing face to remain on solid material. This clears both rail-clamp tool approaches and the optional portal fastener/service reserves; the body overhangs the square plate edge. The 120 mm2 allocation is available nominal contact, not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform; this carrier is not a qualified optical host.",
+        "accessory": "Universal navigation carrier. P-AS axes and mutually exclusive GPS alternatives share the local (0,-2.2) datum. The Mini body is centred at (26,-11) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 4 x 15 mm at (23,-7.5) and 3 x 20 mm at (30,-11), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the new middle slot open, without moving the body or connector reserves. The body overhangs the square plate edge and clears both rail-clamp tool approaches and optional portal service reserves. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform; this carrier is not a qualified optical host.",
     }
     return {
         "kind": kind,
@@ -260,7 +267,7 @@ def build_mount(doc, parent, kind):
     name = MOUNT_NAMES[kind]
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
-        "Centred 64 x 64 mm rounded square deck, four FC bores and sixteen symmetric mounting slots, "
+        f"Centred 64 x 64 mm rounded square deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots, "
         f"integral rail shoe joined to the deck by one solid diameter {CENTRAL_SUPPORT_DIAMETER_MM:g} mm circular support, "
         "and shared outer slots for optional supports. The full support section keeps the underside M2 head paths and both rail-clamp approaches open. Choose the occupied role at assembly. "
         "Preserve the declared adhesive patches; spare slots do not qualify arbitrary simultaneous devices. "

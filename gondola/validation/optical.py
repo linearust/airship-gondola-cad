@@ -544,7 +544,16 @@ def _pedestal_service_check(doc, fixed, kit):
     for index in range(2):
         bolt = doc.getObject(f"OpticalFootBolt{index}")
         nut = doc.getObject(f"OpticalFootNut{index}")
-        for obj, local_vector in ((bolt, V(0, 0, -12)), (nut, V(20, 0, 0))):
+        for obj, local_vectors in (
+            (bolt, (V(0, 0, -12),)),
+            (
+                nut,
+                (
+                    V(optical_interface.NUT_OUTBOARD_TRAVEL, 0, 0),
+                    V(0, 0, optical_interface.NUT_LIFT_TRAVEL),
+                ),
+            ),
+        ):
             shape = world_shape(obj)
             if obj == nut:
                 # A solid planar hexagon safely fills only the nut bore.
@@ -552,14 +561,27 @@ def _pedestal_service_check(doc, fixed, kit):
                     purchased_hardware.HEX_NUT_AF, purchased_hardware.HEX_NUT_HEIGHT
                 )
                 shape.Placement = nut.getGlobalPlacement()
-            vector = placement.Rotation.multVec(local_vector)
-            sweep, method = translation_sweep(shape, tuple(vector))
-            hits = find_hits(sweep, {**fixed, **printed})
+            hits, legs = [], []
+            for local_vector in local_vectors:
+                vector = placement.Rotation.multVec(local_vector)
+                sweep, method = translation_sweep(shape, tuple(vector))
+                leg_hits = find_hits(sweep, {**fixed, **printed})
+                hits.extend(leg_hits)
+                legs.append(
+                    {
+                        "local_vector_mm": tuple(local_vector),
+                        "travel_mm": vector.Length,
+                        "method": method,
+                        "collisions": leg_hits,
+                        "passed": not leg_hits,
+                    }
+                )
+                shape.translate(vector)
             removal.append(
                 {
                     "object": obj.Name,
-                    "travel_mm": vector.Length,
-                    "method": method,
+                    "travel_mm": sum(leg["travel_mm"] for leg in legs),
+                    "legs": legs,
                     "collisions": hits,
                     "passed": not hits,
                 }
@@ -607,7 +629,7 @@ def _pedestal_service_check(doc, fixed, kit):
         "clamp_tool_access": access,
         "clamp_hardware_removal": removal,
         "whole_pedestal_slide_then_lift": service,
-        "scope": "Disconnect the sensor and remove the carrier from the rail. Hold each nut while withdrawing its screw downward; slide both freed nuts outboard along carrier +X. Slide the complete pedestal 20 mm +X off the plate, then lift 40 mm +Z. Direct upward removal is not specified because the foot would cross the FC connector band. Carrier remains bench-supported; balloon and connected cable clearance are unmodeled.",
+        "scope": "Disconnect the sensor and remove the carrier from the rail. Hold each nut while withdrawing its screw downward; slide both freed nuts 12 mm along carrier +X, then lift them 40 mm +Z. Slide the complete pedestal 20 mm +X off the plate, then lift 40 mm +Z. Direct upward removal is not specified because the foot would cross the FC connector band. Carrier remains bench-supported; balloon and connected cable clearance are unmodeled.",
         "passed": bench_frame["valid_supported_host"]
         and len(access) == 4
         and len(removal) == 4
@@ -626,8 +648,11 @@ def _pedestal_float_clearance_check(doc, host, obstacles):
         for name, shape in obstacles.items()
         if name != optical_interface.SUPPORTED_HOSTS[host.Name]
     }
-    for name, shape in optical_interface.rigid_float_component_bounds():
+    bounds = optical_interface.rigid_float_component_bounds()
+    placed_bounds = []
+    for name, shape in bounds:
         shape.Placement = placement.multiply(shape.Placement)
+        placed_bounds.append(shape)
         hits = find_hits(shape, external)
         wire = external.get("FCWiringClearanceReserve")
         wire_gap = shape.distToShape(wire)[0] if wire is not None else None
@@ -646,10 +671,16 @@ def _pedestal_float_clearance_check(doc, host, obstacles):
                 and (capacitor_gap is None or capacitor_gap >= 1.5 - TOL),
             }
         )
+    uncontained = abs(
+        world_shape(doc.OpticalMountBase).cut(Part.makeCompound(placed_bounds)).Volume
+    )
     return {
         "component_bounds": rows,
+        "conservative_proxy_uncontained_mm3": uncontained,
         "scope": "Continuous conservative XY/yaw bounds from both slot-end fasteners; no operating axial gap. Seat and align the foot, tighten both clamps and reject rocking or slip. Optical external-field bounds additionally enclose the pivot displacement from the same registration.",
-        "passed": len(rows) == 3 and all(row["passed"] for row in rows),
+        "passed": bool(rows)
+        and uncontained < TOL
+        and all(row["passed"] for row in rows),
     }
 
 

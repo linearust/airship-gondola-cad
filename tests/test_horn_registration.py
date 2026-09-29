@@ -62,6 +62,16 @@ class HornRegistrationTests(unittest.TestCase):
                         self.assertFalse(result["factory_m1_6_threads_confirmed"])
                         self.assertTrue(result["preparation_required"])
                         self.assertEqual(len(result["joints"]), 2)
+                        self.assertEqual(
+                            [
+                                [
+                                    round(probe["radial_offset_mm"], 6)
+                                    for probe in joint["minimum_head_support"]
+                                ]
+                                for joint in result["joints"]
+                            ],
+                            [[-0.2, 0.0, 0.2], [-0.5, 0.0, 0.5]],
+                        )
                         self.assertTrue(
                             all(
                                 joint["separate_nut_required"]

@@ -16,10 +16,15 @@ from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 from . import optical_interface, purchased_hardware
 
 V = App.Vector
-PIVOT_CENTRE = (2.0, 2.0, 22.0)
+PIVOT_CENTRE = (23.0, -18.0, 22.0)
 ANGLE_LIMIT_DEG = 20.0
-EAR_RADIUS = 3.5
+EAR_RADIUS = 4.0
 EAR_THICKNESS = 2.0
+UPRIGHT_WIDTH = 6.0
+GUSSET_DEPTH = 2.0
+GUSSET_TOP_Z = 10.0
+LOW_ARM_THICKNESS = 3.0
+LOW_ARM_WIDTH = 5.0
 PIVOT_HOLE_DIAMETER = 2.6
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
@@ -43,18 +48,55 @@ def _finished(shape, name):
 
 
 def upright_shape():
-    """Shared straight post for the print and conservative service envelopes."""
+    """Broad post and one low integral buttress, clear of both foot nuts."""
     x, y, z = PIVOT_CENTRE
-    return box(
-        4,
+    bottom = LOW_ARM_THICKNESS
+    left = x - UPRIGHT_WIDTH / 2
+    post = box(
+        UPRIGHT_WIDTH,
         EAR_THICKNESS,
-        z - optical_interface.FOOT_THICKNESS,
-        (x - 3, y - EAR_THICKNESS, optical_interface.FOOT_THICKNESS),
+        z - bottom,
+        (left, y - EAR_THICKNESS, bottom),
     )
+    points = [
+        V(left, y, bottom),
+        V(left, y + GUSSET_DEPTH, bottom),
+        V(left, y, GUSSET_TOP_Z),
+    ]
+    buttress = Part.Face(Part.makePolygon(points + [points[0]])).extrude(
+        V(UPRIGHT_WIDTH, 0, 0)
+    )
+    return union([post, buttress]).removeSplitter()
+
+
+def low_arm_components():
+    """Two broad rectangular beams link the corner foot to the centred post."""
+    x, y, _ = PIVOT_CENTRE
+    left = x - UPRIGHT_WIDTH / 2
+    return [
+        (
+            "outboard_arm",
+            box(
+                x + UPRIGHT_WIDTH / 2 - 2,
+                LOW_ARM_WIDTH,
+                LOW_ARM_THICKNESS,
+                (2, -LOW_ARM_WIDTH / 2, 0),
+            ),
+        ),
+        (
+            "return_arm",
+            box(
+                UPRIGHT_WIDTH,
+                -y + LOW_ARM_WIDTH / 2 + EAR_THICKNESS,
+                LOW_ARM_THICKNESS,
+                (left, y - EAR_THICKNESS, 0),
+            ),
+        ),
+    ]
 
 
 def base_shape():
-    """One flat two-hole foot and short straight upright ending in a pitch ear."""
+    """One corner foot, low L arm and braced upright ending in a pitch ear."""
     x, y, z = PIVOT_CENTRE
     ear = _cylinder(EAR_RADIUS, EAR_THICKNESS, (x, y - EAR_THICKNESS, z), (0, 1, 0))
     post = upright_shape()
@@ -65,7 +107,15 @@ def base_shape():
         (0, 1, 0),
     )
     return _finished(
-        union([optical_interface.foot_shape(), ear, post]).cut(bore), "base"
+        union(
+            [
+                optical_interface.foot_shape(),
+                *[shape for _, shape in low_arm_components()],
+                ear,
+                post,
+            ]
+        ).cut(bore),
+        "base",
     )
 
 
@@ -84,7 +134,7 @@ def sensor_tray_shape():
 
 def mount_contract():
     return {
-        "mechanism": "One manual pitch-Y friction clamp on a compact corner pedestal",
+        "mechanism": "One manual pitch-Y friction clamp on an outboard L pedestal with carrier-centred sensor",
         "adjustment_degrees_of_freedom": 1,
         "pivot_centre_in_pedestal_mm": PIVOT_CENTRE,
         "pivot_centre_in_carrier_mm": tuple(
@@ -105,7 +155,17 @@ def mount_contract():
         "ear_thickness_mm": EAR_THICKNESS,
         "pivot_clearance_hole_diameter_mm": PIVOT_HOLE_DIAMETER,
         "nominal_ear_radial_wall_mm": EAR_RADIUS - PIVOT_HOLE_DIAMETER / 2,
-        "upright_section_mm": (4.0, EAR_THICKNESS),
+        "upright_section_mm": (UPRIGHT_WIDTH, EAR_THICKNESS),
+        "low_arm_sections_mm": {
+            "outboard": (LOW_ARM_WIDTH, LOW_ARM_THICKNESS),
+            "return": (UPRIGHT_WIDTH, LOW_ARM_THICKNESS),
+        },
+        "relocation_scope": "The original corner slot and its two clamps remain. A low integral L arm places the nominal sensor pivot at carrier Y=0, outside both host wiring envelopes. The larger cantilever and footprint are not strength, stiffness or pointing qualifications.",
+        "integral_base_buttress": {
+            "depth_mm": GUSSET_DEPTH,
+            "top_z_mm": GUSSET_TOP_Z,
+            "scope": "Low triangular reinforcement on the positive-Y side; no additional part or fastener. Geometric section improvement, not measured strength or pointing stiffness.",
+        },
         "tray_size_mm": TRAY_SIZE_MM,
         "tray_bottom_z_in_pitch_frame_mm": TRAY_BOTTOM_Z,
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
@@ -116,7 +176,7 @@ def mount_contract():
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the pedestal and sensor tray separately. Seat and clamp the pedestal on one common carrier slot; clamp the two plain 2 mm pitch ears with the third M2 pair. No intermediate roll bracket or broad tower remains.",
+        "assembly": "Print the pedestal and sensor tray separately. Seat and clamp the pedestal on the original corner carrier slot, placing the sensor on carrier Y=0 through the low L arm; clamp the two plain 2 mm pitch ears with the third M2 pair. No intermediate roll bracket or broad tower remains.",
         "adjustment": "Place the rail along the balloon bottom centreline. Support the sensor, loosen its pitch screw while holding the nut, align downward at flight trim, and hand-snug. There is no roll correction or operating play. Native angle limits are planning controls only; no claimed tightening torque, friction capacity, vibration retention or PA12 creep life.",
         "sensor_interface": "Continuous insulating adhesive pad; OEM backside contact, adhesive retention and connector/wire fit remain unverified. Do not invent sensor fixing holes or cover its optical apertures.",
     }
@@ -201,7 +261,7 @@ def build_optical_mount(doc, parent):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF compact optical support, two separately printed pieces. One rectangular foot and straight upright replace the former broad two-axis tower. Existing M2x8 / M2 nut pairs seat the foot and lock the single pitch joint. Check actual print, contact, clamping, adhesive and optical alignment before use.",
+            "PA12 SLS/MJF compact optical support, two separately printed pieces. One corner foot, low L arm, broad upright and integral low buttress support a sensor on carrier Y=0. Existing M2x8 / M2 nut pairs seat the foot and lock the single pitch joint. Check actual print, contact, clamping, adhesive and optical alignment before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

@@ -489,7 +489,7 @@ def _build_coupling(doc, parent, prefix, sign):
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, two short 1.8 x 2.4 mm radial slots at X6.8/13.2 and flat front nut seats. No long head channel, separate cap or centring jig. Centre the shaft before tightening the rear M1.4x8/front-nut pairs; slots absorb assembly error, not operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
+        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, near Ø1.8 round hole at X6.8, far 1.8 x 2.4 mm radial slot at X13.2 and flat front nut seats. The near hole bounds displacement along the open seat; the far slot accommodates pitch variation. No long head channel, separate cap or centring jig. Centre the shaft and check runout before tightening both rear M1.4x8/front-nut pairs; the openings do not permit operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
         sku="FactoryHoleHornGearAdapter",
     )

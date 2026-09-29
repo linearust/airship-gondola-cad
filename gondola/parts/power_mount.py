@@ -40,7 +40,7 @@ DEFAULT_PACKAGING = DIRECT_CARRIER
 DEFAULT_OPTICAL_HOST = "ElectronicsEquipmentModule"
 DIRECT_BAY_CENTRES = ((0.0, -14.0), (0.0, 14.0))
 DIRECT_ADHESIVE_REGIONS = (
-    (((0.0, -24.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
+    (((0.0, -23.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
     (((0.0, 6.0), (12.0, 4.0)), ((0.0, 22.0), (12.0, 4.0))),
 )
 

@@ -25,12 +25,14 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-BB uses the same 64 × 64 × 2 mm square plate in all three carrier roles.
+BF uses the same 64 × 64 × 2 mm square plate in all three carrier roles; the
+[current plate review](dense_mount_review.md) defines its denser common array.
 The Mini uses the navigation carrier's rail-facing face at local (26, −11) mm,
 long axis Y, populated face toward −Z and the balloon. It has no separate plate,
-pocket or radio-only fastening pattern. The continuous 10 × 12 mm insulating
-adhesive allocation is centred separately at (26, −5) mm on solid plate; its
-120 mm² is nominal available contact, not a qualified holding area. The nominal
+pocket or radio-only fastening pattern. Two continuous insulating-adhesive strips,
+4 × 15 mm at (23, −7.5) and 3 × 20 mm at (30, −11), lie on opposite sides of the
+side-slot row. Each has 60 mm² of complete plate backing and nominal body overlap.
+Their total 120 mm² is available contact, not a qualified holding area. The nominal
 body overhangs the +X edge by 3.1 mm.
 
 This position clears both local rail-clamp tool approaches and the optional
@@ -38,9 +40,11 @@ power portal's foot fasteners and service reservations. The former (0, −26)
 position blocked the negative-Y clamp approach; merely reversing that Y position
 blocks the other approach. Rotating the radio at (26, 0) clears the rail tool but
 obstructs optional-power fastener service, so retain the −11 mm body offset.
-Body, its separate adhesive patch and connector reserves must move together.
+The BF strip changes retain the existing body and connector-reserve datums.
+If relocating the radio, recheck its body, both contact strips, connector reserves
+and service paths together.
 Source datums in `equipment_mounts.py` and `equipment_layout.py` own the heights;
-the BB plate underside is 2 mm higher than AY to accommodate common-slot heads.
+the common plate underside remains 2 mm higher than AY to accommodate common-slot heads.
 
 The adhesive allocation is not a measured bearing face or a qualified area.
 The underside photograph shows components: verify insulation, pressure, heat,

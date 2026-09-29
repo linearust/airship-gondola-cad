@@ -1,4 +1,4 @@
-# Manufacturer X06 stock half-arm coupling — BE
+# Manufacturer X06 stock half-arm coupling — BF
 
 Both sides use **X06 half arm 1**, selected from the four nominal STEP models in
 the manufacturer's [archive](manufacturer/kst_x06_servo_horns_2026-09-28.rar)
@@ -40,15 +40,27 @@ not M1.4 or M1.6 factory threads. The minimum nominal planar ligament to an unus
 hole is 1.15 mm: 2.3 mm centre spacing minus radii 0.75 and 0.4 mm. This geometric
 margin is not a drilling-quality, preload or strength qualification.
 
-The dedicated adapter has two separate radial slots, each 1.8 mm wide with end
-centres ±0.3 mm from its factory axis: 2.4 mm overall slot length. They replace
-the former 11.3 mm continuous passage. Slot allowance is for assembly correction;
-tighten both joints before operation. The open root seat has Ø7.3 mm inside and
+The adapter has a **Ø1.8 mm round hole at 6.8 mm** and a **1.8 × 2.4 mm radial
+slot at 13.2 mm**. The far slot's end centres are ±0.3 mm from its factory axis.
+BF replaces BE's near slot with this round hole; the purchased horn, its two
+prepared holes, fasteners, gear planes and shaft stay unchanged. The far slot
+still accepts a nominal ±0.3 mm relative pitch error without shifting the near
+joint. Tighten both joints before operation. The open root seat has Ø7.3 mm inside and
 Ø10.3 mm outside diameters, giving 0.15 mm nominal radial clearance around the
 Ø7 mm root. The plate is 10.3 mm wide. The 1.5 mm radial wall leaves a nominal 0.10 mm gap to the upper ear screw
 withdrawal envelope; verify the finished outside surface and selected head before
 assembly. This is an open locating saddle, not a
 self-centring precision pilot; check actual axis alignment and gear runout.
+
+The source root outline is a rear semicircle followed by two straight tapered
+edges from (X, Z) = (0, ±3.5) to (13.2, ±2.0) mm. Simply extending the circular
+seat around the front intersects those edges. With BE's two slots, the adapter
+could move 0.5 mm along the open-seat direction while nominal screw centres
+remained fixed. The BF near round hole limits that movement to 0.2 mm. Other
+directions meet the nominal root-seat boundary at about 0.15 mm. These limits
+describe unclamped parts; neither the root seat nor the round hole proves
+automatic concentricity. This change adds 3.888 mm³ of PA12 per adapter and
+removes no material.
 
 Front nut seats remain flat, with no counterbores. The near attachment at 6.8 mm
 clears the shaft boss, so the former long front relief channel is omitted.
@@ -62,6 +74,63 @@ faces and drive recesses remain unmeasured. Nut limits follow the retained
 [Fastenal dimensional reference](https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf),
 not certification of the purchased brass nuts. Check physical engagement, bearing
 contact, protrusion, plastic indentation and reversing-load retention.
+
+## Fit allowances and receiving checks
+
+Keep dimensional error separate from clearance. The prepared Ø1.5 horn hole
+has only 0.05 mm radial clearance around a nominal Ø1.4 screw. The Ø1.8 printed
+near hole permits 0.2 mm radial screw-centre travel; the far slot permits 0.5 mm
+along and 0.2 mm across the arm when considered separately. Its rounded ends do
+not admit both extremes at once. The horn hole's additional 0.05 mm can increase
+loose-part movement along the open-seat direction to about 0.25 mm, before
+other contacts intervene. The nominal D socket has a separate 0.05 mm surface
+allowance. None of these clearances is permission for motion after clamping,
+or a qualified combined runout allowance.
+
+The following are sensitivity examples for **±0.3 mm error in one stated
+dimension**, not measured supplier tolerances or promises of as-printed fit.
+They hold the purchased mating dimension at nominal:
+
+| Printed dimension varied | Nominal clearance | Result at dimension −0.3 / +0.3 mm |
+| --- | --- | --- |
+| Near hole Ø1.8 against Ø1.4 screw | 0.20 mm radial | 0.05 / 0.35 mm radial |
+| Root seat Ø7.3 against Ø7 rear root | 0.15 mm radial | 0 / 0.30 mm radial |
+| Socket's round portion Ø3.1 against Ø3 rod | 0.05 mm radial | −0.10 / 0.20 mm radial; the negative value is interference |
+| Adapter width/outer root diameter 10.3, upper ear head Ø3.5 at Z7 | 0.10 mm head-withdrawal gap | 0.25 / −0.05 mm gap |
+
+If inner and outer root diameters independently vary by ±0.3 mm in opposite
+directions, the nominal 1.5 mm radial wall can range from 1.2 to 1.8 mm. A
+0.3 mm inward **surface-position** error is different from a 0.3 mm diameter
+error: it alone exceeds the 0.15 mm root allowance. Hole position, horn shape,
+seating and screw dimensions add further uncertainty. Consequently a generic
+±0.3 mm print capability does not qualify this assembled interface without
+finishing and inspection.
+
+Fit a first adapter made by the final process to the received horn, screws and
+rod. Finish openings toward their stated nominal sizes; do not elongate the
+near round hole into a second slot. Preserve the 1.5 mm root wall and full
+shaft-stop floor. Both rear heads must sit flat on the horn and both front nuts
+must bear flat on the adapter, without forcing the horn or bending the shaft.
+Nominal contact areas are 3.542 mm² per rear head, 5.250 mm² at the near front
+nut, 4.170 mm² at the far front nut and 62.120 mm² between horn and adapter.
+These are geometric areas, not load ratings. Check shaft runout through the
+intended rotation while locating the assembly, then tighten the two joints and
+recheck; clearance during loose assembly is not an acceptable final
+eccentricity. If satisfactory fit requires removing a functional wall or
+forcing parts together, rework the design or reprint.
+
+The 0.20 mm horn-to-case gap is an assumed installed seating allowance, not
+clearance created by the printed adapter. A 0.3 mm relative axial change would
+consume it. The manufacturer's nominal horn and the servo envelope cannot
+establish the received spline seating or OEM centre-screw stack. Verify that
+the retained OEM screw seats correctly and that the horn clears the case
+through the full intended input rotation. Do not hide contact by changing the
+factory horn, adding an unreviewed washer or moving the gear planes.
+
+The 0.10 mm upper-ear head service gap also needs a physical check with the
+received head and finished print. Keep the existing ordered service path, but
+do not pull an oversized head through the adapter or reduce the root wall to
+make it pass. A passing nominal removal path is not a ±0.3 mm service guarantee.
 
 ## Assembly and service
 
@@ -98,5 +167,5 @@ The [original metal](selected_15t_4mm_horn_drawing.png),
 [second metal](metal_15t_4mm_horn_6_98_drawing.png) and
 [KST 0415.13 aluminium](kst_0415_13_horn_drawing.png) drawings remain historical
 references. They used different holes, fasteners and an earlier universal
-adapter. They are not supported substitutions for the BE adapter; do not restore
+adapter. They are not supported substitutions for the BF adapter; do not restore
 their dimensions or aluminium density into the selected plastic-horn model.

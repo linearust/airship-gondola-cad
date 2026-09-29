@@ -26,6 +26,8 @@ FOOT_THICKNESS = 2.0
 CLAMP_CENTRES = ((0.0, -5.0), (0.0, 5.0))
 CLAMP_HOLE_DIAMETER = 2.6
 CLAMP_SCREW_LENGTH = 8.0
+NUT_OUTBOARD_TRAVEL = 12.0
+NUT_LIFT_TRAVEL = 40.0
 DIMENSION_ALLOWANCE = 0.3
 MINIMUM_RECEIVED_BOLT_DIAMETER = 1.8
 MAX_REGISTRATION_ERROR = (
@@ -78,7 +80,7 @@ def interface_contract():
         "host_bolt_centres_xy_mm": [
             (x + HOST_ORIGIN_XY[0], y + HOST_ORIGIN_XY[1]) for x, y in CLAMP_CENTRES
         ],
-        "host_interface": "Opposite endpoints of the common carrier's x=27 mm, y=13 through 23 mm M2 slot. No optical-only hole is added to any carrier.",
+        "host_interface": "Opposite endpoints of the common carrier's x=27 mm, y=13 through 23 mm M2 slot. The same corner slot pattern is repeated around the plate; no optical-only hole is added.",
         "supported_hosts": SUPPORTED_HOSTS,
         "configuration_limits": "Battery and FC carriers accept the same print. Use the battery host with a directly attached MG-F10-A helix, or with an optional accessory power platform that blocks the FC-host field. Remote antenna routing is unplaced and must be checked separately. A common mounting slot does not establish optical visibility for every populated combination.",
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
@@ -99,7 +101,7 @@ def interface_contract():
             "scope": "The common slot is only 10 mm long, matching the foot bolt pitch. Both endpoint fasteners bound travel and yaw; the listed rectangle intentionally encloses coupled clearance registration. These are assembly allowances for the illustrated near-zero facing and nominal10mm endpoint pitches, not an operating adjustment or a qualified pointing tolerance. Received hole-axis and slot-length errors require measurement; the diameter/width allowance does not certify arbitrary pitch errors.",
         },
         "assembly": "Seat the flat foot directly on the carrier, align its long edge with carrier Y and its upright/pivot toward carrier +X exactly as drawn, then hand-snug both screws while holding the exposed nuts. A 180 degree flipped installation is outside the checked registration branch. Reject rocking, overhang that prevents adequate seating, pull-through or cable-induced slip. Align the sensor downward using the single pitch clamp after positioning the rail on the balloon centreline; roll trim is not provided.",
-        "service": "Disconnect the sensor, remove and bench-support the carrier, hold both nuts and withdraw the two screws downward; slide the freed nuts and complete pedestal outboard along carrier +X by 20 mm, then lift 40 mm along carrier +Z. The balloon and installed cable are not modeled. Remove the optical pedestal before lifting the host device.",
+        "service": "Disconnect the sensor, remove and bench-support the carrier, hold both nuts and withdraw the two screws downward; slide the freed nuts 12 mm along carrier +X and lift them 40 mm along carrier +Z. Then slide the complete pedestal 20 mm along carrier +X and lift 40 mm along carrier +Z. The balloon and installed cable are not modeled. Remove the optical pedestal before lifting the host device.",
         "qualification": "Nominal fit and clearance only. Actual print flatness, slot/head bearing, hand-clamp preload, PA12 creep, adhesive retention and optical pointing remain unqualified.",
     }
 
@@ -228,11 +230,33 @@ def manufacturing_wall_probes():
             FOOT_THICKNESS,
         ),
         (
+            "optical_outboard_arm_thickness",
+            "OpticalMountBase",
+            (10, 0, -0.01),
+            (10, 0, optical_mount.LOW_ARM_THICKNESS + 0.01),
+            optical_mount.LOW_ARM_THICKNESS,
+        ),
+        (
+            "optical_return_arm_thickness",
+            "OpticalMountBase",
+            (optical_mount.PIVOT_CENTRE[0], -10, -0.01),
+            (
+                optical_mount.PIVOT_CENTRE[0],
+                -10,
+                optical_mount.LOW_ARM_THICKNESS + 0.01,
+            ),
+            optical_mount.LOW_ARM_THICKNESS,
+        ),
+        (
             "optical_upright_thickness",
             "OpticalMountBase",
-            (1, -0.01, 10),
-            (1, 2.01, 10),
-            2.0,
+            (
+                optical_mount.PIVOT_CENTRE[0],
+                optical_mount.PIVOT_CENTRE[1] - optical_mount.EAR_THICKNESS - 0.01,
+                14,
+            ),
+            (optical_mount.PIVOT_CENTRE[0], optical_mount.PIVOT_CENTRE[1] + 0.01, 14),
+            optical_mount.EAR_THICKNESS,
         ),
         (
             "optical_fixed_pivot_ear",
@@ -252,33 +276,39 @@ def manufacturing_wall_probes():
     ]
 
 
-def base_service_proxies():
-    """Three simple solids enclose the base without filling its open surroundings."""
+def base_component_proxies():
+    """Named solids enclose the base without filling the L arm's open interior."""
     from . import optical_mount
 
     x, y, z = optical_mount.PIVOT_CENTRE
     return [
-        foot_outline_shape(),
-        optical_mount.upright_shape(),
-        box(
-            2 * optical_mount.EAR_RADIUS,
-            optical_mount.EAR_THICKNESS,
-            2 * optical_mount.EAR_RADIUS,
-            (
-                x - optical_mount.EAR_RADIUS,
-                y - optical_mount.EAR_THICKNESS,
-                z - optical_mount.EAR_RADIUS,
+        ("foot", foot_outline_shape()),
+        *optical_mount.low_arm_components(),
+        ("upright", optical_mount.upright_shape()),
+        (
+            "fixed_pitch_ear",
+            box(
+                2 * optical_mount.EAR_RADIUS,
+                optical_mount.EAR_THICKNESS,
+                2 * optical_mount.EAR_RADIUS,
+                (
+                    x - optical_mount.EAR_RADIUS,
+                    y - optical_mount.EAR_THICKNESS,
+                    z - optical_mount.EAR_RADIUS,
+                ),
             ),
         ),
     ]
 
 
+def base_service_proxies():
+    return [shape for _, shape in base_component_proxies()]
+
+
 def rigid_float_component_bounds():
     return [
         (name, rigid_float_shape_bound(shape))
-        for name, shape in zip(
-            ("foot", "upright", "fixed_pitch_ear"), base_service_proxies()
-        )
+        for name, shape in base_component_proxies()
     ]
 
 

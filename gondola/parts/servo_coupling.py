@@ -1,7 +1,7 @@
-"""One compact two-slot adapter for the manufacturer-supplied X06 half arm 1.
+"""Round-hole/slot adapter for the manufacturer-supplied X06 half arm 1.
 
-An open root register locates the arm; short slots absorb assembly variation
-before tightening. They never permit deliberate movement during operation.
+An open root register and near round hole bound assembly displacement. The far
+short slot accommodates hole-pitch variation before both joints are tightened.
 Local rotation is +Y and the arm points +X; shaft and gear planes stay fixed.
 """
 
@@ -24,6 +24,7 @@ HORN_FACTORY_HOLE_CENTRES = tuple((x, 0.0) for x, _ in servo_horns.profile().hol
 HORN_BOLT_CENTRES = tuple((x, 0.0) for x in servo_horns.profile().attachment_radii_mm)
 HORN_ADAPTER_HOLE_DIAMETERS = (1.8, 1.8)
 HORN_ADAPTER_SLOT_ALLOWANCE = 0.3
+HORN_ADAPTER_OPENING_ALLOWANCES = (0.0, HORN_ADAPTER_SLOT_ALLOWANCE)
 SLOT_WIDTH = 1.8
 HORN_CLAMP_THREAD_DIAMETER = 1.4
 HORN_CLAMP_LENGTH = 8.0
@@ -147,7 +148,7 @@ def capsule(radius, allowance, start_y, length, x, z=0):
 
 
 def adapter_shape():
-    """One piece, two short through-slots and flat seats; no cap or head recess."""
+    """One piece, a near round hole and far short slot, with flat nut seats."""
     root = (
         _cylinder(REGISTER_OUTER_RADIUS, REGISTER_ENGAGEMENT, (0, BODY_BACK_Y, 0))
         .cut(
@@ -199,14 +200,14 @@ def adapter_shape():
             _d_section(SHAFT_START_Y, SHAFT_SOCKET_LENGTH + 0.1, SHAFT_SOCKET_CLEARANCE)
         )
     )
-    # Short radial slots preserve factory spacing while allowing print/assembly
-    # variation. The nearer joint at 6.8 mm clears the shaft boss without a
-    # head-relief channel or a recessed nut seat.
-    for x, z in HORN_BOLT_CENTRES:
+    # The near round opening bounds translation along the open register. Only
+    # the far joint is slotted, so pitch variation does not force the two holes.
+    # Both joints clear the shaft boss without a head channel or nut recess.
+    for (x, z), allowance in zip(HORN_BOLT_CENTRES, HORN_ADAPTER_OPENING_ALLOWANCES):
         shape = shape.cut(
             capsule(
                 SLOT_WIDTH / 2,
-                HORN_ADAPTER_SLOT_ALLOWANCE,
+                allowance,
                 HORN_HEIGHT - 0.1,
                 PLATE_FRONT_Y - HORN_HEIGHT + 0.2,
                 x,
@@ -234,7 +235,7 @@ def adapter_shape():
         )
     )
     return _one_solid(
-        shape, "OEM half-arm adapter with two tolerance slots and an open register"
+        shape, "OEM half-arm adapter with a round hole, far slot and open register"
     )
 
 
@@ -264,11 +265,13 @@ def service_envelope(*, retain_screws=False):
         )
     )
     if retain_screws:
-        for x, z in HORN_BOLT_CENTRES:
+        for (x, z), allowance in zip(
+            HORN_BOLT_CENTRES, HORN_ADAPTER_OPENING_ALLOWANCES
+        ):
             plate = plate.cut(
                 capsule(
                     SLOT_WIDTH / 2,
-                    HORN_ADAPTER_SLOT_ALLOWANCE,
+                    allowance,
                     HORN_HEIGHT - 0.1,
                     PLATE_FRONT_Y - HORN_HEIGHT + 0.2,
                     x,
@@ -367,15 +370,17 @@ def assembly_contract(profile=None):
         "nominal_axial_geometry_sourced": True,
         "axial_envelope_scope": "Manufacturer STEP establishes nominal 3.5 mm total height, 2 mm blade and 2.5 mm spline cavity. Physical installed seating, centre screw and delivered tolerances are unmeasured. The 0.2 mm case gap remains a design allowance.",
         "nominal_arm_thickness_mm": profile.arm_thickness_mm,
+        "adapter_round_hole_x_mm": profile.attachment_radii_mm[0],
+        "adapter_round_hole_diameter_mm": SLOT_WIDTH,
         "adapter_slot_width_mm": SLOT_WIDTH,
-        "adapter_slot_centres_x_mm": profile.attachment_radii_mm,
+        "adapter_slot_centres_x_mm": profile.attachment_radii_mm[1:],
         "adapter_slot_centre_allowance_mm": HORN_ADAPTER_SLOT_ALLOWANCE,
         "adapter_slot_overall_length_mm": SLOT_WIDTH + 2 * HORN_ADAPTER_SLOT_ALLOWANCE,
         "register_radial_clearance_mm": REGISTER_INNER_RADIUS
         - profile.root_diameter_mm / 2,
         "register_engagement_mm": REGISTER_ENGAGEMENT,
         "register_scope": "Open C seat follows the nominal Ø7 root with 0.15 mm radial trial clearance. It limits rearward/side motion without enclosing the arm. Fit the root seat evenly, check metal-stub alignment and free mesh before clamping; nominal surfaces are not precision pilots or proof of zero runout.",
-        "assembly_adjustment": "Two short 1.8 x 2.4 mm radial slots centred at 6.8/13.2 mm absorb print and hole-preparation error. Align the root and axes before tightening both joints. Do not use loose screws or slots as operating compliance. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
+        "assembly_adjustment": "A diameter 1.8 mm round hole at 6.8 mm bounds motion along the open root seat; a 1.8 x 2.4 mm radial slot at 13.2 mm accommodates pitch variation. For nominal diameter 1.4 mm shanks, near centre travel is 0.2 mm radially and far travel is 0.5 mm along/0.2 mm across the arm, before the tighter root seat or horn holes intervene. These are loose-part geometric limits, not a rectangular tolerance box or operating play. Align the input axis and check runout before tightening both joints. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
         "fastener_grip_mm": FASTENER_SEAT_Y - profile.height_mm,
         "total_horn_and_adapter_grip_mm": FASTENER_SEAT_Y - profile.blade_bottom_mm,
         "screw_length_mm": profile.screw_length_mm,
@@ -409,8 +414,10 @@ def metrics():
         "selected_by_side": dict(servo_horns.SELECTED_BY_SIDE),
         "assembly_contract": contract,
         "horn_factory_hole_centres_xz_mm": HORN_FACTORY_HOLE_CENTRES,
+        "horn_adapter_round_hole_x_mm": servo_horns.profile().attachment_radii_mm[0],
+        "horn_adapter_round_hole_diameter_mm": SLOT_WIDTH,
         "horn_adapter_slot_width_mm": SLOT_WIDTH,
-        "horn_adapter_slot_centres_x_mm": servo_horns.profile().attachment_radii_mm,
+        "horn_adapter_slot_centres_x_mm": servo_horns.profile().attachment_radii_mm[1:],
         "horn_adapter_slot_centre_allowance_mm": HORN_ADAPTER_SLOT_ALLOWANCE,
         "horn_clamp_thread_diameter_mm": HORN_CLAMP_THREAD_DIAMETER,
         "horn_clamp_screw_length_mm": HORN_CLAMP_LENGTH,
@@ -438,5 +445,5 @@ def metrics():
         "assembly": contract["assembly_adjustment"]
         + " "
         + contract["centre_screw_service"],
-        "qualification": "Manufacturer nominal geometry, not manufactured-part qualification. Enlarge the selected existing factory holes without transferring new centres; the C-seat and short slots do not certify delivered concentricity, retention or zero backlash. Check actual axial seating, hardware, runout, full motion and load.",
+        "qualification": "Manufacturer nominal geometry, not manufactured-part qualification. Enlarge the selected existing factory holes without transferring new centres; the C-seat, near hole and far slot do not certify delivered concentricity, retention or zero backlash. Check actual axial seating, hardware, runout, full motion and load.",
     }

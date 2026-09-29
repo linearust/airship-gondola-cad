@@ -174,7 +174,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         self.assertEqual(mounts.COMMON_DECK_SIZE, (64.0, 64.0))
-        self.assertEqual(len(mounting_plate.cutters(0, 2)), 20)
+        self.assertEqual(len(mounting_plate.cutters(0, 2)), 28)
         plate = mounting_plate.shape()
         for kind in mounts.MOUNT_NAMES:
             carrier_deck = mounts.mount_shape(kind).common(
@@ -239,6 +239,9 @@ class EquipmentMountShapeTests(unittest.TestCase):
         slot_contract = mounting_slots.contract()
         self.assertEqual(slot_contract["square_pitch_range_mm"], (16.0, 23.0))
         self.assertEqual(slot_contract["square_pitch_range_rotation_deg"], 0.0)
+        self.assertEqual(
+            slot_contract["outer_diagonal_square_pitch_range_mm"], (40.0, 45.0)
+        )
         self.assertEqual(slot_contract["square30_5_pitch_mm"], 30.5)
         self.assertEqual(slot_contract["square30_5_rotation_range_deg"], (-15.0, 15.0))
         self.assertFalse(slot_contract["x500_drop_in_compatible"])
@@ -246,6 +249,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         # Interior values accompany end positions. Exact continuous openings and
         # lands are audited separately; this is not a sampled full-range proof.
         patterns = [(pitch, 0, 2.6) for pitch in (16.0, 20.0, 21.37, 23.0)]
+        patterns += [(pitch, 0, 2.6) for pitch in (40.0, 42.6, 45.0)]
         patterns += [(30.5, turn, 3.6) for turn in (-15.0, -4.7, 0.0, 15.0)]
         for pitch, turn, diameter in patterns:
             for index in range(4):
@@ -266,7 +270,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             self.assertNotIn("generic_fastening", mounts.mount_contract(kind))
             contract = mounts.common_plate_contract()
             self.assertEqual(contract["fixed_bore_count"], 4)
-            self.assertEqual(contract["slot_count"], 16)
+            self.assertEqual(contract["slot_count"], 24)
 
     def test_m2_slot_screws_clear_shoe_and_rail_over_the_whole_straight_path(self):
         from gondola.contracts import fasteners
@@ -333,7 +337,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         shape = mounts.mount_shape("accessory")
         for centre, size in (
             (mounts.NAVIGATION_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
-            (mounts.RADIO_ADHESIVE_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE),
+            *mounts.RADIO_ADHESIVE_REGIONS,
         ):
             pad = Part.makeBox(
                 *size,
@@ -354,28 +358,29 @@ class EquipmentMountShapeTests(unittest.TestCase):
         support = mounts.mount_shape("accessory")
         body = devices.radio_envelope_shape()
 
-        def check(shape, face="bottom"):
+        def check(shape, centre, size, face="bottom"):
             return adhesive_support_check(
                 support,
                 shape,
-                mounts.RADIO_ADHESIVE_CENTRE_XY,
-                mounts.RADIO_ADHESIVE_SIZE,
+                centre,
+                size,
                 face=face,
             )
 
-        report = check(body)
-        self.assertTrue(report["passed"], report)
-        self.assertTrue(report["body_on_requested_side"])
-        self.assertAlmostEqual(report["adhesive_allowance_mm"], 1.0)
-        self.assertFalse(check(body, "top")["passed"])
-        self.assertFalse(check(body, "top")["body_on_requested_side"])
-        for shift in (0.5, 1.0, 2.0, -1.0):
-            with self.subTest(vertical_shift=shift):
-                displaced = body.copy()
-                displaced.translate(App.Vector(0, 0, shift))
-                self.assertFalse(check(displaced)["passed"])
+        for centre, size in mounts.RADIO_ADHESIVE_REGIONS:
+            report = check(body, centre, size)
+            self.assertTrue(report["passed"], report)
+            self.assertTrue(report["body_on_requested_side"])
+            self.assertAlmostEqual(report["adhesive_allowance_mm"], 1.0)
+            self.assertFalse(check(body, centre, size, "top")["passed"])
+            self.assertFalse(check(body, centre, size, "top")["body_on_requested_side"])
+            for shift in (0.5, 1.0, 2.0, -1.0):
+                with self.subTest(patch=centre, vertical_shift=shift):
+                    displaced = body.copy()
+                    displaced.translate(App.Vector(0, 0, shift))
+                    self.assertFalse(check(displaced, centre, size)["passed"])
         with self.assertRaises(ValueError):
-            check(body, "underside_typo")
+            check(body, *mounts.RADIO_ADHESIVE_REGIONS[0], "underside_typo")
 
     def test_radio_removal_is_outward_from_the_contact_face(self):
         from gondola.parts import equipment_envelopes as devices
@@ -461,7 +466,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         rows = mounts.expansion_slot_rows()
-        self.assertEqual(len(rows), 8)
+        self.assertEqual(len(rows), 12)
         expected = set()
         for axis in (0, 1):
             for side in (-1, 1):
@@ -471,11 +476,21 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     point[1 - axis] = interval * 13.0
                     end = point.copy()
                     end[1 - axis] = interval * 23.0
-                    expected.add((tuple(point), tuple(end)))
+                    expected.add(tuple(sorted((tuple(point), tuple(end)))))
+                point = [0.0, 0.0]
+                point[axis] = side * 27.0
+                point[1 - axis] = -5.0
+                end = point.copy()
+                end[1 - axis] = 5.0
+                expected.add(tuple(sorted((tuple(point), tuple(end)))))
         actual = {
-            (
-                tuple(round(v, 8) for v in row["start_xy_mm"]),
-                tuple(round(v, 8) for v in row["end_xy_mm"]),
+            tuple(
+                sorted(
+                    (
+                        tuple(round(v, 8) for v in row["start_xy_mm"]),
+                        tuple(round(v, 8) for v in row["end_xy_mm"]),
+                    )
+                )
             )
             for row in rows
         }
@@ -497,7 +512,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         original = mounts.mount_shape("battery")
         report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 16))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 24))
         for centre in mounts.FC_HOLE_CENTRES:
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(

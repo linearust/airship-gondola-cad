@@ -31,8 +31,10 @@ class ExportContractTests(unittest.TestCase):
                         "profile": "KST_X06_HALF_ARM_1",
                         "manufacturer_geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
                         "attachment_radii_mm": [6.8, 13.2],
+                        "adapter_round_hole_x_mm": 6.8,
+                        "adapter_round_hole_diameter_mm": 1.8,
                         "adapter_slot_width_mm": 1.8,
-                        "adapter_slot_centres_x_mm": [6.8, 13.2],
+                        "adapter_slot_centres_x_mm": [13.2],
                         "adapter_slot_centre_allowance_mm": 0.3,
                         "adapter_slot_overall_length_mm": 2.4,
                         "nominal_arm_thickness_mm": 2.0,
@@ -85,7 +87,7 @@ class ExportContractTests(unittest.TestCase):
         check_review_basis(doc, report)
         self.assertIn("plastic half arm 1", representation(objects["PortServoHorn"]))
         self.assertIn(
-            "two-slot adapter",
+            "round-hole/slot adapter",
             representation(objects["PortHornGearAdapter"]),
         )
         self.assertIn("rear M1.4x8", representation(objects["PortHornGearAdapter"]))

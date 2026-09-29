@@ -1,7 +1,8 @@
 # Optional tether and servo-power boards
 
 Manufacturer data reviewed 2026-09-27; BEC/SVPDB text rechecked 2026-09-28.
-Mechanical packaging revised for BC.
+Mechanical packaging introduced in BC; the shared plate and direct-support
+contact regions follow the [BF plate update](dense_mount_review.md).
 The CAD provides optional mechanical mounting capability. Battery operation stays
 the default until an alternate configuration is explicitly selected and checked.
 The source contract is [power_options.py](../gondola/contracts/power_options.py).
@@ -94,7 +95,10 @@ carrier contact patches, terminal/top reservations and disconnected-board remova
 paths are checked in the generated report.
 
 The two boards use nominal 1 mm insulating adhesive support on uninterrupted plate
-lands. That allowance is not measured underside-component clearance. Inspect the
+lands, with two 12 × 4 mm strips per board. BF moves the BEC's outer strip centre
+from Y=−24 to Y=−23 mm to clear the new middle slot; the other strip centres remain
+Y=−6, +6 and +22 mm, all at X=0. Each board retains 96 mm² of nominal supported
+contact. That allowance is not measured underside-component clearance. Inspect the
 received boards, prevent conductor contact, avoid pressure on components and leave
 the populated side open to air. Verify adhesive/strap retention and temperature
 with the installed hardware. No electrical pad is used as a mounting hole.
@@ -110,7 +114,7 @@ fitting its carrier alone is not acceptance of the whole configuration.
 the raised platform; tether can also use it where the full configuration permits.
 This adds one 64 × 64 × 2 mm deck on an integral 32 mm portal, 35 mm overall, plus
 two M2×8 screws and ordinary M2 nuts. The deck repeats the carriers' four fixed FC
-bores and sixteen symmetric slots. The two portal feet use opposing outer slots;
+bores and 24 symmetric slots. The two portal feet use opposing outer slots;
 there are no board-specific holes, separate legs or added spacers. The board
 centres are Y±13 mm on the raised deck. Refer to the source contract for exact
 interface dimensions and the generated manifest for optional quantities/mass.

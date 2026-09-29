@@ -124,7 +124,11 @@ def horn_registration_check(doc, prefix):
         )
         export_difference = _difference(exported, adapter)
     rows = []
-    for label, x in zip(("Near", "Far"), profile.attachment_radii_mm):
+    for label, x, elongation in zip(
+        ("Near", "Far"),
+        profile.attachment_radii_mm,
+        coupling.HORN_ADAPTER_OPENING_ALLOWANCES,
+    ):
         bolt = shapes["HornGearClamp" + label + "Bolt"]
         difference = _difference(bolt, expected_hardware[label + "Bolt"])
         bearing = bolt if profile.threaded else shapes["HornGearClamp" + label + "Nut"]
@@ -157,7 +161,9 @@ def horn_registration_check(doc, prefix):
                 + bearing.common(bolt).Volume
             )
         support = []
-        allowance = coupling.HORN_ADAPTER_SLOT_ALLOWANCE
+        # Check front bearing at the actual shank-travel extremes, including
+        # circular clearance; a round near hole has no added elongation.
+        allowance = elongation + (coupling.SLOT_WIDTH - diameter) / 2
         for offset in (-allowance, 0.0, allowance):
             land = (
                 Part.makeCylinder(
@@ -257,7 +263,7 @@ def horn_registration_check(doc, prefix):
         "manufacturer_geometry_matches": manufacturer_matches,
         "factory_m1_6_threads_confirmed": threads,
         "preparation_required": preparation,
-        "scope": "Saved manufacturer half-arm geometry, prepared Ø1.5 holes and rear M1.4x8/front-nut hardware. Short slots allow centring before clamping, not running flexibility. Nominal source shape does not qualify received seating, runout, strength or retention.",
+        "scope": "Saved manufacturer half-arm geometry, prepared Ø1.5 holes and rear M1.4x8/front-nut hardware. The near round hole bounds translation; the far short slot accommodates pitch variation before clamping, not running flexibility. Nominal source shape does not qualify received seating, runout, strength or retention.",
         "passed": selection_matches
         and contract_matches
         and adapter_difference < TOL

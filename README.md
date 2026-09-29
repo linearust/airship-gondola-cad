@@ -42,21 +42,20 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BE:** manufacturer X06 stock plastic half arm 1 on both sides; exact supplied
-nominal STEP geometry with two declared factory-hole enlargements and a dedicated
-adapter with two short tolerance slots. [Interface](references/servo_horn_compatibility.md);
-[verification](references/be_oem_horn_verification.json).
-Broader carrier supports and added battery-station tape wings remain from
-[BD](references/bd_rail_mount_review.md), whose [verification](references/bd_rail_mount_verification.json)
-covers BD only. The coplanar removable servo joint and direct tether packaging
-remain from [BC](references/bc_architecture_review.md).
+**BF:** manufacturer X06 half arm 1 with a near round hole/far tolerance slot in
+the adapter; a denser symmetric common plate; reinforced centreline optical support.
+[Horn interface](references/servo_horn_compatibility.md),
+[plate](references/dense_mount_review.md),
+[optical support](references/centreline_optical_review.md),
+[review and verification](references/bf_design_verification.json).
+Existing rail supports and removable servo-module architecture remain.
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
 | --- | --- | --- |
 | FC / battery | MicoAir H743V2 AIO **45A AM32**, existing 2S pack. Official input-range conflict leaves 2S and 8 V suitability unresolved; confirm supplied revision. | [FC](references/controller_selection_review.md) |
 | Drive | Two X06 V6.0; metric m0.5 **48T input / 16T output**, both Ø3 mm nominal bores. Bounded ±180° target; small shortfall allowed, no wraparound. No alternate ratio/collective mode implemented. | [selection](references/drive_selection_review.md), [gear evidence](references/kailash_gears_selected_evidence.md) |
-| Horns | Manufacturer X06 stock plastic half arm 1 on both sides. Preserve supplied STEP geometry except existing Ø1 mm holes at 6.8/13.2 mm enlarged to Ø1.5 mm; rear M1.4×8 screws/front M1.4 nuts. Two short adapter slots, no washers. Preserve factory axes and OEM centre retention; resin, mass and installed fit remain unmeasured. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
+| Horns | Manufacturer X06 stock plastic half arm 1 on both sides. Preserve supplied STEP geometry except existing Ø1 mm holes at 6.8/13.2 mm enlarged to Ø1.5 mm; rear M1.4×8 screws/front M1.4 nuts. Near Ø1.8 mm round hole and far 1.8 × 2.4 mm slot in the adapter; no washers. Preserve factory axes and OEM centre retention; resin, mass and installed fit remain unmeasured. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
 | Shafts / bearings | Nominal Ø3 mm 304 rod, generic 3×6×2.5 mm bearings; precision replacement rod allowed if fit fails. No established h5 tolerance or NSK/ISC identity. Integral outer-ring capture, separate shaft grip/axial stops. **No purchased spacers**; rejected 3×5×3 bush contacts shields. | [cart adaptation](references/cart_adaptation_review.md), [retention](references/retention_review.md) |
 | Navigation | One of P-AS, MG-A01/M10 Ultra, bare MG-F10-A in the same region; not MG-F10-C. | [navigation](references/navigation_module_compatibility.md) |
 | Optical | One of MTF-02P/MTF-01P on a common adhesive tray. MTF-02P holes unconfirmed; MTF-01P holes intentionally unused. | [sensors](references/optical_sensor_compatibility.md) |
@@ -92,7 +91,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BE. Preserve them during refactors;
+The architecture-specific checks below describe BF. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -110,7 +109,7 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   slot seats/datum offset and continuous lands/tape patches. M2 heads are unqualified
   for M3-width slots. Mini body/tape/connector datums jointly clear both rail-clamp and
   power-foot service paths. Bench-service off rail; tape wings are not equipment pads.
-- Optical/raised-power feet share outer slots, not datums/supports. Bound full
+- Optical/raised-power feet share outer slots, not datums/supports. Bound permitted
   translation/yaw; openings must pass through fused supports. Direct tether boards
   replace the battery on its carrier; move optics to the FC host. Raised power is
   a separate option. Compose power, navigation and optical checks; matching slots
@@ -122,8 +121,8 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   propulsion hosts and arbitrary corners are unqualified. Retain rejected cases;
   the saved selected configuration must pass.
 - Check the selected manufacturer horn against its retained STEP, the two prepared
-  holes, short slots, seating/concentricity, screw/nut direction/access, servo
-  clearance and ordered removal. Nominal source geometry is not physical measurement.
+  horn holes, round/slot interface, seating/concentricity, screw/nut direction/access,
+  servo clearance and ordered removal. Nominal geometry is not physical measurement.
   X06 radial-load capacity, loaded travel/torque retention remain unverified;
   slots do not cure running eccentricity. Check received hardware,
   FC damping/insulation and bearing shields; never restore the rejected shield-contact bush.

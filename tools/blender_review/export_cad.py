@@ -58,7 +58,7 @@ def representation(obj):
             + " Resin, mass, installed seating and root concentricity remain unmeasured."
         )
     if getattr(obj, "Name", "").endswith("HornGearAdapter"):
-        return "Installed two-slot adapter for the OEM half arm: 1.8 x 2.4 mm slots at 6.8/13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat does not certify received-horn concentricity or assembled runout."
+        return "Installed round-hole/slot adapter for the OEM half arm: near diameter 1.8 mm hole at 6.8 mm, far 1.8 x 2.4 mm slot at 13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat and near hole limit assembly movement; they do not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
 
 
@@ -125,8 +125,10 @@ def check_review_basis(doc, report):
             "profile": REVIEW_HORN_PROFILE,
             "manufacturer_geometry_sha256": REVIEW_HORN_STEP_SHA256,
             "attachment_radii_mm": [6.8, 13.2],
+            "adapter_round_hole_x_mm": 6.8,
+            "adapter_round_hole_diameter_mm": 1.8,
             "adapter_slot_width_mm": 1.8,
-            "adapter_slot_centres_x_mm": [6.8, 13.2],
+            "adapter_slot_centres_x_mm": [13.2],
             "adapter_slot_centre_allowance_mm": 0.3,
             "adapter_slot_overall_length_mm": 2.4,
             "nominal_arm_thickness_mm": 2.0,
@@ -296,7 +298,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks are swept envelopes. Both servos use the manufacturer stock plastic half arm 1, with two prepared factory holes and rear M1.4x8 screws/front M1.4 nuts on the two-slot adapter. Resin, mass, installed seating and assembled runout remain unmeasured.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Both servos use the manufacturer stock plastic half arm 1, with two prepared factory holes and rear M1.4x8 screws/front M1.4 nuts on an adapter with one near round hole and one far slot. Resin, mass, installed seating and assembled runout remain unmeasured.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -356,7 +358,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its source geometry except two prepared holes; rear M1.4x8 screws and front nuts clamp the short-slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its source geometry except two prepared holes; rear M1.4x8 screws and front nuts clamp the round-hole/slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -441,7 +443,7 @@ def export(cad_path, output):
                 "fps": 24,
                 "part_count": len(parts),
                 "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
-                "installed_representation": "Installed two-slot adapters and manufacturer stock plastic half-arm geometry with two declared hole enlargements are displayed, including rear M1.4x8 screws and front M1.4 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
+                "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry with two declared hole enlargements are displayed, including rear M1.4x8 screws and front M1.4 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(report_path),

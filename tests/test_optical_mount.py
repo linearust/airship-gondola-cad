@@ -56,17 +56,54 @@ class OpticalMountTests(unittest.TestCase):
         ):
             self.assertFalse(contract[key])
 
-    def test_compact_foot_and_straight_upright_are_continuous(self):
+    def test_compact_foot_and_reinforced_upright_are_continuous(self):
         from gondola.parts import optical_interface, optical_mount
 
         shape = optical_mount.base_shape()
         self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
-        self.assertLess(shape.BoundBox.XLength, 11)
-        self.assertLessEqual(shape.BoundBox.YLength, 16)
-        self.assertLess(shape.BoundBox.ZLength, 26)
-        post = Part.makeBox(4, 2, 12, App.Vector(-1, 0, 2))
+        self.assertLessEqual(shape.BoundBox.XLength, 32 + 1e-7)
+        self.assertLessEqual(shape.BoundBox.YLength, 28 + 1e-7)
+        self.assertLessEqual(shape.BoundBox.ZLength, 26 + 1e-7)
+        post = Part.makeBox(6, 2, 11, App.Vector(20, -20, 3))
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
-        self.assertGreater(shape.Volume, 350)
+        # Witness an actual added lower-root section, not just a metadata claim.
+        root = Part.makeBox(4, 3, 3, App.Vector(20, -20, 3))
+        self.assertLess(abs(root.cut(shape).Volume), 1e-5)
+        self.assertGreater(shape.Volume, 1000)
+        for name, beam in optical_mount.low_arm_components():
+            self.assertLess(abs(beam.cut(shape).Volume), 1e-5, name)
+        # The L remains open around the wiring, not a filled rectangular deck.
+        interior = Part.makeBox(15, 10, 3, App.Vector(4, -15, 0))
+        self.assertLess(abs(interior.common(shape).Volume), 1e-5)
+
+    def test_actual_base_thickness_matches_every_manufacturing_probe(self):
+        from gondola.parts import optical_interface, optical_mount
+        from gondola.validation.manufacturing import material_length_on_line
+
+        shape = optical_mount.base_shape()
+        for (
+            name,
+            part,
+            start,
+            end,
+            expected,
+        ) in optical_interface.manufacturing_wall_probes():
+            self.assertEqual(part, "OpticalMountBase")
+            self.assertAlmostEqual(
+                material_length_on_line(shape, start, end), expected, places=5, msg=name
+            )
+
+    def test_sensor_pivot_is_on_carrier_centreline_for_both_host_yaws(self):
+        from gondola.parts import optical_interface, optical_mount
+
+        # Both host orientations place the nominal pivot on carrier Y=0.
+        # Common rail-shoe clearance still permits a small host lateral offset.
+        local = optical_interface.host_placement().multVec(
+            App.Vector(*optical_mount.PIVOT_CENTRE)
+        )
+        for angle in (0, 180):
+            point = App.Rotation(App.Vector(0, 0, 1), angle).multVec(local)
+            self.assertAlmostEqual(point.y, 0, places=7)
 
     def test_pitch_limit_is_native_and_every_part_follows_the_host(self):
         from gondola.cad import world_shape

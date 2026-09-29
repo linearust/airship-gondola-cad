@@ -15,10 +15,12 @@ V = App.Vector
 MINIMUM_LAND = 1.5
 SMALL_PITCH_RANGE = (16.0, 23.0)
 SMALL_PATTERN_ROTATION = 0.0
+OUTER_DIAGONAL_PITCH_RANGE = (40.0, 45.0)
 LARGE_PITCH = 30.5
 LARGE_ROTATION_RANGE = (-15.0, 15.0)
 SIDE_X = 27.0
 SIDE_Y_RANGE = (13.0, 23.0)
+SIDE_MIDDLE_Y_RANGE = (-5.0, 5.0)
 
 
 def _radial_point(radius, angle):
@@ -46,6 +48,21 @@ def rows():
         )
         result.append(
             {
+                "name": f"square40_45_{index}",
+                "kind": "straight",
+                "family": "square40_45",
+                "width_mm": 2.6,
+                "fastener": "M2",
+                "start_xy_mm": _radial_point(
+                    OUTER_DIAGONAL_PITCH_RANGE[0] / math.sqrt(2), angle
+                ),
+                "end_xy_mm": _radial_point(
+                    OUTER_DIAGONAL_PITCH_RANGE[1] / math.sqrt(2), angle
+                ),
+            }
+        )
+        result.append(
+            {
                 "name": f"square30_5_{index}",
                 "kind": "arc",
                 "family": "square30_5",
@@ -58,17 +75,21 @@ def rows():
         )
     for index in range(4):
         angle = math.radians(90 * index)
-        for sign in (-1, 1):
+        for suffix, interval in (
+            ("negative", tuple(-y for y in SIDE_Y_RANGE)),
+            ("middle", SIDE_MIDDLE_Y_RANGE),
+            ("positive", SIDE_Y_RANGE),
+        ):
             points = tuple(
                 (
-                    SIDE_X * math.cos(angle) - sign * y * math.sin(angle),
-                    SIDE_X * math.sin(angle) + sign * y * math.cos(angle),
+                    SIDE_X * math.cos(angle) - y * math.sin(angle),
+                    SIDE_X * math.sin(angle) + y * math.cos(angle),
                 )
-                for y in SIDE_Y_RANGE
+                for y in interval
             )
             result.append(
                 {
-                    "name": f"side_{index}_{'negative' if sign < 0 else 'positive'}",
+                    "name": f"side_{index}_{suffix}",
                     "kind": "straight",
                     "family": "side",
                     "width_mm": 2.6,
@@ -135,10 +156,12 @@ def contract():
         "minimum_full_thickness_land_mm": MINIMUM_LAND,
         "square_pitch_range_mm": SMALL_PITCH_RANGE,
         "square_pitch_range_rotation_deg": SMALL_PATTERN_ROTATION,
+        "outer_diagonal_square_pitch_range_mm": OUTER_DIAGONAL_PITCH_RANGE,
         "square30_5_pitch_mm": LARGE_PITCH,
         "square30_5_rotation_range_deg": LARGE_ROTATION_RANGE,
         "side_row_spacing_mm": 2 * SIDE_X,
         "side_centre_travel_y_mm": SIDE_Y_RANGE,
+        "side_middle_centre_travel_y_mm": SIDE_MIDDLE_Y_RANGE,
         "reference_patterns": [
             {
                 "pitch_mm": 20.0,
@@ -154,6 +177,6 @@ def contract():
             },
         ],
         "x500_drop_in_compatible": False,
-        "reference": "references/square_mount_review.md",
-        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Eight outer M2 slots lie on a 54 mm square: each side has two centre-travel intervals 13 through 23 mm from its midpoint. These slots also receive the optical foot and optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. No added baseline washers.",
+        "reference": "references/dense_mount_review.md",
+        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four inner M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four outer M2 diagonal slots cover square pitches 40 through 45 mm. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Twelve outer M2 slots lie on a 54 mm square: each side has centre-travel intervals -23 through -13, -5 through 5, and 13 through 23 mm from its midpoint. These slots also receive the optical foot and optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. No added baseline washers.",
     }

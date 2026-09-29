@@ -42,7 +42,7 @@ class PowerMountTests(unittest.TestCase):
             through_depth=p.SUPPORT_Z,
         )
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 16))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (4, 24))
         # Central board support and both broad end regions are continuous. No
         # dedicated cable-tie slots are required for straps around the outline.
         for x, y in ((0, 0), (0, -23), (0, 23), (0, -29), (0, 29)):

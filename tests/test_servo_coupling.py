@@ -1,4 +1,4 @@
-"""Prepared OEM horn, separate tolerance slots and unchanged metal shaft retention."""
+"""Prepared OEM horn, near registration hole, far slot and metal shaft retention."""
 
 import math
 import unittest
@@ -162,24 +162,56 @@ class ServoCouplingTests(unittest.TestCase):
         )
         self.assertFalse(hasattr(c, "centering_jig_shape"))
 
-    def test_two_short_slots_keep_the_intervening_web_and_allow_assembly_error(self):
+    def test_near_round_hole_and_far_slot_keep_the_web_and_bounded_clearances(self):
         from gondola.parts import servo_coupling as c
 
         adapter = c.adapter_shape()
-        for x in (6.8, 13.2):
+        for x, opening_length in ((6.8, 1.8), (13.2, 2.4)):
             for start, end, material in (
-                ((x - 2, 5.3, 0), (x + 2, 5.3, 0), 4.0 - 2.4),
+                ((x - 2, 5.3, 0), (x + 2, 5.3, 0), 4.0 - opening_length),
                 ((x, 5.3, -2), (x, 5.3, 2), 4.0 - 1.8),
             ):
                 section = Part.makeLine(App.Vector(*start), App.Vector(*end))
                 self.assertAlmostEqual(adapter.common(section).Length, material)
         web = Part.makeBox(3.8, 3.6, 1.8, App.Vector(8.1, 3.5, -0.9))
         self.assertLess(web.cut(adapter).Volume, 1e-7)
-        for shape in self._clamp_hardware():
-            for shift in (-0.3, 0.3):
+        for name, shape, _ in c.horn_hardware_shapes():
+            limit = 0.2 if name.startswith("Near") else 0.5
+            for shift in (-limit, limit):
                 moved = shape.copy()
                 moved.translate(App.Vector(shift, 0, 0))
                 self.assertLess(moved.common(adapter).Volume, 1e-7)
+            if name.endswith("Bolt"):
+                for shift in (-limit - 0.01, limit + 0.01):
+                    moved = shape.copy()
+                    moved.translate(App.Vector(shift, 0, 0))
+                    self.assertGreater(moved.common(adapter).Volume, 1e-4)
+
+    def test_near_hole_bounds_the_open_register_direction_while_far_slot_fits_pitch(
+        self,
+    ):
+        from gondola.parts import servo_coupling as c
+
+        adapter, horn = c.adapter_shape(), c.horn_shape()
+        hardware = {name: shape for name, shape, _ in c.horn_hardware_shapes()}
+        for shift, blocked in ((-0.19, False), (-0.21, True)):
+            moved = adapter.copy()
+            moved.translate(App.Vector(shift, 0, 0))
+            # The purchased taper clears this direction. The near round hole,
+            # rather than an invented front root arc, must bound translation.
+            self.assertLess(moved.common(horn).Volume, 1e-7)
+            self.assertLess(moved.common(hardware["FarBolt"]).Volume, 1e-7)
+            near_overlap = moved.common(hardware["NearBolt"]).Volume
+            if blocked:
+                self.assertGreater(near_overlap, 1e-4)
+            else:
+                self.assertLess(near_overlap, 1e-7)
+        for pitch_error in (-0.3, 0.3):
+            # A relative far-hole/bolt pitch error does not require moving the
+            # near datum or widening its round opening.
+            far = hardware["FarBolt"].copy()
+            far.translate(App.Vector(pitch_error, 0, 0))
+            self.assertLess(far.common(adapter).Volume, 1e-7)
 
     def test_open_register_blocks_rearward_and_side_motion(self):
         from gondola.parts import servo_coupling as c
@@ -190,7 +222,7 @@ class ServoCouplingTests(unittest.TestCase):
             moved.translate(App.Vector(x, 0, z))
             self.assertGreater(moved.common(horn).Volume, 1e-4)
 
-    def test_front_nuts_bear_on_both_short_slots_through_the_allowance(self):
+    def test_front_nuts_bear_on_both_openings_through_the_shank_clearance(self):
         from gondola.parts import purchased_hardware
         from gondola.parts import servo_coupling as c
         from gondola.validation.horn_coupling import _plane_contact
@@ -199,15 +231,16 @@ class ServoCouplingTests(unittest.TestCase):
         for name, nut, _ in c.horn_hardware_shapes():
             if not name.endswith("Nut"):
                 continue
-            for offset in (-0.3, 0.0, 0.3):
+            limit = 0.2 if name.startswith("Near") else 0.5
+            for offset in (-limit, 0.0, limit):
                 moved = nut.copy()
                 moved.translate(App.Vector(offset, 0, 0))
                 self.assertGreaterEqual(_plane_contact(adapter, moved, 7.1), 1.0)
-        for x in (6.8, 13.2):
+        for x, limit in ((6.8, 0.2), (13.2, 0.5)):
             minimum_nut = purchased_hardware.hex_prism(2.9, 1.2).cut(
                 Part.makeCylinder(0.7, 1.4, App.Vector(0, 0, -0.1))
             )
-            for offset in (-0.3, 0.0, 0.3):
+            for offset in (-limit, 0.0, limit):
                 moved = minimum_nut.copy()
                 moved.Placement = App.Placement(
                     App.Vector(x + offset, 7.1, 0),

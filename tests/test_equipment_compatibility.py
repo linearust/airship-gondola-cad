@@ -73,45 +73,41 @@ class EquipmentCompatibilityTests(unittest.TestCase):
 
         support = local_shape(self.doc.AccessoryMount)
         body = equipment_envelopes.radio_envelope_shape(get_radio_profile("LR24FMINI"))
-        report = adhesive_support_check(
-            support,
-            body,
-            mounts.RADIO_ADHESIVE_CENTRE_XY,
-            mounts.RADIO_ADHESIVE_SIZE,
-            face="bottom",
-        )
-        self.assertTrue(report["passed"])
-        self.assertEqual(report["support_face"], "bottom")
-        self.assertAlmostEqual(report["continuous_support_area_mm2"], 120)
-        self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 120)
-        x, y = mounts.RADIO_ADHESIVE_CENTRE_XY
-        damaged = support.cut(
-            Part.makeBox(
-                2,
-                2,
-                mounts.DECK_THICKNESS + 2,
-                App.Vector(x - 1, y - 1, mounts.DECK_BOTTOM_Z - 1),
-            )
-        )
-        self.assertFalse(
-            adhesive_support_check(
-                damaged,
-                body,
-                mounts.RADIO_ADHESIVE_CENTRE_XY,
-                mounts.RADIO_ADHESIVE_SIZE,
-                face="bottom",
-            )["passed"]
-        )
-        body.translate(App.Vector(8, 0, 0))
-        self.assertFalse(
-            adhesive_support_check(
-                support,
-                body,
-                mounts.RADIO_ADHESIVE_CENTRE_XY,
-                mounts.RADIO_ADHESIVE_SIZE,
-                face="bottom",
-            )["passed"]
-        )
+        total_overlap = 0
+        for centre, size in mounts.RADIO_ADHESIVE_REGIONS:
+            with self.subTest(patch=centre):
+                report = adhesive_support_check(
+                    support, body, centre, size, face="bottom"
+                )
+                self.assertTrue(report["passed"])
+                self.assertEqual(report["support_face"], "bottom")
+                self.assertAlmostEqual(report["continuous_support_area_mm2"], 60)
+                self.assertAlmostEqual(report["nominal_supported_overlap_mm2"], 60)
+                total_overlap += report["nominal_supported_overlap_mm2"]
+                x, y = centre
+                damaged = support.cut(
+                    Part.makeBox(
+                        2,
+                        2,
+                        mounts.DECK_THICKNESS + 2,
+                        App.Vector(x - 1, y - 1, mounts.DECK_BOTTOM_Z - 1),
+                    )
+                )
+                self.assertFalse(
+                    adhesive_support_check(damaged, body, centre, size, face="bottom")[
+                        "passed"
+                    ]
+                )
+                displaced = body.copy()
+                # Partial overlap must fail even when some contact remains.
+                displaced.translate(App.Vector(8 if x < 26 else -6, 0, 0))
+                shifted = adhesive_support_check(
+                    support, displaced, centre, size, face="bottom"
+                )
+                self.assertGreater(shifted["nominal_supported_overlap_mm2"], 0)
+                self.assertLess(shifted["nominal_supported_overlap_mm2"], 60)
+                self.assertFalse(shifted["passed"])
+        self.assertAlmostEqual(total_overlap, 120)
 
     def test_all_combinations_and_blocked_alternative_connector_lane(self):
         from gondola.cad import world_shape

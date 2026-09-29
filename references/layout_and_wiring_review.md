@@ -1,4 +1,4 @@
-# Three mass regions and universal electronics carriers — BB
+# Three mass regions and universal electronics carriers — BF
 
 Keep three mass regions: central propulsion, battery on one side and electronics
 on the opposite side. Two independently positioned carriers occupy the
@@ -24,7 +24,7 @@ intended global installation orientation independently of this carrier turn;
 the square mounting pattern permits it. The CAD envelope has no component
 markings, so verify the actual board arrow and firmware orientation at assembly.
 
-BB retains the initial FC carrier station at X = -54 mm, with navigation
+BF retains the initial FC carrier station at X = -54 mm, with navigation
 at -158 mm. The earlier move from X = -72 mm increased separation from the centred navigation
 and optional direct helix, and brings the FC closer to the neutral motor-lead
 exits. The new shoe position coincides with a rail land centre. These are initial
@@ -41,17 +41,22 @@ the servo module.
 
 The shared carrier is now a 64 mm square with a symmetric bore/slot array and
 simple raised centre support. Its P-AS datum is (0,-2.2) mm and the underside Mini
-is at (26,-11) mm, with its long axis along Y and its 10×12 mm adhesive patch
-at (26,-5). This clears both rail-clamp approaches and optional-power foot
-service. The common plate sits 2 mm
+is at (26,-11) mm, with its long axis along Y. Its underside adhesive allocations
+are 4×15 mm at (23,-7.5) and 3×20 mm at (30,-11), each fully supported and with
+60 mm² nominal body overlap. The body and connector datums remain unchanged;
+the split strips keep the added middle slot open. The body clears both rail-clamp
+approaches and optional-power foot service. The common plate sits 2 mm
 higher than AY to clear heads at the 16 mm slot pattern; device and reserve
-heights follow the shared datum. [Square mount review](square_mount_review.md)
-defines these changes and the compact one-axis optical pedestal.
+heights follow the shared datum. The [BF plate review](dense_mount_review.md)
+defines the 24-slot array, retained central support and revised contact regions.
 
 The three prints remain identical, while role-specific equipment and rail poses
-differ. Optical attachment is directly to one common outer slot; it no longer
-uses the centred diagonal portal. The optional power platform retains a separate
-portal on the same common slot array. Inspect each chosen host and optical screen.
+differ. The optical foot attaches directly to one common outer slot; its integral
+low L arm brings the sensor to carrier Y=0 while leaving the FC wiring reservation
+open. It does not use the earlier two-axis diagonal portal. The optional power
+platform retains a separate portal on the same common slot array. Inspect each
+chosen host and optical screen; nominal centring is not a stiffness or pointing
+qualification.
 
 The rail tape wings are not a verified flat device mounting surface: a raised
 running head and flexible segmented contact remain. Adhesive devices use declared

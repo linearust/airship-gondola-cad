@@ -225,7 +225,10 @@ def carrier_contact_patch_checks(shape, *, bottom, thickness):
         for index, (centre, size) in enumerate(mounts.BATTERY_ADHESIVE_REGIONS)
     ] + [
         ("navigation", mounts.NAVIGATION_CENTRE_XY, mounts.GPS_ADHESIVE_SIZE),
-        ("radio", mounts.RADIO_ADHESIVE_CENTRE_XY, mounts.RADIO_ADHESIVE_SIZE),
+        *(
+            (f"radio_{index}", centre, size)
+            for index, (centre, size) in enumerate(mounts.RADIO_ADHESIVE_REGIONS)
+        ),
     ]
     rows = []
     for name, centre, size in specs:
@@ -542,12 +545,9 @@ def mounting_check(doc):
             ("BatteryMount", "ModuleBatteryEnvelope", centre, size, "top")
             for centre, size in mounts.BATTERY_ADHESIVE_REGIONS
         ),
-        (
-            "AccessoryMount",
-            "ModuleRadioEnvelope",
-            mounts.RADIO_ADHESIVE_CENTRE_XY,
-            mounts.RADIO_ADHESIVE_SIZE,
-            "bottom",
+        *(
+            ("AccessoryMount", "ModuleRadioEnvelope", centre, size, "bottom")
+            for centre, size in mounts.RADIO_ADHESIVE_REGIONS
         ),
     ]
     if navigation_profile.key != "PAS":
@@ -570,6 +570,8 @@ def mounting_check(doc):
         adhesive_rows.append(
             {
                 "device": device_name,
+                "centre_xy_mm": centre,
+                "size_xy_mm": size,
                 **adhesive_support_check(
                     local_shape(support), device_local, centre, size, face=face
                 ),

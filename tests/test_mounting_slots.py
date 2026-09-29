@@ -27,7 +27,7 @@ class MountingSlotTests(unittest.TestCase):
         notch = Part.makeCylinder(
             0.3,
             mounts.DECK_THICKNESS,
-            App.Vector(4, 29, mounts.DECK_BOTTOM_Z),
+            App.Vector(12, 2, mounts.DECK_BOTTOM_Z),
         )
         changed = original.cut(notch)
         single = carrier_opening_checks(changed)
@@ -102,7 +102,12 @@ class MountingSlotTests(unittest.TestCase):
         original = mounting_plate.shape()
         arguments = dict(bottom=mounts.DECK_BOTTOM_Z, thickness=mounts.DECK_THICKNESS)
         report = carrier_contact_patch_checks(original, **arguments)
-        self.assertEqual(len(report["patches"]), 5)
+        self.assertEqual(
+            len(report["patches"]),
+            len(mounts.BATTERY_ADHESIVE_REGIONS)
+            + len(mounts.RADIO_ADHESIVE_REGIONS)
+            + 1,
+        )
         self.assertTrue(report["passed"])
         for row in report["patches"]:
             with self.subTest(allocation=row["allocation"]):
@@ -129,9 +134,9 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import mounting_slots
 
         rows = mounting_slots.rows()
-        self.assertEqual(len(rows), 16)
-        self.assertEqual(len({row["name"] for row in rows}), 16)
-        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 12)
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(len({row["name"] for row in rows}), len(rows))
+        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 20)
         self.assertEqual(sum(row["kind"] == "arc" for row in rows), 4)
         for row in rows:
             for border in (0.0, 1.5):
@@ -188,8 +193,11 @@ class MountingSlotTests(unittest.TestCase):
         self.assertTrue(carrier_opening_checks(original)["passed"])
         specs = [
             next(row for row in mounting_slots.rows() if row["family"] == family)
-            for family in ("square16_23", "square30_5", "side")
+            for family in ("square16_23", "square40_45", "square30_5", "side")
         ]
+        specs.append(
+            next(row for row in mounting_slots.rows() if row["name"] == "side_0_middle")
+        )
         for row in specs:
             fraction = 0.413
             if row["kind"] == "arc":
@@ -240,19 +248,25 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.validation.equipment_options import adhesive_support_check
 
         self.assertEqual(
-            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 536
+            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 376
         )
         support = mounts.mount_shape("accessory")
         body = equipment_envelopes.radio_envelope_shape()
-        centre = mounts.RADIO_ADHESIVE_CENTRE_XY
-        notch = Part.makeCylinder(
-            0.2, mounts.DECK_THICKNESS, App.Vector(*centre, mounts.DECK_BOTTOM_Z)
+        self.assertEqual(
+            sum(size[0] * size[1] for _, size in mounts.RADIO_ADHESIVE_REGIONS), 120
         )
-        damaged = support.cut(notch)
-        report = adhesive_support_check(
-            damaged, body, centre, mounts.RADIO_ADHESIVE_SIZE, face="bottom"
-        )
-        self.assertFalse(report["passed"])
+        for centre, size in mounts.RADIO_ADHESIVE_REGIONS:
+            with self.subTest(patch=centre):
+                notch = Part.makeCylinder(
+                    0.2,
+                    mounts.DECK_THICKNESS,
+                    App.Vector(*centre, mounts.DECK_BOTTOM_Z),
+                )
+                damaged = support.cut(notch)
+                report = adhesive_support_check(
+                    damaged, body, centre, size, face="bottom"
+                )
+                self.assertFalse(report["passed"])
 
     def test_void_probe_cannot_omit_part_of_declared_deck_thickness(self):
         from gondola.parts import equipment_mounts as mounts

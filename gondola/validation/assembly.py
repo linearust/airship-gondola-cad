@@ -980,8 +980,10 @@ def battery_check(doc, objects):
 
     float_rows = []
     tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
+    component_bounds = optical_interface.rigid_float_component_bounds()
+    expected_components = {name for name, _ in component_bounds}
     if tower is not None:
-        for component, envelope in optical_interface.rigid_float_component_bounds():
+        for component, envelope in component_bounds:
             envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
             gap = swept.distToShape(envelope)[0]
             float_rows.append(
@@ -997,11 +999,11 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Continuous conservative foot, upright and ear bounds for the two-bolt attachment to the host slot. No axial play is added: the single flat foot must seat and be clamped before operation. Physical pointing stability and clamp friction require verification.",
+        "tower_registration_scope": "Continuous conservative bounds for every segment of the one-piece optical support on the shared slot interface. No operating play is allowed: the foot must seat and be clamped. Physical pointing stability and clamp friction require verification.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
-        and {row["component"] for row in float_rows}
-        == {"foot", "upright", "fixed_pitch_ear"}
+        and bool(expected_components)
+        and {row["component"] for row in float_rows} == expected_components
         and all(row["passed"] for row in float_rows)
         and {row["object"] for row in tower_gaps} == tower_names
         and all(

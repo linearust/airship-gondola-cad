@@ -494,14 +494,17 @@ def compatibility_check(doc):
         support_rows = [
             {
                 "device": BODY_NAMES[1],
+                "centre_xy_mm": centre,
+                "size_xy_mm": size,
                 **adhesive_support_check(
                     support,
                     local_bodies[BODY_NAMES[1]],
-                    mounts.RADIO_ADHESIVE_CENTRE_XY,
-                    mounts.RADIO_ADHESIVE_SIZE,
+                    centre,
+                    size,
                     face="bottom",
                 ),
             }
+            for centre, size in mounts.RADIO_ADHESIVE_REGIONS
         ]
         if navigation.key != "PAS":
             support_rows.append(

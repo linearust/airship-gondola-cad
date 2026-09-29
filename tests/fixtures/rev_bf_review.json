@@ -1,0 +1,247 @@
+{
+  "reviewer": "/root/refactor_independent_review",
+  "revision": "BF",
+  "decision": "Approve the captured BF candidate for fixture preregistration, subject to the separately required complete native and ordered build/preview/compare/validate/bundle acceptance.",
+  "passed": true,
+  "fixture_preregistration_approved": true,
+  "fixture_promotion_approved": true,
+  "findings": [],
+  "base_commit": "468cab2994d34df47805aefe2b613adbe65488dc",
+  "source_fingerprint": "997645a15c9d80a58a812cca193078bb64b6f73a172db9d2f6862399ff85d6b5",
+  "source_files_unchanged_during_review": true,
+  "authorship_limits": [
+    "Reviewer authored BF common plate/slot/carrier and battery/radio adhesive changes and their associated tests/reference; these are independently approved by /root/refactor_candidates_tools in bf-plate-independent-review.json.",
+    "Reviewer authored four current-reference prose corrections in universal_carrier_review, layout_and_wiring_review, radio_module_compatibility and power_module_compatibility with explicit parent authorization. This is not an independent authorship review of that prose.",
+    "Reviewer did not author BF horn adapter geometry/validators or optical geometry/validators. Reviewer authored the earlier OEM asset loader and portions of earlier BE tests; those limits are disclosed in the separate horn review."
+  ],
+  "reviewed_scopes": {
+    "main": {
+      "file_sha256": {
+        "/tmp/bf-original/gondola.FCStd": "9d5533cc618fb42de43f857e5cb7bb80a8f6c3ec880d504d686e068282b48f34",
+        "/tmp/bf-candidate/gondola.FCStd": "8515376f24b6719633184620e8dfa9246e028e94166c3f14f44cc61c9e48eee9"
+      },
+      "shape_count": 121,
+      "local_geometry_changed": [
+        {
+          "object": "AccessoryMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "BatteryMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "ElectronicsMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "OpticalMountBase",
+          "symmetric_difference_mm3": 1179.3246511634616,
+          "absolute_volume_change_mm3": 780.475123540427
+        },
+        {
+          "object": "OpticalSensorTray",
+          "symmetric_difference_mm3": 19.341519598602574,
+          "absolute_volume_change_mm3": 19.341519598602417
+        },
+        {
+          "object": "PortHornGearAdapter",
+          "symmetric_difference_mm3": 3.887999999999998,
+          "absolute_volume_change_mm3": 3.88799999999992
+        },
+        {
+          "object": "StarboardHornGearAdapter",
+          "symmetric_difference_mm3": 3.887999999999998,
+          "absolute_volume_change_mm3": 3.88799999999992
+        }
+      ],
+      "other_local_shapes_equal_under_existing_native_geometry_comparison": 114,
+      "native_object_names_types_parents_property_names_unchanged": true,
+      "shape_solid_counts_and_print_blank_presence_unchanged": true,
+      "placement_delta_objects": [
+        "MTF02PConnectorReserve",
+        "MTF02POpticalClearanceReserve",
+        "ModuleMTF02PEnvelope",
+        "OpticalPitchBolt",
+        "OpticalPitchNut",
+        "OpticalPitchStage",
+        "OpticalSensorTray",
+        "Origin032",
+        "Origin033",
+        "XY_Plane016",
+        "XZ_Plane016",
+        "X_Axis016",
+        "YZ_Plane016",
+        "Y_Axis016",
+        "Z_Axis016"
+      ],
+      "saved_property_delta_counts": {
+        "Uid": 19,
+        "MountContract": 3,
+        "Notes": 8,
+        "PrintNotes": 7,
+        "Group": 1,
+        "Visibility": 169,
+        "ReleaseStatus": 1,
+        "SourceFingerprint": 1,
+        "OpticalInterfaceContract": 2,
+        "OpticalMountContract": 3,
+        "PrintPlacement": 2,
+        "HornInterfaceContract": 2
+      },
+      "unsupported_saved_properties": [],
+      "expressions_equal": true,
+      "file_bytes_unchanged_during_review": true,
+      "zip_payload_count": 121,
+      "zip_payload_bytes_equal_count": 2,
+      "zip_payload_scope": "Raw BRep bytes are generally different across saved rebuilds. No byte-identity claim is made; per-object hashes retained and native typed boundary/volume/bounds comparisons establish the stated geometric equality."
+    },
+    "optional": {
+      "file_sha256": {
+        "/tmp/bf-original/gondola_power_options.FCStd": "2e36751bd4bb1ba710e0e15a1841b4f686e8822264fe9783e1eba8ec35447076",
+        "/tmp/bf-candidate/gondola_power_options.FCStd": "ce726c949b75aff446cb1432dda9e0b408332426d6c3007f984ba8e092289aa5"
+      },
+      "shape_count": 123,
+      "local_geometry_changed": [
+        {
+          "object": "Context_AccessoryMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "Context_BatteryMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "Context_ElectronicsMount",
+          "symmetric_difference_mm3": 366.48777059646926,
+          "absolute_volume_change_mm3": 366.48777059647364
+        },
+        {
+          "object": "Context_OpticalMountBase",
+          "symmetric_difference_mm3": 1179.3246511634616,
+          "absolute_volume_change_mm3": 780.4751235404269
+        },
+        {
+          "object": "Context_OpticalSensorTray",
+          "symmetric_difference_mm3": 19.341519598602588,
+          "absolute_volume_change_mm3": 19.341519598602417
+        },
+        {
+          "object": "Context_PortHornGearAdapter",
+          "symmetric_difference_mm3": 3.887999999999999,
+          "absolute_volume_change_mm3": 3.88799999999992
+        },
+        {
+          "object": "Context_StarboardHornGearAdapter",
+          "symmetric_difference_mm3": 3.887999999999998,
+          "absolute_volume_change_mm3": 3.88799999999992
+        }
+      ],
+      "other_local_shapes_equal_under_existing_native_geometry_comparison": 116,
+      "native_object_names_types_parents_property_names_unchanged": true,
+      "shape_solid_counts_and_print_blank_presence_unchanged": true,
+      "placement_delta_objects": [
+        "Context_MTF02PConnectorReserve",
+        "Context_MTF02POpticalClearanceReserve",
+        "Context_ModuleMTF02PEnvelope",
+        "Context_OpticalPitchBolt",
+        "Context_OpticalPitchNut",
+        "Context_OpticalSensorTray"
+      ],
+      "saved_property_delta_counts": {
+        "Uid": 2,
+        "Visibility": 136,
+        "PowerInstallationContract": 1,
+        "PowerPlatformContract": 1,
+        "SourceFingerprint": 1
+      },
+      "unsupported_saved_properties": [],
+      "expressions_equal": true,
+      "file_bytes_unchanged_during_review": true,
+      "zip_payload_count": 123,
+      "zip_payload_bytes_equal_count": 15,
+      "zip_payload_scope": "Raw BRep bytes are generally different across saved rebuilds. No byte-identity claim is made; per-object hashes retained and native typed boundary/volume/bounds comparisons establish the stated geometric equality."
+    }
+  },
+  "geometry_interpretation": {
+    "common_carriers": "Exactly eight additional openings remove 366.48777059647 mm3 from each of three carriers; no old material outside those openings, support cylinder, rail shoe or plate outline is changed. Literal independent cut/head-path/contact evidence is retained by the separate plate reviewer.",
+    "horn_adapters": "Exactly 3.888 mm3 per side restores the two ends of the former near capsule, leaving a diameter 1.8 round hole; far radial slot, prepared OEM horn, source STEP and actual fasteners/shafts remain unchanged.",
+    "optical_base": "One low L arm and braced post relocates the pivot from pedestal (2,2,22) to (23,-18,22), i.e. carrier (50,0,37.4). Base volume increases 780.475123540427 mm3. Original corner foot/clamps remain.",
+    "optical_tray": "The diameter 7 to diameter 8 pitch ear enlargement alone adds 19.341519598603 mm3; the independent literal annulus check shows zero removed or unexplained material.",
+    "optical_placements": "Selected sensor, connector/FOV references, tray and pitch hardware move +21 X/-20 Y in main native world coordinates, and -21 X/+20 Y in the reversed optional FC-host frame. Associated stage origins/axes move with the stage; other placements and hierarchy remain unchanged.",
+    "net_installed_print_volume_change_mm3": -291.87066865038594
+  },
+  "metadata_interpretation": [
+    "Three carrier contracts describe 24 slots (12 side, 8 inner/outer diagonal and 4 arcs) plus four fixed FC bores; repeated standard/expansion fields agree.",
+    "Battery support remains three fully backed regions, now 376 mm2 versus 536 mm2. Radio support becomes two fully backed 60 mm2 strips preserving 120 mm2 total, with unchanged device/connector placement. Retention is not physically qualified.",
+    "Optional direct-power board poses and installed inventory remain unchanged; only BEC end adhesive patch shifts Y -24 to -23 and shared optional platform contracts describe the 24-slot template.",
+    "Optical contracts correctly reflect the new pivot, 8 mm ears/2.7 mm radial wall, 6x2 post, low arm sections, 0.5 mm tray/fixed-ear nominal gap and ordered nut service; print placements change to land the new bounds on the print plane.",
+    "Horn contracts and release-status servo prose now specify the near round hole/far slot. OEM identity/preparation, unmeasured physical fit/strength status and all other release uncertainties remain retained.",
+    "All 12 main registry categories and their complete membership/order remain exactly equal; no parts, hardware or reserves are silently omitted. The only saved Group order change reorders OpticalFlowModule within the same BatteryEquipmentModule membership; native parents are identical.",
+    "Generated object UUIDs/source fingerprints differ as expected. All 169 main and 136 optional visibility changes are false to true between preserved previewed baseline and fresh raw build; this review is of saved geometry/inventory and does not claim completed final display/preview review.",
+    "Independent document XML top-level inspection finds only generated dates/UUIDs and status attributes on otherwise empty Meta/Material maps. No unexplained document values changed."
+  ],
+  "controls": {
+    "raw_audit_equal": false,
+    "raw_old_failure_reason": "Five optical cases compare historical pivot (2,2,22) against current source pivot (23,-18,22); the raw audit is retained unmodified.",
+    "independent_matching_pivot_review_passed": true,
+    "old_cases_passed": 27,
+    "new_cases_passed": 27,
+    "case_results_equal_with_matching_pivots": true,
+    "historical_pivot_source": "git HEAD:gondola/parts/optical_mount.py, read by AST; only the comparison expectation is rebound in a temporary isolated native process, not persisted code or CAD."
+  },
+  "approval_limits": [
+    "Nominal captured native transition approval only; no claim that the final complete native suite, final report pipeline, Blender or final previews have passed yet.",
+    "Native unchanged geometry uses existing typed boundary signatures at 1e-5 mm with bounds/volume gates; this is not a raw BRep byte-identity claim.",
+    "Optical cantilever footprint and moment arm increase, and nominal tray clearance reduces to 0.5 mm; actual print fit, rigidity, creep, pointing, adhesive and clamp retention remain unqualified.",
+    "Horn 0.2 mm nominal seating gap and 0.1 mm service gap are not guarantees under a generic +/-0.3 mm print tolerance. Source STEP is nominal geometry, not delivered part metrology.",
+    "No historical fixture, production source, tests or saved CAD were altered by this transition review. Fixture pin remains the parent agent action after this approval."
+  ],
+  "captured_changed_file_sha256": {
+    "README.md": "b786abddead059c6def844cc6329f7ae6bef17bebcf53c88f8a7911443059f98",
+    "gondola/contracts/design.py": "dde55e859abe6860ff7d5483472fba7d1798308ac751c397abd5482f4e8129bb",
+    "gondola/contracts/equipment_interfaces.py": "80e86db4041e52423de0f1ec823a5e9b4e0faadab0402e323f4a471cdd2c8122",
+    "gondola/parts/equipment_envelopes.py": "800e360e346c97799a659cabb899a99a2fbaddf434c52da53f0fe16ac10418b5",
+    "gondola/parts/equipment_mounts.py": "e7028566342b13d76e3c46af07dffc42ce001be1c27a1bcbe04c4a9c4ed33e35",
+    "gondola/parts/mounting_plate.py": "b497fc728c91baca363d0eacb30c2b5bc461aea1daf0d3bc6b3bebd70b0f8295",
+    "gondola/parts/mounting_slots.py": "6b47493036178ffc22a51774241542919ff1dbe4a5ce7de6b810e5ef975a50b0",
+    "gondola/parts/optical_interface.py": "a7639ca8b80c7dfffec6b1b879e08692927d01db19ee9dc04370dda726d8b003",
+    "gondola/parts/optical_mount.py": "ef157f859478b09fd9cc35d28b448603ad53d8fcfb49360260d388f3ea22e6f4",
+    "gondola/parts/power_mount.py": "746373e72b79e3d7ce9c3e797d5659d39add5ac972b66fa6bb038a7d5e751d0c",
+    "gondola/parts/propulsion.py": "d70cf7cb2be60f8f0e7fc239f58a3a2516104df53edb90c2372723837849ef96",
+    "gondola/parts/servo_coupling.py": "a9fd84bb3703deb887987c13e0986b1a3a832c5471354e62466e6825fbdc2caf",
+    "gondola/validation/assembly.py": "fd95e0942a21b753428e212f49a58f9f2df0d354950747f6d1e43d810068cf22",
+    "gondola/validation/equipment.py": "429a2d81b021983ef22c6f077fdb2a1fb71cd87ae25778cd0803f65753828f23",
+    "gondola/validation/equipment_options.py": "da269080a6b4deaadbf45d17c3c0ec31d90c1b983070c23b607dcbd229e12ca6",
+    "gondola/validation/horn_coupling.py": "7b23f478cdc9b25494c547535d6dcf934eaf3cdd4d35c3b4ee355b5ff671ffe8",
+    "gondola/validation/optical.py": "a8300a7cc0de0f6c79198eca89cc195e4e687397eb76a5d76ab64ac56f419391",
+    "references/centreline_optical_review.md": "0992a385023615ced7ba3a57dc893158c7e872ba14516c08ce79ae750a79a2b5",
+    "references/dense_mount_review.md": "5d726c0d07605b440847c43647d36fc0324a92eabef2aa77ccc311f1d74785d2",
+    "references/layout_and_wiring_review.md": "390eb092283e326e2e6e424fa7ef1f5988557d4de6c265ba547fefdb487216a6",
+    "references/power_module_compatibility.md": "dedfd681eaefa9b0148d7ce9b5f8cad01e75ea4a54db26dcf3b24cac442c0c0c",
+    "references/radio_module_compatibility.md": "79c9b11d8497f016d30db99200809bf4110b6906ad15626efa5b695eb4578b77",
+    "references/servo_horn_compatibility.md": "9ce67026d865cf574f1486349b27bbc2734e53da71c29d0902a3c39051e8ce01",
+    "references/universal_carrier_review.md": "4e607e8a18b2b0314b56cf8dad353b6fa24b76953a5ca1d9c371b78d32bafa42",
+    "tests/test_battery_placement.py": "f7fb3380e0148f421c892f2173abdbbb185ea6857d2f7af5e8fb87c591f3009e",
+    "tests/test_equipment_compatibility.py": "5f5af97dbbf2b25174ce36789bc763b2f449ba441d91b6c9ee744e8afa3ad56e",
+    "tests/test_equipment_mount_shape.py": "a9cdc6474b49f8a4801c70b223f6460262cc9a5578446bbdf5a7d709acca7c53",
+    "tests/test_horn_registration.py": "d55fdb3fcc014d4a2730ec630895dcc662e949c33d6d109aa67a7332cb3e9b13",
+    "tests/test_mounting_slots.py": "34f7ebfacc43bd97f91377a320c623b09f239c98c03aa2a49a2d2492e8a7f125",
+    "tests/test_optical_interface.py": "10443b70f1a7685012c8427ea199ac2abf2940a7bc539ead00ec647af6f0eba5",
+    "tests/test_optical_mount.py": "1caea215d5b1897cb3a5a228b64076bc26b9ce4cd0e428d5b393b0c4394f00ee",
+    "tests/test_power_mount.py": "bbbde3a873183dc1f95205b7101f079b26a9df15af5c4bed5275960ec239446d",
+    "tests/test_servo_coupling.py": "57538e2958d6bcd06ff745a34fe73011404647c887241c51ce7e49f6c4110d4a",
+    "tools/blender_review/export_cad.py": "5aed9f2fe9aafb69bb3ac5c62b53988b28e46320de5dee4e646d67d60ec737f5",
+    "tools/blender_review/test_export_cad.py": "c02a30269ac2b79999c002bf6ebc3e50189d4d5a09321556892a87d474f85786"
+  },
+  "evidence_sha256": "f96b6f1a98250deee2199d8441aac2bceb70e5da05bcb9cb64bc1f674e108e99",
+  "evidence": "rev_bf_transition_audit.json.gz",
+  "candidate_sha256": "8515376f24b6719633184620e8dfa9246e028e94166c3f14f44cc61c9e48eee9",
+  "fixture_promotion_decision_by": "/root after independent geometry/native review",
+  "previous_fixture_sha256": "824cba0ce9104f3668e3facd7291dab36630bbc10c905a2e438798a8d74c182b"
+}
