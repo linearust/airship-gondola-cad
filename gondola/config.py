@@ -10,6 +10,6 @@ OUTPUT_DIR = (
     .expanduser()
     .resolve()
 )
-BASELINE_FILE = REPO_ROOT / "tests" / "fixtures" / "rev_bf_geometry.FCStd"
-BASELINE_SHA256 = "8515376f24b6719633184620e8dfa9246e028e94166c3f14f44cc61c9e48eee9"
+BASELINE_FILE = REPO_ROOT / "tests" / "fixtures" / "rev_bg_geometry.FCStd"
+BASELINE_SHA256 = "713ecfe4069a487d53c82b04354308dfc1346a32f935bd149aacbf1c2819555a"
 ARTIFACT_SCHEMA_VERSION = 3

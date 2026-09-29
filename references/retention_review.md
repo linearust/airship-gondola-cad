@@ -1,9 +1,10 @@
 # Retention and assembly — AS
 
-**AU update:** the horn attachment below is historical. Use the
-[three-horn compatibility review](servo_horn_compatibility.md) for the current
-shared adapter, screw lengths and optional KST preparation/service. Output-bearing
-retention sections below remain applicable.
+**BG update:** the AS horn attachment below is historical. Use the
+[current manufacturer stock-horn review](servo_horn_compatibility.md) for the
+round-hole/slot adapter, M1.4×8 screws/nuts and mandatory stock-hole preparation.
+Output-bearing capture remains; BG uses 34/14/18 mm driven/idler/input stubs for
+150 mm propulsion spacing. See [dimension changes](propulsion_dimensions_review.md).
 
 AS replaces the manually prepared supplied-horn coupling with a purchased
 factory-threaded horn and an integral locating saddle. Output bearing retention
@@ -116,7 +117,8 @@ the explicit release model. In each cup's local coordinates:
 
 The positive-side bearing moves 0.5 mm outward to local Y28.5..31 in the output
 module, with the opposite side mirrored. The nominal Ø3 304 shaft preparations
-remain 24/14/18 mm for geared-output/opposite-output/input roles respectively.
+were 24/14/18 mm in AS; BG uses 34/14/18 mm for
+geared-output/opposite-output/input roles respectively.
 Carrier travel remains a separate nominal ±0.5 mm stop allowance. Do not infer
 bearing preload or shaft grip from either axial stop.
 

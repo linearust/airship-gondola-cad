@@ -36,7 +36,7 @@ class NativeHardwareProcurementTests(unittest.TestCase):
         for index, (code, detail) in enumerate(
             (
                 ("SS304_CUT3_L18_FLAT18_A0", "length 18 mm, starting 0 mm"),
-                ("SS304_CUT3_L24_FLAT5_A0", "length 5 mm, starting 0 mm"),
+                ("SS304_CUT3_L34_FLAT5_A0", "length 5 mm, starting 0 mm"),
                 ("SS304_CUT3_L14", "Leave the rod round"),
             )
         ):

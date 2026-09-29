@@ -24,7 +24,7 @@ generated BOM, not the cart pack counts.
 | Owned GH1.25 and selected SH1.0 connector kits | Subtract supplied cables before preparing harnesses. Connector families do not establish pin order or voltage. |
 | Gemfan 1610, 1.5 mm bore | Two main propellers, one CW and one CCW. Match the actual RS1102 shaft. |
 | RS1102 10000KV | Two main motors in this CAD; aft motor and spares are outside gondola scope. |
-| KST X06 V6.0, regular mounting tabs | Two tilt servos; fin servos and spares are outside this CAD. The [three-horn interface](servo_horn_compatibility.md) accepts the retained purchased profiles; default selection is one of each threaded metal variant. |
+| KST X06 V6.0, regular mounting tabs | Two tilt servos; fin servos and spares are outside this CAD. Both use manufacturer stock plastic half arm 1; see the [current horn interface](servo_horn_compatibility.md). Earlier metal-horn variants are historical. |
 | Generic 3 x 6 x 2.5 mm ball bearings | Four installed. Actual race lands, shields, internal play, fit, material and mass remain unverified. Do not identify the received lot as NSK/ISC MR63ZZ. |
 | Selected nominal Ø3 mm 304 rods | Prepare the six shafts below. The user accepts replacing unsuitable stock with precision shafts; nominal size does not establish a fit tolerance. |
 | Kailash 48T / 3 mm and 16T / `3mm3` | Two pairs installed. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md); do not restore the old MISUMI/POM assumptions. |
@@ -57,7 +57,7 @@ interfaces; the bearing-spacer decision does not delete those requirements.
 
 | Quantity | Cut length | Flat preparation | Role |
 | --- | --- | --- | --- |
-| 2 | 24 mm | 5 mm-long flat from the gear end; nominal depth 0.5 mm | Geared output stubs; keep bearing journals round |
+| 2 | 34 mm | 5 mm-long flat from the gear end; nominal depth 0.5 mm | Geared output stubs for BG's 150 mm axis spacing; keep bearing journals round |
 | 2 | 14 mm | None | Opposite output stubs |
 | 2 | 18 mm | Full-length flat; nominal depth 0.5 mm | Input stubs; no external bearing journal |
 
@@ -81,14 +81,13 @@ The M1.6 Phillips screws have their own declared head envelope in
 must fit the receiving joint. Their use does not establish OEM motor screw
 depth or the supplied horn's central retaining-screw specification.
 
-The current common adapter supports three 15T/4.0 mm horn profiles. Each threaded
-metal horn uses two M1.6×5 screws in factory holes; the former M1.6×4 selection is
-superseded. The KST alternative needs its two existing end pilots enlarged to
-Ø1.5 mm, M1.4×6 screws from behind and M1.4 front nuts. Servo-ear screws and
-M1.6 nuts are separate joints. Use the selected per-side profile's hardware and
-preparation; see [three-horn compatibility](servo_horn_compatibility.md). Slots
-permit alignment before tightening, not running slip. Actual horn mass,
-thread/head fit and loaded coupling retention remain unverified.
+The current adapter uses manufacturer stock half arm 1 on both sides. Enlarge its
+existing Ø1 mm pilots at radii 6.8/13.2 mm to Ø1.5 mm, preserving their axes;
+use two rear M1.4×8 screws and front M1.4 nuts per horn. The adapter has a near
+round hole and a far short tolerance slot. Servo-ear screws and M1.6 nuts are
+separate joints. See [horn compatibility](servo_horn_compatibility.md).
+Alignment allowance is for assembly before tightening, not running slip. Actual
+horn mass, finished fit and loaded coupling retention remain unverified.
 
 Still establish from the received parts:
 

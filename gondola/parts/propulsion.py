@@ -25,6 +25,7 @@ from gondola.contracts.drive import (
     DRIVE_CONFIGURATIONS,
     GEARS,
     MODULE_MM,
+    PIVOT_SPAN_MM,
     PIVOT_Z_MM,
     PRESSURE_ANGLE_DEG,
     SELECTED_DRIVE,
@@ -57,7 +58,7 @@ BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 3.0
 RAIL_SERVICE_FLOOR_THICKNESS = 2.0
 PIVOT_Z = PIVOT_Z_MM
-PIVOT_HALF_SPAN = 65.5
+PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
 GUARD_OUTER_RADIUS = 24.3
 GUARD_INNER_RADIUS = 22.8
 MOTOR_NOMINAL_DIAMETER = 13.5
@@ -92,6 +93,11 @@ BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
 CARRIER_END_Y = 26.0
 CARRIER_STOP_RADIUS = 3.8
 SHAFT_ASSEMBLY_RETRACTION = 6.5
+OUTPUT_SHAFT_INNER_Y = 20.0
+OUTPUT_DRIVEN_SHAFT_LENGTH = 34.0
+OUTPUT_IDLE_SHAFT_LENGTH = 14.0
+OUTPUT_SHAFT_FLAT_LENGTH = 5.0
+OUTPUT_SHAFT_SWEEP_HALF_LENGTH = OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
 CLAMP_SCREW_SKU = "M2X8_BUTTON_HEAD"
 NUT_SKU = "M2_HEX_NUT"
 BEARING_SKU = "BEARING_3X6X2_5"
@@ -670,7 +676,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 4.5 mm bearing posts with continuous roots. The output axes are 131 mm apart. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
+        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 4.5 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -722,12 +728,24 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
     printed.append(carrier)
     for side, suffix in ((-1, "Negative"), (1, "Positive")):
         driven = side == -sign
-        low, high = (20, 44) if driven else (20, 34)
+        length = OUTPUT_DRIVEN_SHAFT_LENGTH if driven else OUTPUT_IDLE_SHAFT_LENGTH
+        low, high = OUTPUT_SHAFT_INNER_Y, OUTPUT_SHAFT_INNER_Y + length
         shaft = cylinder(1.5, high - low, (0, low, 0))
         if driven:
-            shaft = shaft.cut(box(2, 5, 4, (1, 39, -2)))
+            shaft = shaft.cut(
+                box(
+                    2,
+                    OUTPUT_SHAFT_FLAT_LENGTH,
+                    4,
+                    (1, high - OUTPUT_SHAFT_FLAT_LENGTH, -2),
+                )
+            )
         shaft = mirrored_y(shaft, side)
-        sku = "SS304_CUT3_L24_FLAT5_A0" if driven else "SS304_CUT3_L14"
+        sku = (
+            f"SS304_CUT3_L{length:g}_FLAT{OUTPUT_SHAFT_FLAT_LENGTH:g}_A0"
+            if driven
+            else f"SS304_CUT3_L{length:g}"
+        )
         hardware.append(
             _buy(
                 doc,
@@ -735,7 +753,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 prefix + "OutputShaft" + suffix,
                 shaft,
                 sku,
-                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Separate output stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Clock the flat toward the M3 screw after tooth phasing. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
+                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 14 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The wider 150 mm axis spacing increases gear overhang; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
                 SHAFT_SOURCE,
                 "304 stainless steel (seller claim)",
             )
@@ -916,7 +934,16 @@ def _build_motor_references(doc, pod, prefix, sign):
 
 def _build_sweep_reserve(doc, assembly, prefix, sign):
     """Create the separate clearance reference for external vehicle equipment."""
-    bound = union([cylinder(30, 52, (0, -26, 0)), cylinder(10, 88, (0, -44, 0))])
+    bound = union(
+        [
+            cylinder(30, 52, (0, -26, 0)),
+            cylinder(
+                10,
+                2 * OUTPUT_SHAFT_SWEEP_HALF_LENGTH,
+                (0, -OUTPUT_SHAFT_SWEEP_HALF_LENGTH, 0),
+            ),
+        ]
+    )
     bound = translated_shape(bound, y=sign * PIVOT_HALF_SPAN, z=PIVOT_Z)
     return _reference(
         doc,
@@ -924,7 +951,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
         prefix + "SweepBound",
         "Conservative complete output rotation reserve",
         bound,
-        "Main motor/guard radius30 overY±26, output clamps/bolts/shafts/gears radius10 overY±44. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
+        f"Main motor/guard radius30 overY±26, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Excludes the separately validated gear mesh and input mechanism; full bound is used only against external vehicle equipment.",
         clearance=True,
     )
 
@@ -994,8 +1021,8 @@ def _module_metrics(printed, hardware, references, spec):
         },
         "shaft_topology": {
             "output_stub_count": 4,
-            "output_driven_length_mm": 24,
-            "output_idle_length_mm": 14,
+            "output_driven_length_mm": OUTPUT_DRIVEN_SHAFT_LENGTH,
+            "output_idle_length_mm": OUTPUT_IDLE_SHAFT_LENGTH,
             "input_count": 2,
             "input_length_mm": servo_coupling.SHAFT_LENGTH,
             "through_shaft_allowed": False,

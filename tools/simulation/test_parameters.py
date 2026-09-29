@@ -12,35 +12,12 @@ import FreeCAD as App
 from gondola.cad import world_shape
 from gondola.config import BASELINE_FILE
 from gondola.provenance import file_sha256
-from tools.simulation.export_parameters import approximation, export, extract, vector_m
+from tools.simulation.export_parameters import export, extract, vector_m
 
 
-class ApproximationTests(unittest.TestCase):
+class UnitTests(unittest.TestCase):
     def test_si_conversion(self):
-        self.assertEqual(vector_m((0, -65.4, 48.2)), [0, -0.0654, 0.0482])
-
-    def test_error_is_position_distance_not_relative_torque_error(self):
-        points = {"Port": [0, 0.0656, 0.0482], "Starboard": [0, -0.0654, 0.0482]}
-        result = approximation(points)
-        self.assertTrue(result["available"])
-        self.assertAlmostEqual(
-            result["position_error_m"]["Port"], math.hypot(0.0006, 0.0018)
-        )
-        self.assertEqual(
-            result["position_error_m"], result["absolute_moment_error_bound_Nm_per_N"]
-        )
-
-    def test_moved_module_does_not_get_old_approximation(self):
-        result = approximation(
-            {"Port": [0.01, 0.0656, 0.0482], "Starboard": [0.01, -0.0654, 0.0482]}
-        )
-        self.assertFalse(result["available"])
-        self.assertNotIn("pivot_positions_cad_m", result)
-
-    def test_nonfinite_or_wrong_dimension_is_rejected(self):
-        for bad in ([0, float("nan"), 0.05], [0, float("inf"), 0.05], [0, 0.05]):
-            with self.subTest(bad=bad), self.assertRaises(ValueError):
-                approximation({"Port": bad, "Starboard": [0, -0.065, 0.05]})
+        self.assertEqual(vector_m((0, -74.9, 50)), [0, -0.0749, 0.05])
 
 
 class SavedGeometryTests(unittest.TestCase):
@@ -57,12 +34,20 @@ class SavedGeometryTests(unittest.TestCase):
     def test_snapshot_uses_complete_parent_placement(self):
         result = extract(self.doc)
         geo = result["exact_geometry"]
-        self.assertAlmostEqual(geo["main_pivot_span_m"], 0.131)
+        self.assertNotIn("simplified_geometry", result)
+        self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
+        self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [0, 0.0656, 0.0482]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [0, 0.0751, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [0, -0.0654, 0.0482]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [0, -0.0749, 0.050]
+        )
+        frame = geo["propulsion_reference_frame"]
+        self.assertEqual(frame["origin_cad_m"], [0, 0.0001, 0])
+        self.assertEqual(
+            frame["pivot_positions_m"],
+            {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
         self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.14, -0.0001, 0.0374])
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
@@ -71,6 +56,30 @@ class SavedGeometryTests(unittest.TestCase):
                 geo["main_propulsors"][name]["pivot_cad_m"],
                 geo["main_propulsors"][name]["motor_envelope_centre_cad_m"],
             )
+
+    def test_propulsion_frame_follows_station_and_clamp_seating(self):
+        original = extract(self.doc)["exact_geometry"]["propulsion_reference_frame"]
+        self.doc.MainPropulsionModule.RailPositionX = 18
+        self.doc.AssemblySettings.PropulsionClampApproach = "NegativeY"
+        self.doc.recompute()
+        geo = extract(self.doc)["exact_geometry"]
+        frame = geo["propulsion_reference_frame"]
+        self.assertEqual(frame["origin_cad_m"], [0.018, -0.0001, 0])
+        self.assertEqual(frame["pivot_positions_m"], original["pivot_positions_m"])
+        for name in ("Port", "Starboard"):
+            restored = [
+                round(value + origin, 9)
+                for value, origin in zip(
+                    frame["pivot_positions_m"][name], frame["origin_cad_m"], strict=True
+                )
+            ]
+            self.assertEqual(restored, geo["main_propulsors"][name]["pivot_cad_m"])
+
+    def test_asymmetric_pivot_height_is_rejected(self):
+        self.doc.PortPod.Placement.Base.z += 1
+        self.doc.recompute()
+        with self.assertRaisesRegex(ValueError, "Pivot alignment changed"):
+            extract(self.doc)
 
     def test_unknown_vehicle_values_are_not_filled_with_zero(self):
         result = extract(self.doc)["whole_airship"]
@@ -150,9 +159,10 @@ class SavedGeometryTests(unittest.TestCase):
                 return_value=source,
             ):
                 export(cad, output)
-                self.assertEqual(
-                    json.loads(output.read_text())["basis"]["cad_sha256"], original_hash
-                )
+                snapshot = json.loads(output.read_text())
+                self.assertEqual(snapshot["schema_version"], 2)
+                self.assertNotIn("simplified_geometry", snapshot)
+                self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)
                 report["source_hashes_after"][cad.name] = "wrong"
                 report_path.write_text(json.dumps(report))

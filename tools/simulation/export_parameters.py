@@ -23,36 +23,6 @@ def vector_m(value):
     return [round(float(component) / 1000, 9) for component in value]
 
 
-def approximation(points):
-    """A deliberately explicit BF approximation, never an automatic CAD edit.
-
-    Refuse a materially changed layout instead of reusing its convenient numbers.
-    The exact saved positions are always exported separately.
-    """
-    simple = {"Port": [0, 0.065, 0.050], "Starboard": [0, -0.065, 0.050]}
-    if any(
-        len(points[name]) != 3 or not all(math.isfinite(v) for v in points[name])
-        for name in simple
-    ):
-        raise ValueError("Expected finite 3D pivot coordinates in metres.")
-    errors = {name: math.dist(points[name], simple[name]) for name in simple}
-    if any(error > 0.002 for error in errors.values()):
-        return {
-            "available": False,
-            "reason": "Layout changed; review a new approximation.",
-        }
-    return {
-        "available": True,
-        "status": "Optional preliminary model only; CAD and manufacturing dimensions are unchanged.",
-        "pivot_positions_cad_m": simple,
-        "span_m": 0.130,
-        "rail_contact_to_pivot_m": 0.050,
-        "position_error_m": errors,
-        "absolute_moment_error_bound_Nm_per_N": errors,
-        "error_scope": "Per motor: |delta torque| <= |delta position| * |force| in the same frame. Not a relative error bound or an inertia approximation.",
-    }
-
-
 def extract(doc):
     import FreeCAD as App
 
@@ -115,6 +85,15 @@ def extract(doc):
         "ModuleMTF02PEnvelope",
     )
     points = {name: row["pivot_cad_m"] for name, row in propulsion.items()}
+    if (
+        abs(points["Port"][0] - points["Starboard"][0]) > 1e-9
+        or abs(points["Port"][2] - points["Starboard"][2]) > 1e-9
+    ):
+        raise ValueError("Pivot alignment changed; review the propulsion datum.")
+    propulsion_origin = [
+        round((points["Port"][axis] + points["Starboard"][axis]) / 2, 9)
+        for axis in (0, 1)
+    ] + [0.0]
     return {
         "frame": {
             "name": "native_CAD",
@@ -126,6 +105,20 @@ def extract(doc):
         },
         "exact_geometry": {
             "main_propulsors": propulsion,
+            "propulsion_reference_frame": {
+                "name": "propulsion_reference",
+                "origin": "Actual pivot-pair midpoint projected onto the straight rail contact plane Z=0. Not CV or CG. Changes with rail trim and clamp seating.",
+                "origin_cad_m": propulsion_origin,
+                "rotation_to_cad_matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                "pivot_positions_m": {
+                    name: [
+                        round(value - origin, 9)
+                        for value, origin in zip(point, propulsion_origin, strict=True)
+                    ]
+                    for name, point in points.items()
+                },
+                "coordinate_scope": "Exact translated CAD coordinates, not rounded simulation positions. Add origin_cad_m to recover native CAD positions before transforming to the vehicle frame.",
+            },
             "main_pivot_span_m": math.dist(*points.values()),
             "pivot_height_from_rail_contact_m": points["Port"][2],
             "servo_to_output_angle_ratio": json.loads(
@@ -149,7 +142,6 @@ def extract(doc):
             "optical_pitch_pivot_cad_m": point(doc.OpticalPitchStage),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
         },
-        "simplified_geometry": approximation(points),
         "whole_airship": {
             "ready_for_system_identification": False,
             "cv_definition": "Proposed: centre of displaced volume of the inflated fitted ellipsoid; confirm with the simulation team.",
@@ -201,7 +193,7 @@ def export(cad, output):
         if doc.DesignRegistry.SourceFingerprint != fingerprint:
             raise ValueError("Saved CAD is stale relative to current geometry source.")
         result = {
-            "schema_version": 1,
+            "schema_version": 2,
             "units": {
                 "length": "m",
                 "mass": "kg",

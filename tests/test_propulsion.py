@@ -338,6 +338,58 @@ class NativeGearedDriveTests(unittest.TestCase):
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
+    def test_exact_simulation_datums_preserve_long_stub_and_set_screw_engagement(self):
+        from gondola.cad import world_shape
+
+        points = [
+            self.doc.getObject(name + "Pod").getGlobalPlacement().Base
+            for name in ("Port", "Starboard")
+        ]
+        self.assertAlmostEqual((points[0] - points[1]).Length, 150)
+        for point in points:
+            self.assertAlmostEqual(point.z, 50)
+        for prefix, sign, suffix in (
+            ("Port", 1, "Negative"),
+            ("Starboard", -1, "Positive"),
+        ):
+            shaft_obj = self.doc.getObject(prefix + "OutputShaft" + suffix)
+            shaft = world_shape(shaft_obj)
+            gear = world_shape(self.doc.getObject(prefix + "OutputGear"))
+
+            def canonical(shape):
+                return sorted(
+                    sign * value for value in (shape.BoundBox.YMin, shape.BoundBox.YMax)
+                )
+
+            self.assertEqual(shaft_obj.HardwareSKU, "SS304_CUT3_L34_FLAT5_A0")
+            for actual, expected in zip(canonical(shaft), (21, 55)):
+                self.assertAlmostEqual(actual, expected)
+            for actual, expected in zip(canonical(gear), (21.5, 31.5)):
+                self.assertAlmostEqual(actual, expected)
+            flats = [
+                face
+                for face in shaft.Faces
+                if type(face.Surface).__name__ == "Plane"
+                and abs(face.CenterOfMass.x - 1) < 1e-7
+                and abs(abs(face.normalAt(0, 0).x) - 1) < 1e-7
+            ]
+            self.assertEqual(len(flats), 1)
+            low, high = canonical(flats[0])
+            self.assertAlmostEqual(low, 21)
+            self.assertAlmostEqual(high, 26)
+            # Seller M3 axis is 2.5 mm from the inner hub end. Both nominal
+            # shaft/gear ends move together with the pod's allowed axial play.
+            screw_y = canonical(gear)[0] + 2.5
+            self.assertAlmostEqual(min(screw_y - low, high - screw_y), 2)
+            bearing = world_shape(self.doc.getObject(prefix + "OutputBearing" + suffix))
+            self.assertGreater(canonical(bearing)[0], high)
+            self.assertLess(
+                shaft.cut(
+                    world_shape(self.doc.getObject(prefix + "SweepBound"))
+                ).Volume,
+                1e-7,
+            )
+
     def test_plain_bearing_post_roots_keep_the_complete_load_section(self):
         from gondola.validation.propulsion import bearing_post_roots_check
 
@@ -348,14 +400,14 @@ class NativeGearedDriveTests(unittest.TestCase):
 
     def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
         from gondola.cad import belongs_to_group, world_shape
-        from gondola.parts import propulsion
+        from gondola.parts import bearing_retention
         from gondola.validation.motion_clearance import carrier_axial_travel
 
-        # Added web material occupies local Y26.5..30.5 and Y-30.5..-26.5,
-        # ending 9.2 mm below the output axis. Rotation leaves Y unchanged.
-        # Each real moving solid must either remain within the opposed inner
-        # planes at both axial limits, or fit radially inside the web top.
-        minimum_web_radius = propulsion.PIVOT_Z - 39.0
+        # Rotation preserves axial Y. A moving solid must stay entirely clear
+        # of each bearing-post band, or fit through its continuous shield bore.
+        # This also checks the longer driven shaft; no obsolete absolute-Z
+        # web-top assumption is retained after raising the complete mechanism.
+        minimum_bore_radius = bearing_retention.SHIELD_OPENING_DIAMETER / 2
         physical = [
             *self.module["printed"],
             *self.module["hardware"],
@@ -373,9 +425,11 @@ class NativeGearedDriveTests(unittest.TestCase):
                     pod.getGlobalPlacement().inverse().multiply(shape.Placement)
                 )
                 bounds = shape.optimalBoundingBox(False, False)
-                inside_axial_planes = (
-                    bounds.YMin - travel["negative_mm"] >= -26.5 - 1e-7
-                    and bounds.YMax + travel["positive_mm"] <= 26.5 + 1e-7
+                low = bounds.YMin - travel["negative_mm"]
+                high = bounds.YMax + travel["positive_mm"]
+                clears_both_post_bands = all(
+                    high <= start + 1e-7 or low >= end - 1e-7
+                    for start, end in ((-32.5, -26.5), (26.5, 32.5))
                 )
                 radial_bound = math.hypot(
                     max(abs(bounds.XMin), abs(bounds.XMax)),
@@ -383,7 +437,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                 )
                 with self.subTest(object=obj.Name):
                     self.assertTrue(
-                        inside_axial_planes or radial_bound < minimum_web_radius,
+                        clears_both_post_bands or radial_bound < minimum_bore_radius,
                         (obj.Name, bounds, radial_bound, travel),
                     )
 
@@ -508,10 +562,12 @@ class NativeGearedDriveTests(unittest.TestCase):
             "rear_body_and_inward_lead_allowance"
         ]
         self.assertTrue(before["passed"], before)
+        patch_height = before["rear_body_to_plate_gap_mm"] - 4.5
+        self.assertGreater(patch_height, 0)
         patch = Part.makeBox(
             7,
             1,
-            0.5,
+            patch_height,
             App.Vector(
                 -3.5,
                 servo_bridge.case_front_y() - 16.6 + 0.5,
@@ -530,6 +586,7 @@ class NativeGearedDriveTests(unittest.TestCase):
             allowance = result["rear_body_and_inward_lead_allowance"]
             self.assertEqual(allowance["planning_volume_collisions"], [])
             self.assertLess(result["servo_frame_intersection_mm3"], 1e-5)
+            self.assertAlmostEqual(allowance["rear_body_to_plate_gap_mm"], 4.5)
             self.assertLess(allowance["rear_body_to_plate_gap_mm"], 5)
             self.assertFalse(result["passed"], result)
         finally:

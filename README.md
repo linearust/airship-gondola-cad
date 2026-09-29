@@ -18,8 +18,8 @@ Source defines implementation, not physical qualification or immutable requireme
   or operating looseness. Favor reusable mounting interfaces where practical.
 - Consider assembly, wiring, motion clearance and balance together; use realistic
   manufacturing margins and distinguish verified interfaces from assumptions.
-- Prefer simple major layout dimensions when mechanically equivalent; keep simulation
-  approximations explicit and separate from manufacturing dimensions.
+- Prefer simple major layout dimensions in the actual CAD for repeatable testing;
+  do not substitute rounded simulation values for feasible design changes.
 - Redesign/reselect when the whole assembly improves. Existing geometry and methods
   are means, not goals.
 
@@ -44,12 +44,16 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BF:** manufacturer X06 half arm 1 with a near round hole/far tolerance slot in
-the adapter; a denser symmetric common plate; reinforced centreline optical support.
+**BG:** actual 150 mm main-axis spacing and 50 mm rail-contact-to-axis height;
+two driven output stubs lengthened to 34 mm, with existing gears/servo placement
+in Y and 14/18 mm idler/input stubs retained. Longer gear overhang needs loaded
+mesh verification. No additional parts. Retains BF manufacturer X06 half arm 1,
+round-hole/slot adapters, symmetric common plates and centreline optical support.
 [Horn interface](references/servo_horn_compatibility.md),
 [plate](references/dense_mount_review.md),
 [optical support](references/centreline_optical_review.md),
-[review and verification](references/bf_design_verification.json).
+[dimension decision](references/propulsion_dimensions_review.md),
+[review and verification](references/bg_design_verification.json).
 Existing rail supports and removable servo-module architecture remain.
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
@@ -93,7 +97,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BF. Preserve them during refactors;
+The architecture-specific checks below describe BG. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons
@@ -218,7 +222,7 @@ a whole-scene X half-turn without changing native coordinates. Blender-only chan
 do not justify re-pinning CAD.
 
 Simulation: [parameter sheet](references/simulation_parameters.md) and its linked
-SI snapshot separate CAD datums, optional rounding and unmeasured whole-airship inputs.
+SI snapshot separate exact CAD datums and unmeasured whole-airship inputs.
 `python3 tools/simulation/export_parameters.py` reads validated saved CAD without
 modifying it. Re-export after layout changes; native coordinates are not automatically
 CV/FRD coordinates. Exporter-only changes need its native tests and a fresh extraction,

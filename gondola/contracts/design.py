@@ -26,7 +26,7 @@ from .servo_horns import profile as horn_profile
 NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
 NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BF"
+DESIGN_REVISION = "BG"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
@@ -169,7 +169,7 @@ PURCHASED_HARDWARE_QUANTITIES = {
     SELECTED_DRIVE.driver.sku: 2,
     SELECTED_DRIVE.output.sku: 2,
     "BEARING_3X6X2_5": 4,
-    "SS304_CUT3_L24_FLAT5_A0": 2,
+    "SS304_CUT3_L34_FLAT5_A0": 2,
     "SS304_CUT3_L14": 2,
     "SS304_CUT3_L18_FLAT18_A0": 2,
     **_selected_horn_hardware(),
@@ -184,7 +184,7 @@ HARDWARE_MATERIALS = {
     SELECTED_DRIVE.driver.sku: "Aluminium alloy (seller claim; steel attribute conflicts)",
     SELECTED_DRIVE.output.sku: "Copper alloy (seller claim)",
     "BEARING_3X6X2_5": "Bearing steel",
-    "SS304_CUT3_L24_FLAT5_A0": "304 stainless steel (seller claim)",
+    "SS304_CUT3_L34_FLAT5_A0": "304 stainless steel (seller claim)",
     "SS304_CUT3_L14": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
     "KST_X06_STOCK_HALF_ARM_1": "Supplied horn material unverified",

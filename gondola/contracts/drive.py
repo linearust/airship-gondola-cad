@@ -11,7 +11,9 @@ from types import MappingProxyType
 
 MODULE_MM = 0.5
 PRESSURE_ANGLE_DEG = 20.0
-PIVOT_Z_MM = 48.2
+# Repeatable system-identification datums: actual CAD dimensions, not rounding.
+PIVOT_SPAN_MM = 150.0
+PIVOT_Z_MM = 50.0
 RADIAL_X = 0.4
 RADIAL_Z = -math.sqrt(1 - RADIAL_X**2)
 

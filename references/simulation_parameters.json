@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "units": {
     "length": "m",
     "mass": "kg",
@@ -8,10 +8,10 @@
   },
   "basis": {
     "cad_file": "gondola.FCStd",
-    "cad_sha256": "59a6fafe1e0fa403518e18ee459a90224f5c5a14bed51808453370ff97709e94",
-    "source_fingerprint": "1cd32f916195e2f6e89761bdd73ec4da58f1f4ec4f53ce5da0bf2f0b051e8326",
-    "validation_sha256": "dc6f2f709f2f96b4ba84b75f6dad6fde598d0d17ffd545d99dd322fe5b2324fe",
-    "exporter_sha256": "1cc4d1a2d37d9670e029634023957c91f38a851bb00b2daee3acdc14201979dc"
+    "cad_sha256": "981f480408191d5dcf88ab9b83e54d8bc9837519cb4ad429ab4bff853589466b",
+    "source_fingerprint": "801de155f7108c85da84eb55d08258693ff24edc4bdaeb0fcda6cd89dac1bddc",
+    "validation_sha256": "32c0c0ab087829cad8c849290d1929ac50f6398deb49bd50b909ae94673aa7b6",
+    "exporter_sha256": "371708d37de2f1483c640d2ea6e9c6b975c99e6602538621b4ab62dec6545020"
   },
   "frame": {
     "name": "native_CAD",
@@ -27,18 +27,18 @@
         "cad_label_not_verified_vehicle_side": true,
         "pivot_cad_m": [
           0.0,
-          0.0656,
-          0.0482
+          0.0751,
+          0.05
         ],
         "motor_envelope_centre_cad_m": [
-          0.0,
-          0.0656,
-          0.0482
+          -0.0,
+          0.0751,
+          0.05
         ],
         "propeller_envelope_centre_cad_m": [
           0.012,
-          0.0656,
-          0.0482
+          0.0751,
+          0.05
         ],
         "neutral_geometric_axis_cad": [
           1.0,
@@ -56,18 +56,18 @@
         "cad_label_not_verified_vehicle_side": true,
         "pivot_cad_m": [
           0.0,
-          -0.0654,
-          0.0482
+          -0.0749,
+          0.05
         ],
         "motor_envelope_centre_cad_m": [
-          0.0,
-          -0.0654,
-          0.0482
+          -0.0,
+          -0.0749,
+          0.05
         ],
         "propeller_envelope_centre_cad_m": [
           0.012,
-          -0.0654,
-          0.0482
+          -0.0749,
+          0.05
         ],
         "neutral_geometric_axis_cad": [
           1.0,
@@ -82,8 +82,47 @@
         "positive_thrust_sign": null
       }
     },
-    "main_pivot_span_m": 0.131,
-    "pivot_height_from_rail_contact_m": 0.0482,
+    "propulsion_reference_frame": {
+      "name": "propulsion_reference",
+      "origin": "Actual pivot-pair midpoint projected onto the straight rail contact plane Z=0. Not CV or CG. Changes with rail trim and clamp seating.",
+      "origin_cad_m": [
+        0.0,
+        0.0001,
+        0.0
+      ],
+      "rotation_to_cad_matrix": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "pivot_positions_m": {
+        "Port": [
+          0.0,
+          0.075,
+          0.05
+        ],
+        "Starboard": [
+          0.0,
+          -0.075,
+          0.05
+        ]
+      },
+      "coordinate_scope": "Exact translated CAD coordinates, not rounded simulation positions. Add origin_cad_m to recover native CAD positions before transforming to the vehicle frame."
+    },
+    "main_pivot_span_m": 0.15,
+    "pivot_height_from_rail_contact_m": 0.05,
     "servo_to_output_angle_ratio": -3.0,
     "module_origins_cad_m": {
       "MainPropulsionModule": [
@@ -158,33 +197,6 @@
       0.0374
     ],
     "rail_length_m": 0.34
-  },
-  "simplified_geometry": {
-    "available": true,
-    "status": "Optional preliminary model only; CAD and manufacturing dimensions are unchanged.",
-    "pivot_positions_cad_m": {
-      "Port": [
-        0,
-        0.065,
-        0.05
-      ],
-      "Starboard": [
-        0,
-        -0.065,
-        0.05
-      ]
-    },
-    "span_m": 0.13,
-    "rail_contact_to_pivot_m": 0.05,
-    "position_error_m": {
-      "Port": 0.0018973665961010315,
-      "Starboard": 0.00184390889145858
-    },
-    "absolute_moment_error_bound_Nm_per_N": {
-      "Port": 0.0018973665961010315,
-      "Starboard": 0.00184390889145858
-    },
-    "error_scope": "Per motor: |delta torque| <= |delta position| * |force| in the same frame. Not a relative error bound or an inertia approximation."
   },
   "whole_airship": {
     "ready_for_system_identification": false,

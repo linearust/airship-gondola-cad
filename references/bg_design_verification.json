@@ -1,0 +1,195 @@
+{
+  "revision": "BG",
+  "passed": true,
+  "recorded_utc": "2026-09-29T05:08:09.835687+00:00",
+  "source_fingerprint": "801de155f7108c85da84eb55d08258693ff24edc4bdaeb0fcda6cd89dac1bddc",
+  "main_cad_sha256": "981f480408191d5dcf88ab9b83e54d8bc9837519cb4ad429ab4bff853589466b",
+  "native_cad_sha256": {
+    "gondola.FCStd": "981f480408191d5dcf88ab9b83e54d8bc9837519cb4ad429ab4bff853589466b",
+    "gondola_attachment_detail.FCStd": "a3cfe7c14272b225df637d043a920235f2bfec86a34d63e18eedfac421deac8c",
+    "gondola_attachment_opposite.FCStd": "d97aeba6e53d259db542e60f73859c2dd5dc791c87eab96c9480a50b9d404fbc",
+    "gondola_power_options.FCStd": "77436ee04b2c37ee6ec610550dfa597a83082f35331696030a24f543cb180702",
+    "gondola_power_platform.FCStd": "0edb610592d329cdc652eb1f232b21d7eaa33084072197fa5f6be358855055fa",
+    "gondola_print_parts.FCStd": "ff37c6d7301cbc08278a0b1c5cc01009bcdb2751535938f796212390246b2db5"
+  },
+  "fixture": "tests/fixtures/rev_bg_geometry.FCStd",
+  "fixture_sha256": "713ecfe4069a487d53c82b04354308dfc1346a32f935bd149aacbf1c2819555a",
+  "transition_review": "tests/fixtures/rev_bg_review.json",
+  "test_count": 541,
+  "native_execution_lifecycle": {
+    "execution_kind": "merged_frozen_module_coverage",
+    "original_orchestrator_exit_code": 143,
+    "original_orchestrator_passed": false,
+    "observed_original_process_exit_zero_modules": [
+      "tests/test_assembly_hardware.py",
+      "tests/test_baseline_geometry.py",
+      "tests/test_battery_placement.py",
+      "tests/test_bearing_retention.py",
+      "tests/test_bundle.py",
+      "tests/test_direct_power.py",
+      "tests/test_drive_contract.py",
+      "tests/test_equipment_compatibility.py",
+      "tests/test_equipment_mount_shape.py",
+      "tests/test_equipment_option_shapes.py",
+      "tests/test_equipment_options.py",
+      "tests/test_export_integrity.py",
+      "tests/test_flight_controller_contract.py",
+      "tests/test_frame_roots.py",
+      "tests/test_freecad_runtime.py",
+      "tests/test_gui_entrypoints.py",
+      "tests/test_hardware_procurement.py",
+      "tests/test_horn_registration.py",
+      "tests/test_manufacturing_blank.py",
+      "tests/test_mass_budget.py",
+      "tests/test_mesh_identity.py",
+      "tests/test_module_layout.py",
+      "tests/test_motion_clearance.py"
+    ],
+    "complete_test_modules_with_unavailable_process_exit": [
+      "tests/test_mounting_slots.py",
+      "tests/test_native_interfaces.py"
+    ],
+    "recovery_process_exit_code": 0,
+    "excluded_failed_original_module": {
+      "log": "/tmp/bg-final-native/tests__test_propulsion.log",
+      "module": "tests/test_propulsion.py",
+      "reason": "One negative fixture used a fixed0.5 mm added height that no longer breached the5 mm gap after axis raise; entire69-test module rerun after explicit4.5 mm-gap fixture correction.",
+      "result": "/tmp/bg-final-native/tests__test_propulsion.json"
+    },
+    "test_fixture_correction": {
+      "changed_files": [
+        "tests/test_propulsion.py"
+      ],
+      "old_test_path": "/tmp/bg-test_propulsion-before.py",
+      "old_test_sha256": "e89750d5c6a15093058ac75e8e56971623a353f9095710c9f51ddc183ebad393",
+      "new_test_path": "/home/h/cad/airship-gondola-cad/tests/test_propulsion.py",
+      "new_test_sha256": "a43849450f2a478870dadcdf5d5fce46b3843656e49493d45fc2e6517114e6c2",
+      "unified_diff_path": "/tmp/bg-native-test-fixture-correction.diff",
+      "unified_diff_sha256": "dedc3667a505b9e02bf5e314850558f816a14f02398a26986b4d6057d8f06342",
+      "initial_freeze_path": "/tmp/bg-initial-freeze.json",
+      "initial_freeze_sha256": "34cef75d1e14ee0f0f58224f552e8c10834434b3b4bf031ab17f311290ebbed2",
+      "final_freeze_path": "/tmp/bg-final-freeze.json",
+      "final_freeze_sha256": "ca83a7a41bfb0e1f6ed52fa93b476ddd71da676c49085b5a70a1a4dfe112e6cb",
+      "production_source_and_fixture_unchanged": true,
+      "authorization": "Root approved exact negative fixture patch height before gap minus4.5 mm plus actual gap assertion; preserve all prior collision/failure assertions.",
+      "old_failure_result": "/tmp/bg-final-native/tests__test_propulsion.json",
+      "diagnostic_temporary_copy_result": "/tmp/bg-negative-fixture-probe.json",
+      "applied_at_utc": "2026-09-29T04:58:19.424400+00:00"
+    },
+    "corrected_propulsion_rerun_process_exit_code": 0,
+    "coverage_scope": "Exact complete final worker test coverage: 25 original passing modules, 28 recovery modules, and the corrected full 69-test propulsion rerun. Production and fixture bytes unchanged across runs; only the recorded negative-test fixture changed. Original aborted run and failed module are retained, excluded from passing coverage; two original wrapper exits remain unknown. No uninterrupted full-suite success is claimed."
+  },
+  "module_count": 54,
+  "skips": 0,
+  "source_tree_sha256": "b3de83a941522977e7d71fc8c105e1892a17f4a4b1141ee63018728e96472b63",
+  "test_tree_sha256": "4d89b8425d204a24bccc4d514f9819743bd04749fd7919b935cf50624ed1798a",
+  "fixture_tree_sha256": "e9b7f31e1744346403b23a3160c087ac40337b9f7eb5d5054cfad5242db53a74",
+  "documentation_sha256": {
+    "README.md": "e361e05da0d97ef1b996b1138a5bb937f174b2bbd10bdd8f71a55475f20a9038",
+    "references/bc_architecture_review.md": "256af28b06888fa62128d946efc126dbd99c6f5911aaa99f64d80651826d46aa",
+    "references/bd_rail_mount_review.md": "8a6f382f9a306af11beab865be222f2b299e1aa9dd90204accfdb633e343dab4",
+    "references/cart_adaptation_review.md": "2c6cd862a85cded5d3065b1da292bc550403aa2b3bb1e860d4e425db30d35dfb",
+    "references/centreline_optical_review.md": "0992a385023615ced7ba3a57dc893158c7e872ba14516c08ce79ae750a79a2b5",
+    "references/controller_selection_review.md": "0ed7aa6e9f818e113413b27aae81bdd5f01500e2be2692c5e10e4cf5249f82e4",
+    "references/dense_mount_review.md": "5d726c0d07605b440847c43647d36fc0324a92eabef2aa77ccc311f1d74785d2",
+    "references/drive_selection_review.md": "5a88590297e73d83364d4342f3597896bffbd5109b53340096ec9bbe67744aca",
+    "references/holybro_x500_plate_review.md": "7d1f848e1af66a44a77d7453af0023becd514cac38a62c5b30f959432798db64",
+    "references/kailash_gears_selected_evidence.md": "fe3ed18b40b28a7131aba2765e5b6ec870ccb3b9306b745cdd112177d8b6b155",
+    "references/latch_attachment_review.md": "f78f4b05129d0d3f583c40883e4391fc721092f624b291b6e066b2550ad7d2f3",
+    "references/layout_and_wiring_review.md": "390eb092283e326e2e6e424fa7ef1f5988557d4de6c265ba547fefdb487216a6",
+    "references/navigation_module_compatibility.md": "0b5e846017f6ef7f66c2abf6a6e062da6e058d71640a689faeb3b690fa06a38e",
+    "references/optical_sensor_compatibility.md": "62d55626b74d16f6d15c0ff952e8ac55312769c7b1cbecd9a76360fa11eaeed8",
+    "references/power_module_compatibility.md": "dedfd681eaefa9b0148d7ce9b5f8cad01e75ea4a54db26dcf3b24cac442c0c0c",
+    "references/propulsion_dimensions_review.md": "12579c5ca9b851c820680bf6f58af61943e00b4111de6288056af145c2d84593",
+    "references/radio_module_compatibility.md": "79c9b11d8497f016d30db99200809bf4110b6906ad15626efa5b695eb4578b77",
+    "references/rail_fit_review.md": "62621972160bff2445ea867b3a553c805dd2a08f76a106a07cdca83413a6b61d",
+    "references/rail_joint_review.md": "87d28d1a9589004cbfabd48030aef7628ca4e004190aed8ba08c6ed4086d2e4a",
+    "references/retention_review.md": "e4914a8814426a00aa4be2ca54c9c98f4e757b8f89a91b9b55525dafc5a6b672",
+    "references/servo_horn_compatibility.md": "9ce67026d865cf574f1486349b27bbc2734e53da71c29d0902a3c39051e8ce01",
+    "references/shape_simplification_review.md": "53d5c54ed885a23c84dfb109563264dca2bd6995d51fdf97b03a6e892e9e3e16",
+    "references/simulation_parameters.md": "efc45b1390e5056c84d30ad52987c8127693234ec5d5f436ec61c318a6158102",
+    "references/square_mount_review.md": "23076b09e0df2f93c18d84aa578df8ff14d6b1cfdae1428c9d2afbedfcf155ef",
+    "references/universal_carrier_review.md": "4e607e8a18b2b0314b56cf8dad353b6fa24b76953a5ca1d9c371b78d32bafa42"
+  },
+  "ordered_pipeline": [
+    {
+      "stage": "build",
+      "exit_code": 0
+    },
+    {
+      "stage": "preview",
+      "exit_code": 0
+    },
+    {
+      "stage": "compare",
+      "exit_code": 0
+    },
+    {
+      "stage": "validate",
+      "exit_code": 0
+    },
+    {
+      "stage": "bundle",
+      "exit_code": 0
+    }
+  ],
+  "bundle": {
+    "path": "build/gondola_print_parts.zip",
+    "sha256": "9d111ca83b738baeccf44e7757db1f7e312e912bc64f16c926f2ca0b74c5f74c"
+  },
+  "blender": {
+    "verification": "build/blender_review/verification.json",
+    "scene_count": 7,
+    "sampled_frames": 1494,
+    "input_json_sha256": "b3235f749cbbc46b70ed0afa99c8ffa07a17c1a62ebf6d8a93089f9e8a3a21a8",
+    "blend_sha256": "214f6302a9c6be19170f6b3ff76f01006d75905a8381962ea224ea0138914b2f",
+    "stills": {
+      "blender_review/stills/01_Assembly.png": "b96279f9de421ee2ba01532d85d3fa53be66207a9f04c7201a521490dfbd0994",
+      "blender_review/stills/02_Independent_tilt.png": "8497d4ca459231bbf3625331c0225e97dde238574fd37b3a4496c02f5def05e6",
+      "blender_review/stills/03_Gear_and_horn.png": "fbf8dc91b9b8df9386f02713070c28c9331169c46b4ace9f4ea3620e4f9e5898",
+      "blender_review/stills/04_Axial_allowance.png": "1002dd152fc159cd1951f4c865f2cd301ed7e1d93822fc18b9d0c0e6333d54a6",
+      "blender_review/stills/05_Optical_on_Battery.png": "41c27ff4d3d1047d5e46519cf47f5f8cde863b69ea9df76e82a650cd5866a686",
+      "blender_review/stills/06_Optical_on_FC.png": "14257a51bd11629c05a91260eff3d75442474fd5c5e4781fe0aa21ec4053f790",
+      "blender_review/stills/07_Servo_module_removal.png": "cca10b392cdc74a55db0697890b07c959ea3bb6e57158bc77f56e691172dd0cb"
+    },
+    "visually_reviewed_stills": [
+      "blender_review/stills/01_Assembly.png",
+      "blender_review/stills/02_Independent_tilt.png",
+      "blender_review/stills/03_Gear_and_horn.png",
+      "blender_review/stills/04_Axial_allowance.png",
+      "blender_review/stills/05_Optical_on_Battery.png",
+      "blender_review/stills/06_Optical_on_FC.png",
+      "blender_review/stills/07_Servo_module_removal.png"
+    ]
+  },
+  "visually_reviewed_previews": [
+    "gondola_attachment_detail.png",
+    "gondola_attachment_opposite.png",
+    "gondola_attachment_section.png",
+    "gondola_electronics.png",
+    "gondola_optical_fc_stack.png",
+    "gondola_optical_stack.png",
+    "gondola_power_options.png",
+    "gondola_preview.png",
+    "gondola_print_parts.png",
+    "gondola_printed_structure.png",
+    "gondola_propulsion.png",
+    "gondola_rail.png",
+    "gondola_top.png",
+    "gondola_wiring.png"
+  ],
+  "simulation_snapshot": {
+    "path": "references/simulation_parameters.json",
+    "sha256": "59f6aafc0a7ebe43c90f269f2a4a3f889601a8c5ffdf49f9e78daa27502914a1",
+    "basis": {
+      "cad_file": "gondola.FCStd",
+      "cad_sha256": "981f480408191d5dcf88ab9b83e54d8bc9837519cb4ad429ab4bff853589466b",
+      "source_fingerprint": "801de155f7108c85da84eb55d08258693ff24edc4bdaeb0fcda6cd89dac1bddc",
+      "validation_sha256": "32c0c0ab087829cad8c849290d1929ac50f6398deb49bd50b909ae94673aa7b6",
+      "exporter_sha256": "371708d37de2f1483c640d2ea6e9c6b975c99e6602538621b4ab62dec6545020"
+    }
+  },
+  "evidence_archive": "bg_design_checks.json.gz",
+  "evidence_archive_sha256": "91bc2584748645372771c694860f9cd3e4c31f1349c386913a2583065e35771e",
+  "scope": "Completed automated artifact checks and explicitly listed visual reviews. Historical failed exploratory probes may be retained as supporting evidence; they are not accepted final checks. Physical strength, pointing, fit, cable routing, creep and flight remain unqualified."
+}
