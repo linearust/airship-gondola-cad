@@ -1,14 +1,14 @@
-# Rail matched-fit review — AJ
+# Rail matched fit and attachment
 
-Scope: the existing one-piece T rail and the three integral carrier shoes. Keep
+Scope: the one-piece T rail and integral carrier/frame shoes. Keep
 the removable paired servo/gear module separate. No purchased gear, bearing,
 shaft or servo-fit allowance is tightened by this rail-interface change.
 
 ## Geometry
 
 `gondola/parts/rail.py:fit_contract()` is the numerical source of truth. The
-unchanged 10 × 3 mm rail head runs in a nominal 10.2 × 3.2 mm channel: total
-lateral and vertical clearance is 0.2 mm, previously 0.9 mm. The recessed web
+10 × 3 mm rail head runs in a nominal 10.2 × 3.2 mm channel: total
+lateral and vertical clearance is 0.2 mm. The recessed web
 retains 0.45 mm per-side relief, so it does not compete with the head datum.
 The basic 18 × 22 mm shoe retains Z2.2–10.8; the propulsion frame alone
 extends its solid roof to Z11.4 to support the central servo plate.
@@ -24,6 +24,33 @@ The Ø2 mm screw face retains 0.5 mm upper/lower margins on the solid head.
 Nominal opposing jaw contact is 34.3425 mm² at a land centre and 32.5725 mm²
 at either allowed ±4 mm offset after the entrance bevels. These are contact
 geometry measurements, not load, indentation, friction or creep ratings.
+
+## Repeated attachment wings
+
+The user's fabrication review requires a nominal minimum 1.5 mm tape-attachment
+thickness. Both the one-piece rail base and every tape wing now use 1.5 mm;
+the 340 mm length, head, shoe and all equipment/propulsor datums stay unchanged.
+
+Ten identical rounded 14 × 32 mm wing pairs repeat at 36 mm pitch, centred at
+X −162, −126, −90, −54, −18, +18, +54, +90, +126 and +162 mm. Both ends and
+both sides are symmetric. Every wing centre meets a full head land. Adjacent
+wing footprints leave the same 22 mm longitudinal gap; no extra local wings
+or thin adhesive ledges are used. The existing 12 mm-wide tape references
+are raised with the wings, leaving 0.55 mm nominal clearance below the shoe.
+
+The propulsion shoe at X0 is bracketed by the wings at X±18. Its 18 mm
+footprint ends 2 mm from their inner edges. Battery X90 and FC X−54 retain
+centred tape support; navigation X−158 stays 4 mm from the end wing centre
+and within that 12 mm tape reference. This is support proximity, not a
+strength or adhesion qualification. A wing on every 18 mm head land would
+add avoidable material and tape application work; the uniform 36 mm pattern
+retains nearby support without that duplication.
+
+The thicker base increases bending stiffness; the unchanged 4.5 mm head/web
+reliefs and 0.5 mm roots do not guarantee the previous curvature response.
+Print the updated rail coupon, then test the full rail at the actual envelope
+curvature and loading. Nominal 1.5 mm geometry is not a delivered-thickness,
+fatigue or minimum-bend-radius guarantee.
 
 ## Manufacture and acceptance
 

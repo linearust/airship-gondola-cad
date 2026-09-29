@@ -1,0 +1,76 @@
+{
+  "revision": "BK",
+  "independent_review": "Approved for fixture promotion after complete saved-native comparison; this is not physical qualification or a substitute for the final release pipeline.",
+  "before": {
+    "git_revision": "2803a9ad1398af739f0fb238108862d65952c5a6",
+    "path": "tests/fixtures/rev_bj_geometry.FCStd",
+    "sha256": "3fb50bda82e4bf78d4020d2f1de777f742868ab6ce1dd7714cabf6a78075ba08"
+  },
+  "reviewed_candidate": {
+    "path": "/tmp/gondola-bk-candidate/gondola.FCStd",
+    "sha256": "18381282cc63cf5fbd52d85c7a757666d394cc6a488e1d099ef925852d08b611",
+    "source_fingerprint_before_fixture_promotion": "ca8773a1048f824963558bb9c286d9252ab0dccac12c8c831445fc2eb327626b"
+  },
+  "shape_review": {
+    "before_shapes": 134,
+    "after_shapes": 136,
+    "existing_local_and_world_shapes_unchanged": 113,
+    "intended_existing_changes": {
+      "ContinuousRail": "Nominal base and tape wings 1.2→1.5 mm; ten identical wing pairs at36 mm pitch, mirrored about centre. Rail running head and datum preserved.",
+      "RailFitSample": "Matching1.5 mm base; rail/shoe fitting geometry preserved.",
+      "PropulsionFixedFrame": "Only four top/bottom entrance bevel prisms removed; no lateral Y wall widening.",
+      "TapeWing0L..TapeWing8R": "18 reference tape solids follow the new regular positions and1.5 mm wing top."
+    },
+    "added_shapes": [
+      "TapeWing9L",
+      "TapeWing9R"
+    ],
+    "removed_shapes": [],
+    "all_existing_placements_types_parents_solid_counts_and_print_blanks_preserved": true,
+    "frame_cut_independent_probe": {
+      "construction": "Four literal triangular prisms,0.6x0.6mm XZ right triangle extruded2.2mm inY; two at x8.4..9,y6.95..9.15,z4.825/8.975 and two mirrored180deg aboutZ. No current-source chamfer helper used.",
+      "removed_volume_mm3": 1.5839999999999923,
+      "added_volume_mm3": 0.0,
+      "expected_removed_volume_mm3": 1.584,
+      "symmetric_difference_to_literal_prisms_mm3": 0.0,
+      "passed": true
+    }
+  },
+  "native_review": {
+    "expressions_identical": true,
+    "independent_literal_control_cases_per_document": 34,
+    "baseline_control_cases_per_document": 29,
+    "all_control_checks_passed": true,
+    "control_behavior_identical": true,
+    "control_values_and_placements_restored": true,
+    "registry_change": "TapeReferences appends onlyTapeWing9L/R; every other registry list unchanged.",
+    "custom_property_changes": [
+      "Remove obsolete DesignRegistry.NotionSource/NotionLastEdited; no remaining native property schema changes on existing objects.",
+      "Rail and frame manufacturing/print notes and rail1.5 mm unresolved-fit wording.",
+      "CapacitorServiceReserve.SourceURL becomes an explicit local user design-reserve reference.",
+      "Four M1.4 horn nuts cite the preserved final2026-09-29 cart; physical nut claims unchanged.",
+      "Generated source fingerprint/UID and preview visibility differences only otherwise."
+    ],
+    "property_capture_errors": 0
+  },
+  "evidence": {
+    "full_audit_sha256": "5e184ac117ffeef9eca459ac703fccfc2b20d013daa5bd2a37853ed0d213f679",
+    "audit_script_sha256": "444d14da6f7ab6b95e27cde41931d4c9849315c1d78fecf155aa6f5fd2cc25ab",
+    "read_only_files_unchanged": true,
+    "source_unchanged_during_capture": true,
+    "storage": "Full transition audit and audit script are retained in references/design_checks.json.gz after final collection; old revisions remain in Git history.",
+    "current_archive": "references/design_checks.json.gz"
+  },
+  "limits": [
+    "No source geometry whitelist was installed and no baseline fixture was changed by this audit.",
+    "First all-edge bevel candidate was superseded before approval; final frame removes1.584 mm³ only and preserves lateral capture walls.",
+    "Final native suite, saved-CAD checks, motion/service checks, export and visual review must bind the promoted source/file.",
+    "Printed fit, bending/creep/fatigue, tape strength, tool dimensions and assembly loads remain physical qualification work."
+  ],
+  "passed": true,
+  "fixture_promotion_approved": true,
+  "promoted_fixture": {
+    "path": "tests/fixtures/geometry.FCStd",
+    "sha256": "18381282cc63cf5fbd52d85c7a757666d394cc6a488e1d099ef925852d08b611"
+  }
+}

@@ -12,33 +12,39 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class RailContactTests(unittest.TestCase):
-    def test_battery_wings_add_only_local_base_material_and_preserve_old_supports(self):
+    def test_regular_wings_and_base_meet_manufacturing_thickness(self):
         import Part
 
         from gondola.parts import rail
 
-        original = rail.rail_shape(
-            pads=(-162.0, -108.0, -54.0, 0.0, 54.0, 108.0, 162.0)
-        )
         current = rail.rail_shape()
         self.assertTrue(current.isValid())
         self.assertEqual(len(current.Solids), 1)
-        self.assertLess(original.cut(current).Volume, 1e-6)
-        added = current.cut(original)
-        # Two rounded 14×32×1.2 plates, excluding their shared 6 mm base.
-        expected_added = 2 * (14 * (32 - 6) - 4 * 3**2 + math.pi * 3**2) * 1.2
-        self.assertAlmostEqual(added.Volume, expected_added, places=5)
-        permitted = Part.makeCompound(
-            [Part.makeBox(14, 32, 1.2, App.Vector(x - 7, -16, 0)) for x in (-90, 90)]
+        self.assertEqual(len(rail.PAD_CENTRES), 10)
+        self.assertEqual(
+            [b - a for a, b in zip(rail.PAD_CENTRES, rail.PAD_CENTRES[1:])],
+            [36] * 9,
         )
-        self.assertLess(added.cut(permitted).Volume, 1e-6)
+        self.assertEqual(rail.PAD_CENTRES, tuple(-x for x in rail.PAD_CENTRES[::-1]))
+        # Probe actual BRep material, including both wings and every relieved
+        # base section; a nominal constant alone must not certify thickness.
+        locations = [(x, y) for x in rail.PAD_CENTRES for y in (-12, 12)]
+        locations += [(9 + 18 * i, 0) for i in range(-9, 9)]
+        for x, y in locations:
+            with self.subTest(x=x, y=y):
+                witness = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
+                self.assertAlmostEqual(
+                    sum(edge.Length for edge in current.common(witness).Edges),
+                    1.5,
+                )
+        self.assertLess(current.cut(rail.half_turn(current)).Volume, 1e-6)
         self.assertAlmostEqual(current.BoundBox.XLength, 340)
         self.assertAlmostEqual(current.BoundBox.YLength, 32)
         self.assertAlmostEqual(current.BoundBox.ZLength, 8.4)
-        # The added wings do not fill any raised head/web relief.
+        # Regular wings do not bridge any raised head/web relief.
         self.assertTrue(rail.flex_relief_check(current, 340)["passed"])
 
-    def test_nine_paired_tape_stations_keep_the_single_wing_coupon(self):
+    def test_ten_paired_tape_stations_keep_the_single_wing_coupon(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
@@ -46,14 +52,14 @@ class RailContactTests(unittest.TestCase):
         try:
             kit = rail.build_rail(doc)
             self.assertEqual(len(kit["printed"]), 1)
-            self.assertEqual(len(kit["tapes"]), 18)
+            self.assertEqual(len(kit["tapes"]), 20)
             centres = sorted(
                 round((obj.Shape.BoundBox.XMin + obj.Shape.BoundBox.XMax) / 2, 6)
                 for obj in kit["tapes"]
             )
             self.assertEqual(
                 centres,
-                sorted([-162, -108, -90, -54, 0, 54, 90, 108, 162] * 2),
+                sorted([-162, -126, -90, -54, -18, 18, 54, 90, 126, 162] * 2),
             )
             solid = kit["printed"][0].Shape
             for tape in kit["tapes"]:

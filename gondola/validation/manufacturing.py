@@ -98,15 +98,8 @@ def review(doc, registry):
             "rail_functional_flexure_thickness",
             "ContinuousRail",
             (9, 0, -0.01),
-            (9, 0, 1.3),
-            1.2,
-        ),
-        (
-            "tape_wing_thickness",
-            "ContinuousRail",
-            (0, 12, -0.01),
-            (0, 12, 1.3),
-            1.2,
+            (9, 0, rail.PAD_THICKNESS + 0.1),
+            rail.PAD_THICKNESS,
         ),
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.99), (12, 0, 25.01), 2.0),
         (
@@ -173,6 +166,17 @@ def review(doc, registry):
             optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
         ),
     ]
+    analytic.extend(
+        (
+            f"tape_wing_thickness_x{x:g}_side{side:+d}",
+            "ContinuousRail",
+            (x, side * 12, -0.01),
+            (x, side * 12, rail.PAD_THICKNESS + 0.1),
+            rail.PAD_THICKNESS,
+        )
+        for x in rail.PAD_CENTRES
+        for side in (-1, 1)
+    )
     analytic.extend(optical_interface.manufacturing_wall_probes())
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
@@ -232,7 +236,7 @@ def review(doc, registry):
             "independent_optical_mount_contract": optical_mount.mount_contract(),
         },
         "rail_functional_flexure_exception": exception,
-        "supplier_acceptance_status": "Not yet confirmed: 1.2 mm narrow flexure, tape wings and one-piece manufacture require quote review.",
+        "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
@@ -245,7 +249,8 @@ def review(doc, registry):
         },
         "blanket_guide_compliance_claimed": False,
         "passed": bool(exception)
-        and "1.2mm" in exception
+        and f"{rail.PAD_THICKNESS:g}mm" in exception.replace(" ", "")
+        and rail.PAD_THICKNESS >= 1.5
         and all(row["no_detected_planar_wall_under_1p5mm"] for row in probes)
         and all(row["passed"] for row in measurements),
     }

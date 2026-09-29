@@ -23,13 +23,14 @@ from .power_options import power_option_contract
 from .servo_horns import SELECTED_BY_SIDE
 from .servo_horns import profile as horn_profile
 
-NOTION_URL = "https://app.notion.com/p/3e3ee52b5792806c94acc1f798594bad"
-NOTION_LAST_EDITED = "2026-09-22T05:48:39.341Z"
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BJ"
+DESIGN_REVISION = "BK"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 RAIL_LENGTH_MM = MAX_PRINT_PART_DIMENSION_MM
+# User's 2026-09-29 manufacturing review requires at least this nominal rail
+# attachment thickness; actual delivered dimensions/curvature remain unmeasured.
+RAIL_BASE_THICKNESS_MM = 1.5
 # Project structural interface, independent of the FC mounting-hole pattern.
 STACK_PITCH_MM = 45.0
 STACK_ANCHOR_CENTRES = tuple(
@@ -53,8 +54,8 @@ MANUFACTURING_DECISION = {
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
     "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
-    "nominal_rail_flexure_mm": 1.2,
-    "flexure_exception": "The narrow 1.2 mm flexure is intentionally below the 1.5 mm general wall target; supplier review and full-length bend/fatigue testing remain mandatory. Longer 4.5 mm reliefs offset some added bending stiffness.",
+    "nominal_rail_flexure_mm": RAIL_BASE_THICKNESS_MM,
+    "flexure_exception": "The rail base and tape wings use the user-reported manufacturing-review minimum of 1.5 mm nominal. The narrow base remains a functional flexure, not a generic broad plate; actual thickness, full-length curvature, tape retention and fatigue remain unqualified. The unchanged head/web reliefs do not cancel the added base stiffness.",
     "dfam_basis": "Prefer simple integral load-bearing sections and accessible through-features. Retain openings for assembly, wiring or motion; omit lightening windows that leave fragile narrow ligaments for negligible system-level benefit. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
@@ -70,7 +71,7 @@ MANUFACTURING_DECISION = {
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
     "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits. Battery, FC and navigation use three identical universal carriers with a 64 mm rounded square outline and a quarter-turn-symmetric shared bore/slot array. The navigation carrier supports navigation on its outer face and LR24-F-Mini on its rail-facing face outboard of the shoe, without a projecting utility tab. The FC and navigation carriers remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe and a broad circular deck support; the added rail clamp is required for independent position retention. Preserve the spare-slot head paths below the deck. Actual balloon clearance, installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
-    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. Retain the original tape wings and added symmetric wings at the battery land; larger trim changes require renewed support checks. Straight-coupon fit does not qualify sliding on the curved installed rail. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
+    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. Ten identical tape-wing pairs repeat at 36 mm pitch, symmetrically from -162 to +162 mm. The propulsion station is bracketed by wings at +/-18 mm; the other default modules remain within tape-strip footprints. The continuous base and wings are nominally1.5mm thick. Straight-coupon fit does not qualify sliding on the curved installed rail, support stiffness or adhesive retention; recheck after trim. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Both outboard seats and the central seat share one Z plane; the bridge underside is flat across these contacts. Unilateral X/Y datums locate it, and two existing M2x8 pairs clamp its plain 2 mm plate without head counterbores. Check the common seating plane for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Retain the four purchased generic 3x6x2.5 bearings for this iteration. Each rotor has two bearings at 70 mm centre spacing and 10 mm shaft grips; driven/idler rods remain 34/20 mm. A fixed round seat and integral rear shoulder locate each bearing; one identical removable front keeper per bearing uses one M2x6 screw and ordinary M2 nut. Broad pocket guides prevent keeper rotation. Tighten the keeper against its frame seat, not the bearing; no radial clamp or bearing preload is intended. The nominal diameter6.1 seat has a continuous bore across the full bearing width and requires process-matched coupon fit/finishing; reject radial rocking. The diameter5.6 keeper opening and0.5mm inward float require actual outer-ring/shield and axial-fit checks. Keeper fronts preserve the separate nominal +/-0.5mm carrier stops. Remove the carrier and shafts before bearing service; no latch deflection or two-blade release is required. No bought bearing spacers, push-on rings or replacement bearings. This is not a multiple-size housing; two bearings do not eliminate overhang bending or fit sensitivity.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier integrates the motor plate, guard, struts and shaft clamps. The selected carrier remains for 40 mm propellers, with a 50 mm outside / 46 mm inside guard. A separately checked symmetric replacement-rotor space allowance supports planning for a future 50 mm propeller carrier; it does not establish unknown motor, propeller, mounting, wiring or thrust compatibility. Replace the carrier rather than fitting a 50 mm blade into the present guard.",
@@ -341,7 +342,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "rail_flexure",
-        f"Creallo acceptance of one-piece {RAIL_LENGTH_MM:g}mm rail, 1.2mm flexures, curvature and depowdering.",
+        f"Creallo acceptance of one-piece {RAIL_LENGTH_MM:g}mm rail, {RAIL_BASE_THICKNESS_MM:g}mm base/wings, curvature and depowdering.",
     ),
     UnresolvedInterface(
         "motor_mount",
@@ -455,8 +456,5 @@ def project_status():
         "optical_stack_scope": "One compact foot/post uses an existing universal carrier side slot and supports the adhesive tray through a manual pitch-Y clamp. There is no independent optical rail shoe. Pitch corrects longitudinal curvature only; roll is not corrected. Host, edge, optical view and optional power/navigation combinations must pass composed checks. Physical pointing, fit, retention and creep remain unqualified.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "module_layout_decision": MODULE_LAYOUT_DECISION,
-        "notion_source": NOTION_URL,
-        "notion_last_edited": NOTION_LAST_EDITED,
-        "notion_source_scope": "The retained timestamp identifies the last reviewed live page. Its mechanical BOM, adjustable gear-spacing description and PETG fabrication baseline differ from the CAD. The user deferred document discussion until design review is complete; agree proposed changes before editing Notion. No document alignment is claimed.",
         **release_status(),
     }

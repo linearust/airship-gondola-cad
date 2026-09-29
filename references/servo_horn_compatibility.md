@@ -42,9 +42,7 @@ margin is not a drilling-quality, preload or strength qualification.
 
 The adapter has a **Ø1.8 mm round hole at 6.8 mm** and a **1.8 × 2.4 mm radial
 slot at 13.2 mm**. The far slot's end centres are ±0.3 mm from its factory axis.
-BF replaces BE's near slot with this round hole; the purchased horn, its two
-prepared holes, fasteners, gear planes and shaft stay unchanged. The far slot
-still accepts a nominal ±0.3 mm relative pitch error without shifting the near
+The far slot accepts a nominal ±0.3 mm relative pitch error without shifting the near
 joint. Tighten both joints before operation. The open root seat has Ø7.3 mm inside and
 Ø10.3 mm outside diameters, giving 0.15 mm nominal radial clearance around the
 Ø7 mm root. The plate is 10.3 mm wide with a 1.5 mm radial wall. Keep the ear bolts
@@ -52,18 +50,15 @@ seated during complete-servo removal as described below; do not withdraw their
 heads past the assembled adapter. This is an open locating saddle, not a
 self-centring precision pilot; check actual axis alignment and gear runout.
 
-The source root outline is a rear semicircle followed by two straight tapered
-edges from (X, Z) = (0, ±3.5) to (13.2, ±2.0) mm. Simply extending the circular
-seat around the front intersects those edges. With BE's two slots, the adapter
-could move 0.5 mm along the open-seat direction while nominal screw centres
-remained fixed. The BF near round hole limits that movement to 0.2 mm. Other
-directions meet the nominal root-seat boundary at about 0.15 mm. These limits
-describe unclamped parts; neither the root seat nor the round hole proves
-automatic concentricity. This change adds 3.888 mm³ of PA12 per adapter and
-removes no material.
+The source root outline is a rear semicircle followed by straight tapered
+edges from (X,Z)=(0,±3.5) to (13.2,±2.0) mm. The open saddle clears those
+edges; extending the circular seat around them would intersect the horn.
+The near round hole limits nominal loose movement along the open-seat direction
+to 0.2 mm; other directions meet the root-seat boundary near 0.15 mm. Neither
+feature establishes automatic concentricity.
 
-Front nut seats remain flat, with no counterbores. The near attachment at 6.8 mm
-clears the shaft boss, so the former long front relief channel is omitted.
+Front nut seats are flat, without counterbores. The near attachment at 6.8 mm
+clears the shaft boss.
 Keep the full 1.5 mm shaft-stop floor and the existing shaft grip.
 
 Each horn uses two **rear M1.4×8 screws and front M1.4 nuts**, without washers.
@@ -166,12 +161,3 @@ prepared holes, both mirrored drives, slot-end bearing support, selected hardwar
 seating, servo motion and the complete ordered service paths. Passing rigid CAD
 checks do not establish spline fit, preload, plastic/PA12 strength, creep, fatigue,
 elastic deflection or loaded gear runout.
-
-## Superseded alternatives
-
-The [original metal](selected_15t_4mm_horn_drawing.png),
-[second metal](metal_15t_4mm_horn_6_98_drawing.png) and
-[KST 0415.13 aluminium](kst_0415_13_horn_drawing.png) drawings remain historical
-references. They used different holes, fasteners and an earlier universal
-adapter. They are not supported substitutions for the BF adapter; do not restore
-their dimensions or aluminium density into the selected plastic-horn model.

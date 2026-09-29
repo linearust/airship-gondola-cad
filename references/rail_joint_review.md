@@ -1,76 +1,85 @@
-# Rail clamp and bearing-post roots
+# Rail joint and fixed-frame access
 
-This is a nominal geometric design review. It does not qualify tightening
-torque, holding force, PA12 creep, flexure fatigue or vehicle loads.
-The solid head and continuous roots introduced in AH remain. AJ's matched
-rail fit is described in [the rail fit review](rail_fit_review.md).
+Nominal CAD review; no tightening-torque, holding-force, PA12 creep, flexure-fatigue
+or vehicle-load qualification is implied. Rail/shoe fit and manufacturing
+acceptance remain in [rail_fit_review.md](rail_fit_review.md).
 
-## Clamp load path
+## Clamp and rail
 
-The previous M2 screw pressed the 1.6 mm-high side of the T head. Its nominal
-2 mm shank end extended past that face vertically. Local indentation and
-creep were plausible concerns even though no test established a failure.
-The opposed shoe jaw reacts the screw load across the head; it is inaccurate
-to describe all clamp force as bending the thin tape/base flexure.
+The M2 screw tip bears on the 3 mm-high solid T head, with nominal 0.5 mm head
+material above and below its full 2 mm end envelope. The opposing shoe jaw reacts
+this load; the screw does not press directly on a thin tape wing. Retain complete
+head lands at both clamp stations and inspect the actual screw tip for burrs.
+Tighten only enough to prevent slip, then check indentation, settling and creep
+under actual loads. A general-purpose screw is not a qualified pressure screw.
 
-The revised rail has a 3 mm-high solid head. The screw is centred vertically
-on it, leaving nominal 0.5 mm above and below its full 2 mm end envelope.
-The shoe cavity and roof are revised together. The existing M2 screw/nut pair,
-sliding adjustment, lateral seating offset and removable carrier arrangement
-are retained. Equipment and optical datums are not raised with the shoe roof.
+The lower base and tape wings are 1.5 mm thick, incorporating the user's print
+review minimum. Ten identical paired wings use 36 mm pitch at X = ±18, ±54, ±90,
+±126 and ±162 mm. Their 14 mm longitudinal length leaves 22 mm between wings.
+They retain the continuous lower flexure and regular head lands. Default equipment
+stations align with wings; the central propulsion station is bracketed by ±18 mm
+wings. This geometry does not establish an acceptable balloon curvature, tape
+bond or flexure life. Qualify the matched rail/shoe coupon and full rail at the
+actual installed curvature with the selected PA12 process and finish.
 
-This remains a local screw-tip friction clamp. A thicker head improves its
-geometric support but does not establish a pressure rating or prevent damage
-from excessive tightening. Inspect the actual tip and contact faces; use the
-minimum tightening needed to prevent slip and recheck indentation, settling
-and creep under the real loads. Do not treat an ordinary screw as a certified
-flat-ended pressure screw. The matched rail/shoe coupon must be printed and
-tested with the actual hardware and the agreed PA12 process/finish.
+## Fixed frame and postprocessing
 
-A separate pressure pad would add handling and a printed spring pad would
-introduce a new compliant feature requiring its own fit and fatigue evidence.
-The selected revision therefore keeps the simple solid opposing faces and
-common fasteners. The 1.2 mm base flexure and open relief gaps remain a
-separate curvature/adhesion qualification problem.
+The four bearing-post roots are continuous. The outboard floor is 3 mm thick;
+the short central rail-service floor is 2 mm thick. The removable paired-servo
+bridge retains its full coplanar central support, two outer seats and unilateral
+X/Y locating faces. Route leads around the posts using existing members.
 
-## Continuous post roots and tool access
+The [supplied print-review screenshot](manufacturing/frame_postprocessing_markup_2026-09-29.png) highlights small central rail-fastener
+features. It does not dimension the highlighted faces; the two side-loaded nut
+ports are the corresponding narrow central passages in the current geometry.
+The review warns of restricted postprocessing access. It is not evidence that
+this PA12 design requires printed supports in a particular process.
 
-The old long tool corridor pierced all four bearing-post roots with 6.4 by
-4 mm openings. Each 9.6 mm-wide post was left with two 1.6 mm-wide legs there.
-These were tool/wire reservations, not a required bearing or shaft interface.
-No completed cable route justified piercing the roots.
+The fixed frame now has a 0.6 mm entrance chamfer on the top and bottom edges of
+both nut-loading mouths:
 
-The roots are now continuous. Only local access near the rail fastener and
-servo bridge remains. Route leads around the posts, secured to existing arms;
-the motor-wire loop reservation is not a complete connected harness route.
-AJ also replaces the former long perimeter openings with a continuous 3 mm
-outboard floor, while preserving the short 2 mm rail-tool floor. The shorter
-propulsor spacing and the central servo seat are covered in
-[the support review](shape_simplification_review.md). These wider load paths
-are not a quantified strength multiplier.
+| Feature | Nominal geometry |
+| --- | --- |
+| Port mouth before / after relief | 2.2 × 4.15 / 2.2 × 5.35 mm |
+| Chamfer depth from each exterior X face | 0.6 mm |
+| Retained internal throat | 2.2 × 4.15 mm |
+| Remaining roof over the relieved entrance | 1.825 mm minimum |
+| Minimum inner / outer lip at mouth | 1.55 / 1.85 mm, unchanged |
+| Hex seat, nut reaction land, screw axis and rail capture | Unchanged |
 
-Propulsion-clamp access uses a 1.5 mm L-key by its short arm instead of a long
-straight driver through the posts. Equipment clamps use its long arm. The
-dimensional reference has a 50 mm long arm and a
-16 mm short arm. The GEDORE red catalogue lists those dimensions for
-R36601508, but the live product title says 45 by 14 mm while its technical
-fields still list the larger dimensions. This unresolved source conflict
-means the model number alone is not an accepted purchase specification.
-The shared CAD service check includes the elbow/handle, working motion,
-screw loosening and ordered tool removal against the installed parts.
-Measure the supplied key or obtain a dimensionally confirmed substitute.
-The accepted service envelope includes up to 2 mm socket insertion, rather
-than checking a tool hovering outside the head. This is an access allowance,
-not a claim that the selected screw has a 2 mm-deep socket. Confirm actual
-socket engagement and the tool's bend geometry. A hex size alone does not
-specify its arm lengths, and tool clearance does not qualify the user's hand
-access or connected wiring.
+The relief eases vertical tool approach for cleaning and finishing; it does **not**
+make the whole passage wide. Work on the bare frame before installing hardware.
+A nominal straight Ø2 mm finishing tip can reach the nut axis from either side,
+with a Ø5 mm handle starting 3 mm outside the frame. A Ø2.4 mm tip cannot pass
+the retained throat. The same Ø2 mm tip also clears nominal ±7° vertical approaches that the old
+sharp mouth obstructed. These are checked tool envelopes, not identification of
+Creallo's equipment or a guarantee of finishing consistency. Request confirmation
+for the chosen process/finish and inspect the actual throat and received nut.
 
-## Sources
+No extra part or fastener was added. The entrance reliefs remove only 1.584 mm³ of
+PA12 from the frame. Exact saved-shape checks allow only these two bounded reliefs;
+material removal elsewhere in the throat, rail channel or roof is still rejected.
+Existing continuous nut insertion, clamp release and hex-key checks remain required.
 
-- [Creallo design limits and tolerances](https://creallo.com/ko/guide/design-spec-guide):
-  minimum printable walls and raw tolerances are not structural allowables.
+## Assembly-tool envelope
+
+The propulsion clamp uses a nominal 1.5 mm L-key by its short arm; equipment
+clamps use its long arm. The geometric envelope reserves a 50 mm long arm,
+16 mm short arm, elbow, working sector, loosening and ordered removal against
+installed parts. The referenced GEDORE catalogue and product-page title have
+conflicting lengths, so the model name alone is not an accepted purchase
+specification; measure the received key.
+
+The service check includes 0–2 mm socket insertion. This is an access allowance,
+not evidence of the kit screw's actual socket depth. Confirm socket engagement,
+key bend, hand access and wiring in the assembled vehicle.
+
+## Source basis
+
+- [User-supplied manufacturing feedback, 2026-09-29](manufacturing/supplier_feedback_2026-09-29.json):
+  local entrance relief is the design response, not process qualification.
+- [Creallo design limits](https://creallo.com/ko/guide/design-spec-guide):
+  process selection and actual supplier acceptance remain pending.
 - [GEDORE red catalogue, p. 66](https://www.gedore.com/-/media/files/catalogues/gedorered-catalogue-2022-2023.pdf)
-  and [live R36601508 product information](https://www.gedore.com/en-at/products/assembly-tools-for-screws-%2C-a-%2C-nuts/screwdrivers/cranked-allen-socket-screwdrivers-for-in-hex-screws/r3660-hexagon-socket-key-with-hexagon-socket/r36601508---3301282):
-  dimensional reference with the title/table conflict described above;
-  not identification or dimensional certification of the user's kit key.
+  and [R36601508 product page](https://www.gedore.com/en-at/products/assembly-tools-for-screws-%2C-a-%2C-nuts/screwdrivers/cranked-allen-socket-screwdrivers-for-in-hex-screws/r3660-hexagon-socket-key-with-hexagon-socket/r36601508---3301282):
+  dimensional context with the unresolved catalogue/title conflict above.

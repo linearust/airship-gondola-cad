@@ -51,6 +51,10 @@ class IntegralShoeValidationTests(unittest.TestCase):
                 row["declared_central_nut_pocket"],
                 row["part"] in ("BatteryMount", "ElectronicsMount", "AccessoryMount"),
             )
+            self.assertEqual(
+                row["declared_nut_entry_chamfer_mm"],
+                0.6 if row["part"] == "PropulsionFixedFrame" else 0.0,
+            )
             self.assertLess(row["difference_mm3"], 1e-5)
             self.assertLess(
                 row["protected_capture_at_or_below_z10"]["difference_mm3"], 1e-5
@@ -78,6 +82,23 @@ class IntegralShoeValidationTests(unittest.TestCase):
                     self.assertGreater(row["difference_mm3"], 0.39)
                 finally:
                     obj.Shape = original
+
+    def test_nut_entry_chamfer_does_not_exempt_internal_port_walls(self):
+        obj = self.doc.PropulsionFixedFrame
+        original = obj.Shape.copy()
+        try:
+            # Just behind the declared 0.6 mm mouth relief, still in a
+            # load-bearing wall beside the unmodified internal nut throat.
+            cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(7.8, 6.55, 6.65))
+            obj.Shape = original.cut(cut)
+            row = next(row for row in self.checks() if row["part"] == obj.Name)
+            self.assertFalse(row["passed"], row)
+            self.assertGreater(row["difference_mm3"], 0.09)
+            self.assertGreater(
+                row["protected_capture_at_or_below_z10"]["difference_mm3"], 0.09
+            )
+        finally:
+            obj.Shape = original
 
     def test_missing_blind_floor_is_rejected_for_every_central_carrier(self):
         cut = Part.makeCylinder(0.45, 1.6, App.Vector(0, 0, 8.45))

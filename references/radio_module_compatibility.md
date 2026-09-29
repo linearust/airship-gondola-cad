@@ -1,7 +1,7 @@
 # Selected onboard telemetry radio: LR24-F-Mini
 
 The onboard radio is **LR24-F-Mini only**, paired with **LR24-F on the ground**.
-The user's AT decision removes LR900-A support. Do not restore it as an alternate
+LR900-A is outside current scope. Do not restore it as an alternate
 profile, add a full-size F bracket, or count the ground unit as onboard mass.
 
 ## Manufacturer interface
@@ -25,7 +25,7 @@ Published module mass excludes the separately fitted antenna, harness and adhesi
 
 ## Attachment and wiring limits
 
-BF uses the same 64 × 64 × 2 mm square plate in all three carrier roles; the
+The same 64 × 64 × 2 mm square plate is used in all three carrier roles; the
 [current plate review](dense_mount_review.md) defines its denser common array.
 The Mini uses the navigation carrier's rail-facing face at local (26, −11) mm,
 long axis Y, populated face toward −Z and the balloon. It has no separate plate,
@@ -35,16 +35,9 @@ side-slot row. Each has 60 mm² of complete plate backing and nominal body overl
 Their total 120 mm² is available contact, not a qualified holding area. The nominal
 body overhangs the +X edge by 3.1 mm.
 
-This position clears both local rail-clamp tool approaches and the optional
-power portal's foot fasteners and service reservations. The former (0, −26)
-position blocked the negative-Y clamp approach; merely reversing that Y position
-blocks the other approach. Rotating the radio at (26, 0) clears the rail tool but
-obstructs optional-power fastener service, so retain the −11 mm body offset.
-The BF strip changes retain the existing body and connector-reserve datums.
-If relocating the radio, recheck its body, both contact strips, connector reserves
-and service paths together.
-Source datums in `equipment_mounts.py` and `equipment_layout.py` own the heights;
-the common plate underside remains 2 mm higher than AY to accommodate common-slot heads.
+If relocating the radio, recheck the body, both contact strips, connector
+reservations, rail-clamp tool approaches and optional-power foot service together.
+Source datums in `equipment_mounts.py` and `equipment_layout.py` own the heights.
 
 The adhesive allocation is not a measured bearing face or a qualified area.
 The underside photograph shows components: verify insulation, pressure, heat,
@@ -53,8 +46,7 @@ structure if needed, keeping components and ports clear. Actual balloon curvatur
 and plugged height remain unmodeled. Remove the carrier for bench installation
 and service; this is not proof of on-balloon connector access.
 
-See [square_mount_review.md](square_mount_review.md) for the shared array and
-current verification boundary. Older AY placement and clearances are superseded.
+See the [shared plate](dense_mount_review.md) for the array and verification boundary.
 
 ## Retained primary evidence
 

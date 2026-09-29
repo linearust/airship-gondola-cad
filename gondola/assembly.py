@@ -18,8 +18,6 @@ from gondola.contracts.design import (
     DESIGN_REVISION,
     EXCLUDED_EQUIPMENT,
     MODULE_STATIONS,
-    NOTION_LAST_EDITED,
-    NOTION_URL,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     WIRING_PURCHASE_PLAN,
     release_status,
@@ -233,8 +231,6 @@ def build_assembly():
         json.dumps(power_option_contract(), sort_keys=True),
     )
     set_property(registry, "OptionalPowerDocument", POWER_ARTIFACT_NAMES[0])
-    set_property(registry, "NotionSource", NOTION_URL)
-    set_property(registry, "NotionLastEdited", NOTION_LAST_EDITED)
     set_property(
         registry,
         "ScopedListedEquipmentMassGrams",

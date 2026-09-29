@@ -215,7 +215,36 @@ def _registration_bounds(plan_key):
     return result
 
 
-def _configuration_conflicts(plan_key, pose, context, host_name, *, packaging=PORTAL):
+def _portal_foot_service_conflicts(physical, pose, context, off_rail_names):
+    """Bench access; only the detached rail and its tape are absent.
+
+    Keep the complete host and every other supplied obstacle conservatively.
+    The matching operated bolt/nut pair is the only local tool-contact exemption.
+    """
+    tools = _placed(dict(stack_interface.clamp_tool_reservations()), pose)
+    obstacles = {
+        name: shape for name, shape in context.items() if name not in off_rail_names
+    }
+    conflicts = _collisions(tools, obstacles)
+    for name, tool in tools.items():
+        index = name.rsplit("_", 1)[1]
+        operated = {"PowerFootBolt" + index, "PowerFootNut" + index}
+        conflicts.extend(
+            _collisions(
+                {name: tool},
+                {
+                    part: shape
+                    for part, shape in physical.items()
+                    if part not in operated
+                },
+            )
+        )
+    return [{**row, "phase": "off-rail foot-fastener service"} for row in conflicts]
+
+
+def _configuration_conflicts(
+    plan_key, pose, context, host_name, *, packaging=PORTAL, off_rail_names=()
+):
     local_physical, local_reserves = power_mount.local_shapes(
         plan_key, packaging=packaging
     )
@@ -272,16 +301,9 @@ def _configuration_conflicts(plan_key, pose, context, host_name, *, packaging=PO
                 )
             ]
         return [{"phase": "nominal", **row} for row in nominal]
-    # Foot-fastener access is checked on the removed carrier, as specified by
-    # the service contract. Other modules on that carrier remain obstacles.
-    host = stack_interface.MECHANICAL_HOSTS[host_name]
-    tools = _placed(dict(stack_interface.clamp_tool_reservations()), pose)
-    nominal += [
-        {**row, "phase": "foot-fastener service"}
-        for row in _collisions(
-            tools, {name: shape for name, shape in context.items() if name != host}
-        )
-    ]
+    # The documented sequence removes the carrier from the rail before this
+    # bench operation. Installed/registration checks still retain rail and tape.
+    nominal += _portal_foot_service_conflicts(physical, pose, context, off_rail_names)
     # Feet intentionally seat on their host. Its mating-hole/clamp fit is a
     # separate interface check; arbitrary host overlap is never excused nominally.
     obstacles = {
@@ -302,6 +324,11 @@ def screen_configurations(main_doc):
     from .contracts.equipment_options import NAVIGATION_PROFILES, get_navigation_profile
     from .parts import equipment_envelopes, wiring_reserves
 
+    off_rail_names = frozenset(
+        obj.Name
+        for category in ("RailSegments", "TapeReferences")
+        for obj in getattr(main_doc.DesignRegistry, category, ())
+    )
     optical = main_doc.getObject("OpticalFlowModule")
     optical_attachment = (
         {"host": optical.CarrierHostName, "side": str(optical.MountSide)}
@@ -332,7 +359,12 @@ def screen_configurations(main_doc):
         conflicts = [
             *configuration_conflicts,
             *_configuration_conflicts(
-                plan_key, pose, context, host_name, packaging=packaging
+                plan_key,
+                pose,
+                context,
+                host_name,
+                packaging=packaging,
+                off_rail_names=off_rail_names,
             ),
         ]
         return {
@@ -439,6 +471,12 @@ def screen_configurations(main_doc):
         and row["packaging"] == power_mount.DEFAULT_PACKAGING
     )
     return {
+        "foot_fastener_service": {
+            "mode": "Disconnected carrier and complete portal removed from the rail for bench service",
+            "excluded_only_during_bench_service": sorted(off_rail_names),
+            "retained_obstacles": "Complete host and every other context object, plus optional platform and boards; only each tool's operated bolt/nut pair is an intended-contact exemption.",
+            "scope": "Disconnect leads and remove the complete carrier from the rail first. This is a conservative bench tool-space check, not permission to reach through installed tape or the balloon; no connected harness or hand clearance is qualified.",
+        },
         "saved_optical_carrier_attachment": optical_attachment,
         "configurations": rows,
         "default_configuration_clear": default["permitted"],

@@ -36,7 +36,7 @@ sensor. Check actual seating, retention and pointing before use.
 Keep adhesive away from connectors and optical apertures. A cable tie must not
 cross the optical face, its three apertures or raised range-sensor tubes. No
 qualified tie path or extra tie slot is assumed; rear-face tape is the basic
-attachment method. Actual harness slack must follow both manual axes without
+attachment method. Actual harness slack must follow the manual pitch axis without
 pulling the sensor.
 
 ## Optical and connector screening assumptions

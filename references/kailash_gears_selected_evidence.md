@@ -1,14 +1,14 @@
 # Selected Kailash gear evidence
 
 The user supplied saved AliExpress product pages and the two retained 16T
-images, then selected these exact options for CAD. These are seller statements
+images, then selected these exact options for CAD. The [final cart record](cart_selected_parts_2026-09-29.json) preserves selected text and quantities independently of expiring links. These are seller statements
 and nominal dimensions, not a received-part inspection. Project purchase keys
 are internal identifiers, not supplier order codes.
 
 | Item | 48T driver | 16T output |
 | --- | --- | --- |
 | Product | [Kailash HDAA-05 listing](https://www.aliexpress.com/item/1005011637445325.html) | [Kailash XC05-S1 listing](https://www.aliexpress.com/item/1005013121105173.html) |
-| Selected option | 48 Teeth / 3 mm | 16 teeth / 3 mm; cart label `3mm3`, clarified by the dimension table |
+| Selected option | 48 Teeth / 3 mm | 16 teeth / 3 mm; final cart option `3mm/16개 치아` |
 | Module / pressure angle | 0.5 / 20° | 0.5 / 20° |
 | Tooth type / process | External spur / hobbing, seller stated | External spur / hobbing, seller stated |
 | Pitch / outside diameter | 24 / 25 mm | 8 / 9 mm |

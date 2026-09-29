@@ -1,9 +1,6 @@
 # Selected drivetrain and preparation contract
 
-The user's latest cart-based selection supersedes the previous MISUMI-only
-purchasing request and the former 60T/20T and 64T/20T CAD configurations.
-Existing geometry is not a constraint. Optimize the complete indoor LTA
-mechanism, including couplings, retention, printability and replacement access.
+Selected purchased interfaces are recorded in the [final cart snapshot](cart_selected_parts_2026-09-29.json). Nominal selection does not establish received fit, strength or loaded performance.
 
 ## Selected configuration
 
@@ -26,9 +23,8 @@ Their source selection is not an assertion about physical fit or strength.
   open Ø7.3 mm root seat, a near Ø1.8 mm round hole and a far 1.8 × 2.4 mm
   radial slot. Centre the axes before tightening both attachments; the slot
   accommodates assembly pitch error, not operating slip or shaft eccentricity.
-  Follow [OEM horn compatibility](servo_horn_compatibility.md) and the ordered
-  [service review](horn_service_review_2026-09-29.md). Older three-metal-horn
-  compatibility and continuous radial-slot claims are superseded. Delivered
+  Follow the preparation and ordered service sequence in
+  [OEM horn compatibility](servo_horn_compatibility.md). Delivered
   fit, prepared-horn strength, runout and loaded retention remain unverified.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
@@ -54,10 +50,6 @@ If unsuitable, use a dimensionally verified nominal-3mm precision replacement
 and recheck grip and fit. Current preparation is summarized in
 [the cart review](cart_adaptation_review.md).
 
-Historical choices only: finished MISUMI PSFU3 and the earlier
-[6061 rod listing](https://www.aliexpress.com/item/1005005983061241.html) are
-superseded. Retaining their evidence is not an instruction to order them.
-
 The stock-preparation keys encode cut length and optional local-flat length and
 offset. Flat depth is nominally 0.5 mm. Cut square, deburr and keep all output
 bearing journals round. The input stub may have a full-length flat because it
@@ -67,7 +59,7 @@ one another; do not infer tooth-to-screw phase from the seller images.
 The user confirms the four [generic 3 x 6 x 2.5 mm bearings](https://www.aliexpress.com/item/1005007668446060.html)
 from the original final cart were purchased and must remain in this iteration.
 They are not identified as NSK/ISC parts. Retained ISC MR63ZZ data remain a
-comparison, not certification of the received lot or its mass. BJ uses fixed
+comparison, not certification of the received lot or its mass. The design uses fixed
 round seats, integral rear shoulders and four identical keyed front keepers,
 each fixed by one ordinary M2×6 screw/nut pair. Keepers seat on the frame,
 without intended bearing preload; no radial clamp or purchased bearing spacer

@@ -14,7 +14,7 @@ from gondola.cad import (
     set_property,
 )
 from gondola.contracts import equipment_interfaces as interfaces
-from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG, NOTION_URL
+from gondola.contracts.design import FC_INSTALLATION_LOCAL_YAW_DEG
 from gondola.contracts.equipment_options import (
     get_navigation_profile,
     get_radio_profile,
@@ -251,7 +251,7 @@ def build_equipment(doc, battery_group, electronics_group, accessory_group):
             5, 16, V(*CAPACITOR_RESERVE_CENTRE_XY, layout.adhesive_bottom())
         ),
         "Provisional space for the specified35V220uF capacitor, near the FC, with wiring and device-service clearance checked separately. This is not a selected component or retaining mount. Insulation, leads, actual dimensions, antenna proximity and retention remain to be selected; no printed attachment or invented hole is added.",
-        NOTION_URL,
+        "User-selected nominal reserve; gondola/contracts/design.py",
     )
     capacitor.Role = "Clearance"
     capacitor.Label = "RESERVE | 35V220uF capacitor"

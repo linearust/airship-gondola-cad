@@ -72,7 +72,7 @@ PROCUREMENT_SPECS = {
         "search_query": "M1.4 DIN934 nut 3mm AF 1.2mm",
         "candidate_url": SERVO_NUT_SOURCE,
         "requirements": "Two per selected X06 stock plastic half arm1, four total, on the adapter's flat front. Nominal M1.4x0.3,DIN934 AF3.0mm,height1.2mm. Require AF2.9..3.0,height<=1.2mm and full thread engagement. Hold with fine parallel pliers/open tool from the arm end; remove the outer nut first. No recessed nut seat, washer or plastic tapped thread is specified.",
-        "evidence_notes": "The 2026-09-27 cart selects100pcs M1.4 brass from item32977174437. Seller material is brass, not304 steel; grade and received dimensions remain unverified. The separate Fastenal DIN934 dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95 as CAD acceptance dimensions, not certification of this seller lot.",
+        "evidence_notes": "The final2026-09-29 cart selects100pcs M1.4 brass from item32977174437; retained in references/cart_selected_parts_2026-09-29.json. Seller material is brass, not304 steel; grade and received dimensions remain unverified. The separate Fastenal DIN934 dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95 as CAD acceptance dimensions, not certification of this seller lot.",
     },
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",

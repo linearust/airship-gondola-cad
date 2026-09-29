@@ -1,10 +1,8 @@
-# BJ bearing retention: purchased bearings and removable keepers
+# Purchased bearings and removable keepers
 
 Design decision, 2026-09-29. The user confirms the original final-cart generic
 **3 × 6 × 2.5 mm** bearings were purchased; retain four, without buying flanged
-or differently sized replacements. This supersedes the bearing-latch portion
-of [the historical retention review](retention_review.md). That record and its
-old verification results do not qualify BJ.
+or differently sized replacements.
 
 ## Architecture and reason
 
@@ -16,7 +14,7 @@ locks the aligned position. The screw clamps
 the keeper onto a hard frame seat, without intended pressure on the bearing.
 Radial support, axial bearing capture and shaft grip remain separate functions.
 
-![Nominal bearing cup and removable keeper, exploded](bj_bearing_keeper_exploded.png)
+![Nominal bearing cup and removable keeper, exploded](bearing_keeper_exploded.png)
 
 Illustrative unit view; the grey annulus is the bearing envelope, not a model of
 the actual races or shields. Production geometry remains in the native CAD.
@@ -40,7 +38,7 @@ not extra looseness or tightening one housing around multiple sizes.
 Cup coordinates use +Y toward the rear shoulder; the nominal bearing occupies
 Y0..2.5 mm. Mirror the complete interface for the opposite side.
 
-| Item | BJ design value / limit |
+| Item | Nominal design value / limit |
 | --- | --- |
 | Bearing | Purchased generic Ø3 bore × Ø6 outside × 2.5 width; identity, tolerances and ring lands unmeasured |
 | Fixed seat | Ø6.1 mm, continuous circular support across the nominal bearing width; a coupon/finishing trial, not a certified fit |
@@ -110,30 +108,8 @@ reinstalling the carrier/stubs. Actual tool access and the ordered movement
 must be represented by the final CAD service checks; no sprung-arm motion or
 two-blade opening is required.
 
-Baseline inventory changes from BI: installed prints **12 → 16**; M2×6 screws
-**2 → 6**; M2 nuts **15 → 19**; M2×8 screws remain **13**. Bearings remain **4**.
-The separate keeper coupon changes coupon count **3 → 4**, without becoming a
-flight part. Installed keepers share `OutputBearingKeeper`; the test piece uses
-`BearingKeeperFitSample`. The final export contains **13 print SKUs**, each in
-STL and STEP formats.
-
-Relative to the previous BI maintenance build, installed printed volume increases
-by **1,583.01 mm³**. The existing material-density model estimates **+1.60 g**
-for PA12 and **+2.13 g** for the four added M2 screw/nut pairs: **+3.73 g** combined.
-These are geometric estimates, not measured parts or complete vehicle mass;
-coupons are excluded. Retain the density and hardware-envelope assumptions in
-the generated mass budget when comparing alternatives.
-
-The final native CAD comparison, complete motion/service checks and print/BOM
-export checks passed. Both rotor-to-metal clearance bounds remain **1.914 mm**
-through the checked rotation and axial travel. Six Blender review scenes and
-the SI parameter snapshot were regenerated from the same validated saved CAD;
-the simulation geometry values are unchanged.
-
-[BJ verification](bj_design_verification.json) binds the exact source, CAD,
-independently approved fixture and [full evidence archive](bj_design_checks.json.gz).
-The initial 567-test discovery recorded two fixture errors; both were corrected,
-and all 31 affected tests passed with no skips. Those original errors and the
-separate diagnostic-report correction remain visible in the evidence. This is
-combined coverage, not a claim of one clean full-suite run on the final source.
+The current generated BOM and manufacturing manifest own installed/coupon
+quantities. Keepers share one print SKU; the matching test piece is separate
+from the flight assembly. Use saved-CAD validation bound to the current source
+for geometry and service results; prior revisions do not qualify changed parts.
 Physical fit, holding strength, loaded operation and PA12 creep remain unqualified.

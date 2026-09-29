@@ -1,7 +1,6 @@
 # Interchangeable navigation modules
 
-Manufacturer inputs retained from the 2026-09-25 review; carrier layout updated
-for AY on 2026-09-27. The user selected one shared navigation location for
+Manufacturer inputs retained from the 2026-09-25 review. Use one shared navigation location for
 **LinkTrack P-AS, MicoAir MG-A01/M10 Ultra, or MG-F10 with an external helix**.
 These are alternatives, not three simultaneously installed devices. P-AS remains
 the default until a specific GPS is selected. Mechanical interchangeability does
@@ -53,24 +52,18 @@ can carry a tall 15 g antenna or connector-tightening loads.
 
 ## Shared carrier and antenna arrangements
 
-AY uses the same printed carrier for battery, FC and navigation. The selected
-navigation module remains centred on its carrier; the onboard Mini uses the
-opposite plate face, beside the rail shoe. No projecting tab or dedicated
-navigation/radio plate is needed. All three carriers include the two confirmed
-P-AS mounting axes and their full support lands while generic positions use the
-shared mounting slots. GPS alternatives use
-an unpierced 18 × 14 mm adhesive allocation in the same navigation region; the
-P-AS holes lie outside this rectangle. These are mutually exclusive devices.
-The FC occupies another copy of the carrier and retains its optical-stack anchors.
+The same printed carrier supports battery, FC and navigation roles. The selected
+navigation module is centred at its declared local datum; the Mini uses the
+opposite face beside the shoe. P-AS uses its confirmed two axes within the
+common slots. GPS alternatives use two continuous adhesive strips around the
+spare centre bore; exact rectangles and centres are defined in
+[equipment_mounts.py](../gondola/parts/equipment_mounts.py). They are not a
+claim of a flat, component-free PCB back or qualified adhesive strength.
 
-The navigation carrier's rail station places it beyond the FC; its shoe,
-navigation centre and structural stack datum now share the local origin.
-The formerly offset navigation and tower datums are obsolete. Moving the plate inward
-requires renewed optical, antenna, connector and service clearance checks.
-The 2 mm plain deck is supported by its integral shoe without a long
-narrow navigation branch. Loaded deflection and tape retention, especially with
-the 15 g helix, still require a prototype. Support the SMA socket while attaching
-its antenna; do not use the printed deck as a tightening lever.
+Moving the carrier or changing the antenna requires renewed optical, connector
+and service checks. Support the SMA socket while attaching its antenna; do not
+use the deck as a tightening lever. The helix's 15 g reference mass and socket
+loads require physical retention and deflection checks.
 
 The Mini's inverted installation and connector reservations are separate from
 the navigation face. Its populated face points toward the unmodeled balloon;
@@ -78,7 +71,7 @@ service it with the carrier removed rather than assuming on-balloon access.
 See [radio installation limits](radio_module_compatibility.md).
 
 The common carrier's shape and spare mounting-slot limits are described in
-[universal carrier review](universal_carrier_review.md). Its different mounting
+[shared plate review](dense_mount_review.md). Its different mounting
 roles remain separate installations: identical print geometry does not qualify
 the navigation instance as an optical host, nor permit a direct MG-F10 antenna
 and the optional power tower on that same instance simultaneously.

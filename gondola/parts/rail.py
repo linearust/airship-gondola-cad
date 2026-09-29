@@ -21,14 +21,16 @@ from gondola.cad import (
     union,
 )
 from gondola.contracts import fasteners
-from gondola.contracts.design import RAIL_LENGTH_MM
+from gondola.contracts.design import RAIL_BASE_THICKNESS_MM, RAIL_LENGTH_MM
 from gondola.contracts.hardware import HEX_NUT_SOURCE
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
-# Keep the original trim-support stations and add wings at the battery land.
-PAD_CENTRES = (-162.0, -108.0, -90.0, -54.0, 0.0, 54.0, 90.0, 108.0, 162.0)
-PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, 1.2
+# Ten identical stations mirror across the centre. Every station meets a
+# complete head land; the central propulsion shoe is bracketed by X +/-18.
+PAD_PITCH = 36.0
+PAD_CENTRES = tuple((i + 0.5) * PAD_PITCH for i in range(-5, 5))
+PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
 BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
 HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 8.4
 SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.8
@@ -104,8 +106,8 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
                 )
             )
     rail = rail.removeSplitter()
-    # Longer reliefs offset the thicker flexure; preserve 0.5 mm root fillets.
-    # This is a bending-compliance design choice, not a fatigue qualification.
+    # Open reliefs and 0.5 mm roots retain a bending path. Increasing the base
+    # thickness stiffens that path; actual curvature/fatigue require a trial.
     web_root_edges = [
         e
         for e in rail.Edges
@@ -413,12 +415,12 @@ def build_rail(doc):
         rail_shape(),
         App.Rotation(),
         f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x32x{HEAD_TOP:g}mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
-        f"{len(PAD_CENTRES)} paired tape-wing stations use {2 * len(PAD_CENTRES)} separate strip references. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
-        "Unbroken1.2mm base;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. "
+        f"{len(PAD_CENTRES)} identical paired tape-wing stations at{PAD_PITCH:g}mm pitch use {2 * len(PAD_CENTRES)} separate strip references. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
+        f"Unbroken{PAD_THICKNESS:g}mm base and wings;13.5mm head lands separated by4.5mm flex reliefs at18mm pitch with0.5mm base/web-root fillets. Solid3mm T head; shoe bridges the narrow gaps. "
         "Head/shoe nominal trial clearance is0.1mm per side and above/below; relieved web clearance is0.45mm per side. Print matching coupons first, finish/recalibrate to hand-push fit without rocking or free sliding; bolt is an additional lock. Raw PA12 tolerance does not guarantee this fit. "
         "The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. "
         f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
-        "The1.2mm narrow base is an intentional flexure: it exceeds generic0.8mm nylon minimum but is NOT blanket compliance with the3mm long/broad PA12 recommendation. Supplier review and physical curvature/tape trial required.",
+        f"The{PAD_THICKNESS:g}mm base/wings reflect the user's manufacturing-review thickness requirement. The central shoe is bracketed by tape wings atX+/-18mm; all adjacent wings have22mm open longitudinal spans. Actual curvature, tape grip and support stiffness still require a physical trial; nominal thickness is not a delivered-size guarantee.",
     )
     set_property(printed_rail, "PrintProcess", "PA12 SLS or MJF")
     set_property(
@@ -427,7 +429,7 @@ def build_rail(doc):
     set_property(
         printed_rail,
         "ManufacturingException",
-        f"1.2mm narrow continuous flexure and tape wings require supplier review as functional flexures; do not treat as an ordinary {LENGTH:g}mm broad plate.",
+        f"{PAD_THICKNESS:g}mm narrow continuous base and tape wings meet the requested nominal thickness. Functional curvature/fatigue and one-piece supplier acceptance remain unqualified; do not treat as an ordinary {LENGTH:g}mm broad plate.",
     )
     set_property(printed_rail, "SourceURL", SOURCE)
     tapes = []

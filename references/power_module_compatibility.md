@@ -1,8 +1,8 @@
 # Optional tether and servo-power boards
 
 Manufacturer data reviewed 2026-09-27; BEC/SVPDB text rechecked 2026-09-28.
-Mechanical packaging introduced in BC; the shared plate and direct-support
-contact regions follow the [BF plate update](dense_mount_review.md).
+Shared plate and direct-support contact regions follow the
+[plate interface](dense_mount_review.md).
 The CAD provides optional mechanical mounting capability. Battery operation stays
 the default until an alternate configuration is explicitly selected and checked.
 The source contract is [power_options.py](../gondola/contracts/power_options.py).
@@ -42,9 +42,7 @@ The two destinations share the BEC's 8 V output in parallel; the SVPDB receives
 **8 V**, not the tether's 24 V. This cascade is our integration choice inferred
 from the published input/output ranges, not a manufacturer-tested complete vehicle.
 The BEC ships at 5.2 V: change its selection to 8 V and measure it before
-connecting equipment. Leave the SVPDB at its default 5 V. Earlier advice requiring
-two BEC12S-PRO boards assumed an exact 5.2 V servo rail; that assumption is no
-longer part of the design. No second BEC12S-PRO is required for these selected rails.
+connecting equipment. Leave the SVPDB at its default 5 V.
 
 The BEC's published **5 A at 8 V is shared by all main loads and the SVPDB input**.
 The SVPDB's 4 A rating is at its own output; it does not add another 4 A to the
@@ -95,26 +93,25 @@ carrier contact patches, terminal/top reservations and disconnected-board remova
 paths are checked in the generated report.
 
 The two boards use nominal 1 mm insulating adhesive support on uninterrupted plate
-lands, with two 12 × 4 mm strips per board. BF moves the BEC's outer strip centre
-from Y=−24 to Y=−23 mm to clear the new middle slot; the other strip centres remain
-Y=−6, +6 and +22 mm, all at X=0. Each board retains 96 mm² of nominal supported
+lands, with two 12 × 4 mm strips per board. Strip centres are Y=−23, −6, +6
+and +22 mm, all at X=0, clear of the middle side slots. Each board retains 96 mm² of nominal supported
 contact. That allowance is not measured underside-component clearance. Inspect the
 received boards, prevent conductor contact, avoid pressure on components and leave
 the populated side open to air. Verify adhesive/strap retention and temperature
 with the installed hardware. No electrical pad is used as a mounting hole.
 
-Direct tether is compatible only with a permitted FC-host optical/navigation
-combination. A directly attached MG-F10-A helix blocks that optical placement;
-use a permitted raised arrangement or the remotely mounted antenna alternative.
-Remote antenna location and lead routing remain unmodeled. The configuration
-screen must combine navigation/antenna, optical host and power packaging; a board
+Direct tether requires an optical placement compatible with the occupied battery
+carrier. The saved illustration moves the optical unit to the accessory carrier's
+NegativeX side. Use the generated configuration matrix for the selected optical
+host, navigation/antenna and power packaging; no single host is universally
+compatible. Remote antenna location and lead routing remain unmodeled. A board
 fitting its carrier alone is not acceptance of the whole configuration.
 
 **Raised alternative: PORTAL.** Battery operation with an optional SVPDB retains
 the raised platform; tether can also use it where the full configuration permits.
 This adds one 64 × 64 × 2 mm deck on an integral 32 mm portal, 35 mm overall, plus
 two M2×8 screws and ordinary M2 nuts. The deck repeats the carriers' four fixed FC
-bores and 24 symmetric slots. The two portal feet use opposing outer slots;
+bores, central spare bore and 24 symmetric slots. The two portal feet use opposing outer slots;
 there are no board-specific holes, separate legs or added spacers. The board
 centres are Y±13 mm on the raised deck. Refer to the source contract for exact
 interface dimensions and the generated manifest for optional quantities/mass.
@@ -122,7 +119,14 @@ interface dimensions and the generated manifest for optional quantities/mass.
 Portal registration checks cover the full opposed-slot travel and clearance,
 not fictitious locating bores. Verify foot contact, actual head bearing, flatness,
 clamp retention and creep. Remove its host carrier from the rail for foot-fastener
-service. Power and optics cannot occupy the same host; not every carrier or
+service. The bench tool check excludes only the detached rail and its tape;
+the complete host, other retained obstacles, portal and boards remain checked.
+Installed and registration checks still include rail and tape. With the default
+P-AS accessory carrier and tether portal, the verified disconnected removal
+sequence recentres the released clamp, slides 23 mm toward the negative rail end
+(carrier centre X=-181 mm), then moves 32 mm away in +Z before foot service. This
+rigid straight-rail check does not qualify attached wiring or installed curvature.
+Power and optics cannot occupy the same host; not every carrier or
 navigation configuration accepts the portal. The current report's accepted and
 rejected combinations take precedence over general mounting-pattern compatibility.
 
@@ -145,7 +149,7 @@ The unchanged electrical limits above apply to either packaging method.
 
 The reports bind exact generated files and source. Nominal CAD clearance and
 adhesive contact area do not qualify retention, wire handling, thermal performance
-or flight operation. Historical raised-only reports describe their own revisions.
+or flight operation.
 
 ## Retained primary evidence
 

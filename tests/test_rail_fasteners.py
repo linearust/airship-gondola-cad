@@ -1,6 +1,7 @@
 """Functional regressions for headed rail bolts and finished hex capture."""
 
 import unittest
+from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -10,6 +11,85 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class RailFastenerTests(unittest.TestCase):
+    def test_frame_relief_changes_only_the_two_nut_entry_mouths(self):
+        import Part
+
+        from gondola.parts import propulsion, rail
+        from gondola.print_export import geometry_comparison
+        from gondola.validation.assembly import _fixed_frame_nut_entry_relief
+
+        with patch.object(
+            propulsion, "_chamfer_rail_nut_entries", side_effect=lambda s: s
+        ):
+            original = propulsion.fixed_frame_shape()
+        frame = propulsion.fixed_frame_shape()
+        expected = original.cut(_fixed_frame_nut_entry_relief())
+        comparison = geometry_comparison(frame, expected)
+        self.assertLess(comparison["difference_mm3"], 1e-6)
+        self.assertAlmostEqual(original.Volume - frame.Volume, 1.584, places=6)
+        # Full hex seat and nut reaction material are well inside the entrances.
+        central = Part.makeBox(6, 22, 9.2, App.Vector(-3, -11, 2.2))
+        self.assertLess(
+            original.common(central).cut(frame.common(central)).Volume, 1e-7
+        )
+        # The through rail channel and its running capture surfaces stay intact.
+        channel = Part.makeBox(18, 11, 9.2, App.Vector(-9, -5.5, 2.2))
+        self.assertLess(
+            original.common(channel).cut(frame.common(channel)).Volume, 1e-7
+        )
+        # Include the existing rail-entry bevel: at the very end the inner
+        # lip must still be at least 1.55 mm, the outer nut wall 1.85 mm.
+        for x in (8.4, 8.7, 8.99, 8.999):
+            for sign in (-1, 1):
+                for y0, y1, minimum in ((5.0, 6.95, 1.55), (9.15, 11.0, 1.85)):
+                    probe = Part.makeLine(
+                        App.Vector(sign * x, sign * y0, 6.9),
+                        App.Vector(sign * x, sign * y1, 6.9),
+                    )
+                    self.assertGreaterEqual(frame.common(probe).Length, minimum - 1e-7)
+                    self.assertAlmostEqual(
+                        frame.common(probe).Length, original.common(probe).Length
+                    )
+        for sign in (-1, 1):
+            nut = rail.nut_shape(rail.fasteners.HEX_NUT_MIN_AF)
+            nut.rotate(App.Vector(0, 0, rail.CLAMP_Z), App.Vector(0, 1, 0), 30)
+            if sign < 0:
+                nut = rail.half_turn(nut)
+            self.assertGreater(abs(frame.common(nut).Volume), 1e-5)
+
+    def test_narrow_finishing_tool_reaches_both_throats_in_complete_bare_frame(self):
+        import Part
+
+        from gondola.parts import propulsion, rail
+
+        frame = propulsion.fixed_frame_shape()
+        # A declared 2 mm straight finishing tip reaches the nut axis from
+        # outside. A 5 mm handle begins 3 mm beyond the part; this is not a
+        # guarantee for the supplier's actual tool or assembled hardware.
+        tip = Part.makeCylinder(1, 12, App.Vector(0, 8.05, 6.9), App.Vector(1, 0, 0))
+        handle = Part.makeCylinder(
+            2.5, 20, App.Vector(12, 8.05, 6.9), App.Vector(1, 0, 0)
+        )
+        tool = tip.fuse(handle)
+        too_large = Part.makeCylinder(
+            1.2, 12, App.Vector(0, 8.05, 6.9), App.Vector(1, 0, 0)
+        )
+        for transform in (lambda s: s, rail.half_turn):
+            self.assertLess(frame.common(transform(tool)).Volume, 1e-7)
+            self.assertGreater(frame.common(transform(too_large)).Volume, 0.1)
+        with patch.object(
+            propulsion, "_chamfer_rail_nut_entries", side_effect=lambda s: s
+        ):
+            original = propulsion.fixed_frame_shape()
+        for angle in (-7, 7):
+            inclined = tool.copy()
+            inclined.rotate(App.Vector(0, 8.05, 6.9), App.Vector(0, 1, 0), angle)
+            for transform in (lambda s: s, rail.half_turn):
+                # The vertical approach is newly possible, while the same
+                # 2 mm tip still respects the unchanged axial throat width.
+                self.assertLess(frame.common(transform(inclined)).Volume, 1e-7)
+                self.assertGreater(original.common(transform(inclined)).Volume, 1e-5)
+
     def test_headed_clamp_fits_both_approach_sides_and_retains_the_rail(self):
         from gondola.parts import rail
 

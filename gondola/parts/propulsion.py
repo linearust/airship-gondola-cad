@@ -57,6 +57,7 @@ V = App.Vector
 BASE_Z = rail.SHOE_BOTTOM
 FOOT_THICKNESS = 3.0
 RAIL_SERVICE_FLOOR_THICKNESS = 2.0
+RAIL_NUT_ENTRY_CHAMFER = 0.6
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
 GUARD_OUTER_RADIUS = 25.0
@@ -236,6 +237,31 @@ def _output_support(sign):
     return result
 
 
+def _chamfer_rail_nut_entries(frame):
+    """Ease each mouth vertically, preserving both lateral capture walls.
+
+    The retained 2.2 mm throat still needs a suitably narrow finishing tool;
+    this is an entrance relief, not a general tool-access qualification.
+    """
+    edges = []
+    for sign in (-1, 1):
+        mouth = [
+            edge
+            for edge in frame.Edges
+            if edge.BoundBox.XLength < 1e-7
+            and edge.BoundBox.ZLength < 1e-7
+            and abs(edge.BoundBox.XMin - sign * rail.SHOE_LENGTH / 2) < 1e-7
+            and rail.NUT_POCKET_Y - 1e-7
+            <= sign * edge.CenterOfMass.y
+            <= rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH + 1e-7
+            and abs(edge.CenterOfMass.z - rail.CLAMP_Z) <= rail.NUT_POCKET_AF / 2 + 1e-7
+        ]
+        if len(mouth) != 2:
+            raise RuntimeError("Rail-nut entry must retain two horizontal mouth edges")
+        edges.extend(mouth)
+    return frame.makeChamfer(RAIL_NUT_ENTRY_CHAMFER, edges).removeSplitter()
+
+
 def fixed_frame_shape():
     """Common rail shoe, output supports and fixed servo-bridge seats."""
     # The short central floor stays below the rail screw head. The outboard
@@ -262,7 +288,8 @@ def fixed_frame_shape():
         ]
     )
     return _checked(
-        servo_bridge.cut_mounting_holes(frame), "Common output-bearing frame"
+        _chamfer_rail_nut_entries(servo_bridge.cut_mounting_holes(frame)),
+        "Common output-bearing frame",
     )
 
 
@@ -723,7 +750,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 6 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded nominal Ø6.1 seats have integral 1.5 mm outer shoulders and separate rigid keepers. A 3 mm continuous guide supports the complete 2.5 mm bearing width throughout its nominal 0.5 mm inward float. Each recessed M2x6 keeper joint clamps a hard frame seat without bearing preload. No spacer or printed spring is used. Qualify the matching coupon and actual keeper alignment, outer-ring land, shield clearance, radial fit and screw retention.",
+        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 6 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. The two rail-nut entrances have 0.6 mm top/bottom mouth chamfers; the 2.2 mm internal throat, hex seat and reaction wall remain unchanged. Finish before fitting hardware; use a tool narrow enough for the throat. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded nominal Ø6.1 seats have integral 1.5 mm outer shoulders and separate rigid keepers. A 3 mm continuous guide supports the complete 2.5 mm bearing width throughout its nominal 0.5 mm inward float. Each recessed M2x6 keeper joint clamps a hard frame seat without bearing preload. No spacer or printed spring is used. Qualify the matching coupon and actual keeper alignment, outer-ring land, shield clearance, radial fit and screw retention.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )

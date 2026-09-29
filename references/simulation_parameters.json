@@ -8,9 +8,9 @@
   },
   "basis": {
     "cad_file": "gondola.FCStd",
-    "cad_sha256": "a909a3ed84028865a014e790c1b57fb3745de5aead0db75f534c324ba5d23559",
-    "source_fingerprint": "4f856899537c385d37921c453413a8e8a69cc637e339720b04e352d2fdeb0888",
-    "validation_sha256": "688756e85303fac1bd5a2c04cd4b02d8ace9fda846105f3a3a9268ae3b2145c2",
+    "cad_sha256": "cbccb4dc054afb69438b659f7922a2a06f1893c2bc3d74ce6d37cc2f3e2141af",
+    "source_fingerprint": "62ddd8ffacc5841b7e3e56f1dc2c7841fe2517ce4bb05fef788759dfdc2f4f7d",
+    "validation_sha256": "940486cbf2be5c167bc553c9c44e59a6d1d3438b393b277513523eea9eb9a6a2",
     "exporter_sha256": "fe93dd5e0926105d3de7a2a129c00fdc04ad78d6059a335053ca5a0a94dd5300"
   },
   "frame": {

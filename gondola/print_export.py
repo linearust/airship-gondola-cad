@@ -508,7 +508,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "maximum_print_part_dimension_mm": MAX_PRINT_PART_DIMENSION_MM,
         "size_numerical_tolerance_mm": SIZE_NUMERICAL_TOLERANCE_MM,
         "size_screen_is_one_piece_acceptance": False,
-        "thin_flexure_exception": "The 1.2 mm continuous narrow rail base needs supplier review; the nominal 0.8 mm minimum is not blanket compliance with Creallo's 3 mm long/broad SLS PA12 recommendation.",
+        "thin_flexure_exception": MANUFACTURING_DECISION["flexure_exception"],
         "one_piece_acceptance": f"Supplier must confirm the {RAIL_LENGTH_MM:g}mm rail as one piece; published guide includes split-and-join fabrication and is not a manufacturing acceptance.",
         "unique_stl_count": len(entries),
         "installed_printed_part_count": len(installed),

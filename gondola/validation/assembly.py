@@ -30,8 +30,6 @@ from gondola.contracts.design import (
     MANUFACTURING_DECISION,
     MAX_PRINT_PART_DIMENSION_MM,
     MODULE_STATIONS,
-    NOTION_LAST_EDITED,
-    NOTION_URL,
     PUBLISHED_PROCESS_SIZE_MM,
     PURCHASED_HARDWARE_QUANTITIES,
     SCOPED_LISTED_EQUIPMENT_MASS_G,
@@ -682,12 +680,33 @@ def module_service(registry, objects, shapes):
     }
 
 
+def _fixed_frame_nut_entry_relief():
+    """Independent literal envelope of the two 0.6 mm entrance chamfers."""
+    wires = []
+    for x, flare in ((8.4, 0.0), (9.01, 0.61)):
+        points = [
+            V(x, y, z)
+            for y, z in (
+                (6.95, 4.825 - flare),
+                (9.15, 4.825 - flare),
+                (9.15, 8.975 + flare),
+                (6.95, 8.975 + flare),
+            )
+        ]
+        wires.append(Part.makePolygon(points + points[:1]))
+    positive = Part.makeLoft(wires, True, True)
+    negative = positive.copy()
+    negative.rotate(V(), V(0, 0, 1), 180)
+    return Part.makeCompound([positive, negative])
+
+
 def saved_integral_shoe_checks(doc, registry):
-    """Compare all four saved captures, allowing only the declared centre pocket.
+    """Compare complete saved captures with two precisely bounded exceptions.
 
     The independent literal pocket removes only the top 0.8 mm of the common
-    shoe. Everything at or below Z10, including the complete 1.5 mm roof above
-    the rail channel, remains identical to the original common shoe.
+    equipment shoe. The frame's two mouth chamfers are limited to the last
+    0.6 mm of its side-loaded nut ports, outside the rail capture channel.
+    No broad region is excluded from either full or protected comparison.
     """
     bindings = (
         ("BatteryMount", "BatteryEquipmentModule", True),
@@ -709,7 +728,6 @@ def saved_integral_shoe_checks(doc, registry):
     protected_box = Part.makeBox(
         rail.SHOE_LENGTH, rail.SHOE_WIDTH, 10.0 - rail.SHOE_BOTTOM, origin
     )
-    protected_shoe = shoe.common(protected_box)
     radius = 4.15 / math.sqrt(3)
     points = [
         V(radius * math.cos(math.radians(a)), radius * math.sin(math.radians(a)), 10.0)
@@ -718,6 +736,7 @@ def saved_integral_shoe_checks(doc, registry):
     pocket = Part.Face(Part.makePolygon(points + [points[0]])).extrude(V(0, 0, 2.4))
     pocket = pocket.fuse(Part.makeBox(12.0, 4.15, 2.4, V(-12.0, -2.075, 10.0)))
     centre_shoe = shoe.cut(pocket)
+    frame_shoe = shoe.cut(_fixed_frame_nut_entry_relief())
     rows = []
     for name, parent_name, has_centre_pocket in bindings:
         obj = doc.getObject(name)
@@ -727,10 +746,11 @@ def saved_integral_shoe_checks(doc, registry):
             )
             continue
         actual = local_shape(obj).common(shoe_box)
-        comparison = geometry_comparison(
-            actual, centre_shoe if has_centre_pocket else shoe
+        expected = centre_shoe if has_centre_pocket else frame_shoe
+        comparison = geometry_comparison(actual, expected)
+        protected = geometry_comparison(
+            actual.common(protected_box), expected.common(protected_box)
         )
-        protected = geometry_comparison(actual.common(protected_box), protected_shoe)
         expected_parent = doc.getObject(parent_name)
         parent_matches = (
             expected_parent is not None
@@ -742,6 +762,7 @@ def saved_integral_shoe_checks(doc, registry):
                 "part": name,
                 **comparison,
                 "declared_central_nut_pocket": has_centre_pocket,
+                "declared_nut_entry_chamfer_mm": 0.0 if has_centre_pocket else 0.6,
                 "protected_capture_at_or_below_z10": protected,
                 "expected_parent": parent_name,
                 "parent_matches": parent_matches,
@@ -898,11 +919,7 @@ def equipment_scope_check(doc, registry, objects, shapes):
             }
         )
     return {
-        "expected_source": NOTION_URL,
-        "expected_source_last_edited": NOTION_LAST_EDITED,
         "user_scope_exclusions": EXCLUDED_EQUIPMENT,
-        "source": str(registry.NotionSource),
-        "source_last_edited": str(registry.NotionLastEdited),
         "scoped_listed_equipment_mass_g": float(
             registry.ScopedListedEquipmentMassGrams
         ),
@@ -911,8 +928,6 @@ def equipment_scope_check(doc, registry, objects, shapes):
         "new_electrical_space_reservations": reserves,
         "cable_and_OEM_limitations": "Reserve shapes are not measured components, flexible cable routing or proof of cable slack at bounded ±180 degrees. OEM motor retention and measured X06 horn connection remain unresolved.",
         "passed": not forbidden
-        and str(registry.NotionSource) == NOTION_URL
-        and str(registry.NotionLastEdited) == NOTION_LAST_EDITED
         and abs(
             float(registry.ScopedListedEquipmentMassGrams)
             - SCOPED_LISTED_EQUIPMENT_MASS_G
@@ -1549,7 +1564,7 @@ def validate(source=None):
         report["print_export"] = export_check(source, r)
         report["local_propulsion_evidence"] = detailed_propulsion_evidence(doc, source)
         report["pa12_manufacturing_review"] = manufacturing.review(doc, r)
-        report["notion_scope_and_reserves"] = equipment_scope_check(
+        report["equipment_scope_and_reserves"] = equipment_scope_check(
             doc, r, objects, shapes
         )
         report["source_hashes_after"] = {source.name: file_sha256(source)}
@@ -1576,7 +1591,7 @@ def validate(source=None):
             "print_export",
             "local_propulsion_evidence",
             "pa12_manufacturing_review",
-            "notion_scope_and_reserves",
+            "equipment_scope_and_reserves",
         )
         report["passed"] = (
             report["saved_files_unchanged"]
