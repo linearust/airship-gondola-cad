@@ -53,8 +53,8 @@ PROCUREMENT_SPECS = {
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
         "candidate_url": BEARING_SOURCE,
-        "requirements": "User-selected generic miniature bearing, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm; four on the two output axes. Check the actual shields, race lands, fit, free rotation and endplay. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
-        "evidence_notes": "The saved cart establishes only the selected 3x6x2.5mm size option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the nominal integral outer-ring capture clearance: housing opening at least 5.4 mm. Verify those contacts on the received generic part. ISC's 0.27 g is comparison data, not this seller's measured mass.",
+        "requirements": "Keep the four purchased generic miniature bearings, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm, on the two output axes; no replacement bearing purchase. Check actual shields, race lands, fixed-seat fit, free rotation and endplay with the rear shoulder and removable front keeper. The keeper's M2 screw clamps its frame seat, not the bearing. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
+        "evidence_notes": "The user confirms purchase of the original-final-cart 3x6x2.5mm option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the outer-ring contact clearance: housing opening at least 5.4 mm. Verify those contacts on the received generic part; the printed diameter5.6 openings are design values, not proof of shield clearance. ISC's 0.27 g is comparison data, not this seller's measured mass.",
     },
     "KST_X06_STOCK_HALF_ARM_1": {
         "search_query": "KST X06 stock plastic half servo arm 1",

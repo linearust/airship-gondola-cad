@@ -58,9 +58,24 @@ class PrintOriginTests(unittest.TestCase):
             self.part("Second", Part.makeBox(12, 8, 2)),
             self.part("NextRow", Part.makeBox(340, 5, 2)),
         ]
+        preserved = App.newDocument("GondolaPrintParts")
+        witness = preserved.addObject("Part::Feature", "ManualLayoutWitness")
+        witness.Shape = Part.makeBox(3, 2, 1)
+        preserved_names = [obj.Name for obj in preserved.Objects]
+        preserved_volume = witness.Shape.Volume
         with tempfile.TemporaryDirectory() as directory:
             export_print_parts(self.doc, parts, [], directory, "origin")
-            layout = App.getDocument("GondolaPrintParts")
+            saved_path = (Path(directory) / "origin_print_parts.FCStd").resolve()
+            layouts = [
+                document
+                for document in App.listDocuments().values()
+                if document.FileName and Path(document.FileName).resolve() == saved_path
+            ]
+            self.assertEqual(len(layouts), 1)
+            layout = layouts[0]
+            self.assertNotEqual(layout.Name, preserved.Name)
+            self.assertEqual([obj.Name for obj in preserved.Objects], preserved_names)
+            self.assertAlmostEqual(witness.Shape.Volume, preserved_volume)
             first, second = layout.First.Shape.BoundBox, layout.Second.Shape.BoundBox
             self.assertAlmostEqual(first.XMin, 0)
             self.assertAlmostEqual(first.YMin, 0)

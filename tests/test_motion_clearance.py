@@ -36,7 +36,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5)
                     self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5)
                     self.assertGreater(result["minimum_clearance_lower_bound_mm"], 1.64)
-                    self.assertEqual(len(result["fixed_hardware"]), 6)
+                    self.assertEqual(len(result["fixed_hardware"]), 10)
                     self.assertEqual(len(result["envelope"]["containment"]), 8)
 
     def test_arbitrary_parent_rotation_and_current_tilt_preserve_the_proof(self):
@@ -62,7 +62,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             places=6,
         )
 
-    def test_open_release_pockets_preserve_a_substantial_all_angle_stop_bound(self):
+    def test_rigid_keeper_preserves_a_complete_all_angle_stop(self):
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         doc, _ = self.module()
@@ -70,9 +70,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             result = carrier_axial_travel(doc, prefix)
             self.assertTrue(result["passed"], result)
             for stop in result["stops"]:
-                # AM deliberately leaves the side pockets open. A test that
-                # still demanded a complete fixed annulus would refill them.
-                self.assertGreater(stop["frame_uncovered_witness_area_mm2"], 0.1)
+                self.assertLess(stop["frame_uncovered_witness_area_mm2"], 1e-7)
                 self.assertGreaterEqual(
                     stop["all_angles_contact_lower_bound_mm2"],
                     0.25 * stop["witness_area_mm2"],
@@ -93,7 +91,10 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         remove_upper_left = Part.makeBox(
             8, 10, 8, App.Vector(-8, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.4, PIVOT_Z)
         )
-        frame.Shape = frame.Shape.cut(remove_right.fuse(remove_upper_left))
+        cutter = remove_right.fuse(remove_upper_left)
+        frame.Shape = frame.Shape.cut(cutter)
+        keeper = doc.PortOutputBearingKeeperPositive
+        keeper.Shape = keeper.Shape.cut(cutter)
         doc.recompute()
         result = carrier_axial_travel(doc, "Port")
         self.assertFalse(result["passed"], result)
@@ -153,14 +154,15 @@ class CarrierMotionClearanceTests(unittest.TestCase):
 
         doc, _ = self.module()
         frame = doc.PropulsionFixedFrame
-        frame.Shape = frame.Shape.cut(
-            Part.makeCylinder(
-                3.7,
-                10,
-                App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y, PIVOT_Z),
-                App.Vector(0, 1, 0),
-            )
+        cutter = Part.makeCylinder(
+            3.7,
+            10,
+            App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y, PIVOT_Z),
+            App.Vector(0, 1, 0),
         )
+        frame.Shape = frame.Shape.cut(cutter)
+        keeper = doc.PortOutputBearingKeeperPositive
+        keeper.Shape = keeper.Shape.cut(cutter)
         doc.recompute()
         result = carrier_axial_travel(doc, "Port")
         self.assertFalse(result["passed"], result)
@@ -172,14 +174,15 @@ class CarrierMotionClearanceTests(unittest.TestCase):
 
         doc, _ = self.module()
         frame = doc.PropulsionFixedFrame
-        frame.Shape = frame.Shape.cut(
-            Part.makeCylinder(
-                4.7,
-                1,
-                App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.5, PIVOT_Z),
-                App.Vector(0, 1, 0),
-            )
+        cutter = Part.makeCylinder(
+            4.7,
+            1,
+            App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.5, PIVOT_Z),
+            App.Vector(0, 1, 0),
         )
+        frame.Shape = frame.Shape.cut(cutter)
+        keeper = doc.PortOutputBearingKeeperPositive
+        keeper.Shape = keeper.Shape.cut(cutter)
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
         self.assertTrue(result["axial_travel"]["passed"], result)
@@ -188,13 +191,13 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         from gondola.validation.propulsion import output_bearing_stack_check
 
         # Removing the positive stop reduces the positive face clearance only.
-        # The opposite bearing and its intact hooks remain independently safe.
+        # The opposite bearing and its intact keeper remain independently safe.
         positive = output_bearing_stack_check(doc, "Port", "Positive")
         negative = output_bearing_stack_check(doc, "Port", "Negative")
         self.assertFalse(positive["passed"], positive)
-        self.assertAlmostEqual(positive["minimum_carrier_to_bearing_face_gap_mm"], 0.8)
+        self.assertAlmostEqual(positive["minimum_carrier_to_bearing_face_gap_mm"], 0.5)
         self.assertTrue(negative["passed"], negative)
-        self.assertAlmostEqual(negative["minimum_carrier_to_bearing_face_gap_mm"], 1.8)
+        self.assertAlmostEqual(negative["minimum_carrier_to_bearing_face_gap_mm"], 1.5)
         self.assertTrue(negative["capture_geometry"]["passed"], negative)
 
     def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):

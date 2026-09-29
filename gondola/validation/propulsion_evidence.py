@@ -29,16 +29,16 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_drive_service": 2,
         "servo_case_service": 2,
         "rail_key_access": 2,
-        # Six seated M2 propulsion joints, four M1.6 servo-ear joints and
+        # Ten seated M2 propulsion joints, four M1.6 servo-ear joints and
         # four M1.4 horn joints with front nuts.
         # Rail screws are outside this module. The two radial input-stub jack
         # clamps stay assembled during service and use input_shaft_retention;
         # their deliberately unseated heads are not bearing-face stacks.
-        "fastener_stacks": 14,
-        "fastener_service": 14,
+        "fastener_stacks": 18,
+        "fastener_service": 18,
         "functional_wall_probes": 19,  # Four post webs and the common servo-wall web.
         "continuous_nut_loading": 2,
-        "geometry": 6,  # Frame, servo bridge, two carriers and two horn adapters.
+        "geometry": 10,  # Frame, bridge, two carriers, two adapters and four keepers.
     }
 )
 

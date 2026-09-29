@@ -213,31 +213,30 @@ class BearingCaptureTests(unittest.TestCase):
 
         return output_bearing_stack_check(self.doc, "Port", "Positive")
 
-    def test_nominal_spacerless_stack_keeps_two_hooks_and_fixed_guidance(self):
+    def test_nominal_spacerless_stack_keeps_rigid_keeper_and_guide(self):
         result = self.check()
         self.assertTrue(result["passed"], result)
-        self.assertAlmostEqual(result["maximum_bearing_inward_travel_mm"], 0.2)
+        self.assertAlmostEqual(result["maximum_bearing_inward_travel_mm"], 0.5)
         self.assertAlmostEqual(result["maximum_bearing_outward_travel_mm"], 0)
-        capture = result["capture_geometry"]
-        self.assertAlmostEqual(capture["complete_guide_length_mm"], 2.1)
-        self.assertAlmostEqual(
-            capture["complete_guide_overlap_at_inward_limit_mm"], 1.9
-        )
-        self.assertEqual(len(result["hook_contact_patch_areas_mm2"]), 2)
-        self.assertGreater(min(result["hook_contact_patch_areas_mm2"]), 0.5)
+        self.assertGreater(result["keeper_outer_ring_contact_area_mm2"], 3.0)
         self.assertIsNone(self.doc.getObject("PortOutputBearingSpacerPositive"))
 
-    def test_missing_one_integral_hook_cannot_claim_inward_capture(self):
-        from gondola.cad import translated_shape
-        from gondola.parts import bearing_retention, propulsion
+    def test_missing_keeper_cannot_claim_inward_capture(self):
+        self.doc.removeObject("PortOutputBearingKeeperPositive")
+        self.doc.recompute()
+        self.assertFalse(self.check()["passed"])
 
-        frame = self.doc.PropulsionFixedFrame
-        hook = translated_shape(
-            bearing_retention.hook_shape(1),
-            y=propulsion.PIVOT_HALF_SPAN + propulsion.BEARING_START_Y,
-            z=propulsion.PIVOT_Z,
-        )
-        frame.Shape = frame.Shape.cut(hook)
+    def test_unseated_keeper_fastener_cannot_claim_capture(self):
+        bolt = self.doc.PortOutputBearingKeeperPositiveBolt
+        bolt.Placement.Base.y -= 0.2
+        self.doc.recompute()
+        result = self.check()
+        self.assertFalse(result["passed"], result)
+        self.assertFalse(result["keeper_fastener"]["passed"])
+
+    def test_keeper_registration_cannot_move_independently_of_bearing(self):
+        keeper = self.doc.PortOutputBearingKeeperPositive
+        keeper.Placement.Base.x += 0.2
         self.doc.recompute()
         self.assertFalse(self.check()["passed"])
 
@@ -306,8 +305,8 @@ class BearingCaptureTests(unittest.TestCase):
                 ("Negative", "negative_mm", "positive_mm"),
             ):
                 for approach, retreat, expected_gap, passed in (
-                    (1.5, 0.5, 0.8, False),
-                    (0.5, 1.5, 1.8, True),
+                    (1.5, 0.5, 0.5, False),
+                    (0.5, 1.5, 1.5, True),
                 ):
                     with self.subTest(
                         prefix=prefix, suffix=suffix, approach=approach, retreat=retreat
@@ -327,7 +326,7 @@ class BearingCaptureTests(unittest.TestCase):
                             result["minimum_carrier_to_bearing_face_gap_mm"],
                             expected_gap,
                         )
-                        # The hooks retain the bearing independently of carrier travel.
+                        # The rigid keeper retains the bearing independently of carrier travel.
                         self.assertTrue(result["capture_geometry"]["passed"], result)
 
     def test_parent_transform_and_tilt_preserve_the_capture_proof(self):
@@ -1651,7 +1650,10 @@ class SelectedGearDriveTests(unittest.TestCase):
 
     def test_horn_fastener_report_retains_the_other_joint_until_ordered_release(self):
         from gondola.cad import world_shape
-        from gondola.validation.propulsion import _record_fastener_checks
+        from gondola.validation.propulsion import (
+            _record_fastener_checks,
+            output_carrier_service_check,
+        )
 
         doc, module = self.configurations["48_16"]
         physical = {
@@ -1661,6 +1663,10 @@ class SelectedGearDriveTests(unittest.TestCase):
         report = {
             "fastener_stacks": [],
             "fastener_service": [],
+            "output_carrier_service": [
+                output_carrier_service_check(doc, module, prefix)
+                for prefix in ("Port", "Starboard")
+            ],
             "gear_service": [
                 {"gear": prefix + "OutputGear", "passed": True}
                 for prefix in ("Port", "Starboard")

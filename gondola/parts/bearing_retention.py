@@ -1,15 +1,15 @@
-"""Integral, releasable outer-ring capture for the nominal 3 x 6 x 2.5 bearing.
+"""Rigid capture of the purchased nominal 3 x 6 x 2.5 bearing.
 
-The canonical bearing occupies Y0..2.5 and is inserted from negative Y. Two
-long, external vertical arms carry the inboard hooks; the bearing runs in a
-fixed seat, not in those arms. ``release_mm`` shears each arm outwards to model
-an insertion/removal configuration. It is a kinematic clearance envelope,
-never an elastic simulation or a prediction of insertion force or fatigue.
+A fixed circular seat locates the bearing radially; a rear shoulder and
+removable keeper limit axial motion. The keeper screw clamps the frame,
+not the bearing. No spring arms or radial clamp are used.
 
-Print and cycle the process-matched coupon before committing a full frame.
-The 0.2 mm axial gap and 0.2 mm radial outer-ring overlap are nominal trial
-geometry, smaller than general PA12 process tolerance. Received ring lands,
-seat fit, spring recovery, creep and shield clearance require physical checks.
+Nominal allowances are trial dimensions, not a guaranteed SLS/MJF fit.
+Match the production coupon to the received bearing/process. Finish or
+reprint an unsuitable seat; never force a bearing in or tighten away play.
+The broad keeper guides prevent gross rotation, not precision centering:
+center the aperture on the actual bearing before tightening, and check
+outer-ring contact and free rotation at both axial limits.
 """
 
 import FreeCAD as App
@@ -19,238 +19,206 @@ from gondola.cad import box, translated_shape, union
 
 BEARING_RADIUS = 3.0
 BEARING_WIDTH = 2.5
+SEAT_RADIUS = 3.05
 SHIELD_OPENING_DIAMETER = 5.6
 GUIDE_START_Y = -2.0
 SHOULDER_START_Y = BEARING_WIDTH
 SHOULDER_THICKNESS = 1.5
-BODY_HALF_WIDTH = 4.8
-BODY_BOTTOM_Z = -12.0
+BODY_HALF_WIDTH = 6.5
+BODY_BOTTOM_Z = -23.0
 BODY_TOP_Z = 4.8
-HOOK_FRONT_Y = -1.7
-HOOK_STOP_Y = -0.2
-HOOK_HALF_HEIGHT = 1.5
-POCKET_BACK_Y = 0.4
-POCKET_HALF_HEIGHT = 2.1
-ARM_INNER_X = 5.8
-ARM_THICKNESS = 1.5
-ARM_ROOT_Z = -10.5
-RELEASE_MM = 0.4
+KEEPER_FRONT_Y = -2.0
+KEEPER_STOP_Y = -0.5
+KEEPER_HALF_WIDTH = 4.5
+KEEPER_BOTTOM_Z = -21.5
+KEEPER_TOP_Z = 4.5
+KEEPER_GUIDE_CLEARANCE = 0.2
+KEEPER_FOOT_TOP_Z = -14.0
+KEEPER_FOOT_BACK_Y = 1.5
+KEEPER_SCREW_Z = -18.0
+KEEPER_SCREW_SEAT_Y = 0.0
+KEEPER_SCREW_LENGTH = 6.0
+KEEPER_NUT_SEAT_Y = SHOULDER_START_Y + SHOULDER_THICKNESS
+KEEPER_HEAD_CLEARANCE_RADIUS = 2.5
 
 
-def _cylinder(radius, start_y, length):
+def _cylinder(radius, start_y, length, z=0.0):
     return Part.makeCylinder(
-        radius, length, App.Vector(0, start_y, 0), App.Vector(0, 1, 0)
+        radius, length, App.Vector(0, start_y, z), App.Vector(0, 1, 0)
     )
 
 
-def _side(shape, side):
-    if side not in (-1, 1):
-        raise ValueError("Bearing hook side must be -1 or +1")
-    return shape.mirror(App.Vector(), App.Vector(1, 0, 0)) if side < 0 else shape
+def keeper_pocket_tool():
+    """Open-front broad guides and a deeper seat for the recessed screw foot."""
+    half = KEEPER_HALF_WIDTH + KEEPER_GUIDE_CLEARANCE
+    bottom = KEEPER_BOTTOM_Z - KEEPER_GUIDE_CLEARANCE
+    return union(
+        [
+            box(
+                2 * half,
+                KEEPER_STOP_Y - KEEPER_FRONT_Y + 0.1,
+                BODY_TOP_Z - bottom + 0.1,
+                (-half, KEEPER_FRONT_Y - 0.1, bottom),
+            ),
+            box(
+                2 * half,
+                KEEPER_FOOT_BACK_Y - KEEPER_FRONT_Y + 0.1,
+                KEEPER_FOOT_TOP_Z + KEEPER_GUIDE_CLEARANCE - bottom,
+                (-half, KEEPER_FRONT_Y - 0.1, bottom),
+            ),
+        ]
+    )
 
 
 def post_clearance_tool():
-    """Cut this from an adjoining post *before* fusing ``cup_shape``.
-
-    The two front pockets must remain open. Fusing an unrelieved post behind a
-    cup would quietly turn the movable hooks back into rigid interference.
-    """
-    tools = [
-        _cylinder(BEARING_RADIUS, GUIDE_START_Y - 0.1, 4.6),
-        _cylinder(SHIELD_OPENING_DIAMETER / 2, GUIDE_START_Y - 0.1, 6.2),
-    ]
-    for side in (-1, 1):
-        tools.append(
-            _side(
-                box(
-                    3.9,
-                    POCKET_BACK_Y - GUIDE_START_Y + 0.1,
-                    POCKET_HALF_HEIGHT * 2,
-                    (2.0, GUIDE_START_Y - 0.1, -POCKET_HALF_HEIGHT),
-                ),
-                side,
-            )
-        )
-    return union(tools)
+    """Cut the seat, keeper nest and fastener path before adjoining post union."""
+    return union(
+        [
+            _cylinder(
+                SEAT_RADIUS, GUIDE_START_Y - 0.1, SHOULDER_START_Y - GUIDE_START_Y + 0.1
+            ),
+            _cylinder(
+                SHIELD_OPENING_DIAMETER / 2,
+                GUIDE_START_Y - 0.1,
+                KEEPER_NUT_SEAT_Y - GUIDE_START_Y + 0.2,
+            ),
+            keeper_pocket_tool(),
+            _cylinder(
+                1.1,
+                GUIDE_START_Y - 0.1,
+                KEEPER_NUT_SEAT_Y - GUIDE_START_Y + 0.2,
+                KEEPER_SCREW_Z,
+            ),
+        ]
+    )
 
 
 def fixed_body_shape():
-    """Broad fixed seat and outer shoulder, plus the two beam root anchors."""
+    """Rigid seat/shoulder, wide keeper guides and a solid screw seat."""
     body = box(
         2 * BODY_HALF_WIDTH,
-        SHOULDER_START_Y + SHOULDER_THICKNESS - GUIDE_START_Y,
+        KEEPER_NUT_SEAT_Y - GUIDE_START_Y,
         BODY_TOP_Z - BODY_BOTTOM_Z,
         (-BODY_HALF_WIDTH, GUIDE_START_Y, BODY_BOTTOM_Z),
     )
-    anchors = [body]
-    for side in (-1, 1):
-        anchors.append(
-            _side(
-                box(
-                    ARM_INNER_X + ARM_THICKNESS - 4.0,
-                    SHOULDER_START_Y + SHOULDER_THICKNESS - HOOK_FRONT_Y,
-                    ARM_ROOT_Z - BODY_BOTTOM_Z,
-                    (4.0, HOOK_FRONT_Y, BODY_BOTTOM_Z),
-                ),
-                side,
-            )
-        )
-    return union(anchors).cut(post_clearance_tool()).removeSplitter()
+    return body.cut(post_clearance_tool()).removeSplitter()
 
 
-def hook_shape(side, release_mm=0.0):
-    """One root-attached arm and hook; release is an explicit nominal pose.
-
-    Displacement is ``release_mm`` at Z0 and zero at the beam root. This simple
-    shear preserves connectivity, but does not imply a real cantilever bends
-    linearly or that printed PA12 can survive this deflection.
-    """
-    if not 0 <= release_mm <= RELEASE_MM:
-        raise ValueError(f"Modelled hook release must be 0..{RELEASE_MM} mm")
-    beam = box(
-        ARM_THICKNESS,
-        HOOK_STOP_Y - HOOK_FRONT_Y,
-        HOOK_HALF_HEIGHT - ARM_ROOT_Z,
-        (ARM_INNER_X, HOOK_FRONT_Y, ARM_ROOT_Z),
-    )
-    hook = box(
-        ARM_INNER_X + ARM_THICKNESS,
-        HOOK_STOP_Y - HOOK_FRONT_Y,
-        2 * HOOK_HALF_HEIGHT,
-        (0, HOOK_FRONT_Y, -HOOK_HALF_HEIGHT),
-    )
-    hook = hook.cut(_cylinder(SHIELD_OPENING_DIAMETER / 2, -1.8, 1.7))
-    # No thin insertion ramp: pre-open both arms with the release tools before
-    # inserting the bearing. The square hook keeps its full 1.5 mm thickness.
-    arm = union([beam, hook])
-    if release_mm:
-        matrix = App.Matrix()
-        matrix.A13 = release_mm / -ARM_ROOT_Z
-        matrix.A14 = release_mm
-        arm = arm.transformGeometry(matrix)
-    return _side(arm, side)
-
-
-def cup_shape(release_mm=0.0):
-    """One printable solid, at rest or in the explicitly modelled release pose."""
-    shape = union(
-        [fixed_body_shape(), hook_shape(-1, release_mm), hook_shape(1, release_mm)]
-    )
+def cup_shape():
+    """Fixed housing only; the keeper is a separately replaceable solid."""
+    shape = fixed_body_shape()
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Bearing cup must remain one valid connected solid")
     return shape
 
 
-def released_shape(cup=None):
-    """Replace the two nominal arms in an actual cup with their release poses.
-
-    Extra material in a saved frame is deliberately retained: a refilled slot
-    must not disappear merely because the ideal released model has an opening.
-    ``geometry_check`` separately requires both complete nominal arms to exist.
-    """
-    cup = cup if cup is not None else cup_shape()
-    arms = union([hook_shape(-1), hook_shape(1)])
-    return union([cup.cut(arms), hook_shape(-1, RELEASE_MM), hook_shape(1, RELEASE_MM)])
-
-
-def release_tool_shapes():
-    """Two 0.6 mm flat-blade access envelopes, with the carrier/shaft removed.
-
-    These represent hand tools, not installed parts. Insert in the open side
-    slots below the hooks and displace the arms outward; hold both released
-    while withdrawing the bearing. Do not lever on a shield or an inner ring.
-    """
-    tool = box(0.6, 12.0, 3.0, (4.95, -12.2, -5.0))
-    return [_side(tool, side) for side in (-1, 1)]
+def keeper_shape():
+    """Simple plate and thick lower screw foot; no elastic/radial clamp."""
+    body = union(
+        [
+            box(
+                2 * KEEPER_HALF_WIDTH,
+                KEEPER_STOP_Y - KEEPER_FRONT_Y,
+                KEEPER_TOP_Z - KEEPER_BOTTOM_Z,
+                (-KEEPER_HALF_WIDTH, KEEPER_FRONT_Y, KEEPER_BOTTOM_Z),
+            ),
+            box(
+                2 * KEEPER_HALF_WIDTH,
+                KEEPER_FOOT_BACK_Y - KEEPER_FRONT_Y,
+                KEEPER_FOOT_TOP_Z - KEEPER_BOTTOM_Z,
+                (-KEEPER_HALF_WIDTH, KEEPER_FRONT_Y, KEEPER_BOTTOM_Z),
+            ),
+        ]
+    )
+    cuts = [
+        _cylinder(
+            SHIELD_OPENING_DIAMETER / 2,
+            KEEPER_FRONT_Y - 0.1,
+            KEEPER_STOP_Y - KEEPER_FRONT_Y + 0.2,
+        ),
+        _cylinder(
+            1.1,
+            KEEPER_FRONT_Y - 0.1,
+            KEEPER_FOOT_BACK_Y - KEEPER_FRONT_Y + 0.2,
+            KEEPER_SCREW_Z,
+        ),
+        _cylinder(
+            KEEPER_HEAD_CLEARANCE_RADIUS,
+            KEEPER_FRONT_Y - 0.1,
+            KEEPER_SCREW_SEAT_Y - KEEPER_FRONT_Y + 0.1,
+            KEEPER_SCREW_Z,
+        ),
+    ]
+    shape = body.cut(union(cuts)).removeSplitter()
+    if not shape.isValid() or len(shape.Solids) != 1:
+        raise RuntimeError("Bearing keeper must remain one valid connected solid")
+    return shape
 
 
 def coupon_shape():
-    """Production cup and beam roots on a plain 3 mm handling foot."""
-    return union(
-        [
-            cup_shape(),
-            box(18.0, 10.0, 3.0, (-9.0, -4.0, BODY_BOTTOM_Z - 3.0)),
-        ]
-    )
+    """Production cup on a handling foot, used with a production keeper."""
+    return union([cup_shape(), box(18, 10, 3, (-9, -4, BODY_BOTTOM_Z - 3))])
 
 
-def geometry_check(cup=None):
-    """Nominal capture/support/access evidence; no physical snap qualification.
-
-    A continuous axial insertion sweep is intersected with the released cup.
-    Intermediate release poses only check this explicit shear model. The final
-    full-frame assembly must additionally verify all neighboring obstacles.
-    """
+def geometry_check(cup=None, keeper=None):
+    """Nominal capture/service proof; not a physical fit qualification."""
     cup = cup if cup is not None else cup_shape()
+    keeper = keeper if keeper is not None else keeper_shape()
+    support = union([cup, keeper])
     bearing = _cylinder(BEARING_RADIUS, 0, BEARING_WIDTH).cut(
         _cylinder(1.5, -0.1, BEARING_WIDTH + 0.2)
     )
-    released = released_shape(cup)
-    insertion = _cylinder(BEARING_RADIUS, -8.0, 10.5)
-    inward = translated_shape(bearing, y=HOOK_STOP_Y)
-    stop_in = cup.common(translated_shape(bearing, y=HOOK_STOP_Y - 0.05)).Volume
-    stop_out = cup.common(translated_shape(bearing, y=0.05)).Volume
-    guide = _cylinder(3.2, POCKET_BACK_Y, BEARING_WIDTH - POCKET_BACK_Y).cut(
-        _cylinder(3.01, POCKET_BACK_Y, BEARING_WIDTH - POCKET_BACK_Y)
+    inward = translated_shape(bearing, y=KEEPER_STOP_Y)
+    insertion = _cylinder(BEARING_RADIUS, -8, 10.5)
+    # Sweep the individual planar cross-sections: Part cannot extrude a solid.
+    keeper_sweep = union(
+        [
+            face.extrude(App.Vector(0, -8, 0))
+            for face in keeper.Faces
+            if abs(face.normalAt(0, 0).y) > 0.99
+        ]
+        + [keeper]
     )
-    shield = _cylinder(2.7, -0.3, 2.9)
-    tool_collision = sum(cup.common(tool).Volume for tool in release_tool_shapes())
-    missing_hooks = sum(hook_shape(side).cut(cup).Volume for side in (-1, 1))
-    pocket_witness = box(2.6, 0.58, 4.0, (3.1, -0.19, -2.0))
-    pocket_collision = sum(
-        cup.common(_side(pocket_witness, side)).Volume for side in (-1, 1)
+    guide = _cylinder(3.25, KEEPER_STOP_Y, BEARING_WIDTH - KEEPER_STOP_Y).cut(
+        _cylinder(
+            SEAT_RADIUS + 0.01, KEEPER_STOP_Y - 0.1, BEARING_WIDTH - KEEPER_STOP_Y + 0.2
+        )
     )
-    side_slot = box(0.98, 1.48, 8.98, (4.81, -1.69, -10.49))
-    side_slot_collision = sum(
-        cup.common(_side(side_slot, side)).Volume for side in (-1, 1)
-    )
-    fixed_geometry = cup.cut(union([hook_shape(-1), hook_shape(1)]))
-    release_collision = max(
-        fixed_geometry.common(hook_shape(side, step * RELEASE_MM / 8)).Volume
-        for side in (-1, 1)
-        for step in range(9)
+    shield = _cylinder(2.7, -0.6, 3.2)
+    screw_path = _cylinder(1.0, 0, 6, KEEPER_SCREW_Z)
+    foot_seat = _cylinder(2.0, KEEPER_FOOT_BACK_Y, 0.05, KEEPER_SCREW_Z).cut(
+        _cylinder(1.11, KEEPER_FOOT_BACK_Y - 0.1, 0.25, KEEPER_SCREW_Z)
     )
     metrics = {
         "valid_single_solid": cup.isValid() and len(cup.Solids) == 1,
-        "nominal_bearing_collision_mm3": cup.common(bearing).Volume,
-        "inward_limit_bearing_collision_mm3": cup.common(inward).Volume,
-        "inward_overtravel_block_mm3": stop_in,
-        "outward_overtravel_block_mm3": stop_out,
-        "released_continuous_insertion_collision_mm3": released.common(
-            insertion
+        "valid_keeper_solid": keeper.isValid() and len(keeper.Solids) == 1,
+        "nominal_bearing_collision_mm3": support.common(bearing).Volume,
+        "inward_limit_bearing_collision_mm3": support.common(inward).Volume,
+        "inward_overtravel_block_mm3": keeper.common(
+            translated_shape(bearing, y=KEEPER_STOP_Y - 0.05)
         ).Volume,
+        "outward_overtravel_block_mm3": cup.common(
+            translated_shape(bearing, y=0.05)
+        ).Volume,
+        "keeper_to_frame_collision_mm3": cup.common(keeper).Volume,
+        "bearing_insertion_collision_mm3": cup.common(insertion).Volume,
+        "keeper_removal_collision_mm3": cup.common(keeper_sweep).Volume,
         "complete_guide_missing_mm3": guide.cut(cup).Volume,
-        "complete_guide_length_mm": BEARING_WIDTH - POCKET_BACK_Y,
-        "complete_guide_overlap_at_inward_limit_mm": BEARING_WIDTH
-        + HOOK_STOP_Y
-        - POCKET_BACK_Y,
-        "shield_design_envelope_collision_mm3": cup.common(shield).Volume,
-        "release_tool_collision_mm3": tool_collision,
-        "hook_missing_mm3": missing_hooks,
-        "hook_back_pocket_collision_mm3": pocket_collision,
-        "arm_side_slot_collision_mm3": side_slot_collision,
-        "sampled_release_to_fixed_body_collision_mm3": release_collision,
-        "nominal_axial_endplay_mm": -HOOK_STOP_Y,
-        "scope": "Nominal geometry and explicit kinematic release only. Ring-land compatibility, actual print fit, both-hook recovery, insertion force, axial retention, creep and fatigue require a process-matched coupon and installed trials. No bearing preload or elastic/strength qualification.",
+        "complete_guide_length_mm": BEARING_WIDTH - KEEPER_STOP_Y,
+        "complete_guide_overlap_at_inward_limit_mm": BEARING_WIDTH,
+        "shield_design_envelope_collision_mm3": support.common(shield).Volume,
+        "screw_shank_collision_mm3": support.common(screw_path).Volume,
+        "keeper_screw_hard_seat_missing_mm3": foot_seat.cut(cup).Volume,
+        "nominal_axial_endplay_mm": -KEEPER_STOP_Y,
+        "nominal_diametral_clearance_mm": 2 * (SEAT_RADIUS - BEARING_RADIUS),
+        "scope": "Nominal rigid capture only. Coupon-match the actual bearing and keeper; verify radial fit, ring lands, shields, cap alignment, no preload, fastener retention and loaded motion. General PA12 tolerance is not absorbed by the nominal seat allowance. No strength or physical fit qualification.",
     }
+    zero_keys = [k for k in metrics if k.endswith("_mm3") and "overtravel" not in k]
     metrics["passed"] = (
         metrics["valid_single_solid"]
-        and stop_in > 0.01
-        and stop_out > 0.01
-        and all(
-            metrics[key] < 1e-7
-            for key in (
-                "nominal_bearing_collision_mm3",
-                "inward_limit_bearing_collision_mm3",
-                "released_continuous_insertion_collision_mm3",
-                "complete_guide_missing_mm3",
-                "shield_design_envelope_collision_mm3",
-                "release_tool_collision_mm3",
-                "sampled_release_to_fixed_body_collision_mm3",
-                "hook_missing_mm3",
-                "hook_back_pocket_collision_mm3",
-                "arm_side_slot_collision_mm3",
-            )
-        )
+        and metrics["valid_keeper_solid"]
+        and metrics["inward_overtravel_block_mm3"] > 0.01
+        and metrics["outward_overtravel_block_mm3"] > 0.01
+        and all(metrics[k] < 1e-7 for k in zero_keys)
     )
     return metrics

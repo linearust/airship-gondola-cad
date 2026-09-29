@@ -14,44 +14,6 @@ from .geometry import intersection_volume
 TOL = 1e-5
 
 
-def release_motion_check(position_shape, obstacles):
-    """Check both moving arms against every retained physical obstacle.
-
-    The caller removes only these arms' resting material from the fixed-frame
-    obstacle. The retained bearing remains an obstacle during release. Nine
-    prescribed shear poses supplement the axial path check; they do not prove
-    continuous elastic motion or physical deflection capability.
-    """
-    poses = []
-    for index in range(9):
-        release = bearing_retention.RELEASE_MM * index / 8
-        hooks = Part.makeCompound(
-            [
-                bearing_retention.hook_shape(-1, release),
-                bearing_retention.hook_shape(1, release),
-            ]
-        )
-        hooks = position_shape(hooks)
-        collisions = {
-            name: volume
-            for name, shape in obstacles.items()
-            if (volume := intersection_volume(hooks, shape)) > TOL
-        }
-        poses.append(
-            {
-                "outward_displacement_at_axis_mm": release,
-                "collisions_mm3": collisions,
-                "passed": not collisions,
-            }
-        )
-    return {
-        "checked_objects": sorted(obstacles),
-        "poses": poses,
-        "scope": "Nine sampled, prescribed shear poses of both release arms, including rest and fully open. Every retained physical object is checked, including the bearing being released and the fixed frame with only these arms' resting material removed. Not a continuous-motion, elasticity, tool-force or strength qualification.",
-        "passed": bool(obstacles) and all(row["passed"] for row in poses),
-    }
-
-
 def _annulus(inner, outer, start_y, length, x=0, z=0):
     axis = App.Vector(0, 1, 0)
     origin = App.Vector(x, start_y, z)
@@ -60,38 +22,77 @@ def _annulus(inner, outer, start_y, length, x=0, z=0):
     )
 
 
-def _normalise_seat(seat, origin, contacts):
-    """Recover the fixed cup's roll from actual opposed hook contact patches.
+def _normalise_capture(seat, keeper, origin):
+    """Recover fixed-frame roll from the keeper's actual offset screw hole."""
+    holes = [
+        face.Surface
+        for face in keeper.Faces
+        if type(face.Surface).__name__ == "Cylinder"
+        and abs(face.Surface.Radius - 1.1) < TOL
+        and abs(abs(face.Surface.Axis.y) - 1) < TOL
+    ]
+    if not holes:
+        return None
+    hole = holes[0]
+    offset = hole.Center - origin
+    angle = -math.degrees(math.atan2(-offset.x, -offset.z))
+    normalised = []
+    for shape in (seat, keeper):
+        candidate = translated_shape(shape, -origin.x, -origin.y, -origin.z)
+        candidate.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
+        normalised.append(candidate)
+    return normalised
 
-    A pod's frame rotates in inverse pod coordinates during tilt. Bearing and
-    shaft cylinders cannot identify that roll; the two contact patches can,
-    up to 180 degrees. Complete actual arm material resolves that ambiguity.
+
+def keeper_alignment_sensitivity(keeper):
+    """Screen prescribed lateral errors against the unmeasured shield envelope.
+
+    The guide pocket is anti-rotation support, not a precision centering datum.
+    Tightening the keeper screw does not automatically centre its opening.
     """
-    centre = contacts[0].CenterOfMass
-    angle = math.degrees(math.atan2(centre.z - origin.z, centre.x - origin.x))
-    expected_arms = Part.makeCompound(
-        [bearing_retention.hook_shape(-1), bearing_retention.hook_shape(1)]
-    )
-    candidates = []
-    for rotation in (angle, angle + 180):
-        candidate = translated_shape(seat, -origin.x, -origin.y, -origin.z)
-        candidate.rotate(App.Vector(), App.Vector(0, 1, 0), rotation)
-        candidates.append((expected_arms.cut(candidate).Volume, candidate))
-    return min(candidates, key=lambda item: item[0])[1]
+    shield = Part.makeCylinder(2.7, 8, App.Vector(0, -3, 0), App.Vector(0, 1, 0))
+    rows = []
+    for offset in (0.0, 0.05, 0.1, 0.2, 0.25):
+        collisions = [
+            intersection_volume(translated_shape(keeper, x=dx, z=dz), shield)
+            for dx, dz in ((offset, 0), (-offset, 0), (0, offset), (0, -offset))
+        ]
+        rows.append(
+            {
+                "prescribed_radial_offset_mm": offset,
+                "nominal_radial_gap_mm": round(2.8 - 2.7 - offset, 8),
+                "positive_nominal_gap": 2.8 - 2.7 - offset > TOL,
+                "maximum_hypothetical_shield_penetration_mm3": max(collisions),
+                "all_cardinal_offsets_clear": max(collisions) < TOL,
+            }
+        )
+    by_offset = {row["prescribed_radial_offset_mm"]: row for row in rows}
+    return {
+        "cases": rows,
+        "nominal_shield_envelope_overlap_mm3": by_offset[0.0][
+            "maximum_hypothetical_shield_penetration_mm3"
+        ],
+        "scope": "Cardinal relative-error sensitivity only. Ø5.4 shield envelope is unmeasured. The nominal 0.05 mm bearing radial allowance can add to keeper displacement: opposing 0.05 mm movements give 0.10 mm relative offset and zero nominal gap, while 0.20 mm keeper movement plus 0.05 mm bearing movement gives 0.25 mm relative offset and interference. Non-overlap at 0.10 mm is mathematical tangency, not positive clearance or physical qualification. Align the aperture, inspect the actual ring land and shield, then check free rotation at both axial limits after tightening. Manufacturing error, loaded displacement and actual ring geometry remain unqualified.",
+        "passed": by_offset[0.0]["all_cardinal_offsets_clear"]
+        and by_offset[0.05]["all_cardinal_offsets_clear"]
+        and not by_offset[0.2]["all_cardinal_offsets_clear"],
+    }
 
 
-def bearing_stack_check(bearing, shaft, seat, carrier, *, toward_travel, away_travel):
+def bearing_stack_check(
+    bearing, shaft, seat, carrier, keeper, *, toward_travel, away_travel
+):
     """Check actual solids with this bearing's outboard direction along +Y.
 
     Neither the carrier nor a spacer retains the bearing. The independently
     verified carrier/frame stops bound carrier motion; the bearing itself is
-    captured by two inboard outer-ring hooks and one outboard shoulder.
+    captured by a removable outer-ring keeper and one outboard shoulder.
     Carrier/shaft translation is bounded by [-away_travel, +toward_travel]
     in this normalized frame; unequal stop clearances are permitted.
     """
     if any(
         shape.isNull() or not shape.isValid()
-        for shape in (bearing, shaft, seat, carrier)
+        for shape in (bearing, shaft, seat, carrier, keeper)
     ):
         return {"passed": False, "error": "Missing or invalid bearing-stack solid"}
     if any(
@@ -106,7 +107,7 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, toward_travel, away_tr
     comparison = geometry_comparison(bearing, expected)
     shaft_bounds = shaft.optimalBoundingBox(False, False)
     axis_error = math.hypot(shaft_bounds.Center.x - x, shaft_bounds.Center.z - z)
-    inward = -bearing_retention.HOOK_STOP_Y
+    inward = -bearing_retention.KEEPER_STOP_Y
     bearing_interval = [bounds.YMin - inward, bounds.YMax]
     shaft_coverage = min(bounds.YMax, shaft_bounds.YMax - away_travel) - max(
         bounds.YMin - inward, shaft_bounds.YMin + toward_travel
@@ -121,41 +122,35 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, toward_travel, away_tr
         for face in shaft.Faces
     )
 
-    # Only the outer-ring design land is used: do not count shield contact as
-    # a valid axial stop. Each independent hook must contribute a broad patch.
+    normalised = _normalise_capture(seat, keeper, origin)
+    if normalised is None:
+        return {"passed": False, "error": "Missing keeper screw-hole registration"}
+    normalised_seat, normalised_keeper = normalised
+    capture = bearing_retention.geometry_check(normalised_seat, normalised_keeper)
+    # A continuous annular witness excludes the assumed shield region. This
+    # is only a design envelope; the delivered outer-ring land needs inspection.
     stop_slice = _annulus(2.81, 2.99, bounds.YMin - inward - 0.01, 0.01, x, z)
-    contacts = list(seat.common(stop_slice).Solids)
-    contact_areas = [solid.Volume / 0.01 for solid in contacts]
-    if len(contacts) != 2:
-        return {
-            "passed": False,
-            "error": "Expected two separate inboard outer-ring hook contacts",
-            "hook_contact_patch_areas_mm2": contact_areas,
-        }
-    centres = [solid.CenterOfMass for solid in contacts]
-    opposed_error = math.hypot(
-        centres[0].x + centres[1].x - 2 * x,
-        centres[0].z + centres[1].z - 2 * z,
-    )
-    normalised = _normalise_seat(seat, origin, contacts)
-    capture = bearing_retention.geometry_check(normalised)
-
-    # The front pockets intentionally remove two side sectors. The top and
-    # bottom fixed arcs, measured in the saved cup, support the full width.
-    # A generous 0.3 mm radial witness checks actual surrounding PA12 material.
-    full_width_wall = _annulus(3.01, 3.3, -inward, 2.5 + inward)
-    upper = Part.makeBox(8, 2.5 + inward, 2, App.Vector(-4, -inward, 2.11))
-    lower = Part.makeBox(8, 2.5 + inward, 2, App.Vector(-4, -inward, -4.11))
-    arc_witness = full_width_wall.common(upper.fuse(lower))
-    missing_arcs = abs(arc_witness.cut(normalised).Volume)
+    contact_area = keeper.common(stop_slice).Volume / 0.01
     outer_shoulder = _annulus(2.81, 2.99, 2.51, 1.48)
-    missing_shoulder = abs(outer_shoulder.cut(normalised).Volume)
+    missing_shoulder = abs(outer_shoulder.cut(normalised_seat).Volume)
+    bore = Part.makeCylinder(
+        bearing_retention.SEAT_RADIUS,
+        2.5 + inward,
+        App.Vector(0, -inward, 0),
+        App.Vector(0, 1, 0),
+    )
+    missing_bore = abs(bore.common(normalised_seat).Volume)
+    guide_wall = _annulus(
+        bearing_retention.SEAT_RADIUS + 0.01, 3.3, -inward, 2.5 + inward
+    )
+    missing_guide = abs(guide_wall.cut(normalised_seat).Volume)
 
     travel = _annulus(1.5, 3.0, bounds.YMin - inward, 2.5 + inward, x, z)
     overlaps = {
         "bearing_seat_overlap_mm3": intersection_volume(bearing, seat),
         "bearing_shaft_overlap_mm3": intersection_volume(bearing, shaft),
-        "bearing_travel_seat_overlap_mm3": intersection_volume(travel, seat),
+        "bearing_travel_seat_overlap_mm3": intersection_volume(travel, seat)
+        + intersection_volume(travel, keeper),
     }
     # The caller verifies each carrier stop independently. Only travel toward
     # this bearing reduces the face clearance; neither stop retains the bearing.
@@ -172,22 +167,22 @@ def bearing_stack_check(bearing, shaft, seat, carrier, *, toward_travel, away_tr
         "carrier_travel_toward_bearing_mm": toward_travel,
         "carrier_travel_away_from_bearing_mm": away_travel,
         "minimum_carrier_to_bearing_face_gap_mm": carrier_gap,
-        "hook_contact_patch_areas_mm2": contact_areas,
-        "opposed_hook_contact_centre_error_mm": opposed_error,
-        "missing_full_width_fixed_guide_arcs_mm3": missing_arcs,
+        "keeper_outer_ring_contact_area_mm2": contact_area,
+        "bearing_bore_intrusion_mm3": missing_bore,
+        "missing_complete_guide_wall_mm3": missing_guide,
         "missing_complete_outer_shoulder_mm3": missing_shoulder,
         "capture_geometry": capture,
         **overlaps,
-        "scope": "Saved nominal solids. Two integral hooks and the outer shoulder contact only the outer-ring design land; the carrier is separately bounded and does not retain the bearing. Complete 360-degree guide length is2.1mm, overlapping1.9mm at the inward limit, with top/bottom fixed arcs supporting the complete bearing width. Ø5.4 is a shield-clearance design envelope, not a measured generic-bearing shield. Process-matched coupon fit, ring-land compatibility, release/recovery, forces, creep and fatigue remain physically unqualified.",
+        "scope": "Saved nominal solids. A rigid removable keeper and rear shoulder contact only the assumed outer-ring land. The keeper clamps against the frame, leaving 0.5 mm nominal bearing endplay. The radial bore has 0.1 mm diametral design allowance. These allowances are not guaranteed process tolerances: actual bore finishing, ring-land compatibility, free rotation, screw retention, wear and loaded fit remain unqualified. The carrier is independently bounded by assembled frame/keeper stops.",
         "passed": comparison["difference_mm3"] < TOL
         and axis_error < TOL
         and shaft_journal
         and shaft_coverage >= 2.5 + inward - TOL
-        and min(contact_areas) > 0.4
-        and opposed_error < TOL
+        and contact_area > 3.0
         and capture["passed"]
-        and missing_arcs < TOL
+        and missing_bore < TOL
+        and missing_guide < TOL
         and missing_shoulder < TOL
-        and carrier_gap >= 1.8 - TOL
+        and carrier_gap >= 1.5 - TOL
         and all(value < TOL for value in overlaps.values()),
     }

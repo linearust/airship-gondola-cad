@@ -27,7 +27,7 @@ from gondola.contracts.drive import (
 from gondola.parts import propulsion, rail
 from gondola.print_export import mesh_checks, print_shape
 
-from .bearing_capture import bearing_stack_check
+from .bearing_capture import bearing_stack_check, keeper_alignment_sensitivity
 from .evidence import overlap_failures
 from .geometry import (
     belongs_to_group,
@@ -334,9 +334,14 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
         prefix + "OutputShaft" + suffix,
         "PropulsionFixedFrame",
         prefix + "MotorCarrier",
+        prefix + "OutputBearingKeeper" + suffix,
+    ]
+    fastener_names = [
+        prefix + "OutputBearingKeeper" + suffix + kind for kind in ("Bolt", "Nut")
     ]
     objects = [doc.getObject(name) for name in names]
-    if pod is None or any(obj is None for obj in objects):
+    fasteners = [doc.getObject(name) for name in fastener_names]
+    if pod is None or any(obj is None for obj in objects + fasteners):
         return {"passed": False, "error": "Missing output bearing capture component"}
     stops = (
         axial_stops if axial_stops is not None else carrier_axial_travel(doc, prefix)
@@ -351,15 +356,22 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
     if suffix == "Negative":
         for shape in shapes:
             shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+    capture = bearing_stack_check(
+        *shapes,
+        toward_travel=stops["positive_mm" if suffix == "Positive" else "negative_mm"],
+        away_travel=stops["negative_mm" if suffix == "Positive" else "positive_mm"],
+    )
+
+    seated = clamp_fastener_check(
+        Part.makeCompound([world_shape(objects[2]), world_shape(objects[4])]),
+        world_shape(fasteners[0]),
+        world_shape(fasteners[1]),
+    )
     return {
         "bearing": names[0],
-        **bearing_stack_check(
-            *shapes,
-            toward_travel=stops[
-                "positive_mm" if suffix == "Positive" else "negative_mm"
-            ],
-            away_travel=stops["negative_mm" if suffix == "Positive" else "positive_mm"],
-        ),
+        **capture,
+        "keeper_fastener": seated,
+        "passed": capture["passed"] and seated["passed"],
     }
 
 
@@ -1178,7 +1190,7 @@ def _record_output_stub_checks(report, prefix, pod, physical, frame):
 
 
 def output_carrier_service_check(doc, module, prefix):
-    """Release the capless output rotor while temporarily supporting its bearings."""
+    """Release the rotor while its independently captured bearings stay installed."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"pod": prefix, "missing_parts": missing, "passed": False}
@@ -1355,10 +1367,8 @@ def _bearing_cup_world(doc, prefix, side, shape):
 
 
 def _record_bearing_checks(report, doc, module, prefix, physical):
-    """Capture plus removal with both integral hooks explicitly held released."""
+    """Prove screw release, keeper withdrawal and then inward bearing removal."""
     from gondola.parts import bearing_retention as capture
-
-    from .bearing_capture import release_motion_check
 
     carrier_service = output_carrier_service_check(doc, module, prefix)
     report["output_carrier_service"].append(carrier_service)
@@ -1372,76 +1382,65 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
     }
     for side, suffix in ((-1, "Negative"), (1, "Positive")):
         name = prefix + "OutputBearing" + suffix
+        keeper_name = prefix + "OutputBearingKeeper" + suffix
+        bolt_name, nut_name = keeper_name + "Bolt", keeper_name + "Nut"
         stack = output_bearing_stack_check(doc, prefix, suffix)
         report["bearing_stacks"].append(stack)
-        capture_geometry = stack.get(
-            "capture_geometry",
-            {"passed": False, "error": "Saved bearing capture geometry was not proven"},
+        missing = [
+            part
+            for part in (name, keeper_name, bolt_name, nut_name)
+            if part not in staged
+        ]
+        if missing:
+            report["bearing_service"].append(
+                {"bearing": name, "missing_parts": missing, "passed": False}
+            )
+            continue
+        cup = _bearing_cup_world(doc, prefix, side, capture.cup_shape())
+        missing_cup = abs(cup.cut(staged["PropulsionFixedFrame"]).Volume)
+        fastener_service = fastener_service_check(
+            staged[bolt_name],
+            staged[nut_name],
+            retained_obstacles(staged, {bolt_name, nut_name}),
         )
-        closed = _bearing_cup_world(doc, prefix, side, capture.cup_shape())
-        opened = _bearing_cup_world(
-            doc, prefix, side, capture.cup_shape(capture.RELEASE_MM)
-        )
-        frame = staged["PropulsionFixedFrame"]
-        # The source cup must actually exist in the saved frame; no manufactured
-        # geometry is silently assumed to be present in a damaged/edited frame.
-        missing_cup = abs(closed.cut(frame).Volume)
-        resting_arms = _bearing_cup_world(
-            doc,
-            prefix,
-            side,
-            Part.makeCompound([capture.hook_shape(-1), capture.hook_shape(1)]),
-        )
-        arm_obstacles = retained_obstacles(staged, set())
-        arm_obstacles["PropulsionFixedFrame"] = frame.cut(resting_arms)
-        release_motion = release_motion_check(
-            lambda shape: _bearing_cup_world(doc, prefix, side, shape),
-            arm_obstacles,
-        )
-        released_frame = frame.cut(closed).fuse(opened).removeSplitter()
-        released_obstacles = retained_obstacles(staged, {name})
-        released_obstacles["PropulsionFixedFrame"] = released_frame
         direction = doc.PropulsionFixedFrame.getGlobalPlacement().Rotation.multVec(
             App.Vector(0, -side * 20, 0)
         )
-        path = continuous_path(
-            staged[name], [(0, 0, 0), tuple(direction)], released_obstacles
+        released = retained_obstacles(staged, {bolt_name, nut_name})
+        keeper_path = continuous_path(
+            staged[keeper_name],
+            [(0, 0, 0), tuple(direction)],
+            retained_obstacles(released, {keeper_name}),
         )
-        tools = []
-        for index, tool in enumerate(capture.release_tool_shapes()):
-            world_tool = _bearing_cup_world(doc, prefix, side, tool)
-            collisions = {
-                key: intersection_volume(world_tool, value)
-                for key, value in retained_obstacles(staged, {name}).items()
-            }
-            tools.append(
-                {
-                    "tool": index,
-                    "intersections_mm3": collisions,
-                    "passed": all(v < TOL for v in collisions.values()),
-                }
-            )
+        bearing_path = continuous_path(
+            staged[name],
+            [(0, 0, 0), tuple(direction)],
+            retained_obstacles(released, {keeper_name, name}),
+        )
+        alignment = keeper_alignment_sensitivity(capture.keeper_shape())
         report["bearing_service"].append(
             {
                 "bearing": name,
+                "keeper": keeper_name,
                 "required_prior_check": "output_carrier_service",
                 "missing_saved_cup_mm3": missing_cup,
-                "release_per_arm_mm": capture.RELEASE_MM,
-                "release_tools": tools,
-                "local_release_geometry": capture_geometry,
-                "sampled_hook_release_clearance": release_motion,
-                "scope": "Remove the carrier and both shafts first; hold both integral hooks out using two tools, withdraw the bearing inward, then release the hooks. This explicit sheared release pose checks clearance only. PA12 elastic recovery, force, fatigue and creep require the process-matched coupon. Do not lever on the bearing shield.",
-                **path,
+                "fastener_release": fastener_service,
+                "keeper_removal": keeper_path,
+                "bearing_removal": bearing_path,
+                "local_capture_geometry": stack.get("capture_geometry", {}),
+                "keeper_alignment_sensitivity": alignment,
+                "scope": "Remove the output gear, carrier and both shafts first. Release the ordinary rear M2 nut, withdraw its M2 bolt inward, withdraw the rigid keeper inward, then withdraw the bearing. All retained physical objects remain obstacles. No flexure release, forced bearing insertion, purchased spacer or bearing preload is required. Actual fitting and retained screw tightness require physical qualification.",
                 "passed": carrier_service["passed"]
                 and stack["passed"]
                 and missing_cup < TOL
-                and path["passed"]
-                and all(r["passed"] for r in tools)
-                and capture_geometry["passed"]
-                and release_motion["passed"],
+                and fastener_service["passed"]
+                and keeper_path["passed"]
+                and bearing_path["passed"]
+                and alignment["passed"],
             }
         )
-        staged.pop(name)
+        for part in (name, keeper_name, bolt_name, nut_name):
+            staged.pop(part)
 
 
 def _record_drive_service_checks(report, doc, prefix, sign, physical):
@@ -1518,6 +1517,7 @@ def _record_fastener_checks(report, module, physical):
         obj
         for obj in module["hardware"]
         if obj.HardwareSKU in ("M2X8_BUTTON_HEAD", "M1_6X8_PAN_HEAD_KIT")
+        or (obj.HardwareSKU == "M2X6_BUTTON_HEAD" and "OutputBearingKeeper" in obj.Name)
     ]
     bolts.sort(key=lambda obj: "HornGearClampNear" in obj.Name)
     for bolt in bolts:
@@ -1559,6 +1559,28 @@ def _record_fastener_checks(report, module, physical):
                     "check": "input_drive_service",
                     "object": prefix,
                     "passed": len(matches) == 1 and matches[0]["passed"],
+                }
+            )
+        if "OutputBearingKeeper" in bolt.Name:
+            prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
+            prior = [
+                row
+                for row in report["output_carrier_service"]
+                if row.get("pod") == prefix
+            ]
+            service_excluded.update(
+                set(prior[0].get("moving_parts", [])) if len(prior) == 1 else set()
+            )
+            service_excluded.update(
+                {prefix + "OutputGear"}
+                | {prefix + "OutputShaft" + side for side in ("Negative", "Positive")}
+            )
+            prerequisites = "Remove the output gear, carrier and both shafts; keep the bearing keeper seated while releasing the rear nut and withdrawing the bolt inward."
+            dependencies.append(
+                {
+                    "check": "output_carrier_service",
+                    "object": prefix,
+                    "passed": len(prior) == 1 and prior[0]["passed"],
                 }
             )
         retained = retained_obstacles(physical, service_excluded, members=service_parts)

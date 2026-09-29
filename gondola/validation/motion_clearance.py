@@ -64,7 +64,7 @@ def carrier_axial_travel(doc, prefix):
 
     Both contact patches lie in one rotation-invariant annulus. Their overlap
     at any angle is at least moving area + fixed area - annulus area. Require
-    a substantial positive bound, allowing bearing-release pockets without
+    a substantial positive bound, including fixed-frame and removable-keeper faces without
     relying on sampled poses. This proves a nominal geometric stop, not its loaded wear,
     strength, printed tolerance, bearing preload or friction qualification.
     """
@@ -78,7 +78,17 @@ def carrier_axial_travel(doc, prefix):
             "error": "Missing carrier or fixed frame",
         }
     carrier = _in_pod_coordinates(carrier_obj, pod)
-    frame = _in_pod_coordinates(frame_obj, pod)
+    frame_shapes = [_in_pod_coordinates(frame_obj, pod)]
+    for side in ("Negative", "Positive"):
+        keeper = doc.getObject(prefix + "OutputBearingKeeper" + side)
+        if keeper is None:
+            return {
+                "pod": prefix,
+                "passed": False,
+                "error": "Missing bearing keeper stop",
+            }
+        frame_shapes.append(_in_pod_coordinates(keeper, pod))
+    frame = Part.makeCompound(frame_shapes)
     if not all(_solid(shape) for shape in (carrier, frame)):
         return {
             "pod": prefix,
@@ -141,7 +151,7 @@ def carrier_axial_travel(doc, prefix):
         "negative_mm": stops[0].get("travel_mm"),
         "positive_mm": stops[1].get("travel_mm"),
         "maximum_mm": max(row["travel_mm"] for row in stops) if passed else None,
-        "scope": "Actual planar carrier/frame end-face patches within a rotation-invariant annulus. Inclusion-exclusion area bound proves at least 25 percent of the witness area overlaps through every output rotation. Nominal geometry only; no manufacturing, friction or strength qualification.",
+        "scope": "Actual planar carrier/frame-and-keeper end-face patches within a rotation-invariant annulus. Inclusion-exclusion area bound proves at least 25 percent of the witness area overlaps through every output rotation. Nominal geometry only; no manufacturing, friction or strength qualification.",
         "passed": passed,
     }
 
@@ -171,6 +181,11 @@ def carrier_metal_clearance_check(doc, prefix):
         for side in ("Lower", "Upper")
         for kind in ("Bolt", "Nut")
     ]
+    metal_names.extend(
+        prefix + "OutputBearingKeeper" + side + kind
+        for side in ("Negative", "Positive")
+        for kind in ("Bolt", "Nut")
+    )
     objects = [doc.getObject(name) for name in names + metal_names]
     if pod is None or any(obj is None for obj in objects):
         return {
@@ -206,7 +221,17 @@ def carrier_metal_clearance_check(doc, prefix):
     if axial["passed"]:
         from .rotation_envelope import full_orbit_envelope
 
-        frame = _in_pod_coordinates(doc.PropulsionFixedFrame, pod)
+        frame = Part.makeCompound(
+            [
+                _in_pod_coordinates(doc.PropulsionFixedFrame, pod),
+                *[
+                    _in_pod_coordinates(
+                        doc.getObject(prefix + "OutputBearingKeeper" + side), pod
+                    )
+                    for side in ("Negative", "Positive")
+                ],
+            ]
+        )
         for name in names:
             orbit, evidence = full_orbit_envelope(shapes[name], (0, 0, 0))
             gap = orbit.distToShape(frame)[0]
@@ -251,7 +276,7 @@ def carrier_metal_clearance_check(doc, prefix):
         "minimum_clearance_lower_bound_mm": min(
             (row["continuous_clearance_lower_bound_mm"] for row in rows), default=None
         ),
-        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier, motor, propeller and clamp BRep containment and distances to live servo-module mounting bolts/nuts. Complete orbit cylinders additionally prove no frame penetration through the measured axial travel; equality is the classified carrier/frame stop contact. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
+        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier, motor, propeller and clamp BRep containment and distances to live servo-module and bearing-keeper mounting bolts/nuts. Complete orbit cylinders additionally prove no frame penetration through the measured axial travel; equality is the classified carrier/frame stop contact. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
         "passed": axial["passed"]
         and all(row["passed"] for row in containment)
         and len(frame_rows) == len(names)

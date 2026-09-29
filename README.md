@@ -44,27 +44,32 @@ acceptance pending. Screen both process envelopes; allow wall/fit margin and pow
 removal. Qualify fit with coupons matching full-part process, material, finish and
 feature orientation.
 
-**BI:** retains actual 150 mm main-axis spacing and 50 mm contact-plane-to-axis
-height. The optical head uses an existing universal carrier side slot, eliminating
-its separate rail shoe; two foot fasteners and one pitch fastener use ordinary
-M2 hardware. Default: battery +X edge, pivot Z35 mm. Output supports balance service
-space with 70 mm bearing spacing, 10 mm grips and 6 mm posts; driven/idler/input
-rods are 34/20/18 mm. The current 40 mm propeller carrier has a Ø50/46 mm guard.
-A separate swept-space check reserves room for a future 50 mm replacement rotor;
-the current carrier does not accept that propeller. Central carrier attachment,
-OEM-horn adapter and detachable paired-servo architecture remain.
-[Current design review](references/bi_design_review.md),
-[verification](references/bi_design_verification.json),
+**BJ:** retains the four purchased generic bearings, replacing integral release
+hooks with four identical keyed front keepers and four ordinary M2×6/nut pairs.
+Keepers seat on the frame without intended bearing preload; pocket clearance
+does not centre them. Align each opening before tightening and check free rotation
+at both axial limits; qualify cup/keeper coupons. Ø6.1 seats and 0.5 mm float are not
+guaranteed fits or multiple-size compatibility. Axis spacing/height remain
+150/50 mm, bearing spacing 70 mm, shaft grips 10 mm and driven/idler/input rods
+34/20/18 mm. The optical pitch head stays on an existing universal carrier side
+slot; default battery +X edge, pivot Z35 mm. The current 40 mm propeller carrier
+has a Ø50/46 mm guard. The separate future-50 mm rotor-space check does not make
+that propeller fit the current carrier. Paired servo/input drives stay removable.
+[Current bearing review](references/bearing_keeper_review.md),
+[BJ verification](references/bj_design_verification.json),
+[retained BI layout review](references/bi_design_review.md),
+[historical BI verification](references/bi_design_verification.json),
 [OEM horn evidence](references/servo_horn_compatibility.md),
 [horn/service maintenance review](references/horn_service_review_2026-09-29.md).
-Evidence covers its recorded source/files only. Selections are not proof of purchase.
+Evidence covers its recorded source/files only. Only explicit purchase confirmations
+establish ownership; catalog identities and delivered dimensions remain unverified.
 
 | Area | Selection / limits | Read before changing |
 | --- | --- | --- |
 | FC / battery | MicoAir H743V2 AIO **45A AM32**, existing 2S pack; **2S support confirmed by user, 2026-09-29**. Revision/minimum voltage unspecified; installed power untested. | [FC](references/controller_selection_review.md) |
 | Drive | Two X06 V6.0; metric m0.5 **48T input / 16T output**, both Ø3 mm nominal bores. Bounded ±180° target; small shortfall allowed, no wraparound. No alternate ratio/collective mode implemented. | [selection](references/drive_selection_review.md), [gear evidence](references/kailash_gears_selected_evidence.md) |
 | Horns | Manufacturer X06 stock plastic half arm 1 on both sides. Preserve supplied STEP geometry except existing Ø1 mm holes at 6.8/13.2 mm enlarged to Ø1.5 mm; rear M1.4×8 screws/front M1.4 nuts. Near Ø1.8 mm round hole and far 1.8 × 2.4 mm slot in the adapter; no washers. Preserve factory axes and OEM centre retention; resin, mass and installed fit remain unmeasured. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
-| Shafts / bearings | Nominal Ø3 mm 304 rod, generic 3×6×2.5 mm bearings; precision replacement rod allowed if fit fails. No established h5 tolerance or NSK/ISC identity. Integral outer-ring capture, separate shaft grip/axial stops. **No purchased spacers**; rejected 3×5×3 bush contacts shields. | [cart adaptation](references/cart_adaptation_review.md), [retention](references/retention_review.md) |
+| Shafts / bearings | Nominal Ø3 mm 304 rod; retain the four purchased generic 3×6×2.5 mm bearings. Precision replacement rod allowed if fit fails; no established h5 tolerance or NSK/ISC identity. Fixed seats/rear shoulders and removable front keepers; separate shaft grip/axial stops. **No purchased spacers**; rejected 3×5×3 bush contacts shields. | [cart adaptation](references/cart_adaptation_review.md), [retention](references/bearing_keeper_review.md) |
 | Navigation | One of P-AS, MG-A01/M10 Ultra, bare MG-F10-A in the same region; not MG-F10-C. | [navigation](references/navigation_module_compatibility.md) |
 | Optical | One of MTF-02P/MTF-01P on a common adhesive tray. MTF-02P holes unconfirmed; MTF-01P holes intentionally unused. | [sensors](references/optical_sensor_compatibility.md) |
 | Radio | Onboard **LR24-F-Mini only**; LR24-F ground, LR900-A removed. | [radio](references/radio_module_compatibility.md) |
@@ -101,7 +106,7 @@ terminal access and tether strain relief/routing clear of propellers and optical
 
 ## Current design contracts and change checks
 
-The architecture-specific checks below describe BI. Preserve them during refactors;
+The architecture-specific checks below describe BJ. Preserve them during refactors;
 for intentional redesign, revise affected geometry, native controls/metadata, BOMs,
 reservations and checks together rather than freezing the old implementation.
 Read `design.release_status()` before readiness claims. Geometry/coupons

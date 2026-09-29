@@ -229,7 +229,7 @@ PROPULSION_EVIDENCE = {
         "bore_outside_width_mm": [3.0, 6.0, 2.5],
         "manufacturer": "Unverified generic seller part",
         "measured_mass_g": None,
-        "scope": "User-selected 3x6x2.5mm option. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearing against its integral outer-ring capture and shaft before assembly.",
+        "scope": "User confirms the purchased original-final-cart 3x6x2.5mm option is retained for this iteration, four bearings total. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearing against the fixed seat, rear shoulder, removable front keeper and shaft before assembly. No replacement or flanged bearing is selected.",
     },
     "MR63ZZ_design_reference": {
         "sources": [BEARING_REFERENCE_SOURCE, BEARING_FIT_SOURCE],
@@ -243,7 +243,7 @@ PROPULSION_EVIDENCE = {
         "inner_ring_abutment_outer_diameter_max_mm": 3.7,
         "housing_abutment_opening_diameter_min_mm": 5.4,
         "abutment_fillet_max_mm": 0.1,
-        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the selected generic bearing. Integral shoulder/hook outer-ring contact and shield-clearance targets use this reference pending physical verification. Keep hubs off shields and outer rings; check fits, free rotation and axial capture with the received lot.",
+        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the purchased generic bearing. Rear-shoulder/front-keeper outer-ring contact and shield-clearance targets use this reference pending physical verification. The keeper screw seats on the frame without intended bearing preload. Keep hubs off shields and outer rings; check radial fit, free rotation and axial capture with the received lot.",
     },
 }
 

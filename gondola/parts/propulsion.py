@@ -110,7 +110,6 @@ OUTPUT_DRIVEN_SHAFT_LENGTH = 34.0
 OUTPUT_IDLE_SHAFT_LENGTH = 20.0
 OUTPUT_SHAFT_FLAT_LENGTH = 5.0
 OUTPUT_SHAFT_SWEEP_HALF_LENGTH = OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
-CLAMP_SCREW_SKU = "M2X8_BUTTON_HEAD"
 NUT_SKU = "M2_HEX_NUT"
 BEARING_SKU = "BEARING_3X6X2_5"
 
@@ -133,7 +132,7 @@ def bearing_shape():
 
 
 def _bearing_cup(start_y, *, positive_side=True):
-    """Integral outer-ring retention; canonical bearing occupies Y0..2.5."""
+    """Fixed round seat and shoulder; canonical bearing occupies Y0..2.5."""
     body = bearing_retention.cup_shape()
     if not positive_side:
         body = mirrored_y(body, -1)
@@ -385,13 +384,13 @@ def _buy_bearing(doc, parent, name, shape, notes):
     return bearing
 
 
-def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
+def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False, length=8):
     """Seat a bought bolt and nut on the specified grip planes."""
     rotation = App.Rotation(V(0, 0, 1), V(*direction))
     bolt = (
         purchased_hardware.servo_screw_shape()
         if servo_ear
-        else purchased_hardware.screw_shape(8)
+        else purchased_hardware.screw_shape(length)
     ).copy()
     bolt.Placement = App.Placement(V(*origin), rotation)
     nut = (
@@ -404,7 +403,7 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
     notes = (
         f"Selected M1.6x0.35 x8 Phillips kit head envelope and DIN934 hex nut;{grip:g}mm grip+1.3mm nut gives{8 - grip - 1.3:g}mm tip. NominalØ2 OEM hole gives0.2mm radial clearance,Ø3.5 head envelope gives0.25mm nominal case gap. Verify actual ear/seat fit."
         if servo_ear
-        else f"Selected-kit M2x0.4 x8 button-head bolt and hex nut; nominal{grip:g}mm grip,1.6mm nut,{8 - grip - 1.6:g}mm tip projection. Head is a conservative clearance envelope pending measurement. Hand snug; actual preload and printed bearing faces unqualified."
+        else f"Selected-kit M2x0.4 x{length:g} button-head bolt and hex nut; nominal{grip:g}mm grip,1.6mm nut,{length - grip - 1.6:g}mm tip projection. Head is a conservative clearance envelope pending measurement. Hand snug; actual preload and printed bearing faces unqualified."
     )
     return [
         _buy(
@@ -412,7 +411,7 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False):
             parent,
             name + "Bolt",
             bolt,
-            "M1_6X8_PAN_HEAD_KIT" if servo_ear else CLAMP_SCREW_SKU,
+            "M1_6X8_PAN_HEAD_KIT" if servo_ear else f"M2X{length:g}_BUTTON_HEAD",
             notes,
             SERVO_SCREW_SOURCE if servo_ear else CLAMP_SCREW_SOURCE,
             SERVO_SCREW_MATERIAL if servo_ear else KIT_MATERIAL,
@@ -451,21 +450,35 @@ def build_fit_coupons(doc):
     group = create_group(
         doc,
         "BearingFitCoupons",
-        "Print first | releasable bearing capture",
+        "Print first | rigid bearing seat and removable keeper",
     )
     cup = _print(
         doc,
         group,
         "BearingSeatFitSample",
         bearing_retention.coupon_shape(),
-        "Production bearing cup and both release arms on a handling foot. "
+        "Production fixed bearing cup on a handling foot, used with the separate keeper. "
         "Use the same PA12 process, finish and orientation as the frame. "
         "Qualify actual outer-ring contact, no shield rubbing, endplay, free "
-        "rotation, arm recovery and removal with two tools before full printing. "
-        "No bearing spacer or press-fit retention is assumed. Kinematic release "
-        "clearance does not establish insertion force, fatigue or creep.",
+        "rotation and ordinary screw/keeper removal before full printing. "
+        "Centre the keeper aperture on the received bearing before tightening. "
+        "No spacer or press-fit retention is assumed. Raw printing does not "
+        "guarantee the nominal 0.1 mm diametral or 0.5 mm axial allowance.",
+        rotation=App.Rotation(V(0, 0, 1), 45),
     )
-    return {"group": group, "printed": [cup]}
+    keeper = _print(
+        doc,
+        group,
+        "BearingKeeperFitSample",
+        bearing_retention.keeper_shape(),
+        "Production keeper coupon. Assemble with the cup, actual bearing and "
+        "one owned M2x6/ordinary M2 nut. The recessed head clamps the lower "
+        "frame seat; it must not preload the bearing. Match process/finish and "
+        "orientation to the production keeper. Verify centering, shield clearance "
+        "at both axial limits, free rotation and screw retention.",
+        sku="BearingKeeperFitSample",
+    )
+    return {"group": group, "printed": [cup, keeper]}
 
 
 def _build_coupling(doc, parent, prefix, sign):
@@ -625,9 +638,9 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "output_bearing_outer_wall",
                 "PropulsionFixedFrame",
-                (-4.81, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
-                (-2.99, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
-                1.8,
+                (-6.51, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
+                (-3.04, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
+                3.45,
             ),
             (
                 "bearing_integral_outer_shoulder",
@@ -710,7 +723,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 6 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded Ø6 seats have integral 1.5 mm outer shoulders and two releasable outer-ring hooks per bearing. Nominal axial clearance is 0.2 mm; a complete 360-degree guide supports 2.1 mm of bearing width, at least 1.9 mm at the inward limit, with full-width top/bottom support. No spacer or separate cap is used. Open both hooks for insertion/removal; qualify the coupon, release force, PA12 recovery, actual outer-ring land and shield clearance. No bearing preload is designed.",
+        "Common integral rail shoe, full-width 18 by 3 mm solid output-support feet and four 9.6 by 6 mm bearing posts with continuous roots. The output axes are 150 mm apart and 50 mm from the nominal rail-contact plane. The 18 by 22 mm central shoe roof and two 15.6 by 12.5 mm outer seats share one Z11.4 plane under the flat bridge plate. The central roof supports the common servo wall directly. Check all three support regions for full contact without rocking; do not draw a warped bridge flat with the bolts. Only the short central rail-service floor stays 2 mm thick below the raised clamp head; no long lightening windows, post tunnels, extra ribs or separate base parts remain. One negative outer Y datum and one outside X stop locate the removable bridge; two M2 bolts clamp it. Actual printed seating, gear centre distance, stiffness and creep remain unqualified. Inward-loaded nominal Ø6.1 seats have integral 1.5 mm outer shoulders and separate rigid keepers. A 3 mm continuous guide supports the complete 2.5 mm bearing width throughout its nominal 0.5 mm inward float. Each recessed M2x6 keeper joint clamps a hard frame seat without bearing preload. No spacer or printed spring is used. Qualify the matching coupon and actual keeper alignment, outer-ring land, shield clearance, radial fit and screw retention.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -755,7 +768,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(),
-        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Integral outer-ring hooks capture each bearing independently of the shaft and carrier. Assemble bearings with both hooks open, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
         App.Rotation(V(0, 1, 0), -90),
         sku="GearedMotorCarrier",
     )
@@ -811,9 +824,47 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             assembly,
             prefix + "OutputBearing" + suffix,
             translated_shape(bearing_shape(), y=bearing_start, z=PIVOT_Z),
-            "Selected generic 3×6×2.5 bearing, annular clearance envelope; brand, internal axial play, race lands, shields and fits need inspection. The integral outer shoulder and two releasable hooks act only on the outer-ring region. Nominal inward float is 0.2 mm; the complete 360-degree guide retains at least 1.9 mm width at that limit, with full-width support in the fixed top/bottom sectors. Finish the seat and qualify actual outer-ring land, shield opening, hook retention/release and internal play; no shield contact or preload is intended.",
+            "Selected generic 3×6×2.5 bearing, annular clearance envelope; brand, internal axial play, race lands, shields and fits need inspection. The integral outer shoulder and rigid removable keeper act only on the outer-ring region. Nominal inward float is 0.5 mm; the continuous fixed guide supports the complete 2.5 mm bearing width at either limit. Finish the seat and qualify actual outer-ring land, shield opening, keeper alignment/retention and internal play; no shield contact or preload is intended. Purchase is user-confirmed; these nominal boundary dimensions do not establish delivered tolerances.",
         )
         hardware.append(bearing)
+        keeper_name = prefix + "OutputBearingKeeper" + suffix
+        keeper = _print(
+            doc,
+            assembly,
+            keeper_name,
+            translated_shape(
+                mirrored_y(bearing_retention.keeper_shape(), side),
+                y=sign * PIVOT_HALF_SPAN + side * BEARING_START_Y,
+                z=PIVOT_Z,
+            ),
+            "Rigid replaceable outer-ring keeper; one recessed M2x6 and ordinary "
+            "M2 nut clamp the broad frame seat, not the bearing. The existing "
+            "rotor stop plane is retained. No flexure, radial squeeze or bearing "
+            "preload. Centre its opening on the received bearing before tightening; "
+            "the broad side guides prevent gross rotation, not precision alignment. "
+            "Check actual ring lands, shield clearance and free rotation at both "
+            "axial limits. Remove carrier/shafts before screw, keeper and bearing service.",
+            rotation=App.Rotation(V(0, 0, 1), 180) if side < 0 else App.Rotation(),
+            sku="OutputBearingKeeper",
+        )
+        printed.append(keeper)
+        hardware.extend(
+            _bolt_pair(
+                doc,
+                assembly,
+                keeper_name,
+                (
+                    0,
+                    sign * PIVOT_HALF_SPAN
+                    + side * (BEARING_START_Y + bearing_retention.KEEPER_SCREW_SEAT_Y),
+                    PIVOT_Z + bearing_retention.KEEPER_SCREW_Z,
+                ),
+                (0, side, 0),
+                grip=bearing_retention.KEEPER_NUT_SEAT_Y
+                - bearing_retention.KEEPER_SCREW_SEAT_Y,
+                length=bearing_retention.KEEPER_SCREW_LENGTH,
+            )
+        )
 
     driver_angle = math.degrees(
         math.atan2(PIVOT_Z - spec.input_z_mm, -sign * spec.input_x_mm)
@@ -1082,18 +1133,20 @@ def _module_metrics(printed, hardware, references, spec):
             ),
             "count": 4,
             "dimensions_mm": [3, 6, 2.5],
-            "nominal_bore_mm": 6,
+            "nominal_bore_mm": 2 * bearing_retention.SEAT_RADIUS,
             "outer_shoulder_opening_mm": BEARING_WINDOW_DIAMETER,
             "outer_shoulder_thickness_mm": BEARING_SHOULDER_THICKNESS,
-            "rigid_guide_length_mm": BEARING_SHOULDER_Y - BEARING_GUIDE_START_Y,
-            "retention": "Integral outer shoulder and two releasable outer-ring hooks per bearing; no bought spacers or separate caps.",
-            "nominal_maximum_bearing_inward_float_mm": 0.2,
-            "complete_circumferential_guide_width_mm": 2.1,
-            "minimum_complete_guide_overlap_mm": 1.9,
-            "release_per_hook_mm": bearing_retention.RELEASE_MM,
-            "finishing": "Print matching coupon first. Finish and measure the bearing seat; verify actual outer-ring land, shield clearance, hook deflection/recovery and retention. Nominal geometry and kinematic release are not PA12 strain, fatigue or fit qualification. Do not preload bearings or force them through closed hooks.",
+            "rigid_guide_length_mm": bearing_retention.BEARING_WIDTH
+            - bearing_retention.KEEPER_STOP_Y,
+            "retention": "Integral outer shoulder and one rigid removable keeper per bearing, fixed by a recessed M2x6/ordinary M2 nut against the frame. No bought spacers, radial clamp or spring arms.",
+            "nominal_maximum_bearing_inward_float_mm": -bearing_retention.KEEPER_STOP_Y,
+            "complete_circumferential_guide_width_mm": bearing_retention.BEARING_WIDTH
+            - bearing_retention.KEEPER_STOP_Y,
+            "minimum_complete_guide_overlap_mm": bearing_retention.BEARING_WIDTH,
+            "keeper_screw_length_mm": bearing_retention.KEEPER_SCREW_LENGTH,
+            "finishing": "Print the production cup and keeper coupons first. Finish and measure the seat, centre the keeper aperture on the actual bearing, then check both axial limits for shield clearance/free rotation and retention. Broad guide clearance is not automatic precision centring. The 0.1 mm diametral allowance does not absorb general PA12 variation. Never force the bearing or use keeper torque to remove radial play.",
             "running_axial_clearance_mm": 0.5,
-            "assembly": "Open both hooks and insert bearings from the empty carrier bay. Remove the output gear, loosen carrier clamps and retract output shafts 12 mm. Insert carrier transversely, then advance shafts and clamp. Bearing replacement reverses this sequence with shafts removed; the paired servo module stays installed.",
+            "assembly": "Insert bearings from the empty carrier bay, centre the keepers and secure each M2x6/nut against the frame seat. Remove the output gear, loosen carrier clamps and retract output shafts 12 mm. Insert the carrier transversely, then advance shafts and clamp. Bearing service requires removal of the carrier/shafts, then the keeper screw/nut and keeper. The paired servo module stays installed.",
         },
         "replacement_rotor_space": {
             "future_propeller_reference_diameter_mm": FUTURE_ROTOR_PROPELLER_DIAMETER,

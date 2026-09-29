@@ -83,7 +83,7 @@ Motor leads move with the tilting carrier; servo cases and their leads stay
 stationary. Keep motor strain relief on a suitable carrier feature, a free
 flexible transition outside the rotor/gear sweep, and stationary-side strain
 relief before the FC solder joints. Prefer existing broad printed members and
-small bought ties; do not fasten to bearing hooks, shafts, gears or across the
+small bought ties; do not fasten to bearing keepers, shafts, gears or across the
 servo-module removal path. A stationary electronics carrier can anchor the
 downstream portion without a needless detour to the low propulsion-frame foot.
 

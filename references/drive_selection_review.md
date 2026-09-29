@@ -19,24 +19,17 @@ Their source selection is not an assertion about physical fit or strength.
 - Reference centre distance is 16 mm. Printed axis positions, actual backlash,
   free rotation and output loading require checks with the received gears.
 - Both bores remain 3 mm; neither is a directly compatible X06 spline.
-  The current [horn contract](../gondola/contracts/servo_horns.py) supports all
-  three retained 4 mm/15T horn drawings independently on either side. Its
-  selected mixed pair is `PTK_6_6` on Port and `METAL_6_98` on Starboard; KST
-  0415.13 remains a supported alternative. The user's accepted X06 compatibility
-  premise does not establish received-part fit.
-  One shared [printed adapter](../gondola/parts/servo_coupling.py) uses an open
-  root seat and one continuous radial slot. Both threaded metal profiles use
-  their first and third existing M1.6 threads with two front M1.6×5 screws,
-  without horn drilling or attachment nuts. KST requires enlarging only its
-  existing end pilot holes at 4.5 and 13.2 mm to Ø1.5 mm, then using rear M1.4×6
-  screws and front M1.4 nuts; its factory holes are plain, not M1.6 threads.
-  Follow the profile-specific head/nut limits and assembly/service order in
-  [three-horn compatibility](servo_horn_compatibility.md). The nominal-3mm input
-  stub and gear axial plane are retained. Centre the axes before clamping both
-  attachment points; the slot permits assembly adjustment, not running slip.
-  Actual axial seating, root fit, concentricity and loaded retention remain
-  unverified. The former AS round-hole/outer-slot and M1.6×4 instructions are
-  superseded.
+  The [horn contract](../gondola/contracts/servo_horns.py) selects manufacturer
+  X06 stock plastic half arm 1 on both sides. Preserve its nominal STEP geometry
+  except the two existing Ø1 mm holes at 6.8/13.2 mm, enlarged to Ø1.5 mm for
+  rear M1.4×8 screws and front M1.4 nuts. The common printed adapter uses an
+  open Ø7.3 mm root seat, a near Ø1.8 mm round hole and a far 1.8 × 2.4 mm
+  radial slot. Centre the axes before tightening both attachments; the slot
+  accommodates assembly pitch error, not operating slip or shaft eccentricity.
+  Follow [OEM horn compatibility](servo_horn_compatibility.md) and the ordered
+  [service review](horn_service_review_2026-09-29.md). Older three-metal-horn
+  compatibility and continuous radial-slot claims are superseded. Delivered
+  fit, prepared-horn strength, runout and loaded retention remain unverified.
 - The user deferred the 48T material-description conflict and gear masses.
   Keep these uncertainties in accounting without blocking the authorized
   dimensional design; do not report POM materials or assert weight reduction.
@@ -71,14 +64,16 @@ bearing journals round. The input stub may have a full-length flat because it
 has no external bearing journal. Flats and gear set screws must be clocked to
 one another; do not infer tooth-to-screw phase from the seller images.
 
-The selected [generic 3 x 6 x 2.5 mm bearings](https://www.aliexpress.com/item/1005007668446060.html)
-are not identified as NSK/ISC parts. Retained ISC MR63ZZ data remain a dimensional
-comparison only, not certification of the selected lot or its mass. The frame
-now captures each outer ring with an integral shoulder and two releasable hooks;
-there are no purchased bearing spacers or separate caps. Shaft grip and the
-carrier/frame axial stops remain independent. Qualify the matching process
-coupon, actual ring lands, shield clearance and release path as described in
-[the retention review](retention_review.md).
+The user confirms the four [generic 3 x 6 x 2.5 mm bearings](https://www.aliexpress.com/item/1005007668446060.html)
+from the original final cart were purchased and must remain in this iteration.
+They are not identified as NSK/ISC parts. Retained ISC MR63ZZ data remain a
+comparison, not certification of the received lot or its mass. BJ uses fixed
+round seats, integral rear shoulders and four identical keyed front keepers,
+each fixed by one ordinary M2×6 screw/nut pair. Keepers seat on the frame,
+without intended bearing preload; no radial clamp or purchased bearing spacer
+is used. Shaft grip and nominal ±0.5 mm carrier stops remain independent.
+Qualify the production cup/keeper coupons, actual ring lands, shield clearance,
+radial fit and removal paths as described in the [current retention review](bearing_keeper_review.md).
 
 ## Release and physical verification
 
