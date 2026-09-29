@@ -1,4 +1,4 @@
-# Manufacturer X06 stock half-arm coupling — BF
+# Manufacturer X06 stock half-arm coupling
 
 Both sides use **X06 half arm 1**, selected from the four nominal STEP models in
 the manufacturer's [archive](manufacturer/kst_x06_servo_horns_2026-09-28.rar)
@@ -47,9 +47,9 @@ prepared holes, fasteners, gear planes and shaft stay unchanged. The far slot
 still accepts a nominal ±0.3 mm relative pitch error without shifting the near
 joint. Tighten both joints before operation. The open root seat has Ø7.3 mm inside and
 Ø10.3 mm outside diameters, giving 0.15 mm nominal radial clearance around the
-Ø7 mm root. The plate is 10.3 mm wide. The 1.5 mm radial wall leaves a nominal 0.10 mm gap to the upper ear screw
-withdrawal envelope; verify the finished outside surface and selected head before
-assembly. This is an open locating saddle, not a
+Ø7 mm root. The plate is 10.3 mm wide with a 1.5 mm radial wall. Keep the ear bolts
+seated during complete-servo removal as described below; do not withdraw their
+heads past the assembled adapter. This is an open locating saddle, not a
 self-centring precision pilot; check actual axis alignment and gear runout.
 
 The source root outline is a rear semicircle followed by two straight tapered
@@ -127,24 +127,30 @@ the retained OEM screw seats correctly and that the horn clears the case
 through the full intended input rotation. Do not hide contact by changing the
 factory horn, adding an unreviewed washer or moving the gear planes.
 
-The 0.10 mm upper-ear head service gap also needs a physical check with the
-received head and finished print. Keep the existing ordered service path, but
-do not pull an oversized head through the adapter or reduce the root wall to
-make it pass. A passing nominal removal path is not a ±0.3 mm service guarantee.
+The former separate upper-ear bolt withdrawal had only 0.10 mm nominal gap.
+The current sequence avoids that path: remove the rear nuts, retain both ear
+bolts in the servo and withdraw the complete unit. Fit those bolts before the
+adapter during assembly. If either bolt must be removed later, detach the
+adapter first on the bench. This preserves the full root wall and introduces
+no new parts. The sensitivity table above records why the old path must not be
+used as a manufacturing allowance.
 
 ## Assembly and service
 
-Assemble the horn onto the servo **outside the bridge**: insert the rear screws,
+Assemble **outside the bridge**: first place both M1.6 ear bolts in the servo
+ears; insert the rear M1.4 horn screws,
 fit the horn and correct OEM centre retaining screw, then add the adapter and
 front nuts. The OEM centre screw is unchanged; its thread is not inferred from
 the attachment screws. A rear holding-driver stem at most Ø1.5 mm and fine
 pliers/open tooling at the front nuts are explicit access envelopes; verify the
 actual tool tip, recess and handling space.
 
-Insert the servo+horn+adapter unit into the bridge and secure the servo ears.
+Insert the servo+horn+adapter+ear-bolt unit into the bridge and secure its two
+rear ear nuts.
 Insert the stub and gear last. For service, remove the output gears and paired
-drive module, remove the selected driver gear/stub and ear fasteners, then use
-the declared complete-servo withdrawal path. Off the bridge, remove the outer
+drive module, remove the selected driver gear/stub and **rear ear nuts only**,
+then carry the two ear bolts through the declared complete-servo withdrawal
+path. Their heads stay fixed relative to the horn and adapter. Off the bridge, remove the outer
 front nut before the inner nut. Each nut first moves 2.6 mm forward to clear
 the retained screw tip before exiting sideways. Leave rear screws in the horn
 while moving the adapter 7.7 mm forward, then 40 mm outward beyond their tips.

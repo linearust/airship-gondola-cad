@@ -39,7 +39,6 @@ from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence
 from .propulsion_service import (
     continuous_path,
     fastener_service_check,
-    input_service_path,
     module_service_shapes,
     retained_obstacles,
     servo_bench_members,
@@ -995,273 +994,33 @@ def tilt_clearance_check(doc, module, prefix):
     }
 
 
-def _input_drive_names(prefix):
-    """Parts withdrawn together, then separated on the bench."""
-    return {
-        prefix + suffix
-        for suffix in (
-            "DriverGear",
-            "HornGearAdapter",
-            "InputShaft",
-            "InputShaftClampBolt",
-            "InputShaftClampNut",
-        )
-    }
-
-
-def _input_service_removed(prefix):
-    """Complete removal prerequisite for accessing the servo ear fasteners."""
-    return _input_drive_names(prefix) | {
-        prefix + suffix
-        for suffix in (
-            "OutputGear",
-            "HornGearClampNearBolt",
-            "HornGearClampFarBolt",
-        )
-    }
-
-
-def _ear_fastener_names(prefix):
-    return {
-        prefix + "ServoEar" + side + kind
-        for side in ("Lower", "Upper")
-        for kind in ("Bolt", "Nut")
-    }
-
-
-def _horn_clamp_service_check(bolt, obstacles, outward):
-    """Unscrew a front-entered M1.6 fastener from the metal horn, without a nut.
-
-    Axial withdrawal is a conservative rigid envelope for unthreading. The
-    complete head and shank are swept; surrounding solids stay installed.
-    """
-    axis = App.Vector(*outward)
-    axis.normalize()
-    shank_faces = [
-        face
-        for face in bolt.Faces
-        if type(face.Surface).__name__ == "Cylinder"
-        and abs(face.Surface.Radius - 0.8) < TOL
-    ]
-    head_faces = [
-        face
-        for face in bolt.Faces
-        if type(face.Surface).__name__ == "Cylinder" and face.Surface.Radius > 0.8 + TOL
-    ]
-    if not shank_faces or not head_faces:
-        return {"passed": False, "error": "Missing M1.6 shank or head envelope"}
-    shank_stations = [v.Point.dot(axis) for face in shank_faces for v in face.Vertexes]
-    head_stations = [v.Point.dot(axis) for face in head_faces for v in face.Vertexes]
-    travel = max(shank_stations) - min(shank_stations) + 0.2
-    path = continuous_path(bolt, [(0, 0, 0), tuple(axis * travel)], obstacles)
-    head_front = max(head_stations)
-    origin = head_faces[0].Surface.Center
-    origin += axis * (head_front + 0.1 - origin.dot(axis))
-    tool = Part.makeCylinder(1.6, 15, origin, axis)
-    hits = {
-        name: volume
-        for name, shape in obstacles.items()
-        if (volume := intersection_volume(tool, shape)) > TOL
-    }
-    return {
-        "bolt_axial_withdrawal": path,
-        "bolt_withdrawal_travel_mm": travel,
-        "driver_approach_collisions": hits,
-        "tool_reserve_radius_mm": 1.6,
-        "measured_head_envelope_diameter_mm": max(
-            2 * face.Surface.Radius for face in head_faces
-        ),
-        "measured_head_envelope_height_mm": max(head_stations) - min(head_stations),
-        "service_order": "Remove both gears first, then unscrew the front M1.6 screw outwards from the factory-threaded horn. No horn nut is installed.",
-        "scope": "Nominal full screw withdrawal includes 0.2 mm reserve. The front driver approach reserves a 3.2 mm diameter by 15 mm long cylinder. Helical threads, actual Phillips recess, hand access and tightening torque are not modeled; the remaining horn screw stays installed until its ordered release.",
-        "passed": path["passed"] and not hits,
-    }
-
-
 def input_drive_service_check(doc, module, prefix, *, module_release=None):
-    """Remove the paired module first, then service its factory horn on a bench.
+    """Check the stock-horn servo unit's complete off-bridge service sequence.
 
-    A caller may reuse its module-removal result only within the same immutable
-    audit invocation. Standalone calls recompute it; no geometry is cached.
+    Reuse module-removal evidence only within the same unchanged audit invocation.
     """
-    from gondola.parts import servo_coupling as coupling
+    from .horn_coupling import assembled_servo_service_check
 
-    if not coupling.servo_horns.profile(
-        str(doc.getObject(prefix + "ServoHorn").HornProfile)
-    ).threaded:
-        from .horn_coupling import assembled_servo_service_check
-
-        return assembled_servo_service_check(
-            doc, module, prefix, module_release=module_release
-        )
-
-    shapes, missing = module_service_shapes(doc, module)
-    if missing:
-        return {"pod": prefix, "missing_parts": missing, "passed": False}
-    sign = 1 if prefix == "Port" else -1
-    if module_release is None:
-        module_release = servo_module_service_check(doc, module)
-    bench_members = servo_bench_members(doc, shapes)
-    separated = sorted(set(shapes) - bench_members)
-    shapes = {name: shapes[name] for name in bench_members}
-    gear = prefix + "OutputGear"
-    output_path = next(
-        (
-            row
-            for row in module_release.get("output_gear_removal", [])
-            if row["part"] == gear
-        ),
-        {"passed": False},
+    return assembled_servo_service_check(
+        doc, module, prefix, module_release=module_release
     )
-    driver = prefix + "DriverGear"
-    driver_path = continuous_path(
-        shapes[driver],
-        [(0, 0, 0), (0, sign * 35, 0)],
-        retained_obstacles(shapes, {gear, driver}),
-    )
-    removed = {gear, driver}
-    released = set()
-    clamp_paths = []
-    for position in ("Far", "Near"):
-        name = prefix + "HornGearClamp" + position
-        pair = {name + "Bolt"}
-        retained = retained_obstacles(shapes, removed | pair)
-        clamp_paths.append(
-            {
-                "joint": position,
-                "bolt": name + "Bolt",
-                "removed_prior_parts": sorted(removed),
-                "retained_parts": sorted(retained),
-                **_horn_clamp_service_check(
-                    shapes[name + "Bolt"], retained, (0, sign, 0)
-                ),
-            }
-        )
-        removed.update(pair)
-        released.update(pair)
-    clamp_path = {
-        "release_order": ["Far", "Near"],
-        "fasteners": clamp_paths,
-        "passed": all(row["passed"] for row in clamp_paths),
-    }
-    rows = []
-    moving = _input_drive_names(prefix) - {driver}
-    fixed = retained_obstacles(shapes, removed | moving)
-    release_y = sign * coupling.ADAPTER_RELEASE_TRAVEL
-    points = [(0, 0, 0), (0, release_y, 0), (sign * 40, release_y, 0)]
-    spec = drive_for_document(doc)
-    for name in sorted(moving):
-        path = input_service_path(name, shapes[name], points, fixed, spec, sign)
-        rows.append({"part": name, "waypoints_mm": points, **path})
-    return {
-        "pod": prefix,
-        "moving_parts": sorted(moving),
-        "removed_output_gear": gear,
-        "removed_driver_gear": driver,
-        "required_prior_check": "servo_module_service",
-        "module_removal_passed": module_release["passed"],
-        "bench_members": sorted(bench_members),
-        "separated_fixed_parts": separated,
-        "released_fasteners": sorted(released),
-        "output_gear_removal": output_path,
-        "driver_gear_removal": driver_path,
-        "adapter_clamp_release": clamp_path,
-        "part_paths": rows,
-        "coordinate_frame": "propulsion module",
-        "retained_parts": sorted(fixed),
-        "adapter_axial_release_travel_mm": coupling.ADAPTER_RELEASE_TRAVEL,
-        "scope": "First complete the checked removal of the entire paired ServoDriveModule: disconnect leads, remove both output gears and both M2 mount pairs, then lift/slide the assembled module away. On a clear bench, retain every other paired-module part while releasing the selected driver gear set screw and withdraw the large gear outwards to expose the front screw tool paths. Unscrew Far M1.6 first, then Near; the next screw remains installed until its own release. Move the adapter, metal stub and captive radial clamp through the reported gearward release travel to clear the C register, then 40 mm sideways outward. The servo and retained metal horn stay on the removed bridge; the output shafts, bearings and fixed frame stay on the gondola, outside this explicit bench scope. Tool and rigid-part envelopes are nominal; actual set-screw access, leads, fit forces and handling remain unqualified.",
-        "passed": module_release["passed"]
-        and output_path["passed"]
-        and driver_path["passed"]
-        and clamp_path["passed"]
-        and all(row["passed"] for row in rows),
-    }
 
 
 def servo_case_service_check(
     doc, module, prefix, *, prior_service=None, module_release=None
 ):
-    """Extract the servo and horn after the checked drive release on a bench.
+    """Reuse the stock-horn unit's checked withdrawal, including the servo case.
 
     Reuse prerequisite evidence only during one unchanged audit invocation.
     """
-    from gondola.contracts import servo_horns
-
-    if (
-        not servo_horns.profile(
-            str(doc.getObject(prefix + "ServoHorn").HornProfile)
-        ).threaded
-        and prior_service is None
-    ):
-        prior_service = input_drive_service_check(
-            doc, module, prefix, module_release=module_release
-        )
-    if (
-        prior_service is not None
-        and prior_service.get("service_mode") == "preassembled_servo_unit"
-    ):
-        return {
-            **prior_service,
-            "required_prior_check": "input_drive_service",
-            "prior_input_drive_service_passed": prior_service["passed"],
-        }
-
-    shapes, missing = module_service_shapes(doc, module)
-    if missing:
-        return {"pod": prefix, "missing_parts": missing, "passed": False}
     if prior_service is None:
         prior_service = input_drive_service_check(
             doc, module, prefix, module_release=module_release
         )
-    bench_members = servo_bench_members(doc, shapes)
-    separated = sorted(set(shapes) - bench_members)
-    shapes = {name: shapes[name] for name in bench_members}
-    sign = 1 if prefix == "Port" else -1
-    released = _ear_fastener_names(prefix)
-    removed = _input_service_removed(prefix)
-    fasteners = []
-    for side in ("Lower", "Upper"):
-        name = prefix + "ServoEar" + side
-        pair = {name + "Bolt", name + "Nut"}
-        fasteners.append(
-            {
-                "bolt": name + "Bolt",
-                **fastener_service_check(
-                    shapes[name + "Bolt"],
-                    shapes[name + "Nut"],
-                    retained_obstacles(shapes, removed | pair),
-                    thread_diameter=1.6,
-                ),
-            }
-        )
-        removed.update(pair)
-    moving = {prefix + "Servo", prefix + "ServoHorn"}
-    fixed = retained_obstacles(shapes, removed | moving)
-    points = [(0, 0, 0), (0, sign * 12.5, 0), (sign * 40, sign * 12.5, 0)]
-    spec = drive_for_document(doc)
-    rows = []
-    for name in sorted(moving):
-        path = input_service_path(name, shapes[name], points, fixed, spec, sign)
-        rows.append({"part": name, "waypoints_mm": points, **path})
     return {
-        "pod": prefix,
-        "frame": "ServoDriveBridge on bench",
-        "prior_input_drive_service_passed": prior_service["passed"],
-        "bench_members": sorted(bench_members),
-        "separated_fixed_parts": separated,
-        "moving_parts": sorted(moving),
-        "released_fasteners": sorted(released),
-        "ear_fastener_release": fasteners,
+        **prior_service,
         "required_prior_check": "input_drive_service",
-        "removed_local_parts": sorted(removed),
-        "retained_parts": sorted(fixed),
-        "coordinate_frame": "propulsion module",
-        "waypoints_mm": points,
-        "part_paths": rows,
-        "scope": "After the checked small-gear, driver-gear, front horn-screw and adapter removal, release both servo-ear bolt/nut pairs and free the leads. Move the servo with its retained purchased horn 12.5 mm gearward, then 40 mm sideways. The paired bridge remains on the bench; the common frame and output mechanisms remain separately on the gondola. Reverse the paths for insertion; physical case, cable and tool fit still require a prototype.",
-        "passed": prior_service["passed"]
-        and all(row["passed"] for row in fasteners + rows),
+        "prior_input_drive_service_passed": prior_service["passed"],
     }
 
 
@@ -1700,7 +1459,7 @@ def _record_drive_service_checks(report, doc, prefix, sign, physical):
                 "gear": name,
                 "required_prior_check": "servo_module_service" if bench else None,
                 "prior_module_removal_passed": module_removed if bench else None,
-                "scope": "Release the selected radial set screw before axial withdrawal. The output gear is removed in place. After the checked whole ServoDriveModule removal, withdraw the driver before accessing its front horn screws; every other paired-module part is retained on the bench. Set-screw tip/length and actual driver access remain physical release gates.",
+                "scope": "Release the selected radial set screw before axial withdrawal. The output gear is removed in place. After the checked whole ServoDriveModule removal, withdraw the driver and input stub before releasing the servo-ear rear nuts and withdrawing the complete servo/horn/adapter unit. Every other paired-module part remains on the bench. Set-screw tip/length and actual driver access remain physical release gates.",
                 **continuous_path(
                     physical[name],
                     [(0, 0, 0), (0, direction * 35, 0)],
@@ -1784,15 +1543,14 @@ def _record_fastener_checks(report, module, physical):
         dependencies = []
         service_group = module["group"].Name
         prerequisites = "Other local propulsion parts stay installed at neutral tilt."
-        if "ServoEar" in bolt.Name:
+        retain_bolt = "ServoEar" in bolt.Name
+        if retain_bolt:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
             service_excluded.update({prefix + "DriverGear", prefix + "InputShaft"})
             if "Upper" in bolt.Name:
-                service_excluded.update(
-                    {prefix + "ServoEarLowerBolt", prefix + "ServoEarLowerNut"}
-                )
+                service_excluded.add(prefix + "ServoEarLowerNut")
             service_parts = servo_bench_members(module["group"].Document, physical)
-            prerequisites = "Remove the paired servo module and selected driver gear/input stub, then release lower and upper ear joints in order. Keep the horn, adapter and both rear-screw/front-nut pairs attached to the servo."
+            prerequisites = "Remove the paired servo module and selected driver gear/input stub, then release only the lower and upper rear ear nuts in order. Keep both ear bolts seated and carry them with the complete servo/horn/adapter unit through the checked withdrawal. Remove the adapter off the bridge before withdrawing either ear bolt. Keep both horn rear-screw/front-nut pairs attached until the unit is free."
             matches = [
                 row for row in report["input_drive_service"] if row["pod"] == prefix
             ]
@@ -1812,7 +1570,9 @@ def _record_fastener_checks(report, module, physical):
             nut_lateral_direction=(1 if "Port" in bolt.Name else -1, 0, 0)
             if bolt.Name.startswith("ServoBridge")
             else None,
+            retain_bolt=retain_bolt,
         )
+        kept_bolts = {bolt.Name} if retain_bolt else set()
         report["fastener_service"].append(
             {
                 "bolt": bolt.Name,
@@ -1820,8 +1580,10 @@ def _record_fastener_checks(report, module, physical):
                 "assembly_prerequisites": prerequisites,
                 "service_group": service_group,
                 "service_dependencies": dependencies,
-                "retained_service_parts": sorted(service_parts - service_excluded),
-                "removed_local_parts": sorted(service_excluded),
+                "retained_service_parts": sorted(
+                    (service_parts - service_excluded) | kept_bolts
+                ),
+                "removed_local_parts": sorted(service_excluded - kept_bolts),
                 **service,
                 "passed": service["passed"]
                 and all(row["passed"] for row in dependencies),

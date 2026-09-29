@@ -1,4 +1,4 @@
-"""Selected controller identity and unresolved input evidence stay linked."""
+"""Selected controller identity and scoped input confirmation stay linked."""
 
 import json
 import unittest
@@ -27,19 +27,24 @@ class FlightControllerContractTests(unittest.TestCase):
         self.assertEqual(contract["hole_pitch_mm"], 25.5)
         self.assertEqual(contract["hole_diameter_mm"], 3.0)
 
-    def test_official_voltage_conflict_remains_visible_without_changing_battery(self):
+    def test_confirmed_2s_support_preserves_history_without_changing_battery(self):
         status = project_status()
         evidence = interfaces.flight_controller_contract()["electrical"]
-        self.assertEqual(
-            evidence["compatibility_status"], "unresolved_official_source_conflict"
-        )
+        self.assertEqual(evidence["compatibility_status"], "user_confirmed_2s")
         self.assertEqual(evidence["input_claims"]["manual_text"]["cells"], [3, 6])
         self.assertEqual(evidence["input_claims"]["manual_text"]["voltage_v"], [10, 27])
         self.assertEqual(evidence["input_claims"]["port_diagram"]["cells"], [2, 6])
         self.assertEqual(
             evidence["input_claims"]["port_diagram"]["voltage_v"], [5.6, 27]
         )
-        self.assertIn("fc_input_power", status["source_discrepancies"])
+        confirmation = evidence["selected_input_confirmation"]
+        self.assertTrue(confirmation["supports_2s"])
+        self.assertEqual(confirmation["confirmed_on"], "2026-09-29")
+        self.assertIsNone(confirmation["hardware_revision"])
+        self.assertIsNone(confirmation["minimum_input_voltage_v"])
+        discrepancy = status["source_discrepancies"]["fc_input_power"]
+        self.assertEqual(discrepancy["compatibility_status"], "user_confirmed_2s")
+        self.assertEqual(discrepancy["selected_input_confirmation"], confirmation)
         self.assertEqual(
             [
                 item.model
@@ -59,7 +64,8 @@ class FlightControllerContractTests(unittest.TestCase):
                 pending = {
                     item["key"]: item for item in report["unresolved_interfaces"]
                 }
-                self.assertEqual(pending["fc_input_power"]["status"], "unverified")
+                self.assertNotIn("fc_input_power", pending)
+                self.assertEqual(pending["fc_installed_power"]["status"], "unverified")
                 self.assertFalse(report["production_released"])
 
 

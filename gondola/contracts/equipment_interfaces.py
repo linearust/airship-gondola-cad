@@ -45,8 +45,17 @@ FC_ELECTRICAL_EVIDENCE = {
         },
         "specification_image": {"cells": [2, 6], "source": FC_SPECIFICATION_SOURCE},
     },
-    "compatibility_status": "unresolved_official_source_conflict",
-    "scope": "Official 45A text and AM32-labeled port diagram disagree on minimum battery voltage. Keep both claims; neither CAD fit nor the selected product title resolves the actual revision's 2S support. Current ratings are catalog values, not this assembly's tested current or shared BEC headroom. AM32 replaces the prior Bluejay selection; verify actual firmware, motor direction, DShot and any reversible-output settings independently.",
+    "input_claims_scope": "Retained historical catalog claims; the selected board's 2S support is resolved by the user's later confirmation, not by choosing one conflicting numeric range.",
+    "compatibility_status": "user_confirmed_2s",
+    "selected_input_confirmation": {
+        "confirmed_on": "2026-09-29",
+        "source": "User confirmation in the project conversation",
+        "supports_2s": True,
+        "hardware_revision": None,
+        "minimum_input_voltage_v": None,
+        "revision_change_status": "The user suspects a recent model change; no hardware revision or change history was established.",
+    },
+    "scope": "The user confirmed that the selected 45A AM32 board supports 2S. Preserve the existing battery and historical catalog conflict without treating it as an unresolved 2S selection blocker. An 8 V main rail is nominally consistent with standard 2S operation; regulator startup/transients and installed loads remain untested. No exact minimum input voltage or hardware revision is inferred. Current ratings are catalog values, not this assembly's tested current or shared BEC headroom. Verify actual AM32 firmware, motor direction, DShot and any reversible-output settings independently.",
 }
 
 

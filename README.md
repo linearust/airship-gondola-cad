@@ -55,12 +55,13 @@ the current carrier does not accept that propeller. Central carrier attachment,
 OEM-horn adapter and detachable paired-servo architecture remain.
 [Current design review](references/bi_design_review.md),
 [verification](references/bi_design_verification.json),
-[OEM horn evidence](references/servo_horn_compatibility.md).
+[OEM horn evidence](references/servo_horn_compatibility.md),
+[horn/service maintenance review](references/horn_service_review_2026-09-29.md).
 Evidence covers its recorded source/files only. Selections are not proof of purchase.
 
 | Area | Selection / limits | Read before changing |
 | --- | --- | --- |
-| FC / battery | MicoAir H743V2 AIO **45A AM32**, existing 2S pack. Official input-range conflict leaves 2S and 8 V suitability unresolved; confirm supplied revision. | [FC](references/controller_selection_review.md) |
+| FC / battery | MicoAir H743V2 AIO **45A AM32**, existing 2S pack; **2S support confirmed by user, 2026-09-29**. Revision/minimum voltage unspecified; installed power untested. | [FC](references/controller_selection_review.md) |
 | Drive | Two X06 V6.0; metric m0.5 **48T input / 16T output**, both Ø3 mm nominal bores. Bounded ±180° target; small shortfall allowed, no wraparound. No alternate ratio/collective mode implemented. | [selection](references/drive_selection_review.md), [gear evidence](references/kailash_gears_selected_evidence.md) |
 | Horns | Manufacturer X06 stock plastic half arm 1 on both sides. Preserve supplied STEP geometry except existing Ø1 mm holes at 6.8/13.2 mm enlarged to Ø1.5 mm; rear M1.4×8 screws/front M1.4 nuts. Near Ø1.8 mm round hole and far 1.8 × 2.4 mm slot in the adapter; no washers. Preserve factory axes and OEM centre retention; resin, mass and installed fit remain unmeasured. | [profiles](gondola/contracts/servo_horns.py), [compatibility](references/servo_horn_compatibility.md) |
 | Shafts / bearings | Nominal Ø3 mm 304 rod, generic 3×6×2.5 mm bearings; precision replacement rod allowed if fit fails. No established h5 tolerance or NSK/ISC identity. Integral outer-ring capture, separate shaft grip/axial stops. **No purchased spacers**; rejected 3×5×3 bush contacts shields. | [cart adaptation](references/cart_adaptation_review.md), [retention](references/retention_review.md) |
@@ -72,7 +73,7 @@ Evidence covers its recorded source/files only. Selections are not proof of purc
 Default: P-AS + LR24-F-Mini + MTF-02P. Alternatives are not simultaneous installations
 or purchase instructions. Gear material/masses unresolved; missing mass is unknown.
 
-**Already answered:** metal M2 screws/nuts and GH1.25 kit owned; varied M1.4/M1.6
+**Already answered:** metal M2/M3 screws/nuts and GH1.25 kit owned; varied M1.4/M1.6
 kit lengths. Heads/engagement still need checking. Gear M3 set-screw length/point/
 protrusion unresolved, screw solids unmodeled. Y servo harness, push-on rings, nylon
 M2 standoffs and unrelated cart items are outside CAD requirements. [Cart record](references/cart_review_2026_09_27.json).
@@ -89,8 +90,8 @@ Changing a saved gear-ratio property does not regenerate or validate the mechani
 location unmodeled. Check reception/orientation/occlusion, including MG-A01 patch.
 
 **Power:** BEC's catalog 8 V / 5 A is shared by main loads and SVPDB input, including
-losses—not additive to SVPDB's output rating. Installed loads/transients/cooling and
-FC input compatibility are unverified. Separate-regulator servo positives must be
+losses—not additive to SVPDB's output rating. An 8 V main rail is nominally consistent
+with confirmed 2S FC support; installed loads/transients/cooling remain unverified. Separate-regulator servo positives must be
 disconnected from FC 5 V; common ground, never parallel regulator positives.
 Battery/tether are alternatives, with no simultaneous-input/switching design.
 The illustrated direct-tether layout moves optics to accessory NegativeX; it rejects
@@ -135,7 +136,10 @@ RF/magnetic, installed mass/CG or flight qualification. Missing evidence stays o
   qualification is claimed.
 - Check the selected manufacturer horn against its retained STEP, the two prepared
   horn holes, round/slot interface, seating/concentricity, screw/nut direction/access,
-  servo clearance and ordered removal. Nominal geometry is not physical measurement.
+  servo clearance and ordered removal. Remove the paired module first; on the
+  bench, release only the rear ear nuts for individual servo removal. Retain
+  both M1.6 ear bolts in the moving servo unit.
+  Fit those bolts before the adapter; withdraw them only after adapter removal. Nominal geometry is not physical measurement.
   X06 radial-load capacity, loaded travel/torque retention remain unverified;
   slots do not cure running eccentricity. Check received hardware,
   FC damping/insulation and bearing shields; never restore the rejected shield-contact bush.

@@ -11,5 +11,5 @@ OUTPUT_DIR = (
     .resolve()
 )
 BASELINE_FILE = REPO_ROOT / "tests" / "fixtures" / "rev_bi_geometry.FCStd"
-BASELINE_SHA256 = "df7ec5412aa7133ed7b12178eb3198f0d0622c77627a6ad47b5de72ddbe248a8"
+BASELINE_SHA256 = "d9fa5c2c006f33fedf3eaa0cee68224deeb324bc6e160d0465485cbb725faf24"
 ARTIFACT_SCHEMA_VERSION = 3

@@ -98,12 +98,6 @@ def horn_registration_check(doc, prefix):
     obsolete = [
         name for name in ("HornCenteringJig",) if doc.getObject(name) is not None
     ]
-    if profile.threaded:
-        obsolete += [
-            prefix + "HornGearClamp" + label + "Nut"
-            for label in ("Near", "Far")
-            if doc.getObject(prefix + "HornGearClamp" + label + "Nut") is not None
-        ]
     inverse = coupling_frame(doc, prefix).inverse()
     shapes = {}
     for suffix in names:
@@ -131,10 +125,9 @@ def horn_registration_check(doc, prefix):
     ):
         bolt = shapes["HornGearClamp" + label + "Bolt"]
         difference = _difference(bolt, expected_hardware[label + "Bolt"])
-        bearing = bolt if profile.threaded else shapes["HornGearClamp" + label + "Nut"]
-        if not profile.threaded:
-            difference += _difference(bearing, expected_hardware[label + "Nut"])
-        diameter = 1.6 if profile.threaded else 1.4
+        bearing = shapes["HornGearClamp" + label + "Nut"]
+        difference += _difference(bearing, expected_hardware[label + "Nut"])
+        diameter = coupling.HORN_CLAMP_THREAD_DIAMETER
         passage = Part.makeCylinder(
             diameter / 2,
             coupling.FASTENER_SEAT_Y - profile.blade_bottom_mm,
@@ -143,45 +136,29 @@ def horn_registration_check(doc, prefix):
         )
         blocked = horn.common(passage).Volume + adapter.common(passage).Volume
         contact = _plane_contact(adapter, bearing, coupling.FASTENER_SEAT_Y)
-        engagement = (
-            min(
-                profile.arm_thickness_mm,
-                profile.screw_length_mm
-                - (coupling.FASTENER_SEAT_Y - profile.height_mm),
+        engagement = servo_horns.NUT_HEIGHT_MM
+        rear_contact = _plane_contact(horn, bolt, profile.blade_bottom_mm)
+        overlap = sum(
+            first.common(second).Volume
+            for first, second in (
+                (bolt, adapter),
+                (bolt, horn),
+                (bearing, adapter),
+                (bearing, horn),
+                (bearing, bolt),
             )
-            if profile.threaded
-            else servo_horns.NUT_HEIGHT_MM
         )
-        rear_clearance = bolt.BoundBox.YMin - profile.blade_bottom_mm
-        overlap = bolt.common(adapter).Volume + bolt.common(horn).Volume
-        if not profile.threaded:
-            overlap += (
-                bearing.common(adapter).Volume
-                + bearing.common(horn).Volume
-                + bearing.common(bolt).Volume
-            )
         support = []
         # Check front bearing at the actual shank-travel extremes, including
         # circular clearance; a round near hole has no added elongation.
         allowance = elongation + (coupling.SLOT_WIDTH - diameter) / 2
         for offset in (-allowance, 0.0, allowance):
-            land = (
-                Part.makeCylinder(
-                    coupling.HORN_MIN_HEAD_BEARING_DIAMETER / 2,
-                    0.1,
-                    V(x + offset, coupling.FASTENER_SEAT_Y, 0),
-                    V(0, 1, 0),
-                )
-                if profile.threaded
-                else coupling._hex_along_axis(
-                    servo_horns.NUT_MIN_AF_MM,
-                    servo_horns.NUT_HEIGHT_MM,
-                    (x, coupling.FASTENER_SEAT_Y, 0),
-                    (0, 1, 0),
-                )
+            land = coupling._hex_along_axis(
+                servo_horns.NUT_MIN_AF_MM,
+                servo_horns.NUT_HEIGHT_MM,
+                (x + offset, coupling.FASTENER_SEAT_Y, 0),
+                (0, 1, 0),
             )
-            if not profile.threaded:
-                land.translate(V(offset, 0, 0))
             area = _plane_contact(adapter, land, coupling.FASTENER_SEAT_Y)
             support.append(
                 {
@@ -195,21 +172,19 @@ def horn_registration_check(doc, prefix):
                 "joint": label,
                 "nominal_fastener_difference_mm3": difference,
                 "factory_thread_passage_blockage_mm3": blocked,
-                "head_to_adapter_contact_mm2": contact,
+                "front_nut_to_adapter_contact_mm2": contact,
+                "rear_head_to_horn_contact_mm2": rear_contact,
                 "nominal_thread_engagement_mm": engagement,
-                "nominal_tip_to_horn_back_mm": rear_clearance
-                if profile.threaded
-                else None,
                 "nominal_overlap_mm3": overlap,
-                "separate_nut_required": not profile.threaded,
+                "separate_nut_required": True,
                 "minimum_head_support": support,
                 "passed": difference < TOL
                 and blocked < TOL
                 and contact > 1
+                and rear_contact > 1
                 and overlap < TOL
                 and engagement >= 1
-                and all(r["passed"] for r in support)
-                and (not profile.threaded or rear_clearance >= 0.1 - TOL),
+                and all(r["passed"] for r in support),
             }
         )
     collar = adapter.common(
@@ -274,8 +249,8 @@ def horn_registration_check(doc, prefix):
         and axial_unknown
         and compatibility
         and manufacturer_matches
-        and threads == profile.threaded
-        and preparation == (not profile.threaded)
+        and not threads
+        and preparation
         and seating > 1
         and all(r["passed"] for r in rows + register_rows),
     }
@@ -316,14 +291,17 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
                     shapes[name + "Nut"],
                     retained_obstacles(shapes, removed | pair),
                     thread_diameter=1.6,
+                    retain_bolt=True,
                 ),
             }
         )
-        removed.update(pair)
+        removed.add(name + "Nut")
     moving = {
         prefix + s
         for s in (
             "Servo",
+            "ServoEarLowerBolt",
+            "ServoEarUpperBolt",
             "ServoHorn",
             "HornGearAdapter",
             "HornGearClampNearBolt",
@@ -354,9 +332,25 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     # Once the servo is free of the bridge, the small rear holding stem clears
     # the case. A standard large screwdriver is not assumed to fit this gap.
     inverse = coupling_frame(doc, prefix).inverse()
-    case = world_shape(doc.getObject(prefix + "Servo"))
-    case.Placement = inverse.multiply(case.Placement)
     profile = servo_horns.profile(str(doc.getObject(prefix + "ServoHorn").HornProfile))
+    local_names = {
+        "horn": "ServoHorn",
+        "adapter": "HornGearAdapter",
+        "servo": "Servo",
+        "ear_lower": "ServoEarLowerBolt",
+        "ear_upper": "ServoEarUpperBolt",
+        "shaft_bolt": "InputShaftClampBolt",
+        "shaft_nut": "InputShaftClampNut",
+        **{
+            name: "HornGearClamp" + name
+            for name, _, _ in coupling.horn_hardware_shapes(profile)
+        },
+    }
+    local = {}
+    for key, suffix in local_names.items():
+        shape = world_shape(doc.getObject(prefix + suffix))
+        shape.Placement = inverse.multiply(shape.Placement)
+        local[key] = shape
     holding = []
     for x in profile.attachment_radii_mm:
         stem = Part.makeCylinder(
@@ -365,15 +359,17 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
             V(x, profile.blade_bottom_mm - servo_horns.KST_SCREW_HEAD_HEIGHT_MM, 0),
             V(0, -1, 0),
         )
-        overlap = case.common(stem).Volume
+        hits = {
+            prefix + local_names[key]: stem.common(local[key]).Volume
+            for key in ("servo", "ear_lower", "ear_upper")
+        }
         holding.append(
-            {"radius_mm": x, "stem_case_overlap_mm3": overlap, "passed": overlap < TOL}
+            {
+                "radius_mm": x,
+                "retained_part_overlaps_mm3": hits,
+                "passed": all(volume < TOL for volume in hits.values()),
+            }
         )
-    local = {
-        "horn": coupling.horn_shape(profile),
-        "adapter": coupling.adapter_shape(),
-        **{n: s for n, s, _ in coupling.horn_hardware_shapes(profile)},
-    }
     fasteners = []
     removed_nuts = []
     nut_release_y = (
@@ -421,17 +417,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
                 "joint": label,
                 "bolt": prefix + "HornGearClamp" + label + "Bolt",
                 "nut": prefix + "HornGearClamp" + label + "Nut",
-                "retained_parts": [
-                    prefix
-                    + (
-                        "ServoHorn"
-                        if k == "horn"
-                        else "HornGearAdapter"
-                        if k == "adapter"
-                        else "HornGearClamp" + k
-                    )
-                    for k in obstacles
-                ],
+                "retained_parts": [prefix + local_names[k] for k in obstacles],
                 "removed_prior_parts": sorted(removed) + removed_nuts.copy(),
                 "removed_part": prefix + "HornGearClamp" + n,
                 "front_nut_release": route,
@@ -441,14 +427,30 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         )
         local.pop(n)
         removed_nuts.append(prefix + "HornGearClamp" + n)
+    adapter_moving = {"adapter", "shaft_bolt", "shaft_nut"}
+    adapter_obstacles = {
+        prefix + local_names[k]: shape
+        for k, shape in local.items()
+        if k not in adapter_moving
+    }
+    adapter_points = [
+        (0, 0, 0),
+        (0, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
+        (40, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
+    ]
     adapter_route = continuous_path(
-        coupling.service_envelope(retain_screws=True),
-        [
-            (0, 0, 0),
-            (0, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
-            (40, coupling.RETAINED_BOLT_RELEASE_TRAVEL, 0),
-        ],
-        {k: s for k, s in local.items() if k != "adapter"},
+        coupling.service_envelope(retain_screws=True), adapter_points, adapter_obstacles
+    )
+    clamp_paths = [
+        {
+            "part": prefix + local_names[key],
+            **continuous_path(local[key], adapter_points, adapter_obstacles),
+        }
+        for key in ("shaft_bolt", "shaft_nut")
+    ]
+    adapter_route["retained_clamp_hardware_paths"] = clamp_paths
+    adapter_route["passed"] = adapter_route["passed"] and all(
+        row["passed"] for row in clamp_paths
     )
     passed = (
         module_release["passed"]
@@ -475,7 +477,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
             "passed": all(r["passed"] for r in fasteners),
         },
         "adapter_release_off_bridge": adapter_route,
-        "scope": "KST only: remove paired module and selected driver/stub; release servo ears with horn/adapter retained, withdraw complete servo unit, then hold reverse screw heads off the bridge and remove front nuts. A narrow <=1.5mm rear stem and fine pliers are explicit envelopes; actual tools/recess fit remain checks. Reverse for assembly, fitting OEM spline screw before adapter. Full shaft-stop floor retained.",
+        "scope": "KST only: remove paired module and selected driver/stub; remove only the two rear ear nuts and keep both M1.6 bolts seated in the ears. Withdraw the complete servo/horn/adapter/ear-bolt unit, then hold reverse horn screw heads off the bridge and remove front nuts. Ear bolts must be fitted before the adapter during assembly; do not pull their heads past the seated adapter. A narrow <=1.5mm rear stem and fine pliers are explicit envelopes; actual tools/recess fit remain checks. Reverse for assembly, fitting OEM spline screw before adapter. Full shaft-stop floor retained.",
         "passed": passed,
     }
 
@@ -531,15 +533,13 @@ def profile_compatibility_checks():
                             overlaps.append(
                                 {"angle_deg": angle, "part": name, "volume_mm3": volume}
                             )
-                service = []
-                if not profile.threaded:
-                    module_release = servo_module_service_check(doc, module)
-                    service = [
-                        assembled_servo_service_check(
-                            doc, module, p, module_release=module_release
-                        )
-                        for p in ("Port", "Starboard")
-                    ]
+                module_release = servo_module_service_check(doc, module)
+                service = [
+                    assembled_servo_service_check(
+                        doc, module, p, module_release=module_release
+                    )
+                    for p in ("Port", "Starboard")
+                ]
                 adapter = coupling.adapter_shape()
                 web_rows = []
                 for name, start, end, minimum in (

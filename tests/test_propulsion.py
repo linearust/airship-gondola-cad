@@ -58,33 +58,44 @@ class ContinuousServiceTests(unittest.TestCase):
                 abs(translated_shape(moving, x=distance).cut(swept).Volume), 1e-7
             )
 
-    def test_horn_screw_exit_checks_the_space_between_clear_endpoints(self):
-        from gondola.cad import translated_shape
-        from gondola.parts import purchased_hardware as hardware
-        from gondola.validation.propulsion import _horn_clamp_service_check
+    def test_retained_bolt_only_bypasses_its_own_withdrawal_not_nut_or_tool_checks(
+        self,
+    ):
+        from gondola.parts import purchased_hardware as h
+        from gondola.validation.propulsion_service import fastener_service_check
 
-        bolt = hardware.servo_screw_shape(4).copy()
-        baseline = _horn_clamp_service_check(bolt, {}, (0, 0, -1))
-        self.assertTrue(baseline["passed"], baseline)
-        self.assertAlmostEqual(baseline["measured_head_envelope_diameter_mm"], 3.5)
-        self.assertAlmostEqual(baseline["measured_head_envelope_height_mm"], 1.6)
-        # The narrow side witness touches only the moving head, midway through
-        # withdrawal, while both end poses are clear.
-        obstacle = Part.makeBox(0.1, 0.1, 0.1, App.Vector(1.65, -0.05, -3.0))
-        for offset in ((0, 0, 0), (0, 0, -4.2)):
-            self.assertLess(
-                translated_shape(bolt, *offset).common(obstacle).Volume, 1e-7
+        bolt = h.servo_screw_shape(8).copy()
+        nut = h.servo_nut_shape().copy()
+        nut.translate(App.Vector(0, 0, 6))
+        # Annulus blocks the full head, but clears the smaller holding tool.
+        ring = Part.makeCylinder(2, 0.5, App.Vector(0, 0, -4)).cut(
+            Part.makeCylinder(1.65, 0.5, App.Vector(0, 0, -4))
+        )
+        ordinary = fastener_service_check(
+            bolt, nut, {"head_obstacle": ring}, thread_diameter=1.6
+        )
+        retained = fastener_service_check(
+            bolt, nut, {"head_obstacle": ring}, thread_diameter=1.6, retain_bolt=True
+        )
+        self.assertFalse(ordinary["passed"], ordinary)
+        self.assertTrue(retained["passed"], retained)
+        self.assertIsNone(retained["bolt_axial_withdrawal"])
+        for obstruction in (
+            Part.makeBox(4, 4, 0.2, App.Vector(-2, -2, 8)),
+            Part.makeCylinder(0.5, 1, App.Vector(0, 0, -4)),
+        ):
+            blocked = fastener_service_check(
+                bolt,
+                nut,
+                {"obstruction": obstruction},
+                thread_diameter=1.6,
+                retain_bolt=True,
             )
-        result = _horn_clamp_service_check(
-            bolt, {"intermediate_obstacle": obstacle}, (0, 0, -1)
-        )
-        self.assertFalse(result["passed"], result)
-        self.assertGreater(
-            result["bolt_axial_withdrawal"]["segments"][0]["intersection_mm3"][
-                "intermediate_obstacle"
-            ],
-            0.0001,
-        )
+            self.assertFalse(blocked["passed"], blocked)
+        with self.assertRaises(ValueError):
+            fastener_service_check(
+                bolt, nut, {}, retain_bolt=True, nut_lateral_direction=(1, 0, 0)
+            )
 
     def test_invalid_displacement_is_rejected(self):
         from gondola.validation.geometry import translation_sweep
@@ -1503,6 +1514,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                         prefix + suffix
                         for suffix in (
                             "Servo",
+                            "ServoEarLowerBolt",
+                            "ServoEarUpperBolt",
                             "ServoHorn",
                             "HornGearAdapter",
                             "HornGearClampNearBolt",
@@ -1529,6 +1542,11 @@ class SelectedGearDriveTests(unittest.TestCase):
                     self.assertTrue(
                         all(row["passed"] for row in result["ear_fastener_release"])
                     )
+                    for release in result["ear_fastener_release"]:
+                        self.assertTrue(release["bolt_retained_in_servo_unit"])
+                        self.assertIsNone(release["bolt_axial_withdrawal"])
+                        self.assertTrue(release["nut_axial_removal"]["passed"])
+                        self.assertIn(release["bolt"], result["moving_parts"])
                     self.assertTrue(result["adapter_clamp_release"]["passed"])
                     clamp_release = result["adapter_clamp_release"]
                     self.assertEqual(
@@ -1601,6 +1619,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                         ("Starboard" if prefix == "Port" else "Port") + suffix
                         for suffix in (
                             "Servo",
+                            "ServoEarLowerBolt",
+                            "ServoEarUpperBolt",
                             "ServoHorn",
                             "DriverGear",
                             "HornGearAdapter",
@@ -1652,6 +1672,12 @@ class SelectedGearDriveTests(unittest.TestCase):
         _record_fastener_checks(report, module, physical)
         for prefix in ("Port", "Starboard"):
             rows = {row["bolt"]: row for row in report["fastener_service"]}
+            for side in ("Lower", "Upper"):
+                bolt_name = prefix + "ServoEar" + side + "Bolt"
+                ear = rows[bolt_name]
+                self.assertTrue(ear["bolt_retained_in_servo_unit"])
+                self.assertIn(bolt_name, ear["retained_service_parts"])
+                self.assertNotIn(bolt_name, ear["removed_local_parts"])
             far = rows[prefix + "HornGearClampFarBolt"]
             near = rows[prefix + "HornGearClampNearBolt"]
             self.assertTrue(far["passed"], far)
@@ -1677,6 +1703,33 @@ class SelectedGearDriveTests(unittest.TestCase):
                 },
                 near["service_dependencies"],
             )
+
+    def test_off_bridge_horn_release_keeps_ear_bolts_as_obstacles(self):
+        from gondola.validation.horn_coupling import (
+            assembled_servo_service_check,
+            coupling_frame,
+        )
+
+        doc, module = self.configurations["48_16"]
+        bolt = doc.PortServoEarUpperBolt
+        original = bolt.Shape.copy()
+        try:
+            # After unit withdrawal, this added ear-bolt feature blocks only the
+            # horn nut's lateral release; do not drop retained bolts from that audit.
+            obstruction = Part.makeBox(1, 1, 1, App.Vector(20, 9.8, -0.5))
+            obstruction.Placement = (
+                bolt.Placement.multiply(bolt.getGlobalPlacement().inverse())
+                .multiply(coupling_frame(doc, "Port"))
+                .multiply(obstruction.Placement)
+            )
+            bolt.Shape = Part.makeCompound([original, obstruction])
+            result = assembled_servo_service_check(doc, module, "Port")
+            self.assertFalse(result["passed"], result)
+            far = result["adapter_clamp_release"]["fasteners"][0]
+            self.assertFalse(far["front_nut_release"]["passed"], far)
+        finally:
+            bolt.Shape = original
+            doc.recompute()
 
     def test_servo_case_service_rejects_a_midpath_cradle_obstruction(self):
         from gondola.cad import translated_shape, world_shape

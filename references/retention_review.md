@@ -1,10 +1,10 @@
 # Retention and assembly — AS
 
-**BG update:** the AS horn attachment below is historical. Use the
+**Current BI routing:** the AS horn attachment below is historical. Use the
 [current manufacturer stock-horn review](servo_horn_compatibility.md) for the
 round-hole/slot adapter, M1.4×8 screws/nuts and mandatory stock-hole preparation.
-Output-bearing capture remains; BG uses 34/14/18 mm driven/idler/input stubs for
-150 mm propulsion spacing. See [dimension changes](propulsion_dimensions_review.md).
+Output-bearing capture remains; BI uses 34/20/18 mm driven/idler/input stubs for
+150 mm propulsion spacing. See [current design](bi_design_review.md).
 
 AS replaces the manually prepared supplied-horn coupling with a purchased
 factory-threaded horn and an integral locating saddle. Output bearing retention

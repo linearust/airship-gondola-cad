@@ -903,11 +903,11 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
     set_property(
         mount,
         "ServiceSequence",
-        "At neutral, disconnect power and free the leads. Service the removable "
-        "gear/horn coupling before withdrawing one servo from its cradle, or "
-        "remove both small output gears and two bridge mount pairs to exchange "
-        "the complete paired module. Follow the checked ordered paths. Printed fit and handling "
-        "require a prototype check.",
+        "First remove both output gears and the paired servo/input module. On the "
+        "bench remove the selected driver gear and input stub, release only the "
+        "rear ear nuts, and withdraw the complete servo/horn/adapter with both "
+        "ear bolts retained. Detach the adapter before withdrawing either ear "
+        "bolt. Fit ear bolts before the adapter during reverse assembly.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
     references, servo_hardware = _build_servo(doc, mount, prefix, sign)

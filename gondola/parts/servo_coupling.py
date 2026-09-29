@@ -14,34 +14,30 @@ from gondola.cad import box, union
 from gondola.contracts import servo_horns
 
 V = App.Vector
-HORN_SKU = servo_horns.profile().sku
+HORN_PROFILE = servo_horns.profile()
+HORN_SKU = HORN_PROFILE.sku
 HORN_MATERIAL = "Supplied horn material unverified"
 HORN_BOTTOM_Y = 7.4
 # Nominal manufacturer dimensions, distinct from received/installed measurements.
-HORN_HEIGHT = 3.5
-HORN_BLADE_THICKNESS = 2.0
-HORN_BLADE_BOTTOM = HORN_HEIGHT - HORN_BLADE_THICKNESS
-HORN_RECESS_DEPTH = 2.5
-HORN_FACTORY_HOLE_CENTRES = tuple((x, 0.0) for x, _ in servo_horns.profile().holes)
-HORN_BOLT_CENTRES = tuple((x, 0.0) for x in servo_horns.profile().attachment_radii_mm)
-HORN_ADAPTER_HOLE_DIAMETERS = (1.8, 1.8)
+HORN_HEIGHT = HORN_PROFILE.height_mm
+HORN_BLADE_BOTTOM = HORN_PROFILE.blade_bottom_mm
+HORN_FACTORY_HOLE_CENTRES = tuple((x, 0.0) for x, _ in HORN_PROFILE.holes)
+HORN_BOLT_CENTRES = tuple((x, 0.0) for x in HORN_PROFILE.attachment_radii_mm)
 HORN_ADAPTER_SLOT_ALLOWANCE = 0.3
 HORN_ADAPTER_OPENING_ALLOWANCES = (0.0, HORN_ADAPTER_SLOT_ALLOWANCE)
 SLOT_WIDTH = 1.8
 HORN_CLAMP_THREAD_DIAMETER = 1.4
-HORN_CLAMP_LENGTH = 8.0
+HORN_CLAMP_LENGTH = HORN_PROFILE.screw_length_mm
 BOLT_DIRECTION = (0, 1, 0)
-FASTENER_SEAT_Y = 7.1
-HEAD_CLEARANCE_DIAMETER = 4.0
-HORN_MIN_HEAD_BEARING_DIAMETER = 3.0
 
 # Preserve the selected gears' established axial plane and output shaft fit.
 PLATE_FRONT_Y = 7.1
+FASTENER_SEAT_Y = PLATE_FRONT_Y
 PLATE_HALF_WIDTH = 5.15
 PLATE_TIP_RADIUS = 2.8
 PLATE_TIP_X = HORN_BOLT_CENTRES[-1][0]
 PLATE_X_MIN, PLATE_X_MAX = -PLATE_HALF_WIDTH, PLATE_TIP_X + PLATE_TIP_RADIUS
-REGISTER_RADIUS = max(p.root_diameter_mm / 2 for p in servo_horns.PROFILES.values())
+REGISTER_RADIUS = HORN_PROFILE.root_diameter_mm / 2
 REGISTER_CLEARANCE = 0.15
 REGISTER_INNER_RADIUS = REGISTER_RADIUS + REGISTER_CLEARANCE
 REGISTER_OUTER_RADIUS = 5.15
@@ -50,7 +46,6 @@ REGISTER_OPEN_X = 0.7
 BODY_BACK_Y = HORN_HEIGHT - REGISTER_ENGAGEMENT
 OEM_HEAD_CAVITY_RADIUS = 2.5
 OEM_HEAD_CAVITY_TOP_Y = 5.6
-ADAPTER_RELEASE_TRAVEL = 1.7
 RETAINED_BOLT_RELEASE_TRAVEL = HORN_BLADE_BOTTOM + HORN_CLAMP_LENGTH - BODY_BACK_Y + 0.2
 
 GEAR_BORE_DIAMETER = 3.0
@@ -308,57 +303,45 @@ def service_envelope(*, retain_screws=False):
 def fastener_positions(profile=None):
     """Two factory hole axes locate the rear screws and front nuts."""
     profile = profile or servo_horns.profile()
-    result = []
-    for x in profile.attachment_radii_mm:
-        row = {"screw": (x, FASTENER_SEAT_Y, 0)}
-        if not profile.threaded:
-            row["screw"] = (x, profile.blade_bottom_mm, 0)
-            row["nut"] = (x, FASTENER_SEAT_Y, 0)
-        result.append(row)
-    return tuple(result)
+    return tuple(
+        {"screw": (x, profile.blade_bottom_mm, 0), "nut": (x, FASTENER_SEAT_Y, 0)}
+        for x in profile.attachment_radii_mm
+    )
 
 
 def horn_hardware_shapes(profile=None):
-    """Profile hardware in horn coordinates, shared by CAD and profile checks."""
+    """Rear M1.4 screws and front nuts; the OEM horn has plain holes."""
     from . import purchased_hardware
 
     profile = profile or servo_horns.profile()
     result = []
+    rotation = App.Rotation(V(0, 0, 1), V(*BOLT_DIRECTION))
+    radius = HORN_CLAMP_THREAD_DIAMETER / 2
     for label, anchors in zip(("Near", "Far"), fastener_positions(profile)):
-        if profile.threaded:
-            screw = purchased_hardware.servo_screw_shape(profile.screw_length_mm).copy()
-            direction = V(*BOLT_DIRECTION)
-        else:
-            screw = (
-                Part.makeCylinder(
-                    servo_horns.KST_SCREW_HEAD_DIAMETER_MM / 2,
-                    servo_horns.KST_SCREW_HEAD_HEIGHT_MM,
-                    V(0, 0, -servo_horns.KST_SCREW_HEAD_HEIGHT_MM),
-                )
-                .fuse(Part.makeCylinder(0.7, profile.screw_length_mm))
-                .removeSplitter()
+        screw = (
+            Part.makeCylinder(
+                servo_horns.KST_SCREW_HEAD_DIAMETER_MM / 2,
+                servo_horns.KST_SCREW_HEAD_HEIGHT_MM,
+                V(0, 0, -servo_horns.KST_SCREW_HEAD_HEIGHT_MM),
             )
-            direction = V(0, 1, 0)
-        screw.Placement = App.Placement(
-            V(*anchors["screw"]), App.Rotation(V(0, 0, 1), direction)
+            .fuse(Part.makeCylinder(radius, profile.screw_length_mm))
+            .removeSplitter()
         )
+        screw.Placement = App.Placement(V(*anchors["screw"]), rotation)
         result.append((label + "Bolt", screw, profile.screw_sku))
-        if not profile.threaded:
-            nut = (
-                purchased_hardware.hex_prism(
-                    servo_horns.NUT_AF_MM, servo_horns.NUT_HEIGHT_MM
-                )
-                .cut(
-                    Part.makeCylinder(
-                        0.7, servo_horns.NUT_HEIGHT_MM + 0.2, V(0, 0, -0.1)
-                    )
-                )
-                .removeSplitter()
+        nut = (
+            purchased_hardware.hex_prism(
+                servo_horns.NUT_AF_MM, servo_horns.NUT_HEIGHT_MM
             )
-            nut.Placement = App.Placement(
-                V(*anchors["nut"]), App.Rotation(V(0, 0, 1), V(0, 1, 0))
+            .cut(
+                Part.makeCylinder(
+                    radius, servo_horns.NUT_HEIGHT_MM + 0.2, V(0, 0, -0.1)
+                )
             )
-            result.append((label + "Nut", nut, "M1_4_HEX_NUT_DIN934"))
+            .removeSplitter()
+        )
+        nut.Placement = App.Placement(V(*anchors["nut"]), rotation)
+        result.append((label + "Nut", nut, "M1_4_HEX_NUT_DIN934"))
     return tuple(result)
 
 
@@ -414,7 +397,7 @@ def assembly_contract(profile=None):
         - FASTENER_SEAT_Y
         - servo_horns.NUT_HEIGHT_MM,
         "thread_engagement_scope": "Nominal 2 mm horn + 3.6 mm adapter + 1.2 mm nut = 6.8 mm stack; M1.4x8 gives 1.2 mm tip projection beyond the nut. Rear head seats on the horn, front nut on the flat adapter; no recesses or washers. Actual thread runout, head size, plastic bearing stress and retention need inspection.",
-        "centre_screw_service": "Remove both output gears and the paired servo/input module; remove selected driver gear and metal stub, release servo ears, then withdraw servo+horn+adapter together. Off the bridge, remove front nuts and adapter before accessing the OEM centre screw. For assembly insert rear M1.4 screws into the detached prepared horn, install horn and OEM centre screw on the free servo, fit adapter/front nuts, and clamp with a <=1.5 mm rear holding-tool stem. Refit the complete servo unit, stub and gear. Rear tool access past the assembled bridge is not assumed; the shaft-stop floor stays intact.",
+        "centre_screw_service": "Remove both output gears and the paired servo/input module; remove selected driver gear and metal stub, remove only the rear ear nuts, then withdraw servo+horn+adapter with both ear bolts retained. Off the bridge, remove front nuts and adapter before accessing the OEM centre screw or withdrawing the ear bolts. For assembly place both M1.6 ear bolts in the servo ears before fitting the adapter; insert rear M1.4 screws into the detached prepared horn, install horn and OEM centre screw on the free servo, fit adapter/front nuts, and clamp with a <=1.5 mm rear holding-tool stem. Refit the complete servo unit, stub and gear. Rear tool access past the assembled bridge is not assumed; the shaft-stop floor stays intact.",
     }
 
 
@@ -435,18 +418,15 @@ def metrics():
         "selected_by_side": dict(servo_horns.SELECTED_BY_SIDE),
         "assembly_contract": contract,
         "horn_factory_hole_centres_xz_mm": HORN_FACTORY_HOLE_CENTRES,
-        "horn_adapter_round_hole_x_mm": servo_horns.profile().attachment_radii_mm[0],
+        "horn_adapter_round_hole_x_mm": HORN_PROFILE.attachment_radii_mm[0],
         "horn_adapter_round_hole_diameter_mm": SLOT_WIDTH,
         "horn_adapter_slot_width_mm": SLOT_WIDTH,
-        "horn_adapter_slot_centres_x_mm": servo_horns.profile().attachment_radii_mm[1:],
+        "horn_adapter_slot_centres_x_mm": HORN_PROFILE.attachment_radii_mm[1:],
         "horn_adapter_slot_centre_allowance_mm": HORN_ADAPTER_SLOT_ALLOWANCE,
         "horn_clamp_thread_diameter_mm": HORN_CLAMP_THREAD_DIAMETER,
         "horn_clamp_screw_length_mm": HORN_CLAMP_LENGTH,
         "horn_clamp_grip_mm": contract["fastener_grip_mm"],
-        "horn_clamp_nuts_by_side": {
-            side: 0 if servo_horns.profile(side=side).threaded else 2
-            for side in servo_horns.SELECTED_BY_SIDE
-        },
+        "horn_clamp_nuts_by_side": {side: 2 for side in servo_horns.SELECTED_BY_SIDE},
         "gear_bore_diameter_mm": GEAR_BORE_DIAMETER,
         "driver_shaft_diameter_mm": SHAFT_DIAMETER,
         "driver_shaft_length_mm": SHAFT_LENGTH,
@@ -460,7 +440,7 @@ def metrics():
         - GEAR_LENGTH,
         "gear_start_from_horn_bottom_mm": GEAR_START_Y,
         "horn_long_side_walls_retained": False,
-        "adapter_axial_release_travel_mm": ADAPTER_RELEASE_TRAVEL,
+        "adapter_axial_release_travel_mm": RETAINED_BOLT_RELEASE_TRAVEL,
         "common_clamp_screws_per_side": 3,
         "shaft_retention": "Nominal Ø3x18 mm 304 stock, full-length 0.5 mm flat, 8 mm D socket and radial M2 clamp. Full 1.5 mm stop floor; selected gear M3 screw and 2 mm end reserve retained. No input bearing. Actual shaft fit and retention require inspection.",
         "assembly": contract["assembly_adjustment"]

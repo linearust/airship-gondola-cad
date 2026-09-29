@@ -1,10 +1,11 @@
 # Selected controller: MicoAir743v2-AIO-45A
 
-Reviewed 2026-09-24; the official product/manual text was rechecked on
-2026-09-27 and still states 3–6S / 10–27 V. The retained official 2S image
-evidence does not resolve the received revision. The user replaced the 35A Bluejay board with the H743V2
-AIO 45A AM32 board. This is a component selection and CAD interface review,
-not confirmation that the selected battery powers every supplied board revision.
+Updated 2026-09-29: **the user confirmed that the selected H743V2 AIO 45A AM32
+board supports 2S**. Retain the existing 2S battery; its compatibility is no longer
+an unresolved selection issue. The user suspects a recent model change, but no
+hardware revision number or change history was provided. This confirmation does
+not establish an exact minimum input voltage or qualify the installed power system.
+The board replaces the earlier 35A Bluejay selection.
 
 ## Mechanical interface
 
@@ -41,10 +42,11 @@ transfer exact port coordinates from a 35A photograph or invent new close-fittin
 openings. Changes in ESC components also do not establish identical local
 component heights from photographs.
 
-## Conflicting input-voltage evidence
+## Retained historical input-voltage evidence
 
-The current 45A manual, product page and [store title](https://store.micoair.com/product/micoair743v2-aio-45a/)
-state **3–6S**, with manual/product text giving **10–27 V**. However, the
+In the 2026-09-24 review and 2026-09-27 text recheck, the 45A manual, product page
+and [store title](https://store.micoair.com/product/micoair743v2-aio-45a/)
+stated **3–6S**, with manual/product text giving **10–27 V**. However, the
 manufacturer's linked 45A port illustration states **2–6S, 5.6–27 V**, and its
 [45A specifications image](https://store.micoair.com/wp-content/uploads/2025/03/H743V2-AIO_Specifications.webp)
 states **2S–6S** alongside AM32 and 45A × 4. This is a conflict within official
@@ -52,10 +54,12 @@ sources, not sufficient evidence to declare the user's product title mistaken.
 The older image also lists ESC firmware 2.17 while current text lists 2.19;
 neither proves a hardware revision boundary or the received firmware.
 
-Keep the user-selected 45A board and existing 2S battery in the CAD selection.
-Record 2S electrical compatibility as unresolved until the actual revision's
-manufacturer specification is confirmed. Do not silently change the battery,
-motors, or wiring power rails. Nominal mechanical fit does not resolve this issue.
+These retained claims document the earlier conflict; they do not override the
+user's 2026-09-29 confirmation. Do not infer that all earlier revisions support
+2S, invent a revision identifier, or adopt 5.6 V as a verified cutoff. An 8 V main
+rail is nominally consistent with standard 2S operation, but regulator startup,
+transients, load current, cooling and the shared 5 V supply remain to be tested.
+No change to the selected battery, motors or wiring rails is required.
 
 ## Retained primary images
 

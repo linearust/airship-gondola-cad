@@ -74,8 +74,23 @@ class HornProfileGeometryTests(unittest.TestCase):
                 self.assertTrue(release["front_nut_release"]["passed"])
                 self.assertFalse(release["fine_plier_jaw_collisions_mm3"])
                 self.assertIn(release["bolt"], release["retained_parts"])
+                for suffix in (
+                    "Servo",
+                    "ServoEarLowerBolt",
+                    "ServoEarUpperBolt",
+                    "InputShaftClampBolt",
+                    "InputShaftClampNut",
+                ):
+                    self.assertIn(service["pod"] + suffix, release["retained_parts"])
             self.assertIn(releases[0]["nut"], releases[1]["removed_prior_parts"])
-            self.assertTrue(service["adapter_release_off_bridge"]["passed"])
+            adapter = service["adapter_release_off_bridge"]
+            self.assertTrue(adapter["passed"])
+            for suffix in ("Servo", "ServoEarLowerBolt", "ServoEarUpperBolt"):
+                self.assertIn(service["pod"] + suffix, adapter["obstacles"])
+            self.assertEqual(len(adapter["retained_clamp_hardware_paths"]), 2)
+            self.assertTrue(
+                all(row["passed"] for row in adapter["retained_clamp_hardware_paths"])
+            )
 
     def test_kst_front_nuts_cannot_be_removed_from_the_saved_profile(self):
         from gondola.parts import propulsion

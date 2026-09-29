@@ -237,9 +237,17 @@ def input_service_path(name, shape, waypoints, obstacles, spec, sign):
 
 
 def fastener_service_check(
-    bolt, nut, obstacles, *, thread_diameter=2.0, nut_lateral_direction=None
+    bolt,
+    nut,
+    obstacles,
+    *,
+    thread_diameter=2.0,
+    nut_lateral_direction=None,
+    retain_bolt=False,
 ):
     """Check an ordered threaded-fastener release and its head-tool approach."""
+    if retain_bolt and nut_lateral_direction is not None:
+        raise ValueError("A retained bolt requires axial nut disengagement")
     bore = next(
         face.Surface
         for face in nut.Faces
@@ -272,9 +280,17 @@ def fastener_service_check(
         nut_waypoints = [(0, 0, 0), tuple(offset), tuple(offset + lateral)]
         sequence = "Hold the nut and withdraw the bolt first, then move the unthreaded nut 0.2 mm away from its seat and 25 mm sideways."
     nut_path = continuous_path(nut, nut_waypoints, obstacles)
-    bolt_path = continuous_path(
-        bolt, [(0, 0, 0), tuple(axis * -bolt_travel)], obstacles
+    bolt_path = (
+        None
+        if retain_bolt
+        else continuous_path(bolt, [(0, 0, 0), tuple(axis * -bolt_travel)], obstacles)
     )
+    if retain_bolt:
+        sequence = (
+            "Disengage only the rear nut beyond the thread tip. Keep the bolt seated "
+            "in the servo ear and carry it with the checked complete servo unit; "
+            "remove it only after the horn adapter is detached off the bridge."
+        )
     head_projection = min(vertex.Point.dot(axis) for vertex in bolt.Vertexes)
     tool_origin = bore.Center + axis * (head_projection - 0.1 - bore.Center.dot(axis))
     tool_radius = 1.0 if thread_diameter == 2 else 1.6
@@ -287,11 +303,14 @@ def fastener_service_check(
     return {
         "nut_axial_removal": nut_path,
         "bolt_axial_withdrawal": bolt_path,
+        "bolt_retained_in_servo_unit": retain_bolt,
         "driver_approach_collisions": tool_hits,
         "tool_reserve_radius_mm": tool_radius,
         "nut_thread_disengagement_travel_mm": nut_travel,
-        "bolt_withdrawal_travel_mm": bolt_travel,
+        "bolt_withdrawal_travel_mm": None if retain_bolt else bolt_travel,
         "service_order": sequence,
-        "scope": "Modeled full thread/shank withdrawal includes 0.2 mm clearance. Named obstacles stay installed at neutral tilt. Cylindrical driver reservation: 1 mm radius for M2 hex socket, 1.6 mm for the M1.6 Phillips kit head. This is a tool-space envelope, not a measured bit or proof of recess engagement. Handling the released nut, bit match and wrench handling remain unverified.",
-        "passed": nut_path["passed"] and bolt_path["passed"] and not tool_hits,
+        "scope": "Axial nut disengagement includes 0.2 mm clearance; bolt withdrawal is checked only when the bolt is removed. Retained-bolt mode requires a separate complete-unit motion check. Named obstacles stay installed at neutral tilt. Cylindrical driver reservation: 1 mm radius for M2 hex socket, 1.6 mm for the M1.6 Phillips kit head. This is a tool-space envelope, not a measured bit or proof of recess engagement. Handling the released nut, bit match and wrench handling remain unverified.",
+        "passed": nut_path["passed"]
+        and (retain_bolt or bolt_path["passed"])
+        and not tool_hits,
     }

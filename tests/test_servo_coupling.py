@@ -147,6 +147,19 @@ class ServoCouplingTests(unittest.TestCase):
             c.PLATE_TIP_RADIUS - c.SLOT_WIDTH / 2 - c.HORN_ADAPTER_SLOT_ALLOWANCE, 1.5
         )
 
+    def test_reported_adapter_release_clears_retained_horn_screw_tips(self):
+        from gondola.parts import servo_coupling as c
+
+        reported = c.metrics()["adapter_axial_release_travel_mm"]
+        self.assertAlmostEqual(reported, 7.7)
+        released = c.adapter_shape()
+        released.translate(App.Vector(0, reported, 0))
+        for name, screw, _ in c.horn_hardware_shapes():
+            if name.endswith("Bolt"):
+                self.assertGreaterEqual(
+                    released.BoundBox.YMin - screw.BoundBox.YMax, 0.2 - 1e-6
+                )
+
     def test_only_two_selected_factory_holes_are_prepared(self):
         from gondola.parts import servo_coupling as c
         from gondola.parts.oem_servo_horn import normalized_shape

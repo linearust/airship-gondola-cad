@@ -169,7 +169,7 @@ class PowerPlan:
                 }
                 for index, branch in enumerate(self.branches)
             ],
-            "qualification": "Optional integration plan only. Board fit does not establish motor/startup current, tether loss, protection, cooling, FC input compatibility or a completed wiring harness.",
+            "qualification": "Optional integration plan only. The selected FC supports 2S by user confirmation; board fit does not establish installed voltage stability, motor/startup current, tether loss, protection, cooling or a completed wiring harness.",
         }
 
 
@@ -245,7 +245,7 @@ def power_option_contract():
             "The BEC's published 5 A output at 8 V is shared by main loads and SVPDB input. I_BEC8 = I_main8 + (5*I_servo5)/(8*eta_SVPDB), with eta including conversion losses and not assigned a verified value. At the SVPDB's published 4 A output, its input needs more than the ideal 2.5 A at 8 V. Peak ratings are not continuous or guaranteed simultaneous margin.",
             "Keep servo-positive wires off the FC 5 V rail when using SVPDB. Share ground and preserve individual control signals. F-Mini and other peripherals stay on the FC's appropriate supply. Never join the two regulated 5 V output positives, even though their nominal voltages match.",
             "Battery and tether are mutually exclusive supply choices here; no automatic changeover, charging or parallel battery/PSU operation is designed.",
-            "The selected FC's published input-range conflict is unresolved for both existing 2S operation and an 8 V tether output. Preserve the selected board, but do not claim those supply combinations qualified.",
+            "The user confirmed selected-FC 2S support on 2026-09-29. The 8 V main rail is nominally consistent with standard 2S operation; this is not a loaded-system test or proof of regulator startup/transient behavior. Exact board revision and minimum input voltage remain unspecified.",
             "There is no dedicated tether guide or rated anchor. Secure the incoming lead to suitable existing structure before the PCB terminals. Whole-tether load capacity, cable rating, loss, strain relief and freedom from propeller/optical interference during flight remain installation checks.",
         ),
     }

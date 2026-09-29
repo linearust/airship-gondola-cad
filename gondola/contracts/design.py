@@ -123,7 +123,11 @@ SOURCE_DISCREPANCIES = {
     "fc_input_power": {
         "input_claims": FC_ELECTRICAL_EVIDENCE["input_claims"],
         "selected_battery_cells": 2,
-        "status": "Official 45A sources conflict on 2S support. Preserve the user's selected 45A AM32 board and existing 2S battery. Confirm the supplied board revision and manufacturer-approved input range before powering this combination; do not silently substitute a higher-voltage battery for the selected 2S propulsion system.",
+        "compatibility_status": FC_ELECTRICAL_EVIDENCE["compatibility_status"],
+        "selected_input_confirmation": FC_ELECTRICAL_EVIDENCE[
+            "selected_input_confirmation"
+        ],
+        "status": "Historical official 45A sources conflict on 2S support. The user confirmed the selected board supports 2S on 2026-09-29; retain the existing battery. The exact hardware revision, minimum voltage and suspected recent model change are not established. Installed loads and firmware still require checks.",
     },
     "servo_case_tolerance": {
         "manufacturer_drawing_plus_minus_mm": 0.2,
@@ -324,8 +328,8 @@ class UnresolvedInterface:
 # Update only after obtaining the stated physical or supplier evidence.
 UNRESOLVED_INTERFACES = (
     UnresolvedInterface(
-        "fc_input_power",
-        "Resolve the official 45A input-range conflict for the supplied board revision: manual/product text says 3-6S (10-27V), while the AM32-labeled port diagram says 2-6S (5.6-27V). The selected 2S battery and 45A board remain in the CAD, with electrical compatibility unverified. Obtain manufacturer confirmation before powering this combination. Do not automatically change battery voltage or assume the 2S RS1102 selection tolerates it. Verify actual AM32 firmware/output setup and the shared 5V/2A supply under installed loads; the 45A ESC label does not increase BEC capacity.",
+        "fc_installed_power",
+        "The user confirmed the selected 45A AM32 board's 2S support on 2026-09-29; do not reopen that selection question from older conflicting catalogs. Verify actual AM32 firmware/output setup, installed supply stability and the shared 5V/2A supply under installed loads; the 45A ESC label does not increase BEC capacity. No minimum operating voltage, hardware revision, completed power test or higher-voltage motor compatibility is inferred.",
     ),
     UnresolvedInterface(
         "motion_endpoints",
@@ -349,7 +353,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
-        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The FC input-voltage conflict also applies to 8 V. The optical carrier host and edge must clear the selected power configuration; a shared mounting pattern does not establish an unobstructed sensor view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
+        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The selected FC supports 2S by user confirmation; 8 V is nominally consistent with that supply class, while regulator startup/transients and loaded operation remain unverified. The optical carrier host and edge must clear the selected power configuration; a shared mounting pattern does not establish an unobstructed sensor view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",

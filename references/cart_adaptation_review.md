@@ -1,6 +1,6 @@
 # Selected cart and preparation work
 
-Latest saved-cart review: [2026-09-27 selected options and findings](cart_review_2026_09_27.json).
+Retained saved-cart snapshot: [2026-09-27 selected options and findings](cart_review_2026_09_27.json).
 It covers the 91 product rows actually present in the supplied HTML; the page's
 92-item header does not reconcile to those rows. This is not a live-stock check
 or proof that the complete live cart was captured. Unrelated stock and spare
@@ -28,7 +28,7 @@ generated BOM, not the cart pack counts.
 | Generic 3 x 6 x 2.5 mm ball bearings | Four installed. Actual race lands, shields, internal play, fit, material and mass remain unverified. Do not identify the received lot as NSK/ISC MR63ZZ. |
 | Selected nominal Ø3 mm 304 rods | Prepare the six shafts below. The user accepts replacing unsuitable stock with precision shafts; nominal size does not establish a fit tolerance. |
 | Kailash 48T / 3 mm and 16T / `3mm3` | Two pairs installed. The supplied 16T table resolves its bore label to 3 mm. See [gear evidence](kailash_gears_selected_evidence.md); do not restore the old MISUMI/POM assumptions. |
-| MicoAir743v2-AIO-45A AM32 | Replaces the cart's former 35A Bluejay board by user decision. Same nominal mechanical interface; official 2S/3S input claims conflict. See [controller evidence](controller_selection_review.md). Firmware, power compatibility and the supplied mounting stack remain unverified. |
+| MicoAir743v2-AIO-45A AM32 | Replaces the cart's former 35A Bluejay board by user decision. Same nominal mechanical interface; user confirmed 2S support on 2026-09-29. See [controller evidence](controller_selection_review.md) for retained historical catalog disagreement. Actual firmware, installed power behavior and the supplied mounting stack remain unverified. |
 | Tattu 2S 450 mAh 75C, XT30 | Long-pack dimensions, leads and received mass still require inspection. |
 | XT30 lead, 35 V / 220 µF capacitor | Inspect actual envelope, polarity and strain relief. |
 | MTF-02P; LR24-F-Mini; XR2 Nano 2.4G | Current sensor/radio/receiver selection; the earlier cart LR900-A is superseded. MTF-01P can replace MTF-02P on the same adhesive tray; install one only, as described in `optical_sensor_compatibility.md`. Check supplied cables and ground-radio availability; XR2 mounting is not modeled. |
@@ -57,8 +57,8 @@ interfaces; the bearing-spacer decision does not delete those requirements.
 
 | Quantity | Cut length | Flat preparation | Role |
 | --- | --- | --- | --- |
-| 2 | 34 mm | 5 mm-long flat from the gear end; nominal depth 0.5 mm | Geared output stubs for BG's 150 mm axis spacing; keep bearing journals round |
-| 2 | 14 mm | None | Opposite output stubs |
+| 2 | 34 mm | 5 mm-long flat from the gear end; nominal depth 0.5 mm | Geared output stubs for the current 150 mm axis spacing; keep bearing journals round |
+| 2 | 20 mm | None | Opposite output stubs |
 | 2 | 18 mm | Full-length flat; nominal depth 0.5 mm | Input stubs; no external bearing journal |
 
 Lengths exclude saw kerf and finishing allowance. Cut square and deburr;

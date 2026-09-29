@@ -74,10 +74,10 @@ the FC and SVPDB 5 V output positives, despite their matching nominal voltages.
 Battery and tether are alternative inputs: no automatic switching,
 battery charging or simultaneous battery/PSU connection is designed.
 
-The [selected FC input-range conflict](controller_selection_review.md) applies to
-an 8 V main rail as well as the existing 2S battery. The correct purchased-board
-input range, regulator startup/transient behavior, installed current and cooling
-remain unresolved. Nominal 24 V compatibility at the regulator does not establish
+The user confirmed [selected-FC 2S support](controller_selection_review.md) on
+2026-09-29. The 8 V main rail is nominally consistent with standard 2S operation;
+no exact minimum input voltage or hardware revision is inferred. Regulator
+startup/transient behavior, installed current and cooling remain unverified. Nominal 24 V compatibility at the regulator does not establish
 the tether's conductor rating, voltage drop, protection or entire-vehicle operation.
 Switching regulators and their high-current leads near a GPS/compass require an
 installed magnetic-interference check. Use another available structural host or
