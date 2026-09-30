@@ -1,25 +1,44 @@
 {
-  "revision": "BM",
-  "recorded_utc": "2026-09-30T05:43:54.421088+00:00",
+  "revision": "BN",
+  "recorded_utc": "2026-09-30T07:23:34.293039+00:00",
   "passed": true,
   "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "c59072670e39ae9aa79ce8a8bf24d68ff27f79e184cbc702f1891b7c7b9932a9",
-  "cad_sha256": "47735a38275a52e4e18dab9068538f7a3bee8770064bed961f71e893316b3953",
+  "source_fingerprint": "382e7cb36af625802ce302f49899520e24ef2320c504ee6c87dcb2b5366aa0f4",
+  "cad_sha256": "9519b7db7a0c1be8993d0ac67549fc6bdda0e3862ab5823ea347fa01eec27de0",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "37b5f191160fdc33213ea5b9a34c87225f60a9f2c37fa383ab92e8f69d0b8a0f"
+    "sha256": "890ff9b4830058df96bfb554cf59d1432d77297c35ee551835a83205a3a89508"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "ee719610c2b7e2ffd887facf1e6c7d28bda17d5be7bad60288a2329783316264"
+    "sha256": "a4fd71139586e767eab4c9f632346c12811d52ad4f56b105678a121dffafba0f"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 594,
+    "testsRun": 607,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
-    "source_unchanged": true
+    "source_unchanged": true,
+    "source_unchanged_scope": "Production CAD source and fixture across both phases. Test-only changes are listed and the complete affected modules were rerun.",
+    "test_only_corrections": [
+      {
+        "path": "tests/test_native_interfaces.py",
+        "before_sha256": "7e6332915944e480d2189b07af9259fb25f3e5bbb74ec2c7083cb1abeea965b2",
+        "after_sha256": "687d91c33eed161d90af053b934ff607fbd8848ebb212b1670114e607a4f644c"
+      },
+      {
+        "path": "tests/test_optical_interface.py",
+        "before_sha256": "02a279a44ea02165f478cc80e222fcee8c11430f9ccdd1f0095eac668bbfb321",
+        "after_sha256": "d56e08f6f061a25b23a752d9d3ee5179aa63edffd94b6ad260963c545ece4f8f"
+      },
+      {
+        "path": "tests/test_optical_mount.py",
+        "before_sha256": "9410e36ce82434deb7bccda6de69b313d4119c08838ad72db0c26ee3dbb5f7b7",
+        "after_sha256": "2c02fd4f3305d64ceb2ab1ca745859aca0efbdbb337d54bfc294c1c49cf91f78"
+      }
+    ],
+    "exact_discovery_coverage": true
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
@@ -33,12 +52,12 @@
     "passed": true,
     "scene_count": 6,
     "sampled_frames": 1349,
-    "matrix_checks": 107158,
+    "matrix_checks": 102726,
     "discrepancy_count": 0
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "fd02f4fcfe2b6e06feed1476fc6079dad6a0e8e4f123419ae79360464983d0e1",
+  "evidence_archive_sha256": "8466013cc2a7bb810ce25e62eff102df4fceb309813c56be60c04ef8188913a1",
   "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "f375c4b451653b42dfcaf814ddf7961b18ef2af597e9688d89ec70861791ab51"
+  "print_bundle_sha256": "7c388c05bd06982f2a8ea88b469056a0dc28bf32ba8a6eae6b2043b3c5b82bf3"
 }

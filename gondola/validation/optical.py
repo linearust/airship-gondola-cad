@@ -19,7 +19,6 @@ from gondola.parts import (
     optical_interface,
     optical_mount,
     optical_sensor,
-    rail,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
@@ -336,15 +335,18 @@ def _corners(shape):
     ]
 
 
+RAIL_ALIGNMENT_RESERVE_MM = 0.3
+
+
 def _external_field_bound(group, profile=None):
-    """Contain the entire one-axis field, including nominal transverse rail clearance."""
+    """Contain the field with a conservative assembly-alignment reserve."""
     profile = profile or optical_sensor.profile_for_document(group.Document)
     angle = math.radians(optical_mount.ANGLE_LIMIT_DEG)
     half_x, half_y = (v / 2 for v in profile.size_mm[:2])
     front = optical_sensor.SENSOR_BOTTOM_Z + profile.optical_origin_min_z_mm
     pivot = optical_mount.PIVOT_CENTRE
     z = pivot[2] + front * math.cos(angle) - half_x * math.sin(angle)
-    registration = rail.HEAD_SIDE_CLEARANCE + math.hypot(
+    registration = RAIL_ALIGNMENT_RESERVE_MM + math.hypot(
         optical_interface.MAX_REGISTRATION_X, optical_interface.MAX_REGISTRATION_Y
     )
     radius = math.sqrt(half_x**2 + half_y**2 + front**2) + registration
@@ -762,7 +764,7 @@ def _foot_service_checks(doc, physical, kit):
     for name, shape in remaining.items():
         path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
     return {
-        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Unthread the foot nut 4.2 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The rail, balloon, hand/tool and connected harness are outside this bench-service model.",
+        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Unthread the foot nut 4.2 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
         "paths": rows,
         "passed": all(row["passed"] for row in rows),
     }

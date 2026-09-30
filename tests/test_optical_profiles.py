@@ -68,8 +68,11 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                 self.assertTrue(screen.isInside(point, 1e-7, True))
 
     def test_continuous_external_cone_contains_both_fields_and_registration(self):
-        from gondola.parts import optical_mount, optical_sensor, rail
-        from gondola.validation.optical import _external_field_bound
+        from gondola.parts import optical_mount, optical_sensor
+        from gondola.validation.optical import (
+            RAIL_ALIGNMENT_RESERVE_MM,
+            _external_field_bound,
+        )
 
         doc = App.newDocument("OpticalFullFieldBound")
         try:
@@ -94,8 +97,8 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                                 *optical_mount.PIVOT_CENTRE
                             )
                             for ty in (
-                                -rail.HEAD_SIDE_CLEARANCE,
-                                rail.HEAD_SIDE_CLEARANCE,
+                                -RAIL_ALIGNMENT_RESERVE_MM,
+                                RAIL_ALIGNMENT_RESERVE_MM,
                             ):
                                 shifted = point + App.Vector(0, ty, 0)
                                 self.assertTrue(

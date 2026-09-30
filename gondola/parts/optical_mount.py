@@ -221,7 +221,6 @@ def build_optical_mount(doc, host, side=optical_interface.DEFAULT_SIDE):
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)
-        set_property(obj, "PrintProcess", "PA12 SLS or MJF")
         set_property(obj, "HoldingTorqueVerified", False, "App::PropertyBool")
         if name == "OpticalMountBase":
             optical_interface.annotate_interface(obj)

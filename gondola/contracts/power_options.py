@@ -8,12 +8,14 @@ Published body heights exclude unmeasured solder, headers, plugs and insulation.
 from collections import Counter
 from dataclasses import asdict, dataclass
 
+from gondola.print_materials import print_filename
+
 POWER_ARTIFACT_NAMES = (
     "gondola_power_options.FCStd",
-    "optional_power_mount.stl",
-    "optional_power_mount.step",
+    print_filename("optional_power_mount", "stl"),
+    print_filename("optional_power_mount", "step"),
     "gondola_power_options.json",
-    "gondola_power_platform.FCStd",
+    print_filename("gondola_power_platform", "FCStd"),
 )
 POWER_PLATFORM_DOCUMENT_NAME = POWER_ARTIFACT_NAMES[4]
 POWER_VALIDATION_NAME = "gondola_power_validation.json"

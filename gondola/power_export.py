@@ -20,6 +20,7 @@ from .cad import (
     create_printed_part,
     create_reference,
     placed_shape,
+    set_print_sku,
     set_property,
     world_shape,
 )
@@ -53,6 +54,7 @@ from .print_export import (
     print_size_check,
     print_solid_comparison,
 )
+from .print_materials import print_label, print_metadata_matches, print_specification
 from .provenance import file_sha256, source_fingerprint
 from .validation.evidence import comparison_passed
 from .validation.geometry import (
@@ -506,6 +508,8 @@ def _manifest(doc, manufacturing):
     local = part.Shape.optimalBoundingBox(False, False)
     return {
         "source_fingerprint": source_fingerprint(),
+        "manufacturing": print_specification(),
+        "print_files": {"stl": ARTIFACT_NAMES[1], "step": ARTIFACT_NAMES[2]},
         "optional_only": True,
         "included_in_default_installed_inventory": False,
         "default_host": power_mount.DEFAULT_HOST,
@@ -595,13 +599,15 @@ def export_power_options(main_doc, output_dir=None):
         # A separate manufacturing source keeps the retained portal out of the
         # installed direct-tether inventory and gives its exports an auditable BRep.
         manufacturing = App.newDocument("PowerPortalManufacturing")
-        manufacturing.Label = "Optional portal manufacture | PORTAL configurations only"
+        manufacturing.Label = print_label(
+            "Optional portal | PORTAL configurations only"
+        )
         group = create_group(
             manufacturing, "PowerPrintSource", "Optional portal print source"
         )
         set_property(group, "PowerPackaging", PORTAL)
         set_property(group, "SourceFingerprint", source_fingerprint())
-        create_printed_part(
+        platform = create_printed_part(
             manufacturing,
             group,
             "PowerPlatform",
@@ -610,6 +616,7 @@ def export_power_options(main_doc, output_dir=None):
             App.Rotation(App.Vector(1, 0, 0), 180),
             power_mount.platform_contract()["support_scope"],
         )
+        set_print_sku(platform, "PowerPlatform")
         manufacturing.recompute()
         print_path = out / POWER_PLATFORM_DOCUMENT_NAME
         manufacturing.saveAs(str(print_path))
@@ -718,6 +725,8 @@ def audit_power_options(source=None, output_dir=None):
         print_part = manufacturing.getObject("PowerPlatform")
         report["manufacturing_source_matches"] = (
             print_part is not None
+            and str(getattr(print_part, "PrintSKU", "")) == "PowerPlatform"
+            and print_metadata_matches(print_part)
             and print_part.getParentGeoFeatureGroup() == manufacturing.PowerPrintSource
             and str(manufacturing.PowerPrintSource.PowerPackaging) == PORTAL
             and str(manufacturing.PowerPrintSource.SourceFingerprint)
@@ -761,6 +770,7 @@ def audit_power_options(source=None, output_dir=None):
             thickness=power_mount.DECK_THICKNESS_MM,
             through_bottom=0.0,
             through_depth=stack_interface.TOP_BEAM_THICKNESS,
+            centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         expected_print = print_shape(print_part)
         step = Part.Shape()

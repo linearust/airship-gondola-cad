@@ -1,6 +1,7 @@
 """Frozen-design regression gates; execute inside the FreeCAD Python runtime."""
 
 import json
+import tempfile
 import unittest
 from collections import Counter
 from types import SimpleNamespace
@@ -19,26 +20,28 @@ class ModuleControlMappingTests(unittest.TestCase):
         from gondola.contracts.design import ModuleStation
 
         self.stations = tuple(
-            ModuleStation(name, x, name + "Clamp", "PositiveY")
+            ModuleStation(name, x)
             for name, x in (
-                ("Battery", -90),
+                ("Battery", -100),
                 ("Propulsion", 0),
-                ("Electronics", 90),
-                ("Optical", -144),
+                ("Electronics", 60),
+                ("Optical", -140),
             )
         )
         self.modules = [
             SimpleNamespace(
                 Name=station.object_name,
+                PropertiesList=[
+                    "RailAttachmentOffsetX",
+                    "RailPositionX",
+                    "RailContactLength",
+                ],
                 Placement=App.Placement(App.Vector(station.x_mm, 0, 0), App.Rotation()),
             )
             for station in self.stations
         ]
         self.doc = SimpleNamespace(
             DesignRegistry=SimpleNamespace(Modules=list(reversed(self.modules))),
-            AssemblySettings=SimpleNamespace(
-                PropertiesList=[station.clamp_control for station in self.stations]
-            ),
         )
 
     def test_fourth_control_is_bound_by_name_despite_reordered_registry(self):
@@ -59,67 +62,48 @@ class ModuleControlMappingTests(unittest.TestCase):
             self.doc.DesignRegistry.Modules = self.modules[:3]
             self.assertFalse(baseline.control_behavior(self.doc)["passed"])
             self.doc.DesignRegistry.Modules = original
-            self.doc.AssemblySettings.PropertiesList.pop()
+            self.modules[-1].PropertiesList.pop()
             self.assertFalse(baseline.control_behavior(self.doc)["passed"])
 
-    def test_outer_modules_exit_first_independently_of_registry_order(self):
-        from gondola.validation.assembly import module_removal_plan
+    def test_duplicate_module_cannot_hide_a_missing_attachment_control(self):
+        from gondola.validation import baseline
 
-        outer_positive = SimpleNamespace(
-            Name="OuterPositive",
-            Placement=App.Placement(App.Vector(144, 0, 0), App.Rotation()),
-        )
-        modules = self.modules + [outer_positive]
-        for order in (modules, list(reversed(modules))):
-            actual = module_removal_plan(order)
-            self.assertEqual(
-                [(module.Name, direction) for module, direction in actual],
-                [
-                    ("Optical", -1),
-                    ("Battery", -1),
-                    ("Propulsion", -1),
-                    ("OuterPositive", 1),
-                    ("Electronics", 1),
-                ],
-            )
-        requested = {module.Name: 1 for module in modules}
-        actual = module_removal_plan(modules, requested)
-        self.assertEqual(
-            [module.Name for module, _ in actual],
-            ["OuterPositive", "Electronics", "Propulsion", "Battery", "Optical"],
-        )
-        requested.pop("Optical")
-        with self.assertRaises(ValueError):
-            module_removal_plan(modules, requested)
+        self.doc.DesignRegistry.Modules = self.modules[:3] + [self.modules[0]]
+        with patch.object(baseline, "MODULE_STATIONS", self.stations):
+            self.assertFalse(baseline.control_behavior(self.doc)["passed"])
 
     def test_actual_manual_stages_are_bounded_and_independent(self):
         from gondola.cad import create_group, set_property
         from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import rail
         from gondola.parts.optical_mount import build_optical_mount
         from gondola.validation.baseline import control_behavior
 
         doc = App.newDocument("ManualControlRegression")
-        self.addCleanup(App.closeDocument, doc.Name)
-        settings = doc.addObject("App::FeaturePython", "AssemblySettings")
+        self.addCleanup(
+            lambda name=doc.Name: (
+                App.closeDocument(name) if name in App.listDocuments() else None
+            )
+        )
         modules = []
         for station in MODULE_STATIONS:
-            set_property(
-                settings,
-                station.clamp_control,
-                ["PositiveY", "NegativeY"],
-                "App::PropertyEnumeration",
-            )
             module = create_group(doc, station.object_name, station.object_name)
             module.Placement.Rotation = App.Rotation(
                 App.Vector(0, 0, 1), station.yaw_deg
             )
-            set_property(module, "RailPositionX", station.x_mm, "App::PropertyLength")
-            module.setExpression("Placement.Base.x", "RailPositionX")
-            module.setExpression(
-                "Placement.Base.y",
-                f"AssemblySettings.{station.clamp_control} == 0 ? {station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm : {-station.transverse_sign * rail.CLAMP_SHIFT_Y:g}mm",
+            set_property(
+                module,
+                "RailAttachmentOffsetX",
+                station.attachment_offset_x_mm,
+                "App::PropertyDistance",
             )
+            set_property(module, "RailPositionX", station.x_mm, "App::PropertyDistance")
+            set_property(
+                module,
+                "RailContactLength",
+                station.contact_length_mm,
+                "App::PropertyLength",
+            )
+            module.setExpression("Placement.Base.x", "RailPositionX")
             modules.append(module)
         build_optical_mount(doc, doc.BatteryEquipmentModule)
         pods = []
@@ -137,46 +121,61 @@ class ModuleControlMappingTests(unittest.TestCase):
         doc.recompute()
         result = control_behavior(doc)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 17)
+        self.assertEqual(len(result["cases"]), result["expected_case_count"])
+        self.assertEqual(
+            sum(row["property"] == "RailPositionX" for row in result["cases"]), 8
+        )
         doc.OpticalPitchStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
+        doc.OpticalPitchStage.MaximumAngle = 20
+        # Saved manual positions remain editable; the validator rejects positions
+        # outside the supported slot intervals without silently clamping them.
+        with tempfile.TemporaryDirectory() as directory:
+            path = directory + "/controls.FCStd"
+            doc.saveAs(path)
+            App.closeDocument(doc.Name)
+            restored = App.openDocument(path)
+            self.assertTrue(control_behavior(restored)["passed"])
+            restored.BatteryEquipmentModule.RailPositionX = 999
+            restored.recompute()
+            self.assertFalse(control_behavior(restored)["passed"])
+            self.assertEqual(float(restored.BatteryEquipmentModule.RailPositionX), 999)
 
-    def test_rotated_carrier_reverses_clamp_offset_but_not_local_side(self):
+    def test_continuous_carrier_rejects_unsupported_station_offset_or_rotation(self):
         from gondola.contracts.design import ModuleStation
-        from gondola.parts import rail
-        from gondola.validation.baseline import module_clamp_pose
+        from gondola.validation.baseline import module_attachment_pose
 
         for yaw in (0, 180):
-            station = ModuleStation("Test", -72, "Clamp", "PositiveY", yaw)
-            for approach, sign in (("PositiveY", 1), ("NegativeY", -1)):
-                with self.subTest(yaw=yaw, approach=approach):
-                    module = SimpleNamespace(
-                        Placement=App.Placement(
-                            App.Vector(
-                                -72,
-                                sign * station.transverse_sign * rail.CLAMP_SHIFT_Y,
-                                0,
-                            ),
-                            App.Rotation(App.Vector(0, 0, 1), yaw),
-                        )
-                    )
-                    result = module_clamp_pose(station, module, approach)
-                    self.assertTrue(result["passed"], result)
-                    self.assertEqual(result["local_approach_side_y"], sign)
-                    self.assertEqual(
-                        result["world_approach_side_y"], sign * station.transverse_sign
-                    )
-                    module.Placement.Base.y *= -1
-                    self.assertFalse(
-                        module_clamp_pose(station, module, approach)["passed"]
-                    )
-                    module.Placement.Base.y *= -1
-                    module.Placement.Rotation = App.Rotation(
-                        App.Vector(0, 0, 1), 180 - yaw
-                    )
-                    self.assertFalse(
-                        module_clamp_pose(station, module, approach)["passed"]
-                    )
+            station = ModuleStation("Test", -60, yaw)
+            module = SimpleNamespace(
+                RailAttachmentOffsetX=0,
+                RailContactLength=16,
+                RailPositionX=-60,
+                Placement=App.Placement(
+                    App.Vector(-60, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
+                ),
+            )
+            self.assertTrue(module_attachment_pose(station, module)["passed"])
+            for attribute, replacement in (
+                ("RailAttachmentOffsetX", 20),
+                ("RailContactLength", 32),
+                ("RailPositionX", -80),
+            ):
+                original = getattr(module, attribute)
+                setattr(module, attribute, replacement)
+                self.assertFalse(module_attachment_pose(station, module)["passed"])
+                setattr(module, attribute, original)
+            original = module.Placement.copy()
+            for vector, angle in (
+                (App.Vector(-60, 0.1, 0), yaw),
+                (App.Vector(-60, 0, 0.1), yaw),
+                (App.Vector(-60, 0, 0), 180 - yaw),
+            ):
+                module.Placement = App.Placement(
+                    vector, App.Rotation(App.Vector(0, 0, 1), angle)
+                )
+                self.assertFalse(module_attachment_pose(station, module)["passed"])
+            module.Placement = original
 
     def test_shapeless_stack_and_rail_group_metadata_is_frozen_too(self):
         from gondola.cad import create_group, set_property
@@ -199,10 +198,12 @@ class ModuleControlMappingTests(unittest.TestCase):
         group.OpticalInterfaceContract = '{"default_host":"ElectronicsEquipmentModule"}'
         self.assertNotEqual(original, native_interface_metadata(doc))
         carrier = create_group(doc, "BatteryEquipmentModule", "Rail carrier")
-        set_property(carrier, "RailFitContract", '{"physical_fit_verified": false}')
+        set_property(
+            carrier, "RailAttachmentContract", '{"physical_fit_verified": false}'
+        )
         original = native_interface_metadata(doc)
         self.assertIn(carrier.Name, original)
-        carrier.RailFitContract = '{"physical_fit_verified": true}'
+        carrier.RailAttachmentContract = '{"physical_fit_verified": true}'
         self.assertNotEqual(original, native_interface_metadata(doc))
         mount = create_group(doc, "ElectronicsMount", "Equipment carrier")
         set_property(mount, "MountContract", '{"fc_wiring_clearance_mm": 8.0}')
@@ -278,12 +279,14 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
 
     def test_fixture_native_controls_remain_independent_and_bounded(self):
-        from gondola.contracts.design import MODULE_STATIONS
         from gondola.validation.baseline import control_behavior
 
         result = control_behavior(self.reference)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(len(result["cases"]), 3 * len(MODULE_STATIONS) + 17)
+        self.assertEqual(len(result["cases"]), result["expected_case_count"])
+        self.assertEqual(
+            sum(row["property"] == "RailPositionX" for row in result["cases"]), 8
+        )
 
     def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):
         from gondola.validation.baseline import unresolved_scope
@@ -295,6 +298,51 @@ class FrozenBaselineTests(unittest.TestCase):
             self.assertFalse(unresolved_scope(self.reference)["passed"])
         finally:
             clamp.ManufacturingStatus = original
+
+    def test_rail_scope_rejects_missing_or_malformed_attachment_contract(self):
+        from gondola.validation.baseline import unresolved_scope
+
+        incomplete = SimpleNamespace(
+            DesignRegistry=self.reference.DesignRegistry,
+            ContinuousRail=SimpleNamespace(),
+            getObject=self.reference.getObject,
+        )
+        self.assertFalse(unresolved_scope(incomplete)["passed"])
+        rail = self.reference.ContinuousRail
+        original = rail.RailAttachmentContract
+        try:
+            for malformed in ("not JSON", "null", "[]", "{}"):
+                with self.subTest(contract=malformed):
+                    rail.RailAttachmentContract = malformed
+                    self.assertFalse(unresolved_scope(self.reference)["passed"])
+        finally:
+            rail.RailAttachmentContract = original
+
+    def test_rail_scope_rejects_thinner_base_or_unearned_qualification(self):
+        from gondola.validation.baseline import unresolved_scope
+
+        rail = self.reference.ContinuousRail
+        original = rail.RailAttachmentContract
+        contract = json.loads(original)
+        try:
+            for field, value in (
+                ("minimum_base_mm", 0.8),
+                ("as_printed_fit_guaranteed", True),
+                ("physical_fit_verified", True),
+                ("holding_force_verified", True),
+                ("physical_fit_verified", "false"),
+            ):
+                with self.subTest(field=field, value=value):
+                    changed = dict(contract)
+                    changed[field] = value
+                    rail.RailAttachmentContract = json.dumps(changed)
+                    result = unresolved_scope(self.reference)
+                    self.assertFalse(
+                        result["rail_attachment_qualification_remains_unverified"]
+                    )
+                    self.assertFalse(result["passed"])
+        finally:
+            rail.RailAttachmentContract = original
 
     def test_horn_sku_and_profile_must_match_each_selected_side(self):
         from gondola.contracts import servo_horns
@@ -327,7 +375,9 @@ class FrozenBaselineTests(unittest.TestCase):
         expected = self.feature("ExpectedRail", shape)
         actual = self.feature("ContinuousRail", shape)
         self.assertTrue(compare_shape_objects(actual, expected)["passed"])
-        actual.Shape = shape.cut(Part.makeBox(1, 1, 1, App.Vector(-0.5, -0.5, 6)))
+        # The old z=6 probe now falls inside the intentional side slot.
+        # Remove material from the continuous 1.5 mm base instead.
+        actual.Shape = shape.cut(Part.makeBox(1, 1, 1, App.Vector(-0.5, -0.5, 0.25)))
         result = compare_shape_objects(actual, expected)
         self.assertFalse(result["passed"])
         self.assertGreater(result["local_shape"]["difference_mm3"], 0.9)

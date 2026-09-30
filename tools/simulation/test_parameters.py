@@ -38,18 +38,18 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
         self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [0, 0.0751, 0.050]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.005, 0.075, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [0, -0.0749, 0.050]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.005, -0.075, 0.050]
         )
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [0, 0.0001, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.005, 0, 0])
         self.assertEqual(
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.117, -0.0001, 0.035])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.035])
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "PositiveX")
         self.assertNotIn("optical_rail_station_x_mm", geo)
@@ -60,14 +60,13 @@ class SavedGeometryTests(unittest.TestCase):
                 geo["main_propulsors"][name]["motor_envelope_centre_cad_m"],
             )
 
-    def test_propulsion_frame_follows_station_and_clamp_seating(self):
+    def test_propulsion_frame_follows_continuous_station(self):
         original = extract(self.doc)["exact_geometry"]["propulsion_reference_frame"]
-        self.doc.MainPropulsionModule.RailPositionX = 18
-        self.doc.AssemblySettings.PropulsionClampApproach = "NegativeY"
+        self.doc.MainPropulsionModule.RailPositionX = -4.5
         self.doc.recompute()
         geo = extract(self.doc)["exact_geometry"]
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [0.018, -0.0001, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.0045, 0, 0])
         self.assertEqual(frame["pivot_positions_m"], original["pivot_positions_m"])
         for name in ("Port", "Starboard"):
             restored = [
@@ -85,14 +84,14 @@ class SavedGeometryTests(unittest.TestCase):
             extract(self.doc)
 
     def test_optical_pose_follows_carrier_translation_and_selected_side(self):
-        self.doc.BatteryEquipmentModule.RailPositionX = 108
+        self.doc.BatteryEquipmentModule.RailPositionX = 101
         self.doc.OpticalFlowModule.MountSide = "NegativeX"
         self.doc.OpticalPitchStage.Pitch = 20
         self.doc.recompute()
         geo = extract(self.doc)["exact_geometry"]
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "NegativeX")
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.081, -0.0001, 0.035])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.035])
         self.assertEqual(geo["optical_pitch_deg"], 20)
 
     def test_optical_metadata_cannot_name_a_different_parent(self):

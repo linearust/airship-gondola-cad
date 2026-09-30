@@ -75,7 +75,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The two broad outer seats and central shoe roof support one flat bridge underside at a common height. Each support's complete nominal contact is checked within its own region; the central seat cannot mask a missing outer seat. Unilateral outside Y and X datums locate the removable bridge; bolt clearance does not locate the gear axes. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
+        "scope": "The two broad outer seats and central saddle roof support one flat bridge underside at a common height. Each support's complete nominal contact is checked within its own region; the central seat cannot mask a missing outer seat. Unilateral outside Y and X datums locate the removable bridge; bolt clearance does not locate the gear axes. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
         "passed": overlap < TOL
         and all(row["passed"] for row in contacts)
         and doc.ServoDriveBridge.PrintSKU == spec.bridge_sku,

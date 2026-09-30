@@ -19,7 +19,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.validation.equipment import carrier_opening_checks
 
         original = mounting_plate.shape()
-        report = carrier_opening_checks(original)
+        report = carrier_opening_checks(original, centre_hole_diameter=2.6)
         self.assertTrue(report["deck_symmetry"]["passed"], report)
         self.assertTrue(report["passed"], report)
         # A new hole away from existing openings retains every specified rim.
@@ -30,7 +30,7 @@ class MountingSlotTests(unittest.TestCase):
             App.Vector(12, 2, mounts.DECK_BOTTOM_Z),
         )
         changed = original.cut(notch)
-        single = carrier_opening_checks(changed)
+        single = carrier_opening_checks(changed, centre_hole_diameter=2.6)
         self.assertTrue(all(row["passed"] for row in single["mounting_slots"]))
         self.assertTrue(all(row["passed"] for row in single["fixed_device_bores"]))
         self.assertFalse(single["deck_symmetry"]["passed"])
@@ -41,7 +41,9 @@ class MountingSlotTests(unittest.TestCase):
             rotated = notch.copy()
             rotated.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
             changed = changed.cut(rotated)
-        chiral = carrier_opening_checks(changed)["deck_symmetry"]
+        chiral = carrier_opening_checks(changed, centre_hole_diameter=2.6)[
+            "deck_symmetry"
+        ]
         self.assertLess(chiral["quarter_turn_difference_mm3"], 1e-6)
         self.assertGreater(chiral["mirror_x_difference_mm3"], 0.1)
         self.assertGreater(chiral["mirror_y_difference_mm3"], 0.1)
@@ -190,7 +192,9 @@ class MountingSlotTests(unittest.TestCase):
         original = mounting_plate.shape()
         self.assertTrue(original.isValid())
         self.assertEqual(len(original.Solids), 1)
-        self.assertTrue(carrier_opening_checks(original)["passed"])
+        self.assertTrue(
+            carrier_opening_checks(original, centre_hole_diameter=2.6)["passed"]
+        )
         specs = [
             next(row for row in mounting_slots.rows() if row["family"] == family)
             for family in ("square16_23", "square40_45", "square30_5", "side")
@@ -220,7 +224,7 @@ class MountingSlotTests(unittest.TestCase):
             )
             blocked = original.fuse(obstruction).removeSplitter()
             self.assertEqual(len(blocked.Solids), 1)
-            report = carrier_opening_checks(blocked)
+            report = carrier_opening_checks(blocked, centre_hole_diameter=2.6)
             item = next(
                 item for item in report["mounting_slots"] if item["name"] == row["name"]
             )
@@ -231,7 +235,7 @@ class MountingSlotTests(unittest.TestCase):
             notch = Part.makeCylinder(0.18, mounts.DECK_THICKNESS, notch_centre)
             damaged = original.cut(notch)
             self.assertEqual(len(damaged.Solids), 1)
-            report = carrier_opening_checks(damaged)
+            report = carrier_opening_checks(damaged, centre_hole_diameter=2.6)
             item = next(
                 item for item in report["mounting_slots"] if item["name"] == row["name"]
             )
@@ -248,7 +252,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.validation.equipment_options import adhesive_support_check
 
         self.assertEqual(
-            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 376
+            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 328
         )
         support = mounts.mount_shape("accessory")
         body = equipment_envelopes.radio_envelope_shape()
@@ -278,10 +282,10 @@ class MountingSlotTests(unittest.TestCase):
 
         self.assertEqual(
             mounts.GPS_ADHESIVE_REGIONS,
-            (((0.0, -5.5), (12.0, 7.0)), ((0.0, 5.5), (12.0, 7.0))),
+            (((0.0, -6.5), (12.0, 5.0)), ((0.0, 6.5), (12.0, 5.0))),
         )
         self.assertEqual(
-            sum(size[0] * size[1] for _, size in mounts.GPS_ADHESIVE_REGIONS), 168
+            sum(size[0] * size[1] for _, size in mounts.GPS_ADHESIVE_REGIONS), 120
         )
         support = mounts.mount_shape("accessory")
         for key in ("MGA01", "MGF10A"):
@@ -293,7 +297,9 @@ class MountingSlotTests(unittest.TestCase):
                     self.assertTrue(
                         adhesive_support_check(support, body, centre, size)["passed"]
                     )
-                    defect = Part.makeCylinder(0.2, 2, App.Vector(*centre, 13.4))
+                    defect = Part.makeCylinder(
+                        0.2, 2, App.Vector(*centre, mounts.DECK_BOTTOM_Z)
+                    )
                     self.assertFalse(
                         adhesive_support_check(support.cut(defect), body, centre, size)[
                             "passed"

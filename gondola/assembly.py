@@ -99,13 +99,6 @@ def build_assembly():
     rail_assembly = rail.build_rail(doc)
     # 45deg flat orientation leaves margin within both published size screens.
     rail_assembly["printed"][0].PrintRotation = App.Rotation(V(0, 0, 1), 45)
-    settings = doc.addObject("App::FeaturePython", "AssemblySettings")
-    settings.Label = "EDIT | clamp approach for each module"
-    for station in MODULE_STATIONS:
-        key, default = station.clamp_control, station.default_approach
-        settings.addProperty("App::PropertyEnumeration", key, "Clamp direction")
-        setattr(settings, key, ["PositiveY", "NegativeY"])
-        setattr(settings, key, default)
     battery_module = create_group(
         doc, "BatteryEquipmentModule", "Battery | compact adhesive mount"
     )
@@ -123,19 +116,39 @@ def build_assembly():
     optical_assembly = optical_mount.build_optical_mount(doc, battery_module)
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
-        x, clamp_control = station.x_mm, station.clamp_control
+        x = station.x_mm
         if module is None:
             raise RuntimeError("Missing rail module: " + station.object_name)
         set_property(
-            module, "RailPositionX", x, "App::PropertyDistance", "Rail adjustment"
+            module, "RailPositionX", x, "App::PropertyDistance", "Rail attachment"
         )
         set_property(
-            module, "RailFitContract", json.dumps(rail.fit_contract(), sort_keys=True)
+            module,
+            "RailAttachmentOffsetX",
+            station.attachment_offset_x_mm,
+            "App::PropertyDistance",
+            "Rail attachment",
+        )
+        module.setEditorMode("RailAttachmentOffsetX", 1)
+        set_property(
+            module,
+            "RailContactLength",
+            station.contact_length_mm,
+            "App::PropertyLength",
+            "Rail attachment",
+        )
+        module.setEditorMode("RailContactLength", 1)
+        set_property(
+            module,
+            "RailAttachmentContract",
+            json.dumps(
+                rail.attachment_contract(station.contact_length_mm), sort_keys=True
+            ),
         )
         set_property(
             module,
             "RailPositionNotes",
-            f"Default X={x:g}mm. Clamp within4mm of an18mm-pitch land centre, with the whole shoe supported: |X| <= {(rail.LENGTH - rail.SHOE_LENGTH) / 2:g}mm. Avoid other modules and exposed ends.",
+            "Continuous module X position within the supported longitudinal slot intervals. Loosen the exposed transverse M2 screw to slide within a segment; lift/reseat to cross a flexure gap. Tighten before operation. Recheck complete equipment, optical and wiring clearance after moving a carrier.",
         )
         module.Placement.Rotation = App.Rotation(V(0, 0, 1), station.yaw_deg)
         set_property(
@@ -144,27 +157,16 @@ def build_assembly():
             json.dumps(asdict(station), sort_keys=True),
         )
         module.setExpression("Placement.Base.x", "RailPositionX")
-        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
-        module.setExpression(
-            "Placement.Base.y",
-            f"AssemblySettings.{clamp_control} == 0 ? {shift:g} mm : {-shift:g} mm",
-        )
-        set_property(
-            module,
-            "ClampDirectionControl",
-            "AssemblySettings."
-            + clamp_control
-            + "; module-local directions, before assembling. PositiveY nut loads local+X, NegativeY nut loads local-X. The module's fixed 0/180deg orientation maps these into the rail frame.",
-        )
+        module.Placement.Base.y = 0
     mount_parts = [
         mounts.build_mount(doc, battery_module, "battery"),
         mounts.build_mount(doc, electronics_module, "electronics"),
         mounts.build_mount(doc, accessory_module, "accessory"),
     ]
-    rail_clamps = []
+    rail_attachments = []
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
-        rail_clamps += rail.build_clamp_hardware(
-            doc, module, module.Name, "AssemblySettings." + station.clamp_control
+        rail_attachments += rail.build_attachment_hardware(
+            doc, module, module.Name, x_offset=station.attachment_offset_x_mm
         )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:
@@ -190,7 +192,7 @@ def build_assembly():
         + optical_assembly["printed"]
     )
     hardware_parts = (
-        rail_clamps
+        rail_attachments
         + propulsion_module.get("hardware", [])
         + optical_assembly["hardware"]
     )
@@ -212,7 +214,7 @@ def build_assembly():
         ("EquipmentMounts", mount_parts),
         ("OpticalMountParts", optical_assembly["printed"]),
         ("RailSegments", rail_assembly["printed"]),
-        ("RailLocks", rail_clamps),
+        ("RailLocks", rail_attachments),
         ("HardwareParts", hardware_parts),
         ("TapeReferences", rail_assembly["tapes"]),
         ("TiltingPods", propulsion_module["pods"]),
@@ -222,7 +224,7 @@ def build_assembly():
     set_property(
         registry,
         "Status",
-        "PA12 CAD fit prototype: rail flexures, tape/curvature, friction retention, optical pointing stability, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
+        "PA12 CAD fit prototype: rail flexures, tape/curvature, bolted attachment retention, optical pointing stability, motor/horn coupling and actual OEM mounting fasteners remain unqualified.",
     )
     set_property(registry, "SourceFingerprint", fingerprint)
     set_property(
@@ -284,8 +286,9 @@ def build_assembly():
         "mass_budget": mass_budget(printed_parts, hardware_parts),
         "rail_length_mm": rail.LENGTH,
         "rail_count": 1,
-        "rail_head_relief_gap_mm": rail.FLEX_GAP,
-        "rail_land_pitch_mm": rail.LAND_PITCH,
+        "rail_supported_slot_ranges_mm": rail.supported_slot_ranges(),
+        "rail_flexible_strip_width_mm": rail.BASE_WIDTH,
+        "rail_flexible_strip_thickness_mm": rail.PAD_THICKNESS,
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },

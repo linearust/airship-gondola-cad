@@ -143,7 +143,7 @@ class NativeInterfaceTests(unittest.TestCase):
         document = App.newDocument("RailThreadRegressionTest")
         self.addCleanup(App.closeDocument, document.Name)
         parent = create_group(document, "ClampGroup", "Clamp hardware")
-        hardware = rail.build_clamp_hardware(document, parent, "Test", "0")
+        hardware = rail.build_attachment_hardware(document, parent, "Test")
         self.assertEqual(len(hardware), 2)
         for part in hardware:
             self.assertEqual(part.NominalThreadDiameter.Value, 2)

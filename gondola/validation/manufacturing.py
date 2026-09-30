@@ -11,7 +11,7 @@ from gondola.cad import world_shape
 from gondola.contracts.design import CREALLO_GUIDE_URL, MANUFACTURING_DECISION
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import equipment_mounts as mounts
-from gondola.parts import optical_interface, propulsion, rail, servo_bridge
+from gondola.parts import optical_interface, propulsion, rail
 
 from .geometry import local_shape
 
@@ -66,6 +66,59 @@ def material_length_on_line(shape, a, b):
     return sum(edge.Length for edge in result.Edges)
 
 
+def rail_mount_wall_probes():
+    """Native sections of the wall, open L clamp and carrier support feet."""
+    e = 0.01
+    probes = [
+        (
+            "rail_flexible_base",
+            "ContinuousRail",
+            (28, 0, -e),
+            (28, 0, rail.PAD_THICKNESS + e),
+            rail.PAD_THICKNESS,
+        ),
+        (
+            "rail_wall_thickness",
+            "ContinuousRail",
+            (0, -rail.WEB_THICKNESS / 2 - e, 3),
+            (0, rail.WEB_THICKNESS / 2 + e, 3),
+            rail.WEB_THICKNESS,
+        ),
+        (
+            "rail_slot_top_ligament",
+            "ContinuousRail",
+            (0, 0, rail.BOLT_AXIS_Z + rail.SLOT_HEIGHT / 2 - e),
+            (0, 0, rail.WEB_TOP_Z + e),
+            rail.WEB_TOP_Z - rail.BOLT_AXIS_Z - rail.SLOT_HEIGHT / 2,
+        ),
+        (
+            "carrier_roof",
+            "BatteryMount",
+            (0, 0, rail.WEB_TOP_Z - e),
+            (0, 0, rail.MOUNT_TOP_Z + e),
+            rail.MOUNT_TOP_Z - rail.WEB_TOP_Z,
+        ),
+        (
+            "carrier_clamp_leg",
+            "BatteryMount",
+            (0, rail.MOUNT_OUTER_Y - e, 3),
+            (0, -rail.WEB_THICKNESS / 2 + e, 3),
+            rail.MOUNT_LEG_THICKNESS,
+        ),
+    ]
+    for sign in (-1, 1):
+        probes.append(
+            (
+                f"carrier_deck_support_{sign:+d}",
+                "BatteryMount",
+                (sign * 5, 0, rail.MOUNT_TOP_Z),
+                (sign * 5, 0, mounts.DECK_BOTTOM_Z),
+                mounts.DECK_BOTTOM_Z - rail.MOUNT_TOP_Z,
+            )
+        )
+    return probes
+
+
 def review(doc, registry):
     from gondola.parts import optical_mount
 
@@ -86,21 +139,7 @@ def review(doc, registry):
                 ),
             }
         )
-    analytic = [
-        (
-            "rail_solid_clamping_head_thickness",
-            "ContinuousRail",
-            (0, 4, rail.HEAD_BOTTOM - 0.01),
-            (0, 4, rail.HEAD_TOP + 0.01),
-            rail.HEAD_TOP - rail.HEAD_BOTTOM,
-        ),
-        (
-            "rail_functional_flexure_thickness",
-            "ContinuousRail",
-            (9, 0, -0.01),
-            (9, 0, rail.PAD_THICKNESS + 0.1),
-            rail.PAD_THICKNESS,
-        ),
+    analytic = rail_mount_wall_probes() + [
         ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.99), (12, 0, 25.01), 2.0),
         (
             "battery_mount_deck_thickness",
@@ -122,23 +161,6 @@ def review(doc, registry):
             (14, -24, mounts.DECK_BOTTOM_Z - 0.01),
             (14, -24, mounts.SUPPORT_FACE_Z + 0.01),
             mounts.DECK_THICKNESS,
-        ),
-        (
-            "central_servo_seat_over_nut_pocket",
-            "PropulsionFixedFrame",
-            (
-                4,
-                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
-                rail.CLAMP_Z + rail.NUT_POCKET_AF / 2 - 0.01,
-            ),
-            (
-                4,
-                rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH / 2,
-                servo_bridge.CONNECTOR_PLATE_BOTTOM_Z + 0.01,
-            ),
-            servo_bridge.CONNECTOR_PLATE_BOTTOM_Z
-            - rail.CLAMP_Z
-            - rail.NUT_POCKET_AF / 2,
         ),
         (
             "frame_foot_thickness",
@@ -207,7 +229,6 @@ def review(doc, registry):
                 "passed": abs(actual - expected) < TOL,
             }
         )
-    exception = str(getattr(registry.RailSegments[0], "ManufacturingException", ""))
     return {
         "source": CREALLO_GUIDE_URL,
         "published_sls_pa12_thin_broad_guidance_mm": [
@@ -235,22 +256,29 @@ def review(doc, registry):
             "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],
             "independent_optical_mount_contract": optical_mount.mount_contract(),
         },
-        "rail_functional_flexure_exception": exception,
+        "rail_functional_flexure_assessment": {
+            "nominal_base_and_tape_wing_thickness_mm": rail.PAD_THICKNESS,
+            "minimum_requested_tape_attachment_thickness_mm": 1.5,
+            "wall_segment_pitch_mm": rail.SEGMENT_PITCH,
+            "free_base_spans_between_walls_mm": [
+                b[0] - a[1]
+                for a, b in zip(rail.wall_segments(), rail.wall_segments()[1:])
+            ],
+            "scope": "The base and three wing pairs retain at least1.5mm nominal material. Six-mm full-height gaps border the longer central wall; other gaps are12mm. Curvature, adhesion, bending strain, fatigue and one-piece supplier acceptance remain unqualified; geometric wall measurements do not establish them.",
+        },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Open rail channel, through nut entries, open support arms and through journals; depowder before installing hardware. No sealed hollow print is claimed.",
+        "powder_removal": "Wall slots, L mounts, support arms and journals are open for depowdering before hardware installation. No captive nut pocket or sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,
-            "rail_fit": rail.fit_contract(),
+            "rail_fit": rail.attachment_contract(),
             "not_a_GDT_position_or_actual_fit_guarantee": True,
         },
         "blanket_guide_compliance_claimed": False,
-        "passed": bool(exception)
-        and f"{rail.PAD_THICKNESS:g}mm" in exception.replace(" ", "")
-        and rail.PAD_THICKNESS >= 1.5
+        "passed": rail.PAD_THICKNESS >= 1.5
         and all(row["no_detected_planar_wall_under_1p5mm"] for row in probes)
         and all(row["passed"] for row in measurements),
     }

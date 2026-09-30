@@ -1,8 +1,8 @@
-"""PA12 T rail, over-tape wings and bidirectional M2 clamp.
+"""Flexible PA12 base with segmented walls and side-access M2 L mounts.
 
-All dimensions mm. The rail lies on the envelope at Z0. Tape is laid OVER
-each lateral wing and continues onto the envelope. It never crosses the
-central running head. Commercial threads are documented, not tessellated.
+Each wall slot permits local longitudinal adjustment. A flat L mount seats on
+one wall; an ordinary exposed nut clamps it without a captive pocket, snap fit,
+printed thread or a second flexing ear. Segment gaps preserve base compliance.
 """
 
 import json
@@ -23,751 +23,587 @@ from gondola.cad import (
 )
 from gondola.contracts import fasteners
 from gondola.contracts.design import RAIL_BASE_THICKNESS_MM, RAIL_LENGTH_MM
-from gondola.contracts.hardware import HEX_NUT_SOURCE
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
-# Seven identical stations include direct central propulsion support. Tape
-# spacing need not match head lands: wings join the unbroken base below them.
-PAD_PITCH = 45.0
-PAD_CENTRES = tuple(i * PAD_PITCH for i in range(-3, 4))
+PAD_CENTRES = (-140.0, 0.0, 140.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
-BASE_WIDTH, WEB_WIDTH = 6.0, 3.0
-HEAD_WIDTH, HEAD_BOTTOM, HEAD_TOP = 10.0, 5.4, 8.4
-SHOE_LENGTH, SHOE_WIDTH, SHOE_BOTTOM, TOP_Z = 18.0, 22.0, 2.2, 10.8
-# The head is the mating datum; leave the recessed web relieved. These are
-# coupon starting dimensions, not a guaranteed as-printed or friction fit.
-HEAD_SIDE_CLEARANCE = 0.1
-HEAD_VERTICAL_CLEARANCE = 0.1
-WEB_SIDE_CLEARANCE = 0.45
-HEAD_ENTRY_CHAMFER = 0.3
-CLAMP_Z = 6.9
-CLAMP_FACE_EDGE_ALLOWANCE = 0.5
-CLAMP_SHIFT_Y = HEAD_SIDE_CLEARANCE
-NUT_AF = fasteners.HEX_NUT_AF
-NUT_POCKET_AF, NUT_THICKNESS = 4.15, fasteners.HEX_NUT_HEIGHT
-# Finished acceptance limits, not a claim about unprocessed powder-bed parts.
-# The smaller corner/flat difference of a hex nut cannot absorb the former
-# square slot's +/-0.3 mm variation and still guarantee rotation blocking.
-NUT_FINISHED_MIN_AF, NUT_FINISHED_MAX_AF = 4.05, 4.25
-NUT_POCKET_Y, NUT_POCKET_DEPTH = 6.95, 2.2
-CLAMP_LAND_OFFSET = 4.0
-RELEASE_TRAVEL = 1.2
-LAND_PITCH, FLEX_GAP = 18.0, 4.5
-FLEX_ROOT_RADIUS = 0.5
+BASE_WIDTH = 6.0
+SEGMENT_PITCH, FLEX_GAP = 50.0, 12.0
+CENTRAL_WALL_LENGTH = 50.0
+WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
+SLOT_HEIGHT, BOLT_AXIS_Z = 2.4, 6.5
+MOUNT_LENGTH, MOUNT_LEG_THICKNESS = 16.0, 2.5
+MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 2.2, 11.4
+MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
+SLOT_END_SUPPORT_RESERVE = 1.0
 SCREW_LENGTH = fasteners.RAIL_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
 SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
+TOL = 1e-6
 
 
-def half_turn(shape):
-    rotated_shape = shape.copy()
-    rotated_shape.rotate(V(), V(0, 0, 1), 180)
-    return rotated_shape
+def _positive(value, description):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, Real)
+        or not math.isfinite(value)
+        or value <= 0
+    ):
+        raise ValueError(description + " must be a finite positive number")
+    return float(value)
+
+
+def _stations(values, length, footprint, description):
+    try:
+        values = tuple(values)
+    except TypeError as error:
+        raise ValueError(description + " must be finite numbers") from error
+    if any(
+        isinstance(x, bool) or not isinstance(x, Real) or not math.isfinite(x)
+        for x in values
+    ):
+        raise ValueError(description + " must be finite numbers")
+    if len(set(values)) != len(values):
+        raise ValueError(description + " must be distinct")
+    if any(abs(x) + footprint / 2 > length / 2 + TOL for x in values):
+        raise ValueError(description + " must fit within the requested rail length")
+    return tuple(float(x) for x in values)
 
 
 def rounded_plate(x, length=PAD_LENGTH, width=PAD_WIDTH):
-    plate = box(length, width, PAD_THICKNESS, (x - length / 2, -width / 2, 0))
-    vertical_edges = [
-        e for e in plate.Edges if e.BoundBox.ZLength > PAD_THICKNESS - 0.01
+    shape = box(length, width, PAD_THICKNESS, (x - length / 2, -width / 2, 0))
+    edges = [
+        edge for edge in shape.Edges if edge.BoundBox.ZLength > PAD_THICKNESS - 0.01
     ]
-    return plate.makeFillet(min(3.0, width / 3, length / 3), vertical_edges)
+    return shape.makeFillet(min(3.0, width / 3, length / 3), edges)
+
+
+def wall_segments(length=LENGTH):
+    """Clip a common 50mm wall grid; preserve only usable end remnants."""
+    length = _positive(length, "Rail length")
+    half_wall = (SEGMENT_PITCH - FLEX_GAP) / 2
+    count = math.ceil(length / (2 * SEGMENT_PITCH))
+    segments = []
+    for index in range(-count, count + 1):
+        centre = index * SEGMENT_PITCH
+        half = CENTRAL_WALL_LENGTH / 2 if index == 0 else half_wall
+        first = max(-length / 2, centre - half)
+        last = min(length / 2, centre + half)
+        if last - first >= MOUNT_LENGTH + 2 * SLOT_END_SUPPORT_RESERVE - TOL:
+            segments.append((first, last))
+    return tuple(segments)
+
+
+def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
+    """Intersect the physical bolt slot with the requested full-foot support."""
+    contact_length = _positive(contact_length, "Mount contact length")
+    clearance = (SLOT_HEIGHT - fasteners.THREAD_DIAMETER) / 2
+    physical_inset = MOUNT_LENGTH / 2 + SLOT_END_SUPPORT_RESERVE - clearance
+    support_inset = contact_length / 2 + SLOT_END_SUPPORT_RESERVE - clearance
+    inset = max(physical_inset, support_inset)
+    return tuple(
+        {
+            "wall_x_range_mm": (first, last),
+            "axis_travel_x_range_mm": (first + inset, last - inset),
+        }
+        for first, last in wall_segments(length)
+        if first + inset <= last - inset + TOL
+    )
+
+
+def supported_slot_ranges(length=LENGTH, contact_length=MOUNT_LENGTH):
+    """Permitted nominal centres, retaining at least0.8mm full-foot end reserve.
+
+    The32mm propulsion foot has shorter permitted travel than the physical slot
+    and cannot use19mm end walls. These are geometry limits, not a loaded fit.
+    """
+    return tuple(
+        row["axis_travel_x_range_mm"]
+        for row in attachment_windows(length, contact_length)
+    )
+
+
+def attachment_position_check(x, length=LENGTH, contact_length=MOUNT_LENGTH):
+    if isinstance(x, bool) or not isinstance(x, Real) or not math.isfinite(x):
+        return {"x_mm": x, "passed": False, "error": "Position must be finite"}
+    for row in attachment_windows(length, contact_length):
+        first, last = row["wall_x_range_mm"]
+        low, high = row["axis_travel_x_range_mm"]
+        if low - TOL <= x <= high + TOL:
+            return {
+                "x_mm": x,
+                **row,
+                "contact_length_mm": contact_length,
+                "minimum_full_foot_end_margin_mm": min(
+                    x - contact_length / 2 - first, last - x - contact_length / 2
+                ),
+                "passed": True,
+            }
+    return {
+        "x_mm": x,
+        "contact_length_mm": contact_length,
+        "passed": False,
+        "error": "Bolt axis outside supported wall slots",
+    }
+
+
+def _slot(first, last):
+    radius = SLOT_HEIGHT / 2
+    pieces = [
+        Part.makeCylinder(
+            radius,
+            WEB_THICKNESS + 2,
+            V(x, -WEB_THICKNESS / 2 - 1, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        )
+        for x in (first, last)
+    ]
+    if last > first:
+        pieces.append(
+            box(
+                last - first,
+                WEB_THICKNESS + 2,
+                SLOT_HEIGHT,
+                (first, -WEB_THICKNESS / 2 - 1, BOLT_AXIS_Z - radius),
+            )
+        )
+    return union(pieces)
 
 
 def rail_shape(length=LENGTH, pads=PAD_CENTRES):
-    if isinstance(length, bool) or not isinstance(length, Real):
-        raise ValueError("Rail length must be a finite positive number")
-    if not math.isfinite(length) or length <= 0:
-        raise ValueError("Rail length must be a finite positive number")
-    try:
-        pads = tuple(pads)
-    except TypeError as error:
-        raise ValueError(
-            "Tape-wing centres must be a sequence of finite numbers"
-        ) from error
-    if any(
-        isinstance(x, bool) or not isinstance(x, Real) or not math.isfinite(x)
-        for x in pads
-    ):
-        raise ValueError("Tape-wing centres must be finite numbers")
-    if len(set(pads)) != len(pads):
-        raise ValueError("Tape-wing centres must be distinct")
-    if any(abs(x) + PAD_LENGTH / 2 > length / 2 for x in pads):
-        raise ValueError("Every tape wing must fit within the requested rail length")
-    # Closely spaced head lands preserve a sliding path; narrow reliefs allow
-    # bending through the unbroken base instead of a stiff full-height beam.
-    base = rounded_plate(0, length, BASE_WIDTH)
-    web = box(
-        length,
-        WEB_WIDTH,
-        HEAD_BOTTOM - PAD_THICKNESS,
-        (-length / 2, -WEB_WIDTH / 2, PAD_THICKNESS),
-    )
-    cap = box(
-        length,
-        HEAD_WIDTH,
-        HEAD_TOP - HEAD_BOTTOM,
-        (-length / 2, -HEAD_WIDTH / 2, HEAD_BOTTOM),
-    )
-    # Round plan-view cap ends without reducing the running capture section.
-    cap = cap.makeFillet(0.7, [e for e in cap.Edges if e.BoundBox.ZLength > 1.59])
-    rail = union([base, web, cap] + [rounded_plate(x) for x in pads])
-    for i in range(
-        -int(math.ceil(length / LAND_PITCH)), int(math.ceil(length / LAND_PITCH)) + 1
-    ):
-        x = (i + 0.5) * LAND_PITCH
-        if abs(x) < length / 2:
-            rail = rail.cut(
-                box(
-                    FLEX_GAP,
-                    12,
-                    HEAD_TOP - PAD_THICKNESS + 1,
-                    (x - FLEX_GAP / 2, -6, PAD_THICKNESS),
-                )
-            )
-    rail = rail.removeSplitter()
-    # Open reliefs and 0.5 mm roots retain a bending path. Increasing the base
-    # thickness stiffens that path; actual curvature/fatigue require a trial.
-    web_root_edges = [
-        e
-        for e in rail.Edges
-        if abs(e.BoundBox.ZMin - PAD_THICKNESS) < 1e-7
-        and abs(e.BoundBox.ZMax - PAD_THICKNESS) < 1e-7
-        and e.BoundBox.XLength < 1e-7
-        and abs(e.BoundBox.YLength - WEB_WIDTH) < 1e-7
-        and abs(e.CenterOfMass.x) < length / 2 - 0.1
-    ]
-    if web_root_edges:
-        rail = rail.makeFillet(FLEX_ROOT_RADIUS, web_root_edges).removeSplitter()
-    return rail
+    length = _positive(length, "Rail length")
+    pads = _stations(pads, length, PAD_LENGTH, "Tape-wing centres")
+    segments = wall_segments(length)
+    if not segments:
+        raise ValueError("Rail must contain at least one usable wall segment")
+    pieces = [rounded_plate(0, length, BASE_WIDTH)] + [rounded_plate(x) for x in pads]
+    inset = MOUNT_LENGTH / 2 + SLOT_END_SUPPORT_RESERVE
+    for first, last in segments:
+        wall = box(
+            last - first,
+            WEB_THICKNESS,
+            WEB_TOP_Z - PAD_THICKNESS,
+            (first, -WEB_THICKNESS / 2, PAD_THICKNESS),
+        )
+        pieces.append(wall.cut(_slot(first + inset, last - inset)))
+    result = union(pieces).removeSplitter()
+    if not result.isValid() or len(result.Solids) != 1:
+        raise RuntimeError("Rail must remain one valid solid")
+    return result
 
 
-def capture_void():
-    length = 22
-    return union(
+def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH):
+    """One flat clamp leg and one seating roof; head and nut remain exposed."""
+    top_z = _positive(top_z, "Mount top")
+    length = _positive(length, "Mount length")
+    if length < MOUNT_LENGTH - TOL:
+        raise ValueError("Mount must retain the16mm minimum contact length")
+    if top_z < WEB_TOP_Z + PAD_THICKNESS - TOL:
+        raise ValueError("Mount roof must retain at least1.5mm")
+    result = union(
         [
             box(
                 length,
-                WEB_WIDTH + 2 * WEB_SIDE_CLEARANCE,
-                HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE + 3,
-                (-length / 2, -WEB_WIDTH / 2 - WEB_SIDE_CLEARANCE, -3),
+                MOUNT_LEG_THICKNESS,
+                top_z - MOUNT_BOTTOM_Z,
+                (-length / 2, MOUNT_OUTER_Y, MOUNT_BOTTOM_Z),
             ),
             box(
                 length,
-                HEAD_WIDTH + 2 * HEAD_SIDE_CLEARANCE,
-                HEAD_TOP - HEAD_BOTTOM + 2 * HEAD_VERTICAL_CLEARANCE,
-                (
-                    -length / 2,
-                    -HEAD_WIDTH / 2 - HEAD_SIDE_CLEARANCE,
-                    HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE,
-                ),
+                WEB_THICKNESS + MOUNT_LEG_THICKNESS,
+                top_z - WEB_TOP_Z,
+                (-length / 2, MOUNT_OUTER_Y, WEB_TOP_Z),
             ),
         ]
     )
+    result = result.cut(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2,
+            WEB_THICKNESS + MOUNT_LEG_THICKNESS + 2,
+            V(0, MOUNT_OUTER_Y - 1, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        )
+    ).removeSplitter()
+    if not result.isValid() or len(result.Solids) != 1:
+        raise RuntimeError("Rail mount must remain one valid solid")
+    return result
 
 
-def hex_along_y(across_flats, y0, length):
-    radius = across_flats / math.sqrt(3)
-    return polygon_extrusion(
-        [
-            (
-                radius * math.cos(math.radians(angle)),
-                y0,
-                CLAMP_Z + radius * math.sin(math.radians(angle)),
-            )
-            for angle in range(0, 360, 60)
-        ],
-        (0, length, 0),
-    )
-
-
-def nut_pocket_void(width=NUT_POCKET_AF):
-    # A hex seat locates the nut; the flat-sided port loads from +X. The bolt
-    # retains the nut laterally. Finish the port to the coupon acceptance range
-    # and check the bought nut rather than claiming as-printed antirotation.
-    return union(
-        [
-            hex_along_y(width, NUT_POCKET_Y, NUT_POCKET_DEPTH),
-            box(
-                SHOE_LENGTH / 2 + 1,
-                NUT_POCKET_DEPTH,
-                width,
-                (0, NUT_POCKET_Y, CLAMP_Z - width / 2),
-            ),
-        ]
-    )
-
-
-def screw_bore_void():
-    return Part.makeCylinder(1.4, 10, V(0, 4, CLAMP_Z), V(0, 1, 0))
-
-
-def shoe_shape(nut_pocket_af=NUT_POCKET_AF):
-    shoe = box(
-        SHOE_LENGTH,
-        SHOE_WIDTH,
-        TOP_Z - SHOE_BOTTOM,
-        (-SHOE_LENGTH / 2, -SHOE_WIDTH / 2, SHOE_BOTTOM),
-    )
-    shoe = shoe.cut(capture_void()).removeSplitter()
-    # Ease only the five head-capture edges at each open end. The straight
-    # running datum, web relief and exterior mounting envelope stay unchanged.
-    entry_edges = [
-        edge
-        for edge in shoe.Edges
-        if edge.BoundBox.XLength < 1e-7
-        and abs(abs(edge.CenterOfMass.x) - SHOE_LENGTH / 2) < 1e-7
-        and edge.BoundBox.ZMin >= HEAD_BOTTOM - HEAD_VERTICAL_CLEARANCE - 1e-7
-        and max(abs(edge.BoundBox.YMin), abs(edge.BoundBox.YMax))
-        <= HEAD_WIDTH / 2 + HEAD_SIDE_CLEARANCE + 1e-7
-    ]
-    if len(entry_edges) != 10:
-        raise RuntimeError("Rail shoe entry no longer has two five-edge head rims")
-    shoe = shoe.makeChamfer(HEAD_ENTRY_CHAMFER, entry_edges)
-    clamp_void = union([nut_pocket_void(nut_pocket_af), screw_bore_void()])
-    shoe = shoe.cut(clamp_void).cut(half_turn(clamp_void)).removeSplitter()
-    if not shoe.isValid() or len(shoe.Solids) != 1:
-        raise RuntimeError("Invalid integral rail shoe")
-    return shoe
-
-
-def clamp_screw_shape():
-    # The secondary lock shifts the shoe to seat its opposite head-side jaw.
-    tip_y = HEAD_WIDTH / 2 - CLAMP_SHIFT_Y
-    # The unknown screw-tip chamfer is conservatively bounded by a full shank.
-    # Its full nominal face bears within the solid 3 mm head, leaving 0.5 mm
-    # above and below. The opposite shoe jaw reacts that load across the head.
-    # Inspect the real end for a usable bearing face/burrs before pressing PA12.
-    # An 8 mm screw puts its head 1.9 mm outside the shoe; a 6 mm one would
-    # collide with the outer wall before reaching this contact plane.
+def attachment_screw_shape(screw_length=SCREW_LENGTH):
+    length = _positive(screw_length, "Screw length")
     return union(
         [
             Part.makeCylinder(
                 fasteners.THREAD_DIAMETER / 2,
-                SCREW_LENGTH,
-                V(0, tip_y, CLAMP_Z),
+                length,
+                V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
                 V(0, 1, 0),
             ),
             Part.makeCylinder(
                 fasteners.SCREW_HEAD_DIAMETER / 2,
                 fasteners.SCREW_HEAD_HEIGHT,
-                V(0, tip_y + SCREW_LENGTH, CLAMP_Z),
-                V(0, 1, 0),
+                V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+                V(0, -1, 0),
             ),
         ]
     )
 
 
-def nut_shape(across_flats=NUT_AF, thickness=NUT_THICKNESS):
-    # Clamp load seats the nut against the outside wall of the loading slot.
-    return hex_along_y(
-        across_flats, NUT_POCKET_Y + NUT_POCKET_DEPTH - thickness, thickness
-    ).cut(Part.makeCylinder(1.0, 4, V(0, 6.5, CLAMP_Z), V(0, 1, 0)))
+def _nut_outer(across_flats, thickness):
+    radius = across_flats / math.sqrt(3)
+    return polygon_extrusion(
+        [
+            (
+                radius * math.cos(math.radians(a)),
+                WEB_THICKNESS / 2,
+                BOLT_AXIS_Z + radius * math.sin(math.radians(a)),
+            )
+            for a in range(0, 360, 60)
+        ],
+        (0, thickness, 0),
+    )
 
 
-def hex_nut_capture_check():
-    """Conditional geometry screen for a measured/finished hex capture.
+def nut_shape(across_flats=fasteners.HEX_NUT_AF, thickness=fasteners.HEX_NUT_HEIGHT):
+    return _nut_outer(across_flats, thickness).cut(
+        Part.makeCylinder(
+            fasteners.THREAD_DIAMETER / 2,
+            thickness + 2,
+            V(0, WEB_THICKNESS / 2 - 1, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        )
+    )
 
-    This deliberately does not pass the former raw +/-0.3 mm tolerance claim.
-    The nut must be measured and the coupon fitted before a production print.
-    A retained bolt constrains the nut axis during the rotation probes.
-    """
-    largest_pocket = shoe_shape(NUT_FINISHED_MAX_AF)
-    tightest_pocket = shoe_shape(NUT_FINISHED_MIN_AF)
-    rotations = []
-    for width, height, shoe, kind in (
-        (NUT_AF, NUT_THICKNESS, shoe_shape(), "nominal"),
+
+def build_attachment_hardware(doc, parent, prefix, *, x_offset=0):
+    result = []
+    for suffix, label, shape, sku in (
         (
-            fasteners.HEX_NUT_MIN_AF,
-            fasteners.HEX_NUT_MIN_HEIGHT,
-            largest_pocket,
-            "smallest_accepted_nut_in_largest_finished_pocket",
+            "RailMountScrew",
+            "M2 x8 side rail bolt | design head envelope",
+            attachment_screw_shape(),
+            "M2X8_BUTTON_HEAD",
+        ),
+        (
+            "RailMountNut",
+            "M2 exposed rail hex nut | design envelope",
+            nut_shape(),
+            "M2_HEX_NUT",
         ),
     ):
-        for angle in (-30, 30):
-            nut = nut_shape(width, height)
-            nut.rotate(V(0, 0, CLAMP_Z), V(0, 1, 0), angle)
-            volume = abs(nut.common(shoe).Volume)
-            rotations.append(
-                {
-                    "case": kind,
-                    "rotation_deg": angle,
-                    "blocking_intersection_mm3": volume,
-                    "passed": volume > 1e-5,
-                }
-            )
-    insertion_samples = []
-    for offset in (0, 0.5, 1, 2, 4, 6, 9, 12):
-        nut = translated_shape(nut_shape(), x=offset)
-        volume = abs(nut.common(tightest_pocket).Volume)
-        insertion_samples.append(
-            {
-                "translation_x_mm": offset,
-                "intersection_mm3": volume,
-                "passed": volume < 1e-5,
-            }
-        )
-    corner_diameter = 2 * fasteners.HEX_NUT_MIN_AF / math.sqrt(3)
-    return {
-        "accepted_hex_nut_af_range_mm": [fasteners.HEX_NUT_MIN_AF, NUT_AF],
-        "accepted_hex_nut_height_range_mm": [
-            fasteners.HEX_NUT_MIN_HEIGHT,
-            NUT_THICKNESS,
-        ],
-        "finished_pocket_af_range_mm": [NUT_FINISHED_MIN_AF, NUT_FINISHED_MAX_AF],
-        "minimum_total_insertion_clearance_mm": NUT_FINISHED_MIN_AF - NUT_AF,
-        "minimum_hex_corner_diameter_mm": corner_diameter,
-        "rotation_blocking_width_margin_mm": corner_diameter - NUT_FINISHED_MAX_AF,
-        "minimum_geometric_thread_turns": fasteners.HEX_NUT_MIN_HEIGHT
-        / fasteners.THREAD_PITCH,
-        "rotation_cases": rotations,
-        "insertion_samples": insertion_samples,
-        "as_printed_capture_guaranteed": False,
-        "physical_fit_verified": False,
-        "scope": "Nominal and finished-size geometric checks only. Inspect actual nut corners, finish the coupon to the stated size range and test insertion/rotation blocking. Raw powder-bed +/-0.3mm tolerance cannot guarantee this hex capture. No torque, thread-strength or PA12 retention qualification.",
-        "passed": all(row["passed"] for row in rotations + insertion_samples),
-    }
-
-
-def _hardware(doc, parent, name, label, shape, sku, notes):
-    obj = doc.addObject("Part::Feature", name)
-    parent.addObject(obj)
-    obj.Label = "BUY | " + label
-    obj.Shape = shape
-    for key, value in [
-        ("Role", "Purchased metric hardware"),
-        ("HardwareSKU", sku),
-        ("ThreadStandard", "ISO metric coarse M2 x 0.4, right hand"),
-        ("Notes", notes),
-        ("ModelDetail", "Simplified thread envelope; do not print"),
-        (
-            "SourceURL",
-            fasteners.KIT_SOURCE,
-        ),
-    ]:
-        set_property(obj, key, value)
-    set_property(
-        obj, "NominalThreadDiameter", fasteners.THREAD_DIAMETER, "App::PropertyLength"
-    )
-    set_property(obj, "ThreadPitch", fasteners.THREAD_PITCH, "App::PropertyLength")
-    set_property(obj, "PrintPart", False, "App::PropertyBool")
-    set_property(obj, "MaterialSelection", fasteners.KIT_MATERIAL)
-    set_property(
-        obj,
-        "ShapeModelNotes",
-        fasteners.HEAD_ENVELOPE_NOTE
-        if sku.endswith("_BUTTON_HEAD")
-        else "Accepted hex-nut envelope; actual kit flats, height, chamfers and threads must be measured.",
-    )
-    if App.GuiUp:
-        obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
-    return obj
-
-
-def build_clamp_hardware(doc, parent, prefix, side_expression):
-    screw = _hardware(
-        doc,
-        parent,
-        prefix + "RailClampScrew",
-        "M2 x 8 kit button-head screw | design head envelope",
-        clamp_screw_shape(),
-        "M2X8_BUTTON_HEAD",
-        "M2x0.4 x8 from the kit. Secondary friction lock for the coupon-matched rail fit, against the solid3mm T head; the opposite shoe jaw reacts the contact force across that head. "
-        "The nominal full diameter2mm tip fits with0.5mm vertical edge margins. Inspect the actual screw end and test its PA12 contact. "
-        "Loosen three turns (1.2mm), then push the matched shoe by hand. Hand snug only; no qualified torque or holding force. "
-        "Screw remains in the captured nut during normal adjustment. "
-        + fasteners.HEAD_ENVELOPE_NOTE,
-    )
-    nut = _hardware(
-        doc,
-        parent,
-        prefix + "RailClampNut",
-        "M2 kit hex nut | accepted AF4 x1.6 envelope",
-        nut_shape(),
-        "M2_HEX_NUT",
-        "M2x0.4 hex nut, accepted AF3.8-4.0mm and height1.4-1.6mm; measure the purchased lot. PositiveY port loads from+X; negativeY port loads from-X. Choose one port before mounting equipment. "
-        "Insert screw to retain nut. Nominal hex seat/port AF4.15; finished flat separation must be4.05-4.25mm and rotation blocking must be verified with the coupon. Raw +/-0.3mm printing tolerance does not guarantee the hex capture. "
-        "Nut seats against the outside slot wall under clamp load; torque and retention remain unqualified.",
-    )
-    nut.SourceURL = HEX_NUT_SOURCE
-    for hardware in (screw, nut):
-        set_property(
-            hardware,
-            "ClampSideNotes",
-            "Follows AssemblySettings clamp approach: PositiveY or NegativeY. Exactly one screw/nut pair per base. Opposed port stays empty.",
-        )
-        hardware.setExpression(
-            "Placement.Rotation.Angle", side_expression + " == 0 ? 0 deg : 180 deg"
-        )
-        hardware.Placement.Rotation.Axis = V(0, 0, 1)
-    return [screw, nut]
+        obj = doc.addObject("Part::Feature", prefix + suffix)
+        parent.addObject(obj)
+        obj.Label = "BUY | " + label
+        obj.Shape = translated_shape(shape, x=x_offset)
+        for key, value in (
+            ("Role", "Purchased metric hardware"),
+            ("HardwareSKU", sku),
+            ("ThreadStandard", "ISO metric coarse M2 x0.4, right hand"),
+            (
+                "Notes",
+                fasteners.HEAD_ENVELOPE_NOTE
+                + " Nut dimensions are acceptance envelopes; hold the exposed nut with a tool. Full thread engagement and actual fit require inspection.",
+            ),
+            ("ModelDetail", "Simplified thread envelope; do not print"),
+            ("MaterialSelection", fasteners.KIT_MATERIAL),
+            ("SourceEvidence", fasteners.KIT_SOURCE),
+        ):
+            set_property(obj, key, value)
+        set_property(obj, "NominalThreadDiameter", 2.0, "App::PropertyLength")
+        set_property(obj, "ThreadPitch", 0.4, "App::PropertyLength")
+        set_property(obj, "PrintPart", False, "App::PropertyBool")
+        if App.GuiUp:
+            obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
+        result.append(obj)
+    return result
 
 
 def tape_shape(x, sign=1):
-    # Separate left/right strips: accessible placement from outside, no threading.
-    tape_profile_yz = [
-        (6, PAD_THICKNESS),
+    profile = [
+        (7.8, PAD_THICKNESS),
         (16, PAD_THICKNESS),
         (20, 0),
         (36, 0),
         (36, TAPE_THICKNESS),
         (20, TAPE_THICKNESS),
         (16, PAD_THICKNESS + TAPE_THICKNESS),
-        (6, PAD_THICKNESS + TAPE_THICKNESS),
+        (7.8, PAD_THICKNESS + TAPE_THICKNESS),
     ]
-    tape = polygon_extrusion(
-        [(x - 6, sign * y, z) for y, z in tape_profile_yz], (12, 0, 0)
-    )
-    return tape
+    return polygon_extrusion([(x - 6, sign * y, z) for y, z in profile], (12, 0, 0))
 
 
-def build_rail(doc):
-    group = create_group(
-        doc,
-        "ContinuousRailSystem",
-        f"{LENGTH:g}mm continuous rail | single-sided tape over wings",
-    )
-    printed_rail = create_printed_part(
-        doc,
-        group,
-        "ContinuousRail",
-        f"PRINT | PA12 continuous T rail {LENGTH:g}mm",
-        rail_shape(),
-        App.Rotation(),
-        f"PA12 design basis, SLS or MJF pending supplier agreement; one-piece target {LENGTH:g}x{PAD_WIDTH:g}x{HEAD_TOP:g}mm; export oriented45deg inXY for size screening. Confirm grade, process, finish and one-piece acceptance with supplier before ordering. "
-        f"{len(PAD_CENTRES)} identical paired tape-wing stations at{PAD_PITCH:g}mm pitch use {2 * len(PAD_CENTRES)} separate strip references. Single-sided tape covers each exposed lateral wing and extends onto balloon. Do not cover the central T head. "
-        f"Unbroken{PAD_THICKNESS:g}mm base and wings;{LAND_PITCH - FLEX_GAP:g}mm head lands separated by{FLEX_GAP:g}mm flex reliefs at{LAND_PITCH:g}mm pitch with{FLEX_ROOT_RADIUS:g}mm base/web-root fillets. Solid{HEAD_TOP - HEAD_BOTTOM:g}mm T head; shoe bridges the narrow gaps. "
-        "Head/shoe nominal trial clearance is0.1mm per side and above/below; relieved web clearance is0.45mm per side. Print matching coupons first, finish/recalibrate to hand-push fit without rocking or free sliding; bolt is an additional lock. Raw PA12 tolerance does not guarantee this fit. "
-        "The transverse clamp load closes through the thick head and opposite shoe jaw; the base still carries actual vehicle loads to the tape. No numerical PA12 indentation, creep, tightening-torque or holding-force qualification. "
-        f"Clamp only on a full land, preferably within+/-4mm of its centre, with the whole shoe supported (centre |X| <= {(LENGTH - SHOE_LENGTH) / 2:g}mm). Curvature and tape grip require a physical trial. No printed rail lock pins. "
-        f"The{PAD_THICKNESS:g}mm base/wings reflect the user's manufacturing-review thickness requirement. A wing pair directly supports the central shoe; adjacent wings have{PAD_PITCH - PAD_LENGTH:g}mm open longitudinal spans. Actual curvature, tape grip and support stiffness still require a physical trial; nominal thickness is not a delivered-size guarantee.",
-    )
-    set_property(printed_rail, "PrintProcess", "PA12 SLS or MJF")
-    set_property(
-        printed_rail, "RailFitContract", json.dumps(fit_contract(), sort_keys=True)
-    )
-    set_property(
-        printed_rail,
-        "ManufacturingException",
-        f"{PAD_THICKNESS:g}mm narrow continuous base and tape wings meet the requested nominal thickness. Functional curvature/fatigue and one-piece supplier acceptance remain unqualified; do not treat as an ordinary {LENGTH:g}mm broad plate.",
-    )
-    set_property(printed_rail, "SourceURL", SOURCE)
-    tapes = []
-    tape_group = create_group(
-        doc,
-        "TapeAttachmentReference",
-        "REFERENCE | tape OVER lateral wings, adhesive down",
-    )
-    for i, x in enumerate(PAD_CENTRES):
-        for sign in (-1, 1):
-            tape_reference = doc.addObject(
-                "Part::Feature", "TapeWing%d%s" % (i, "L" if sign < 0 else "R")
-            )
-            tape_group.addObject(tape_reference)
-            tape_reference.Label = "REFERENCE | single-sided tape over wing"
-            tape_reference.Shape = tape_shape(x, sign)
-            set_property(
-                tape_reference,
-                "Role",
-                "Tape application reference; not a printable part",
-            )
-            set_property(
-                tape_reference,
-                "Notes",
-                "12mm-wide strip, nominal0.15mm thickness. Place adhesive-down OVER wing then onto envelope. Each side is independent. Keep hinge gaps free. No tape under rail and no tape across sliding cap.",
-            )
-            tapes.append(tape_reference)
-    return {"group": group, "printed": [printed_rail], "tapes": tapes}
-
-
-def build_coupons(doc):
-    group = create_group(
-        doc, "ContinuousRailFitCoupons", "Print first | rail and M2 captive-nut fit"
-    )
-    rail_coupon = create_printed_part(
-        doc,
-        group,
-        "RailFitSample",
-        "PRINT FIRST | 48mm T rail with tape wing",
-        rail_shape(48, (0,)),
-        App.Rotation(),
-        "PA12 SLS/MJF matched sample for hand-push rail fit, secondary clamp and tape-over-wing trial. Same section as full rail. Print with the intended supplier/process/finish and relevant production orientation. Test the coupon straight and bent to the intended installation curvature; then check the full rail and every used station in the actual taped curvature. No minimum bend radius is qualified, and a short coupon does not establish full-length fit. Nominal head clearance0.1mm per face is a coupon starting value, not guaranteed as-printed fit.",
-    )
-    shoe_coupon = create_printed_part(
-        doc,
-        group,
-        "ShoeFitSample",
-        "PRINT FIRST | integral rail shoe with M2 nut slot",
-        shoe_shape(),
-        App.Rotation(),
-        "Match this shoe to the rail coupon before production. With screw backed off, it must push on by hand without rocking or free sliding. Lightly finish binding head-contact faces evenly; if loose, compensate the mating dimensions and reprint, because sanding cannot reduce clearance. Do not force the flexible rail or qualify fit by screw tightening. Head clearance0.1mm per face and0.3mm entry chamfers are trial geometry. Use kit M2x8 headed screw and M2 hex nut. Finish nut seat/port to AF4.05-4.25mm; verify insertion/rotation blocking with the actual nut, head/tool access and full screw-tip contact. Check sustained grip and indentation with hand-snug pressure. Raw printing tolerance guarantees neither the matched rail fit nor hex capture. No printed threads or qualified torque.",
-    )
-    for coupon in (rail_coupon, shoe_coupon):
-        set_property(
-            coupon, "RailFitContract", json.dumps(fit_contract(), sort_keys=True)
-        )
-    return {"group": group, "printed": [rail_coupon, shoe_coupon]}
-
-
-def flex_relief_check(rail_section=None, length=48.0):
-    """Require open full-height gaps above the intentional base-root fillets."""
-    rail_section = rail_shape(length, (0,)) if rail_section is None else rail_section
-    start_z = PAD_THICKNESS + FLEX_ROOT_RADIUS + 0.1
-    rows = []
-    for i in range(
-        -int(math.ceil(length / LAND_PITCH)), int(math.ceil(length / LAND_PITCH)) + 1
-    ):
-        x = (i + 0.5) * LAND_PITCH
-        if abs(x) >= length / 2:
-            continue
-        gap = box(
-            FLEX_GAP,
-            HEAD_WIDTH,
-            HEAD_TOP + 0.1 - start_z,
-            (x - FLEX_GAP / 2, -HEAD_WIDTH / 2, start_z),
-        )
-        obstruction = abs(gap.common(rail_section).Volume)
-        rows.append(
-            {
-                "gap_centre_x_mm": x,
-                "gap_obstruction_mm3": obstruction,
-                "passed": obstruction < 1e-6,
-            }
-        )
+def tape_attachment_contract():
     return {
-        "probe_start_z_mm": start_z,
-        "probe_end_z_mm": HEAD_TOP + 0.1,
-        "preserved_base_root_fillet_height_mm": FLEX_ROOT_RADIUS,
-        "gaps": rows,
-        "passed": bool(rows) and all(row["passed"] for row in rows),
+        "wing_stations_x_mm": PAD_CENTRES,
+        "wing_count": 2 * len(PAD_CENTRES),
+        "base_width_mm": BASE_WIDTH,
+        "attachment": "Conform before bonding. Thin double-sided tape under the continuous6mm base can distribute local loads and cover wing undersides. Six optional over-wing strips reinforce peel retention. Keep side bolts and open flex gaps accessible.",
+        "reference_scope": "Saved tape solids show only optional12mm over-wing strips. Under-base adhesive thickness, mass and envelope deformation are not modeled. Z0 is the rail underside, not a certified balloon surface.",
+        "qualification": "Three isolated wing pairs are not load-qualified. Check actual tape/envelope compatibility, peel, creep and loaded curvature; no adhesion strength, minimum bend radius or fatigue life is claimed.",
     }
 
 
-def clamp_contact_check(rail_section=None, shoe=None):
-    """Measure the seated screw/head/jaw contact geometry, not holding force.
-
-    Thin witness volumes measure actual material just inside each contact
-    plane. Requiring the entire nominal screw face and the transverse strip
-    to exist rejects the former partial face on a 1.6 mm head. The opposite
-    jaw check does not mistake general T capture for a clamp reaction face.
-    """
-    rail_section = rail_shape(48, (0,)) if rail_section is None else rail_section
-    shoe = shoe_shape() if shoe is None else shoe
-    depth = 0.01
-    radius = fasteners.THREAD_DIAMETER / 2
-    full_tip_area = math.pi * radius**2
-    lower_margin = CLAMP_Z - radius - HEAD_BOTTOM
-    upper_margin = HEAD_TOP - CLAMP_Z - radius
-    rows = []
-    for offset in (-CLAMP_LAND_OFFSET, 0.0, CLAMP_LAND_OFFSET):
-        tip = Part.makeCylinder(
-            radius, depth, V(offset, HEAD_WIDTH / 2, CLAMP_Z), V(0, -1, 0)
-        )
-        tip_area = abs(tip.common(rail_section).Volume) / depth
-        load_strip = box(
-            2 * radius,
-            HEAD_WIDTH,
-            2 * radius,
-            (offset - radius, -HEAD_WIDTH / 2, CLAMP_Z - radius),
-        )
-        strip_missing = abs(load_strip.cut(rail_section).Volume)
-        rail_skin = rail_section.common(
-            box(
-                SHOE_LENGTH,
-                depth,
-                HEAD_TOP - HEAD_BOTTOM,
-                (offset - SHOE_LENGTH / 2, -HEAD_WIDTH / 2, HEAD_BOTTOM),
-            )
-        )
-        seated_shoe = translated_shape(shoe, x=offset, y=CLAMP_SHIFT_Y)
-        jaw_area = (
-            abs(translated_shape(rail_skin, y=-depth).common(seated_shoe).Volume)
-            / depth
-        )
-        rows.append(
-            {
-                "clamp_offset_from_land_centre_mm": offset,
-                "supported_nominal_tip_area_mm2": tip_area,
-                "opposing_jaw_contact_area_mm2": jaw_area,
-                "missing_solid_transverse_load_strip_mm3": strip_missing,
-                "passed": abs(tip_area - full_tip_area) < 1e-5
-                and jaw_area >= 10 * full_tip_area - 1e-5
-                and strip_missing < 1e-6,
-            }
-        )
+def attachment_contract(contact_length=MOUNT_LENGTH):
     return {
-        "head_thickness_mm": HEAD_TOP - HEAD_BOTTOM,
-        "nominal_screw_tip_face_area_mm2": full_tip_area,
-        "tip_lower_edge_margin_mm": lower_margin,
-        "tip_upper_edge_margin_mm": upper_margin,
-        "required_nominal_vertical_edge_margin_mm": CLAMP_FACE_EDGE_ALLOWANCE,
-        "required_opposing_jaw_contact_area_mm2": 10 * full_tip_area,
-        "contact_cases": rows,
-        "scope": "Nominal seated contact geometry only. The opposing jaw reacts the transverse clamp load across the solid head; the thin base still transmits vehicle loads to the tape. The actual screw end may have a smaller, chamfered bearing face. Powder-bed tolerance, surface texture, indentation, creep and frictional holding force require coupon and installed-load trials; no tightening torque is qualified.",
-        "passed": lower_margin >= CLAMP_FACE_EDGE_ALLOWANCE - 1e-6
-        and upper_margin >= CLAMP_FACE_EDGE_ALLOWANCE - 1e-6
-        and all(row["passed"] for row in rows),
-    }
-
-
-def fit_contract():
-    """Nominal matched-coupon starting geometry and required physical outcome."""
-    total_y = 2 * HEAD_SIDE_CLEARANCE
-    total_z = 2 * HEAD_VERTICAL_CLEARANCE
-    # Two independent +/-0.3 mm size errors are a conservative size-only
-    # budget. Surface texture, curvature and print anisotropy are additional.
-    size_error = 0.3
-    return {
-        "head_width_mm": HEAD_WIDTH,
-        "head_height_mm": HEAD_TOP - HEAD_BOTTOM,
-        "shoe_head_cavity_width_mm": HEAD_WIDTH + total_y,
-        "shoe_head_cavity_height_mm": HEAD_TOP - HEAD_BOTTOM + total_z,
-        "nominal_head_side_gap_mm": HEAD_SIDE_CLEARANCE,
-        "nominal_head_vertical_gap_mm": HEAD_VERTICAL_CLEARANCE,
-        "nominal_head_total_width_gap_mm": total_y,
-        "nominal_head_total_height_gap_mm": total_z,
-        "nominal_web_total_width_gap_mm": 2 * WEB_SIDE_CLEARANCE,
-        "head_entry_chamfer_mm": HEAD_ENTRY_CHAMFER,
-        "straight_head_guide_length_mm": SHOE_LENGTH - 2 * HEAD_ENTRY_CHAMFER,
-        "individual_size_error_budget_mm": size_error,
-        "size_only_raw_width_gap_range_mm": [
-            round(total_y - 2 * size_error, 6),
-            round(total_y + 2 * size_error, 6),
-        ],
-        "size_only_raw_height_gap_range_mm": [
-            round(total_z - 2 * size_error, 6),
-            round(total_z + 2 * size_error, 6),
-        ],
-        "physical_acceptance": "With clamp screw backed off, matched parts push together and reposition by hand without rocking or free sliding. No numeric interference or insertion force is prescribed. Test process-matched coupons straight and at the intended installation curvature, then the full rail at every used station in its actual taped curvature. No minimum bend radius is qualified, and the short coupon does not establish full-length fit.",
-        "fit_correction": "Lightly finish tight head-contact faces evenly; compensate dimensions and reprint a loose pair. Sanding cannot remove excessive clearance. Do not force the flexible rail. Keep the relieved web free and use the bolt only as an additional lock.",
-        "manufacturing_tolerance_rule": "Creallo SLS/MJF +/-0.3%, minimum+/-0.3mm. The nominal 0.2mm total head gap is below the general 0.3mm assembly-gap guide and intentionally requires matched-coupon correction; it is not a guarantee of raw print assembly.",
+        "wall_segments_x_mm": wall_segments(),
+        "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(
+            contact_length=contact_length
+        ),
+        "web_thickness_mm": WEB_THICKNESS,
+        "web_top_z_mm": WEB_TOP_Z,
+        "outer_flex_gap_mm": FLEX_GAP,
+        "central_wall_length_mm": CENTRAL_WALL_LENGTH,
+        "central_adjacent_flex_gap_mm": (SEGMENT_PITCH - CENTRAL_WALL_LENGTH) / 2
+        + FLEX_GAP / 2,
+        "minimum_base_mm": PAD_THICKNESS,
+        "slot_height_mm": SLOT_HEIGHT,
+        "bolt_axis_z_mm": BOLT_AXIS_Z,
+        "mount_contact_length_mm": contact_length,
+        "fastener": "M2x8 button-head kit bolt and exposed M2 hex nut; unmeasured design envelopes",
+        "assembly": "Lower the L seat onto one wall, insert bolt from negativeY, hold the positiveY nut and clamp both flat faces. Loosen to slide only inside that wall's supported slot. Moving between segments needs bolt removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
+        "physical_acceptance": "Process-matched coupon must seat flat without rocking. Finish contact faces or reprint warped parts. Slot clearance enables assembly/alignment, not acceptable looseness in use. Hold the ordinary nut with a tool; no printed nut capture. Inspect thread engagement, head/tool access and under-base adhesive after installation.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,
         "holding_force_verified": False,
     }
 
 
-def head_fit_check(rail_section=None, shoe=None):
-    """Check actual capture boundaries; does not simulate friction or preload."""
-    rail_section = rail_shape(48, (0,)) if rail_section is None else rail_section
-    shoe = shoe_shape() if shoe is None else shoe
-    rows = []
-    for axis, clearance in (
-        ("y", HEAD_SIDE_CLEARANCE),
-        ("z", HEAD_VERTICAL_CLEARANCE),
-    ):
-        for side in (-1, 1):
-            boundary = translated_shape(shoe, **{axis: side * clearance})
-            beyond = translated_shape(shoe, **{axis: side * (clearance + 0.02)})
-            boundary_overlap = abs(boundary.common(rail_section).Volume)
-            beyond_overlap = abs(beyond.common(rail_section).Volume)
-            rows.append(
-                {
-                    "axis": axis,
-                    "direction": side,
-                    "nominal_face_clearance_mm": clearance,
-                    "boundary_intersection_mm3": boundary_overlap,
-                    "beyond_boundary_intersection_mm3": beyond_overlap,
-                    "passed": boundary_overlap < 1e-6 and beyond_overlap > 1e-5,
-                }
+def build_rail(doc):
+    group = create_group(
+        doc, "ContinuousRailSystem", f"{LENGTH:g}mm segmented side-slot rail"
+    )
+    printed = create_printed_part(
+        doc,
+        group,
+        "ContinuousRail",
+        f"PRINT | side-slot rail {LENGTH:g}mm",
+        rail_shape(),
+        App.Rotation(),
+        "One PA12 strip with1.5mm closed base and three tape-wing pairs.2.5mm upright walls have local M2 slots; the central50mm wall has6mm free spans beside it, other gaps12mm. The broad centre supports propulsion while the continuous base permits bending. No T lips, nut pockets, printed threads or snap fit. Qualify loaded curvature, friction retention, creep and adhesion with the actual parts.",
+    )
+    set_property(
+        printed,
+        "RailAttachmentContract",
+        json.dumps(attachment_contract(), sort_keys=True),
+    )
+    set_property(
+        printed,
+        "TapeAttachmentContract",
+        json.dumps(tape_attachment_contract(), sort_keys=True),
+    )
+    set_property(printed, "SourceURL", SOURCE)
+    tape_group = create_group(
+        doc,
+        "TapeAttachmentReference",
+        "REFERENCE | optional over-wing tape; underside adhesive not modeled",
+    )
+    tapes = []
+    for index, x in enumerate(PAD_CENTRES):
+        for sign in (-1, 1):
+            obj = doc.addObject(
+                "Part::Feature", f"TapeWing{index}{'L' if sign < 0 else 'R'}"
             )
+            tape_group.addObject(obj)
+            obj.Label = "REFERENCE | optional single-sided tape over wing"
+            obj.Shape = tape_shape(x, sign)
+            set_property(
+                obj, "Role", "Tape application reference; not a printable part"
+            )
+            set_property(
+                obj,
+                "Notes",
+                "Optional12mm-wide,0.15mm-thick over-wing strip. Under-base double-sided tape is not modeled; qualify the actual bonded curvature.",
+            )
+            tapes.append(obj)
+    return {"group": group, "printed": [printed], "tapes": tapes}
+
+
+def build_coupons(doc):
+    group = create_group(
+        doc, "ContinuousRailFitCoupons", "Print first | M2 side-slot L fit"
+    )
+    samples = (
+        (
+            "RailFitSample",
+            "PRINT FIRST | 50mm side-slot rail sample",
+            rail_shape(50, (0,)),
+        ),
+        (
+            "MountFitSample",
+            "PRINT FIRST | side-slot L mount sample",
+            mount_base_shape(),
+        ),
+    )
+    printed = []
+    for name, label, shape in samples:
+        obj = create_printed_part(
+            doc,
+            group,
+            name,
+            label,
+            shape,
+            App.Rotation(),
+            "Same wall/L-seat geometry as full rail. Use the actual M2x8 bolt and exposed nut; test flat seating, local sliding, side tool access and clamp retention. Short coupon does not qualify full rail adhesion, bending or creep.",
+        )
+        set_property(
+            obj,
+            "RailAttachmentContract",
+            json.dumps(attachment_contract(), sort_keys=True),
+        )
+        printed.append(obj)
+    return {"group": group, "printed": printed}
+
+
+def flex_relief_check(rail_section=None, length=LENGTH):
+    section = (
+        rail_shape(length, () if length < LENGTH else PAD_CENTRES)
+        if rail_section is None
+        else rail_section
+    )
+    segments = wall_segments(length)
+    rows = []
+    for (_, first), (last, _) in zip(segments, segments[1:]):
+        witness = box(
+            last - first,
+            BASE_WIDTH,
+            WEB_TOP_Z - PAD_THICKNESS + 0.1,
+            (first, -BASE_WIDTH / 2, PAD_THICKNESS),
+        )
+        overlap = abs(section.common(witness).Volume)
+        rows.append(
+            {
+                "x_range_mm": (first, last),
+                "above_base_obstruction_mm3": overlap,
+                "passed": overlap < TOL,
+            }
+        )
     return {
-        "fit_contract": fit_contract(),
-        "boundary_probes": rows,
-        "scope": "Solid capture geometry only. Nominal positive clearance does not produce elastic preload or certify a snug physical fit.",
-        "passed": all(row["passed"] for row in rows),
+        "open_spans": rows,
+        "base_thickness_mm": PAD_THICKNESS,
+        "scope": "Open above-base spans only; no stiffness, bend-radius or fatigue rating.",
+        "passed": bool(rows) and all(row["passed"] for row in rows),
+    }
+
+
+def attachment_check(
+    rail_section=None,
+    mount=None,
+    *,
+    screw_length=SCREW_LENGTH,
+    contact_length=MOUNT_LENGTH,
+):
+    """Nominal local contact and release, not clamp force or whole-module service."""
+    from gondola.validation.geometry import translation_sweep
+
+    section = rail_shape(50, (0,)) if rail_section is None else rail_section
+    mount = mount_base_shape(length=contact_length) if mount is None else mount
+    screw, nut = attachment_screw_shape(screw_length), nut_shape()
+    overlaps = {
+        name: abs(first.common(second).Volume)
+        for name, first, second in (
+            ("rail_mount", section, mount),
+            ("rail_screw", section, screw),
+            ("mount_screw", mount, screw),
+            ("rail_nut", section, nut),
+            ("mount_nut", mount, nut),
+            ("screw_nut", screw, nut),
+        )
+    }
+    # Fill only the transverse bolt bore to form a strict planar superset.
+    # Generic transverse-cylinder sweeps fall back to a bounding box that
+    # incorrectly fills the open side of the L mount.
+    filled_mount = mount.fuse(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2,
+            MOUNT_LEG_THICKNESS,
+            V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        )
+    ).removeSplitter()
+    lift, method = translation_sweep(filled_mount, (0, 0, 25))
+    lift_overlap = abs(lift.common(section).Volume)
+    # Exact full-width top seating; no guessed force/area multiplier.
+    top_below = box(
+        contact_length,
+        WEB_THICKNESS,
+        0.01,
+        (-contact_length / 2, -WEB_THICKNESS / 2, WEB_TOP_Z - 0.01),
+    )
+    top_above = translated_shape(top_below, z=0.01)
+    missing_top = abs(top_below.cut(section).Volume) + abs(top_above.cut(mount).Volume)
+    # Side contact at both sides of the slot, across the entire foot.
+    side = box(
+        contact_length,
+        0.01,
+        WEB_TOP_Z - MOUNT_BOTTOM_Z,
+        (-contact_length / 2, -WEB_THICKNESS / 2 - 0.01, MOUNT_BOTTOM_Z),
+    )
+    side = side.cut(_slot(-contact_length, contact_length))
+    missing_side = abs(side.cut(mount).Volume) + abs(
+        translated_shape(side, y=0.01).cut(section).Volume
+    )
+    head_face = Part.makeCylinder(
+        fasteners.SCREW_HEAD_DIAMETER / 2,
+        0.01,
+        V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+        V(0, 1, 0),
+    ).cut(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2, 0.02, V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z), V(0, 1, 0)
+        )
+    )
+    missing_head = abs(head_face.cut(mount).Volume)
+    # Ordinary nut intentionally turns freely; its support need not cover the slot.
+    nut_face = _nut_outer(fasteners.HEX_NUT_AF, 0.01)
+    nut_face = translated_shape(nut_face, y=-0.01).cut(
+        _slot(-contact_length, contact_length)
+    )
+    missing_nut = abs(nut_face.cut(section).Volume)
+    nut_area = nut_face.Volume / 0.01
+    tip = MOUNT_OUTER_Y + screw_length
+    engagement = tip - (WEB_THICKNESS / 2 + fasteners.HEX_NUT_HEIGHT)
+    # Pulling the nut away in+Y leaves no pocket; exact filled-hex witness.
+    nut_sweep, nut_method = translation_sweep(
+        _nut_outer(fasteners.HEX_NUT_AF, fasteners.HEX_NUT_HEIGHT), (0, 10, 0)
+    )
+    nut_release = abs(nut_sweep.common(section).Volume) + abs(
+        nut_sweep.common(mount).Volume
+    )
+    return {
+        "seated_intersections_mm3": overlaps,
+        "continuous_vertical_removal": {"method": method, "overlap_mm3": lift_overlap},
+        "continuous_nut_release": {"method": nut_method, "overlap_mm3": nut_release},
+        "missing_full_top_contact_mm3": missing_top,
+        "missing_flat_side_contact_mm3": missing_side,
+        "missing_head_support_mm3": missing_head,
+        "missing_nut_support_mm3": missing_nut,
+        "nut_bearing_area_outside_slot_mm2": nut_area,
+        "bolt_tip_beyond_nut_mm": engagement,
+        "full_nominal_nut_height_engaged": engagement >= -TOL,
+        "scope": "Unloaded local geometry. Ordinary nut requires a tool; tighten after aligning. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
+        "passed": max(overlaps.values()) < TOL
+        and lift_overlap < TOL
+        and nut_release < TOL
+        and max(missing_top, missing_side, missing_head, missing_nut) < TOL
+        and nut_area > 0
+        and engagement >= -TOL,
     }
 
 
 def validate_mechanism():
-    rail = rail_shape(48, (0,))
-    shoe = shoe_shape()
-    locked_shoe = translated_shape(shoe, y=CLAMP_SHIFT_Y)
-
-    def intersection_volume(first_shape, second_shape):
-        return abs(first_shape.common(second_shape).Volume)
-
-    slide_samples = []
-    for x in (-50, -24, -12, 0, 12, 24, 50):
-        slide_samples.append(
-            {
-                "translation_x_mm": x,
-                "rail_shoe_overlap_mm3": intersection_volume(
-                    rail, translated_shape(shoe, x=x)
-                ),
-            }
-        )
-    tape = union([tape_shape(0, 1), tape_shape(0, -1)])
-    seated_intersections = {
-        "rail_shoe": intersection_volume(rail, locked_shoe),
-        "rail_screw": intersection_volume(
-            rail, translated_shape(clamp_screw_shape(), y=CLAMP_SHIFT_Y)
-        ),
-        "shoe_screw": intersection_volume(shoe, clamp_screw_shape()),
-        "shoe_nut": intersection_volume(shoe, nut_shape()),
-        "nut_screw": intersection_volume(nut_shape(), clamp_screw_shape()),
-        "tape_shoe": intersection_volume(tape, locked_shoe),
-        "tape_rail": intersection_volume(tape, rail),
-    }
-    capture_intersections = {
-        direction: intersection_volume(rail, translated_shape(shoe, **delta))
-        for direction, delta in [
-            ("lift", {"z": 1}),
-            ("left", {"y": 1}),
-            ("right", {"y": -1}),
-        ]
-    }
-    symmetry_difference = abs(shoe.cut(half_turn(shoe)).Volume) + abs(
-        half_turn(shoe).cut(shoe).Volume
-    )
-    negative_side_intersections = {
-        "rail_shoe": intersection_volume(
-            rail, translated_shape(shoe, y=-CLAMP_SHIFT_Y)
-        ),
-        "rail_screw": intersection_volume(
-            rail, translated_shape(half_turn(clamp_screw_shape()), y=-CLAMP_SHIFT_Y)
-        ),
-        "shoe_screw": intersection_volume(shoe, half_turn(clamp_screw_shape())),
-        "shoe_nut": intersection_volume(shoe, half_turn(nut_shape())),
-    }
-    clamp_contact = clamp_contact_check(rail, shoe)
-    flex_relief = flex_relief_check(rail)
-    head_fit = head_fit_check(rail, shoe)
+    attachment, flex = attachment_check(), flex_relief_check()
     return {
-        "passed": max(seated_intersections.values()) < 1e-6
-        and max(negative_side_intersections.values()) < 1e-6
-        and symmetry_difference < 1e-6
-        and all(p["rail_shoe_overlap_mm3"] < 1e-6 for p in slide_samples)
-        and all(v > 1e-5 for v in capture_intersections.values())
-        and clamp_contact["passed"]
-        and flex_relief["passed"]
-        and head_fit["passed"],
-        "clamp_contact": clamp_contact,
-        "flex_relief": flex_relief,
-        "head_fit": head_fit,
+        "passed": attachment["passed"] and flex["passed"],
+        "attachment": attachment,
+        "flex_relief": flex,
         "rail_length_mm": LENGTH,
         "continuous_single_rail": True,
-        "unbroken_base": True,
-        "head_land_pitch_mm": LAND_PITCH,
-        "head_relief_gap_mm": FLEX_GAP,
-        "head_is_uninterrupted": False,
-        "shoe_180deg_symmetry_difference_mm3": symmetry_difference,
-        "negative_side_intersections_mm3": negative_side_intersections,
-        "side_selection": "AssemblySettings clamp approach enumeration drives shoe seating offset and installed hardware orientation. Only one pair is installed.",
-        "locked_shoe_shift_y_mm": CLAMP_SHIFT_Y,
-        "seated_intersections_mm3": seated_intersections,
-        "capture_collision_probes_mm3": capture_intersections,
-        "released_slide_path": slide_samples,
-        "release": "Loosen M2x0.4 screw three turns, reposition the matched shoe by hand along the rail; remove at an open rail end. No lift-off in the middle. Nominal CAD clearance does not prove the required snug hand fit.",
-        "axial_lock": "Coupon-matched friction fit with an additional screw lock; no numerical retention/torque qualification.",
-        "tape": "One strip over each lateral wing, two separate strips per station; not under rail or across the central cap",
-        "tape_to_shoe_nominal_vertical_gap_mm": SHOE_BOTTOM
-        - PAD_THICKNESS
-        - TAPE_THICKNESS,
+        "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(),
+        "tape": tape_attachment_contract(),
+        "release": "Loosen the side M2 bolt and slide within the current supported slot. To change wall segment remove the bolt and lift. Hold the ordinary nut with a tool; no full-length slide or automatic calibration.",
     }
 
 
 if __name__ == "__main__":
-    import json
-
     print(json.dumps(validate_mechanism(), indent=2))

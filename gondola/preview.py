@@ -12,7 +12,7 @@ import Part
 from PySide import QtCore
 
 from gondola.assembly import style_assembly
-from gondola.cad import belongs_to_group, create_group, translated_shape, world_shape
+from gondola.cad import belongs_to_group, create_group, world_shape
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import DESIGN_REVISION
 from gondola.provenance import file_sha256, source_fingerprint
@@ -52,13 +52,11 @@ def frame_for_export(active, view, width, height):
     view.setCamera(camera)
 
 
-def create_attachment_detail_document(side=1):
+def create_attachment_detail_document():
     from gondola.parts import rail
 
-    doc = App.newDocument("AttachmentDetail" + ("Negative" if side < 0 else "Positive"))
-    doc.Label = f"Rev {DESIGN_REVISION} | tape OVER wings and M2 clamp " + (
-        "NegativeY" if side < 0 else "PositiveY"
-    )
+    doc = App.newDocument("AttachmentDetail")
+    doc.Label = f"Rev {DESIGN_REVISION} | slotted wall, side M2 bolt and open L mount"
     g = create_group(doc, "Attachment", "Attachment detail | not a print assembly")
 
     def add_detail_object(name, shape, color, alpha=0):
@@ -70,27 +68,12 @@ def create_attachment_detail_document(side=1):
         o.ViewObject.Transparency = alpha
         return o
 
-    add_detail_object("RailSection", rail.rail_shape(48, (0,)), (0.7, 0.76, 0.79))
+    add_detail_object("RailSection", rail.rail_shape(50, (0,)), (0.7, 0.76, 0.79))
+    add_detail_object("IntegralLMount", rail.mount_base_shape(), (0.31, 0.66, 0.76), 65)
     add_detail_object(
-        "IntegratedShoe",
-        translated_shape(rail.shoe_shape(), y=side * rail.CLAMP_SHIFT_Y),
-        (0.31, 0.66, 0.76),
-        65,
+        "PurchasedM2Bolt", rail.attachment_screw_shape(), (0.92, 0.64, 0.19)
     )
-
-    def orient(shape):
-        return shape if side > 0 else rail.half_turn(shape)
-
-    add_detail_object(
-        "PurchasedRailClamp",
-        translated_shape(orient(rail.clamp_screw_shape()), y=side * rail.CLAMP_SHIFT_Y),
-        (0.92, 0.64, 0.19),
-    )
-    add_detail_object(
-        "PurchasedM2Nut",
-        translated_shape(orient(rail.nut_shape()), y=side * rail.CLAMP_SHIFT_Y),
-        (0.92, 0.64, 0.19),
-    )
+    add_detail_object("PurchasedM2Nut", rail.nut_shape(), (0.92, 0.64, 0.19))
     for sign in (-1, 1):
         add_detail_object(
             "TapeOverWing" + ("L" if sign < 0 else "R"),
@@ -202,7 +185,6 @@ def render_previews(close_after=False):
         power = App.openDocument(str(OUTPUT_DIR / "gondola_power_options.FCStd"))
         style_power_option(power)
         detail = create_attachment_detail_document()
-        negative = create_attachment_detail_document(-1)
         for o in layout.Objects:
             if o.isDerivedFrom("Part::Feature"):
                 o.ViewObject.Visibility = True
@@ -219,7 +201,6 @@ def render_previews(close_after=False):
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),
             (detail, "front", "_attachment_section.png", "all", 1700, 850),
-            (negative, "axon", "_attachment_opposite.png", "all", 1700, 1300),
             (layout, "top", "_print_parts.png", "all", 1800, 2000),
             (power, "axon", "_power_options.png", "all", 1500, 1400),
         ]
@@ -301,9 +282,6 @@ def render_previews(close_after=False):
                 str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_detail.FCStd"))
             )
             layout.save()
-            negative.saveAs(
-                str(OUTPUT_DIR / (ARTIFACT_STEM + "_attachment_opposite.FCStd"))
-            )
             App.setActiveDocument(doc.Name)
             style_assembly(doc)
             Gui.activeDocument().activeView().viewAxonometric()

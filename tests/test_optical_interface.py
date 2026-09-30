@@ -98,6 +98,7 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
         self.assertTrue(_carrier_interface_checks(doc)["passed"])
 
     def test_under_slot_blockage_and_incomplete_seating_are_rejected(self):
+        from gondola.cad import world_shape
         from gondola.validation.optical import _carrier_interface_checks
 
         doc = self.new_carrier_mount()
@@ -105,7 +106,12 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
         original = plate.Shape.copy()
         # A shallow artificial ledge prevents the tongue from reaching the
         # flat support plane, despite clear entry at the top of the slot.
-        plate.Shape = original.fuse(Part.makeBox(3, 3, 0.4, App.Vector(25.5, -4, 14.1)))
+        ledge = Part.makeBox(3, 3, 0.4, App.Vector(-1.5, -4, -1.3))
+        ledge.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
+            ledge.Placement
+        )
+        self.assertGreater(ledge.common(world_shape(doc.OpticalMountBase)).Volume, 0)
+        plate.Shape = original.fuse(ledge)
         result = _carrier_interface_checks(doc)
         self.assertFalse(result["passed"], result)
         insertion = next(

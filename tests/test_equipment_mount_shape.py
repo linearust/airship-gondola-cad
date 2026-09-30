@@ -15,7 +15,7 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentMountShapeTests(unittest.TestCase):
-    def test_all_carriers_clear_the_rail_in_both_clamped_lateral_poses(self):
+    def test_all_carriers_clear_the_indexed_rail_at_their_saved_stations(self):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts as mounts
         from gondola.parts import rail
@@ -29,16 +29,15 @@ class EquipmentMountShapeTests(unittest.TestCase):
             ("accessory", "AccessoryEquipmentModule"),
         ):
             station = stations[name]
-            for side in (-1, 1):
-                pose = App.Placement(
-                    App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
-                    App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
-                )
-                body = mounts.mount_shape(kind).copy()
-                body.Placement = pose.multiply(body.Placement)
-                with self.subTest(kind=kind, clamped_side=side):
-                    self.assertLess(intersection_volume(body, rail_shape), 1e-6)
-        # The accessory plate is above the rail and supported by its integral shoe.
+            pose = App.Placement(
+                App.Vector(station.x_mm, 0, 0),
+                App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+            )
+            body = mounts.mount_shape(kind).copy()
+            body.Placement = pose.multiply(body.Placement)
+            with self.subTest(kind=kind):
+                self.assertLess(intersection_volume(body, rail_shape), 1e-6)
+        # The accessory plate is above the rail and supported by its integral base.
         local = mounts.mount_shape("accessory")
         plate = local.common(
             Part.makeBox(
@@ -49,7 +48,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             )
         )
         self.assertAlmostEqual(plate.BoundBox.ZMin, mounts.DECK_BOTTOM_Z)
-        self.assertGreaterEqual(plate.BoundBox.ZMin - rail.HEAD_TOP, 1.8 - 1e-6)
+        self.assertGreaterEqual(plate.BoundBox.ZMin - rail.WEB_TOP_Z, 1.8 - 1e-6)
 
     def test_every_carrier_is_the_same_single_solid_without_projecting_tabs(self):
         from gondola.parts import equipment_mounts as mounts
@@ -123,87 +122,37 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     )
                 )
 
-    def test_round_support_changes_only_the_declared_centre_pocket_and_bore(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.parts import rail
-
-        # Independently specified new void; retain every other part of the
-        # original round support and rail shoe, including both clamp seats.
-        radius = 4.15 / math.sqrt(3)
-        vertices = [
-            App.Vector(
-                radius * math.cos(math.radians(a)),
-                radius * math.sin(math.radians(a)),
-                10,
-            )
-            for a in range(0, 360, 60)
-        ]
-        pocket = Part.Face(Part.makePolygon(vertices + [vertices[0]])).extrude(
-            App.Vector(0, 0, 2.4)
-        )
-        pocket = pocket.fuse(Part.makeBox(12, 4.15, 2.4, App.Vector(-12, -2.075, 10)))
-        bore = Part.makeCylinder(1.3, 4, App.Vector(0, 0, 12.4))
-        support = Part.makeCylinder(8.5, 2.6, App.Vector(0, 0, 10.8)).cut(
-            pocket.fuse(bore)
-        )
-        support_band = Part.makeBox(64, 64, 2.6, App.Vector(-32, -32, 10.8))
-        shoe_band = Part.makeBox(64, 64, 10.8, App.Vector(-32, -32, 0))
-        expected_shoe = rail.shoe_shape().cut(pocket)
-        for kind in mounts.MOUNT_NAMES:
-            shape = mounts.mount_shape(kind)
-            with self.subTest(kind=kind):
-                actual = shape.common(support_band)
-                self.assertLess(abs(support.cut(actual).Volume), 1e-6)
-                self.assertLess(abs(actual.cut(support).Volume), 1e-6)
-                shoe = shape.common(shoe_band)
-                self.assertLess(abs(shoe.cut(expected_shoe).Volume), 1e-6)
-                self.assertLess(abs(expected_shoe.cut(shoe).Volume), 1e-6)
-        contract = mounts.common_plate_contract()["central_support"]
-        self.assertEqual(contract["diameter_mm"], 17.0)
-        self.assertAlmostEqual(contract["height_mm"], 2.6)
-        self.assertEqual(contract["z_range_mm"], (10.8, 13.4))
-
-    def test_centre_nut_loads_continuously_above_the_rail_with_a_solid_floor(self):
+    def test_two_short_supports_leave_the_spare_centre_mount_open(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_centre_mount_check
 
         for kind in mounts.MOUNT_NAMES:
             result = carrier_centre_mount_check(mounts.mount_shape(kind))
             self.assertTrue(result["passed"], result)
-            self.assertIn("face-prism", result["continuous_nut_loading_method"])
-            self.assertAlmostEqual(
-                result["optional_screw_to_continuous_rail_head_bound_mm"], 2.0
-            )
+            self.assertAlmostEqual(result["under_deck_gap_mm"], 2.6)
+            self.assertAlmostEqual(result["bare_deck_tip_to_roof_mm"], 0.6)
         contract = mounts.centre_mount_contract()
-        self.assertEqual(contract["bare_plate_example_screw_length_mm"], 5)
-        self.assertAlmostEqual(contract["bare_plate_example_tip_to_floor_mm"], 0.4)
-        self.assertAlmostEqual(
-            contract["maximum_geometric_penetration_below_deck_top_mm"], 5.4
-        )
+        self.assertTrue(contract["available_as_spare_accessory_mount"])
+        self.assertFalse(contract["carrier_nut_pocket"])
+        self.assertEqual(mounts.SUPPORT_FACE_Z, 16.0)
 
-    def test_centre_interface_rejects_blocked_loading_bore_and_missing_floor_or_seat(
-        self,
-    ):
+    def test_centre_interface_rejects_blockage_or_missing_support(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_centre_mount_check
 
         original = mounts.mount_shape("battery")
         cases = (
             (
-                original.fuse(Part.makeCylinder(0.2, 2.4, App.Vector(-7, 0, 10))),
-                "continuous_nut_loading_obstruction_mm3",
+                original.fuse(Part.makeCylinder(1.5, 2, App.Vector(0, 0, 14))),
+                "through_bore_obstruction_mm3",
             ),
             (
-                original.fuse(Part.makeCylinder(1.5, 2, App.Vector(0, 0, 13.4))),
-                "optional_screw_obstruction_mm3",
+                original.fuse(Part.makeBox(6, 1, 2.6, App.Vector(-3, 0, 11.4))),
+                "under_deck_access_obstruction_mm3",
             ),
             (
-                original.cut(Part.makeCylinder(0.2, 2, App.Vector(0, 0, 8.5))),
-                "missing_1_5mm_solid_floor_mm3",
-            ),
-            (
-                original.cut(Part.makeCylinder(0.2, 3, App.Vector(2, 0, 12.4))),
-                "missing_nut_seat_and_roof_mm3",
+                original.cut(Part.makeCylinder(0.3, 2.6, App.Vector(5, 0, 11.4))),
+                "missing_rectangular_supports_mm3",
             ),
         )
         for shape, key in cases:
@@ -211,45 +160,6 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 report = carrier_centre_mount_check(shape)
                 self.assertFalse(report["passed"], report)
                 self.assertGreater(report[key], 0.01)
-
-    def test_centre_bolt_length_cannot_consume_the_blind_floor(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.parts import purchased_hardware
-
-        shape = mounts.mount_shape("battery")
-        for length, clear in ((5, True), (6, False)):
-            bolt = purchased_hardware.screw_shape(length).copy()
-            bolt.rotate(App.Vector(), App.Vector(1, 0, 0), 180)
-            bolt.translate(App.Vector(0, 0, 15.4))
-            self.assertEqual(bolt.common(shape).Volume < 1e-6, clear)
-        # These are spare-interface envelopes, not installed baseline hardware.
-        self.assertIn(
-            "absent from baseline BOM",
-            mounts.centre_mount_contract()["optional_fastener"],
-        )
-
-    def test_carrier_keeps_continuous_nut_loading_and_clamp_release_open(self):
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.parts import rail
-        from gondola.validation.geometry import translation_sweep
-
-        carrier = mounts.mount_shape("battery")
-        # Fill the nut bore for an exact planar sweep containing the whole nut.
-        nut = rail.hex_along_y(
-            rail.NUT_AF,
-            rail.NUT_POCKET_Y + rail.NUT_POCKET_DEPTH - rail.NUT_THICKNESS,
-            rail.NUT_THICKNESS,
-        )
-        for side in (-1, 1):
-            transform = rail.half_turn if side < 0 else lambda shape: shape
-            for hardware, travel in (
-                (nut, (side * 24, 0, 0)),
-                (rail.clamp_screw_shape(), (0, side * rail.RELEASE_TRAVEL, 0)),
-            ):
-                with self.subTest(side=side, travel=travel):
-                    sweep, method = translation_sweep(transform(hardware), travel)
-                    self.assertIn("face-prism", method)
-                    self.assertLess(abs(sweep.common(carrier).Volume), 1e-6)
 
     def test_all_roles_keep_a_full_common_deck_and_all_shared_holes(self):
         from gondola.parts import equipment_mounts as mounts
@@ -296,7 +206,9 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 with self.subTest(kind=kind, centre=slot.BoundBox.Center):
                     self.assertLess(abs(slot.common(shape).Volume), 1e-6)
                     self.assertLess(abs(outer.cut(slot).cut(shape).Volume), 1e-6)
-                    self.assertLess(abs(slot.common(rail.shoe_shape()).Volume), 1e-6)
+                    self.assertLess(
+                        abs(slot.common(rail.mount_base_shape()).Volume), 1e-6
+                    )
 
     def test_battery_keeps_four_continuous_adhesive_regions(self):
         from gondola.parts import equipment_mounts as mounts
@@ -353,7 +265,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             self.assertEqual(contract["fixed_bore_count"], 5)
             self.assertEqual(contract["slot_count"], 24)
 
-    def test_m2_slot_screws_clear_shoe_and_rail_over_the_whole_straight_path(self):
+    def test_m2_slot_screws_clear_base_and_rail_over_the_whole_straight_path(self):
         from gondola.contracts import fasteners
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts as mounts
@@ -365,7 +277,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             station = stations[kind.capitalize() + "EquipmentModule"]
             carrier = mounts.mount_shape(kind)
             # Exclude the intended head-to-deck bearing contact to measure
-            # clearance from the actual shoe and its integral riser instead.
+            # clearance from the actual base and its integral riser instead.
             underdeck = carrier.common(
                 Part.makeBox(
                     100,
@@ -401,16 +313,15 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 with self.subTest(kind=kind, slot=row["name"]):
                     self.assertLess(sweep.common(carrier).Volume, 1e-6)
                     self.assertGreaterEqual(head.distToShape(underdeck)[0], 0.4)
-                for side in (-1, 1):
-                    placed = sweep.copy()
-                    placed.Placement = App.Placement(
-                        App.Vector(station.x_mm, side * rail.CLAMP_SHIFT_Y, 0),
-                        App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
-                    ).multiply(placed.Placement)
-                    with self.subTest(kind=kind, slot=row["name"], approach=side):
-                        self.assertGreaterEqual(
-                            placed.distToShape(rail_shape)[0], 1.0 - 1e-6
-                        )
+                placed = sweep.copy()
+                placed.Placement = App.Placement(
+                    App.Vector(station.x_mm, 0, 0),
+                    App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+                ).multiply(placed.Placement)
+                with self.subTest(kind=kind, slot=row["name"]):
+                    self.assertGreaterEqual(
+                        placed.distToShape(rail_shape)[0], 1.0 - 1e-6
+                    )
 
     def test_shared_adhesive_patches_are_intact_and_clear_pas_holes(self):
         from gondola.parts import equipment_mounts as mounts
@@ -485,36 +396,14 @@ class EquipmentMountShapeTests(unittest.TestCase):
         wrong_sweep, _ = translation_sweep(body, tuple(-travel))
         self.assertGreater(wrong_sweep.common(support).Volume, 100)
 
-    def test_radio_keeps_both_rail_clamp_tool_approaches_open(self):
+    def test_radio_leaves_both_transverse_driver_approaches_clear(self):
         from gondola.parts import equipment_envelopes as devices
-        from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.rail_access import rail_key_service_check
 
-        body = devices.radio_envelope_shape()
-        self.assertEqual(mounts.RADIO_CENTRE_XY, (26.0, -11.0))
-        for side in (-1, 1):
-            with self.subTest(approach_side=side):
-                correct = rail_key_service_check(
-                    {"carrier": mounts.mount_shape("accessory"), "radio": body},
-                    side=side,
-                    inserted_leg="long",
-                )
-                self.assertTrue(correct["passed"], correct)
-                # The earlier +/-Y location blocks whichever clamp approaches
-                # from that side. Both ports must remain usable, not just the
-                # default port in the saved assembly.
-                blocked_body = body.copy()
-                blocked_body.Placement = App.Placement(
-                    App.Vector(
-                        0, side * 26, mounts.DECK_BOTTOM_Z - mounts.ADHESIVE_ALLOWANCE
-                    ),
-                    App.Rotation(App.Vector(1, 0, 0), 180),
-                )
-                blocked = rail_key_service_check(
-                    {"radio": blocked_body}, side=side, inserted_leg="long"
-                )
-                self.assertFalse(blocked["passed"])
-                self.assertTrue(blocked["collisions"])
+        for sign in (-1, 1):
+            access = Part.makeCylinder(
+                2, 60, App.Vector(0, sign * 4, 6.5), App.Vector(0, sign, 0)
+            )
+            self.assertLess(access.common(devices.radio_envelope_shape()).Volume, 1e-6)
 
     def test_every_carrier_preserves_fc_and_published_pas_hole_patterns(self):
         from gondola.contracts import equipment_interfaces as interfaces
@@ -523,7 +412,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
         for kind in mounts.MOUNT_NAMES:
             shape = mounts.mount_shape(kind)
-            for centre in mounts.COMMON_DEVICE_HOLE_CENTRES:
+            for centre in mounts.FC_HOLE_CENTRES:
                 check = mounting_pad_check(
                     shape,
                     centre,
@@ -594,7 +483,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
         self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 24))
-        for centre in mounts.COMMON_DEVICE_HOLE_CENTRES:
+        for centre in mounts.COMMON_FIXED_HOLE_CENTRES:
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(
                     1.5,
@@ -612,7 +501,11 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 notch = Part.makeCylinder(
                     0.2,
                     mounts.DECK_THICKNESS,
-                    App.Vector(centre[0] + 2, centre[1], mounts.DECK_BOTTOM_Z),
+                    App.Vector(
+                        centre[0] + 2.0,
+                        centre[1],
+                        mounts.DECK_BOTTOM_Z,
+                    ),
                 )
                 missing = carrier_opening_checks(original.cut(notch))
                 self.assertFalse(missing["passed"])
@@ -720,7 +613,7 @@ class FCInstallationTests(unittest.TestCase):
         )
         self.doc.recompute()
 
-    def test_print_metadata_uses_one_sku_without_claiming_half_turn_symmetry(self):
+    def test_print_metadata_uses_one_sku_and_half_turn_symmetric_base(self):
         from gondola.parts import equipment_mounts as mounts
 
         for kind, name in mounts.MOUNT_NAMES.items():
@@ -729,8 +622,8 @@ class FCInstallationTests(unittest.TestCase):
             self.assertEqual(obj.MountKind, kind)
             self.assertFalse(obj.HalfTurnSymmetric)
             contract = json.loads(obj.MountContract)
-            self.assertEqual(len(contract["physical_device_hole_centres_xy_mm"]), 5)
-            self.assertIn([0.0, 0.0], contract["physical_device_hole_centres_xy_mm"])
+            self.assertEqual(len(contract["physical_fixed_hole_centres_xy_mm"]), 5)
+            self.assertIn([0.0, 0.0], contract["physical_fixed_hole_centres_xy_mm"])
             self.assertEqual(contract["common_plate"]["fixed_fc_bore_count"], 4)
             self.assertEqual(
                 contract["mount_hole_centres_xy_mm"],

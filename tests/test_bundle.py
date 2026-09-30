@@ -202,7 +202,7 @@ class BundleIntegrityTests(unittest.TestCase):
                 bundle.EXPECTED_INVENTORY["unique_print_files"] + 1,
             )
             self.assertNotIn("obsolete.stl", names)
-            self.assertIn("optional_power/optional_power_mount.stl", names)
+            self.assertIn("optional_power/" + bundle.POWER_ARTIFACT_NAMES[1], names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(
                 zipped.read("validation/baseline.json"), self.baseline_path.read_bytes()
@@ -217,7 +217,7 @@ class BundleIntegrityTests(unittest.TestCase):
                 self.assertEqual(sha256_bytes(zipped.read(name)), expected)
 
     def test_optional_power_cannot_bypass_artifact_or_source_checks(self):
-        path = self.output / "optional_power_mount.stl"
+        path = self.output / bundle.POWER_ARTIFACT_NAMES[1]
         original = path.read_bytes()
         path.write_bytes(b"changed optional shape")
         with self.assertRaisesRegex(RuntimeError, "altered optional power"):

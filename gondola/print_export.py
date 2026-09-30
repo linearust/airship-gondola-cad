@@ -6,12 +6,12 @@ from its local part geometry, never from equipment or hardware envelopes.
 
 import json
 import math
-import re
 from pathlib import Path
 
 import FreeCAD as App
 import MeshPart
 
+from .cad import set_print_sku, set_property
 from .config import ARTIFACT_SCHEMA_VERSION
 from .contracts.design import (
     MANUFACTURING_DECISION,
@@ -19,6 +19,14 @@ from .contracts.design import (
     PUBLISHED_PROCESS_SIZE_MM,
     RAIL_LENGTH_MM,
     release_status,
+)
+from .print_materials import (
+    PRINT_METADATA,
+    PRINT_PROCESS_DESCRIPTION,
+    print_filename,
+    print_label,
+    print_metadata_matches,
+    print_specification,
 )
 from .provenance import file_sha256, source_fingerprint
 
@@ -28,7 +36,6 @@ MESH_PARAMETERS = {
     "relative": False,
 }
 SIZE_NUMERICAL_TOLERANCE_MM = 1e-5
-PRINT_PROCESS_DESCRIPTION = "PA12 SLS/MJF; process agreement pending"
 
 
 def _valid_dimensions(dimensions):
@@ -379,6 +386,17 @@ def print_entry_inventory_check(entry, installed, coupons):
     }
 
 
+def print_entry_manufacturing_check(entry, instances):
+    """Reject stale order labels/specifications independently of geometry."""
+    return (
+        entry.get("manufacturing") == print_specification()
+        and entry.get("file") == print_filename(entry["sku"], "stl")
+        and entry.get("step_file") == print_filename(entry["sku"], "step")
+        and bool(instances)
+        and all(print_metadata_matches(obj) for obj in instances)
+    )
+
+
 def export_print_parts(assembly, installed, coupons, out, stem):
     """Export one STL/STEP per verified print SKU and record all quantities."""
     out = Path(out)
@@ -395,7 +413,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         buckets.setdefault(str(getattr(obj, "PrintSKU", obj.Name)), []).append(obj)
 
     layout = App.newDocument("GondolaPrintParts")
-    layout.Label = "PA12 SLS/MJF individual print files and quantities"
+    layout.Label = print_label("Individual print files and quantities")
     entries = []
     x = y = row_depth = 0
     for sku, instances in buckets.items():
@@ -435,10 +453,11 @@ def export_print_parts(assembly, installed, coupons, out, stem):
                 + sku
                 + str({"geometry": checks, "size": size_checks})
             )
+        if not all(print_metadata_matches(part) for part in instances):
+            raise RuntimeError("Missing or inconsistent print specification: " + sku)
 
-        file_stem = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", sku).lower()
-        filename = file_stem + ".stl"
-        step_filename = file_stem + ".step"
+        filename = print_filename(sku, "stl")
+        step_filename = print_filename(sku, "step")
         mesh.write(str(folder / filename))
         shape.exportStep(str(folder / step_filename))
         # The native overview is for inspection, not a nested machine job.
@@ -448,14 +467,31 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         view_shape.translate(App.Vector(x - bounds.XMin, y - bounds.YMin, 0))
         item = layout.addObject("Part::Feature", sku)
         item.Shape = view_shape
+        set_property(item, "PrintPart", True, "App::PropertyBool", "Printing")
+        set_print_sku(item, sku)
+        for key in PRINT_METADATA:
+            set_property(item, key, str(getattr(obj, key)), group="Printing")
+        set_property(
+            item,
+            "Role",
+            "Manufacturing overview; one printable SKU, quantity recorded separately",
+        )
+        set_property(
+            item,
+            "SourceObjectNames",
+            [part.Name for part in instances],
+            "App::PropertyStringList",
+            "Manufacturing",
+        )
         installed_quantity = sum(part in installed for part in instances)
         coupon_quantity = sum(part in coupons for part in instances)
-        item.Label = (
+        item.Label = print_label(
             f"{sku} | installed {installed_quantity} + sample {coupon_quantity}"
         )
         for key, value in [
             ("Quantity", len(instances)),
             ("InstalledQuantity", installed_quantity),
+            ("CouponQuantity", coupon_quantity),
         ]:
             item.addProperty("App::PropertyInteger", key, "Manufacturing")
             setattr(item, key, value)
@@ -466,6 +502,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         entries.append(
             {
                 "sku": sku,
+                "manufacturing": print_specification(),
                 "file": filename,
                 "file_sha256": file_sha256(folder / filename),
                 "step_file": step_filename,
@@ -501,6 +538,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         "units": "mm",
         "export_origin": "XY exact bounding-box centre; Z minimum zero. The native overview is separately arranged in positive XY.",
         "process": PRINT_PROCESS_DESCRIPTION,
+        "manufacturing": print_specification(),
         "manufacturing_decision": MANUFACTURING_DECISION,
         "manufacturing_release_status": "CAD checks do not qualify manufacture or physical interfaces; see release_status for every unresolved interface.",
         "release_status": release_status(),

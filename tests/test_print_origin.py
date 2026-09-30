@@ -23,11 +23,18 @@ class PrintOriginTests(unittest.TestCase):
             App.closeDocument(name)
 
     def part(self, name, shape, angle=0):
-        obj = self.doc.addObject("Part::Feature", name)
-        obj.Shape = shape
-        obj.addProperty("App::PropertyRotation", "PrintRotation")
-        obj.PrintRotation = App.Rotation(App.Vector(0, 0, 1), angle)
-        return obj
+        from gondola.cad import create_printed_part
+
+        parent = self.doc.addObject("App::Part", name + "Module")
+        return create_printed_part(
+            self.doc,
+            parent,
+            name,
+            name,
+            shape,
+            App.Rotation(App.Vector(0, 0, 1), angle),
+            "Test print",
+        )
 
     def test_export_centres_xy_and_seats_z_without_mutating_native_part(self):
         from gondola.print_export import print_shape

@@ -165,7 +165,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         for name, point in (
             ("positive_outer_seat", (6, 15, 11.3)),
             ("negative_outer_seat", (-8, -17, 11.3)),
-            ("central_bulkhead_support", (-2, -2, 11.3)),
+            ("central_bulkhead_support", (-7, -7, 11.3)),
         ):
             with self.subTest(contact=name):
                 try:

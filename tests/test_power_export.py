@@ -107,6 +107,16 @@ class SavedPowerExportTests(unittest.TestCase):
             self.assertTrue(initial["manufacturing_source_matches"])
             self.assertTrue(initial["optional_print_inventory_matches"])
             manufacture = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
+            self.assertTrue(manufacture.PowerPlatform.PrintPart)
+            self.assertEqual(manufacture.PowerPlatform.PrintSKU, "PowerPlatform")
+            manufacture.PowerPlatform.PrintSKU = "WrongSKU"
+            manufacture.save()
+            App.closeDocument(manufacture.Name)
+            wrong_sku = audit_power_options(source, out)
+            self.assertFalse(wrong_sku["passed"])
+            self.assertFalse(wrong_sku["manufacturing_source_matches"])
+            manufacture = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
+            manufacture.PowerPlatform.PrintSKU = "PowerPlatform"
             manufacture.PowerPrintSource.SourceFingerprint = "b" * 64
             manufacture.save()
             App.closeDocument(manufacture.Name)

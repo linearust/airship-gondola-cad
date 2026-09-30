@@ -10,6 +10,8 @@ from unittest.mock import patch
 try:
     import FreeCAD as App
     import Part
+
+    from gondola.parts import mounting_plate
 except ImportError:
     App = Part = None
 
@@ -40,6 +42,7 @@ class PowerMountTests(unittest.TestCase):
             thickness=p.DECK_THICKNESS_MM,
             through_bottom=0,
             through_depth=p.SUPPORT_Z,
+            centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         self.assertTrue(report["passed"], report)
         self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 24))
@@ -66,7 +69,10 @@ class PowerMountTests(unittest.TestCase):
         self.assertTrue(changed.isValid())
         self.assertEqual(len(changed.Solids), 1)
         deck_only = carrier_opening_checks(
-            changed, bottom=p.DECK_BOTTOM_Z, thickness=p.DECK_THICKNESS_MM
+            changed,
+            bottom=p.DECK_BOTTOM_Z,
+            thickness=p.DECK_THICKNESS_MM,
+            centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         self.assertTrue(deck_only["passed"], deck_only)
         full = carrier_opening_checks(
@@ -75,6 +81,7 @@ class PowerMountTests(unittest.TestCase):
             thickness=p.DECK_THICKNESS_MM,
             through_bottom=0,
             through_depth=p.SUPPORT_Z,
+            centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         self.assertFalse(full["passed"])
         rejected = next(

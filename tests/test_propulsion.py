@@ -791,31 +791,39 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(metrics["output_face_width_mm"], 5.0)
         self.assertEqual(metrics["nominal_full_face_overlap_mm"], 3.0)
 
-    def test_rail_key_clears_complete_fixed_module_on_both_sides(self):
-        from gondola.validation.propulsion import rail_key_access_check
+    def test_side_rail_mount_access_preserves_the_complete_servo_module(self):
+        from gondola.validation.propulsion import rail_mount_clearance_check
 
-        rows = rail_key_access_check(self.doc, self.module)
-        self.assertEqual(
-            {row["approach_side_y"] for row in rows},
-            {1, -1},
-        )
-        for row in rows:
-            self.assertTrue(row["passed"], row)
-            for name in ("PropulsionFixedFrame", "StarboardDriverGear", "PortServo"):
-                self.assertIn(name, row["checked_objects"])
+        row = rail_mount_clearance_check(self.doc, self.module)
+        self.assertTrue(row["passed"], row)
+        self.assertEqual(row["removed_before_access"], [])
+        for name in (
+            "ServoDriveBridge",
+            "StarboardDriverGear",
+            "PortServo",
+            "PortOutputGear",
+            "PropulsionFixedFrame",
+        ):
+            self.assertIn(name, row["retained_during_access"])
+        self.assertEqual(row["side_bolt_axis_mm"], [12.5, 6.5])
+        self.assertEqual(row["contact_x_range_mm"], [-3.5, 28.5])
 
-    def test_new_frame_obstacle_cannot_hide_from_whole_module_key_check(self):
-        from gondola.validation.propulsion import rail_key_access_check
+    def test_new_frame_obstacle_cannot_hide_from_side_rail_access(self):
+        from gondola.parts import rail
+        from gondola.validation.propulsion import rail_mount_clearance_check
 
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
         try:
-            frame.Shape = original.fuse(Part.makeBox(4, 2, 3, App.Vector(-2, 19, 5)))
+            obstruction = Part.makeBox(
+                8, 0.5, 4.5, App.Vector(7, -8, rail.BOLT_AXIS_Z - 2.25)
+            )
+            frame.Shape = original.fuse(obstruction)
             self.doc.recompute()
-            rows = rail_key_access_check(self.doc, self.module)
-            self.assertFalse(rows[0]["passed"], rows)
-            self.assertIn(
-                "PropulsionFixedFrame", {hit["part"] for hit in rows[0]["collisions"]}
+            row = rail_mount_clearance_check(self.doc, self.module)
+            self.assertFalse(row["passed"], row)
+            self.assertGreater(
+                row["driver_clearance_overlap_mm3"]["PropulsionFixedFrame"], 0
             )
         finally:
             frame.Shape = original
@@ -1468,7 +1476,7 @@ class SelectedGearDriveTests(unittest.TestCase):
         from gondola.validation.propulsion import (
             drive_motion_check,
             fixed_servo_datum_check,
-            rail_key_access_check,
+            rail_mount_clearance_check,
             servo_mount_check,
         )
 
@@ -1489,8 +1497,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                     ):
                         result = check(doc, prefix)
                         self.assertTrue(result["passed"], result)
-            for row in rail_key_access_check(doc, module):
-                self.assertTrue(row["passed"], (key, row))
+            row = rail_mount_clearance_check(doc, module)
+            self.assertTrue(row["passed"], (key, row))
 
     def test_servo_and_adapter_have_checked_removal_paths(self):
         from gondola.parts import servo_coupling as coupling

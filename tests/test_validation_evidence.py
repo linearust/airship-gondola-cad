@@ -117,7 +117,7 @@ class PropulsionEvidenceTests(unittest.TestCase):
     def test_complete_evidence_passes_with_contract_counts(self):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["inventory"]["continuous_nut_loading"]["expected"], 2)
+        self.assertEqual(result["inventory"]["rail_mount_clearance"]["expected"], 1)
         self.assertEqual(result["inventory"]["fastener_service"]["expected"], 18)
         self.assertEqual(result["inventory"]["geometry"]["expected"], 10)
         self.assertEqual(result["inventory"]["bridge_joint"]["expected"], 1)
@@ -160,10 +160,10 @@ class PropulsionEvidenceTests(unittest.TestCase):
         for rows in (None, {}, "two rows", [{"passed": True}, None]):
             with self.subTest(rows=rows):
                 report = self.complete_report()
-                report["continuous_nut_loading"] = rows
+                report["rail_mount_clearance"] = rows
                 self.assertFalse(propulsion_evidence_check(report)["passed"])
         report = self.complete_report()
-        del report["continuous_nut_loading"]
+        del report["rail_mount_clearance"]
         self.assertFalse(propulsion_evidence_check(report)["passed"])
 
     def test_successful_geometry_row_does_not_hide_invalid_solid_or_mesh(self):

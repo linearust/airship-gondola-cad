@@ -4,6 +4,7 @@ Part geometry belongs to gondola/parts; published interface dimensions belong to
 the other contract modules. Geometric test success never changes release status.
 """
 
+import math
 from collections import Counter
 from dataclasses import asdict, dataclass
 
@@ -24,7 +25,7 @@ from .servo_horns import SELECTED_BY_SIDE
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BM"
+DESIGN_REVISION = "BN"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -42,7 +43,7 @@ STACK_ANCHOR_LOCATIONS = (
 )
 PUBLISHED_PROCESS_SIZE_MM = {"SLS": [340, 340, 600], "MJF": [380, 380, 280]}
 MANUFACTURING_DECISION = {
-    "reviewed_on": "2026-09-29",
+    "reviewed_on": "2026-09-30",
     "supplier": "Creallo",
     "material": "Unfilled PA12 design basis; supplier grade/process/finish agreement pending. Do not substitute fibre-filled grades without redesign and renewed flexure qualification.",
     "preferred_process": None,
@@ -53,10 +54,10 @@ MANUFACTURING_DECISION = {
     "rationale": "PA12 is Creallo's documented functional powder-bed nylon and suits open integral supports and the rail flexure trial. Neither SLS nor MJF is established as superior for this assembly; choose with the supplier using fit, stiffness, straightness and mass requirements. A material/process change requires renewed fit and flexure qualification.",
     "supplier_process_policy": "Creallo integrates SLS/MJF quotations and selects the process unless separately agreed. No process is preselected here. Confirm the actual PA12 grade, process and finish before printing matched coupons and full parts.",
     "size_guide_scope": "Published maximum fabrication sizes include split-and-join manufacture. They are screening bounds, not guaranteed one-piece machine capacity or acceptance.",
-    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and sliding fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
+    "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and seated mounting fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": RAIL_BASE_THICKNESS_MM,
-    "flexure_exception": "The rail base and tape wings use the user-reported manufacturing-review minimum of 1.5 mm nominal. The narrow base remains a functional flexure, not a generic broad plate; actual thickness, full-length curvature, tape retention and fatigue remain unqualified. The unchanged head/web reliefs do not cancel the added base stiffness.",
+    "flexure_exception": "The rail base and tape wings use the user-reported manufacturing-review minimum of 1.5 mm nominal. The narrow base remains a functional flexure, not a generic broad plate; actual thickness, full-length curvature, tape retention and fatigue remain unqualified. Gaps between slotted walls permit bending without thinning the base:6mm beside the longer central wall and12mm elsewhere. The reinforced centre preserves the broad propulsion support and FC wiring distance. This does not establish whole-rail stiffness or a qualified bend radius.",
     "dfam_basis": "Prefer simple integral load-bearing sections and accessible through-features. Retain openings for assembly, wiring or motion; omit lightening windows that leave fragile narrow ligaments for negligible system-level benefit. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
@@ -71,8 +72,8 @@ MANUFACTURING_DECISION = {
 # Retained splits have assembly, motion or requested replacement functions.
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
-    "fc_and_accessory_carriers": "Keep the FC close to the neutral motor-lead exits. Battery, FC and navigation use three identical universal carriers with a 64 mm rounded square outline and a quarter-turn-symmetric shared bore/slot array. The navigation carrier supports navigation on its outer face and LR24-F-Mini on its rail-facing face outboard of the shoe, without a projecting utility tab. The FC and navigation carriers remain within the electronics mass region and slide independently for cable access and trim. Each carrier integrates its own rail shoe and a broad circular deck support; the added rail clamp is required for independent position retention. Preserve the spare-slot head paths below the deck. Actual balloon clearance, installed cable reach, antenna clearance, adhesive retention and mass balance remain unverified.",
-    "rail_and_carriers": "Carriers slide for trim and detach for assembly; each shoe is integral with its equipment deck or common propulsion frame. Match the close-running T-head width and height with the existing rail/shoe coupons before printing the complete carriers. The fit should move with deliberate hand pressure without perceptible rocking or free sliding; raw print tolerance cannot guarantee that acceptance. Keep the web relieved rather than creating a competing tight datum. The rail geometry defines the paired tape-wing pattern; use saved tape/module positions to assess each load route rather than assuming centred support. Preserve the manufacturing thickness requirement. Straight-coupon fit does not qualify sliding on the curved installed rail, support stiffness or adhesive retention; recheck after trim. The existing M2 clamp remains additional position retention against the solid head; verify actual screw-tip bearing and PA12 creep. Geometry alone does not establish insertion or holding force. Preserve checked L-key access without piercing the bearing posts.",
+    "fc_and_accessory_carriers": "Three identical square carriers have one flat L support and an accessible transverse M2 pair. Retain standard device slots, a usable central mounting hole, FC underbody wiring space, interchangeable navigation and the optical head. Side access permits rail adjustment without removing the carried device. Actual fastener contact, adhesion and retention need physical checks.",
+    "rail_and_carriers": "One flexible rail has three paired tape wings and slotted vertical wall segments. Thin underside adhesive distributes local loads; optional over-wing tape reinforces attachment. Each integral L mount seats on the wall top and against one side; an exposed M2x8 screw/nut pair clamps broad surfaces without bending opposed ears. Loosen to trim continuously within one supported slot; remove the bolt before moving between segments or lifting the loaded module. Slot limits keep the complete contact foot on a wall. No printed threads, T undercuts, captive pockets or operating looseness. Keep the1.5mm base and qualify actual curved support, friction, creep and adhesion.",
     "servo_bridge_and_frame": "Both servos and complete input drives leave as one bench-service module after removing the two small output gears and two M2 mount pairs. Output shafts, captured bearings and motor carriers stay installed. Both servo windows share one thick central upright, directly supported through the central bridge plate by the frame's broad central seat. Two broad straight arms join its outer mounting feet while unused side regions remain open. Both outboard seats and the central seat share one Z plane; the bridge underside is flat across these contacts. Unilateral X/Y datums locate it, and two existing M2x8 pairs clamp its plain 2 mm plate without head counterbores. Check the common seating plane for flatness; do not pull a warped part into contact with its screws.",
     "bearings_and_frame": "Retain the four purchased generic 3x6x2.5 bearings for this iteration. Each rotor has two bearings at 70 mm centre spacing and 10 mm shaft grips; driven/idler rods remain 34/20 mm. A fixed round seat and integral rear shoulder locate each bearing; one identical removable front keeper per bearing uses one M2x6 screw and ordinary M2 nut. Broad pocket guides prevent keeper rotation. Tighten the keeper against its frame seat, not the bearing; no radial clamp or bearing preload is intended. The nominal diameter6.1 seat has a continuous bore across the full bearing width and requires process-matched coupon fit/finishing; reject radial rocking. The diameter5.6 keeper opening and0.5mm inward float require actual outer-ring/shield and axial-fit checks. Keeper fronts preserve the separate nominal +/-0.5mm carrier stops. Remove the carrier and shafts before bearing service; no latch deflection or two-blade release is required. No bought bearing spacers, push-on rings or replacement bearings. This is not a multiple-size housing; two bearings do not eliminate overhang bending or fit sensitivity.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier integrates the motor plate, guard, struts and shaft clamps. The selected carrier remains for 40 mm propellers, with a 50 mm outside / 46 mm inside guard. A separately checked symmetric replacement-rotor space allowance supports planning for a future 50 mm propeller carrier; it does not establish unknown motor, propeller, mounting, wiring or thrust compatibility. Replace the carrier rather than fitting a 50 mm blade into the present guard.",
@@ -215,11 +216,11 @@ EXPECTED_INVENTORY = {
 # and assembled sensor/controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
-    "layout": "Three main mass regions use four equipment/propulsion rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The optical head attaches to an existing universal carrier and follows that carrier. The electronics region comprises independent FC and navigation carriers of the same print used by the battery; the Mini uses the rail-facing side of the navigation plate outside the shoe.",
-    "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Reposition the battery carrier for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
+    "layout": "Three main mass regions use four equipment/propulsion rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The optical head attaches to an existing universal carrier and follows that carrier. The electronics region comprises independent FC and navigation carriers of the same print used by the battery; the Mini uses the rail-facing side of the navigation plate outside the central saddle.",
+    "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Adjust the battery carrier within its supported slot or relocate it to another wall segment for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
     "electronics": "Place the universal FC carrier behind the neutral motors and the identical navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
-    "optical": "One MTF-02P or MTF-01P shares the adhesive tray on a carrier-mounted manual pitch head. Default is the battery carrier positive-X edge, with 35 mm global pivot height. Relocation requires complete optical-view, service, power and navigation checks; a common slot interface does not qualify every host or edge.",
-    "service": "Keep the paired servo/input-drive module removable from the propulsion/output frame. Disconnect external harnesses before changing module stations or removing modules.",
+    "optical": "One MTF-02P or MTF-01P shares the adhesive tray on a carrier-mounted manual pitch head. Default is the battery carrier positive-X edge, at the height derived from the selected carrier and optical foot. Relocation requires complete optical-view, service, power and navigation checks; a common slot interface does not qualify every host or edge.",
+    "service": "Disconnect external harnesses. Hold the exposed rail nut, loosen the side bolt for local CG trim, or withdraw the bolt and remove the nut to lift the populated module. Equipment need not be removed for rail access. Validate both tool access and complete screw/nut extraction against the installed neighbours; a shared slot does not make all equipment arrangements serviceable.",
 }
 
 
@@ -278,7 +279,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
         },
         "pinout_rule": "Family/pin count does not establish pin order, voltage or a straight-through cable. Match the official device pinouts, supply requirements and TX/RX direction. Do not use the FC's 12V DJI connector as a 5V UART supply.",
         "stock_consumables": [
-            "Hook-and-loop straps or small cable ties wrap existing frame members; select width and quantity after routing, without dedicated printed tie holes. Route around the solid bearing-post roots and preserve the local rail-clamp tool bay. Keep strap buckles and tie heads outside moving parts and do not pull the phase-wire loop taut. No assumed route through the bearing posts.",
+            "Hook-and-loop straps or small cable ties wrap existing frame members; select width and quantity after routing, without dedicated printed tie holes. Route around the solid bearing-post roots and keep the exposed side rail screw and nut-tool paths clear. Keep strap buckles and tie heads outside moving parts and do not pull the phase-wire loop taut. No assumed route through the bearing posts.",
             "Flexible pre-crimped SH/GH pigtails, insulating heat-shrink and strain relief; select wire gauge and lengths for the actual load and route.",
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
@@ -294,29 +295,28 @@ WIRING_PURCHASE_PLAN = wiring_purchase_plan()
 class ModuleStation:
     object_name: str
     x_mm: float
-    clamp_control: str
-    default_approach: str
     yaw_deg: int = 0
+    attachment_offset_x_mm: float = 0.0
+    contact_length_mm: float = 16.0
 
     def __post_init__(self):
         if self.yaw_deg not in (0, 180):
             raise ValueError("Rail module orientation must be 0 or 180 degrees")
-
-    @property
-    def transverse_sign(self):
-        """Convert module-local transverse directions to the fixed rail frame."""
-        return 1 if self.yaw_deg == 0 else -1
+        if not all(
+            math.isfinite(value) for value in (self.x_mm, self.attachment_offset_x_mm)
+        ):
+            raise ValueError("Module and attachment positions must be finite")
+        if not math.isfinite(self.contact_length_mm) or self.contact_length_mm <= 0:
+            raise ValueError("Contact length must be finite and positive")
 
 
 MODULE_STATIONS = (
-    ModuleStation("BatteryEquipmentModule", 90, "BatteryClampApproach", "NegativeY"),
-    ModuleStation("MainPropulsionModule", 0, "PropulsionClampApproach", "PositiveY"),
+    ModuleStation("BatteryEquipmentModule", 100),
     ModuleStation(
-        "ElectronicsEquipmentModule", -54, "ElectronicsClampApproach", "PositiveY", 180
+        "MainPropulsionModule", -5, attachment_offset_x_mm=12.5, contact_length_mm=32
     ),
-    ModuleStation(
-        "AccessoryEquipmentModule", -140, "AccessoryClampApproach", "PositiveY", 180
-    ),
+    ModuleStation("ElectronicsEquipmentModule", -60, 180),
+    ModuleStation("AccessoryEquipmentModule", -140, 180),
 )
 
 
@@ -371,7 +371,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "physical_retention",
-        "Match and finish the rail/shoe coupons for deliberate hand insertion without perceptible rocking or free sliding; raw printing may produce either binding or excessive clearance. Correct the channel or reprint after coupon measurement rather than forcing a jammed full-length rail. Then perform loaded tests of tape, additional friction clamps, PA12 flexure life and bearing supports. The rail clamp acts across the solid T head and retains local screw-tip pressure; verify a burr-free received tip, opposed seating and no indentation or creep at the minimum useful hand tightening. No qualified tightening torque or holding force is specified. Check the selected 1.5mm L-key against the modeled short-arm access envelope and confirm the working stroke with actual socket engagement. Continuous post roots remove the former key tunnels but do not establish a strength rating.",
+        "Trial the slotted rail and L-mount coupons in the production PA12 process/finish. The flat support must seat without rocking; no squeeze-fit ears or spring preload are specified. Tighten the side M2x8 pair against broad faces, holding the exposed standard nut. Check the received head and nut bearing areas, full thread engagement, slot edge finish, complete head/nut withdrawal, friction retention and PA12 creep. Stay within supported slot ranges; move between wall segments only with the bolt removed. A narrow continuous base and three wing pairs require loaded curved-envelope adhesion and fatigue checks. CAD clearance does not establish a tightening torque or load rating.",
     ),
     UnresolvedInterface(
         "moving_wires",
@@ -445,7 +445,7 @@ def project_status():
         "optional_power": power_option_contract(),
         "navigation": get_navigation_profile().contract(),
         "radio": get_radio_profile().contract(),
-        "attachment": "Single-sided tape OVER side wings onto balloon; keep running head and flex gaps clear.",
+        "attachment": "Thin double-sided adhesive under the narrow rail base distributes equipment loads; three paired wings accept optional over-tape. Keep side fasteners, slots and flex gaps accessible; qualify actual curved adhesion.",
         "battery_attachment": "Adhesive hook-and-loop uses the four continuous contact allocations on the shared slotted square deck. Optional support feet use its common outer slots outside those allocations; 90deg in-plane orientation. Battery centre allowance +/-5mm X, +/-4mm Y; larger trim changes require rail-carrier repositioning and a new clearance check.",
         "equipment": [asdict(item) for item in SELECTED_EQUIPMENT],
         "scoped_listed_equipment_mass_g": SCOPED_LISTED_EQUIPMENT_MASS_G,

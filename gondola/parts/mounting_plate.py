@@ -18,7 +18,7 @@ V = App.Vector
 SIZE_MM = (64.0, 64.0)
 THICKNESS_MM = 2.0
 CORNER_RADIUS_MM = 3.0
-CARRIER_BOTTOM_Z = 13.4
+CARRIER_BOTTOM_Z = 14.0
 CARRIER_SUPPORT_Z = CARRIER_BOTTOM_Z + THICKNESS_MM
 FIXED_HOLE_DIAMETER_MM = 2.6
 FC_PAD_DIAMETER_MM = 6.5
@@ -29,16 +29,20 @@ FC_HOLE_CENTRES = (
     (0.0, _FC_AXIS_OFFSET),
     (_FC_AXIS_OFFSET, 0.0),
 )
-CENTRE_HOLE_DIAMETER_MM = FIXED_HOLE_DIAMETER_MM
+CENTRE_HOLE_DIAMETER_MM = 2.6
 FIXED_HOLE_CENTRES = (*FC_HOLE_CENTRES, (0.0, 0.0))
 
 
 def cutters(bottom, depth):
-    """Four FC bores, one spare centre bore and the shared slot array."""
-    return [
-        Part.makeCylinder(FIXED_HOLE_DIAMETER_MM / 2, depth, V(x, y, bottom))
-        for x, y in FIXED_HOLE_CENTRES
-    ] + mounting_slots.shapes(bottom, depth)
+    """Five M2 bores and the shared slot array."""
+    return (
+        [
+            Part.makeCylinder(FIXED_HOLE_DIAMETER_MM / 2, depth, V(x, y, bottom))
+            for x, y in FC_HOLE_CENTRES
+        ]
+        + [Part.makeCylinder(CENTRE_HOLE_DIAMETER_MM / 2, depth, V(0, 0, bottom))]
+        + mounting_slots.shapes(bottom, depth)
+    )
 
 
 def shape(bottom=CARRIER_BOTTOM_Z):

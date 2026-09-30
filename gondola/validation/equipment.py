@@ -179,7 +179,7 @@ def slot_mounting_pad_check(
 
 
 def carrier_symmetry_check(shape, *, bottom, thickness):
-    """Measure the saved deck, excluding the intentionally directional rail shoe."""
+    """Measure the saved deck, excluding the separately checked rail base."""
     bounds = shape.BoundBox
     slab = Part.makeBox(
         bounds.XLength + 2,
@@ -213,7 +213,7 @@ def carrier_symmetry_check(shape, *, bottom, thickness):
     return {
         "centred_nominal_square": centred_square,
         **differences,
-        "scope": "Deck outline and all openings only; rail shoe/clamp are directional.",
+        "scope": "Deck outline and all openings only; rail base is checked separately.",
         "passed": centred_square and all(value < TOL for value in differences.values()),
     }
 
@@ -259,57 +259,27 @@ def carrier_contact_patch_checks(shape, *, bottom, thickness):
 
 
 def carrier_centre_mount_check(shape):
-    """Inspect the spare interface's intact floor, seat and full nut-loading path."""
-    from gondola.parts import purchased_hardware, rail
-
-    # Independent nominal witnesses: this optional interface is empty in the
-    # baseline. Filling the nut thread bore permits an exact planar sweep of
-    # its complete exterior, avoiding a rectangular bound at the hex stop.
-    nut = purchased_hardware.hex_prism(4.0, 1.6, 10.8)
-    start = nut.copy()
-    start.translate(App.Vector(-36, 0, 0))
-    sweep, method = translation_sweep(start, (36, 0, 0))
-    floor = Part.makeBox(4.8, 4.8, 1.5, App.Vector(-2.4, -2.4, 8.5))
-    seat = Part.makeCylinder(3.25, 3.0, App.Vector(0, 0, 12.4)).cut(
-        Part.makeCylinder(1.3, 3.0, App.Vector(0, 0, 12.4))
-    )
-    screw = purchased_hardware.screw_shape(5).copy()
-    screw.rotate(App.Vector(), App.Vector(1, 0, 0), 180)
-    screw.translate(App.Vector(0, 0, 15.4))
-    rail_head_bound = Part.makeBox(80, 10, 3, App.Vector(-40, -5, 5.4))
-    hardware = [rail.clamp_screw_shape(), rail.nut_shape()]
-    hardware += [rail.half_turn(item) for item in hardware]
-    rotation_blocks = []
-    for angle in (-30, 30):
-        rotated = purchased_hardware.hex_prism(3.8, 1.4, 11.0)
-        rotated.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
-        rotation_blocks.append(intersection_volume(rotated, shape))
-    missing_floor = floor.cut(shape).Volume
-    missing_seat = seat.cut(shape).Volume
-    obstruction = intersection_volume(sweep, shape)
-    screw_obstruction = intersection_volume(screw, shape)
-    clamp_hits = [intersection_volume(sweep, item) for item in hardware]
-    rail_gap = screw.distToShape(rail_head_bound)[0]
+    """Check the spare centre bore and the two solid, open-sided supports."""
+    bore = Part.makeCylinder(1.3, 4.6, App.Vector(0, 0, 11.4))
+    access = Part.makeBox(6, 16, 2.6, App.Vector(-3, -8, 11.4))
+    supports = [Part.makeBox(5, 5, 2.6, App.Vector(x, -3.75, 11.4)) for x in (-8, 3)]
+    # M2x4 through the bare 2 mm deck: tip12.0, nut12.4..14.0.
+    # Additional equipment thickness changes required length and is not modeled.
+    rows = {
+        "through_bore_obstruction_mm3": intersection_volume(shape, bore),
+        "under_deck_access_obstruction_mm3": intersection_volume(shape, access),
+        "missing_rectangular_supports_mm3": sum(
+            support.cut(shape).Volume for support in supports
+        ),
+    }
     return {
-        "nominal_centre_xy_mm": [0.0, 0.0],
-        "nominal_optional_screw_length_mm": 5.0,
-        "nominal_tip_to_floor_mm": 0.4,
-        "missing_1_5mm_solid_floor_mm3": missing_floor,
-        "missing_nut_seat_and_roof_mm3": missing_seat,
-        "continuous_nut_loading_method": method,
-        "continuous_nut_loading_obstruction_mm3": obstruction,
-        "optional_screw_obstruction_mm3": screw_obstruction,
-        "nut_loading_rail_clamp_intersections_mm3": clamp_hits,
-        "optional_screw_to_continuous_rail_head_bound_mm": rail_gap,
-        "smallest_accepted_nut_30deg_rotation_blocks_mm3": rotation_blocks,
-        "scope": "Bare alternative centre interface only; no added baseline hardware. Nominal geometry does not qualify accessory loads, actual nut capture, bolt length or printed fit. Inspect the received nut/finished seat and leave measured screw-tip clearance above the blind floor; never tighten against the floor.",
-        "passed": missing_floor < TOL
-        and missing_seat < TOL
-        and obstruction < TOL
-        and screw_obstruction < TOL
-        and all(value < TOL for value in clamp_hits)
-        and rail_gap >= 2.0 - TOL
-        and all(value > TOL for value in rotation_blocks),
+        **rows,
+        "centre_xy_mm": [0.0, 0.0],
+        "under_deck_gap_mm": 2.6,
+        "bare_deck_m2x4_tip_z_mm": 12.0,
+        "bare_deck_tip_to_roof_mm": 0.6,
+        "scope": "Spare centre M2 bore; the rail fastener is transverse and separate. Two open-sided supports leave a 6 mm wide, 2.6 mm high space. The unchanged L-foot roof below still limits screw length. Nominal bare-deck M2x4 planning only: select lengths for actual attachments and ensure the tip clears the roof. Actual nut/head, tool access, clamping and PA12 creep remain unqualified.",
+        "passed": all(value < TOL for value in rows.values()),
     }
 
 
@@ -320,6 +290,7 @@ def carrier_opening_checks(
     thickness=mounts.DECK_THICKNESS,
     through_bottom=None,
     through_depth=None,
+    centre_hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
 ):
     """Audit complete fixed bores and slot rims on the saved physical plate.
 
@@ -339,17 +310,21 @@ def carrier_opening_checks(
     ):
         raise ValueError("Opening probe must include the complete plate thickness")
     fixed = []
-    for centre in mounts.COMMON_DEVICE_HOLE_CENTRES:
+    for centre in mounts.COMMON_FIXED_HOLE_CENTRES:
+        diameter = (
+            centre_hole_diameter if centre == (0.0, 0.0) else mounts.MOUNT_HOLE_DIAMETER
+        )
+        pad = max(mounts.MOUNT_PAD_DIAMETER, diameter + 3.0)
         row = mounting_pad_check(
             shape,
             centre,
             bottom=bottom,
             thickness=thickness,
-            hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
-            pad_diameter=mounts.MOUNT_PAD_DIAMETER,
+            hole_diameter=diameter,
+            pad_diameter=pad,
         )
         bore = Part.makeCylinder(
-            mounts.MOUNT_HOLE_DIAMETER / 2,
+            diameter / 2,
             through_depth,
             App.Vector(*centre, through_bottom),
         )
@@ -483,7 +458,7 @@ def mounting_check(doc):
                 "shared_print_comparison": shared_comparison,
                 "shared_print_geometry_and_metadata_match": shared_print_matches,
                 "physical_plate_openings": openings,
-                "optional_centre_mount": centre_interface,
+                "centre_accessory_mount": centre_interface,
                 "passed": obj in registry.EquipmentMounts
                 and obj in registry.PrintedParts
                 and shape.isValid()

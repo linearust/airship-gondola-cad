@@ -11,6 +11,7 @@ from gondola.cad import (
     create_group,
     create_printed_part,
     create_reference,
+    set_print_sku,
     set_property,
 )
 from gondola.contracts.power_options import (
@@ -316,6 +317,7 @@ def create_option_document(
                 App.Rotation(V(1, 0, 0), 180),
                 platform_contract()["support_scope"],
             )
+            set_print_sku(obj, "PowerPlatform")
         else:
             label = name
             if name.startswith("PowerModule"):

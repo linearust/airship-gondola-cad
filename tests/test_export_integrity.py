@@ -43,7 +43,11 @@ class ExportIntegrityTests(unittest.TestCase):
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.contracts.equipment_interfaces": Mock(),
             "gondola.cad": types.SimpleNamespace(
-                world_shape=Mock(), belongs_to_group=Mock(), placed_shape=Mock()
+                world_shape=Mock(),
+                belongs_to_group=Mock(),
+                placed_shape=Mock(),
+                set_print_sku=Mock(),
+                set_property=Mock(),
             ),
             "gondola.validation.geometry": types.SimpleNamespace(
                 intersection_volume=Mock(),
@@ -415,6 +419,7 @@ class ExportIntegrityTests(unittest.TestCase):
 @unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
 class NativeSharedPrintTests(unittest.TestCase):
     def test_shared_carrier_exports_once_but_keeps_three_installed_instances(self):
+        from gondola.cad import create_printed_part
         from gondola.print_export import export_print_parts
 
         with tempfile.TemporaryDirectory() as directory:
@@ -437,15 +442,17 @@ class NativeSharedPrintTests(unittest.TestCase):
                         NativeApp.Vector(index * 70, 20, 15),
                         NativeApp.Rotation(NativeApp.Vector(0, 0, 1), index * 90),
                     )
-                    obj = doc.addObject("Part::Feature", name)
-                    parent.addObject(obj)
-                    obj.Shape = shape.copy()
+                    obj = create_printed_part(
+                        doc,
+                        parent,
+                        name,
+                        name,
+                        shape.copy(),
+                        NativeApp.Rotation(NativeApp.Vector(1, 0, 0), 180),
+                        "Test carrier",
+                    )
                     obj.addProperty("App::PropertyString", "PrintSKU")
                     obj.PrintSKU = "UniversalEquipmentCarrier"
-                    obj.addProperty("App::PropertyRotation", "PrintRotation")
-                    obj.PrintRotation = NativeApp.Rotation(
-                        NativeApp.Vector(1, 0, 0), 180
-                    )
                     parts.append(obj)
                 doc.recompute()
 

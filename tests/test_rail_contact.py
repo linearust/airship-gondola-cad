@@ -1,294 +1,188 @@
-"""Rail clamp contact geometry and adverse material-removal regressions."""
+"""Native side-slot rail geometry, full contact and segmented adjustment limits."""
 
 import math
 import unittest
-from unittest.mock import patch
 
 try:
     import FreeCAD as App
+    import Part
 except ImportError:
-    App = None
+    App = Part = None
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class RailContactTests(unittest.TestCase):
-    def test_regular_wings_and_base_meet_manufacturing_thickness(self):
-        import Part
-
+    def test_three_wing_pairs_and_closed_base_keep_manufacturing_thickness(self):
         from gondola.parts import rail
 
-        current = rail.rail_shape()
-        self.assertTrue(current.isValid())
-        self.assertEqual(len(current.Solids), 1)
-        self.assertEqual(rail.PAD_CENTRES, (-135, -90, -45, 0, 45, 90, 135))
-        self.assertEqual(
-            [b - a for a, b in zip(rail.PAD_CENTRES, rail.PAD_CENTRES[1:])],
-            [45] * 6,
-        )
-        self.assertEqual(rail.PAD_CENTRES, tuple(-x for x in rail.PAD_CENTRES[::-1]))
-        # Probe actual BRep material, including both wings and every relieved
-        # base section; a nominal constant alone must not certify thickness.
-        locations = [(x, y) for x in rail.PAD_CENTRES for y in (-12, 12)]
-        locations += [(9 + 18 * i, 0) for i in range(-8, 8)]
-        for x, y in locations:
-            with self.subTest(x=x, y=y):
-                witness = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
-                self.assertAlmostEqual(
-                    sum(edge.Length for edge in current.common(witness).Edges),
-                    1.5,
-                )
-        self.assertLess(current.cut(rail.half_turn(current)).Volume, 1e-6)
-        self.assertAlmostEqual(current.BoundBox.XLength, 300)
-        self.assertAlmostEqual(current.BoundBox.YLength, 32)
-        self.assertAlmostEqual(current.BoundBox.ZLength, 8.4)
-        # Regular wings do not bridge any raised head/web relief.
-        self.assertTrue(rail.flex_relief_check(current, 300)["passed"])
+        shape = rail.rail_shape()
+        self.assertTrue(shape.isValid())
+        self.assertEqual(len(shape.Solids), 1)
+        self.assertEqual(rail.PAD_CENTRES, (-140, 0, 140))
+        self.assertAlmostEqual(shape.BoundBox.XLength, 300)
+        self.assertAlmostEqual(shape.BoundBox.YLength, 32)
+        self.assertAlmostEqual(shape.BoundBox.ZLength, 9.5)
+        for x in range(-140, 141, 10):
+            line = Part.makeLine(App.Vector(x, 0, 0), App.Vector(x, 0, 1.5))
+            self.assertAlmostEqual(shape.common(line).Length, 1.5)
+        for x in (-140, 0, 140):
+            for y in (-12, 12):
+                line = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
+                self.assertAlmostEqual(shape.common(line).Length, 1.5)
 
-    def test_seven_paired_tape_stations_keep_the_single_wing_coupon(self):
+    def test_wider_centre_retains_two_six_and_four_twelve_mm_flex_spans(self):
+        from gondola.parts import rail
+
+        report = rail.flex_relief_check()
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(len(report["open_spans"]), 6)
+        widths = [
+            row["x_range_mm"][1] - row["x_range_mm"][0] for row in report["open_spans"]
+        ]
+        self.assertEqual(widths, [12, 12, 6, 6, 12, 12])
+
+    def test_accidental_bridge_between_walls_fails(self):
+        from gondola.parts import rail
+
+        bridged = rail.rail_shape().fuse(
+            Part.makeBox(6, 2.5, 1, App.Vector(25, -1.25, 1.5))
+        )
+        self.assertFalse(rail.flex_relief_check(bridged)["passed"])
+
+    def test_slot_limits_retain_whole_foot_and_reject_gap_positions(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
-        doc = App.newDocument("RailWingStationsTest")
-        try:
-            kit = rail.build_rail(doc)
-            self.assertEqual(len(kit["printed"]), 1)
-            self.assertEqual(len(kit["tapes"]), 14)
-            centres = sorted(
-                round((obj.Shape.BoundBox.XMin + obj.Shape.BoundBox.XMax) / 2, 6)
-                for obj in kit["tapes"]
-            )
-            self.assertEqual(
-                centres,
-                sorted([-135, -90, -45, 0, 45, 90, 135] * 2),
-            )
-            solid = kit["printed"][0].Shape
-            for tape in kit["tapes"]:
-                with self.subTest(tape=tape.Name):
-                    self.assertLess(tape.Shape.common(solid).Volume, 1e-6)
-                    self.assertGreater(
-                        translated_shape(tape.Shape, z=-0.01).common(solid).Volume,
-                        1.0,
+        shape = rail.rail_shape()
+        self.assertEqual(len(rail.supported_slot_ranges()), 7)
+        for low, high in rail.supported_slot_ranges():
+            for x in (low, (low + high) / 2, high):
+                with self.subTest(x=x):
+                    report = rail.attachment_position_check(x)
+                    self.assertTrue(report["passed"], report)
+                    self.assertGreaterEqual(
+                        report["minimum_full_foot_end_margin_mm"], 0.8 - 1e-6
                     )
-            coupons = rail.build_coupons(doc)
-            self.assertEqual(len(coupons["printed"]), 2)
-            coupon = doc.RailFitSample.Shape
-            expected_coupon = rail.rail_shape(48, (0,))
-            self.assertLess(coupon.cut(expected_coupon).Volume, 1e-6)
-            self.assertLess(expected_coupon.cut(coupon).Volume, 1e-6)
-            self.assertAlmostEqual(coupon.BoundBox.XLength, 48)
+                    self.assertTrue(
+                        rail.attachment_check(translated_shape(shape, x=-x))["passed"]
+                    )
+            for x in (low - 0.01, high + 0.01):
+                self.assertFalse(rail.attachment_position_check(x)["passed"])
+        for x in (-125, -75, -28, 28, 75, 125):
+            self.assertFalse(rail.attachment_position_check(x)["passed"])
+        # Having no collision in a gap does not imply a valid attachment.
+        self.assertFalse(
+            rail.attachment_check(translated_shape(shape, x=-28))["passed"]
+        )
+
+    def test_long_propulsion_foot_has_shorter_supported_travel(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import rail
+
+        shape = rail.rail_shape()
+        ranges = rail.supported_slot_ranges(contact_length=32)
+        self.assertEqual(len(ranges), 5)
+        for centre, (low, high) in zip((-100, -50, 0, 50, 100), ranges):
+            half_travel = 8.2 if centre == 0 else 2.2
+            self.assertAlmostEqual(low, centre - half_travel)
+            self.assertAlmostEqual(high, centre + half_travel)
+            for x in (low, high):
+                self.assertTrue(
+                    rail.attachment_position_check(x, contact_length=32)["passed"]
+                )
+                self.assertTrue(
+                    rail.attachment_check(
+                        translated_shape(shape, x=-x), contact_length=32
+                    )["passed"]
+                )
+            self.assertFalse(
+                rail.attachment_position_check(high + 0.01, contact_length=32)["passed"]
+            )
+        for x in (-140, 140, 10):
+            self.assertFalse(
+                rail.attachment_position_check(x, contact_length=32)["passed"]
+            )
+        self.assertAlmostEqual(rail.mount_base_shape(length=32).BoundBox.XLength, 32)
+
+    def test_l_mount_seats_and_lifts_without_deflecting_ear(self):
+        from gondola.parts import rail
+
+        report = rail.attachment_check()
+        self.assertTrue(report["passed"], report)
+        self.assertIn("face-prism", report["continuous_vertical_removal"]["method"])
+        self.assertAlmostEqual(report["missing_full_top_contact_mm3"], 0)
+        self.assertAlmostEqual(report["missing_flat_side_contact_mm3"], 0)
+
+    def test_missing_clamp_leg_and_top_seat_are_rejected(self):
+        from gondola.parts import rail
+
+        for cut in (
+            Part.makeBox(2, 2.5, 1, App.Vector(3, -3.75, 3)),
+            Part.makeBox(2, 2.5, 1, App.Vector(3, -1.25, 9.5)),
+        ):
+            with self.subTest(cut=cut.BoundBox):
+                self.assertFalse(
+                    rail.attachment_check(mount=rail.mount_base_shape().cut(cut))[
+                        "passed"
+                    ]
+                )
+
+    def test_added_hook_fails_continuous_vertical_release(self):
+        from gondola.parts import rail
+
+        # A tongue enters the clear slot while seated but catches its ceiling.
+        hook = Part.makeBox(1, 3, 0.3, App.Vector(-0.5, -1.5, 6.35))
+        report = rail.attachment_check(mount=rail.mount_base_shape().fuse(hook))
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["continuous_vertical_removal"]["overlap_mm3"], 0)
+
+    def test_invalid_dimensions_fail_before_building_geometry(self):
+        from gondola.parts import rail
+
+        for length in (0, -1, math.nan, math.inf, True, None, "300", 10):
+            with self.subTest(length=length), self.assertRaises(ValueError):
+                rail.rail_shape(length, ())
+        for values in ((math.nan,), (True,), ("0",), None, (0, 0), (24,)):
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                rail.rail_shape(50, values)
+        for top in (8.5, 10.9, math.nan, True):
+            with self.subTest(top=top), self.assertRaises(ValueError):
+                rail.mount_base_shape(top)
+
+    def test_tape_pairs_and_process_matched_coupons(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import rail
+
+        doc = App.newDocument("SideSlotCouponTest")
+        try:
+            built = rail.build_rail(doc)
+            self.assertEqual(len(built["tapes"]), 6)
+            solid = built["printed"][0].Shape
+            centres = []
+            for tape in built["tapes"]:
+                centres.append(round(tape.Shape.CenterOfMass.x, 6))
+                self.assertLess(solid.common(tape.Shape).Volume, 1e-6)
+                self.assertGreater(
+                    solid.common(translated_shape(tape.Shape, z=-0.01)).Volume, 0.5
+                )
+            self.assertEqual(sorted(centres), [-140, -140, 0, 0, 140, 140])
+            self.assertEqual(len(rail.build_coupons(doc)["printed"]), 2)
+            self.assertAlmostEqual(doc.RailFitSample.Shape.BoundBox.XLength, 50)
+            self.assertTrue(
+                rail.attachment_check(
+                    doc.RailFitSample.Shape, doc.MountFitSample.Shape
+                )["passed"]
+            )
         finally:
             App.closeDocument(doc.Name)
 
-    def test_invalid_rail_arguments_fail_before_geometry_construction(self):
+    def test_underside_adhesive_allowed_but_unmodeled(self):
         from gondola.parts import rail
 
-        for length in (0, -1, math.nan, math.inf, -math.inf, True, None, "300"):
-            with self.subTest(length=length), self.assertRaises(ValueError):
-                rail.rail_shape(length, ())
-        for pads in ((math.nan,), (math.inf,), (True,), ("0",), None, (0, 0)):
-            with self.subTest(pads=pads), self.assertRaises(ValueError):
-                rail.rail_shape(48, pads)
-        # A short coupon must explicitly choose compatible wing positions;
-        # otherwise the defaults would silently extend its physical length.
-        for pads in ((-18,), (18,), rail.PAD_CENTRES):
-            with self.subTest(pads=pads), self.assertRaises(ValueError):
-                rail.rail_shape(48, pads)
-
-    def test_wing_limit_and_unwinged_sections_preserve_requested_length(self):
-        from gondola.parts import rail
-
-        for pads in ((), (-17, 17)):
-            with self.subTest(pads=pads):
-                section = rail.rail_shape(48, pads)
-                self.assertTrue(section.isValid())
-                self.assertEqual(len(section.Solids), 1)
-                self.assertAlmostEqual(section.BoundBox.XLength, 48)
-
-    def test_flex_reliefs_are_open_through_the_entire_raised_head(self):
-        from gondola.parts import rail
-
-        for length in (48, rail.LENGTH):
-            with self.subTest(length=length):
-                report = rail.flex_relief_check(rail.rail_shape(length, (0,)), length)
-                self.assertTrue(report["passed"], report)
-                self.assertGreater(report["probe_end_z_mm"], rail.HEAD_TOP)
-
-    def test_thin_roof_left_by_a_short_relief_cut_is_rejected(self):
-        import Part
-
-        from gondola.parts import rail
-
-        bridged = rail.rail_shape(48, (0,)).fuse(
-            Part.makeBox(
-                rail.FLEX_GAP,
-                rail.HEAD_WIDTH,
-                0.2,
-                App.Vector(
-                    rail.LAND_PITCH / 2 - rail.FLEX_GAP / 2,
-                    -rail.HEAD_WIDTH / 2,
-                    rail.HEAD_TOP - 0.2,
-                ),
-            )
-        )
-        report = rail.flex_relief_check(bridged)
-        self.assertFalse(report["passed"])
-        self.assertGreater(max(row["gap_obstruction_mm3"] for row in report["gaps"]), 8)
-
-    def test_thick_head_supports_full_tip_and_broad_opposed_jaw(self):
-        from gondola.parts import rail
-
-        report = rail.clamp_contact_check()
-        self.assertTrue(report["passed"], report)
-        self.assertGreaterEqual(report["tip_lower_edge_margin_mm"], 0.5 - 1e-7)
-        self.assertGreaterEqual(report["tip_upper_edge_margin_mm"], 0.5 - 1e-7)
-        # One pitch of head land contacts the jaw, minus its unused Ø2.8 port.
-        expected_jaw_area = (rail.LAND_PITCH - rail.FLEX_GAP) * (
-            rail.HEAD_TOP - rail.HEAD_BOTTOM
-        ) - math.pi * 1.4**2
-        for row in report["contact_cases"]:
-            if row["clamp_offset_from_land_centre_mm"] == 0:
-                self.assertAlmostEqual(
-                    row["opposing_jaw_contact_area_mm2"], expected_jaw_area
-                )
-            else:
-                # Both entry chamfers can shorten contact at an off-centre
-                # land. Bound the real area without counting either bevel.
-                self.assertGreaterEqual(
-                    row["opposing_jaw_contact_area_mm2"],
-                    expected_jaw_area
-                    - 2 * rail.HEAD_ENTRY_CHAMFER * (rail.HEAD_TOP - rail.HEAD_BOTTOM),
-                )
-
-    def test_head_is_the_close_datum_while_web_stays_relieved(self):
-        from gondola.parts import rail
-
-        report = rail.head_fit_check()
-        self.assertTrue(report["passed"], report)
-        fit = report["fit_contract"]
-        self.assertEqual(fit["nominal_head_total_width_gap_mm"], 0.2)
-        self.assertEqual(fit["nominal_head_total_height_gap_mm"], 0.2)
-        self.assertEqual(fit["nominal_web_total_width_gap_mm"], 0.9)
-        self.assertEqual(rail.CLAMP_SHIFT_Y, rail.HEAD_SIDE_CLEARANCE)
-        self.assertEqual(fit["size_only_raw_width_gap_range_mm"], [-0.4, 0.8])
-        self.assertEqual(fit["size_only_raw_height_gap_range_mm"], [-0.4, 0.8])
-        self.assertFalse(fit["as_printed_fit_guaranteed"])
-        self.assertFalse(fit["physical_fit_verified"])
-        self.assertFalse(fit["holding_force_verified"])
-
-    def test_previous_loose_head_channel_is_rejected(self):
-        from gondola.parts import rail
-
-        with (
-            patch.object(rail, "HEAD_SIDE_CLEARANCE", 0.45),
-            patch.object(rail, "HEAD_VERTICAL_CLEARANCE", 0.45),
-        ):
-            loose_shoe = rail.shoe_shape()
-        report = rail.head_fit_check(shoe=loose_shoe)
-        self.assertFalse(report["passed"], report)
-        self.assertTrue(
-            all(
-                row["beyond_boundary_intersection_mm3"] < 1e-6
-                for row in report["boundary_probes"]
-            )
-        )
-
-    def test_under_sized_channel_cannot_pass_nominal_clearance_check(self):
-        from gondola.parts import rail
-
-        with (
-            patch.object(rail, "HEAD_SIDE_CLEARANCE", 0.05),
-            patch.object(rail, "HEAD_VERTICAL_CLEARANCE", 0.05),
-        ):
-            tight_shoe = rail.shoe_shape()
-        report = rail.head_fit_check(shoe=tight_shoe)
-        self.assertFalse(report["passed"], report)
-        self.assertTrue(
-            all(
-                row["boundary_intersection_mm3"] > 1e-5
-                for row in report["boundary_probes"]
-            )
-        )
-
-    def test_entry_bevel_preserves_solid_wall_and_exterior_envelope(self):
-        from gondola.parts import rail
-
-        shoe = rail.shoe_shape()
-        self.assertEqual(len(shoe.Solids), 1)
-        self.assertTrue(shoe.isValid())
-        self.assertAlmostEqual(shoe.BoundBox.XLength, rail.SHOE_LENGTH)
-        self.assertAlmostEqual(shoe.BoundBox.YLength, rail.SHOE_WIDTH)
-        self.assertAlmostEqual(shoe.BoundBox.ZMin, rail.SHOE_BOTTOM)
-        self.assertAlmostEqual(shoe.BoundBox.ZMax, rail.TOP_Z)
-        cavity_side = rail.HEAD_WIDTH / 2 + rail.HEAD_SIDE_CLEARANCE
-        self.assertGreaterEqual(
-            rail.NUT_POCKET_Y - cavity_side - rail.HEAD_ENTRY_CHAMFER, 1.5
-        )
-        for side in (-1, 1):
-            # The lead-in is clear at the mouth but its extension must not
-            # remove the straight running face farther inside the shoe.
-            mouth = App.Vector(
-                side * (rail.SHOE_LENGTH / 2 - 0.05), cavity_side + 0.1, rail.CLAMP_Z
-            )
-            datum = App.Vector(
-                side * (rail.SHOE_LENGTH / 2 - rail.HEAD_ENTRY_CHAMFER - 0.05),
-                cavity_side + 0.1,
-                rail.CLAMP_Z,
-            )
-            self.assertFalse(shoe.isInside(mouth, 1e-7, True))
-            self.assertTrue(shoe.isInside(datum, 1e-7, True))
-
-    def test_former_thin_head_is_not_accepted_as_full_face_contact(self):
-        from gondola.parts import rail
-
-        with patch.object(rail, "HEAD_TOP", 7.0), patch.object(rail, "CLAMP_Z", 6.2):
-            report = rail.clamp_contact_check()
-        self.assertFalse(report["passed"])
-        self.assertTrue(
-            all(
-                row["supported_nominal_tip_area_mm2"]
-                < report["nominal_screw_tip_face_area_mm2"] - 0.1
-                for row in report["contact_cases"]
-            )
-        )
-
-    def test_capture_without_opposed_clamp_jaw_is_rejected(self):
-        import Part
-
-        from gondola.parts import rail
-
-        missing_jaw = rail.shoe_shape().cut(
-            Part.makeBox(
-                20,
-                6.0,
-                rail.HEAD_TOP - rail.HEAD_BOTTOM + 0.02,
-                App.Vector(-10, -11, rail.HEAD_BOTTOM - 0.01),
-            )
-        )
-        report = rail.clamp_contact_check(shoe=missing_jaw)
-        self.assertFalse(report["passed"])
-        self.assertTrue(
-            all(
-                row["opposing_jaw_contact_area_mm2"] < 1e-6
-                for row in report["contact_cases"]
-            )
-        )
-
-    def test_hidden_head_slot_breaking_the_force_path_is_rejected(self):
-        import Part
-
-        from gondola.parts import rail
-
-        hollow_head = rail.rail_shape(48, (0,)).cut(
-            Part.makeBox(14, 0.5, 1, App.Vector(-7, -0.25, rail.CLAMP_Z - 0.5))
-        )
-        report = rail.clamp_contact_check(rail_section=hollow_head)
-        self.assertFalse(report["passed"])
-        self.assertTrue(
-            all(
-                row["missing_solid_transverse_load_strip_mm3"] > 0.1
-                for row in report["contact_cases"]
-            )
-        )
+        contract = rail.tape_attachment_contract()
+        self.assertIn("double-sided", contract["attachment"])
+        self.assertIn("not modeled", contract["reference_scope"])
+        self.assertIn("not load-qualified", contract["qualification"])
 
 
 if __name__ == "__main__":

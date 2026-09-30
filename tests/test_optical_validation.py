@@ -179,7 +179,7 @@ class OpticalClearanceTests(unittest.TestCase):
         original = carrier.Shape.copy()
         try:
             # The supported outer strip lies at carrier X29..31, Y-8..8.
-            carrier.Shape = original.cut(Part.makeBox(2, 2, 2, App.Vector(29, 0, 13.4)))
+            carrier.Shape = original.cut(Part.makeBox(2, 2, 2, App.Vector(29, 0, 14)))
             result = _carrier_interface_checks(self.doc)
             self.assertFalse(result["passed"])
             self.assertTrue(

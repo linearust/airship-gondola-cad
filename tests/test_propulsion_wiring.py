@@ -26,7 +26,7 @@ class PropulsionWiringTests(unittest.TestCase):
         cls.wiring, cls.audit = propulsion_wiring, audit
         cls.doc = App.newDocument("PropulsionWiringRegression")
         cls.propulsion = create_group(cls.doc, "MainPropulsionModule", "Propulsion")
-        cls.propulsion.Placement.Base.y = 0.1
+        cls.propulsion.Placement.Base.y = 0
         cls.electronics = create_group(
             cls.doc, "ElectronicsEquipmentModule", "Electronics"
         )
@@ -36,7 +36,7 @@ class PropulsionWiringTests(unittest.TestCase):
             if item.object_name == "ElectronicsEquipmentModule"
         )
         cls.electronics.Placement = App.Placement(
-            App.Vector(station.x_mm, -0.1, 0),
+            App.Vector(station.x_mm, 0, 0),
             App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
         )
         fc = create_reference(
@@ -134,11 +134,11 @@ class PropulsionWiringTests(unittest.TestCase):
             registry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_electronics_slide_rejects_stale_route(self):
+    def test_electronics_relocation_rejects_stale_route(self):
         original = self.electronics.Placement
         try:
             changed = App.Placement(original)
-            changed.Base.x -= 9
+            changed.Base.x -= 20
             self.electronics.Placement = changed
             self.doc.recompute()
             result = self.audit.check(self.doc)
@@ -172,14 +172,11 @@ class PropulsionWiringTests(unittest.TestCase):
 
     def _optical_carrier_obstacles(self, host_name, side):
         from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import optical_interface, optical_mount, rail
+        from gondola.parts import optical_interface, optical_mount
 
         station = next(s for s in MODULE_STATIONS if s.object_name == host_name)
-        shift = station.transverse_sign * rail.CLAMP_SHIFT_Y
-        if station.default_approach == "NegativeY":
-            shift = -shift
         host = App.Placement(
-            App.Vector(station.x_mm, shift, 0),
+            App.Vector(station.x_mm, 0, 0),
             App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
         )
         tower_placement = host.multiply(optical_interface.placement(side))
@@ -207,14 +204,17 @@ class PropulsionWiringTests(unittest.TestCase):
                         self.assertLess(shape.common(obstacle).Volume, 1e-6)
                         self.assertGreaterEqual(shape.distToShape(obstacle)[0], 1.5)
 
-    def test_previous_low_waypoint_crosses_fc_band_before_terminal_entry(self):
+    def test_low_waypoint_crosses_fc_band_before_terminal_entry(self):
         from gondola.cad import world_shape
 
         prop = self.propulsion.getGlobalPlacement()
         electronics = self.electronics.getGlobalPlacement()
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, prop, electronics)
-            points[1] = (-38.0, sign * 20.0, 34.0)
+            # Preserve the deliberately bad waypoint 16 mm ahead of the FC
+            # after moving that module onto the new 20 mm rail station grid.
+            fc_local_x = prop.inverse().multVec(electronics.Base).x
+            points[1] = (fc_local_x + 16.0, sign * 20.0, 34.0)
             with patch.object(self.wiring, "route_points", return_value=points):
                 shape = self.wiring.route_geometry(sign, prop, electronics)["shape"]
             shape.Placement = prop.multiply(shape.Placement)

@@ -5,6 +5,7 @@ A design revision requires an explicit, reviewed fixture transition.
 """
 
 import json
+import math
 import os
 from pathlib import Path
 
@@ -81,39 +82,59 @@ def module_control_bindings(doc):
     modules = list(doc.DesignRegistry.Modules)
     names = [obj.Name for obj in modules]
     expected = [station.object_name for station in MODULE_STATIONS]
-    controls = [station.clamp_control for station in MODULE_STATIONS]
     if (
         not expected
         or len(set(expected)) != len(expected)
-        or len(set(controls)) != len(controls)
         or len(set(names)) != len(names)
         or set(names) != set(expected)
     ):
         raise ValueError("Registered modules do not match the unique station contract")
-    if any(name not in doc.AssemblySettings.PropertiesList for name in controls):
-        raise ValueError("A registered module has no native clamp approach control")
+    if any(
+        not {"RailAttachmentOffsetX", "RailPositionX", "RailContactLength"}.issubset(
+            module.PropertiesList
+        )
+        for module in modules
+    ):
+        raise ValueError(
+            "A registered module has no continuous rail attachment control"
+        )
     by_name = {obj.Name: obj for obj in modules}
     return [(station, by_name[station.object_name]) for station in MODULE_STATIONS]
 
 
-def module_clamp_pose(station, module, approach):
-    """A clamp side is carrier-local; its seated offset follows carrier yaw."""
-    if approach not in ("PositiveY", "NegativeY"):
-        raise ValueError("Unknown local rail-clamp approach")
-    local_side = 1 if approach == "PositiveY" else -1
-    world_side = local_side * station.transverse_sign
-    expected_y = world_side * rail.CLAMP_SHIFT_Y
+def module_attachment_pose(station, module):
+    """Manual X translates the module; the fixed foot offset locates its clamp."""
+    position = float(module.RailPositionX)
+    offset = float(module.RailAttachmentOffsetX)
+    attachment_x = position + math.cos(math.radians(station.yaw_deg)) * offset
+    length = float(module.RailContactLength)
+    attachment = rail.attachment_position_check(attachment_x, contact_length=length)
+    length_matches = abs(length - station.contact_length_mm) < TOL
+    supported = attachment["passed"]
+    offset_matches = abs(offset - station.attachment_offset_x_mm) < TOL
     rotation_matches = module.Placement.Rotation.isSame(
         App.Rotation(App.Vector(0, 0, 1), station.yaw_deg), 1e-7
     )
     return {
-        "local_approach_side_y": local_side,
-        "world_approach_side_y": world_side,
-        "expected_seated_y_mm": expected_y,
+        "rail_position_x_mm": position,
+        "attachment_offset_x_mm": offset,
+        "attachment_world_x_mm": attachment_x,
+        "attachment_in_supported_slot": supported,
+        "rail_attachment_position": attachment,
+        "attachment_offset_matches": offset_matches,
+        "rail_contact_length_mm": length,
+        "contact_length_matches": length_matches,
+        "result_x_mm": module.Placement.Base.x,
         "result_y_mm": module.Placement.Base.y,
         "expected_carrier_yaw_deg": station.yaw_deg,
         "carrier_rotation_matches": rotation_matches,
-        "passed": rotation_matches and abs(module.Placement.Base.y - expected_y) < TOL,
+        "passed": supported
+        and offset_matches
+        and length_matches
+        and rotation_matches
+        and abs(module.Placement.Base.x - position) < TOL
+        and abs(module.Placement.Base.y) < TOL
+        and abs(module.Placement.Base.z) < TOL,
     }
 
 
@@ -129,47 +150,67 @@ def control_behavior(doc):
             "passed": False,
         }
     modules = [module for _, module in bindings]
+    initial_poses = {
+        module.Name: module_attachment_pose(station, module)
+        for station, module in bindings
+    }
+    if not all(pose["passed"] for pose in initial_poses.values()):
+        return {
+            "cases": [],
+            "module_control_mapping_valid": True,
+            "initial_module_poses": initial_poses,
+            "error": "Initial rail attachment position or pose is invalid",
+            "passed": False,
+        }
     pods = list(doc.DesignRegistry.TiltingPods)
     if len(pods) != EXPECTED_INVENTORY["tilting_propulsors"] or len(
         {pod.Name for pod in pods}
     ) != len(pods):
         return {"cases": [], "error": "Tilting pod inventory mismatch", "passed": False}
-    clamp_names = [station.clamp_control for station, _ in bindings]
-    originals = {name: str(getattr(doc.AssemblySettings, name)) for name in clamp_names}
     rows = []
-    try:
-        for station, module in bindings:
-            key = station.clamp_control
-            other_modules = {
-                other.Name: other.Placement.copy()
-                for other in modules
-                if other != module
-            }
-            for value in ("PositiveY", "NegativeY"):
-                setattr(doc.AssemblySettings, key, value)
+    module_case_count = 0
+    for station, module in bindings:
+        original = float(module.RailPositionX)
+        offset = float(module.RailAttachmentOffsetX)
+        signed_offset = math.cos(math.radians(station.yaw_deg)) * offset
+        other_modules = {
+            other.Name: other.Placement.copy() for other in modules if other != module
+        }
+        requests = [
+            value
+            for value in (original - 0.1, original + 0.1)
+            if any(
+                low <= value + signed_offset <= high
+                for low, high in rail.supported_slot_ranges(
+                    contact_length=float(module.RailContactLength)
+                )
+            )
+        ]
+        module_case_count += len(requests)
+        try:
+            for requested in requests:
+                module.RailPositionX = requested
                 doc.recompute()
-                pose = module_clamp_pose(station, module, value)
+                pose = module_attachment_pose(station, module)
+                independent = all(
+                    doc.getObject(name).Placement.isSame(placement, 1e-7)
+                    for name, placement in other_modules.items()
+                )
                 rows.append(
                     {
                         "object": module.Name,
-                        "property": key,
-                        "input": value,
+                        "property": "RailPositionX",
+                        "input": requested,
                         **pose,
-                        "other_modules_unchanged": all(
-                            doc.getObject(name).Placement.isSame(placement, 1e-7)
-                            for name, placement in other_modules.items()
-                        ),
+                        "other_modules_unchanged": independent,
                         "passed": pose["passed"]
-                        and all(
-                            doc.getObject(name).Placement.isSame(placement, 1e-7)
-                            for name, placement in other_modules.items()
-                        ),
+                        and abs(float(module.RailPositionX) - requested) < TOL
+                        and independent,
                     }
                 )
-    finally:
-        for key, value in originals.items():
-            setattr(doc.AssemblySettings, key, value)
-        doc.recompute()
+        finally:
+            module.RailPositionX = original
+            doc.recompute()
     for pod in pods:
         original = float(pod.Tilt)
         other_pods = {
@@ -203,34 +244,6 @@ def control_behavior(doc):
                 )
         finally:
             pod.Tilt = original
-            doc.recompute()
-    for module in modules:
-        original = float(module.RailPositionX)
-        other_modules = {
-            other.Name: other.Placement.copy() for other in modules if other != module
-        }
-        try:
-            module.RailPositionX = original + 18
-            doc.recompute()
-            rows.append(
-                {
-                    "object": module.Name,
-                    "property": "RailPositionX",
-                    "input": original + 18,
-                    "result_x_mm": module.Placement.Base.x,
-                    "other_modules_unchanged": all(
-                        doc.getObject(name).Placement.isSame(placement, 1e-7)
-                        for name, placement in other_modules.items()
-                    ),
-                    "passed": abs(module.Placement.Base.x - original - 18) < TOL
-                    and all(
-                        doc.getObject(name).Placement.isSame(placement, 1e-7)
-                        for name, placement in other_modules.items()
-                    ),
-                }
-            )
-        finally:
-            module.RailPositionX = original
             doc.recompute()
     optical = doc.getObject("OpticalFlowModule")
     from gondola.parts import optical_mount
@@ -359,7 +372,7 @@ def control_behavior(doc):
         optical.MountSide = original_side
         doc.recompute()
     expected_cases = (
-        3 * len(bindings) + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 7
+        module_case_count + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 7
     )
     return {
         "cases": rows,
@@ -412,8 +425,23 @@ def unresolved_scope(doc):
         and optical not in registry.PrintedParts
         and optical not in registry.HardwareParts
     )
-    rail_exception = str(doc.ContinuousRail.ManufacturingException)
-    flexure_description = f"{MANUFACTURING_DECISION['nominal_rail_flexure_mm']:g}mm"
+    try:
+        rail_attachment = json.loads(str(doc.ContinuousRail.RailAttachmentContract))
+    except (AttributeError, TypeError, ValueError):
+        rail_attachment = None
+    rail_scope_ok = (
+        isinstance(rail_attachment, dict)
+        and rail_attachment.get("minimum_base_mm")
+        == MANUFACTURING_DECISION["nominal_rail_flexure_mm"]
+        and all(
+            rail_attachment.get(field) is False
+            for field in (
+                "as_printed_fit_guaranteed",
+                "physical_fit_verified",
+                "holding_force_verified",
+            )
+        )
+    )
     status = str(registry.Status)
     try:
         native_release = json.loads(str(registry.ReleaseStatus))
@@ -425,14 +453,15 @@ def unresolved_scope(doc):
         "forbidden_device_references": forbidden,
         "horn_adapters_use_bought_splines_and_unqualified_printed_parts": coupling_ok,
         "mtf02p_device_and_optical_reserve_are_reference_only": optical_scope_ok,
-        "rail_flexure_exception": rail_exception,
+        "rail_attachment_qualification_remains_unverified": rail_scope_ok,
+        "rail_attachment_scope": rail_attachment,
         "qualification_status": status,
         "native_release_status_matches_contract": release_matches,
         "passed": not forbidden
         and release_matches
         and coupling_ok
         and optical_scope_ok
-        and flexure_description in rail_exception.replace(" ", "")
+        and rail_scope_ok
         and "unqualified" in status.lower()
         and abs(
             float(registry.ScopedListedEquipmentMassGrams)
@@ -454,6 +483,9 @@ def procurement_and_scope_metadata(obj):
         "Role",
         "PrintPart",
         "MaterialSelection",
+        "PrintSupplier",
+        "PrintProcess",
+        "PrintInfill",
         "ThreadStandard",
         "NominalThreadDiameter",
         "ThreadPitch",
@@ -485,7 +517,9 @@ def procurement_and_scope_metadata(obj):
         "OpticalFitVerified",
         "StackInterfaceContract",
         "BatteryPlacementContract",
-        "RailFitContract",
+        "RailAttachmentContract",
+        "RailAttachmentOffsetX",
+        "RailContactLength",
         "StackHostName",
         "CarrierHostName",
         "MountSide",

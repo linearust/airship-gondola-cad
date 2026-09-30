@@ -87,7 +87,7 @@ class OpticalMountTests(unittest.TestCase):
     def test_pivot_is_centred_on_foot_and_follows_carrier(self):
         from gondola.parts import optical_mount
 
-        self.assertAlmostEqual(optical_mount.PIVOT_CENTRE[2], 19.6)
+        self.assertAlmostEqual(optical_mount.PIVOT_CENTRE[2], 19.0)
         self.assertEqual(self.module["group"].getParentGeoFeatureGroup(), self.host)
         self.assertAlmostEqual(
             self.module["pitch_stage"].getGlobalPlacement().Base.z, 35

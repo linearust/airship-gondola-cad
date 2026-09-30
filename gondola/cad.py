@@ -9,6 +9,8 @@ import math
 import FreeCAD as App
 import Part
 
+from .print_materials import PRINT_METADATA, print_label
+
 
 def set_property(obj, name, value, kind="App::PropertyString", group="Design"):
     """Create or update an inspectable native FreeCAD property."""
@@ -82,10 +84,12 @@ def create_printed_part(doc, parent, name, label, shape, rotation, notes):
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Not one valid printed solid: " + name)
     obj = doc.addObject("Part::Feature", name)
-    obj.Label, obj.Shape = label, shape
+    obj.Label, obj.Shape = print_label(label), shape
     parent.addObject(obj)
     set_property(obj, "Role", "Printed fit prototype")
     set_property(obj, "PrintPart", True, "App::PropertyBool")
+    for key, value in PRINT_METADATA.items():
+        set_property(obj, key, value, group="Printing")
     set_property(obj, "Notes", notes)
     set_property(obj, "PrintNotes", notes, group="Printing")
     set_property(obj, "PrintRotation", rotation, "App::PropertyRotation", "Printing")
