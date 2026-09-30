@@ -129,12 +129,43 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for kind in mounts.MOUNT_NAMES:
             result = carrier_centre_mount_check(mounts.mount_shape(kind))
             self.assertTrue(result["passed"], result)
-            self.assertAlmostEqual(result["under_deck_gap_mm"], 2.6)
-            self.assertAlmostEqual(result["bare_deck_tip_to_roof_mm"], 0.6)
+            self.assertAlmostEqual(result["under_deck_gap_mm"], 2.5)
+            self.assertAlmostEqual(result["bare_deck_tip_to_roof_mm"], 0.5)
         contract = mounts.centre_mount_contract()
         self.assertTrue(contract["available_as_spare_accessory_mount"])
         self.assertFalse(contract["carrier_nut_pocket"])
-        self.assertEqual(mounts.SUPPORT_FACE_Z, 16.0)
+        self.assertEqual(mounts.SUPPORT_FACE_Z, 17.0)
+
+    def test_raised_deck_preserves_centre_hardware_and_moves_device_datums_together(
+        self,
+    ):
+        from gondola.parts import equipment_envelopes as devices
+        from gondola.parts import (
+            equipment_layout,
+            equipment_mounts,
+            power_mount,
+            purchased_hardware,
+            stack_interface,
+        )
+
+        shape = equipment_mounts.mount_shape("battery")
+        # Independently witness BR's actual envelope: a 2 mm head fits below
+        # the raised deck while preserving 0.5 mm above the taller U-shoe roof.
+        head = Part.makeCylinder(2.25, 2, App.Vector(0, 0, 13))
+        nut = purchased_hardware.hex_nut_shape().copy()
+        nut.translate(App.Vector(0, 0, 13.4))
+        for hardware in (head, nut):
+            self.assertLess(hardware.common(shape).Volume, 1e-6)
+        self.assertEqual(equipment_mounts.DECK_BOTTOM_Z, 15.0)
+        self.assertEqual(equipment_mounts.SUPPORT_FACE_Z, 17.0)
+        self.assertEqual(equipment_layout.adhesive_bottom(), 18.0)
+        self.assertEqual(devices.FC_BOTTOM_Z, 25.0)
+        self.assertAlmostEqual(devices.radio_envelope_shape().BoundBox.ZMax, 14.0)
+        # Only the portal's installation follows the raised host. Its local
+        # plate/beam interface and 32 mm tower remain the same construction.
+        self.assertEqual(stack_interface.STACK_TOP_Z, 49.0)
+        self.assertEqual(power_mount.DECK_BOTTOM_Z, 1.0)
+        self.assertEqual(power_mount.SUPPORT_Z, 3.0)
 
     def test_centre_interface_rejects_blockage_or_missing_support(self):
         from gondola.parts import equipment_mounts as mounts
@@ -143,15 +174,15 @@ class EquipmentMountShapeTests(unittest.TestCase):
         original = mounts.mount_shape("battery")
         cases = (
             (
-                original.fuse(Part.makeCylinder(1.5, 2, App.Vector(0, 0, 14))),
+                original.fuse(Part.makeCylinder(1.5, 2, App.Vector(0, 0, 15))),
                 "through_bore_obstruction_mm3",
             ),
             (
-                original.fuse(Part.makeBox(6, 1, 2.6, App.Vector(-3, 0, 11.4))),
+                original.fuse(Part.makeBox(6, 1, 2.5, App.Vector(-3, 0, 12.5))),
                 "under_deck_access_obstruction_mm3",
             ),
             (
-                original.cut(Part.makeCylinder(0.3, 2.6, App.Vector(5, 0, 11.4))),
+                original.cut(Part.makeCylinder(0.3, 2.5, App.Vector(5, 0, 12.5))),
                 "missing_rectangular_supports_mm3",
             ),
         )
@@ -165,7 +196,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import equipment_mounts as mounts
 
         self.assertEqual(mounts.COMMON_DECK_SIZE, (64.0, 64.0))
-        self.assertEqual(len(mounting_plate.cutters(0, 2)), 29)
+        self.assertEqual(len(mounting_plate.cutters(0, 2)), 33)
         plate = mounting_plate.shape()
         for kind in mounts.MOUNT_NAMES:
             carrier_deck = mounts.mount_shape(kind).common(
@@ -263,7 +294,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             self.assertNotIn("generic_fastening", mounts.mount_contract(kind))
             contract = mounts.common_plate_contract()
             self.assertEqual(contract["fixed_bore_count"], 5)
-            self.assertEqual(contract["slot_count"], 24)
+            self.assertEqual(contract["slot_count"], 28)
 
     def test_m2_slot_screws_clear_base_and_rail_over_the_whole_straight_path(self):
         from gondola.contracts import fasteners
@@ -401,7 +432,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
         for sign in (-1, 1):
             access = Part.makeCylinder(
-                2, 60, App.Vector(0, sign * 4, 6.5), App.Vector(0, sign, 0)
+                2, 60, App.Vector(0, sign * 6, 7.0), App.Vector(0, sign, 0)
             )
             self.assertLess(access.common(devices.radio_envelope_shape()).Volume, 1e-6)
 
@@ -482,7 +513,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         original = mounts.mount_shape("battery")
         report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 24))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 28))
         for centre in mounts.COMMON_FIXED_HOLE_CENTRES:
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(

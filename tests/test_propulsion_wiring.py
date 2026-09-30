@@ -1,5 +1,6 @@
 """Reject disconnected, stale, blocked or falsely qualified lead planning space."""
 
+import math
 import unittest
 from unittest.mock import patch
 
@@ -26,19 +27,17 @@ class PropulsionWiringTests(unittest.TestCase):
         cls.wiring, cls.audit = propulsion_wiring, audit
         cls.doc = App.newDocument("PropulsionWiringRegression")
         cls.propulsion = create_group(cls.doc, "MainPropulsionModule", "Propulsion")
-        cls.propulsion.Placement.Base.y = 0
         cls.electronics = create_group(
             cls.doc, "ElectronicsEquipmentModule", "Electronics"
         )
-        station = next(
-            item
-            for item in MODULE_STATIONS
-            if item.object_name == "ElectronicsEquipmentModule"
-        )
-        cls.electronics.Placement = App.Placement(
-            App.Vector(station.x_mm, 0, 0),
-            App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
-        )
+        for group in (cls.propulsion, cls.electronics):
+            station = next(
+                item for item in MODULE_STATIONS if item.object_name == group.Name
+            )
+            group.Placement = App.Placement(
+                App.Vector(station.x_mm, 0, 0),
+                App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
+            )
         fc = create_reference(
             cls.doc,
             cls.electronics,
@@ -81,6 +80,43 @@ class PropulsionWiringTests(unittest.TestCase):
         self.assertFalse(result["strain_relief_fit_verified"])
         for row in result["routes"]:
             self.assertGreater(row["fc_terminal_connection"]["connected_volume_mm3"], 1)
+            self.assertLess(
+                row["fc_terminal_connection"]["overlap_outside_terminal_region_mm3"],
+                1e-9,
+            )
+
+    def test_previous_z42_approach_has_real_remote_overlap_at_actual_module_stations(
+        self,
+    ):
+        from gondola.cad import placed_shape, world_shape
+
+        propulsion = self.propulsion.getGlobalPlacement()
+        electronics = self.electronics.getGlobalPlacement()
+        self.assertEqual(propulsion.Base.x, -15)
+        fc = world_shape(self.fc_reserve)
+        for sign in (-1, 1):
+            points = self.wiring.route_points(sign, propulsion, electronics)
+            points[1] = (*points[1][:2], 42.0)
+            with patch.object(self.wiring, "route_points", return_value=points):
+                route = self.wiring.route_geometry(sign, propulsion, electronics)
+            shape = placed_shape(route["shape"], propulsion)
+            endpoint = propulsion.multVec(App.Vector(*points[-1]))
+            result = self.audit.connection_check(shape, fc, tuple(endpoint))
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 5e-5)
+
+            # Independent cylinder/plane bound: at the top of the FC band,
+            # the furthest point on the last straight Ø3 corridor lies beyond
+            # the 8 mm sphere by 0.02623 mm. This is real geometry, not a
+            # Boolean sliver to discard by widening the audit tolerance.
+            approach = propulsion.multVec(App.Vector(*points[1])) - endpoint
+            rise = approach.z
+            horizontal = math.hypot(approach.x, approach.y)
+            band_height = fc.BoundBox.ZMax - endpoint.z
+            axial_distance = (band_height * approach.Length + 1.5 * horizontal) / rise
+            maximum_radius = math.hypot(axial_distance, 1.5)
+            self.assertGreater(maximum_radius, 8.02)
+            self.assertLess(maximum_radius, 8.03)
 
     def test_disconnected_route_fails(self):
         route = self.routes[0]

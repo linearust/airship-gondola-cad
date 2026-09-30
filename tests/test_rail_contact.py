@@ -22,7 +22,7 @@ class RailContactTests(unittest.TestCase):
         self.assertEqual(rail.PAD_CENTRES, (-136, 0, 136))
         self.assertAlmostEqual(shape.BoundBox.XLength, 300)
         self.assertAlmostEqual(shape.BoundBox.YLength, 32)
-        self.assertAlmostEqual(shape.BoundBox.ZLength, 9.5)
+        self.assertAlmostEqual(shape.BoundBox.ZLength, 10.5)
         for x in range(-140, 141, 10):
             line = Part.makeLine(App.Vector(x, 0, 0), App.Vector(x, 0, 1.5))
             self.assertAlmostEqual(shape.common(line).Length, 1.5)
@@ -41,7 +41,7 @@ class RailContactTests(unittest.TestCase):
             row["x_range_mm"][1] - row["x_range_mm"][0] for row in report["open_spans"]
         ]
         self.assertEqual(widths, [8] * 8)
-        line = Part.makeLine(App.Vector(-151, 0, 8.5), App.Vector(151, 0, 8.5))
+        line = Part.makeLine(App.Vector(-151, 0, 9.5), App.Vector(151, 0, 9.5))
         actual_walls = sorted(
             (edge.BoundBox.XMin, edge.BoundBox.XMax)
             for edge in rail.rail_shape().common(line).Edges
@@ -152,7 +152,7 @@ class RailContactTests(unittest.TestCase):
         self.assertEqual(rail.supported_slot_ranges(contact_length=32), ())
         self.assertAlmostEqual(rail.mount_base_shape(length=24).BoundBox.XLength, 24)
 
-    def test_l_mount_seats_and_lifts_without_deflecting_ear(self):
+    def test_u_saddle_seats_and_lifts_without_deflecting_ears(self):
         from gondola.parts import rail
 
         report = rail.attachment_check()
@@ -165,8 +165,8 @@ class RailContactTests(unittest.TestCase):
         from gondola.parts import rail
 
         for cut in (
-            Part.makeBox(2, 2.5, 1, App.Vector(3, -3.75, 3)),
-            Part.makeBox(2, 2.5, 1, App.Vector(3, -1.25, 9.5)),
+            Part.makeBox(2, 2.5, 1, App.Vector(3, -1.75, 3)),
+            Part.makeBox(2, 2.5, 1, App.Vector(3, -1.25, 10.5)),
         ):
             with self.subTest(cut=cut.BoundBox):
                 self.assertFalse(
@@ -179,7 +179,7 @@ class RailContactTests(unittest.TestCase):
         from gondola.parts import rail
 
         # A tongue enters the clear slot while seated but catches its ceiling.
-        hook = Part.makeBox(1, 3, 0.3, App.Vector(-0.5, -1.5, 6.35))
+        hook = Part.makeBox(1, 3, 0.3, App.Vector(-0.5, -1.5, 6.85))
         report = rail.attachment_check(mount=rail.mount_base_shape().fuse(hook))
         self.assertFalse(report["passed"])
         self.assertGreater(report["continuous_vertical_removal"]["overlap_mm3"], 0)

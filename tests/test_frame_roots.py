@@ -1,4 +1,4 @@
-"""Native regressions for solid bearing roots and the side M2 rail foot."""
+"""Native regressions for solid bearing roots and the M3 U rail foot."""
 
 import unittest
 
@@ -112,13 +112,13 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         offset = propulsion.RAIL_BOLT_OFFSET_X
         length = propulsion.RAIL_CONTACT_LENGTH
-        foot = rail.mount_base_shape(length=length)
+        foot = rail.mount_base_shape(length=length, recess_head=False)
         foot.translate(App.Vector(offset, 0, 0))
         self.assertLess(foot.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(offset - length / 2, 0.5)
+        self.assertAlmostEqual(offset - length / 2, 3.0)
         self.assertGreater(offset + length / 2, 0)
         self.assertAlmostEqual(length, 24)
-        connection = Part.makeBox(8.5, 2.5, 9.2, App.Vector(0.5, -3.75, 2.2))
+        connection = Part.makeBox(6, 4, 10.3, App.Vector(3, -5.25, 2.2))
         self.assertLess(connection.cut(frame).Volume, 1e-7)
 
     def test_side_bore_fill_does_not_fill_the_web_passage_and_frame_lifts(self):

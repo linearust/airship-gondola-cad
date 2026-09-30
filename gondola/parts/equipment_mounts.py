@@ -1,4 +1,4 @@
-"""One universal plate with an integral side-clamped L-foot, installed in three equipment roles."""
+"""One universal plate with an integral M3-clamped U-shoe, installed in three equipment roles."""
 
 import functools
 import json
@@ -159,7 +159,7 @@ def common_plate_contract():
             "y_range_mm": SUPPORT_Y_RANGE_MM,
             "height_mm": DECK_BOTTOM_Z - rail.MOUNT_TOP_Z,
             "z_range_mm": (rail.MOUNT_TOP_Z, DECK_BOTTOM_Z),
-            "scope": "Two integral supports connect the deck to the L-foot roof. Their 6 mm central gap leaves 2.6 mm under the centre bore for a low M2 head or nut; the rail roof still limits screw-tip length. No nut pocket or separate spacer. Geometry does not qualify strength or creep.",
+            "scope": "Two integral supports connect the deck to the U-shaped rail-shoe roof. Their 6 mm central gap preserves access below the centre bore; the declared deck-to-roof height limits screw-head, nut and tip clearance. No centre nut pocket or separate spacer. Geometry does not qualify strength or creep.",
         },
         "complete_carrier_half_turn_symmetric": False,
         "plate_quarter_turn_and_xy_mirror_symmetric": True,
@@ -172,7 +172,7 @@ def common_plate_contract():
         "fixed_fc_bore_count": len(FC_HOLE_CENTRES),
         "centre_through_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One rounded square plate with five 2.6 mm fixed bores and shared inner-diagonal, outer-diagonal, arc and side slots. The deck pattern has quarter-turn and X/Y mirror symmetry; the integral L-foot is directional. Three rail carriers are identical prints. The optional power deck uses the same plate template. P-AS uses two 23 mm diagonal-slot endpoints with the declared negative-Y offset. Patterns are alternative uses, not permission to populate overlapping devices simultaneously.",
+        "scope": "One rounded square plate with five 2.6 mm fixed bores and 28 shared inner-diagonal, outer-diagonal, arc, central-radial and side slots. Four central radial M2 slots provide opposing centre spacings 24.8 through 26.8 mm while preserving fixed FC bearing pads and the declared adhesive patches. This added paired-hole range is a geometric allowance, not a selected device's standard interface. The deck pattern has quarter-turn and X/Y mirror symmetry; the integral U-shaped rail shoe is directional. Three rail carriers are identical prints. The optional power deck uses the same plate template. P-AS uses two 23 mm diagonal-slot endpoints with the declared negative-Y offset. Patterns are alternative uses, not permission to populate overlapping devices simultaneously.",
     }
 
 
@@ -184,7 +184,7 @@ def centre_mount_contract():
         "under_deck_gap_mm": DECK_BOTTOM_Z - rail.MOUNT_TOP_Z,
         "carrier_nut_pocket": False,
         "available_as_spare_accessory_mount": True,
-        "qualification": "The deck bore is open into a 6 mm wide, 2.6 mm high support gap. A short M2 head or nut can be inserted laterally. The L-foot roof remains beneath it: select screw length so its tip does not bottom on that roof. This is not an unrestricted through-stack or a qualified tool path. Covering equipment can obstruct access. Rail position is secured independently by the exposed transverse M2 fastener.",
+        "qualification": f"The deck bore is open into a 6 mm wide, {DECK_BOTTOM_Z - rail.MOUNT_TOP_Z:g} mm high support gap. The nominal 2 mm M2 head and 1.6 mm nut envelopes fit below the raised deck. Select accessory head/nut height and screw length against that gap and inspect actual insertion access. The U-shoe roof remains beneath the bore, so this is not an unrestricted through-stack or a qualified tool path. Covering equipment can obstruct access. Rail position is secured independently by the recessed transverse M3 fastener.",
     }
 
 
@@ -291,9 +291,9 @@ def build_mount(doc, parent, kind):
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
         f"Centred 64 x 64 mm deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots. "
-        "One exposed transverse M2x8 screw and nut clamp the integral L-foot to the rail wall. "
-        "The flat upper seat carries vertical load; loosen the side screw to adjust within a supported rail segment. "
-        "Two short deck supports preserve the centre accessory bore, with a 2.6 mm under-deck gap and screw-tip limits. "
+        "One recessed transverse M3x8 screw and a nut in the opposite open hex window clamp the integral U-shoe to the rail wall. "
+        "The upper seat and two sides surround the rail wall; loosen the side screw to adjust within a supported rail segment. "
+        f"Two short deck supports preserve the centre accessory bore, with a {DECK_BOTTOM_Z - rail.MOUNT_TOP_Z:g} mm under-deck gap; accessory head/nut height and screw-tip length must fit that space. "
         "Keep the declared adhesive regions and underside slot head paths clear. "
         "Physical clamping, adhesive retention, wiring and device stacks remain unverified."
     )

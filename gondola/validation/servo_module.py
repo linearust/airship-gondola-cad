@@ -76,7 +76,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The central roof seats the bridge in Z; the shared bolt clamps its cheek to the frame in Y. A shallow rectangular key bounds X/Z displacement and rotation with nominal 0.2mm side clearance. Seat and align the gear mesh before tightening; this is not automatic centering. Print fit, distortion, loaded stiffness, friction and creep require a prototype.",
+        "scope": "The central roof seats the bridge in Z; the shared bolt clamps its cheek to the frame in Y. A deep rectangular key bounds X/Z displacement and rotation with nominal 0.2mm side clearance. Seat and align the gear mesh before tightening; this is not automatic centering. Print fit, distortion, loaded stiffness, friction and creep require a prototype.",
         "passed": overlap < TOL
         and key["passed"]
         and all(row["passed"] for row in contacts)
@@ -86,17 +86,19 @@ def bridge_joint_check(doc, module):
 
 def bridge_key_check(frame, bridge):
     """Reject absent keys or enlarged/missing pocket walls independently of builders."""
-    key = Part.makeBox(5.5, 1, 5.5, App.Vector(17, -4.75, 4))
-    bore = Part.makeCylinder(1.2, 12, App.Vector(12.5, -8, 6.5), App.Vector(0, 1, 0))
-    key = key.cut(bore)
-    recess = Part.makeBox(5.9, 1.2, 5.9, App.Vector(16.8, -4.95, 3.8))
-    region = Part.makeBox(15.5, 3, 9.2, App.Vector(9, -6.75, 2.2))
-    pocket_walls = region.cut(recess).cut(bore)
+    key = Part.makeBox(5, 2.5, 5.5, App.Vector(20, -7.75, 4))
+    bore = Part.makeCylinder(1.7, 14, App.Vector(15, -11, 7), App.Vector(0, 1, 0))
+    recess = Part.makeBox(5.4, 2.7, 5.9, App.Vector(19.8, -7.95, 3.8))
+    head_recess = Part.makeCylinder(
+        3.2, 2, App.Vector(15, -9.75, 7), App.Vector(0, 1, 0)
+    )
+    region = Part.makeBox(18, 4.5, 10.3, App.Vector(9, -9.75, 2.2))
+    pocket_walls = region.cut(recess).cut(bore).cut(head_recess)
     backing = Part.makeCylinder(
-        2.25, 3, App.Vector(12.5, -6.75, 6.5), App.Vector(0, 1, 0)
+        3, 2.5, App.Vector(15, -7.75, 7), App.Vector(0, 1, 0)
     ).cut(bore)
     frame_backing = Part.makeCylinder(
-        2.25, 2.5, App.Vector(12.5, -3.75, 6.5), App.Vector(0, 1, 0)
+        3, 4, App.Vector(15, -5.25, 7), App.Vector(0, 1, 0)
     ).cut(bore)
     rows = {
         "missing_solid_head_backing_mm3": abs(backing.cut(bridge).Volume),
@@ -228,11 +230,11 @@ def servo_module_service_check(doc, module):
         "released_fasteners": sorted(removed - {row["part"] for row in gear_paths}),
         "output_gear_removal": gear_paths,
         "shared_rail_fasteners_removed_before_bench": sorted(present_rail_pair),
-        "prerequisites": "Remove the shared M2x12 rail screw and nut, lift the whole propulsion assembly off the rail and disconnect leads before this local bench check. Rail attachment service is checked separately.",
+        "prerequisites": "Remove the shared M3x12 rail screw and nut, lift the whole propulsion assembly off the rail and disconnect leads before this local bench check. Rail attachment service is checked separately.",
         "part_paths": rows,
         "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",
-        "scope": "Neutral, unpowered bench service after rail release. Release gear set screws and withdraw both small output gears inboard. Shift the paired servo module 1.2mm in -Y to disengage its shallow locating key, lift 0.5mm and slide 80mm in +X. Servos, horns, adapters, driver gears, input stubs and radial clamps stay assembled. Output shafts, bearings and carriers remain installed. Reverse for installation; seat the central roof, align mesh within key clearance and tighten the shared rail clamp. Adjacent equipment, wires, tools and fit forces are outside this local bench path.",
+        "scope": "Neutral, unpowered bench service after rail release. Release gear set screws and withdraw both small output gears inboard. Shift the paired servo module 2.7mm in -Y to disengage its locating key, lift 0.5mm and slide 80mm in +X. Servos, horns, adapters, driver gears, input stubs and radial clamps stay assembled. Output shafts, bearings and carriers remain installed. Reverse for installation; seat the central roof, align mesh within key clearance and tighten the shared rail clamp. Adjacent equipment, wires, tools and fit forces are outside this local bench path.",
         "passed": moving == expected_moving
         and all(row["passed"] for row in gear_paths + rows),
     }

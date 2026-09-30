@@ -32,3 +32,21 @@ SERVO_SCREW_HEAD_DIAMETER = 3.5
 SERVO_SCREW_HEAD_HEIGHT = 1.6
 SERVO_SCREW_LENGTH = 8.0
 SERVO_SCREW_MATERIAL = "304 stainless steel (seller claim)"
+
+# Rail-only M3 interfaces. Do not propagate these dimensions to the M2 clamps.
+# A procurement source has not been selected; these are acceptance envelopes.
+RAIL_THREAD_DIAMETER = 3.0
+RAIL_THREAD_PITCH = 0.5
+RAIL_SCREW_HEAD_DIAMETER = 6.0
+RAIL_SCREW_HEAD_HEIGHT = 2.0
+RAIL_HEX_NUT_AF = 5.5
+RAIL_HEX_NUT_HEIGHT = 2.4
+RAIL_FASTENER_MATERIAL = "A2 stainless steel"
+RAIL_FASTENER_SOURCE = ""
+RAIL_HEAD_ENVELOPE_NOTE = (
+    "M3 button head bounded by diameter 6.0 mm x height 2.0 mm; M3 nut bounded "
+    "by 5.5 mm across flats x 2.4 mm high. These are design acceptance "
+    "envelopes, not measured or published dimensions of a selected supplier. "
+    "A2 stainless steel is a design selection; procurement is unverified. "
+    "Check actual head, socket and nut dimensions before printing."
+)

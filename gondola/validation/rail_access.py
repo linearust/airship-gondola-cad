@@ -38,25 +38,34 @@ def side_driver_clearance(screw, obstacles):
     }
 
 
-def nut_wrench_clearance(x, obstacles):
-    """A thin open jaw grips the top/bottom flats, approaching from local +X."""
-    z = rail.BOLT_AXIS_Z
-    y = rail.WEB_THICKNESS / 2 + 0.1
-    # 4.2mm jaw opening for the nominal4mm nut; retain the nut as an obstacle.
-    head = Part.makeBox(8, 1.4, 7, V(x - 3, y, z - 3.5))
-    opening = Part.makeBox(6, 1.6, 4.2, V(x - 3.1, y - 0.1, z - 2.1))
-    handle = Part.makeBox(25, 1.4, 4, V(x + 5, y, z - 2))
-    wrench = head.cut(opening).fuse(handle).removeSplitter()
+def nut_capture_check(x, nut, guard):
+    """The saved hex window admits the nut axially and blocks continuous rotation.
+
+    Only guard material around the nut is considered. Axial clamping support
+    belongs to the rail web and is checked separately by attachment_check.
+    """
+    region = Part.makeBox(8, 2.5, 8, V(x - 4, 1.45, 3))
+    retaining_guard = guard.common(region)
+    nominal = abs(nut.common(retaining_guard).Volume)
+    turns = []
+    for angle in (-30, 30):
+        rotated = nut.copy()
+        rotated.rotate(V(x, 0, 7), V(0, 1, 0), angle)
+        blocked = abs(rotated.common(retaining_guard).Volume)
+        turns.append({"rotation_deg": angle, "rotation_block_mm3": blocked})
     return {
-        **continuous_path(wrench, [(35, 0, 0), (0, 0, 0)], obstacles),
-        "jaw_opening_mm": 4.2,
-        "jaw_thickness_mm": 1.4,
-        "scope": "Design space for a thin4mm open-ended wrench or equivalent nut holder, not a verified purchased tool or tightening-torque guarantee.",
+        "nominal_nut_to_guard_overlap_mm3": nominal,
+        "rotation_limits": turns,
+        "external_holding_wrench_required": False,
+        "nut_axial_clamping_surface": "Rail web at Y=1.25 mm; guard carries no axial preload.",
+        "scope": "Nominal saved hex-window anti-rotation geometry. The nut remains removable in +Y; actual nut fit, corner clearance, printed-wall torque capacity and wear require inspection.",
+        "passed": nominal < TOL
+        and all(row["rotation_block_mm3"] > 0.1 for row in turns),
     }
 
 
 def _lift_path(name, shape, obstacles, offset):
-    """Keep the L opening in the only region that can initially contact rail."""
+    """Keep the U opening in the only region that can initially contact rail."""
     bounds = shape.BoundBox
     mount_names = {
         "BatteryMount",
@@ -76,7 +85,8 @@ def _lift_path(name, shape, obstacles, offset):
         )
         lower, upper = shape.common(low_region), shape.cut(low_region)
         # Bound the transverse bore by a small rectangular plug outside the web,
-        # preserving the open L profile. The locating key lies away from the bore.
+        # preserving the open U profile. Include the larger head counterbore;
+        # the locating key lies away from this filled region.
         from gondola.parts import servo_bridge
 
         if name == "ServoDriveBridge":
@@ -87,13 +97,13 @@ def _lift_path(name, shape, obstacles, offset):
         else:
             bore_start, bore_length = rail.MOUNT_OUTER_Y, rail.MOUNT_LEG_THICKNESS
         fill = Part.makeBox(
-            rail.SLOT_HEIGHT,
+            rail.HEAD_RECESS_DIAMETER,
             bore_length,
-            rail.SLOT_HEIGHT,
+            rail.HEAD_RECESS_DIAMETER,
             V(
-                offset - rail.SLOT_HEIGHT / 2,
+                offset - rail.HEAD_RECESS_DIAMETER / 2,
                 bore_start,
-                rail.BOLT_AXIS_Z - rail.SLOT_HEIGHT / 2,
+                rail.BOLT_AXIS_Z - rail.HEAD_RECESS_DIAMETER / 2,
             ),
         )
         lower = lower.fuse(fill).removeSplitter()
@@ -208,7 +218,13 @@ def rail_attachment_service(doc, registry, objects):
             name: shape for name, shape in shapes.items() if name != screw_name
         }
         driver = side_driver_clearance(screw, bolt_obstacles)
-        wrench = nut_wrench_clearance(offset, shapes)
+        mount_name = {
+            "BatteryEquipmentModule": "BatteryMount",
+            "ElectronicsEquipmentModule": "ElectronicsMount",
+            "AccessoryEquipmentModule": "AccessoryMount",
+            "MainPropulsionModule": "PropulsionFixedFrame",
+        }[module.Name]
+        nut_capture = nut_capture_check(offset, nut, shapes[mount_name])
         withdrawal = continuous_path(screw, [(0, 0, 0), (0, -15, 0)], bolt_obstacles)
         after_bolt = {
             name: shape for name, shape in shapes.items() if name not in attachments
@@ -227,13 +243,13 @@ def rail_attachment_service(doc, registry, objects):
                 "covering_devices_removed": [],
                 "other_modules_removed": [],
                 "side_driver_access": driver,
-                "nut_holding_tool_access": wrench,
+                "nut_window_anti_rotation": nut_capture,
                 "rail_screw_withdrawal": withdrawal,
                 "nut_removal_after_screw": nut_path,
                 "populated_module_lift": lifts,
                 "passed": pose["passed"]
                 and driver["passed"]
-                and wrench["passed"]
+                and nut_capture["passed"]
                 and withdrawal["passed"]
                 and nut_path["passed"]
                 and bool(lifts)
@@ -244,7 +260,7 @@ def rail_attachment_service(doc, registry, objects):
         "modules": rows,
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. Hold the exposed nut, withdraw the transverse screw completely, remove the nut, then lift30mm. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-holder fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The through-hex window restrains nut rotation. Withdraw the transverse screw completely, slide the nut out in +Y, then lift30mm. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-window fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
         "passed": len(rows) == len(MODULE_STATIONS)
         and all(row["passed"] for row in rows),
     }

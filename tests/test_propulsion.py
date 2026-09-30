@@ -805,8 +805,8 @@ class NativeGearedDriveTests(unittest.TestCase):
             "PropulsionFixedFrame",
         ):
             self.assertIn(name, row["retained_during_access"])
-        self.assertEqual(row["side_bolt_axis_mm"], [12.5, 6.5])
-        self.assertEqual(row["contact_x_range_mm"], [0.5, 24.5])
+        self.assertEqual(row["side_bolt_axis_mm"], [15.0, 7.0])
+        self.assertEqual(row["contact_x_range_mm"], [3.0, 27.0])
 
     def test_new_frame_obstacle_cannot_hide_from_side_rail_access(self):
         from gondola.parts import rail
@@ -1302,7 +1302,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                             ["PortOutputGear", "StarboardOutputGear"],
                         )
                         self.assertEqual(result["released_fasteners"], [])
-                        self.assertIn("shared M2x12", result["prerequisites"])
+                        self.assertIn("shared M3x12", result["prerequisites"])
                         retained = {"PropulsionFixedFrame"} | {
                             prefix + "Output" + part + side
                             for prefix in ("Port", "Starboard")
@@ -1374,9 +1374,9 @@ class SelectedGearDriveTests(unittest.TestCase):
             obstacle = world_shape(witness)
             for name in self.servo_package_names():
                 shape = world_shape(doc.getObject(name))
-                for endpoint in (shape, translated_shape(shape, x=80, y=-1.2, z=0.5)):
+                for endpoint in (shape, translated_shape(shape, x=80, y=-2.7, z=0.5)):
                     self.assertLess(intersection_volume(endpoint, obstacle), 1e-5, name)
-            middle = translated_shape(world_shape(doc.PortServo), x=40, y=-1.2, z=0.5)
+            middle = translated_shape(world_shape(doc.PortServo), x=40, y=-2.7, z=0.5)
             self.assertGreater(intersection_volume(middle, obstacle), 0)
             with_obstacle = {**module, "references": [*module["references"], witness]}
             result = servo_module_service_check(doc, with_obstacle)

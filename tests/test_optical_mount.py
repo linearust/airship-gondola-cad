@@ -63,8 +63,12 @@ class OpticalMountTests(unittest.TestCase):
         shape = optical_mount.base_shape()
         self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
         self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
-        post = Part.makeBox(8, 2, 15, App.Vector(-4, -2, 2))
+        # The raised carrier retains a local Z19 pivot. Preserve the complete
+        # straight post witness while excluding its intentional clearance bore.
+        bore = Part.makeCylinder(1.3, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
+        post = Part.makeBox(8, 2, 17, App.Vector(-4, -2, 2)).cut(bore)
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
+        self.assertLess(abs(bore.common(shape).Volume), 1e-5)
         self.assertAlmostEqual(shape.BoundBox.ZMin, -1.2)
 
     def test_actual_base_thickness_matches_every_manufacturing_probe(self):
@@ -87,10 +91,11 @@ class OpticalMountTests(unittest.TestCase):
     def test_pivot_is_centred_on_foot_and_follows_carrier(self):
         from gondola.parts import optical_mount
 
-        self.assertAlmostEqual(optical_mount.PIVOT_CENTRE[2], 19.0)
+        self.assertEqual(optical_mount.PIVOT_CENTRE, (0.0, 0.0, 19.0))
         self.assertEqual(self.module["group"].getParentGeoFeatureGroup(), self.host)
+        self.assertAlmostEqual(self.module["group"].Placement.Base.z, 17.0)
         self.assertAlmostEqual(
-            self.module["pitch_stage"].getGlobalPlacement().Base.z, 35
+            self.module["pitch_stage"].getGlobalPlacement().Base.z, 36
         )
 
     def test_pitch_limit_is_native_and_every_part_follows_the_host(self):

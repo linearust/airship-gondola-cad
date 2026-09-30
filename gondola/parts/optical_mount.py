@@ -16,7 +16,7 @@ from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 from . import optical_interface, purchased_hardware
 
 V = App.Vector
-PIVOT_CENTRE = (0.0, 0.0, 35.0 - optical_interface.HOST_SUPPORT_Z)
+PIVOT_CENTRE = (0.0, 0.0, 36.0 - optical_interface.HOST_SUPPORT_Z)
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 4.0
 EAR_THICKNESS = 2.0

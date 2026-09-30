@@ -178,16 +178,22 @@ class OpticalClearanceTests(unittest.TestCase):
         carrier = self.doc.BatteryMount
         original = carrier.Shape.copy()
         try:
-            # The supported outer strip lies at carrier X29..31, Y-8..8.
-            carrier.Shape = original.cut(Part.makeBox(2, 2, 2, App.Vector(29, 0, 14)))
+            # Remove real stock through the raised Z15..17 carrier deck;
+            # the outer support strip is at carrier X29..31, Y-8..8.
+            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, 15))
+            self.assertAlmostEqual(original.common(defect).Volume, 8.0)
+            carrier.Shape = original.cut(defect)
             result = _carrier_interface_checks(self.doc)
             self.assertFalse(result["passed"])
-            self.assertTrue(
-                any(
-                    row.get("missing_material_mm3", 0) > 0.7
-                    for row in result["witnesses"]
-                )
+            support = next(
+                row
+                for row in result["witnesses"]
+                if row["kind"] == "foot_support_strip"
+                and row["surface"] == "carrier"
+                and row["x_min_mm"] == 2.0
             )
+            self.assertFalse(support["passed"])
+            self.assertAlmostEqual(support["missing_material_mm3"], 0.8)
         finally:
             carrier.Shape = original
         foot = self.doc.OpticalMountBase
@@ -201,6 +207,7 @@ class OpticalClearanceTests(unittest.TestCase):
             )
         finally:
             foot.Shape = original
+        self.assertTrue(_carrier_interface_checks(self.doc)["passed"])
 
     def test_continuous_field_does_not_filter_unknown_obstacles(self):
         from gondola.validation.optical import _external_field_bound
@@ -266,3 +273,35 @@ class OpticalClearanceTests(unittest.TestCase):
         )
         self.assertFalse(clearance["passed"])
         self.assertGreater(clearance["intersection_mm3"], 0.06)
+
+    def test_both_sensor_connectors_clear_maximum_battery_over_native_pitch_range(self):
+        from gondola.cad import world_shape
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import optical_interface, optical_mount, optical_sensor
+
+        # Use the saved battery carrier, registration allowance and native
+        # pitch control. A neutral default-MTF02P test missed the MTF01P long
+        # connector dipping within 1.5 mm after the carrier deck was raised.
+        battery = world_shape(self.doc.MaximumBatteryEnvelope)
+        group = self.doc.OpticalFlowModule
+        inverse = group.getGlobalPlacement().inverse()
+        for profile in SENSOR_PROFILES.values():
+            optical_sensor.apply_profile(self.doc, profile)
+            for angle in range(-20, 21):
+                optical_mount.set_pitch(self.doc, angle)
+                self.assertTrue(
+                    self.doc.OpticalPitchStage.Placement.Rotation.isSame(
+                        App.Rotation(App.Vector(0, 1, 0), angle), 1e-7
+                    )
+                )
+                connector = world_shape(self.doc.MTF02PConnectorReserve)
+                local = connector.copy()
+                local.Placement = inverse.multiply(local.Placement)
+                bound = optical_interface.registration_bound(local)
+                bound.Placement = group.getGlobalPlacement()
+                for kind, envelope in (("nominal", connector), ("registration", bound)):
+                    with self.subTest(sensor=profile.key, pitch=angle, envelope=kind):
+                        self.assertLess(abs(envelope.common(battery).Volume), 1e-7)
+                        self.assertGreaterEqual(
+                            envelope.distToShape(battery)[0], 1.5 - 1e-5
+                        )

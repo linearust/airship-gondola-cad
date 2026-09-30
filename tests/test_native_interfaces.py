@@ -133,7 +133,7 @@ class NativeInterfaceTests(unittest.TestCase):
             finally:
                 App.closeDocument(doc.Name)
 
-    def test_native_rail_clamps_declare_m2_thread_dimensions(self):
+    def test_native_rail_clamps_declare_m3_thread_dimensions(self):
         from gondola.cad import create_group
         from gondola.parts import rail
 
@@ -143,9 +143,9 @@ class NativeInterfaceTests(unittest.TestCase):
         hardware = rail.build_attachment_hardware(document, parent, "Test")
         self.assertEqual(len(hardware), 2)
         for part in hardware:
-            self.assertEqual(part.NominalThreadDiameter.Value, 2)
-            self.assertEqual(part.ThreadPitch.Value, 0.4)
-            self.assertIn("M2", part.ThreadStandard)
+            self.assertEqual(part.NominalThreadDiameter.Value, 3)
+            self.assertEqual(part.ThreadPitch.Value, 0.5)
+            self.assertIn("M3", part.ThreadStandard)
             self.assertNotIn("unthreaded", part.ThreadStandard.lower())
 
     def test_shared_nut_and_clamp_screw_declare_m2_threads(self):

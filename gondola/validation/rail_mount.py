@@ -1,6 +1,7 @@
-"""Saved side-slot rail, integral L seats and installed M2 hardware checks."""
+"""Saved side-slot rail, integral U saddles and recessed M3 hardware checks."""
 
 import json
+import math
 
 import FreeCAD as App
 import Part
@@ -18,7 +19,7 @@ _BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
     ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 12.5, 24.0),
+    ("PropulsionFixedFrame", "MainPropulsionModule", None, 15.0, 24.0),
 )
 
 
@@ -81,19 +82,36 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
     }
 
 
-def _literal_protected_mount(length=16):
-    """Independent16mm L seat, horizontal M2 bore and unchanged print datums."""
-    leg = Part.makeBox(length, 2.5, 9.2, V(-length / 2, -3.75, 2.2))
-    roof = Part.makeBox(length, 5, 1.9, V(-length / 2, -3.75, 9.5))
-    return (
-        leg.fuse(roof)
-        .cut(Part.makeCylinder(1.2, 7, V(0, -4.75, 6.5), V(0, 1, 0)))
-        .removeSplitter()
+def _literal_protected_mount(length=16, *, shared=False):
+    """Independent U saddle, direct-web nut window and optional head recess."""
+    leg = Part.makeBox(length, 4, 10.3, V(-length / 2, -5.25, 2.2))
+    roof = Part.makeBox(length, 9.2, 2, V(-length / 2, -5.25, 10.5))
+    guard = Part.makeBox(length, 2.5, 10.3, V(-length / 2, 1.45, 2.2))
+    radius = 5.9 / math.sqrt(3)
+    vertices = [
+        V(
+            radius * math.cos(math.radians(a)),
+            1.35,
+            7 + radius * math.sin(math.radians(a)),
+        )
+        for a in range(0, 360, 60)
+    ]
+    nut_window = Part.Face(Part.makePolygon(vertices + vertices[:1])).extrude(
+        V(0, 2.7, 0)
     )
+    result = (
+        leg.fuse(roof)
+        .fuse(guard)
+        .cut(nut_window)
+        .cut(Part.makeCylinder(1.7, 11.2, V(0, -6.25, 7), V(0, 1, 0)))
+    )
+    if not shared:
+        result = result.cut(Part.makeCylinder(3.2, 2.1, V(0, -5.35, 7), V(0, 1, 0)))
+    return result.removeSplitter()
 
 
 def _lower_crop(offset=0, length=16):
-    return Part.makeBox(length, 5, 9.2, V(offset - length / 2, -3.75, 2.2))
+    return Part.makeBox(length, 9.2, 10.3, V(offset - length / 2, -5.25, 2.2))
 
 
 def _literal_plate(x, length, width, chamfer):
@@ -123,7 +141,7 @@ def _independent_base_witnesses():
 
 def _independent_wall_top_sections(shape):
     """Literal nine wall intervals above the slots, independent of generator data."""
-    line = Part.makeLine(V(-151, 0, 8.5), V(151, 0, 8.5))
+    line = Part.makeLine(V(-151, 0, 9.5), V(151, 0, 9.5))
     actual = sorted(
         (edge.BoundBox.XMin, edge.BoundBox.XMax) for edge in shape.common(line).Edges
     )
@@ -139,7 +157,7 @@ def _independent_wall_top_sections(shape):
         (123, 149),
     )
     return {
-        "sample_yz_mm": [0, 8.5],
+        "sample_yz_mm": [0, 9.5],
         "actual_wall_intervals_x_mm": actual,
         "expected_wall_intervals_x_mm": expected,
         "passed": len(actual) == len(expected)
@@ -174,7 +192,9 @@ def saved_integral_mount_checks(doc, registry):
         complete = geometry_comparison(actual, source)
         crop, literal = (
             _lower_crop(offset, length),
-            translated_shape(_literal_protected_mount(length), x=offset),
+            translated_shape(
+                _literal_protected_mount(length, shared=kind is None), x=offset
+            ),
         )
         lower, source_lower = (
             geometry_comparison(actual.common(crop), literal),
@@ -232,7 +252,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 {
                     "module": module.Name,
                     "passed": False,
-                    "error": "Missing integral L solid",
+                    "error": "Missing integral U solid",
                 }
             )
             continue
@@ -249,7 +269,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
         )
         local_rail = placed_shape(rail_shape, foot_placement.inverse())
         shared = module.Name == "MainPropulsionModule"
-        screw_length, head_face_y = (12.0, -6.75) if shared else (8.0, -3.75)
+        screw_length, head_face_y = (12.0, -7.75) if shared else (8.0, -3.25)
         head_support = None
         if shared:
             bridge = registry.Document.getObject("ServoDriveBridge")
@@ -270,7 +290,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             bridge_in_module = placed_shape(
                 shapes[bridge.Name], module.getGlobalPlacement().inverse()
             )
-            crop = Part.makeBox(length, 5.5, 9.2, V(offset - length / 2, -6.75, 2.2))
+            crop = Part.makeBox(length, 4.5, 10.3, V(offset - length / 2, -9.75, 2.2))
             head_support = translated_shape(bridge_in_module.common(crop), x=-offset)
         attachment = rail.attachment_check(
             local_rail,
@@ -285,9 +305,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             (
                 "RailMountScrew",
                 rail.attachment_screw_shape(screw_length, head_face_y=head_face_y),
-                f"M2X{screw_length:g}_BUTTON_HEAD",
+                f"M3X{screw_length:g}_BUTTON_HEAD",
             ),
-            ("RailMountNut", rail.nut_shape(), "M2_HEX_NUT"),
+            ("RailMountNut", rail.nut_shape(), "M3_HEX_NUT"),
         ):
             hardware_name = module.Name + suffix
             hardware = registry.Document.getObject(hardware_name)

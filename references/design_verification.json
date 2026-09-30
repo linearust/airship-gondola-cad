@@ -1,30 +1,46 @@
 {
-  "revision": "BQ",
-  "recorded_utc": "2026-09-30T11:28:08.511944+00:00",
+  "revision": "BR",
+  "recorded_utc": "2026-09-30T13:26:13.991651+00:00",
   "passed": true,
-  "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "69728c8f3013a93b7b15aebf86ac9f935a369cc60f2dae17c37dbc03cfad5805",
-  "cad_sha256": "be3e5c8e0e898719f542b0423eefd74f93d2433e8ce90af80c6c49b9139ea52b",
+  "scope": "Nominal CAD, native controls, motion/service and export verification only; no physical, electrical or flight qualification.",
+  "source_fingerprint": "8239188d19dbdb6bf8b5ba48147ef18986f87626f8c737b8fa2b97233371a12a",
+  "cad_sha256": "90d528546cf6a57cf3609149b3c873808b64c19be5d0932522ac4337a1018a4a",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "b5dc2f9a4d992f88ebd2d0358e86aba1de86c66b7adc584b58ade357012b3bd1"
+    "sha256": "93d4553aa7c13054c1d225dde46e77d83950ff2248d81b0eacc9ea88be2242c3"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "6f83e67ee04064c6edf82fa8b3699d87ccf851faf08f33aabd4b0f7e6e74bb99"
+    "sha256": "dbf83036fff21b2d2acf7b8533a7506d697692ad65f34ee9b2819383e1cfbe58"
+  },
+  "post_approval_display_correction": {
+    "sha256": "287bf9d4f312f8cb3b4bc498d056d7abde4b654406c6e141635b907d8822c30a",
+    "source_fingerprint_before": "95a5f07786d4facfd84bedf78cd551ae90193de994dabfbc74f3296827bb12a6",
+    "source_fingerprint_after": "34add847da416160fa1853944f92e51cbce9af74037b9730fcb9b0aede3f8cc5",
+    "scope": "Four exact strings in the separate illustrative attachment-detail document; original geometry approval retained unchanged."
+  },
+  "fixture_approval_chain": {
+    "initial_approval_sha256": "42e1738f744ccf73d8549309e35a537e1d85b7670a954303490ca7d15a8d8369",
+    "initial_promotion_sha256": "1a3c7c2bbb9145a770683e776a6d21cbeac90745321e7b7ac82bf78aa482c2b9",
+    "display_correction_sha256": "287bf9d4f312f8cb3b4bc498d056d7abde4b654406c6e141635b907d8822c30a",
+    "wiring_correction_sha256": "8d2d434139def4015cc0cc04f2843295350e7866df0c7d2fba16a75f835eb6f1",
+    "incremental_approval_sha256": "810b87f3715a5ee75435e6af8414791da13ef95f8b4e9f6907c5539314211f1f",
+    "incremental_promotion_sha256": "0ea7e9d5b908e30996ab8ac94098018c8176034575fc350c3014dcaee7ecdc0c",
+    "optical_correction_sha256": "ec0a8722c93406a98afb28aa76208d89c59636cb7b698e135065cd005b2fc71c",
+    "optical_approval_sha256": "dbf83036fff21b2d2acf7b8533a7506d697692ad65f34ee9b2819383e1cfbe58",
+    "optical_promotion_sha256": "8c20c5bb7eebb1847a354bee26bb01675d7b1201acbf729356f34a251711e14c"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 624,
+    "testsRun": 633,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
-    "source_unchanged": true,
+    "production_test_tool_source_unchanged": true,
+    "execution_inputs_unchanged": true,
     "exact_discovery_coverage": true,
-    "execution": "Complete native unittest discovery grouped by TestCase class across six isolated FreeCAD Python workers. Class fixtures preserved; exact discovery ID coverage, no skips, frozen production/test/tool sources required.",
-    "source_unchanged_scope": "Complete frozen native phase: production/test/tool Python, fixture and execution-script hashes match before, after and recording.",
-    "outer_launch_exit_code": 0,
-    "launcher_scope": "Observed subprocess return code for this BQ release native wrapper. Native harness ran in its own session; result data and logs are independently hashed. No prior-run exception is reused."
+    "execution": "One fresh complete native discovery run against the final frozen source, tests, tools and fixture. Historical failed/corrective attempts are retained separately and contribute no reused passing results.",
+    "outer_launch_exit_code": 0
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
@@ -42,8 +58,30 @@
     "discrepancy_count": 0
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
+  "mass_comparison": {
+    "before_revision": "BQ",
+    "after_revision": "BR",
+    "basis": "Nominal CAD volume/density and modeled hardware envelopes. This is not a measured mass difference or an all-up flight-mass estimate.",
+    "current_printed_g_delta_g": 3.2740265123545242,
+    "current_hardware_g_delta_g": 2.823045336372786,
+    "structure_hardware_g_delta_g": 6.0970718487273246
+  },
+  "mass_budget_matches_saved_cad": true,
+  "native_print_layout": {
+    "passed": true,
+    "path": "build/gondola_print_parts.FCStd",
+    "sha256": "0d7c718c7591450dd657e0da1660074c1d266f89062191fa06a1c2597519c240",
+    "approved_candidate_sha256": "dda07271c05e02fa8071320c5af7025ab1de4157ed2998f124648ec6c0c5b7ed",
+    "sku_count": 13
+  },
+  "native_cad_artifact_sha256": {
+    "gondola.FCStd": "90d528546cf6a57cf3609149b3c873808b64c19be5d0932522ac4337a1018a4a",
+    "gondola_print_parts.FCStd": "0d7c718c7591450dd657e0da1660074c1d266f89062191fa06a1c2597519c240",
+    "gondola_power_options.FCStd": "9cd14ab89d8d9abe6c1b15ca705069535f0de1590e104788193b65c02e123783",
+    "gondola_attachment_detail.FCStd": "07534a74e37ddf4bc78da411cc1cbb07ea23c12b8e04840a0dac2c9a995a8788"
+  },
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "b096788e88a83d64e2a5ee54e84ca5f7a52d9244bdaa2df2570d2705b73dec2c",
-  "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "6a63ad6021dd031e7b8c5c08b36e8657a597398ec468afc50f9c8e792bffa0ba"
+  "evidence_archive_sha256": "9ffc6de17904a87fa6278b5a470027d587bdd69151a7d4db3c63b079e7e5d114",
+  "print_bundle_sha256": "8db8e1c6e6aa1e396c043dbd5ab1173a27dd82bbed1a73111c264a3e0b8e9276",
+  "record_scope": "Valid only for matching production/test/tool, CAD, fixture and artifact hashes; missing outputs must be regenerated and verified."
 }

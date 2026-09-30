@@ -1,4 +1,4 @@
-"""Saved side-clamped L seats require exact geometry, registry and parent bindings."""
+"""Saved side-clamped U seats require exact geometry, registry and parent bindings."""
 
 import unittest
 from types import SimpleNamespace
@@ -57,10 +57,10 @@ class IntegralMountValidationTests(unittest.TestCase):
             )
 
     def test_extra_upper_cut_is_rejected_on_every_mount(self):
-        # Outside the protected L-foot crop but within the actual load path.
+        # Outside the protected U-shoe crop but within the actual load path.
         # Complete source comparison must catch defects above that witness.
         cuts = {
-            name: Part.makeBox(1, 1, 0.4, App.Vector(4, -3, 12))
+            name: Part.makeBox(1, 1, 0.4, App.Vector(4, -3, 13))
             for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount")
         }
         cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 0, 10.5))
@@ -101,7 +101,7 @@ class IntegralMountValidationTests(unittest.TestCase):
             obj.Shape = original
 
     def test_removed_bolt_load_path_is_rejected_for_every_carrier(self):
-        cut = Part.makeCylinder(0.3, 1, App.Vector(2.4, 0, 9.6))
+        cut = Part.makeCylinder(0.3, 1, App.Vector(2.4, 0, 11))
         for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount"):
             with self.subTest(part=name):
                 obj = self.doc.getObject(name)
@@ -120,7 +120,7 @@ class IntegralMountValidationTests(unittest.TestCase):
                     obj.Shape = original
 
     def test_added_material_below_the_seat_is_rejected(self):
-        # An added lip below the L-seat could defeat lift-off. Detect added
+        # An added lip below the U-seat could defeat lift-off. Detect added
         # material as well as removed load-bearing material.
         obj = self.doc.BatteryMount
         original = obj.Shape.copy()

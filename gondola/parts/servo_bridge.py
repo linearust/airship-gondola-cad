@@ -1,6 +1,6 @@
 """Replaceable paired-servo wall with a keyed cheek on the common rail clamp.
 
-The flat central plate bears on the output frame. A shallow rectangular key on
+The flat central plate bears on the output frame. A deep rectangular key on
 its vertical cheek bounds X/Z movement and rotation independently of screw-hole
 clearance; one shared transverse bolt clamps bridge, frame and rail together.
 """
@@ -24,23 +24,29 @@ CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
 SIDE_WALL = 3.0
 CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
 REAR_LEAD_ALLOWANCE = 13.9
-SEAT_Z = 11.4
+SEAT_Z = 12.5
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
 FRAME_BOTTOM_Z = 2.2
 CENTRAL_SEAT_LENGTH, CENTRAL_SEAT_WIDTH = 18.0, 22.0
-CLAMP_AXIS_X = 12.5
-CHEEK_START_X, CHEEK_END_X = 9.0, 24.5
-CHEEK_THICKNESS = 3.0
+CLAMP_AXIS_X = 15.0
+CHEEK_START_X, CHEEK_END_X = 9.0, 27.0
+CHEEK_THICKNESS = 4.5
 CHEEK_CONTACT_Y = rail.MOUNT_OUTER_Y
 CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
-KEY_START_X, KEY_END_X = 17.0, 22.5
+KEY_START_X, KEY_END_X = 20.0, 25.0
 KEY_BOTTOM_Z, KEY_TOP_Z = 4.0, 9.5
-KEY_DEPTH = 1.0
+KEY_DEPTH = 2.5
 KEY_FACE_CLEARANCE = 0.2
 KEY_DEPTH_CLEARANCE = 0.2
-SHARED_GRIP = CHEEK_THICKNESS + rail.MOUNT_LEG_THICKNESS + rail.WEB_THICKNESS
+HEAD_BEARING_Y = CHEEK_OUTER_Y + rail.HEAD_RECESS_DEPTH
+SHARED_GRIP = (
+    CHEEK_THICKNESS
+    - rail.HEAD_RECESS_DEPTH
+    + rail.MOUNT_LEG_THICKNESS
+    + rail.WEB_THICKNESS
+)
 SHARED_SCREW_LENGTH = 12.0
-SERVICE_WAYPOINTS = ((0, 0, 0), (0, -1.2, 0), (0, -1.2, 0.5), (80, -1.2, 0.5))
+SERVICE_WAYPOINTS = ((0, 0, 0), (0, -2.7, 0), (0, -2.7, 0.5), (80, -2.7, 0.5))
 
 
 def opposite(shape):
@@ -111,7 +117,7 @@ def cut_shared_bolt_passage(shape):
     return shape.cut(
         Part.makeCylinder(
             rail.SLOT_HEIGHT / 2,
-            SHARED_GRIP + 2,
+            CHEEK_THICKNESS + rail.MOUNT_LEG_THICKNESS + rail.WEB_THICKNESS + 2,
             V(CLAMP_AXIS_X, CHEEK_OUTER_Y - 1, rail.BOLT_AXIS_Z),
             V(0, 1, 0),
         )
@@ -119,7 +125,7 @@ def cut_shared_bolt_passage(shape):
 
 
 def bridge_blank(drive=SELECTED_DRIVE):
-    """Planar service envelope retaining the key recess and open lower L profile.
+    """Planar service envelope retaining the key recess and open lower rail profile.
 
     Servo windows and round screw passages are filled to permit exact face-prism
     sweeps. The mating-key recess must remain open during the initial -Y release.
@@ -159,7 +165,11 @@ def bridge_shape(drive=SELECTED_DRIVE):
     )
     bridge = bridge_blank(drive).cut(window).cut(opposite(window))
     void = _ear_clearance(drive)
-    return cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
+    return (
+        cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
+        .cut(rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X))
+        .removeSplitter()
+    )
 
 
 def contact_planes():

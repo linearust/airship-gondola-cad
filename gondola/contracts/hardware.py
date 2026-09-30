@@ -77,8 +77,14 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by side-access rail joints, propulsion joints, the optical carrier foot/pitch joints and optional power feet. Rail joints use the same M2 nut exposed against the slotted web; hold it with an open tool. No washers. Raw PA12 tolerance alone does not guarantee nut capture; trial each captured joint. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The four rail joints use separate M3 hardware. No washers. Raw PA12 tolerance alone does not guarantee nut capture; trial each captured joint. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
+    },
+    "M3_HEX_NUT": {
+        "search_query": "M3 0.5 hex nut 5.5mm AF 2.4mm A2 stainless",
+        "candidate_url": "",
+        "requirements": "Four ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and the shared propulsion/servo-bridge rail joint. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The positive-side U-shoe guard has an open 5.9 mm across-flats hex window; the nut bears on the rail web. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
+        "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex window is open for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
     },
 }
 
@@ -99,18 +105,9 @@ for _length in (6, 8, 12):
                 if _length == 8
                 else ""
             )
-            + (
-                "The shared propulsion/servo bridge joint uses one M2x12 through "
-                "3mm bridge cheek, 2.5mm frame and 2.5mm rail wall: 8mm printed "
-                "grip plus nominal 1.6mm nut leaves 2.4mm tip projection. Check "
-                "full seating, actual engagement, head/nut bearing and clear "
-                "projection before operation. Support both subassemblies before "
-                "releasing this shared clamp. "
-                if _length == 12
-                else ""
-            )
-            + "For a rail joint, require flat head contact beyond the diameter2.4mm clearance hole, hold the exposed nut, and fully seat the flat L support before tightening. No washers by default; qualify actual bearing contact on the web slot. Use minimal preload and verify PA12 retention "
-            "and creep; these are not OEM motor or horn screws."
+            + "The four rail joints use separate M3 hardware. No washers by default; "
+            "qualify actual bearing contact, PA12 retention and creep. These are "
+            "not OEM motor or horn screws."
         ),
         "evidence_notes": (
             "Kit image identifies a button head and assorted lengths including6/8/12mm, with a "
@@ -118,6 +115,45 @@ for _length in (6, 8, 12):
             "not seller-dimensioned maxima or an ISO conformity claim. The "
             "seller's 10.9 statement is unverified for the received lot. "
             "No socket recess depth or exact crown profile is assumed."
+        ),
+    }
+
+for _length in (8, 12):
+    PROCUREMENT_SPECS[f"M3X{_length}_BUTTON_HEAD"] = {
+        "search_query": f"M3x{_length} button head hex socket screw A2 stainless",
+        "candidate_url": "",
+        "requirements": (
+            f"M3 x 0.5 screw with {_length} mm under-head length for "
+            + (
+                "the three equipment-carrier rail joints. The 4 mm negative-side "
+                "shoe leg has a 2 mm deep head recess; the remaining 2 mm leg "
+                "and 2.5 mm rail web give 4.5 mm effective grip. A nominal "
+                "2.4 mm nut leaves 1.1 mm tip projection. "
+                if _length == 8
+                else "the shared propulsion/servo-bridge rail joint. The 4.5 mm "
+                "bridge cheek has a 2 mm deep head recess, followed by the 4 mm "
+                "frame leg and 2.5 mm rail web: 9 mm effective grip. A nominal "
+                "2.4 mm nut leaves 0.6 mm tip projection. Support both "
+                "subassemblies before releasing this shared clamp. "
+            )
+            + "Design acceptance envelope: head diameter at most 6 mm and "
+            "head height at most 2 mm. These limits are not a supplier drawing "
+            "or a standard button-head conformity claim. Verify a flat bearing "
+            "face beyond the 3.4 mm clearance opening, actual head/recess fit, "
+            "key access, full thread engagement and clear projection. The "
+            "positive-side guard surrounds an ordinary M3 nut in an open hex "
+            "window. Seat the U-shoe fully before tightening. No washers or "
+            "spring preload; actual clamping, PA12 creep and friction retention "
+            "require physical checks. A2 stainless steel is the design material "
+            "selection, not confirmation of the owned stock grade."
+        ),
+        "evidence_notes": (
+            "M3 hardware is already owned; supplier head dimensions, grade, "
+            "socket size/depth and exact crown profile remain unverified. "
+            "The diameter 6 mm by height 2 mm head is an explicit design "
+            "acceptance envelope, not measured stock or vendor conformity. "
+            "Measure stock against the recessed joint before printing; select "
+            "matching replacement hardware if the envelope is not met."
         ),
     }
 

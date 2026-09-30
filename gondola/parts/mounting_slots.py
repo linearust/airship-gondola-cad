@@ -21,6 +21,9 @@ LARGE_ROTATION_RANGE = (-15.0, 15.0)
 SIDE_X = 27.0
 SIDE_Y_RANGE = (13.0, 23.0)
 SIDE_MIDDLE_Y_RANGE = (-5.0, 5.0)
+# Limited radial travel avoids the central adhesive strips and complete fixed
+# FC bearing pads, keeping their support despite the additional openings.
+CENTRAL_AXIS_RADIUS_RANGE = (12.4, 13.4)
 
 
 def _radial_point(radius, angle):
@@ -74,6 +77,17 @@ def rows():
             }
         )
     for index in range(4):
+        result.append(
+            {
+                "name": f"central_axis_{index}",
+                "kind": "straight",
+                "family": "central_axis",
+                "width_mm": 2.6,
+                "fastener": "M2",
+                "start_xy_mm": _radial_point(CENTRAL_AXIS_RADIUS_RANGE[0], 90 * index),
+                "end_xy_mm": _radial_point(CENTRAL_AXIS_RADIUS_RANGE[1], 90 * index),
+            }
+        )
         angle = math.radians(90 * index)
         for suffix, interval in (
             ("negative", tuple(-y for y in SIDE_Y_RANGE)),
@@ -162,6 +176,10 @@ def contract():
         "side_row_spacing_mm": 2 * SIDE_X,
         "side_centre_travel_y_mm": SIDE_Y_RANGE,
         "side_middle_centre_travel_y_mm": SIDE_MIDDLE_Y_RANGE,
+        "central_axis_radius_range_mm": CENTRAL_AXIS_RADIUS_RANGE,
+        "central_axis_opposed_pitch_range_mm": tuple(
+            2 * radius for radius in CENTRAL_AXIS_RADIUS_RANGE
+        ),
         "reference_patterns": [
             {
                 "pitch_mm": 20.0,
@@ -178,5 +196,5 @@ def contract():
         ],
         "x500_drop_in_compatible": False,
         "reference": "references/dense_mount_review.md",
-        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four inner M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four outer M2 diagonal slots cover square pitches 40 through 45 mm. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Twelve outer M2 slots lie on a 54 mm square: each side has centre-travel intervals -23 through -13, -5 through 5, and 13 through 23 mm from its midpoint. These slots also receive optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. No added baseline washers.",
+        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four inner M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four outer M2 diagonal slots cover square pitches 40 through 45 mm. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Four central radial M2 slots on the X/Y axes give opposing centre spacings 24.8 through 26.8 mm, including 25, 25.4 and 26 mm, while preserving the fixed FC bearing pads and declared adhesive patches. This added paired-hole range is a geometric provision, not a selected device or industry-standard qualification. Twelve outer M2 slots lie on a 54 mm square: each side has centre-travel intervals -23 through -13, -5 through 5, and 13 through 23 mm from its midpoint. These slots also receive optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. New central-slot hardware has bench access with the carrier removed from the rail; occupied equipment and wiring must be checked for the chosen installation. No added baseline washers.",
     }

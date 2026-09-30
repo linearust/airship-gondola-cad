@@ -45,7 +45,7 @@ class PowerMountTests(unittest.TestCase):
             centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 24))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 28))
         # The new centre bore leaves surrounding board support intact. No
         # dedicated cable-tie slots are required for straps around the outline.
         for x, y in ((0, 3), (0, -23), (0, 23), (0, -29), (0, 29)):

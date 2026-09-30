@@ -45,18 +45,40 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertFalse(report["passed"])
 
-    def test_wrench_can_grasp_nut_but_not_pass_through_an_obstruction(self):
+    def test_through_hex_window_restrains_nut_without_an_external_wrench(self):
         from gondola.parts import rail
-        from gondola.validation.rail_access import nut_wrench_clearance
+        from gondola.validation.rail_access import nut_capture_check
 
-        obstacles = {
-            "Nut": rail.nut_shape(),
-            "Rail": rail.rail_shape(),
-            "Mount": rail.mount_base_shape(),
-        }
-        self.assertTrue(nut_wrench_clearance(0, obstacles)["passed"])
-        obstacles["Block"] = Part.makeBox(1, 2, 1, App.Vector(15, 1.3, 6))
-        self.assertFalse(nut_wrench_clearance(0, obstacles)["passed"])
+        nut, mount = rail.nut_shape(), rail.mount_base_shape()
+        report = nut_capture_check(0, nut, mount)
+        self.assertTrue(report["passed"], report)
+        self.assertFalse(report["external_holding_wrench_required"])
+        self.assertAlmostEqual(report["nominal_nut_to_guard_overlap_mm3"], 0)
+        self.assertTrue(
+            all(row["rotation_block_mm3"] > 0.1 for row in report["rotation_limits"])
+        )
+        missing_guard = mount.cut(Part.makeBox(16, 3, 11, App.Vector(-8, 1.4, 2)))
+        self.assertFalse(nut_capture_check(0, nut, missing_guard)["passed"])
+
+    def test_recessed_nut_removal_rejects_an_obstacle_between_endpoints(self):
+        from gondola.parts import rail
+        from gondola.validation.propulsion_service import continuous_path
+
+        nut = rail.nut_shape()
+        obstacles = {"Rail": rail.rail_shape(), "Mount": rail.mount_base_shape()}
+        path = [(0, 0, 0), (0, 4, 0)]
+        self.assertTrue(continuous_path(nut, path, obstacles)["passed"])
+        obstacles["Block"] = Part.makeBox(0.3, 0.1, 0.3, App.Vector(2, 5, 7))
+        self.assertFalse(continuous_path(nut, path, obstacles)["passed"])
+
+    def test_populated_u_saddle_lifts_over_the_rail_without_flexing(self):
+        from gondola.parts import rail
+        from gondola.validation.rail_access import _lift_path
+
+        result = _lift_path(
+            "BatteryMount", rail.mount_base_shape(), {"Rail": rail.rail_shape()}, 0
+        )
+        self.assertTrue(result["passed"], result)
 
     def test_missing_neighbour_duplicate_or_lookalike_cannot_pass_inventory(self):
         from gondola.validation.rail_access import (

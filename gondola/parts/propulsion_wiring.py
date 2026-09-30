@@ -74,7 +74,7 @@ def route_points(sign, propulsion_placement, electronics_placement):
         # Retain the reviewed high approach above the FC band, then
         # descend only into the terminal FC access region. Moving either module
         # requires rechecking this layout-specific planning waypoint.
-        (-42.0, sign * 12.0, 42.0),
+        (-42.0, sign * 12.0, 43.0),
         (endpoint.x, endpoint.y, endpoint.z),
     ]
 

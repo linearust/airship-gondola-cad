@@ -56,7 +56,7 @@ def create_attachment_detail_document():
     from gondola.parts import rail
 
     doc = App.newDocument("AttachmentDetail")
-    doc.Label = f"Rev {DESIGN_REVISION} | slotted wall, side M2 bolt and open L mount"
+    doc.Label = f"Rev {DESIGN_REVISION} | slotted wall, recessed M3 bolt and U mount"
     g = create_group(doc, "Attachment", "Attachment detail | not a print assembly")
 
     def add_detail_object(name, shape, color, alpha=0):
@@ -69,11 +69,11 @@ def create_attachment_detail_document():
         return o
 
     add_detail_object("RailSection", rail.rail_shape(50, (0,)), (0.7, 0.76, 0.79))
-    add_detail_object("IntegralLMount", rail.mount_base_shape(), (0.31, 0.66, 0.76), 65)
+    add_detail_object("IntegralUMount", rail.mount_base_shape(), (0.31, 0.66, 0.76), 65)
     add_detail_object(
-        "PurchasedM2Bolt", rail.attachment_screw_shape(), (0.92, 0.64, 0.19)
+        "PurchasedM3Bolt", rail.attachment_screw_shape(), (0.92, 0.64, 0.19)
     )
-    add_detail_object("PurchasedM2Nut", rail.nut_shape(), (0.92, 0.64, 0.19))
+    add_detail_object("PurchasedM3Nut", rail.nut_shape(), (0.92, 0.64, 0.19))
     for sign in (-1, 1):
         add_detail_object(
             "TapeOverWing" + ("L" if sign < 0 else "R"),

@@ -204,7 +204,7 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
             self.assertEqual(kit["group"].getParentGeoFeatureGroup(), hosts[1])
             self.assertEqual(kit["group"].CarrierHostName, hosts[1].Name)
             self.assertEqual(
-                tuple(kit["pitch_stage"].getGlobalPlacement().Base), (-81, -0.1, 35)
+                tuple(kit["pitch_stage"].getGlobalPlacement().Base), (-81, -0.1, 36)
             )
             self.assertNotIn("RailPositionX", kit["group"].PropertiesList)
             kit["group"].MountSide = "PositiveX"

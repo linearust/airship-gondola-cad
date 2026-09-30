@@ -35,7 +35,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 0,
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
-            ("PropulsionFixedFrame", "MainPropulsionModule", None, -12.5, 0, 12.5),
+            ("PropulsionFixedFrame", "MainPropulsionModule", None, -15.0, 0, 15.0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -133,7 +133,7 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
             if row["module"] == "MainPropulsionModule"
         )
-        self.assertAlmostEqual(row["attachment_axis_x_mm"], 12.5)
+        self.assertAlmostEqual(row["attachment_axis_x_mm"], 15.0)
         self.assertFalse(row["passed"])
 
     def test_shifted_saved_bolt_and_wrong_sku_are_rejected(self):
@@ -151,13 +151,13 @@ class SavedRailValidationTests(unittest.TestCase):
 
         screw = self.doc.MainPropulsionModuleRailMountScrew
         original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
-        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=12.5)
-        screw.HardwareSKU = "M2X8_BUTTON_HEAD"
+        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=15)
+        screw.HardwareSKU = "M3X8_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
         bridge = self.doc.ServoDriveBridge
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(12, -6.75, 8))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(14.5, -7.75, 9.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])
@@ -169,6 +169,32 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertGreater(
             row["saved_lower_mount_attachment"]["missing_head_support_mm3"], 0
         )
+
+    def test_missing_positive_guard_is_rejected_independently_of_generator(self):
+        from gondola.parts import equipment_mounts
+
+        mount = self.doc.BatteryMount
+        mount.Shape = mount.Shape.cut(
+            Part.makeBox(16, 2.5, 8.3, App.Vector(-8, 1.45, 2.2))
+        )
+        original_builder = equipment_mounts.mount_shape
+        with patch(
+            "gondola.validation.rail_mount.equipment_mounts.mount_shape",
+            side_effect=lambda kind: (
+                mount.Shape if kind == "battery" else original_builder(kind)
+            ),
+        ):
+            report = self.check()
+        row = next(
+            row
+            for row in report["saved_integral_mounts"]
+            if row["part"] == "BatteryMount"
+        )
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+        self.assertGreater(
+            row["independent_lower_mount_comparison"]["difference_mm3"], 10
+        )
+        self.assertFalse(row["passed"])
 
     def test_independently_displaced_print_is_rejected(self):
         self.doc.BatteryMount.Placement.Base = App.Vector(0, 0, 1)
@@ -210,7 +236,7 @@ class SavedRailValidationTests(unittest.TestCase):
 
     def test_missing_unused_wall_is_rejected_independently_of_generator(self):
         obj = self.doc.ContinuousRail
-        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 8, App.Vector(21, -1.25, 1.5)))
+        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 9, App.Vector(21, -1.25, 1.5)))
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
         ):

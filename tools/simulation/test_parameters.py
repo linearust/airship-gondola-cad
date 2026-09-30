@@ -38,18 +38,18 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
         self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.0125, 0.075, 0.050]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.015, 0.075, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.0125, -0.075, 0.050]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.015, -0.075, 0.050]
         )
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [-0.0125, 0, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.015, 0, 0])
         self.assertEqual(
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.035])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.036])
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "PositiveX")
         self.assertNotIn("optical_rail_station_x_mm", geo)
@@ -91,7 +91,7 @@ class SavedGeometryTests(unittest.TestCase):
         geo = extract(self.doc)["exact_geometry"]
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "NegativeX")
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.035])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.036])
         self.assertEqual(geo["optical_pitch_deg"], 20)
 
     def test_optical_metadata_cannot_name_a_different_parent(self):

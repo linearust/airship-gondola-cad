@@ -39,7 +39,7 @@ def _matches_vector(actual, target):
 class ReviewMotionPlan:
     axial_allowance_mm: float = 0.5
     gear_withdrawal_mm: float = 35
-    key_release_mm: float = 1.2
+    key_release_mm: float = 2.7
     module_lift_mm: float = 0.5
     module_slide_mm: float = 80
     # Each side stage is (native prefix, direction sign, first frame).
@@ -183,7 +183,7 @@ class ReviewMotionPlan:
 
     def removal_description(self):
         return (
-            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove the shared M2x12 rail screw/nut "
+            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove the shared M3x12 rail screw/nut "
             "and lift the entire propulsion assembly from the rail while supporting frame and bridge together. "
             "Those prerequisites are checked separately and are not animated here; the common clamp and "
             "surrounding rail equipment are absent throughout this scene. Release gear set screws, then "

@@ -67,7 +67,7 @@ def material_length_on_line(shape, a, b):
 
 
 def rail_mount_wall_probes():
-    """Native sections of the wall, open L clamp and carrier support feet."""
+    """Native sections of the web, U saddle, recessed head and through-hex window."""
     e = 0.01
     probes = [
         (
@@ -113,6 +113,38 @@ def rail_mount_wall_probes():
             rail.MOUNT_LEG_THICKNESS,
         ),
     ]
+    probes.extend(
+        [
+            (
+                "carrier_head_recess_floor",
+                "BatteryMount",
+                (2.5, -3.25 - e, 7),
+                (2.5, -1.25 + e, 7),
+                2.0,
+            ),
+            (
+                "carrier_positive_guard_wall",
+                "BatteryMount",
+                (0, 1.45 - e, 3),
+                (0, 3.95 + e, 3),
+                2.5,
+            ),
+            (
+                "carrier_nut_window_top_ligament",
+                "BatteryMount",
+                (0, 2.7, 9.95 - e),
+                (0, 2.7, 12.5 + e),
+                2.55,
+            ),
+            (
+                "carrier_nut_window_bottom_ligament",
+                "BatteryMount",
+                (0, 2.7, 2.2 - e),
+                (0, 2.7, 4.05 + e),
+                1.85,
+            ),
+        ]
+    )
     for sign in (-1, 1):
         probes.append(
             (
@@ -158,8 +190,8 @@ def review(doc, registry):
         (
             "fc_support_deck_thickness",
             "ElectronicsMount",
-            (14, 0, mounts.DECK_BOTTOM_Z - 0.01),
-            (14, 0, mounts.SUPPORT_FACE_Z + 0.01),
+            (0, 20, mounts.DECK_BOTTOM_Z - 0.01),
+            (0, 20, mounts.SUPPORT_FACE_Z + 0.01),
             mounts.DECK_THICKNESS,
         ),
         (
@@ -275,7 +307,7 @@ def review(doc, registry):
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Wall slots, L mounts, support arms and journals are open for depowdering before hardware installation. No captive nut pocket or sealed hollow print is claimed.",
+        "powder_removal": "Wall slots, U saddles, through-hex nut windows, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. The rail nut window restrains rotation while remaining axially open; no sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,

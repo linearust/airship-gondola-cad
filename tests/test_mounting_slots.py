@@ -27,7 +27,7 @@ class MountingSlotTests(unittest.TestCase):
         notch = Part.makeCylinder(
             0.3,
             mounts.DECK_THICKNESS,
-            App.Vector(12, 2, mounts.DECK_BOTTOM_Z),
+            App.Vector(4, 2, mounts.DECK_BOTTOM_Z),
         )
         changed = original.cut(notch)
         single = carrier_opening_checks(changed, centre_hole_diameter=2.6)
@@ -136,9 +136,9 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import mounting_slots
 
         rows = mounting_slots.rows()
-        self.assertEqual(len(rows), 24)
+        self.assertEqual(len(rows), 28)
         self.assertEqual(len({row["name"] for row in rows}), len(rows))
-        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 20)
+        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 24)
         self.assertEqual(sum(row["kind"] == "arc" for row in rows), 4)
         for row in rows:
             for border in (0.0, 1.5):
@@ -160,6 +160,50 @@ class MountingSlotTests(unittest.TestCase):
                     )
                     self.assertAlmostEqual(shape.BoundBox.ZMin, 7)
                     self.assertAlmostEqual(shape.BoundBox.ZMax, 9)
+
+    def test_central_slots_retain_fastener_backing_and_bench_access(self):
+        from gondola.contracts import fasteners
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import mounting_slots, power_mount
+
+        specs = [
+            row for row in mounting_slots.rows() if row["family"] == "central_axis"
+        ]
+        self.assertEqual(len(specs), 4)
+        self.assertEqual(
+            mounting_slots.contract()["central_axis_opposed_pitch_range_mm"],
+            (24.8, 26.8),
+        )
+        for name, solid, bottom in (
+            ("carrier", mounts.mount_shape("battery"), mounts.DECK_BOTTOM_Z),
+            ("power", power_mount.platform_shape(), power_mount.DECK_BOTTOM_Z),
+        ):
+            for spec in specs:
+                with self.subTest(part=name, slot=spec["name"]):
+                    opening = mounting_slots.shape(spec, bottom, 2)
+                    # Continuous full-travel backing of an acceptance head and
+                    # a circumscribed nut is checked around the intentional slot.
+                    for diameter in (
+                        fasteners.SCREW_HEAD_DIAMETER,
+                        fasteners.HEX_NUT_AF / math.cos(math.pi / 6),
+                    ):
+                        footprint = mounting_slots.shape(
+                            {**spec, "width_mm": diameter}, bottom, 2
+                        ).cut(opening)
+                        self.assertLess(footprint.cut(solid).Volume, 1e-6)
+                    # The carrier is removed from the rail for bench service;
+                    # tools must clear its own feet and the optional portal.
+                    for diameter, height, gap in (
+                        (fasteners.SCREW_HEAD_DIAMETER, 2.0, 0.0),
+                        (4.8, fasteners.HEX_NUT_HEIGHT, 0.0),
+                        (6.0, 6.0, 2.0),
+                    ):
+                        sweep = mounting_slots.shape(
+                            {**spec, "width_mm": diameter},
+                            bottom - height - gap,
+                            height,
+                        )
+                        self.assertLess(sweep.common(solid).Volume, 1e-6)
 
     def test_invalid_closed_or_degenerate_slots_are_rejected(self):
         from gondola.parts import mounting_slots
@@ -197,7 +241,13 @@ class MountingSlotTests(unittest.TestCase):
         )
         specs = [
             next(row for row in mounting_slots.rows() if row["family"] == family)
-            for family in ("square16_23", "square40_45", "square30_5", "side")
+            for family in (
+                "square16_23",
+                "square40_45",
+                "square30_5",
+                "central_axis",
+                "side",
+            )
         ]
         specs.append(
             next(row for row in mounting_slots.rows() if row["name"] == "side_0_middle")
