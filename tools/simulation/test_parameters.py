@@ -38,13 +38,13 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
         self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.005, 0.075, 0.050]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.0125, 0.075, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.005, -0.075, 0.050]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.0125, -0.075, 0.050]
         )
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [-0.005, 0, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.0125, 0, 0])
         self.assertEqual(
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
@@ -62,11 +62,11 @@ class SavedGeometryTests(unittest.TestCase):
 
     def test_propulsion_frame_follows_continuous_station(self):
         original = extract(self.doc)["exact_geometry"]["propulsion_reference_frame"]
-        self.doc.MainPropulsionModule.RailPositionX = -4.5
+        self.doc.MainPropulsionModule.RailPositionX = -12.4
         self.doc.recompute()
         geo = extract(self.doc)["exact_geometry"]
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [-0.0045, 0, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.0124, 0, 0])
         self.assertEqual(frame["pivot_positions_m"], original["pivot_positions_m"])
         for name in ("Port", "Starboard"):
             restored = [

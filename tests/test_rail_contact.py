@@ -19,14 +19,14 @@ class RailContactTests(unittest.TestCase):
         shape = rail.rail_shape()
         self.assertTrue(shape.isValid())
         self.assertEqual(len(shape.Solids), 1)
-        self.assertEqual(rail.PAD_CENTRES, (-140, 0, 140))
+        self.assertEqual(rail.PAD_CENTRES, (-136, 0, 136))
         self.assertAlmostEqual(shape.BoundBox.XLength, 300)
         self.assertAlmostEqual(shape.BoundBox.YLength, 32)
         self.assertAlmostEqual(shape.BoundBox.ZLength, 9.5)
         for x in range(-140, 141, 10):
             line = Part.makeLine(App.Vector(x, 0, 0), App.Vector(x, 0, 1.5))
             self.assertAlmostEqual(shape.common(line).Length, 1.5)
-        for x in (-140, 0, 140):
+        for x in (-136, 0, 136):
             for y in (-12, 12):
                 line = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
                 self.assertAlmostEqual(shape.common(line).Length, 1.5)
@@ -40,7 +40,7 @@ class RailContactTests(unittest.TestCase):
         widths = [
             row["x_range_mm"][1] - row["x_range_mm"][0] for row in report["open_spans"]
         ]
-        self.assertEqual(widths, [17, 8, 8, 6, 6, 8, 8, 17])
+        self.assertEqual(widths, [8] * 8)
         line = Part.makeLine(App.Vector(-151, 0, 8.5), App.Vector(151, 0, 8.5))
         actual_walls = sorted(
             (edge.BoundBox.XMin, edge.BoundBox.XMax)
@@ -49,49 +49,55 @@ class RailContactTests(unittest.TestCase):
         self.assertEqual(
             actual_walls,
             [
-                (-150, -128),
-                (-111, -89),
-                (-81, -59),
-                (-51, -31),
-                (-25, 25),
-                (31, 51),
-                (59, 81),
-                (89, 111),
-                (128, 150),
+                (-149, -123),
+                (-115, -89),
+                (-81, -55),
+                (-47, -21),
+                (-13, 13),
+                (21, 47),
+                (55, 81),
+                (89, 115),
+                (123, 149),
             ],
         )
 
-    def test_waists_preserve_wall_roots_and_transition_smoothly(self):
+    def test_straight_base_and_all_supports_share_regular_geometry(self):
         from gondola.parts import rail
 
         shape = rail.rail_shape()
-        for first, last in (
-            (-128, -111),
-            (-89, -81),
-            (-59, -51),
-            (-31, -25),
-            (25, 31),
-            (51, 59),
-            (81, 89),
-            (111, 128),
-        ):
-            for fraction, expected in ((0, 6), (0.25, 5.25), (0.5, 4.5), (1, 6)):
-                x = first + (last - first) * fraction
-                with self.subTest(gap=(first, last), fraction=fraction):
-                    cross_section = Part.makeLine(
-                        App.Vector(x, -4, 0.75), App.Vector(x, 4, 0.75)
-                    )
-                    self.assertAlmostEqual(shape.common(cross_section).Length, expected)
-                    thickness = Part.makeLine(
-                        App.Vector(x, 0, 0), App.Vector(x, 0, 1.5)
-                    )
-                    self.assertAlmostEqual(shape.common(thickness).Length, 1.5)
+        intervals = rail.wall_segments()
+        self.assertEqual([b - a for a, b in intervals], [26] * 9)
+        centres = [(a + b) / 2 for a, b in intervals]
+        self.assertEqual([b - a for a, b in zip(centres, centres[1:])], [34] * 8)
+        # Both free spans and wall roots retain the same straight base width.
+        for x in (-119, -102, -85, -68, -51, -34, -17, 17, 34, 51, 68, 85, 102, 119):
+            with self.subTest(x=x):
+                cross_section = Part.makeLine(
+                    App.Vector(x, -4, 0.75), App.Vector(x, 4, 0.75)
+                )
+                self.assertAlmostEqual(shape.common(cross_section).Length, 5)
+                thickness = Part.makeLine(App.Vector(x, 0, 0), App.Vector(x, 0, 1.5))
+                self.assertAlmostEqual(shape.common(thickness).Length, 1.5)
+        self.assertTrue(
+            all(
+                type(face.Surface).__name__ == "Plane"
+                for face in rail.base_shape().Faces
+            )
+        )
+        self.assertTrue(
+            all(
+                type(face.Surface).__name__ == "Plane"
+                for face in rail.plate_shape(0).Faces
+            )
+        )
+        # A shorter rail retains complete standard walls instead of clipping ends.
+        self.assertEqual(rail.wall_segments(290), intervals[1:-1])
 
     def test_accidental_bridge_between_walls_fails(self):
         from gondola.parts import rail
 
         bridged = rail.rail_shape().fuse(
-            Part.makeBox(6, 2.5, 1, App.Vector(25, -1.25, 1.5))
+            Part.makeBox(8, 2.5, 1, App.Vector(13, -1.25, 1.5))
         )
         self.assertFalse(rail.flex_relief_check(bridged)["passed"])
 
@@ -114,40 +120,37 @@ class RailContactTests(unittest.TestCase):
                     )
             for x in (low - 0.01, high + 0.01):
                 self.assertFalse(rail.attachment_position_check(x)["passed"])
-        for x in (-119.5, -85, -55, -28, 28, 55, 85, 119.5):
+        for x in (-119, -85, -51, -17, 17, 51, 85, 119):
             self.assertFalse(rail.attachment_position_check(x)["passed"])
         # Having no collision in a gap does not imply a valid attachment.
         self.assertFalse(
-            rail.attachment_check(translated_shape(shape, x=-28))["passed"]
+            rail.attachment_check(translated_shape(shape, x=-17))["passed"]
         )
 
-    def test_long_propulsion_foot_is_supported_only_by_central_wall(self):
+    def test_propulsion_foot_is_supported_by_every_identical_wall(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
         shape = rail.rail_shape()
-        ranges = rail.supported_slot_ranges(contact_length=32)
-        self.assertEqual(len(ranges), 1)
-        for low, high in ranges:
-            self.assertAlmostEqual(low, -8.2)
-            self.assertAlmostEqual(high, 8.2)
-            for x in (low, high):
+        ranges = rail.supported_slot_ranges(contact_length=24)
+        self.assertEqual(len(ranges), 9)
+        for (low, high), centre in zip(ranges, range(-136, 137, 34)):
+            self.assertAlmostEqual(low, centre - 0.2)
+            self.assertAlmostEqual(high, centre + 0.2)
+            for x in (low, centre, high):
                 self.assertTrue(
-                    rail.attachment_position_check(x, contact_length=32)["passed"]
+                    rail.attachment_position_check(x, contact_length=24)["passed"]
                 )
                 self.assertTrue(
                     rail.attachment_check(
-                        translated_shape(shape, x=-x), contact_length=32
+                        translated_shape(shape, x=-x), contact_length=24
                     )["passed"]
                 )
             self.assertFalse(
-                rail.attachment_position_check(high + 0.01, contact_length=32)["passed"]
+                rail.attachment_position_check(high + 0.01, contact_length=24)["passed"]
             )
-        for x in (-140, -100, -70, -41, -10, 10, 41, 70, 100, 140):
-            self.assertFalse(
-                rail.attachment_position_check(x, contact_length=32)["passed"]
-            )
-        self.assertAlmostEqual(rail.mount_base_shape(length=32).BoundBox.XLength, 32)
+        self.assertEqual(rail.supported_slot_ranges(contact_length=32), ())
+        self.assertAlmostEqual(rail.mount_base_shape(length=24).BoundBox.XLength, 24)
 
     def test_l_mount_seats_and_lifts_without_deflecting_ear(self):
         from gondola.parts import rail
@@ -217,7 +220,7 @@ class RailContactTests(unittest.TestCase):
                 ):
                     query(length)
         # Both supported footprints retain the same nominal contact contract.
-        for length, expected_windows in ((16, 9), (32, 1)):
+        for length, expected_windows in ((16, 9), (24, 9), (32, 0)):
             contract = rail.attachment_contract(contact_length=length)
             self.assertEqual(contract["mount_contact_length_mm"], length)
             self.assertEqual(
@@ -240,22 +243,22 @@ class RailContactTests(unittest.TestCase):
                 self.assertGreater(
                     solid.common(translated_shape(tape.Shape, z=-0.01)).Volume, 0.5
                 )
-            self.assertEqual(sorted(centres), [-140, -140, 0, 0, 140, 140])
+            self.assertEqual(sorted(centres), [-136, -136, 0, 0, 136, 136])
             self.assertEqual(len(rail.build_coupons(doc)["printed"]), 2)
             self.assertAlmostEqual(doc.RailFitSample.Shape.BoundBox.XLength, 50)
             for coupon in (doc.RailFitSample, doc.MountFitSample):
                 contract = json.loads(coupon.RailAttachmentContract)
                 self.assertEqual(contract["rail_length_mm"], 50)
-                self.assertEqual(contract["wall_segments_x_mm"], [[-25, 25]])
+                self.assertEqual(contract["wall_segments_x_mm"], [[-13, 13]])
                 self.assertEqual(contract["free_base_spans_x_mm"], [])
                 self.assertIsNone(contract["free_span_minimum_width_mm"])
                 ranges = contract["supported_bolt_axis_ranges_x_mm"]
                 self.assertEqual(len(ranges), 1)
-                self.assertAlmostEqual(ranges[0][0], -16.2)
-                self.assertAlmostEqual(ranges[0][1], 16.2)
+                self.assertAlmostEqual(ranges[0][0], -4.2)
+                self.assertAlmostEqual(ranges[0][1], 4.2)
             rail_contract = json.loads(doc.ContinuousRail.RailAttachmentContract)
             self.assertEqual(rail_contract["rail_length_mm"], 300)
-            self.assertEqual(rail_contract["free_span_minimum_width_mm"], 4.5)
+            self.assertEqual(rail_contract["free_span_minimum_width_mm"], 5)
             self.assertTrue(
                 rail.attachment_check(
                     doc.RailFitSample.Shape, doc.MountFitSample.Shape

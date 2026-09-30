@@ -18,7 +18,7 @@ _BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
     ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 12.5, 32.0),
+    ("PropulsionFixedFrame", "MainPropulsionModule", None, 12.5, 24.0),
 )
 
 
@@ -96,48 +96,29 @@ def _lower_crop(offset=0, length=16):
     return Part.makeBox(length, 5, 9.2, V(offset - length / 2, -3.75, 2.2))
 
 
-def _independent_base_witnesses():
-    """Literal 6-to-4.5 mm smooth waists; preserve the entire 1.5 mm section.
+def _literal_plate(x, length, width, chamfer):
+    """Independent planar outline; all thickness/size inputs below are literals."""
+    left, right, half_width = x - length / 2, x + length / 2, width / 2
+    points = [
+        V(left + chamfer, -half_width, 0),
+        V(right - chamfer, -half_width, 0),
+        V(right, -half_width + chamfer, 0),
+        V(right, half_width - chamfer, 0),
+        V(right - chamfer, half_width, 0),
+        V(left + chamfer, half_width, 0),
+        V(left, half_width - chamfer, 0),
+        V(left, -half_width + chamfer, 0),
+    ]
+    return Part.Face(Part.makePolygon(points + points[:1])).extrude(V(0, 0, 1.5))
 
-    Omit only the final 3 mm at each rounded rail end. These independent
-    witnesses must not inherit a defective profile from the rail generator.
-    """
-    reliefs = []
-    for first, last in (
-        (-128, -111),
-        (-89, -81),
-        (-59, -51),
-        (-31, -25),
-        (25, 31),
-        (51, 59),
-        (81, 89),
-        (111, 128),
-    ):
-        middle, sixth = (first + last) / 2, (last - first) / 6
-        for sign in (-1, 1):
-            edges = []
-            for poles in (
-                (
-                    (first, 3),
-                    (first + sixth, 3),
-                    (middle - sixth, 2.25),
-                    (middle, 2.25),
-                ),
-                (
-                    (middle, 2.25),
-                    (middle + sixth, 2.25),
-                    (last - sixth, 3),
-                    (last, 3),
-                ),
-            ):
-                curve = Part.BezierCurve()
-                curve.setPoles([V(x, sign * y, 0) for x, y in poles])
-                edges.append(curve.toShape())
-            edges.append(Part.makeLine(V(last, sign * 3, 0), V(first, sign * 3, 0)))
-            reliefs.append(Part.Face(Part.Wire(edges)).extrude(V(0, 0, 1.5)))
-    removed = Part.makeCompound(reliefs)
-    retained = Part.makeBox(294, 6, 1.5, V(-147, -3, 0)).cut(removed)
-    return retained, removed
+
+def _independent_base_witnesses():
+    """Full literal 300x5x1.5mm strip and three14x32mm wings, including chamfers."""
+    retained = _literal_plate(0, 300, 5, 1)
+    for centre in (-136, 0, 136):
+        retained = retained.fuse(_literal_plate(centre, 14, 32, 2))
+    region = Part.makeBox(302, 34, 1.5, V(-151, -17, 0))
+    return retained.removeSplitter(), region
 
 
 def _independent_wall_top_sections(shape):
@@ -147,15 +128,15 @@ def _independent_wall_top_sections(shape):
         (edge.BoundBox.XMin, edge.BoundBox.XMax) for edge in shape.common(line).Edges
     )
     expected = (
-        (-150, -128),
-        (-111, -89),
-        (-81, -59),
-        (-51, -31),
-        (-25, 25),
-        (31, 51),
-        (59, 81),
-        (89, 111),
-        (128, 150),
+        (-149, -123),
+        (-115, -89),
+        (-81, -55),
+        (-47, -21),
+        (-13, 13),
+        (21, 47),
+        (55, 81),
+        (89, 115),
+        (123, 149),
     )
     return {
         "sample_yz_mm": [0, 8.5],
@@ -267,10 +248,45 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             local_shape(part).common(_lower_crop(offset, length)), x=-offset
         )
         local_rail = placed_shape(rail_shape, foot_placement.inverse())
-        attachment = rail.attachment_check(local_rail, lower, contact_length=length)
+        shared = module.Name == "MainPropulsionModule"
+        screw_length, head_face_y = (12.0, -6.75) if shared else (8.0, -3.75)
+        head_support = None
+        if shared:
+            bridge = registry.Document.getObject("ServoDriveBridge")
+            if (
+                bridge is None
+                or bridge.Name not in shapes
+                or not belongs_to_group(bridge, module)
+                or list(registry.PrintedParts).count(bridge) != 1
+            ):
+                rows.append(
+                    {
+                        "module": module.Name,
+                        "passed": False,
+                        "error": "Missing registered shared-clamp servo bridge",
+                    }
+                )
+                continue
+            bridge_in_module = placed_shape(
+                shapes[bridge.Name], module.getGlobalPlacement().inverse()
+            )
+            crop = Part.makeBox(length, 5.5, 9.2, V(offset - length / 2, -6.75, 2.2))
+            head_support = translated_shape(bridge_in_module.common(crop), x=-offset)
+        attachment = rail.attachment_check(
+            local_rail,
+            lower,
+            contact_length=length,
+            screw_length=screw_length,
+            head_face_y=head_face_y,
+            head_support=head_support,
+        )
         hardware_rows = []
         for suffix, expected, sku in (
-            ("RailMountScrew", rail.attachment_screw_shape(), "M2X8_BUTTON_HEAD"),
+            (
+                "RailMountScrew",
+                rail.attachment_screw_shape(screw_length, head_face_y=head_face_y),
+                f"M2X{screw_length:g}_BUTTON_HEAD",
+            ),
             ("RailMountNut", rail.nut_shape(), "M2_HEX_NUT"),
         ):
             hardware_name = module.Name + suffix
@@ -311,6 +327,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             {
                 "module": module.Name,
                 "part": name,
+                "shared_servo_bridge_clamp": shared,
                 "attachment_axis_x_mm": position.x,
                 "supported_slot_position": position_check,
                 "centred_yz": centred,
@@ -336,12 +353,12 @@ def rail_check(registry, shapes):
         actual = local_shape(obj)
         comparison = geometry_comparison(actual, rail.rail_shape())
         bounds = actual.BoundBox
-        base_witness, waist_reliefs = _independent_base_witnesses()
+        base_witness, base_region = _independent_base_witnesses()
         missing_base = abs(base_witness.cut(actual).Volume)
-        filled_reliefs = abs(waist_reliefs.common(actual).Volume)
+        extra_base = abs(actual.common(base_region).cut(base_witness).Volume)
         wings = []
-        for x in (-140, 0, 140):
-            pad = rail.rounded_plate(x)
+        for x in (-136, 0, 136):
+            pad = _literal_plate(x, 14, 32, 2)
             margin = min(
                 pad.BoundBox.XMin - bounds.XMin, bounds.XMax - pad.BoundBox.XMax
             )
@@ -366,8 +383,8 @@ def rail_check(registry, shapes):
                 "source_comparison": comparison,
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "missing_unbroken_base_witness_mm3": missing_base,
-                "filled_flexure_relief_mm3": filled_reliefs,
-                "independent_base_witness_scope": "Literal 6-to-4.5 mm cubic waist profiles across all eight wall gaps and the full 1.5 mm base thickness within X +/-147 mm; rounded end tips are covered by the separate full-shape comparison.",
+                "extra_base_material_mm3": extra_base,
+                "independent_base_witness_scope": "Complete literal300x5x1.5mm base with1mm planar end chamfers, plus three14x32x1.5mm tape wings with2mm planar corners atX=-136,0,136mm. Both missing and excess underside material are checked independently of the generator.",
                 "open_wall_spans": flex,
                 "independent_wall_top_sections": wall_sections,
                 "tape_wings": wings,
@@ -379,7 +396,7 @@ def rail_check(registry, shapes):
                 and comparison_passed(comparison, TOL)
                 and abs(bounds.XLength - 300) < TOL
                 and missing_base < TOL
-                and filled_reliefs < TOL
+                and extra_base < TOL
                 and len(mounts) == 4
                 and flex["passed"]
                 and wall_sections["passed"]
@@ -414,7 +431,12 @@ def rail_check(registry, shapes):
                 "matches_current_attachment_contract": _contract_matches(
                     obj,
                     "RailAttachmentContract",
-                    rail.attachment_contract(contact_length, length=contract_length),
+                    rail.attachment_contract(
+                        contact_length,
+                        length=contract_length,
+                        shared_drive=obj is not None
+                        and obj.Name == "MainPropulsionModule",
+                    ),
                 ),
             }
         )
@@ -451,7 +473,7 @@ def rail_check(registry, shapes):
     )
     tape_inventory = (
         sorted(tape_positions)
-        == sorted((x, sign) for x in (-140, 0, 140) for sign in (-1, 1))
+        == sorted((x, sign) for x in (-136, 0, 136) for sign in (-1, 1))
         and len({row["object"] for row in tapes}) == 6
     )
     return {

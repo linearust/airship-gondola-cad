@@ -15,7 +15,7 @@ except ImportError:
 class SavedRailValidationTests(unittest.TestCase):
     def setUp(self):
         from gondola.cad import set_property
-        from gondola.parts import equipment_mounts, propulsion, rail
+        from gondola.parts import equipment_mounts, propulsion, rail, servo_bridge
 
         self.doc = App.newDocument("SavedSideSlotRailTest")
         self.root = self.doc.addObject("App::Part", "Root")
@@ -35,7 +35,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 0,
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
-            ("PropulsionFixedFrame", "MainPropulsionModule", None, -5, 0, 12.5),
+            ("PropulsionFixedFrame", "MainPropulsionModule", None, -12.5, 0, 12.5),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -47,7 +47,10 @@ class SavedRailValidationTests(unittest.TestCase):
                 module,
                 "RailAttachmentContract",
                 json.dumps(
-                    rail.attachment_contract(32 if kind is None else 16), sort_keys=True
+                    rail.attachment_contract(
+                        24 if kind is None else 16, shared_drive=kind is None
+                    ),
+                    sort_keys=True,
                 ),
             )
             obj = self.doc.addObject("Part::Feature", name)
@@ -59,9 +62,14 @@ class SavedRailValidationTests(unittest.TestCase):
             )
             hardware.extend(
                 rail.build_attachment_hardware(
-                    self.doc, module, parent, x_offset=offset
+                    self.doc, module, parent, x_offset=offset, shared_drive=kind is None
                 )
             )
+            if kind is None:
+                bridge = self.doc.addObject("Part::Feature", "ServoDriveBridge")
+                module.addObject(bridge)
+                bridge.Shape = servo_bridge.bridge_shape()
+                prints.append(bridge)
             modules.append(module)
             prints.append(obj)
             if kind:
@@ -103,7 +111,7 @@ class SavedRailValidationTests(unittest.TestCase):
             row["attachment_axis_x_mm"]
             for row in report["rails"][0]["installed_mounts"]
         )
-        for value, expected in zip(actual, (-140, -70, 7.5, 100)):
+        for value, expected in zip(actual, (-140, -70, 0, 100)):
             self.assertAlmostEqual(value, expected)
 
     def test_gap_position_is_rejected_even_without_a_collision(self):
@@ -137,6 +145,31 @@ class SavedRailValidationTests(unittest.TestCase):
         obj.HardwareSKU = "M2X6_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
 
+    def test_shared_joint_rejects_old_short_screw_and_missing_bridge_head_land(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import rail
+
+        screw = self.doc.MainPropulsionModuleRailMountScrew
+        original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
+        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=12.5)
+        screw.HardwareSKU = "M2X8_BUTTON_HEAD"
+        self.assertFalse(self.check()["passed"])
+        screw.Shape, screw.HardwareSKU = original_shape, original_sku
+        bridge = self.doc.ServoDriveBridge
+        bridge.Shape = bridge.Shape.cut(
+            Part.makeBox(1, 0.5, 0.3, App.Vector(12, -6.75, 8))
+        )
+        report = self.check()
+        self.assertFalse(report["passed"])
+        row = next(
+            row
+            for row in report["rails"][0]["installed_mounts"]
+            if row["module"] == "MainPropulsionModule"
+        )
+        self.assertGreater(
+            row["saved_lower_mount_attachment"]["missing_head_support_mm3"], 0
+        )
+
     def test_independently_displaced_print_is_rejected(self):
         self.doc.BatteryMount.Placement.Base = App.Vector(0, 0, 1)
         report = self.check()
@@ -160,10 +193,10 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertGreater(report["rails"][0]["missing_unbroken_base_witness_mm3"], 0.4)
 
-    def test_filled_waist_is_rejected_even_if_generator_has_the_same_defect(self):
+    def test_widened_base_is_rejected_even_if_generator_has_the_same_defect(self):
         obj = self.doc.ContinuousRail
         obj.Shape = obj.Shape.fuse(
-            Part.makeBox(8, 6, 1.5, App.Vector(51, -3, 0))
+            Part.makeBox(8, 6, 1.5, App.Vector(47, -3, 0))
         ).removeSplitter()
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
@@ -172,12 +205,12 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         row = report["rails"][0]
         self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
-        self.assertGreater(row["filled_flexure_relief_mm3"], 8.9)
+        self.assertGreater(row["extra_base_material_mm3"], 11.9)
         self.assertAlmostEqual(row["missing_unbroken_base_witness_mm3"], 0, places=6)
 
     def test_missing_unused_wall_is_rejected_independently_of_generator(self):
         obj = self.doc.ContinuousRail
-        obj.Shape = obj.Shape.cut(Part.makeBox(20, 2.5, 8, App.Vector(31, -1.25, 1.5)))
+        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 8, App.Vector(21, -1.25, 1.5)))
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
         ):
@@ -188,7 +221,7 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertFalse(row["independent_wall_top_sections"]["passed"])
         self.assertTrue(all(mount["passed"] for mount in row["installed_mounts"]))
 
-    def test_thinned_waist_is_rejected_even_if_generator_has_the_same_defect(self):
+    def test_thinned_straight_base_is_rejected_independently_of_generator(self):
         obj = self.doc.ContinuousRail
         obj.Shape = obj.Shape.cut(
             Part.makeBox(1, 4.5, 0.2, App.Vector(54.5, -2.25, 1.3))
@@ -201,7 +234,7 @@ class SavedRailValidationTests(unittest.TestCase):
         row = report["rails"][0]
         self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
         self.assertGreater(row["missing_unbroken_base_witness_mm3"], 0.89)
-        self.assertAlmostEqual(row["filled_flexure_relief_mm3"], 0, places=6)
+        self.assertAlmostEqual(row["extra_base_material_mm3"], 0, places=6)
 
     def test_long_propulsion_foot_cannot_claim_the_short_carrier_travel(self):
         from gondola.parts import rail

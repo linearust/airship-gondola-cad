@@ -132,7 +132,7 @@ class PropulsionEvidenceTests(unittest.TestCase):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["inventory"]["rail_mount_clearance"]["expected"], 1)
-        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 18)
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 16)
         self.assertEqual(result["inventory"]["geometry"]["expected"], 10)
         self.assertEqual(result["inventory"]["bridge_joint"]["expected"], 1)
         self.assertEqual(result["inventory"]["servo_module_service"]["expected"], 1)

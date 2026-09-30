@@ -24,7 +24,7 @@ from gondola.contracts.drive import (
     SELECTED_DRIVE,
     drive_for_document,
 )
-from gondola.parts import propulsion, rail
+from gondola.parts import propulsion, rail, servo_bridge
 from gondola.print_export import mesh_checks, print_shape
 
 from .bearing_capture import bearing_stack_check, keeper_alignment_sensitivity
@@ -1045,7 +1045,11 @@ def frame_rail_bore_filled(frame):
     plug = Part.makeCylinder(
         rail.SLOT_HEIGHT / 2,
         rail.MOUNT_LEG_THICKNESS,
-        App.Vector(propulsion.RAIL_BOLT_OFFSET_X, rail.MOUNT_OUTER_Y, rail.BOLT_AXIS_Z),
+        App.Vector(
+            propulsion.RAIL_BOLT_OFFSET_X,
+            rail.MOUNT_OUTER_Y,
+            rail.BOLT_AXIS_Z,
+        ),
         App.Vector(0, 1, 0),
     )
     return frame.fuse(plug).removeSplitter()
@@ -1075,7 +1079,7 @@ def vertical_frame_release_check(frame, rail_shape=None):
     upper_gap = upper.BoundBox.ZMin - rail_shape.BoundBox.ZMax
     missing = abs(frame.cut(conservative).Volume)
     added = abs(conservative.cut(frame).Volume)
-    plug_volume = math.pi * (rail.SLOT_HEIGHT / 2) ** 2 * rail.MOUNT_LEG_THICKNESS
+    plug_volume = math.pi * (rail.SLOT_HEIGHT / 2) ** 2 * (rail.MOUNT_LEG_THICKNESS)
     return {
         "lower_frame_path": path,
         "upper_geometry_initial_z_gap_mm": upper_gap,
@@ -1092,6 +1096,10 @@ def vertical_frame_release_check(frame, rail_shape=None):
 
 def rail_mount_clearance_check(doc, module):
     """Service the side M2 joint with the entire servo/gear module installed."""
+    from gondola.print_export import geometry_comparison
+
+    from .rail_access import side_driver_clearance
+
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
@@ -1101,20 +1109,68 @@ def rail_mount_clearance_check(doc, module):
     )
     present_fasteners = sorted({screw_name, nut_name} & shapes.keys())
     shapes[screw_name] = shapes.get(
-        screw_name, translated_shape(rail.attachment_screw_shape(), x=x)
+        screw_name,
+        translated_shape(
+            rail.attachment_screw_shape(
+                servo_bridge.SHARED_SCREW_LENGTH, head_face_y=servo_bridge.CHEEK_OUTER_Y
+            ),
+            x=x,
+        ),
     )
     shapes[nut_name] = shapes.get(nut_name, translated_shape(rail.nut_shape(), x=x))
     shapes["LocalRailReference"] = translated_shape(rail.rail_shape(), x=x)
     screw, nut = shapes[screw_name], shapes[nut_name]
+    expected_screw = translated_shape(
+        rail.attachment_screw_shape(12, head_face_y=-6.75), x=x
+    )
+    hardware_geometry = []
+    for name, expected, sku in (
+        (screw_name, expected_screw, "M2X12_BUTTON_HEAD"),
+        (nut_name, translated_shape(rail.nut_shape(), x=x), "M2_HEX_NUT"),
+    ):
+        comparison = geometry_comparison(shapes[name], expected)
+        actual = doc.getObject(name)
+        metadata_ok = name not in present_fasteners or (
+            actual is not None
+            and actual.HardwareSKU == sku
+            and actual.getParentGeoFeatureGroup() == module["group"]
+        )
+        hardware_geometry.append(
+            {
+                "object": name,
+                "comparison": comparison,
+                "installed_metadata_matches": metadata_ok,
+                "passed": metadata_ok
+                and all(
+                    comparison[key] < TOL
+                    for key in (
+                        "difference_mm3",
+                        "bounds_difference_mm",
+                        "volume_difference_mm3",
+                    )
+                ),
+            }
+        )
+    crop = Part.makeBox(24, 8, 9.2, App.Vector(x - 12, -6.75, 2.2))
+    contact = rail.attachment_check(
+        translated_shape(shapes["LocalRailReference"], x=-x),
+        translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
+        contact_length=24,
+        screw_length=12,
+        head_face_y=-6.75,
+        head_support=translated_shape(shapes["ServoDriveBridge"].common(crop), x=-x),
+    )
     screw_obstacles = retained_obstacles(shapes, {screw_name})
-    withdrawal = continuous_path(screw, [(0, 0, 0), (0, -12, 0)], screw_obstacles)
+    withdrawal = continuous_path(screw, [(0, 0, 0), (0, -15, 0)], screw_obstacles)
     # Remove the screw first; the unthreaded nut can move outward then sideways.
     nut_obstacles = retained_obstacles(shapes, {screw_name, nut_name})
     nut_path = continuous_path(nut, [(0, 0, 0), (0, 4, 0), (35, 4, 0)], nut_obstacles)
-    stem = Part.makeCylinder(2, 135, App.Vector(x, -140, z), App.Vector(0, 1, 0))
+    driver = side_driver_clearance(screw, screw_obstacles)
     stem_hits = {
-        name: intersection_volume(stem, shape)
-        for name, shape in screw_obstacles.items()
+        name: max(
+            segment["intersection_mm3"].get(name, 0) for segment in driver["segments"]
+        )
+        for name in screw_obstacles
     }
     # A flat open-end wrench holds the nut; the screw turns. No wrench torque
     # swing or claimed supplied-tool/socket geometry is inferred here.
@@ -1129,6 +1185,7 @@ def rail_mount_clearance_check(doc, module):
     )
     overlaps = {
         "screw_frame": intersection_volume(screw, shapes["PropulsionFixedFrame"]),
+        "screw_bridge": intersection_volume(screw, shapes["ServoDriveBridge"]),
         "nut_frame": intersection_volume(nut, shapes["PropulsionFixedFrame"]),
         "rail_frame": intersection_volume(
             shapes["LocalRailReference"], shapes["PropulsionFixedFrame"]
@@ -1142,6 +1199,11 @@ def rail_mount_clearance_check(doc, module):
         "removed_before_access": [],
         "retained_during_access": sorted(shapes),
         "side_bolt_axis_mm": [x, z],
+        "shared_servo_bridge_clamp": True,
+        "shared_grip_contact_check": contact,
+        "hardware_geometry": hardware_geometry,
+        "screw_length_mm": servo_bridge.SHARED_SCREW_LENGTH,
+        "driver_access": driver,
         "contact_x_range_mm": [
             x - propulsion.RAIL_CONTACT_LENGTH / 2,
             x + propulsion.RAIL_CONTACT_LENGTH / 2,
@@ -1152,8 +1214,11 @@ def rail_mount_clearance_check(doc, module):
         "nut_holding_wrench_entry": wrench_path,
         "frame_vertical_removal": lift,
         "seated_intersections_mm3": overlaps,
-        "scope": "All local servo, gear, bearing and rotor hardware stays installed. Only the side rail screw and nut are serviced. The Ø4 driver stem and 9mm-wide/2mm-thick open-end wrench are external access envelopes; actual purchased tool jaws/socket engagement, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
-        "passed": withdrawal["passed"]
+        "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared M2x12 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem and 9mm-wide/2mm-thick open-end wrench are external access envelopes; actual purchased tool jaws/socket engagement, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
+        "passed": contact["passed"]
+        and all(row["passed"] for row in hardware_geometry)
+        and withdrawal["passed"]
+        and driver["passed"]
         and nut_path["passed"]
         and wrench_path["passed"]
         and lift["passed"]
@@ -1397,7 +1462,7 @@ def replacement_rotor_space_check(doc, module, prefix):
             "part": name,
             **continuous_path(
                 shapes[name],
-                [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)],
+                list(servo_bridge.SERVICE_WAYPOINTS),
                 {"replacement_rotor_bulk": moving},
             ),
         }
@@ -1667,9 +1732,6 @@ def _record_fastener_checks(report, module, physical):
             nut,
             retained,
             thread_diameter=thread_diameter,
-            nut_lateral_direction=(1 if "Port" in bolt.Name else -1, 0, 0)
-            if bolt.Name.startswith("ServoBridge")
-            else None,
             retain_bolt=retain_bolt,
         )
         kept_bolts = {bolt.Name} if retain_bolt else set()

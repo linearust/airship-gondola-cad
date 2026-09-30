@@ -104,7 +104,7 @@ class FrameRootTests(unittest.TestCase):
         self.assertAlmostEqual(contact.common(bridge).Area, 396, places=5)
         self.assertLess(frame.common(bridge).Volume, 1e-7)
 
-    def test_long_side_foot_includes_origin_and_overlaps_the_complete_central_support(
+    def test_standard_side_foot_has_broad_overlap_with_central_support(
         self,
     ):
         from gondola.parts import propulsion, rail
@@ -115,10 +115,10 @@ class FrameRootTests(unittest.TestCase):
         foot = rail.mount_base_shape(length=length)
         foot.translate(App.Vector(offset, 0, 0))
         self.assertLess(foot.cut(frame).Volume, 1e-7)
-        self.assertLess(offset - length / 2, 0)
+        self.assertAlmostEqual(offset - length / 2, 0.5)
         self.assertGreater(offset + length / 2, 0)
-        self.assertAlmostEqual(length, 32)
-        connection = Part.makeBox(12.5, 2.5, 9.2, App.Vector(-3.5, -3.75, 2.2))
+        self.assertAlmostEqual(length, 24)
+        connection = Part.makeBox(8.5, 2.5, 9.2, App.Vector(0.5, -3.75, 2.2))
         self.assertLess(connection.cut(frame).Volume, 1e-7)
 
     def test_side_bore_fill_does_not_fill_the_web_passage_and_frame_lifts(self):
@@ -141,7 +141,7 @@ class FrameRootTests(unittest.TestCase):
             "continuous planar/coaxial-cylinder face-prism union",
         )
 
-    def test_open_connector_plate_keeps_bulkhead_support_and_mounting_seats(self):
+    def test_connector_plate_keeps_bulkhead_support_and_shared_clamp(self):
         from gondola.parts import servo_bridge
         from gondola.validation.servo_module import bridge_joint_check
 

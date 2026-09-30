@@ -39,21 +39,20 @@ def _matches_vector(actual, target):
 class ReviewMotionPlan:
     axial_allowance_mm: float = 0.5
     gear_withdrawal_mm: float = 35
-    bolt_withdrawal_mm: float = 8.2
-    nut_drop_mm: float = 0.2
-    nut_slide_mm: float = 25
+    key_release_mm: float = 1.2
     module_lift_mm: float = 0.5
     module_slide_mm: float = 80
     # Each side stage is (native prefix, direction sign, first frame).
     gear_stages: tuple = (("Port", 1, 13), ("Starboard", -1, 61))
-    mount_stages: tuple = (("Port", 1, 109), ("Starboard", -1, 181))
     gear_duration: int = 35
-    bolt_duration: int = 23
-    nut_drop_end: int = 29
-    nut_slide_end: int = 59
-    module_lift_frames: tuple = (253, 276)
-    module_slide_frames: tuple = (277, 336)
-    removal_frames: int = 361
+    key_release_frames: tuple = (109, 132)
+    module_lift_frames: tuple = (133, 156)
+    module_slide_frames: tuple = (157, 216)
+    removal_frames: int = 241
+    shared_rail_fasteners: tuple = (
+        "MainPropulsionModuleRailMountNut",
+        "MainPropulsionModuleRailMountScrew",
+    )
     # Frame and signed multiple of the permitted carrier travel.
     axial_steps: tuple = ((1, 0), (49, 1), (97, -1), (145, 0), (193, 1), (241, 0))
 
@@ -68,41 +67,51 @@ class ReviewMotionPlan:
                     "Update axial-travel poses and captions for the new stops."
                 )
         service = evidence["saved_servo_module_service"]
+        if (
+            service.get("passed") is not True
+            or service.get("shared_rail_fasteners_removed_before_bench")
+            != list(self.shared_rail_fasteners)
+            or service.get("released_fasteners") != []
+        ):
+            raise RuntimeError(
+                "Update the review for changed shared rail clamp / off-rail bench prerequisites."
+            )
         waypoints = [
             [0, 0, 0],
-            [0, 0, self.module_lift_mm],
-            [self.module_slide_mm, 0, self.module_lift_mm],
+            [0, -self.key_release_mm, 0],
+            [0, -self.key_release_mm, self.module_lift_mm],
+            [self.module_slide_mm, -self.key_release_mm, self.module_lift_mm],
         ]
-        for row in service["part_paths"]:
-            if row["waypoints_mm"] != waypoints:
-                raise RuntimeError(
-                    "Update the review for changed servo-module removal paths."
-                )
-        for index, (_, sign, _) in enumerate(self.gear_stages):
-            gear = service["output_gear_removal"][index]
-            pair = service["mount_fastener_release"][index]
-            expected = (
-                (
-                    gear["segments"][-1]["end_mm"],
-                    [0, -sign * self.gear_withdrawal_mm, 0],
-                ),
-                (
-                    pair["bolt_axial_withdrawal"]["segments"][-1]["end_mm"],
-                    [0, 0, self.bolt_withdrawal_mm],
-                ),
-                (
-                    pair["nut_axial_removal"]["segments"][0]["end_mm"],
-                    [0, 0, -self.nut_drop_mm],
-                ),
-                (
-                    pair["nut_axial_removal"]["segments"][-1]["end_mm"],
-                    [sign * self.nut_slide_mm, 0, -self.nut_drop_mm],
-                ),
+        if not service["part_paths"] or any(
+            row["waypoints_mm"] != waypoints for row in service["part_paths"]
+        ):
+            raise RuntimeError(
+                "Update the review for changed servo-module removal paths."
             )
-            if any(not _matches_vector(actual, target) for actual, target in expected):
-                raise RuntimeError(
-                    "Update the review for changed gear/fastener removal paths."
+        gears = service["output_gear_removal"]
+        if len(gears) != len(self.gear_stages):
+            raise RuntimeError("Update the review for changed gear removal paths.")
+        for gear, (prefix, sign, _) in zip(gears, self.gear_stages, strict=True):
+            if (
+                gear.get("part") != prefix + "OutputGear"
+                or len(gear["segments"]) != 1
+                or not _matches_vector(gear["segments"][0]["start_mm"], [0, 0, 0])
+                or not _matches_vector(
+                    gear["segments"][0]["end_mm"],
+                    [0, -sign * self.gear_withdrawal_mm, 0],
                 )
+            ):
+                raise RuntimeError("Update the review for changed gear removal paths.")
+
+    def bench_parts(self, propulsion_names):
+        """Hide the released shared pair before the explicitly off-rail scene."""
+        names = list(propulsion_names)
+        if not set(self.shared_rail_fasteners) <= set(names) or any(
+            name.startswith("ServoBridge") and name.endswith(("Bolt", "Nut"))
+            for name in names
+        ):
+            raise RuntimeError("Expected the shared rail clamp before bench filtering.")
+        return [name for name in names if name not in self.shared_rail_fasteners]
 
     def axial_shift(self, frame):
         return curve(
@@ -143,29 +152,9 @@ class ReviewMotionPlan:
             )
             if frame > start + self.gear_duration:
                 hidden.add(name)
-        for prefix, sign, start in self.mount_stages:
-            bolt, nut = "ServoBridge" + prefix + "Bolt", "ServoBridge" + prefix + "Nut"
-            offsets[bolt] = (
-                0,
-                0,
-                self.bolt_withdrawal_mm
-                * ramp(frame, start, start + self.bolt_duration),
-            )
-            offsets[nut] = (
-                sign
-                * self.nut_slide_mm
-                * ramp(frame, start + self.nut_drop_end, start + self.nut_slide_end),
-                0,
-                -self.nut_drop_mm
-                * ramp(frame, start + self.bolt_duration, start + self.nut_drop_end),
-            )
-            if frame > start + self.bolt_duration:
-                hidden.add(bolt)
-            if frame > start + self.nut_slide_end:
-                hidden.add(nut)
         shift = (
             self.module_slide_mm * ramp(frame, *self.module_slide_frames),
-            0,
+            -self.key_release_mm * ramp(frame, *self.key_release_frames),
             self.module_lift_mm * ramp(frame, *self.module_lift_frames),
         )
         offsets.update({name: shift for name in drive_names})
@@ -173,13 +162,13 @@ class ReviewMotionPlan:
 
     def removal_markers(self):
         return (
-            [(1, "Disconnect leads / release gear set screws")]
+            [(1, "Off-rail bench / shared clamp already removed / support both parts")]
             + [(start, f"Remove {prefix} 16T") for prefix, _, start in self.gear_stages]
             + [
-                (start, f"Remove {prefix} mount bolt / nut")
-                for prefix, _, start in self.mount_stages
-            ]
-            + [
+                (
+                    self.key_release_frames[0],
+                    f"Release key -Y {self.key_release_mm:g} mm",
+                ),
                 (self.module_lift_frames[0], f"Lift module {self.module_lift_mm:g} mm"),
                 (
                     self.module_slide_frames[0],
@@ -194,9 +183,12 @@ class ReviewMotionPlan:
 
     def removal_description(self):
         return (
-            "UNPOWERED BENCH ONLY: leads disconnected and gear set screws released first. "
-            f"Sequentially remove 16T gears and two M2 pairs; lift {self.module_lift_mm:g} mm, "
-            f"slide +X {self.module_slide_mm:g} mm. Nearby rail equipment excluded. "
+            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove the shared M2x12 rail screw/nut "
+            "and lift the entire propulsion assembly from the rail while supporting frame and bridge together. "
+            "Those prerequisites are checked separately and are not animated here; the common clamp and "
+            "surrounding rail equipment are absent throughout this scene. Release gear set screws, then "
+            f"sequentially remove both 16T gears. Shift the bridge -Y {self.key_release_mm:g} mm to release "
+            f"its key, lift {self.module_lift_mm:g} mm and slide +X {self.module_slide_mm:g} mm. "
             "Playback repeats by resetting the bench state, not by a verified reassembly operation."
         )
 

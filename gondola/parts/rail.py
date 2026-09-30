@@ -26,13 +26,11 @@ from gondola.contracts.design import RAIL_BASE_THICKNESS_MM, RAIL_LENGTH_MM
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
-PAD_CENTRES = (-140.0, 0.0, 140.0)
+PAD_CENTRES = (-136.0, 0.0, 136.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
-BASE_WIDTH = 6.0
-FLEXURE_MIN_WIDTH = 4.5
-CENTRAL_WALL_LENGTH = 50.0
-# Shorter outer supports distribute bending while retaining a full clamp foot.
-POSITIVE_WALL_SECTIONS = ((31.0, 51.0), (59.0, 81.0), (89.0, 111.0), (128.0, 150.0))
+BASE_WIDTH = 5.0
+WALL_LENGTH, WALL_PITCH = 26.0, 34.0
+WALL_CENTRES = tuple(index * WALL_PITCH for index in range(-4, 5))
 WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
 SLOT_HEIGHT, BOLT_AXIS_Z = 2.4, 6.5
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = 16.0, 2.5
@@ -85,31 +83,34 @@ def _stations(values, length, footprint, description):
     return tuple(float(x) for x in values)
 
 
-def rounded_plate(x, length=PAD_LENGTH, width=PAD_WIDTH):
-    shape = box(length, width, PAD_THICKNESS, (x - length / 2, -width / 2, 0))
-    edges = [
-        edge for edge in shape.Edges if edge.BoundBox.ZLength > PAD_THICKNESS - 0.01
-    ]
-    return shape.makeFillet(min(3.0, width / 3, length / 3), edges)
+def plate_shape(x, length=PAD_LENGTH, width=PAD_WIDTH, *, chamfer=2.0):
+    """Straight plate outline with four small planar corner cuts."""
+    left, right, half_width = x - length / 2, x + length / 2, width / 2
+    return polygon_extrusion(
+        [
+            (left + chamfer, -half_width, 0),
+            (right - chamfer, -half_width, 0),
+            (right, -half_width + chamfer, 0),
+            (right, half_width - chamfer, 0),
+            (right - chamfer, half_width, 0),
+            (left + chamfer, half_width, 0),
+            (left, half_width - chamfer, 0),
+            (left, -half_width + chamfer, 0),
+        ],
+        (0, 0, PAD_THICKNESS),
+    )
 
 
 def wall_segments(length=LENGTH):
-    """Clip the symmetric nine-wall layout; retain only usable clamp supports."""
+    """Retain complete identical supports; shorter coupons never truncate a wall."""
     length = _positive(length, "Rail length")
     if length > LENGTH + TOL:
         raise ValueError("Rail length exceeds the designed wall layout")
-    sections = (
-        *((-last, -first) for first, last in reversed(POSITIVE_WALL_SECTIONS)),
-        (-CENTRAL_WALL_LENGTH / 2, CENTRAL_WALL_LENGTH / 2),
-        *POSITIVE_WALL_SECTIONS,
+    return tuple(
+        (centre - WALL_LENGTH / 2, centre + WALL_LENGTH / 2)
+        for centre in WALL_CENTRES
+        if abs(centre) + WALL_LENGTH / 2 <= length / 2 + TOL
     )
-    segments = []
-    for start, end in sections:
-        first = max(-length / 2, start)
-        last = min(length / 2, end)
-        if last - first >= 2 * _slot_end_inset() - TOL:
-            segments.append((first, last))
-    return tuple(segments)
 
 
 def flex_spans(length=LENGTH):
@@ -118,43 +119,10 @@ def flex_spans(length=LENGTH):
     return tuple((left[1], right[0]) for left, right in zip(segments, segments[1:]))
 
 
-def _waist_relief(first, last, side):
-    """Two tangent cubic edges trim a shallow, smooth waist from one base side."""
-    middle = (first + last) / 2
-    sixth = (last - first) / 6
-    outer, inner = side * BASE_WIDTH / 2, side * FLEXURE_MIN_WIDTH / 2
-    edges = []
-    for points in (
-        (
-            (first, outer),
-            (first + sixth, outer),
-            (middle - sixth, inner),
-            (middle, inner),
-        ),
-        (
-            (middle, inner),
-            (middle + sixth, inner),
-            (last - sixth, outer),
-            (last, outer),
-        ),
-    ):
-        curve = Part.BezierCurve()
-        curve.setPoles([V(x, y, -0.1) for x, y in points])
-        edges.append(curve.toShape())
-    edges.append(Part.makeLine(V(last, outer, -0.1), V(first, outer, -0.1)))
-    return Part.Face(Part.Wire(edges)).extrude(V(0, 0, PAD_THICKNESS + 0.2))
-
-
 def base_shape(length=LENGTH):
-    """Full-width wall roots and constant thickness, with waists only in free spans."""
+    """Constant-width strip; only its four end corners are chamfered."""
     length = _positive(length, "Rail length")
-    base = rounded_plate(0, length, BASE_WIDTH)
-    reliefs = [
-        _waist_relief(first, last, side)
-        for first, last in flex_spans(length)
-        for side in (-1, 1)
-    ]
-    return base.cut(union(reliefs)).removeSplitter() if reliefs else base
+    return plate_shape(0, length, BASE_WIDTH, chamfer=1.0)
 
 
 def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
@@ -175,8 +143,8 @@ def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
 def supported_slot_ranges(length=LENGTH, contact_length=MOUNT_LENGTH):
     """Permitted nominal centres, retaining at least0.8mm full-foot end reserve.
 
-    The32mm propulsion foot fits only the central50mm wall. Other walls retain
-    the16mm foot with shorter local adjustment. These are geometry limits,
+    Every26mm wall supports either a16mm carrier foot or the24mm propulsion
+    foot. The longer foot has only0.4mm total trim. These are geometry limits,
     not a loaded fit.
     """
     return tuple(
@@ -238,7 +206,7 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     segments = wall_segments(length)
     if not segments:
         raise ValueError("Rail must contain at least one usable wall segment")
-    pieces = [base_shape(length)] + [rounded_plate(x) for x in pads]
+    pieces = [base_shape(length)] + [plate_shape(x) for x in pads]
     inset = _slot_end_inset()
     for first, last in segments:
         wall = box(
@@ -289,20 +257,37 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH):
     return result
 
 
-def attachment_screw_shape(screw_length=SCREW_LENGTH):
+def _attachment_fastener(shared_drive):
+    if not isinstance(shared_drive, bool):
+        raise ValueError("Shared drive attachment must be a boolean")
+    if shared_drive:
+        from . import servo_bridge
+
+        return servo_bridge.SHARED_SCREW_LENGTH, servo_bridge.CHEEK_OUTER_Y
+    return SCREW_LENGTH, MOUNT_OUTER_Y
+
+
+def attachment_screw_shape(screw_length=SCREW_LENGTH, *, head_face_y=MOUNT_OUTER_Y):
     length = _positive(screw_length, "Screw length")
+    if (
+        isinstance(head_face_y, bool)
+        or not isinstance(head_face_y, Real)
+        or not math.isfinite(head_face_y)
+        or head_face_y > MOUNT_OUTER_Y
+    ):
+        raise ValueError("Screw head must bear on or outside the mount leg")
     return union(
         [
             Part.makeCylinder(
                 fasteners.THREAD_DIAMETER / 2,
                 length,
-                V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+                V(0, head_face_y, BOLT_AXIS_Z),
                 V(0, 1, 0),
             ),
             Part.makeCylinder(
                 fasteners.SCREW_HEAD_DIAMETER / 2,
                 fasteners.SCREW_HEAD_HEIGHT,
-                V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+                V(0, head_face_y, BOLT_AXIS_Z),
                 V(0, -1, 0),
             ),
         ]
@@ -335,14 +320,15 @@ def nut_shape(across_flats=fasteners.HEX_NUT_AF, thickness=fasteners.HEX_NUT_HEI
     )
 
 
-def build_attachment_hardware(doc, parent, prefix, *, x_offset=0):
+def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=False):
+    screw_length, head_face_y = _attachment_fastener(shared_drive)
     result = []
     for suffix, label, shape, sku in (
         (
             "RailMountScrew",
-            "M2 x8 side rail bolt | design head envelope",
-            attachment_screw_shape(),
-            "M2X8_BUTTON_HEAD",
+            f"M2 x{screw_length:g} side rail bolt | design head envelope",
+            attachment_screw_shape(screw_length, head_face_y=head_face_y),
+            f"M2X{screw_length:g}_BUTTON_HEAD",
         ),
         (
             "RailMountNut",
@@ -397,17 +383,19 @@ def tape_attachment_contract():
         "wing_stations_x_mm": PAD_CENTRES,
         "wing_count": 2 * len(PAD_CENTRES),
         "base_width_mm": BASE_WIDTH,
-        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH,
-        "attachment": "Conform before bonding. Thin double-sided tape under the continuous base can distribute local loads and cover wing undersides. Base width is6mm under walls and gently narrows to4.5mm between them. Six optional over-wing strips reinforce peel retention. Keep side bolts and open flex gaps accessible; adhesive changes compliance and must not be treated as an unloaded free-beam test.",
+        "attachment": "Conform before bonding. Thin double-sided tape under the continuous5mm-wide base can distribute local loads and cover wing undersides. Six optional over-wing strips reinforce peel retention. Keep side bolts and open flex gaps accessible; adhesive changes compliance and must not be treated as an unloaded free-beam test.",
         "reference_scope": "Saved tape solids show only optional12mm over-wing strips. Under-base adhesive thickness, mass and envelope deformation are not modeled. Z0 is the rail underside, not a certified balloon surface.",
         "qualification": "Three isolated wing pairs are not load-qualified. Check actual tape/envelope compatibility, peel, creep and loaded curvature; no adhesion strength, minimum bend radius or fatigue life is claimed.",
     }
 
 
-def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
+def attachment_contract(
+    contact_length=MOUNT_LENGTH, *, length=LENGTH, shared_drive=False
+):
     length = _positive(length, "Rail length")
     _contact_length(contact_length)
     spans = flex_spans(length)
+    screw_length, head_face_y = _attachment_fastener(shared_drive)
     return {
         "rail_length_mm": length,
         "wall_count": len(wall_segments(length)),
@@ -417,9 +405,9 @@ def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
         ),
         "free_base_spans_x_mm": spans,
         "base_width_mm": BASE_WIDTH,
-        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH if spans else None,
+        "free_span_minimum_width_mm": BASE_WIDTH if spans else None,
         "free_span_profile": (
-            "Symmetric two-cubic waist with longitudinal tangent at each wall root and the centre; constant base thickness. No hinge, printed latch or qualified bend radius."
+            "Straight constant-width and constant-thickness base. No waist, hinge, printed latch or qualified bend radius."
             if spans
             else "No free span in this rail section; clamp fit only."
         ),
@@ -429,7 +417,16 @@ def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
         "slot_height_mm": SLOT_HEIGHT,
         "bolt_axis_z_mm": BOLT_AXIS_Z,
         "mount_contact_length_mm": contact_length,
-        "fastener": "M2x8 button-head kit bolt and exposed M2 hex nut; unmeasured design envelopes",
+        "bolt_length_mm": screw_length,
+        "head_bearing_y_mm": head_face_y,
+        "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
+        "shared_servo_bridge_clamp": shared_drive,
+        "fastener": f"M2x{screw_length:g} button-head kit bolt and exposed M2 hex nut; unmeasured design envelopes",
+        "shared_joint_service": (
+            "The same bolt retains the servo bridge and propulsion frame on the rail. Support both subassemblies whenever loosened or removed; keep the locating interface fully seated before tightening."
+            if shared_drive
+            else None
+        ),
         "assembly": "Lower the L seat onto one wall, insert bolt from negativeY, hold the positiveY nut and clamp both flat faces. Loosen to slide only inside that wall's supported slot. Moving between segments needs bolt removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
         "physical_acceptance": "Process-matched coupon must seat flat without rocking. Finish contact faces or reprint warped parts. Slot clearance enables assembly/alignment, not acceptable looseness in use. Hold the ordinary nut with a tool; no printed nut capture. Inspect thread engagement, head/tool access and under-base adhesive after installation.",
         "as_printed_fit_guaranteed": False,
@@ -449,7 +446,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One PA12 strip with1.5mm closed base and three tape-wing pairs. Nine2.5mm upright walls have local M2 slots; eight free spans total78mm. The central50mm wall supports the32mm propulsion foot;20/22mm outer walls support16mm carrier feet with reduced local adjustment. Free spans smoothly narrow from6 to4.5mm without thinning the base. Qualify loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no whole-rail flexibility or strength rating.",
+        "One straight5x1.5mm PA12 strip with three tape-wing pairs. Nine identical26mm-long walls at34mm pitch have local M2 slots and eight8mm free spans. Every wall supports either a16mm carrier foot or24mm propulsion foot; the latter has only0.4mm total adjustment. Small planar corner chamfers replace curved outlines. Qualify loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no whole-rail flexibility or strength rating.",
     )
     set_property(
         printed,
@@ -513,7 +510,7 @@ def build_coupons(doc):
             label,
             shape,
             App.Rotation(),
-            "Same wall/L-seat geometry as full rail. Use the actual M2x8 bolt and exposed nut; test flat seating, local sliding, side tool access and clamp retention. The companion50mm rail coupon has no wall-free waist; it does not test full rail bending, adhesion or creep.",
+            "Same26mm wall/L-seat geometry as full rail. Use the actual M2x8 bolt and exposed nut; test flat seating, local sliding, side tool access and clamp retention. The companion50mm base coupon has one complete support and no inter-wall gap; it does not test full rail bending, adhesion or creep.",
         )
         set_property(
             obj,
@@ -549,7 +546,7 @@ def flex_relief_check(rail_section=None, length=LENGTH):
     return {
         "open_spans": rows,
         "base_thickness_mm": PAD_THICKNESS,
-        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH,
+        "free_span_minimum_width_mm": BASE_WIDTH,
         "scope": "Open above-base spans only; no stiffness, bend-radius or fatigue rating.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }
@@ -561,6 +558,8 @@ def attachment_check(
     *,
     screw_length=SCREW_LENGTH,
     contact_length=MOUNT_LENGTH,
+    head_face_y=MOUNT_OUTER_Y,
+    head_support=None,
 ):
     """Nominal local contact and release, not clamp force or whole-module service."""
     from gondola.validation.geometry import translation_sweep
@@ -568,27 +567,29 @@ def attachment_check(
     contact_length = _contact_length(contact_length)
     section = rail_shape(50, (0,)) if rail_section is None else rail_section
     mount = mount_base_shape(length=contact_length) if mount is None else mount
-    screw, nut = attachment_screw_shape(screw_length), nut_shape()
+    clamp = mount if head_support is None else union([mount, head_support])
+    screw = attachment_screw_shape(screw_length, head_face_y=head_face_y)
+    nut = nut_shape()
     overlaps = {
         name: abs(first.common(second).Volume)
         for name, first, second in (
-            ("rail_mount", section, mount),
+            ("rail_mount", section, clamp),
             ("rail_screw", section, screw),
-            ("mount_screw", mount, screw),
+            ("mount_screw", clamp, screw),
             ("rail_nut", section, nut),
-            ("mount_nut", mount, nut),
+            ("mount_nut", clamp, nut),
             ("screw_nut", screw, nut),
         )
     }
-    # Fill only the transverse bolt bore to form a strict planar superset.
-    # Generic transverse-cylinder sweeps fall back to a bounding box that
-    # incorrectly fills the open side of the L mount.
-    filled_mount = mount.fuse(
-        Part.makeCylinder(
-            SLOT_HEIGHT / 2,
-            MOUNT_LEG_THICKNESS,
-            V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
-            V(0, 1, 0),
+    # Fill the rectangular bore envelope outside the rail web, preserving the
+    # open L seat in the continuous vertical sweep. The shared locating key lies
+    # away from this solid compression stack.
+    filled_mount = clamp.fuse(
+        box(
+            SLOT_HEIGHT,
+            -WEB_THICKNESS / 2 - head_face_y,
+            SLOT_HEIGHT,
+            (-SLOT_HEIGHT / 2, head_face_y, BOLT_AXIS_Z - SLOT_HEIGHT / 2),
         )
     ).removeSplitter()
     lift, method = translation_sweep(filled_mount, (0, 0, 25))
@@ -616,14 +617,14 @@ def attachment_check(
     head_face = Part.makeCylinder(
         fasteners.SCREW_HEAD_DIAMETER / 2,
         0.01,
-        V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z),
+        V(0, head_face_y, BOLT_AXIS_Z),
         V(0, 1, 0),
     ).cut(
         Part.makeCylinder(
-            SLOT_HEIGHT / 2, 0.02, V(0, MOUNT_OUTER_Y, BOLT_AXIS_Z), V(0, 1, 0)
+            SLOT_HEIGHT / 2, 0.02, V(0, head_face_y, BOLT_AXIS_Z), V(0, 1, 0)
         )
     )
-    missing_head = abs(head_face.cut(mount).Volume)
+    missing_head = abs(head_face.cut(clamp).Volume)
     # Ordinary nut intentionally turns freely; its support need not cover the slot.
     nut_face = _nut_outer(fasteners.HEX_NUT_AF, 0.01)
     nut_face = translated_shape(nut_face, y=-0.01).cut(
@@ -631,14 +632,14 @@ def attachment_check(
     )
     missing_nut = abs(nut_face.cut(section).Volume)
     nut_area = nut_face.Volume / 0.01
-    tip = MOUNT_OUTER_Y + screw_length
+    tip = head_face_y + screw_length
     engagement = tip - (WEB_THICKNESS / 2 + fasteners.HEX_NUT_HEIGHT)
     # Pulling the nut away in+Y leaves no pocket; exact filled-hex witness.
     nut_sweep, nut_method = translation_sweep(
         _nut_outer(fasteners.HEX_NUT_AF, fasteners.HEX_NUT_HEIGHT), (0, 10, 0)
     )
     nut_release = abs(nut_sweep.common(section).Volume) + abs(
-        nut_sweep.common(mount).Volume
+        nut_sweep.common(clamp).Volume
     )
     return {
         "seated_intersections_mm3": overlaps,
@@ -649,6 +650,10 @@ def attachment_check(
         "missing_head_support_mm3": missing_head,
         "missing_nut_support_mm3": missing_nut,
         "nut_bearing_area_outside_slot_mm2": nut_area,
+        "bolt_length_mm": screw_length,
+        "head_bearing_y_mm": head_face_y,
+        "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
+        "shared_head_support_supplied": head_support is not None,
         "bolt_tip_beyond_nut_mm": engagement,
         "full_nominal_nut_height_engaged": engagement >= -TOL,
         "scope": "Unloaded local geometry. Ordinary nut requires a tool; tighten after aligning. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",

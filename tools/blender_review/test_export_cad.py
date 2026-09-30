@@ -14,6 +14,7 @@ from tools.blender_review.export_cad import (
     representation,
     review_objects,
 )
+from tools.blender_review.test_motion_plan import native_evidence
 
 
 class ExportContractTests(unittest.TestCase):
@@ -141,30 +142,17 @@ class ExportContractTests(unittest.TestCase):
                 objects[prefix + "HornGearClamp" + position + "Nut"] = SimpleNamespace(
                     HardwareSKU="M1_4_HEX_NUT_DIN934"
                 )
-        service = {
-            "part_paths": [{"waypoints_mm": [[0, 0, 0], [0, 0, 0.5], [80, 0, 0.5]]}],
-            "output_gear_removal": [
-                {"segments": [{"end_mm": [0, -sign * 35, 0]}]} for sign in (1, -1)
-            ],
-            "mount_fastener_release": [
-                {
-                    "bolt_axial_withdrawal": {"segments": [{"end_mm": [0, 0, 8.2]}]},
-                    "nut_axial_removal": {
-                        "segments": [
-                            {"end_mm": [0, 0, -0.2]},
-                            {"end_mm": [sign * 25, 0, -0.2]},
-                        ]
-                    },
-                }
-                for sign in (1, -1)
-            ],
-        }
         report = {
             "gear_configuration": "48_16",
-            "local_propulsion_evidence": {
-                "saved_servo_module_service": service,
-                "saved_carrier_metal_clearances": [
-                    {"axial_travel": {"negative_mm": 0.5, "positive_mm": 0.5}}
+            "local_propulsion_evidence": native_evidence(),
+            "module_service": {
+                "passed": True,
+                "modules": [
+                    {
+                        "module": "MainPropulsionModule",
+                        "passed": True,
+                        "shared_servo_bridge_clamp": True,
+                    }
                 ],
             },
         }
@@ -280,6 +268,23 @@ class ExportContractTests(unittest.TestCase):
         ]["waypoints_mm"][2][0] = 90
         with self.assertRaisesRegex(RuntimeError, "removal paths"):
             check_review_basis(doc, report)
+
+    def test_off_rail_bench_requires_validated_shared_joint_release(self):
+        for whole, row in ((False, True), (True, False)):
+            doc, _, report = self.basis()
+            report["module_service"]["passed"] = whole
+            report["module_service"]["modules"][0]["passed"] = row
+            with self.assertRaisesRegex(
+                RuntimeError, "checked shared-clamp rail release"
+            ):
+                check_review_basis(doc, report)
+        for replacement in ({}, {"passed": True, "modules": []}):
+            doc, _, report = self.basis()
+            report["module_service"] = replacement
+            with self.assertRaisesRegex(
+                RuntimeError, "checked shared-clamp rail release"
+            ):
+                check_review_basis(doc, report)
 
     def test_fit_samples_and_clearance_proxies_cannot_enter_installed_review(self):
         body, coupon, reserve = [

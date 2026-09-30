@@ -1,8 +1,8 @@
-"""A removable paired-servo wall on one flat, openly supported plate.
+"""Replaceable paired-servo wall with a keyed cheek on the common rail clamp.
 
-All dimensions are millimetres. The common wall has thick outer columns and
-a shared central web. Broad straight arms connect the central plate to two
-mounting seats, all on one plane with unilateral X/Y locating faces.
+The flat central plate bears on the output frame. A shallow rectangular key on
+its vertical cheek bounds X/Z movement and rotation independently of screw-hole
+clearance; one shared transverse bolt clamps bridge, frame and rail together.
 """
 
 import math
@@ -13,13 +13,11 @@ import Part
 from gondola.cad import box, mirrored_y, union
 from gondola.contracts.drive import SELECTED_DRIVE
 
-from . import servo_envelope
+from . import rail, servo_envelope
 from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
-# The bought case is not a locating datum. Clearance around its nominal 7 x20
-# section also accommodates the published +/-0.2 mm case-size tolerance.
 CASE_CLEARANCE = 0.5
 CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
 CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
@@ -28,19 +26,21 @@ CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
 REAR_LEAD_ALLOWANCE = 13.9
 SEAT_Z = 11.4
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
-FRAME_SEAT_THICKNESS = 3.0
-NUT_SEAT_Z = SEAT_Z - FRAME_SEAT_THICKNESS
-MOUNT_BOLT_SEAT_Z = SEAT_Z + CONNECTOR_PLATE_THICKNESS
-PAD_INNER_X, PAD_OUTER_X = 3.9, 19.5
-PAD_INNER_Y, PAD_OUTER_Y = 13.5, 26.0
-CONNECTOR_PLATE_HALF_WIDTH = PAD_OUTER_X
-CONNECTOR_ARM_OVERLAP = 3.0
-MOUNT_HOLE_DIAMETER = 2.2
-BOLT_X, BOLT_Y = 14.5, 18.0
-MOUNT_GRIP = MOUNT_BOLT_SEAT_Z - NUT_SEAT_Z
 FRAME_BOTTOM_Z = 2.2
-CENTRAL_SEAT_LENGTH = 18.0
-CENTRAL_SEAT_WIDTH = 22.0
+CENTRAL_SEAT_LENGTH, CENTRAL_SEAT_WIDTH = 18.0, 22.0
+CLAMP_AXIS_X = 12.5
+CHEEK_START_X, CHEEK_END_X = 9.0, 24.5
+CHEEK_THICKNESS = 3.0
+CHEEK_CONTACT_Y = rail.MOUNT_OUTER_Y
+CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
+KEY_START_X, KEY_END_X = 17.0, 22.5
+KEY_BOTTOM_Z, KEY_TOP_Z = 4.0, 9.5
+KEY_DEPTH = 1.0
+KEY_FACE_CLEARANCE = 0.2
+KEY_DEPTH_CLEARANCE = 0.2
+SHARED_GRIP = CHEEK_THICKNESS + rail.MOUNT_LEG_THICKNESS + rail.WEB_THICKNESS
+SHARED_SCREW_LENGTH = 12.0
+SERVICE_WAYPOINTS = ((0, 0, 0), (0, -1.2, 0), (0, -1.2, 0.5), (80, -1.2, 0.5))
 
 
 def opposite(shape):
@@ -74,54 +74,74 @@ def _ear_clearance(drive):
 
 
 def _cradle_blank(drive):
-    z = drive.input_z_mm
     y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
     if abs(y + MOUNT_DEPTH / 2) > 1e-7:
         raise ValueError("Paired servo ears must share the central mounting wall")
     width = bulkhead_width(drive)
     return box(
-        width,
-        MOUNT_DEPTH,
-        z + 10.1 - CONNECTOR_PLATE_BOTTOM_Z,
-        (-width / 2, y, CONNECTOR_PLATE_BOTTOM_Z),
+        width, MOUNT_DEPTH, drive.input_z_mm + 10.1 - SEAT_Z, (-width / 2, y, SEAT_Z)
     )
 
 
-def cut_mounting_holes(shape):
-    for sign in (-1, 1):
-        shape = shape.cut(
-            Part.makeCylinder(
-                MOUNT_HOLE_DIAMETER / 2,
-                14,
-                V(sign * BOLT_X, sign * BOLT_Y, 1),
-                V(0, 0, 1),
-            )
+def frame_key_shape():
+    """An open rectangular locating pad, not a latch or captured undercut."""
+    return box(
+        KEY_END_X - KEY_START_X,
+        KEY_DEPTH,
+        KEY_TOP_Z - KEY_BOTTOM_Z,
+        (KEY_START_X, CHEEK_CONTACT_Y - KEY_DEPTH, KEY_BOTTOM_Z),
+    )
+
+
+def key_recess_shape():
+    depth = KEY_DEPTH + KEY_DEPTH_CLEARANCE
+    return box(
+        KEY_END_X - KEY_START_X + 2 * KEY_FACE_CLEARANCE,
+        depth + 0.1,
+        KEY_TOP_Z - KEY_BOTTOM_Z + 2 * KEY_FACE_CLEARANCE,
+        (
+            KEY_START_X - KEY_FACE_CLEARANCE,
+            CHEEK_CONTACT_Y - depth,
+            KEY_BOTTOM_Z - KEY_FACE_CLEARANCE,
+        ),
+    )
+
+
+def cut_shared_bolt_passage(shape):
+    return shape.cut(
+        Part.makeCylinder(
+            rail.SLOT_HEIGHT / 2,
+            SHARED_GRIP + 2,
+            V(CLAMP_AXIS_X, CHEEK_OUTER_Y - 1, rail.BOLT_AXIS_Z),
+            V(0, 1, 0),
         )
-    return shape.removeSplitter()
+    ).removeSplitter()
 
 
 def bridge_blank(drive=SELECTED_DRIVE):
-    """Broad central support and two straight arms before functional openings.
+    """Planar service envelope retaining the key recess and open lower L profile.
 
-    This stock also conservatively bounds the complete printed bridge during
-    module removal. The side openings are real open edges, not enclosed holes.
+    Servo windows and round screw passages are filled to permit exact face-prism
+    sweeps. The mating-key recess must remain open during the initial -Y release.
     """
-    cradle = _cradle_blank(drive)
     width = bulkhead_width(drive)
-    central_plate = box(
-        width,
+    plate = box(
+        CHEEK_END_X + width / 2,
         CENTRAL_SEAT_WIDTH,
         CONNECTOR_PLATE_THICKNESS,
-        (-width / 2, -CENTRAL_SEAT_WIDTH / 2, CONNECTOR_PLATE_BOTTOM_Z),
+        (-width / 2, -CENTRAL_SEAT_WIDTH / 2, SEAT_Z),
     )
-    arm_start_y = CENTRAL_SEAT_WIDTH / 2 - CONNECTOR_ARM_OVERLAP
-    arm = box(
-        PAD_OUTER_X - PAD_INNER_X,
-        PAD_OUTER_Y - arm_start_y,
-        CONNECTOR_PLATE_THICKNESS,
-        (PAD_INNER_X, arm_start_y, CONNECTOR_PLATE_BOTTOM_Z),
+    cheek = box(
+        CHEEK_END_X - CHEEK_START_X,
+        CHEEK_THICKNESS,
+        SEAT_Z + CONNECTOR_PLATE_THICKNESS - FRAME_BOTTOM_Z,
+        (CHEEK_START_X, CHEEK_OUTER_Y, FRAME_BOTTOM_Z),
     )
-    return union([cradle, central_plate, arm, opposite(arm)])
+    return (
+        union([_cradle_blank(drive), plate, cheek])
+        .cut(key_recess_shape())
+        .removeSplitter()
+    )
 
 
 def bridge_shape(drive=SELECTED_DRIVE):
@@ -138,86 +158,19 @@ def bridge_shape(drive=SELECTED_DRIVE):
         ),
     )
     bridge = bridge_blank(drive).cut(window).cut(opposite(window))
-    # Retain the sourced ear axes and their open necks into the body windows.
     void = _ear_clearance(drive)
-    bridge = bridge.cut(void).cut(opposite(void))
-    # Remove front horn nuts/adapter on the detached servo module; rear screws
-    # stay in the horn until the servo is free. Keep the side columns solid;
-    # the former rear tool-relief scallops are no longer needed.
-    # The frame's side rail screw remains accessible with this module installed.
-    # The lower servo nut also clears the plate, including its removal path.
-    # Heads sit directly on the 2 mm plate; the 3 mm frame seats preserve
-    # the existing M2x8 screws and 5 mm grip without stepped feet or counterbores.
-    return cut_mounting_holes(bridge)
-
-
-def frame_seats():
-    """Open nut entries and broad pads locating the removable paired drive."""
-    width = PAD_OUTER_X - PAD_INNER_X
-    seat = union(
-        [
-            box(
-                width,
-                PAD_OUTER_Y - PAD_INNER_Y,
-                SEAT_Z - NUT_SEAT_Z,
-                (PAD_INNER_X, PAD_INNER_Y, NUT_SEAT_Z),
-            ),
-            box(
-                width,
-                2,
-                NUT_SEAT_Z - FRAME_BOTTOM_Z,
-                (PAD_INNER_X, PAD_INNER_Y, FRAME_BOTTOM_Z),
-            ),
-            box(
-                width,
-                5.5,
-                NUT_SEAT_Z - FRAME_BOTTOM_Z,
-                (PAD_INNER_X, 20.5, FRAME_BOTTOM_Z),
-            ),
-        ]
-    )
-    return union(
-        [
-            seat,
-            opposite(seat),
-            # The negative outer edge locates Y without an opposed-face trap.
-            # The old inner stop would occupy the now-flat connecting arm.
-            box(width, 1.5, 5, (-PAD_OUTER_X, -PAD_OUTER_Y - 1.5, NUT_SEAT_Z)),
-            # An outside X stop releases directly during the checked +X slide.
-            box(
-                2,
-                3,
-                CONNECTOR_PLATE_BOTTOM_Z + CONNECTOR_PLATE_THICKNESS - NUT_SEAT_Z,
-                (-CONNECTOR_PLATE_HALF_WIDTH - 2, -24, NUT_SEAT_Z),
-            ),
-        ]
-    )
+    return cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
 
 
 def contact_planes():
-    """Complete nominal contacts, with separate XY bounds for each Z support.
-
-    A coplanar central face must not hide a missing outer seat. The optional
-    region is (X start, Y start, X size, Y size) in the propulsion frame.
-    """
-    width = PAD_OUTER_X - PAD_INNER_X
-    length = PAD_OUTER_Y - PAD_INNER_Y
-    seat_area = width * length - math.pi * (MOUNT_HOLE_DIAMETER / 2) ** 2
+    """Nominal seating contacts; key clearance is checked separately by bounds."""
+    cheek_area = (
+        (CHEEK_END_X - CHEEK_START_X) * (SEAT_Z - FRAME_BOTTOM_Z)
+        - (KEY_END_X - KEY_START_X + 2 * KEY_FACE_CLEARANCE)
+        * (KEY_TOP_Z - KEY_BOTTOM_Z + 2 * KEY_FACE_CLEARANCE)
+        - math.pi * (rail.SLOT_HEIGHT / 2) ** 2
+    )
     return (
-        (
-            "positive_outer_seat",
-            2,
-            SEAT_Z,
-            seat_area,
-            (PAD_INNER_X, PAD_INNER_Y, width, length),
-        ),
-        (
-            "negative_outer_seat",
-            2,
-            SEAT_Z,
-            seat_area,
-            (-PAD_OUTER_X, -PAD_OUTER_Y, width, length),
-        ),
         (
             "central_bulkhead_support",
             2,
@@ -230,18 +183,5 @@ def contact_planes():
                 CENTRAL_SEAT_WIDTH,
             ),
         ),
-        (
-            "outside_y_datum",
-            1,
-            -PAD_OUTER_Y,
-            width * CONNECTOR_PLATE_THICKNESS,
-            None,
-        ),
-        (
-            "outside_x_datum",
-            0,
-            -CONNECTOR_PLATE_HALF_WIDTH,
-            3 * CONNECTOR_PLATE_THICKNESS,
-            None,
-        ),
+        ("shared_clamp_vertical_face", 1, CHEEK_CONTACT_Y, cheek_area, None),
     )

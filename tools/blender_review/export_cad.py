@@ -158,6 +158,21 @@ def check_review_basis(doc, report):
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
     REVIEW_MOTION.check_basis(evidence)
+    rail_service = report.get("module_service", {})
+    shared = [
+        row
+        for row in rail_service.get("modules", [])
+        if row.get("module") == "MainPropulsionModule"
+    ]
+    if (
+        rail_service.get("passed") is not True
+        or len(shared) != 1
+        or shared[0].get("passed") is not True
+        or shared[0].get("shared_servo_bridge_clamp") is not True
+    ):
+        raise RuntimeError(
+            "The off-rail bench scene requires checked shared-clamp rail release."
+        )
 
 
 def check_optical_carrier_basis(doc):
@@ -438,7 +453,7 @@ def export(cad_path, output):
             REVIEW_MOTION.removal_description()
             + " Horns, adapters and their rear screws/front nuts stay on the servos throughout this module-removal scene.",
             REVIEW_MOTION.removal_frames,
-            propulsion,
+            REVIEW_MOTION.bench_parts(propulsion),
             [[-50, -111, 0], [119, 111, 90]],
             REVIEW_MOTION.removal_markers(),
             lambda frame: REVIEW_MOTION.removal_pose(frame, drive_names),

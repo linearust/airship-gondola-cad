@@ -1,4 +1,4 @@
-"""Open connector plate, broad load paths and installed fastener regressions."""
+"""Shared keyed clamp: positive location, broad support and ordered bench service."""
 
 import unittest
 
@@ -15,165 +15,124 @@ class ServoBridgeShapeTests(unittest.TestCase):
     def setUpClass(cls):
         from gondola.parts import propulsion
 
-        cls.doc = App.newDocument("OpenServoConnectorPlate")
+        cls.doc = App.newDocument("SharedKeyedServoBridge")
         cls.module = propulsion.build_propulsion_module(cls.doc)
 
     @classmethod
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
-    def check_mount(self, prefix, bridge=None):
-        from gondola.cad import world_shape
-        from gondola.validation.propulsion import clamp_fastener_check
-
-        if bridge is None:
-            bridge = world_shape(self.doc.ServoDriveBridge)
-        clamp = Part.makeCompound([world_shape(self.doc.PropulsionFixedFrame), bridge])
-        return clamp_fastener_check(
-            clamp,
-            world_shape(self.doc.getObject("ServoBridge" + prefix + "Bolt")),
-            world_shape(self.doc.getObject("ServoBridge" + prefix + "Nut")),
-        )
-
-    def test_flat_mounting_arms_retain_existing_m2x8_clamping_stack(self):
-        from gondola.parts import servo_bridge
-
-        self.assertEqual(servo_bridge.MOUNT_GRIP, 5)
-        self.assertEqual(servo_bridge.MOUNT_BOLT_SEAT_Z, 13.4)
-        self.assertEqual(servo_bridge.NUT_SEAT_Z, 8.4)
-        for prefix in ("Port", "Starboard"):
-            with self.subTest(side=prefix):
-                bolt = self.doc.getObject("ServoBridge" + prefix + "Bolt")
-                self.assertEqual(bolt.HardwareSKU, "M2X8_BUTTON_HEAD")
-                result = self.check_mount(prefix)
-                self.assertTrue(result["passed"], result)
-
-    def test_unused_side_regions_are_open_to_the_plate_edges(self):
-        from gondola.parts import servo_bridge
-
-        bridge = self.doc.ServoDriveBridge.Shape
-        # Two large open-edge regions on each side expose the underlying
-        # frame without retaining a thin outer ring around a viewing hole.
-        openings = (
-            Part.makeBox(17.3, 15, 2, App.Vector(-13.4, 11, 11.4)),
-            Part.makeBox(6.1, 34, 2, App.Vector(-19.5, -8, 11.4)),
-        )
-        for opening in openings:
-            for side in (opening, servo_bridge.opposite(opening)):
-                self.assertLess(bridge.common(side).Volume, 1e-7)
-        self.assertTrue(bridge.isValid())
-        self.assertEqual(len(bridge.Solids), 1)
-
-    def test_each_mounting_arm_has_a_broad_continuous_connection(self):
-        from gondola.parts import servo_bridge
-
-        bridge = self.doc.ServoDriveBridge.Shape
-        # The full 9.5 mm attachment breadth continues from the central stock
-        # into each mounting arm; its through bore is farther outward.
-        link = Part.makeBox(9.5, 6, 2, App.Vector(3.9, 8, 11.4))
-        for side in (link, servo_bridge.opposite(link)):
-            self.assertLess(side.cut(bridge).Volume, 1e-7)
-
-    def test_a_raised_screw_seat_cannot_pass_the_installed_stack_check(self):
-        from gondola.cad import world_shape
-        from gondola.parts import servo_bridge
-
-        bridge = world_shape(self.doc.ServoDriveBridge)
-        origin = App.Vector(
-            servo_bridge.BOLT_X,
-            servo_bridge.BOLT_Y,
-            servo_bridge.MOUNT_BOLT_SEAT_Z,
-        )
-        fill = Part.makeCylinder(3, 2.7, origin).cut(
-            Part.makeCylinder(1.1, 2.7, origin)
-        )
-        result = self.check_mount("Port", bridge.fuse(fill))
-        self.assertFalse(result["passed"], result)
-        self.assertGreater(result["fastener_clamp_overlap_mm3"], 1)
-
-    def test_underside_and_screw_bearing_annuli_share_one_flat_plate(self):
-        bridge = self.doc.ServoDriveBridge.Shape
-        self.assertAlmostEqual(bridge.BoundBox.ZMin, 11.4)
-        for sign in (-1, 1):
-            origin = App.Vector(sign * 14.5, sign * 18, 11.4)
-            annulus = Part.makeCylinder(3, 2, origin).cut(
-                Part.makeCylinder(1.1, 2, origin)
-            )
-            self.assertLess(annulus.cut(bridge).Volume, 1e-7)
-
-    def test_each_coplanar_support_and_unilateral_datum_has_complete_contact(self):
+    def joint(self):
         from gondola.validation.servo_module import bridge_joint_check
 
-        result = bridge_joint_check(self.doc, self.module)
+        return bridge_joint_check(self.doc, self.module)
+
+    def test_keyed_clamp_preserves_full_central_support_without_extra_pairs(self):
+        result = self.joint()
         self.assertTrue(result["passed"], result)
         contacts = {row["interface"]: row for row in result["contacts"]}
-        for name, area in (
-            ("positive_outer_seat", 191.1986728891564),
-            ("negative_outer_seat", 191.1986728891564),
-            ("central_bulkhead_support", 396),
-        ):
-            with self.subTest(contact=name):
-                row = contacts[name]
-                self.assertEqual(row["plane_position_mm"], 11.4)
-                self.assertAlmostEqual(row["actual_contact_area_mm2"], area)
-                self.assertIsNotNone(row["support_region_xy_mm"])
-        self.assertAlmostEqual(
-            contacts["outside_x_datum"]["actual_contact_area_mm2"], 6
+        self.assertEqual(
+            set(contacts), {"central_bulkhead_support", "shared_clamp_vertical_face"}
         )
         self.assertAlmostEqual(
-            contacts["outside_y_datum"]["actual_contact_area_mm2"], 31.2
+            contacts["central_bulkhead_support"]["actual_contact_area_mm2"], 396
         )
-        self.assertEqual(contacts["outside_y_datum"]["plane_position_mm"], -26)
+        self.assertAlmostEqual(
+            contacts["shared_clamp_vertical_face"]["actual_contact_area_mm2"],
+            103.2661065788307,
+        )
+        self.assertEqual(
+            contacts["central_bulkhead_support"]["plane_position_mm"], 11.4
+        )
+        self.assertEqual(
+            contacts["shared_clamp_vertical_face"]["plane_position_mm"], -3.75
+        )
+        for side in ("Port", "Starboard"):
+            for kind in ("Bolt", "Nut"):
+                self.assertIsNone(self.doc.getObject("ServoBridge" + side + kind))
+        self.assertEqual(result["key_fit"]["nominal_side_clearance_mm"], 0.2)
+        self.assertEqual(result["key_fit"]["nominal_depth_clearance_mm"], 0.2)
+        self.assertEqual(result["key_fit"]["remaining_cheek_skin_mm"], 1.8)
 
-    def test_other_coplanar_contacts_cannot_mask_a_missing_support(self):
-        from gondola.validation.servo_module import bridge_joint_check
-
-        frame = self.doc.PropulsionFixedFrame
-        original = frame.Shape.copy()
-        for name, origin, width, length in (
-            ("positive_outer_seat", (3.9, 13.5, 11.3), 15.6, 12.5),
-            ("negative_outer_seat", (-19.5, -26, 11.3), 15.6, 12.5),
-            ("central_bulkhead_support", (-9, -11, 11.3), 18, 22),
+    def test_simple_bridge_has_no_outer_arms_and_retains_a_broad_cheek_root(self):
+        bridge = self.doc.ServoDriveBridge.Shape
+        self.assertTrue(bridge.isValid())
+        self.assertEqual(len(bridge.Solids), 1)
+        for y in (-30, 11):
+            opening = Part.makeBox(60, 19, 12, App.Vector(-30, y, 2))
+            self.assertLess(abs(bridge.common(opening).Volume), 1e-7)
+        roof = Part.makeBox(15.5, 22, 2, App.Vector(9, -11, 11.4))
+        self.assertLess(abs(roof.cut(bridge).Volume), 1e-7)
+        skin = Part.makeBox(10, 1.8, 1, App.Vector(14, -6.75, 6))
+        self.assertLess(abs(skin.cut(bridge).Volume), 1e-7)
+        # Independently bound every recess rim, including the formerly thin
+        # outer and bottom lips; the 1 mm locating boss is not a free wall.
+        for name, size, origin in (
+            ("back", (5.9, 1.8, 5.9), (16.8, -6.75, 3.8)),
+            ("right", (1.8, 3, 5.9), (22.7, -6.75, 3.8)),
+            ("bottom", (5.9, 3, 1.6), (16.8, -6.75, 2.2)),
+            ("top", (5.9, 3, 1.7), (16.8, -6.75, 9.7)),
+            ("left", (1.5, 3, 5.9), (15.3, -6.75, 3.8)),
         ):
-            with self.subTest(missing=name):
-                try:
-                    frame.Shape = original.cut(
-                        Part.makeBox(width, length, 0.2, App.Vector(*origin))
-                    )
-                    self.doc.recompute()
-                    result = bridge_joint_check(self.doc, self.module)
-                    self.assertFalse(result["passed"], result)
-                    contacts = {row["interface"]: row for row in result["contacts"]}
-                    self.assertAlmostEqual(contacts[name]["actual_contact_area_mm2"], 0)
-                    self.assertTrue(
-                        all(
-                            row["passed"]
-                            for key, row in contacts.items()
-                            if key != name
-                        ),
-                        result,
-                    )
-                finally:
-                    frame.Shape = original
-                    self.doc.recompute()
+            with self.subTest(recess_stock=name):
+                stock = Part.makeBox(*size, App.Vector(*origin))
+                self.assertLess(abs(stock.cut(bridge).Volume), 1e-7)
 
-    def test_support_contact_gaps_are_rejected_without_losing_the_whole_seat(self):
-        from gondola.validation.servo_module import bridge_joint_check
+    def test_head_load_passes_through_solid_cheek_and_frame_without_a_pocket_gap(self):
+        # Literal purchased-head envelope and screw-bore radius, independent of
+        # the pocket builder: neither printed layer may bridge an internal void.
+        for name, first_y, thickness in (
+            ("ServoDriveBridge", -6.75, 3.0),
+            ("PropulsionFixedFrame", -3.75, 2.5),
+        ):
+            with self.subTest(part=name):
+                compression_land = Part.makeCylinder(
+                    2.25, thickness, App.Vector(12.5, first_y, 6.5), App.Vector(0, 1, 0)
+                ).cut(
+                    Part.makeCylinder(
+                        1.2,
+                        thickness + 0.2,
+                        App.Vector(12.5, first_y - 0.1, 6.5),
+                        App.Vector(0, 1, 0),
+                    )
+                )
+                self.assertLess(
+                    abs(compression_land.cut(self.doc.getObject(name).Shape).Volume),
+                    1e-7,
+                )
 
+    def test_missing_central_seat_is_rejected_despite_intact_key_and_clamp_face(self):
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
-        for name, point in (
-            ("positive_outer_seat", (6, 15, 11.3)),
-            ("negative_outer_seat", (-8, -17, 11.3)),
-            ("central_bulkhead_support", (-7, -7, 11.3)),
+        try:
+            frame.Shape = original.cut(
+                Part.makeBox(18, 22, 0.2, App.Vector(-9, -11, 11.3))
+            )
+            self.doc.recompute()
+            result = self.joint()
+            self.assertFalse(result["passed"], result)
+            self.assertTrue(result["key_fit"]["passed"], result)
+            contacts = {row["interface"]: row for row in result["contacts"]}
+            self.assertAlmostEqual(
+                contacts["central_bulkhead_support"]["actual_contact_area_mm2"], 0
+            )
+            self.assertTrue(contacts["shared_clamp_vertical_face"]["passed"])
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
+
+    def test_small_contact_loss_is_rejected_instead_of_masked_by_other_faces(self):
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        for name, size, point, lost_area in (
+            ("central_bulkhead_support", (2, 2, 0.2), (-7, -7, 11.3), 4),
+            ("shared_clamp_vertical_face", (1, 0.2, 0.5), (21, -3.85, 10), 0.5),
         ):
             with self.subTest(contact=name):
                 try:
-                    frame.Shape = original.cut(
-                        Part.makeBox(2, 2, 0.2, App.Vector(*point))
-                    )
+                    frame.Shape = original.cut(Part.makeBox(*size, App.Vector(*point)))
                     self.doc.recompute()
-                    result = bridge_joint_check(self.doc, self.module)
+                    result = self.joint()
                     self.assertFalse(result["passed"], result)
                     row = next(
                         row for row in result["contacts"] if row["interface"] == name
@@ -181,42 +140,78 @@ class ServoBridgeShapeTests(unittest.TestCase):
                     self.assertAlmostEqual(
                         row["required_contact_area_mm2"]
                         - row["actual_contact_area_mm2"],
-                        4,
+                        lost_area,
                     )
                 finally:
                     frame.Shape = original
                     self.doc.recompute()
 
-    def test_each_unilateral_datum_is_required_independently(self):
-        from gondola.validation.servo_module import bridge_joint_check
-
+    def test_missing_frame_key_cannot_pass_on_seating_and_clamp_contact_alone(self):
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
+        try:
+            frame.Shape = original.cut(
+                Part.makeBox(5.5, 1, 5.5, App.Vector(17, -4.75, 4))
+            )
+            self.doc.recompute()
+            result = self.joint()
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(result["key_fit"]["missing_key_mm3"], 30)
+            self.assertTrue(all(row["passed"] for row in result["contacts"]), result)
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
+
+    def test_each_recess_wall_and_skin_is_required_independently(self):
+        bridge = self.doc.ServoDriveBridge
+        original = bridge.Shape.copy()
         for name, size, point in (
-            ("outside_x_datum", (2, 3, 5), (-21.5, -24, 8.4)),
-            ("outside_y_datum", (15.6, 1.5, 5), (-19.5, -27.5, 8.4)),
+            ("left", (0.4, 1, 2), (16.4, -4.85, 5)),
+            ("right", (0.4, 1, 2), (22.7, -4.85, 5)),
+            ("lower", (2, 1, 0.4), (17, -4.85, 3.4)),
+            ("upper", (2, 1, 0.4), (17, -4.85, 9.7)),
+            ("skin", (2, 0.4, 2), (17, -5.35, 5)),
         ):
-            with self.subTest(datum=name):
+            with self.subTest(missing=name):
                 try:
-                    frame.Shape = original.cut(Part.makeBox(*size, App.Vector(*point)))
+                    bridge.Shape = original.cut(Part.makeBox(*size, App.Vector(*point)))
                     self.doc.recompute()
-                    result = bridge_joint_check(self.doc, self.module)
+                    result = self.joint()
                     self.assertFalse(result["passed"], result)
-                    contacts = {row["interface"]: row for row in result["contacts"]}
-                    self.assertAlmostEqual(contacts[name]["actual_contact_area_mm2"], 0)
-                    self.assertTrue(
-                        all(
-                            row["passed"]
-                            for key, row in contacts.items()
-                            if key != name
-                        ),
-                        result,
+                    self.assertGreater(
+                        result["key_fit"]["missing_pocket_walls_mm3"], 0.5
                     )
                 finally:
-                    frame.Shape = original
+                    bridge.Shape = original
                     self.doc.recompute()
 
-    def test_changed_parts_clear_every_other_installed_module_part(self):
+    def test_over_tight_and_over_large_key_recesses_are_rejected(self):
+        bridge = self.doc.ServoDriveBridge
+        original = bridge.Shape.copy()
+        for name, modified, evidence in (
+            (
+                "tight",
+                original.fuse(Part.makeBox(1, 1, 2, App.Vector(18, -4.7, 5))),
+                "key_in_pocket_interference_mm3",
+            ),
+            (
+                "loose",
+                original.cut(Part.makeBox(6.3, 1.4, 6.3, App.Vector(16.6, -5.15, 3.6))),
+                "missing_pocket_walls_mm3",
+            ),
+        ):
+            with self.subTest(fit=name):
+                try:
+                    bridge.Shape = modified
+                    self.doc.recompute()
+                    result = self.joint()
+                    self.assertFalse(result["passed"], result)
+                    self.assertGreater(result["key_fit"][evidence], 0.5)
+                finally:
+                    bridge.Shape = original
+                    self.doc.recompute()
+
+    def test_changed_prints_clear_every_other_installed_module_part(self):
         from gondola.cad import world_shape
 
         shapes = {
@@ -224,18 +219,21 @@ class ServoBridgeShapeTests(unittest.TestCase):
             for group in ("printed", "hardware", "references")
             for obj in self.module[group]
         }
-        changed = {"PropulsionFixedFrame", "ServoDriveBridge"} | {
-            "ServoBridge" + prefix + kind
-            for prefix in ("Port", "Starboard")
-            for kind in ("Bolt", "Nut")
-        }
-        for name in changed:
+        for name in ("PropulsionFixedFrame", "ServoDriveBridge"):
             for other, shape in shapes.items():
                 if name != other:
                     with self.subTest(part=name, obstacle=other):
                         self.assertLess(abs(shapes[name].common(shape).Volume), 1e-7)
 
-    def test_mount_fasteners_and_module_keep_the_original_ordered_service_path(self):
+    def test_service_envelope_retains_open_recess_and_contains_the_actual_bridge(self):
+        from gondola.parts import servo_bridge
+
+        envelope = servo_bridge.bridge_blank()
+        self.assertLess(abs(self.doc.ServoDriveBridge.Shape.cut(envelope).Volume), 1e-7)
+        key = Part.makeBox(5.5, 1, 5.5, App.Vector(17, -4.75, 4))
+        self.assertLess(abs(key.common(envelope).Volume), 1e-7)
+
+    def test_ordered_service_disengages_key_before_lift_and_lateral_withdrawal(self):
         from gondola.validation.servo_module import servo_module_service_check
 
         result = servo_module_service_check(self.doc, self.module)
@@ -243,11 +241,36 @@ class ServoBridgeShapeTests(unittest.TestCase):
         self.assertEqual(
             result["removed_output_gears"], ["PortOutputGear", "StarboardOutputGear"]
         )
+        self.assertEqual(result["released_fasteners"], [])
+        self.assertIn("shared M2x12", result["prerequisites"])
         for row in result["part_paths"]:
             self.assertEqual(
-                row["waypoints_mm"], [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)]
+                row["waypoints_mm"],
+                [(0, 0, 0), (0, -1.2, 0), (0, -1.2, 0.5), (80, -1.2, 0.5)],
             )
-        self.assertTrue(all(row["passed"] for row in result["mount_fastener_release"]))
+
+    def test_continuous_service_detects_midpath_obstacle_with_clear_endpoints(self):
+        from gondola.validation.servo_module import servo_module_service_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        obstacle = Part.makeBox(1, 1, 1, App.Vector(40, 0, 12.5))
+        bridge = self.doc.ServoDriveBridge.Shape.copy()
+        self.assertLess(abs(bridge.common(obstacle).Volume), 1e-7)
+        bridge.translate(App.Vector(80, -1.2, 0.5))
+        self.assertLess(abs(bridge.common(obstacle).Volume), 1e-7)
+        try:
+            frame.Shape = original.fuse(obstacle)
+            self.doc.recompute()
+            result = servo_module_service_check(self.doc, self.module)
+            self.assertFalse(result["passed"], result)
+            row = next(
+                row for row in result["part_paths"] if row["part"] == "ServoDriveBridge"
+            )
+            self.assertFalse(row["passed"], row)
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
 
 
 if __name__ == "__main__":

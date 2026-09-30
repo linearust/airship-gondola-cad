@@ -63,6 +63,7 @@ def _lift_path(name, shape, obstacles, offset):
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
+        "ServoDriveBridge",
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         pieces = [(name, shape)]
@@ -74,13 +75,26 @@ def _lift_path(name, shape, obstacles, offset):
             V(bounds.XMin - 1, bounds.YMin - 1, bounds.ZMin - 1),
         )
         lower, upper = shape.common(low_region), shape.cut(low_region)
-        # Filling only the transverse bolt bore removes a cylindrical surface
-        # normal to lift without filling the open L profile under its roof.
-        fill = Part.makeCylinder(
-            rail.SLOT_HEIGHT / 2,
-            rail.MOUNT_LEG_THICKNESS,
-            V(offset, rail.MOUNT_OUTER_Y, rail.BOLT_AXIS_Z),
-            V(0, 1, 0),
+        # Bound the transverse bore by a small rectangular plug outside the web,
+        # preserving the open L profile. The locating key lies away from the bore.
+        from gondola.parts import servo_bridge
+
+        if name == "ServoDriveBridge":
+            bore_start, bore_length = (
+                servo_bridge.CHEEK_OUTER_Y,
+                servo_bridge.CHEEK_THICKNESS,
+            )
+        else:
+            bore_start, bore_length = rail.MOUNT_OUTER_Y, rail.MOUNT_LEG_THICKNESS
+        fill = Part.makeBox(
+            rail.SLOT_HEIGHT,
+            bore_length,
+            rail.SLOT_HEIGHT,
+            V(
+                offset - rail.SLOT_HEIGHT / 2,
+                bore_start,
+                rail.BOLT_AXIS_Z - rail.SLOT_HEIGHT / 2,
+            ),
         )
         lower = lower.fuse(fill).removeSplitter()
         pieces = [(name + "Lower", lower), (name + "Upper", upper)]
@@ -209,6 +223,7 @@ def rail_attachment_service(doc, registry, objects):
             {
                 "module": module.Name,
                 "native_attachment_pose": pose,
+                "shared_servo_bridge_clamp": module.Name == "MainPropulsionModule",
                 "covering_devices_removed": [],
                 "other_modules_removed": [],
                 "side_driver_access": driver,
@@ -229,7 +244,7 @@ def rail_attachment_service(doc, registry, objects):
         "modules": rows,
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. Hold the exposed nut, withdraw the transverse screw completely, remove the nut, then lift30mm. No covering board, battery or servo bridge removal. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-holder fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. Hold the exposed nut, withdraw the transverse screw completely, remove the nut, then lift30mm. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-holder fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
         "passed": len(rows) == len(MODULE_STATIONS)
         and all(row["passed"] for row in rows),
     }

@@ -1,27 +1,21 @@
 {
-  "revision": "BP",
-  "recorded_utc": "2026-09-30T10:30:51.287790+00:00",
+  "revision": "BQ",
+  "recorded_utc": "2026-09-30T11:28:08.511944+00:00",
   "passed": true,
-  "scope": "Geometry-preserving refactor; nominal CAD, native controls, motion/service and exports only. No physical, electrical or flight qualification.",
-  "source_fingerprint": "4608dab2eca09edd372262b14e7b871709c7b426ded2fa757d016fadfbe83483",
-  "cad_sha256": "4db13f8ae6ccee64a463ad28b03f017d86c3b2e78b40db65844cb870200e1bf3",
+  "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
+  "source_fingerprint": "69728c8f3013a93b7b15aebf86ac9f935a369cc60f2dae17c37dbc03cfad5805",
+  "cad_sha256": "be3e5c8e0e898719f542b0423eefd74f93d2433e8ce90af80c6c49b9139ea52b",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "e10eb2cd18ea9e81598cc296ed79f318584f821791297c96a26cddd8b47d9176"
+    "sha256": "b5dc2f9a4d992f88ebd2d0358e86aba1de86c66b7adc584b58ade357012b3bd1"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "e2e163fea434d60f9d65f8772744fc3dd8c6ff9f7a851c01b8f26267617f1f4f",
-    "scope": "Unchanged historical BP fixture approval; current refactor validated by fresh tests and strict comparison, not a new independent design approval."
-  },
-  "current_source_review": {
-    "evidence_archive_key": "current_source_review",
-    "sha256": "a947a28a4d8578949d9e9bc244a86e90eb445266cd243a3e052cab5b27d0d96e",
-    "scope": "Current code review only; embedded targeted tests are preliminary, separate from the full native release phase."
+    "sha256": "6f83e67ee04064c6edf82fa8b3699d87ccf851faf08f33aabd4b0f7e6e74bb99"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 619,
+    "testsRun": 624,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -30,7 +24,7 @@
     "execution": "Complete native unittest discovery grouped by TestCase class across six isolated FreeCAD Python workers. Class fixtures preserved; exact discovery ID coverage, no skips, frozen production/test/tool sources required.",
     "source_unchanged_scope": "Complete frozen native phase: production/test/tool Python, fixture and execution-script hashes match before, after and recording.",
     "outer_launch_exit_code": 0,
-    "launcher_scope": "Observed subprocess return code for this refactor native wrapper. Native harness ran in its own session; result data and logs are independently hashed. No prior-run exception is reused."
+    "launcher_scope": "Observed subprocess return code for this BQ release native wrapper. Native harness ran in its own session; result data and logs are independently hashed. No prior-run exception is reused."
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
@@ -43,13 +37,13 @@
   "blender": {
     "passed": true,
     "scene_count": 6,
-    "sampled_frames": 1349,
-    "matrix_checks": 102726,
+    "sampled_frames": 1229,
+    "matrix_checks": 88208,
     "discrepancy_count": 0
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "b6a6699c0ff47c170a8002202ca5034d9910224bc7c1432262ab99b4bfea54a9",
+  "evidence_archive_sha256": "b096788e88a83d64e2a5ee54e84ca5f7a52d9244bdaa2df2570d2705b73dec2c",
   "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "d161e7fb4d2617b815fe483c19c12cd2a21d9a4746f96691f21fb5848a0f76fd"
+  "print_bundle_sha256": "6a63ad6021dd031e7b8c5c08b36e8657a597398ec468afc50f9c8e792bffa0ba"
 }

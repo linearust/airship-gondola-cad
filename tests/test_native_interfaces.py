@@ -115,10 +115,7 @@ class NativeInterfaceTests(unittest.TestCase):
                     )
                     self.assertIsNone(doc.getObject(prefix + "ServoHolder"))
                     for kind in ("Bolt", "Nut"):
-                        self.assertIn(
-                            doc.getObject("ServoBridge" + prefix + kind),
-                            doc.DesignRegistry.HardwareParts,
-                        )
+                        self.assertIsNone(doc.getObject("ServoBridge" + prefix + kind))
                     for side in ("Negative", "Positive"):
                         for kind in ("Bolt", "Nut"):
                             self.assertIsNone(

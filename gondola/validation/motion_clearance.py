@@ -176,7 +176,7 @@ def carrier_metal_clearance_check(doc, prefix):
         for side in ("Negative", "Positive")
         for kind in ("Bolt", "Nut")
     ]
-    metal_names = ["ServoBridge" + prefix + kind for kind in ("Bolt", "Nut")] + [
+    metal_names = [
         prefix + "ServoEar" + side + kind
         for side in ("Lower", "Upper")
         for kind in ("Bolt", "Nut")

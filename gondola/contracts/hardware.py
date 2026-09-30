@@ -82,7 +82,7 @@ PROCUREMENT_SPECS = {
     },
 }
 
-for _length in (6, 8):
+for _length in (6, 8, 12):
     PROCUREMENT_SPECS[f"M2X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M2x{_length} black steel button head hex socket screw",
         "candidate_url": FASTENER_KIT_SOURCE,
@@ -99,11 +99,21 @@ for _length in (6, 8):
                 if _length == 8
                 else ""
             )
+            + (
+                "The shared propulsion/servo bridge joint uses one M2x12 through "
+                "3mm bridge cheek, 2.5mm frame and 2.5mm rail wall: 8mm printed "
+                "grip plus nominal 1.6mm nut leaves 2.4mm tip projection. Check "
+                "full seating, actual engagement, head/nut bearing and clear "
+                "projection before operation. Support both subassemblies before "
+                "releasing this shared clamp. "
+                if _length == 12
+                else ""
+            )
             + "For a rail joint, require flat head contact beyond the diameter2.4mm clearance hole, hold the exposed nut, and fully seat the flat L support before tightening. No washers by default; qualify actual bearing contact on the web slot. Use minimal preload and verify PA12 retention "
             "and creep; these are not OEM motor or horn screws."
         ),
         "evidence_notes": (
-            "Kit image identifies a button head, lengths 5/6/8 mm and a "
+            "Kit image identifies a button head and assorted lengths including6/8/12mm, with a "
             "1.5 mm hex key. Head envelopes are deliberate design allowances, "
             "not seller-dimensioned maxima or an ISO conformity claim. The "
             "seller's 10.9 statement is unverified for the received lot. "

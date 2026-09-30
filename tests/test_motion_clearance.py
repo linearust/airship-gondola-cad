@@ -36,7 +36,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5)
                     self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5)
                     self.assertGreater(result["minimum_clearance_lower_bound_mm"], 1.64)
-                    self.assertEqual(len(result["fixed_hardware"]), 10)
+                    self.assertEqual(len(result["fixed_hardware"]), 8)
                     self.assertEqual(len(result["envelope"]["containment"]), 8)
 
     def test_arbitrary_parent_rotation_and_current_tilt_preserve_the_proof(self):
@@ -133,12 +133,17 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
-        nut = doc.ServoBridgePortNut
+        nut = doc.PortServoEarLowerNut
         position = nut.Placement
         pivot = doc.PortPod.Placement.Base
         # Put the real fixed nut beside the rotating guard, inside its required
         # reserve. A nearer architecture cannot reuse the old large gap.
-        position.Base = pivot + App.Vector(10, 25, 0)
+        position.Base = (
+            nut.getParentGeoFeatureGroup()
+            .getGlobalPlacement()
+            .inverse()
+            .multVec(pivot + App.Vector(10, 25, 0))
+        )
         nut.Placement = position
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")

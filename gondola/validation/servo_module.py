@@ -15,7 +15,6 @@ from .geometry import TOL, intersection_volume
 from .propulsion_service import (
     continuous_path,
     driver_lateral_service_check,
-    fastener_service_check,
     module_service_shapes,
     retained_obstacles,
 )
@@ -39,7 +38,7 @@ def _plane_contact_area(first, second, axis, station):
 
 
 def bridge_joint_check(doc, module):
-    """Check all three coplanar supports and both unilateral locating faces."""
+    """Check the central seat, shared clamp face and bounded locating-key fit."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
@@ -69,16 +68,51 @@ def bridge_joint_check(doc, module):
             }
         )
     overlap = intersection_volume(frame, bridge)
+    key = bridge_key_check(frame, bridge)
     spec = drive_for_document(doc)
     return {
+        "key_fit": key,
         "contacts": contacts,
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The two broad outer seats and central saddle roof support one flat bridge underside at a common height. Each support's complete nominal contact is checked within its own region; the central seat cannot mask a missing outer seat. Unilateral outside Y and X datums locate the removable bridge; bolt clearance does not locate the gear axes. Actual seating without rocking, print distortion, centre distance, clamping friction and creep require the supplied parts and a physical prototype.",
+        "scope": "The central roof seats the bridge in Z; the shared bolt clamps its cheek to the frame in Y. A shallow rectangular key bounds X/Z displacement and rotation with nominal 0.2mm side clearance. Seat and align the gear mesh before tightening; this is not automatic centering. Print fit, distortion, loaded stiffness, friction and creep require a prototype.",
         "passed": overlap < TOL
+        and key["passed"]
         and all(row["passed"] for row in contacts)
         and doc.ServoDriveBridge.PrintSKU == spec.bridge_sku,
+    }
+
+
+def bridge_key_check(frame, bridge):
+    """Reject absent keys or enlarged/missing pocket walls independently of builders."""
+    key = Part.makeBox(5.5, 1, 5.5, App.Vector(17, -4.75, 4))
+    bore = Part.makeCylinder(1.2, 12, App.Vector(12.5, -8, 6.5), App.Vector(0, 1, 0))
+    key = key.cut(bore)
+    recess = Part.makeBox(5.9, 1.2, 5.9, App.Vector(16.8, -4.95, 3.8))
+    region = Part.makeBox(15.5, 3, 9.2, App.Vector(9, -6.75, 2.2))
+    pocket_walls = region.cut(recess).cut(bore)
+    backing = Part.makeCylinder(
+        2.25, 3, App.Vector(12.5, -6.75, 6.5), App.Vector(0, 1, 0)
+    ).cut(bore)
+    frame_backing = Part.makeCylinder(
+        2.25, 2.5, App.Vector(12.5, -3.75, 6.5), App.Vector(0, 1, 0)
+    ).cut(bore)
+    rows = {
+        "missing_solid_head_backing_mm3": abs(backing.cut(bridge).Volume),
+        "missing_solid_frame_backing_mm3": abs(frame_backing.cut(frame).Volume),
+        "missing_key_mm3": abs(key.cut(frame).Volume),
+        "key_in_pocket_interference_mm3": abs(key.common(bridge).Volume),
+        "recess_obstruction_mm3": abs(recess.common(bridge).Volume),
+        "missing_pocket_walls_mm3": abs(pocket_walls.cut(bridge).Volume),
+    }
+    return {
+        **rows,
+        "nominal_side_clearance_mm": 0.2,
+        "nominal_depth_clearance_mm": 0.2,
+        "remaining_cheek_skin_mm": 1.8,
+        "minimum_recess_edge_rim_mm": 1.6,
+        "passed": all(value < TOL for value in rows.values()),
     }
 
 
@@ -101,11 +135,25 @@ def _bridge_path(shape, waypoints, obstacles, spec):
 
 
 def servo_module_service_check(doc, module):
-    """Remove both small gears, two mount pairs, then the assembled input module."""
+    """Bench removal after the common rail screw/nut and rail have been removed."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
-    removed, gear_paths, fasteners = set(), [], []
+    # The saved full assembly includes the rail pair; source bench modules do
+    # not. Inventory has already been checked, then explicitly remove only the
+    # documented common clamp for this off-rail bench sequence.
+    rail_pair = {
+        module["group"].Name + suffix for suffix in ("RailMountScrew", "RailMountNut")
+    }
+    present_rail_pair = rail_pair & shapes.keys()
+    if present_rail_pair and present_rail_pair != rail_pair:
+        return {
+            "passed": False,
+            "error": "Incomplete common rail clamp",
+            "missing_parts": sorted(rail_pair - shapes.keys()),
+        }
+    shapes = {name: shape for name, shape in shapes.items() if name not in rail_pair}
+    removed, gear_paths = set(), []
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
         name = prefix + "OutputGear"
         path = continuous_path(
@@ -115,17 +163,6 @@ def servo_module_service_check(doc, module):
         )
         gear_paths.append({"part": name, **path})
         removed.add(name)
-    for prefix, sign in (("Port", 1), ("Starboard", -1)):
-        stem = "ServoBridge" + prefix
-        pair = {stem + "Bolt", stem + "Nut"}
-        path = fastener_service_check(
-            shapes[stem + "Bolt"],
-            shapes[stem + "Nut"],
-            retained_obstacles(shapes, removed | pair),
-            nut_lateral_direction=(sign, 0, 0),
-        )
-        fasteners.append({"bolt": stem + "Bolt", "nut": stem + "Nut", **path})
-        removed.update(pair)
     moving = {
         name
         for name in shapes
@@ -160,18 +197,18 @@ def servo_module_service_check(doc, module):
                 prefix + "HornGearClamp" + side + "Nut" for side in ("Near", "Far")
             )
     fixed = retained_obstacles(shapes, removed | moving)
-    points = [(0, 0, 0), (0, 0, 0.5), (80, 0, 0.5)]
+    points = list(servo_bridge.SERVICE_WAYPOINTS)
     rows = []
     spec = drive_for_document(doc)
     for name in sorted(moving):
         if name == "ServoDriveBridge":
             path = _bridge_path(shapes[name], points, fixed, spec)
         elif name.endswith("DriverGear"):
-            axial = continuous_path(shapes[name], points[:2], fixed)
+            axial = continuous_path(shapes[name], points[:-1], fixed)
             lateral = driver_lateral_service_check(
                 shapes[name],
-                points[1],
-                points[2],
+                points[-2],
+                points[-1],
                 fixed,
                 spec,
                 1 if name.startswith("Port") else -1,
@@ -190,11 +227,12 @@ def servo_module_service_check(doc, module):
         "removed_output_gears": [row["part"] for row in gear_paths],
         "released_fasteners": sorted(removed - {row["part"] for row in gear_paths}),
         "output_gear_removal": gear_paths,
-        "mount_fastener_release": fasteners,
+        "shared_rail_fasteners_removed_before_bench": sorted(present_rail_pair),
+        "prerequisites": "Remove the shared M2x12 rail screw and nut, lift the whole propulsion assembly off the rail and disconnect leads before this local bench check. Rail attachment service is checked separately.",
         "part_paths": rows,
         "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",
-        "scope": "Neutral, unpowered bench service with leads disconnected. Release the selected gear set screws and withdraw both small output gears inboard. Withdraw the two M2 mounting bolts, then slide each unthreaded hex nut outward. Lift the paired servo module 0.5 mm and slide it 80 mm in +X. Keep both servos, horns, adapters, driver gears, metal input stubs and both radial jack clamps assembled. Individual jack-clamp screw/nut access is a separate bench task and is not certified by this path. All output shafts, bearings and motor carriers remain installed. Reverse for installation, fully seat the three datums and recheck neutral, tooth phase and shaft-flat alignment. Adjacent rail equipment, flexible leads, set-screw tools and actual fit forces are not certified by this local bench path.",
+        "scope": "Neutral, unpowered bench service after rail release. Release gear set screws and withdraw both small output gears inboard. Shift the paired servo module 1.2mm in -Y to disengage its shallow locating key, lift 0.5mm and slide 80mm in +X. Servos, horns, adapters, driver gears, input stubs and radial clamps stay assembled. Output shafts, bearings and carriers remain installed. Reverse for installation; seat the central roof, align mesh within key clearance and tighten the shared rail clamp. Adjacent equipment, wires, tools and fit forces are outside this local bench path.",
         "passed": moving == expected_moving
-        and all(row["passed"] for row in gear_paths + fasteners + rows),
+        and all(row["passed"] for row in gear_paths + rows),
     }

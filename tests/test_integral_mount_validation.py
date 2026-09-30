@@ -87,8 +87,10 @@ class IntegralMountValidationTests(unittest.TestCase):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
         try:
-            cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(26, -2, 5.5))
-            obj.Shape = original.cut(cut)
+            cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(23, -2, 5.5))
+            changed = original.cut(cut)
+            self.assertGreater(original.Volume - changed.Volume, 0.09)
+            obj.Shape = changed
             row = next(row for row in self.checks() if row["part"] == obj.Name)
             self.assertFalse(row["passed"], row)
             self.assertGreater(row["source_comparison"]["difference_mm3"], 0.09)

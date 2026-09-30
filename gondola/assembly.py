@@ -142,7 +142,11 @@ def build_assembly():
             module,
             "RailAttachmentContract",
             json.dumps(
-                rail.attachment_contract(station.contact_length_mm), sort_keys=True
+                rail.attachment_contract(
+                    station.contact_length_mm,
+                    shared_drive=module.Name == "MainPropulsionModule",
+                ),
+                sort_keys=True,
             ),
         )
         set_property(
@@ -166,7 +170,11 @@ def build_assembly():
     rail_attachments = []
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         rail_attachments += rail.build_attachment_hardware(
-            doc, module, module.Name, x_offset=station.attachment_offset_x_mm
+            doc,
+            module,
+            module.Name,
+            x_offset=station.attachment_offset_x_mm,
+            shared_drive=module.Name == "MainPropulsionModule",
         )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:
@@ -290,7 +298,7 @@ def build_assembly():
         "rail_free_span_count": len(rail.flex_spans()),
         "rail_total_free_span_length_mm": sum(b - a for a, b in rail.flex_spans()),
         "rail_supported_slot_ranges_mm": rail.supported_slot_ranges(),
-        "rail_base_width_range_mm": [rail.FLEXURE_MIN_WIDTH, rail.BASE_WIDTH],
+        "rail_base_width_mm": rail.BASE_WIDTH,
         "rail_flexible_strip_thickness_mm": rail.PAD_THICKNESS,
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
