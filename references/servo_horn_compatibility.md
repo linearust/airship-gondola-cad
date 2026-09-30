@@ -9,4 +9,4 @@ Current selection and hole preparation belong to
 allowances to [servo_coupling.py](../gondola/parts/servo_coupling.py).
 Use [servo_module.py](../gondola/validation/servo_module.py) and
 [horn_coupling.py](../gondola/validation/horn_coupling.py) for ordered
-service checks. This note adds no dimensions or compatibility guarantees.
+service checks.
