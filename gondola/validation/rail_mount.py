@@ -93,6 +93,48 @@ def _lower_crop(offset=0, length=16):
     return Part.makeBox(length, 5, 9.2, V(offset - length / 2, -3.75, 2.2))
 
 
+def _independent_base_witnesses():
+    """Literal 6-to-4.5 mm smooth waists; preserve the entire 1.5 mm section.
+
+    Omit only the final 3 mm at each rounded rail end. These independent
+    witnesses must not inherit a defective profile from the rail generator.
+    """
+    reliefs = []
+    for first, last in (
+        (-131, -119),
+        (-81, -69),
+        (-31, -25),
+        (25, 31),
+        (69, 81),
+        (119, 131),
+    ):
+        middle, sixth = (first + last) / 2, (last - first) / 6
+        for sign in (-1, 1):
+            edges = []
+            for poles in (
+                (
+                    (first, 3),
+                    (first + sixth, 3),
+                    (middle - sixth, 2.25),
+                    (middle, 2.25),
+                ),
+                (
+                    (middle, 2.25),
+                    (middle + sixth, 2.25),
+                    (last - sixth, 3),
+                    (last, 3),
+                ),
+            ):
+                curve = Part.BezierCurve()
+                curve.setPoles([V(x, sign * y, 0) for x, y in poles])
+                edges.append(curve.toShape())
+            edges.append(Part.makeLine(V(last, sign * 3, 0), V(first, sign * 3, 0)))
+            reliefs.append(Part.Face(Part.Wire(edges)).extrude(V(0, 0, 1.5)))
+    removed = Part.makeCompound(reliefs)
+    retained = Part.makeBox(294, 6, 1.5, V(-147, -3, 0)).cut(removed)
+    return retained, removed
+
+
 def saved_integral_mount_checks(doc, registry):
     printed, equipment = list(registry.PrintedParts), list(registry.EquipmentMounts)
     expected = [name for name, _, kind, _, _ in _BINDINGS if kind is not None]
@@ -256,8 +298,9 @@ def rail_check(registry, shapes):
         actual = local_shape(obj)
         comparison = geometry_comparison(actual, rail.rail_shape())
         bounds = actual.BoundBox
-        base_witness = Part.makeBox(294, 5.9, 1.5, V(-147, -2.95, 0))
+        base_witness, waist_reliefs = _independent_base_witnesses()
         missing_base = abs(base_witness.cut(actual).Volume)
+        filled_reliefs = abs(waist_reliefs.common(actual).Volume)
         wings = []
         for x in (-140, 0, 140):
             pad = rail.rounded_plate(x)
@@ -281,6 +324,8 @@ def rail_check(registry, shapes):
                 "source_comparison": comparison,
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "missing_unbroken_base_witness_mm3": missing_base,
+                "filled_flexure_relief_mm3": filled_reliefs,
+                "independent_base_witness_scope": "Literal 6-to-4.5 mm cubic waist profiles across all six wall gaps and the full 1.5 mm base thickness within X +/-147 mm; rounded end tips are covered by the separate full-shape comparison.",
                 "open_wall_spans": flex,
                 "tape_wings": wings,
                 "installed_mounts": mounts,
@@ -290,6 +335,7 @@ def rail_check(registry, shapes):
                 and _same_shape(comparison)
                 and abs(bounds.XLength - 300) < TOL
                 and missing_base < TOL
+                and filled_reliefs < TOL
                 and len(mounts) == 4
                 and flex["passed"]
                 and all(row["passed"] for row in wings + mounts),
@@ -315,11 +361,20 @@ def rail_check(registry, shapes):
             ),
             16.0,
         )
+        contract_length = (
+            50.0
+            if obj is not None and obj.Name in ("RailFitSample", "MountFitSample")
+            else 300.0
+        )
         annotations.append(
             {
                 "object": obj.Name if obj else "missing_coupon",
                 "matches_current_attachment_contract": saved
-                == json.loads(json.dumps(rail.attachment_contract(contact_length))),
+                == json.loads(
+                    json.dumps(
+                        rail.attachment_contract(contact_length, length=contract_length)
+                    )
+                ),
             }
         )
     tapes, tape_positions = [], []

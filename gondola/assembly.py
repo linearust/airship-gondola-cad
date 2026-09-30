@@ -287,7 +287,7 @@ def build_assembly():
         "rail_length_mm": rail.LENGTH,
         "rail_count": 1,
         "rail_supported_slot_ranges_mm": rail.supported_slot_ranges(),
-        "rail_flexible_strip_width_mm": rail.BASE_WIDTH,
+        "rail_base_width_range_mm": [rail.FLEXURE_MIN_WIDTH, rail.BASE_WIDTH],
         "rail_flexible_strip_thickness_mm": rail.PAD_THICKNESS,
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES

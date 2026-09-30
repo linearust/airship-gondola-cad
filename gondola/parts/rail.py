@@ -29,6 +29,7 @@ LENGTH = RAIL_LENGTH_MM
 PAD_CENTRES = (-140.0, 0.0, 140.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
 BASE_WIDTH = 6.0
+FLEXURE_MIN_WIDTH = 4.5
 SEGMENT_PITCH, FLEX_GAP = 50.0, 12.0
 CENTRAL_WALL_LENGTH = 50.0
 WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
@@ -93,6 +94,51 @@ def wall_segments(length=LENGTH):
         if last - first >= MOUNT_LENGTH + 2 * SLOT_END_SUPPORT_RESERVE - TOL:
             segments.append((first, last))
     return tuple(segments)
+
+
+def flex_spans(length=LENGTH):
+    """Wall-free intervals; keep their roots and supported slots unchanged."""
+    segments = wall_segments(length)
+    return tuple((left[1], right[0]) for left, right in zip(segments, segments[1:]))
+
+
+def _waist_relief(first, last, side):
+    """Two tangent cubic edges trim a shallow, smooth waist from one base side."""
+    middle = (first + last) / 2
+    sixth = (last - first) / 6
+    outer, inner = side * BASE_WIDTH / 2, side * FLEXURE_MIN_WIDTH / 2
+    edges = []
+    for points in (
+        (
+            (first, outer),
+            (first + sixth, outer),
+            (middle - sixth, inner),
+            (middle, inner),
+        ),
+        (
+            (middle, inner),
+            (middle + sixth, inner),
+            (last - sixth, outer),
+            (last, outer),
+        ),
+    ):
+        curve = Part.BezierCurve()
+        curve.setPoles([V(x, y, -0.1) for x, y in points])
+        edges.append(curve.toShape())
+    edges.append(Part.makeLine(V(last, outer, -0.1), V(first, outer, -0.1)))
+    return Part.Face(Part.Wire(edges)).extrude(V(0, 0, PAD_THICKNESS + 0.2))
+
+
+def base_shape(length=LENGTH):
+    """Full-width wall roots and constant thickness, with waists only in free spans."""
+    length = _positive(length, "Rail length")
+    base = rounded_plate(0, length, BASE_WIDTH)
+    reliefs = [
+        _waist_relief(first, last, side)
+        for first, last in flex_spans(length)
+        for side in (-1, 1)
+    ]
+    return base.cut(union(reliefs)).removeSplitter() if reliefs else base
 
 
 def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
@@ -177,7 +223,7 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     segments = wall_segments(length)
     if not segments:
         raise ValueError("Rail must contain at least one usable wall segment")
-    pieces = [rounded_plate(0, length, BASE_WIDTH)] + [rounded_plate(x) for x in pads]
+    pieces = [base_shape(length)] + [rounded_plate(x) for x in pads]
     inset = MOUNT_LENGTH / 2 + SLOT_END_SUPPORT_RESERVE
     for first, last in segments:
         wall = box(
@@ -338,24 +384,32 @@ def tape_attachment_contract():
         "wing_stations_x_mm": PAD_CENTRES,
         "wing_count": 2 * len(PAD_CENTRES),
         "base_width_mm": BASE_WIDTH,
-        "attachment": "Conform before bonding. Thin double-sided tape under the continuous6mm base can distribute local loads and cover wing undersides. Six optional over-wing strips reinforce peel retention. Keep side bolts and open flex gaps accessible.",
+        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH,
+        "attachment": "Conform before bonding. Thin double-sided tape under the continuous base can distribute local loads and cover wing undersides. Base width is6mm under walls and gently narrows to4.5mm between them. Six optional over-wing strips reinforce peel retention. Keep side bolts and open flex gaps accessible; adhesive changes compliance and must not be treated as an unloaded free-beam test.",
         "reference_scope": "Saved tape solids show only optional12mm over-wing strips. Under-base adhesive thickness, mass and envelope deformation are not modeled. Z0 is the rail underside, not a certified balloon surface.",
         "qualification": "Three isolated wing pairs are not load-qualified. Check actual tape/envelope compatibility, peel, creep and loaded curvature; no adhesion strength, minimum bend radius or fatigue life is claimed.",
     }
 
 
-def attachment_contract(contact_length=MOUNT_LENGTH):
+def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
+    length = _positive(length, "Rail length")
+    spans = flex_spans(length)
     return {
-        "wall_segments_x_mm": wall_segments(),
+        "rail_length_mm": length,
+        "wall_segments_x_mm": wall_segments(length),
         "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(
-            contact_length=contact_length
+            length, contact_length=contact_length
+        ),
+        "free_base_spans_x_mm": spans,
+        "base_width_mm": BASE_WIDTH,
+        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH if spans else None,
+        "free_span_profile": (
+            "Symmetric two-cubic waist with longitudinal tangent at each wall root and the centre; constant base thickness. No hinge, printed latch or qualified bend radius."
+            if spans
+            else "No free span in this rail section; clamp fit only."
         ),
         "web_thickness_mm": WEB_THICKNESS,
         "web_top_z_mm": WEB_TOP_Z,
-        "outer_flex_gap_mm": FLEX_GAP,
-        "central_wall_length_mm": CENTRAL_WALL_LENGTH,
-        "central_adjacent_flex_gap_mm": (SEGMENT_PITCH - CENTRAL_WALL_LENGTH) / 2
-        + FLEX_GAP / 2,
         "minimum_base_mm": PAD_THICKNESS,
         "slot_height_mm": SLOT_HEIGHT,
         "bolt_axis_z_mm": BOLT_AXIS_Z,
@@ -380,7 +434,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One PA12 strip with1.5mm closed base and three tape-wing pairs.2.5mm upright walls have local M2 slots; the central50mm wall has6mm free spans beside it, other gaps12mm. The broad centre supports propulsion while the continuous base permits bending. No T lips, nut pockets, printed threads or snap fit. Qualify loaded curvature, friction retention, creep and adhesion with the actual parts.",
+        "One PA12 strip with1.5mm closed base and three tape-wing pairs.2.5mm upright walls have local M2 slots; the central50mm wall has6mm free spans beside it, other gaps12mm. Free spans smoothly narrow from6 to4.5mm, without thinning the base or changing wall roots. This reduces nominal bending stiffness but also lateral/torsional resistance; no whole-rail flexibility or strength rating. Qualify loaded curvature, friction retention, creep and adhesion with the actual parts.",
     )
     set_property(
         printed,
@@ -444,12 +498,12 @@ def build_coupons(doc):
             label,
             shape,
             App.Rotation(),
-            "Same wall/L-seat geometry as full rail. Use the actual M2x8 bolt and exposed nut; test flat seating, local sliding, side tool access and clamp retention. Short coupon does not qualify full rail adhesion, bending or creep.",
+            "Same wall/L-seat geometry as full rail. Use the actual M2x8 bolt and exposed nut; test flat seating, local sliding, side tool access and clamp retention. The companion50mm rail coupon has no wall-free waist; it does not test full rail bending, adhesion or creep.",
         )
         set_property(
             obj,
             "RailAttachmentContract",
-            json.dumps(attachment_contract(), sort_keys=True),
+            json.dumps(attachment_contract(length=50), sort_keys=True),
         )
         printed.append(obj)
     return {"group": group, "printed": printed}
@@ -461,9 +515,8 @@ def flex_relief_check(rail_section=None, length=LENGTH):
         if rail_section is None
         else rail_section
     )
-    segments = wall_segments(length)
     rows = []
-    for (_, first), (last, _) in zip(segments, segments[1:]):
+    for first, last in flex_spans(length):
         witness = box(
             last - first,
             BASE_WIDTH,
@@ -481,6 +534,7 @@ def flex_relief_check(rail_section=None, length=LENGTH):
     return {
         "open_spans": rows,
         "base_thickness_mm": PAD_THICKNESS,
+        "free_span_minimum_width_mm": FLEXURE_MIN_WIDTH,
         "scope": "Open above-base spans only; no stiffness, bend-radius or fatigue rating.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }

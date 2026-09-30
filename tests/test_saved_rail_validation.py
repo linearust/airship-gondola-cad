@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -159,6 +160,36 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertGreater(report["rails"][0]["missing_unbroken_base_witness_mm3"], 0.4)
 
+    def test_filled_waist_is_rejected_even_if_generator_has_the_same_defect(self):
+        obj = self.doc.ContinuousRail
+        obj.Shape = obj.Shape.fuse(
+            Part.makeBox(12, 6, 1.5, App.Vector(69, -3, 0))
+        ).removeSplitter()
+        with patch(
+            "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
+        ):
+            report = self.check()
+        self.assertFalse(report["passed"])
+        row = report["rails"][0]
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+        self.assertGreater(row["filled_flexure_relief_mm3"], 13)
+        self.assertAlmostEqual(row["missing_unbroken_base_witness_mm3"], 0, places=6)
+
+    def test_thinned_waist_is_rejected_even_if_generator_has_the_same_defect(self):
+        obj = self.doc.ContinuousRail
+        obj.Shape = obj.Shape.cut(
+            Part.makeBox(1, 4.5, 0.2, App.Vector(74.5, -2.25, 1.3))
+        )
+        with patch(
+            "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
+        ):
+            report = self.check()
+        self.assertFalse(report["passed"])
+        row = report["rails"][0]
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+        self.assertGreater(row["missing_unbroken_base_witness_mm3"], 0.89)
+        self.assertAlmostEqual(row["filled_flexure_relief_mm3"], 0, places=6)
+
     def test_long_propulsion_foot_cannot_claim_the_short_carrier_travel(self):
         from gondola.parts import rail
 
@@ -180,11 +211,30 @@ class SavedRailValidationTests(unittest.TestCase):
         from gondola.parts import rail
 
         self.doc.MountFitSample.RailAttachmentContract = json.dumps(
-            rail.attachment_contract()
+            rail.attachment_contract(length=50)
         )
+        self.assertTrue(self.check()["passed"])
         tapes = list(self.doc.DesignRegistry.TapeReferences)
         self.doc.DesignRegistry.TapeReferences = tapes[:-1]
         self.assertFalse(self.check()["passed"])
+
+    def test_coupon_cannot_claim_full_rail_adjustment_ranges(self):
+        from gondola.parts import rail
+
+        for name in ("RailFitSample", "MountFitSample"):
+            with self.subTest(coupon=name):
+                obj = self.doc.getObject(name)
+                original = obj.RailAttachmentContract
+                obj.RailAttachmentContract = json.dumps(rail.attachment_contract())
+                report = self.check()
+                self.assertFalse(report["passed"])
+                row = next(
+                    row
+                    for row in report["native_attachment_annotations"]
+                    if row["object"] == name
+                )
+                self.assertFalse(row["matches_current_attachment_contract"])
+                obj.RailAttachmentContract = original
 
 
 if __name__ == "__main__":

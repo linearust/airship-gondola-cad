@@ -1,44 +1,32 @@
 {
-  "revision": "BN",
-  "recorded_utc": "2026-09-30T07:23:34.293039+00:00",
+  "revision": "BO",
+  "recorded_utc": "2026-09-30T09:17:19.878300+00:00",
   "passed": true,
   "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "382e7cb36af625802ce302f49899520e24ef2320c504ee6c87dcb2b5366aa0f4",
-  "cad_sha256": "9519b7db7a0c1be8993d0ac67549fc6bdda0e3862ab5823ea347fa01eec27de0",
+  "source_fingerprint": "29d073baf250dfe0080f10e404d34eef57e201d8e4861fdb06347f6ee3287dfc",
+  "cad_sha256": "90798d148dd131a6964fed0147cf5586101e78405893642fcc329e7a7f22500e",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "890ff9b4830058df96bfb554cf59d1432d77297c35ee551835a83205a3a89508"
+    "sha256": "084e65c7c6288ccf1b1a17c744b3c13dbb9a9eb09042dcda3820c620a587299f"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "a4fd71139586e767eab4c9f632346c12811d52ad4f56b105678a121dffafba0f"
+    "sha256": "6bdbf96edc77adcb5b3a36ccebfe6aefe005bd8cd31b6c869239d5ddd9ea9052"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 607,
+    "testsRun": 611,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "source_unchanged": true,
-    "source_unchanged_scope": "Production CAD source and fixture across both phases. Test-only changes are listed and the complete affected modules were rerun.",
-    "test_only_corrections": [
-      {
-        "path": "tests/test_native_interfaces.py",
-        "before_sha256": "7e6332915944e480d2189b07af9259fb25f3e5bbb74ec2c7083cb1abeea965b2",
-        "after_sha256": "687d91c33eed161d90af053b934ff607fbd8848ebb212b1670114e607a4f644c"
-      },
-      {
-        "path": "tests/test_optical_interface.py",
-        "before_sha256": "02a279a44ea02165f478cc80e222fcee8c11430f9ccdd1f0095eac668bbfb321",
-        "after_sha256": "d56e08f6f061a25b23a752d9d3ee5179aa63edffd94b6ad260963c545ece4f8f"
-      },
-      {
-        "path": "tests/test_optical_mount.py",
-        "before_sha256": "9410e36ce82434deb7bccda6de69b313d4119c08838ad72db0c26ee3dbb5f7b7",
-        "after_sha256": "2c02fd4f3305d64ceb2ab1ca745859aca0efbdbb337d54bfc294c1c49cf91f78"
-      }
-    ],
-    "exact_discovery_coverage": true
+    "exact_discovery_coverage": true,
+    "execution": "Complete native unittest discovery grouped by TestCase class across six isolated FreeCAD Python workers. Class fixtures preserved; exact discovery ID coverage, no skips, frozen production/test/tool sources required.",
+    "source_unchanged_scope": "One complete frozen phase: production/test/tool Python and fixture hashes match before, after and recording.",
+    "outer_launch_exit_code": 143,
+    "outer_launch_cause_unconfirmed": true,
+    "independent_worker_reconciliation_passed": true,
+    "launcher_scope": "All native test workers completed with exit0; the original enclosing command ended143 after writing the complete result. The cause was not established. Fresh native discovery and completed-worker records were independently reconciled; subsequent minimal/native/discovery launcher probes exited0. Original whole-launcher clean termination is not claimed."
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
@@ -57,7 +45,7 @@
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "8466013cc2a7bb810ce25e62eff102df4fceb309813c56be60c04ef8188913a1",
+  "evidence_archive_sha256": "37a58dd4e2cf66aed55682dfdd264429cbe64a750dc0309dd80f145908efb696",
   "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "7c388c05bd06982f2a8ea88b469056a0dc28bf32ba8a6eae6b2043b3c5b82bf3"
+  "print_bundle_sha256": "2f4070097e2ca76b41f831ce9bd2e00b3c4e0d99c434c870b627823e8d2411d1"
 }

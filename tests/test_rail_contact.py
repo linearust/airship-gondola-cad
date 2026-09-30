@@ -1,5 +1,6 @@
 """Native side-slot rail geometry, full contact and segmented adjustment limits."""
 
+import json
 import math
 import unittest
 
@@ -40,6 +41,30 @@ class RailContactTests(unittest.TestCase):
             row["x_range_mm"][1] - row["x_range_mm"][0] for row in report["open_spans"]
         ]
         self.assertEqual(widths, [12, 12, 6, 6, 12, 12])
+
+    def test_waists_preserve_wall_roots_and_transition_smoothly(self):
+        from gondola.parts import rail
+
+        shape = rail.rail_shape()
+        for first, last in (
+            (-131, -119),
+            (-81, -69),
+            (-31, -25),
+            (25, 31),
+            (69, 81),
+            (119, 131),
+        ):
+            for fraction, expected in ((0, 6), (0.25, 5.25), (0.5, 4.5), (1, 6)):
+                x = first + (last - first) * fraction
+                with self.subTest(gap=(first, last), fraction=fraction):
+                    cross_section = Part.makeLine(
+                        App.Vector(x, -4, 0.75), App.Vector(x, 4, 0.75)
+                    )
+                    self.assertAlmostEqual(shape.common(cross_section).Length, expected)
+                    thickness = Part.makeLine(
+                        App.Vector(x, 0, 0), App.Vector(x, 0, 1.5)
+                    )
+                    self.assertAlmostEqual(shape.common(thickness).Length, 1.5)
 
     def test_accidental_bridge_between_walls_fails(self):
         from gondola.parts import rail
@@ -168,6 +193,19 @@ class RailContactTests(unittest.TestCase):
             self.assertEqual(sorted(centres), [-140, -140, 0, 0, 140, 140])
             self.assertEqual(len(rail.build_coupons(doc)["printed"]), 2)
             self.assertAlmostEqual(doc.RailFitSample.Shape.BoundBox.XLength, 50)
+            for coupon in (doc.RailFitSample, doc.MountFitSample):
+                contract = json.loads(coupon.RailAttachmentContract)
+                self.assertEqual(contract["rail_length_mm"], 50)
+                self.assertEqual(contract["wall_segments_x_mm"], [[-25, 25]])
+                self.assertEqual(contract["free_base_spans_x_mm"], [])
+                self.assertIsNone(contract["free_span_minimum_width_mm"])
+                ranges = contract["supported_bolt_axis_ranges_x_mm"]
+                self.assertEqual(len(ranges), 1)
+                self.assertAlmostEqual(ranges[0][0], -16.2)
+                self.assertAlmostEqual(ranges[0][1], 16.2)
+            rail_contract = json.loads(doc.ContinuousRail.RailAttachmentContract)
+            self.assertEqual(rail_contract["rail_length_mm"], 300)
+            self.assertEqual(rail_contract["free_span_minimum_width_mm"], 4.5)
             self.assertTrue(
                 rail.attachment_check(
                     doc.RailFitSample.Shape, doc.MountFitSample.Shape
