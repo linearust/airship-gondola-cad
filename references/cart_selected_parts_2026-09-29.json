@@ -13,21 +13,16 @@
     "extraction": "Read the saved HTML: each .cart-product row, .cart-product-name-title title, .skuStr text, quantity input value, and .cart-product-shop-name. No live-page access or script execution."
   },
   "privacy": "Only relevant product titles, selected options, cart quantities, seller names and clean item links retained. No account/address/payment/order data, scripts, tracking parameters or unrelated product rows.",
-  "interpretation_rules": [
-    "Full title and exact selected option are durable evidence even if a link expires. Product IDs/links are supplementary provenance.",
-    "Null option means absent serialized option text, not proof that the product has no variants.",
-    "A saved cart and pack labels do not establish paid quantity, delivery, physical fit or original manufacturer identity. User separately confirms the bearings were purchased.",
-    "Alternatives and surplus are not additional simultaneous installations. Current generated BOM owns installed quantities.",
-    "Seller title alone cannot establish screw-head dimensions, bearing ring/shield geometry, rod tolerances, received PCB stacks, pinouts or real electrical load capability."
-  ],
+  "scope": "Dated selected-option evidence only, not current CAD requirements, installed quantities, pack contents, payment, delivery or measurements. Null option means absent serialized option text. Product links are supplementary provenance.",
   "user_confirmations": [
-    "Generic 3×6×2.5 mm bearings already purchased; retain four in CAD.",
-    "Metal M2/M3 screw-and-nut stock and GH1.25 kit already owned.",
-    "M1.4/M1.6 kit has varied lengths; do not re-ask for the inventory.",
-    "Nominal Ø3 mm rod tolerance evidence is deferred; a precision replacement can be bought if physical fit fails.",
-    "No purchased bearing spacer. The 3×5×3 bush contacts the shield and is not part of the CAD.",
-    "Servo Y harness, push-on ring kit and nylon M2 standoff kit are unrelated to this CAD requirement.",
-    "KST manufacturer stock plastic horn is now selected; former separately purchased metal-horn compatibility is obsolete."
+    "User reported the selected generic 3×6×2.5 mm bearings purchased.",
+    "User reported metal M2/M3 screw-and-nut stock and a GH1.25 kit already owned.",
+    "User reported varied lengths in the M1.4/M1.6 screw kit.",
+    "User accepted deferring nominal Ø3 mm rod tolerance confirmation until physical fit is checked.",
+    "User declined purchased bearing spacers after confirming that the 3×5×3 bush contacts the shield.",
+    "User identified servo Y harnesses, push-on rings and nylon M2 standoffs as unrelated purchases.",
+    "User supplied KST stock-horn CAD for replacing the earlier metal-horn design basis.",
+    "User confirmed 2S support for the selected H743V2 AIO 45A AM32 controller; no hardware revision or minimum operating voltage was provided."
   ],
   "related_rows": [
     {
@@ -37,10 +32,7 @@
       "option": "SH 1.0",
       "cart_quantity": 1,
       "store": "Rocheuk Store",
-      "scope": "harness_stock",
-      "retained_interpretation": "SH 1.0 mm connector kit; pin counts and wire lengths require actual kit inspection.",
-      "source_url": "https://www.aliexpress.com/item/1005008691681233.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005008691681233.html"
     },
     {
       "row": 7,
@@ -49,10 +41,7 @@
       "option": null,
       "cart_quantity": 1,
       "store": "WI RC Toy Store",
-      "scope": "power_lead_stock",
-      "retained_interpretation": "Seller title claims five XT30 capacitor leads; capacitance and voltage are not stated in the selected cart row.",
-      "source_url": "https://www.aliexpress.com/item/1005001761868694.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005001761868694.html"
     },
     {
       "row": 8,
@@ -61,10 +50,7 @@
       "option": "6Pin/10PCS/남성 삽입",
       "cart_quantity": 1,
       "store": "DQLZV Official Store",
-      "scope": "header_stock",
-      "retained_interpretation": "Ten 6-pin right-angle male headers; 2.54 mm pitch stated in title.",
-      "source_url": "https://www.aliexpress.com/item/1005007569841697.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007569841697.html"
     },
     {
       "row": 9,
@@ -73,10 +59,7 @@
       "option": "8Pin/10PCS/남성 삽입",
       "cart_quantity": 1,
       "store": "DQLZV Official Store",
-      "scope": "header_stock",
-      "retained_interpretation": "Ten 8-pin right-angle male headers; 2.54 mm pitch stated in title.",
-      "source_url": "https://www.aliexpress.com/item/1005007569841697.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007569841697.html"
     },
     {
       "row": 11,
@@ -85,10 +68,7 @@
       "option": "5 pieces/플러그 없음",
       "cart_quantity": 1,
       "store": "Hobbymodel Factory Store",
-      "scope": "optional_servo_power",
-      "retained_interpretation": "Five SVPDB-8S boards, no plugs. One board per supported installation; surplus does not change the topology.",
-      "source_url": "https://www.aliexpress.com/item/1005012786485544.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005012786485544.html"
     },
     {
       "row": 12,
@@ -97,10 +77,7 @@
       "option": "5Pairs Male Female/China Mainland/10CM",
       "cart_quantity": 1,
       "store": "Shunjin Electronic Technology Co.,Ltd Store",
-      "scope": "power_lead_stock",
-      "retained_interpretation": "Five male/female XT30 pairs with 10 cm leads; 16AWG stated in title. Sex labels do not prove actual polarity.",
-      "source_url": "https://www.aliexpress.com/item/1005012876182311.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005012876182311.html"
     },
     {
       "row": 13,
@@ -109,10 +86,7 @@
       "option": "22AWG/5x10M",
       "cart_quantity": 1,
       "store": "Beteno Connect Store",
-      "scope": "wire_stock",
-      "retained_interpretation": "22AWG silicone wire, five colours at 10 m each. Stock length is not an operating tether length.",
-      "source_url": "https://www.aliexpress.com/item/1005007604315564.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007604315564.html"
     },
     {
       "row": 14,
@@ -121,10 +95,7 @@
       "option": "10 PCS 30CM",
       "cart_quantity": 1,
       "store": "Z J Motor Store",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 30 cm JR extensions; 22AWG stated in title. Finished reach/lead strain and pin order remain unverified.",
-      "source_url": "https://www.aliexpress.com/item/1005006861830266.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005006861830266.html"
     },
     {
       "row": 23,
@@ -133,10 +104,7 @@
       "option": "100pcs M1.4 brass",
       "cart_quantity": 1,
       "store": "HZYUEGOU SCREWHOME Store",
-      "scope": "horn_fasteners",
-      "retained_interpretation": "100 M1.4 brass nuts. Option material overrides the generic stainless title; AF/height unmeasured.",
-      "source_url": "https://www.aliexpress.com/item/32977174437.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/32977174437.html"
     },
     {
       "row": 25,
@@ -145,10 +113,7 @@
       "option": "10pcs M1.6",
       "cart_quantity": 1,
       "store": "HZYUEGOU SCREWHOME Store",
-      "scope": "servo_ear_fasteners",
-      "retained_interpretation": "10 M1.6 nuts. Actual head/AF/height and usable engagement unmeasured.",
-      "source_url": "https://www.aliexpress.com/item/32977174437.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/32977174437.html"
     },
     {
       "row": 26,
@@ -157,10 +122,7 @@
       "option": "4Pairs Blue 1.5mm",
       "cart_quantity": 1,
       "store": "Dong Mu High Quality Store",
-      "scope": "main_propellers",
-      "retained_interpretation": "Four CW/CCW pairs, Gemfan 1610, blue, 1.5 mm bore. One pair installed in the gondola.",
-      "source_url": "https://www.aliexpress.com/item/1005008571500350.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005008571500350.html"
     },
     {
       "row": 28,
@@ -169,10 +131,7 @@
       "option": "(500Pcs)  M1.4 M1.6",
       "cart_quantity": 1,
       "store": "Autumn Sun Store",
-      "scope": "small_fasteners",
-      "retained_interpretation": "500-piece M1.4/M1.6 Phillips screw assortment. User confirms varied lengths; row does not establish each length count or head envelope.",
-      "source_url": "https://www.aliexpress.com/item/1005006265286201.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005006265286201.html"
     },
     {
       "row": 29,
@@ -181,10 +140,7 @@
       "option": null,
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "optical_alternative",
-      "retained_interpretation": "MTF-02P. No selected option text is serialized; product identity comes from the title.",
-      "source_url": "https://www.aliexpress.com/item/1005007883248524.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007883248524.html"
     },
     {
       "row": 35,
@@ -193,10 +149,7 @@
       "option": "200mm/3mm 2pcs",
       "cart_quantity": 1,
       "store": "XY Hinges Store",
-      "scope": "shaft_stock",
-      "retained_interpretation": "Two 200 mm rods, nominal diameter 3 mm, seller-described 304 stainless. Diameter tolerance/straightness unverified.",
-      "source_url": "https://www.aliexpress.com/item/1005009347568195.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005009347568195.html"
     },
     {
       "row": 37,
@@ -205,10 +158,7 @@
       "option": "China Mainland/3x6x2.5mm/10개",
       "cart_quantity": 1,
       "store": "팬더 베어링 스토어",
-      "scope": "output_bearings",
-      "retained_interpretation": "10 bearings, 3 mm bore × 6 mm OD × 2.5 mm width. Four installed; actual manufacturer, shields and race lands unverified.",
-      "source_url": "https://www.aliexpress.com/item/1005007668446060.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007668446060.html"
     },
     {
       "row": 62,
@@ -217,10 +167,7 @@
       "option": "3pcs",
       "cart_quantity": 1,
       "store": "Tangtang Any Shop",
-      "scope": "power_lead_stock",
-      "retained_interpretation": "Three XT30 filter leads; title states 35 V / 470 µF. This stock is not the selected 220 µF baseline without another installation decision.",
-      "source_url": "https://www.aliexpress.com/item/1005004767092525.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004767092525.html"
     },
     {
       "row": 63,
@@ -229,10 +176,7 @@
       "option": "10pcs-500MM/China Mainland",
       "cart_quantity": 1,
       "store": "underrow 공식 스토어",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 500 mm JR extensions.",
-      "source_url": "https://www.aliexpress.com/item/1005004622233166.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004622233166.html"
     },
     {
       "row": 64,
@@ -241,10 +185,7 @@
       "option": "10pcs-300MM/China Mainland",
       "cart_quantity": 1,
       "store": "underrow 공식 스토어",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 300 mm JR extensions.",
-      "source_url": "https://www.aliexpress.com/item/1005004622233166.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004622233166.html"
     },
     {
       "row": 65,
@@ -253,10 +194,7 @@
       "option": "10pcs-200MM/China Mainland",
       "cart_quantity": 1,
       "store": "underrow 공식 스토어",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 200 mm JR extensions.",
-      "source_url": "https://www.aliexpress.com/item/1005004622233166.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004622233166.html"
     },
     {
       "row": 66,
@@ -265,10 +203,7 @@
       "option": "10pcs-150MM/China Mainland",
       "cart_quantity": 1,
       "store": "underrow 공식 스토어",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 150 mm JR extensions.",
-      "source_url": "https://www.aliexpress.com/item/1005004622233166.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004622233166.html"
     },
     {
       "row": 67,
@@ -277,10 +212,7 @@
       "option": "10pcs-100MM/China Mainland",
       "cart_quantity": 1,
       "store": "underrow 공식 스토어",
-      "scope": "servo_extension_stock",
-      "retained_interpretation": "Ten 100 mm JR extensions.",
-      "source_url": "https://www.aliexpress.com/item/1005004622233166.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004622233166.html"
     },
     {
       "row": 68,
@@ -289,10 +221,7 @@
       "option": "Black/22AWG/10m",
       "cart_quantity": 1,
       "store": "Shop910866001 Store",
-      "scope": "wire_stock",
-      "retained_interpretation": "Black 22AWG, 10 m stock. FEP/PTFE and UL1332/200 °C are seller title claims, not certification of delivered wire.",
-      "source_url": "https://www.aliexpress.com/item/1005012819095627.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005012819095627.html"
     },
     {
       "row": 69,
@@ -301,10 +230,7 @@
       "option": "Red/22AWG/10m",
       "cart_quantity": 1,
       "store": "Shop910866001 Store",
-      "scope": "wire_stock",
-      "retained_interpretation": "Red 22AWG, 10 m stock. FEP/PTFE and UL1332/200 °C are seller title claims, not certification of delivered wire.",
-      "source_url": "https://www.aliexpress.com/item/1005012819095627.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005012819095627.html"
     },
     {
       "row": 70,
@@ -313,10 +239,7 @@
       "option": "Matek BEC12S-PRO",
       "cart_quantity": 1,
       "store": "Shop1105473128 Store",
-      "scope": "optional_tether_power",
-      "retained_interpretation": "One Matek BEC12S-PRO. One converter feeds an 8 V main branch and an optional SVPDB-8S input; not two BEC12S-PROs.",
-      "source_url": "https://www.aliexpress.com/item/1005012139409949.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005012139409949.html"
     },
     {
       "row": 72,
@@ -325,10 +248,7 @@
       "option": "PX4/China Mainland",
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "optical_alternative",
-      "retained_interpretation": "One MTF-01P, PX4 option. Alternative to MTF-02P, not simultaneous installation.",
-      "source_url": "https://www.aliexpress.com/item/1005007701321403.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007701321403.html"
     },
     {
       "row": 73,
@@ -337,10 +257,7 @@
       "option": "MG-F10",
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "navigation_alternative",
-      "retained_interpretation": "One MG-F10. Cart option alone does not distinguish bare-A/cased-C identity or antenna/package inclusion; current CAD supports bare MG-F10-A.",
-      "source_url": "https://www.aliexpress.com/item/1005007870560061.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007870560061.html"
     },
     {
       "row": 74,
@@ -349,10 +266,7 @@
       "option": "LR24-F-F-Mini",
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "telemetry",
-      "retained_interpretation": "One LR24-F-F-Mini set; LR24-F ground and F-Mini onboard per user selection. Verify delivered set contents.",
-      "source_url": "https://www.aliexpress.com/item/1005006772663165.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005006772663165.html"
     },
     {
       "row": 75,
@@ -361,10 +275,7 @@
       "option": "PX4",
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "flight_controller",
-      "retained_interpretation": "One MicoAir H743V2 AIO 45A AM32, PX4. User confirmed selected board supports 2S; exact hardware revision and installed power are unverified.",
-      "source_url": "https://www.aliexpress.com/item/1005010404423678.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005010404423678.html"
     },
     {
       "row": 77,
@@ -373,10 +284,7 @@
       "option": "China Mainland",
       "cart_quantity": 6,
       "store": "Aeroling Tech Store",
-      "scope": "tilt_servos",
-      "retained_interpretation": "Six KST X06 V6.0 servos selected; two installed here. Stock plastic half arm 1 from the retained manufacturer STEP is the design basis; fin servos and spares are outside gondola CAD.",
-      "source_url": "https://www.aliexpress.com/item/1005010458484391.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005010458484391.html"
     },
     {
       "row": 80,
@@ -385,10 +293,7 @@
       "option": null,
       "cart_quantity": 1,
       "store": "keszoox Official Store",
-      "scope": "harness_stock",
-      "retained_interpretation": "SH1.0-to-Dupont 2.54 kit. No option text serialized; title does not establish complete flight harness pinouts.",
-      "source_url": "https://www.aliexpress.com/item/1005007247777489.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007247777489.html"
     },
     {
       "row": 82,
@@ -397,10 +302,7 @@
       "option": "100mm/3mm",
       "cart_quantity": 2,
       "store": "LINBOWJ Metals Store",
-      "scope": "shaft_stock",
-      "retained_interpretation": "Two cart units of nominal diameter 3 mm × 100 mm 304 stainless rod. Cart row does not state a multipack; tolerance/straightness unverified.",
-      "source_url": "https://www.aliexpress.com/item/1005007648646117.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005007648646117.html"
     },
     {
       "row": 84,
@@ -409,10 +311,7 @@
       "option": "3mm/16개 치아",
       "cart_quantity": 3,
       "store": "Kailash Store",
-      "scope": "output_gears",
-      "retained_interpretation": "Three Kailash m0.5 16T gears with 3 mm bore; two installed. Current option directly says 3mm, replacing the older ambiguous 3mm3 cart label.",
-      "source_url": "https://www.aliexpress.com/item/1005013121105173.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005013121105173.html"
     },
     {
       "row": 85,
@@ -421,10 +320,7 @@
       "option": "3mm/48 Teeth",
       "cart_quantity": 3,
       "store": "Kailash Store",
-      "scope": "driver_gears",
-      "retained_interpretation": "Three Kailash m0.5 48T gears with 3 mm bore; two installed. Retained detailed gear evidence owns other nominal dimensions and material conflict.",
-      "source_url": "https://www.aliexpress.com/item/1005011637445325.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005011637445325.html"
     },
     {
       "row": 86,
@@ -433,10 +329,7 @@
       "option": "XT30 35V 220uF",
       "cart_quantity": 1,
       "store": "Tangtang Any Shop",
-      "scope": "baseline_power_lead",
-      "retained_interpretation": "XT30 / 35 V / 220 µF option. Title claims two pieces; option does not repeat pack quantity. Check delivered envelope and polarity.",
-      "source_url": "https://www.aliexpress.com/item/1005004752701044.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005004752701044.html"
     },
     {
       "row": 87,
@@ -445,10 +338,7 @@
       "option": "XR2 Nano 2.4G",
       "cart_quantity": 1,
       "store": "Skyflight Global Store",
-      "scope": "receiver",
-      "retained_interpretation": "One RadioMaster XR2 Nano 2.4G ELRS receiver. Receiver installation/harness is not modeled in gondola CAD.",
-      "source_url": "https://www.aliexpress.com/item/1005009297303558.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005009297303558.html"
     },
     {
       "row": 88,
@@ -457,10 +347,7 @@
       "option": "2S 450mah 75c",
       "cart_quantity": 1,
       "store": "Shop910561227 Store",
-      "scope": "battery",
-      "retained_interpretation": "One Tattu 2S 450 mAh 75C battery. XT30 is in title; actual long-pack dimensions, leads and mass require inspection.",
-      "source_url": "https://www.aliexpress.com/item/1005011861263060.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005011861263060.html"
     },
     {
       "row": 90,
@@ -469,10 +356,7 @@
       "option": "M10 Ultra",
       "cart_quantity": 1,
       "store": "MicoAir Tech Store",
-      "scope": "navigation_alternative",
-      "retained_interpretation": "One M10 Ultra option from MG-A01 listing. Alternative to MG-F10/P-AS, not simultaneous installation.",
-      "source_url": "https://www.aliexpress.com/item/1005005592023005.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005005592023005.html"
     },
     {
       "row": 94,
@@ -481,17 +365,7 @@
       "option": "4PCS 10000KV",
       "cart_quantity": 1,
       "store": "Shop1104716349 Store",
-      "scope": "propulsion_motors",
-      "retained_interpretation": "Four HappyModel RS1102 10000KV motors, title specifies 1.5 mm shaft. Two main motors installed in this gondola; aft motor/spares are outside this CAD.",
-      "source_url": "https://www.aliexpress.com/item/1005009083593470.html",
-      "quantity_scope": "Saved cart input; not physical pack contents or an installed count."
+      "source_url": "https://www.aliexpress.com/item/1005009083593470.html"
     }
-  ],
-  "coverage_limits": [
-    "Retained 95-row count matches saved 95-item heading; this does not certify completeness of live checkout or delivery.",
-    "P-AS is absent from the saved cart but is a supported alternative; MG-F10/M10 Ultra are present. No demand to purchase every alternative.",
-    "No completed installed harness, antenna-extension system, tape/retention method, tether or external PSU is established by the preserved nominal selections. This is not proof these are unowned.",
-    "M3 radial gear screw supply, length, point and protrusion remain unverified; owned ordinary M3 bolts/nuts do not by themselves establish those details.",
-    "FC insulation/damping and device support stacks require receiving checks; kit ownership is not a fit qualification."
   ]
 }

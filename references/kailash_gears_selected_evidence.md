@@ -1,41 +1,30 @@
-# Selected Kailash gear evidence
+# Retained Kailash seller statements
 
-The user supplied saved AliExpress product pages and the two retained 16T
-images, then selected these exact options for CAD. The [final cart record](cart_selected_parts_2026-09-29.json) preserves selected text and quantities independently of expiring links. These are seller statements
-and nominal dimensions, not a received-part inspection. Project purchase keys
-are internal identifiers, not supplier order codes.
+Transcription from user-supplied saved AliExpress pages and dimension images.
+The full product pages are not retained in this repository; this is seller
+source evidence, not independent certification or a received-part measurement.
+The [2026-09-29 cart](cart_selected_parts_2026-09-29.json) separately preserves
+selected options and quantities. Links identify provenance, not live availability.
 
-| Item | 48T driver | 16T output |
+| Recorded item | 48T | 16T |
 | --- | --- | --- |
-| Product | [Kailash HDAA-05 listing](https://www.aliexpress.com/item/1005011637445325.html) | [Kailash XC05-S1 listing](https://www.aliexpress.com/item/1005013121105173.html) |
-| Selected option | 48 Teeth / 3 mm | 16 teeth / 3 mm; final cart option `3mm/16개 치아` |
+| Listing | [HDAA-05](https://www.aliexpress.com/item/1005011637445325.html) | [XC05-S1](https://www.aliexpress.com/item/1005013121105173.html) |
+| Selected option | 48 teeth / 3 mm | 16 teeth / 3 mm |
 | Module / pressure angle | 0.5 / 20° | 0.5 / 20° |
-| Tooth type / process | External spur / hobbing, seller stated | External spur / hobbing, seller stated |
+| Tooth type / process stated | External spur / hobbing | External spur / hobbing |
 | Pitch / outside diameter | 24 / 25 mm | 8 / 9 mm |
 | Face width / total length | 3 / 8 mm | 5 / 10 mm |
 | Hub diameter / extension beyond teeth | 12 / 5 mm | 6.5 / 5 mm |
-| Plain bore | Ø3 mm; H8 stated in description | Ø3 mm; tolerance unpublished; 3.17 and 4 mm are different options |
+| Plain bore | Ø3 mm; H8 stated | Ø3 mm; tolerance not stated |
 | Radial screw thread | M3 | M3 |
-| Screw axis from hub end | Unpublished | 2.5 mm (7.5 mm from tooth-side end) |
-| Material statement | Description: aluminium alloy; general attribute: alloy steel | Copper/copper alloy; exact alloy unspecified |
-| Actual mass | Unmeasured | Unmeasured |
+| Screw axis from hub end | Not stated | 2.5 mm |
+| Material wording | Aluminium alloy in description; alloy steel in attribute | Copper/copper alloy; exact alloy unspecified |
 
-The 48T page's 38.7 g example belongs to **130T**, not 48T. The user explicitly
-deferred material-conflict and weight resolution while authorizing the selected
-geometry. Do not change the selection or substitute POM density because those
-items are pending. Screw inclusion, length, point and tightening torque are not
-established; M3 screw purchasing is deferred.
+The page's 38.7 g example refers to 130T, not 48T. No measured masses, screw
+inclusion, length, point or tightening torque are established by this record.
+The 16T axial screw position must not be inferred for the 48T gear.
 
-The 16T sectional drawing gives E=5, F=5, L=10 and J=2.5 mm. Its size table
-identifies the 16T row C=8, D=9 and G=6.5 mm. Retained images:
-
-- [Generic sectional dimensions](kailash_16t_dimensions.png)
-- [Tooth-count dimension table](kailash_16t_table.png)
-
-Calculated nominal mesh: centre distance 16 mm and output angle -3 times input
-angle. A 3 mm driver tooth band centred within the 5 mm output band has 1 mm
-axial allowance on each side before full face overlap is lost. This calculation
-is not a backlash, tooth-profile, strength, manufacturing-tolerance or loaded
-travel qualification. Check the complete CAD axial stack and received parts.
-The 48T round bore does not mate directly with the X06 15T spline; the horn,
-coupling and nominal-3mm input stub provide that connection.
+Retained source images: [section](kailash_16t_dimensions.png) and
+[size table](kailash_16t_table.png). The section is generic; the 16T row gives
+C=8, D=9 and G=6.5 mm. [Source index](sources.json) binds their retained bytes.
+Current CAD interpretation belongs to [drive.py](../gondola/contracts/drive.py).

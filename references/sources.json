@@ -1,0 +1,280 @@
+{
+  "scope": "Provenance index of retained source bytes, not CAD dimensions, an assembly guide or qualification. Paths are repository-relative. URLs are historical provenance; local files and source manifests preserve evidence independently of link availability. SHA-256 identifies retained bytes, not authenticity. No live-source recheck is implied.",
+  "source_manifests": [
+    "references/cart_selected_parts_2026-09-29.json",
+    "references/manufacturer/kst_x06_servo_horns_2026-09-28.json",
+    "references/manufacturing/supplier_feedback_2026-09-29.json"
+  ],
+  "records": [
+    {
+      "origin": "MicoAir manufacturer images; URLs retained from repository source records.",
+      "scope": "Dated catalog evidence, not received-board measurements or proof of hardware revision. Port photographs do not establish exact connector datums. Catalog voltage claims differ; user confirmation of the selected FC is recorded separately.",
+      "assets": [
+        {
+          "path": "references/micoair743v2_aio45a_specifications.webp",
+          "title": "45A specifications",
+          "sha256": "dea7e38f3df9adb1bc457f27bd99d2482bade6018328caf6fb78dd1dddd6cce4",
+          "url": "https://store.micoair.com/wp-content/uploads/2025/03/H743V2-AIO_Specifications.webp"
+        },
+        {
+          "path": "references/micoair743v2_aio45a_package.webp",
+          "title": "45A package",
+          "sha256": "67b5fb1b6ee0d1a970c1b160a3c3745d2ce7f57e04d146b5ee119cf769aa9b72",
+          "url": "https://store.micoair.com/wp-content/uploads/2025/03/H743V2-AIO_Package.webp"
+        },
+        {
+          "path": "references/micoair743v2_aio45a_ports.webp",
+          "title": "45A ports",
+          "sha256": "c6bb96eb66762792bfe1d6bf44c3c4b3d31bafd4ac9bec48baa80f35b8a9c04c",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/67d99cd088539-3afa75c002-90182857a6.webp"
+        },
+        {
+          "path": "references/micoair743v2_aio45a_orientation.webp",
+          "title": "45A installation illustration",
+          "sha256": "6be985a77e7c34174367dde957c1dc1bfe94417d76a787436ee8615ce210dbc0",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/7a5ab686921e08331f0d5a4fdbd5ee3a-a8f6b818fd-9e9255a2f4.webp"
+        },
+        {
+          "path": "references/mtf01p_dimensions.webp",
+          "title": "MTF-01P envelope, holes and mass",
+          "sha256": "29f316b45403f791a64775a8649f15f5ed87bb028d6bd6f0901b238998e79798",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66b4374b5dc9c-85c984aa0c-4b3c55e69c.webp"
+        },
+        {
+          "path": "references/mtf01p_ports.webp",
+          "title": "MTF-01P rear case, SH1.0-4P and pin labels",
+          "sha256": "b19ecd5c17712192d9554eb9f74fc51f8d04b43fc6efdc16694ab5cda08c3092",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66b437e3092ef-ce4191a0f2-dfd02307eb.webp"
+        },
+        {
+          "path": "references/mtf01p_orientation.webp",
+          "title": "MTF-01P firmware-dependent forward arrows",
+          "sha256": "6ae0b27a26373c361d80733f0e1858ccc43087fbd3bc0615b51c4eedbeddeaf0",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66b43805576df-07a5fca3b2-9ceca549ba.webp"
+        },
+        {
+          "path": "references/mtf02p_dimensions.webp",
+          "title": "MTF-02P envelope",
+          "sha256": "4debb74459cde42468ffeb8fe1bbbe76661cc3df14fd8aa1d3ad5fb18de996e7",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66f661b664e82-df0e9d69d2-971f59dd57.webp"
+        },
+        {
+          "path": "references/mtf02p_ports.webp",
+          "title": "MTF-02P connector",
+          "sha256": "acaf795a8e02b51bd52ee24c6d44830f6c98fe4a802a7d259aa2b6e003a69b8c",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66f66374dd95c-852bf87918-83cf12d631.webp"
+        },
+        {
+          "path": "references/mtf02p_firmware_orientation.webp",
+          "title": "MTF-02/02P firmware-dependent forward arrows",
+          "sha256": "04a1fb9656040b33e0ed1fceb850ade612c5bdd7f4bd24e68d8f9e82d88f8266",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66f6639242746-8204f1d31b-afb417fc40.webp"
+        },
+        {
+          "path": "references/mgf10a_dimensions.png",
+          "title": "Bare module, hole pattern, helix and masses",
+          "sha256": "c449b498649386c8569b41aa58f6f3c1521b388d52635dd5ddbcd536941508c2",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/670a2bdd48e84-5d41a070a6.png"
+        },
+        {
+          "path": "references/mgf10a_ports.png",
+          "title": "MG-F10-A SH1.0-6P, SMA and forward arrow",
+          "sha256": "9246fba86019a40cb6647ad1280be9f609de464909fbaee31f4a33608da02c25",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/670a2cf93e54a-f112ee7037.png"
+        },
+        {
+          "path": "references/micoair_gps_dimensions.webp",
+          "title": "GPS family dimensions; MG-A01 is the left column",
+          "sha256": "2e90f25e30e2d514a2bacc56e654fe41a31f6068166f4997d2f0a663046f012e",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66a20fad7f8af-b764097238-3c14051a33.webp"
+        },
+        {
+          "path": "references/micoair_gps_ports.webp",
+          "title": "GPS family rear faces and SH1.0-6P; MG-A01 is bottom right",
+          "sha256": "64675bdb6bfd71a799c7d054d8ba64483caa838e487ac0d48dbb088e5cb526da",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66a21138a03b7-e888424f70-9252767bfd.webp"
+        },
+        {
+          "path": "references/lr24_specifications.webp",
+          "title": "Mini model, dimensions, IPEX1 and electrical data",
+          "sha256": "3e5282d083e66f7784a9694fe30c614616388b8e5c97e3c989bda57550507fe4",
+          "url": "https://store.micoair.com/wp-content/uploads/2025/01/LR24_params.webp"
+        },
+        {
+          "path": "references/lr24_dimensions.webp",
+          "title": "Mini plan and side view, including 5.8 mm height",
+          "sha256": "f2aa64fcfbaed0c8da092a98ca7515101679b601e97d8a12c6923c05f095faf8",
+          "url": "https://store.micoair.com/wp-content/uploads/2025/01/LR24_size.webp"
+        },
+        {
+          "path": "references/lr24f_mini_ports.webp",
+          "title": "SH1.0-4P connector and pin labels",
+          "sha256": "33d3e5d4ee74c2205a37f43c6e1cc8812fa036d3cafcd7b6ca1c53a3dddf72d4",
+          "url": "https://micoair.cn/api/media/file/docs/2026/07/66a0c156834c9-2fc5d7c4ba-76f5fe2816.webp"
+        },
+        {
+          "path": "references/lr24f_mini_package.webp",
+          "title": "F ground + Mini air package and external T-antenna",
+          "sha256": "97d3717fdfb3a394f6c6b745464aed9f999088e06ba3f695199a7eb64d2a445f",
+          "url": "https://store.micoair.com/wp-content/uploads/2025/01/LR24FFmini_package.webp"
+        }
+      ]
+    },
+    {
+      "origin": "Matek manufacturer images; URLs retained from repository source records.",
+      "scope": "Board-interface and manufacturer wiring examples only; not an installed-vehicle wiring diagram, current budget or thermal qualification.",
+      "assets": [
+        {
+          "path": "references/matek_bec12s_pro_drawing.jpg",
+          "title": "BEC12S-PRO drawing",
+          "sha256": "6131d95010507aa3040b79a567e7fd9099ab007866749f49d051eb728ab3e887",
+          "url": "https://www.mateksys.com/wp-content/uploads/2022/10/BEC12S-PRO_1.jpg"
+        },
+        {
+          "path": "references/matek_svpdb_8s_drawing.jpg",
+          "title": "SVPDB-8S front/back",
+          "sha256": "29ff69f71e1fafdf230e531626ed9f95b663f1235738db8527a0cead0de752fa",
+          "url": "https://www.mateksys.com/wp-content/uploads/2022/07/SVPDB-8S_1.jpg"
+        },
+        {
+          "path": "references/matek_svpdb_8s_outputs.jpg",
+          "title": "SVPDB output selection and typical wiring",
+          "sha256": "d9fda06a6dfd5d432b850fd56942dcb86f68903d42277d2a5b0b7c0c7ba80c11",
+          "url": "https://www.mateksys.com/wp-content/uploads/2022/07/SVPDB-8S_5.jpg"
+        },
+        {
+          "path": "references/matek_svpdb_8s_wiring.jpg",
+          "title": "SVPDB remote-servo wiring example",
+          "sha256": "8ca21c317daa4ba5702cc9f3756ca608a71af494e915fb29aa9327e609a81cc3",
+          "url": "https://www.mateksys.com/wp-content/uploads/2022/07/SVPDB-8S_6.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KST-authored X06 V6.0 technical specification, May 2023; obtained through the distributor.",
+      "scope": "Nominal servo specification; does not establish delivered horn seating or OEM fastener dimensions. Horn CAD has a separate source manifest.",
+      "assets": [
+        {
+          "path": "references/kst_x06_v6_datasheet.pdf",
+          "title": "KST X06 V6.0 Technical Specification",
+          "sha256": "54b7d2c7c62f8445ecccc0d6dcaa4900192ce4fa50330a22e9f79a37b0ac6b0d",
+          "url": "https://cdn.shopify.com/s/files/1/0570/1766/3541/files/X06_V6.0_Technical_Specifcation.pdf?v=1700472290"
+        }
+      ]
+    },
+    {
+      "origin": "Nooploop manufacturer datasheet; source recorded in equipment_options.py.",
+      "assets": [
+        {
+          "path": "references/linktrack_datasheet_v2_3_zh.pdf",
+          "title": "LinkTrack Datasheet V2.3, Chinese",
+          "sha256": "1ae16c35b899360cd63fb0e050496470d15c0d00fcc347403e6c475d99397e74",
+          "url": "https://ftp.nooploop.com/downloads/linktrack/LinkTrack_Datasheet_V2.3_zh.pdf"
+        }
+      ]
+    },
+    {
+      "origin": "HappyModel manufacturer drawing; original URL recovered from repository commit 41cf716, gondola/parts/propulsion.py.",
+      "scope": "Drawing dimensions do not establish received motor screw engagement or lead routing.",
+      "assets": [
+        {
+          "path": "references/rs1102_dimensions.jpg",
+          "title": "HappyModel RS1102 KV10000 drawing",
+          "sha256": "60691ab3e6034dfef8c7b159628d4a4340817367f7597e17d2f4c0f2c7593016",
+          "url": "https://www.happymodel.cn/wp-content/uploads/2025/02/RS1102-KV10000.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "Kailash seller drawings supplied by the user with the AliExpress gear pages; original image URLs were not preserved.",
+      "scope": "Nominal seller evidence, not lot inspection. The section is generic; use the 16T row of the table. The 48T page has no retained image here; the seller transcription records its dimensions and conflicting material wording. The final cart separately records selected options; no actual gear masses are established by these sources.",
+      "transcription": "references/kailash_gears_selected_evidence.md",
+      "assets": [
+        {
+          "path": "references/kailash_16t_dimensions.png",
+          "title": "Kailash generic gear sectional dimensions",
+          "sha256": "d0f939b7f8840596c27a7774424f13f7e7770841a860248fe300bfd41f4f0f06",
+          "url": "https://www.aliexpress.com/item/1005013121105173.html"
+        },
+        {
+          "path": "references/kailash_16t_table.png",
+          "title": "Kailash module 0.5 gear size table including 16T",
+          "sha256": "243da4da54003c5b293814b76d20d58a5651bdca9ac9e3b574664e5dd681f601",
+          "url": "https://www.aliexpress.com/item/1005013121105173.html"
+        }
+      ]
+    },
+    {
+      "origin": "NSK Micro Precision (ISC) manufacturer catalogs; URLs retained in equipment_interfaces.py.",
+      "scope": "Comparison references only. The purchased generic bearings are not identified as NSK/ISC; catalog mass, race lands, shields and tolerances do not certify that lot.",
+      "assets": [
+        {
+          "path": "references/nsk_isc_miniature_bearings.pdf",
+          "title": "ISC single-row metric miniature bearing catalog",
+          "sha256": "0d691cdd8b872d78a49996f5d28d6aee6e031e8798eb68a56ce3e9acc34fd331",
+          "url": "https://www.nskmicro.co.jp/products/bearing/bearing_size_pdf/single_row_mm.pdf"
+        },
+        {
+          "path": "references/nsk_isc_bearing_fits.pdf",
+          "title": "ISC bearing fits technical catalog",
+          "sha256": "6ee542d94e9ebf339b96148de596cd937ebf395ee123a2df04fd145046cbda47",
+          "url": "https://www.nskmicro.co.jp/technical_info/bearing/catalog05.pdf"
+        }
+      ]
+    },
+    {
+      "origin": "JST manufacturer connector catalogs; URLs retained in equipment_interfaces.py.",
+      "scope": "Catalog family dimensions do not identify the fitted header variant, certify compatible seller parts or establish installed PCB coordinates and cable bend radii.",
+      "assets": [
+        {
+          "path": "references/jst_sh_connectors.pdf",
+          "title": "JST SH connector catalog, English",
+          "sha256": "ea3071ca5ee5a6069eba534fa39a10f34c9fb742ee42135a69ab4156bfa0f5de",
+          "url": "https://www.jst-mfg.com/product/pdf/eng/eSH.pdf"
+        },
+        {
+          "path": "references/jst_gh_connectors.pdf",
+          "title": "JST GH connector catalog, English",
+          "sha256": "b1dcb317b6b9a4fbbedd2dbf42c64c95306a252d23de8933b85fcf161240b722",
+          "url": "https://www.jst-mfg.com/product/pdf/eng/eGH.pdf"
+        }
+      ]
+    },
+    {
+      "origin": "AMASS manufacturer XT30U drawings; URLs retained in equipment_interfaces.py.",
+      "scope": "Connector geometry excludes installed solder, insulation and wire bends; does not certify seller-compatible connectors.",
+      "assets": [
+        {
+          "path": "references/xt30u_female_dimensions.png",
+          "title": "AMASS XT30U female connector drawing",
+          "sha256": "a1146b96bd74683d0b27793b48c62dcf688946bdf2e6f9b953aa683cfe92542c",
+          "url": "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638904203736.png"
+        },
+        {
+          "path": "references/xt30u_male_dimensions.png",
+          "title": "AMASS XT30U male connector drawing",
+          "sha256": "e7044967e68f280caa77d63f66996068712179b7992885362b93f2524ae1be93",
+          "url": "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638917743053.png"
+        },
+        {
+          "path": "references/xt30u_mated_dimensions.png",
+          "title": "AMASS XT30U mated connector drawing",
+          "sha256": "89886809e66c52e76edd925152d0654571fd4652ae4689171637167b966d9d30",
+          "url": "https://www.china-amass.com/ueditor/php/upload/image/20251028/1761638924618397.png"
+        }
+      ]
+    },
+    {
+      "origin": "ETTINGER article datasheet; original URL recovered from repository commit 41cf716, gondola/parts/purchased_hardware.py.",
+      "scope": "Dimensional comparison only; not the purchased seller nut and not certification of its envelope, material or mass.",
+      "assets": [
+        {
+          "path": "references/ettinger_m1_6_hex_nut.pdf",
+          "title": "ETTINGER 002.10.009 M1.6 hexagon nut datasheet",
+          "sha256": "74ba82b91eccecdf963ff04c1d205d70671446ada160117d4af5d827452401f4",
+          "url": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
+        }
+      ]
+    }
+  ]
+}
