@@ -2,6 +2,7 @@
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -109,6 +110,220 @@ class RailServiceTests(unittest.TestCase):
                 report = rail_attachment_service(doc, registry, objects)
                 self.assertFalse(report["passed"])
                 self.assertFalse(report["obstacle_inventory"]["passed"])
+
+    def source_propulsion_service(self):
+        """Real two-foot geometry, isolated from unrelated equipment in this test."""
+        from gondola.cad import set_property
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import propulsion, rail, servo_bridge
+        from gondola.validation import baseline, rail_access
+
+        station = next(
+            row for row in MODULE_STATIONS if row.object_name == "MainPropulsionModule"
+        )
+        doc = App.newDocument("TwoPointRailService")
+        self.addCleanup(lambda: App.closeDocument(doc.Name))
+        module = doc.addObject("App::Part", station.object_name)
+        module.Placement.Base = App.Vector(-17, 0, 0)
+        for name, value, kind in (
+            ("RailPositionX", -17, "App::PropertyDistance"),
+            ("RailAttachmentOffsetX", 17, "App::PropertyDistance"),
+            ("RailAttachmentOffsetsX", [17, -17], "App::PropertyFloatList"),
+            ("RailContactLength", 24, "App::PropertyLength"),
+        ):
+            set_property(module, name, value, kind)
+        printed = []
+        for name, shape, parent in (
+            ("ContinuousRail", rail.rail_shape(), None),
+            ("PropulsionFixedFrame", propulsion.fixed_frame_shape(), module),
+            ("ServoDriveBridge", servo_bridge.bridge_shape(), module),
+        ):
+            obj = doc.addObject("Part::Feature", name)
+            obj.Shape = shape
+            if parent:
+                parent.addObject(obj)
+            printed.append(obj)
+        hardware = rail.build_attachment_hardware(
+            doc, module, module.Name, x_offset=17, shared_drive=True
+        )
+        registry = doc.addObject("App::FeaturePython", "DesignRegistry")
+        for name, objects in (
+            ("Modules", [module]),
+            ("PrintedParts", printed),
+            ("ReferenceParts", []),
+            ("HardwareParts", hardware),
+            ("RailLocks", hardware),
+            ("TapeReferences", []),
+        ):
+            set_property(registry, name, objects, "App::PropertyLinkList")
+        doc.recompute()
+
+        def report():
+            objects = (
+                list(registry.PrintedParts)
+                + list(registry.ReferenceParts)
+                + list(registry.HardwareParts)
+            )
+            stations = tuple(
+                row
+                for row in MODULE_STATIONS
+                if row.object_name in {obj.Name for obj in registry.Modules}
+            )
+            with (
+                patch.object(baseline, "MODULE_STATIONS", stations),
+                patch.object(rail_access, "MODULE_STATIONS", stations),
+            ):
+                return rail_access.rail_attachment_service(doc, registry, objects)
+
+        return doc, report
+
+    def test_two_shared_clamps_release_in_order_then_both_feet_lift(self):
+        _, check = self.source_propulsion_service()
+        report = check()
+        self.assertTrue(report["passed"], report)
+        row = report["modules"][0]
+        sites = row["attachment_services"]
+        self.assertEqual(len(sites), 2)
+        self.assertEqual([site["attachment_side"] for site in sites], [1, -1])
+        self.assertEqual(sites[0]["previously_removed_attachment_hardware"], [])
+        self.assertEqual(len(sites[0]["other_attachment_hardware_retained"]), 2)
+        self.assertEqual(
+            sites[1]["previously_removed_attachment_hardware"],
+            sorted([sites[0]["screw"], sites[0]["nut"]]),
+        )
+        self.assertEqual(len(row["removed_attachment_hardware"]), 4)
+
+    def test_populated_propulsion_slides_clear_of_fc_carrier_before_lifting(self):
+        from gondola.cad import placed_shape, world_shape
+        from gondola.parts import equipment_mounts
+        from gondola.validation.rail_access import _lift_path
+
+        doc, check = self.source_propulsion_service()
+        neighbour = doc.addObject("Part::Feature", "ElectronicsMount")
+        neighbour.Shape = equipment_mounts.mount_shape("electronics")
+        neighbour.Placement = App.Placement(
+            App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
+        doc.DesignRegistry.PrintedParts = list(doc.DesignRegistry.PrintedParts) + [
+            neighbour
+        ]
+        doc.recompute()
+        inverse = doc.MainPropulsionModule.getGlobalPlacement().inverse()
+        obstacles = {neighbour.Name: placed_shape(world_shape(neighbour), inverse)}
+        direct = _lift_path(
+            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 17
+        )
+        self.assertFalse(direct["passed"], direct)
+        report = check()
+        self.assertTrue(report["passed"], report)
+        row = report["modules"][0]
+        self.assertEqual(
+            row["populated_module_removal_path_mm"],
+            [(0, 0, 0), (10, 0, 0), (10, 0, 30)],
+        )
+        self.assertTrue(row["unclamped_propulsion_held_during_rail_slide"])
+        bridge = next(
+            part
+            for part in row["populated_module_lift"]
+            if part["part"] == "ServoDriveBridge"
+        )
+        self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
+        self.assertEqual(len(bridge["regions"]), 6)
+
+    def test_bridge_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
+        from gondola.parts import servo_bridge
+        from gondola.validation.rail_access import _lift_path
+
+        bridge = servo_bridge.bridge_shape().fuse(
+            Part.makeBox(1, 1, 1, App.Vector(28.5, -1, 14))
+        )
+        report = _lift_path(
+            "ServoDriveBridge",
+            bridge,
+            {},
+            17,
+            waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
+        )
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["bridge_outside_stock_mm3"], 0.7)
+
+    def test_populated_fc_carrier_slides_away_from_retained_starboard_adapter(self):
+        from gondola.cad import placed_shape, set_property, world_shape
+        from gondola.contracts.drive import SELECTED_DRIVE
+        from gondola.parts import equipment_mounts, rail, servo_coupling
+        from gondola.validation.rail_access import _lift_path
+
+        doc, check = self.source_propulsion_service()
+        module = doc.addObject("App::Part", "ElectronicsEquipmentModule")
+        module.Placement = App.Placement(
+            App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
+        for name, value, kind in (
+            ("RailPositionX", -70, "App::PropertyDistance"),
+            ("RailAttachmentOffsetX", 0, "App::PropertyDistance"),
+            ("RailAttachmentOffsetsX", [0], "App::PropertyFloatList"),
+            ("RailContactLength", 16, "App::PropertyLength"),
+        ):
+            set_property(module, name, value, kind)
+        carrier = doc.addObject("Part::Feature", "ElectronicsMount")
+        module.addObject(carrier)
+        carrier.Shape = equipment_mounts.mount_shape("electronics")
+        adapter = doc.addObject("Part::Feature", "StarboardHornGearAdapter")
+        doc.MainPropulsionModule.addObject(adapter)
+        shape = servo_coupling.adapter_shape()
+        shape.translate(App.Vector(0, servo_coupling.HORN_BOTTOM_Y, 0))
+        shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+        shape.translate(
+            App.Vector(-SELECTED_DRIVE.input_x_mm, 0, SELECTED_DRIVE.input_z_mm)
+        )
+        adapter.Shape = shape
+        hardware = rail.build_attachment_hardware(doc, module, module.Name)
+        registry = doc.DesignRegistry
+        registry.Modules = list(registry.Modules) + [module]
+        registry.PrintedParts = list(registry.PrintedParts) + [carrier, adapter]
+        registry.HardwareParts = list(registry.HardwareParts) + hardware
+        registry.RailLocks = list(registry.RailLocks) + hardware
+        doc.recompute()
+        inverse = module.getGlobalPlacement().inverse()
+        retained = {adapter.Name: placed_shape(world_shape(adapter), inverse)}
+        direct = _lift_path(carrier.Name, carrier.Shape, retained, 0)
+        self.assertFalse(direct["passed"], direct)
+        literal_at_twenty = carrier.Shape.copy()
+        literal_at_twenty.translate(App.Vector(0, 0, 20))
+        self.assertGreater(
+            abs(literal_at_twenty.common(retained[adapter.Name]).Volume), 9
+        )
+        result = check()
+        self.assertTrue(result["passed"], result)
+        row = next(row for row in result["modules"] if row["module"] == module.Name)
+        self.assertEqual(
+            row["populated_module_removal_path_mm"], [(0, 0, 0), (4, 0, 0), (4, 0, 30)]
+        )
+        self.assertTrue(row["unclamped_module_held_during_rail_slide"])
+        self.assertEqual(row["other_modules_removed"], [])
+
+    def test_opposite_pair_must_be_registered_for_service(self):
+        doc, check = self.source_propulsion_service()
+        doc.DesignRegistry.RailLocks = [
+            obj for obj in doc.DesignRegistry.RailLocks if "Opposite" not in obj.Name
+        ]
+        report = check()
+        self.assertFalse(report["passed"])
+        self.assertEqual(
+            report["modules"][0]["error"], "Rail attachment inventory mismatch"
+        )
+
+    def test_opposite_side_driver_path_cannot_be_inferred_from_first_side(self):
+        doc, check = self.source_propulsion_service()
+        block = doc.addObject("Part::Feature", "OppositeDriverObstacle")
+        block.Shape = Part.makeBox(1, 1, 1, App.Vector(-34.5, 20, 6.5))
+        doc.DesignRegistry.ReferenceParts = [block]
+        doc.recompute()
+        report = check()
+        self.assertFalse(report["passed"])
+        sites = report["modules"][0]["attachment_services"]
+        self.assertTrue(sites[0]["side_driver_access"]["passed"])
+        self.assertFalse(sites[1]["side_driver_access"]["passed"])
 
     def test_saved_non_neutral_settings_are_reported_without_moving_stages(self):
         from gondola.validation.rail_access import _saved_stage_settings

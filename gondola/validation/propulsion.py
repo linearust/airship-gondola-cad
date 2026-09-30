@@ -1042,23 +1042,14 @@ def frame_rail_bore_filled(frame):
     transverse cylinder that would otherwise make the generic sweep fill the
     whole frame bounding box, including its real open rail passage.
     """
-    plug = Part.makeCylinder(
-        rail.SLOT_HEIGHT / 2,
-        rail.MOUNT_LEG_THICKNESS,
-        App.Vector(
-            propulsion.RAIL_BOLT_OFFSET_X,
-            rail.MOUNT_OUTER_Y,
-            rail.BOLT_AXIS_Z,
-        ),
-        App.Vector(0, 1, 0),
-    )
-    guard_plug = Part.makeBox(
-        8,
-        2.5,
-        8,
-        App.Vector(propulsion.RAIL_BOLT_OFFSET_X - 4, 1.45, 3),
-    ).cut(frame)
-    return frame.fuse(plug).fuse(guard_plug).removeSplitter()
+    additions = []
+    for site in rail.attachment_sites(x_offset=17, shared_drive=True):
+        plug = Part.makeCylinder(1.7, 4, App.Vector(0, -5.25, 7), App.Vector(0, 1, 0))
+        guard = Part.makeBox(8, 2.5, 8, App.Vector(-4, 1.45, 3))
+        additions.extend(
+            rail.attachment_site_shape(item, site) for item in (plug, guard)
+        )
+    return frame.fuse(additions).removeSplitter()
 
 
 def vertical_frame_release_check(frame, rail_shape=None):
@@ -1085,7 +1076,7 @@ def vertical_frame_release_check(frame, rail_shape=None):
     upper_gap = upper.BoundBox.ZMin - rail_shape.BoundBox.ZMax
     missing = abs(frame.cut(conservative).Volume)
     added = abs(conservative.cut(frame).Volume)
-    plug_volume = (
+    plug_volume = 2 * (
         math.pi * (rail.SLOT_HEIGHT / 2) ** 2 * rail.MOUNT_LEG_THICKNESS + 8 * 2.5 * 8
     )
     return {
@@ -1103,31 +1094,57 @@ def vertical_frame_release_check(frame, rail_shape=None):
 
 
 def rail_mount_clearance_check(doc, module):
+    """Audit both shared rail pairs with the complete populated mechanism retained."""
+    shapes, missing = module_service_shapes(doc, module)
+    if missing:
+        return {"missing_parts": missing, "passed": False}
+    sites = rail.attachment_sites(x_offset=17, shared_drive=True)
+    expected = {}
+    for site in sites:
+        for suffix, shape in (
+            ("RailMountScrew", rail.attachment_screw_shape(12, head_face_y=-7.75)),
+            ("RailMountNut", rail.nut_shape()),
+        ):
+            expected[module["group"].Name + site["prefix"] + suffix] = (
+                rail.attachment_site_shape(shape, site)
+            )
+    present = sorted(set(expected) & shapes.keys())
+    complete = not present or set(present) == set(expected)
+    for name, shape in expected.items():
+        shapes.setdefault(name, shape)
+    shapes["LocalRailReference"] = translated_shape(rail.rail_shape(), x=17)
+    rows = [
+        _rail_site_clearance_check(doc, module, site, shapes, present) for site in sites
+    ]
+    return {
+        "sites": rows,
+        "installed_rail_fasteners_present": present,
+        "expected_rail_fasteners": sorted(expected),
+        "complete_saved_fastener_set": complete,
+        "shared_servo_bridge_clamp": True,
+        "clamp_spacing_mm": 34.0,
+        "removed_before_access": [],
+        "scope": "Both opposed pairs are checked with the other pair and the entire mechanism retained. Local rigid clearance only; fitted curvature, simultaneous seating, preload and loaded stiffness require physical validation.",
+        "passed": complete and all(row["passed"] for row in rows),
+    }
+
+
+def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
     """Service the side M3 joint with the entire servo/gear module installed."""
     from gondola.print_export import geometry_comparison
 
     from .rail_access import nut_capture_check, side_driver_clearance
 
-    shapes, missing = module_service_shapes(doc, module)
-    if missing:
-        return {"missing_parts": missing, "passed": False}
-    x, z = propulsion.RAIL_BOLT_OFFSET_X, rail.BOLT_AXIS_Z
+    # Put the selected site into the canonical +X / negative-head-Y frame.
+    shapes = {
+        name: (servo_bridge.opposite(shape) if site["side"] < 0 else shape.copy())
+        for name, shape in shapes.items()
+    }
+    x, z = 17.0, 7.0
     screw_name, nut_name = (
-        module["group"].Name + suffix for suffix in ("RailMountScrew", "RailMountNut")
+        module["group"].Name + site["prefix"] + suffix
+        for suffix in ("RailMountScrew", "RailMountNut")
     )
-    present_fasteners = sorted({screw_name, nut_name} & shapes.keys())
-    shapes[screw_name] = shapes.get(
-        screw_name,
-        translated_shape(
-            rail.attachment_screw_shape(
-                servo_bridge.SHARED_SCREW_LENGTH,
-                head_face_y=servo_bridge.HEAD_BEARING_Y,
-            ),
-            x=x,
-        ),
-    )
-    shapes[nut_name] = shapes.get(nut_name, translated_shape(rail.nut_shape(), x=x))
-    shapes["LocalRailReference"] = translated_shape(rail.rail_shape(), x=x)
     screw, nut = shapes[screw_name], shapes[nut_name]
     expected_screw = translated_shape(
         rail.attachment_screw_shape(12, head_face_y=-7.75), x=x
@@ -1198,6 +1215,7 @@ def rail_mount_clearance_check(doc, module):
         "local_reference_fasteners_added": sorted(
             {screw_name, nut_name} - set(present_fasteners)
         ),
+        "site": site,
         "removed_before_access": [],
         "retained_during_access": sorted(shapes),
         "side_bolt_axis_mm": [x, z],
@@ -1483,7 +1501,7 @@ def replacement_rotor_space_check(doc, module, prefix):
         "excluded_replacement_interface_parts": sorted(excluded),
         "rotor_bulk_removal": rotor_service,
         "servo_module_removal_past_future_bulk": servo_paths,
-        "scope": "Continuous enclosing cylinder for a future replacement rotor bulk, including measured current axial stops. Both post faces, every retained physical propulsion part and reciprocal rotor +X40 / servo module +Z0.5 then +X80 service paths are checked. Present 40 mm guard and struts are not 50 mm compatible. Replacement shaft/clamp interfaces, assembly strength, future motor/propeller hardware and wiring still require design and tests; this is a space reservation only.",
+        "scope": "Continuous enclosing cylinder for a future replacement rotor bulk, including measured current axial stops. Both post faces, every retained physical propulsion part and reciprocal rotor +X40 / servo module +Z11 then +X80 service paths are checked. Present 40 mm guard and struts are not 50 mm compatible. Replacement shaft/clamp interfaces, assembly strength, future motor/propeller hardware and wiring still require design and tests; this is a space reservation only.",
         "passed": all(row["passed"] for row in gaps)
         and bool(distances)
         and min(distances.values()) >= 1.25 - TOL

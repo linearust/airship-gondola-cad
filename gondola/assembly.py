@@ -132,6 +132,14 @@ def build_assembly():
         module.setEditorMode("RailAttachmentOffsetX", 1)
         set_property(
             module,
+            "RailAttachmentOffsetsX",
+            list(station.attachment_offsets_x_mm),
+            "App::PropertyFloatList",
+            "Rail attachment",
+        )
+        module.setEditorMode("RailAttachmentOffsetsX", 1)
+        set_property(
+            module,
             "RailContactLength",
             station.contact_length_mm,
             "App::PropertyLength",
@@ -152,7 +160,7 @@ def build_assembly():
         set_property(
             module,
             "RailPositionNotes",
-            "Continuous module X position within the supported longitudinal slot intervals. Loosen the exposed transverse M2 screw to slide within a segment; lift/reseat to cross a flexure gap. Tighten before operation. Recheck complete equipment, optical and wiring clearance after moving a carrier.",
+            "Continuous module X position within the supported longitudinal slot intervals. Loosen all recessed transverse M3 screws to slide within their supported segments; lift/reseat to cross a flexure gap. Tighten before operation. Recheck complete equipment, optical and wiring clearance after moving a carrier.",
         )
         module.Placement.Rotation = App.Rotation(V(0, 0, 1), station.yaw_deg)
         set_property(

@@ -4,10 +4,12 @@ The bearings and all four output shafts stay installed. These checks establish
 nominal rigid-part access, not print tolerances, preload or loaded stiffness.
 """
 
+import math
+
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group
+from gondola.cad import belongs_to_group, translated_shape, union
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import servo_bridge
 
@@ -38,22 +40,22 @@ def _plane_contact_area(first, second, axis, station):
 
 
 def bridge_joint_check(doc, module):
-    """Check the central seat, shared clamp face and bounded locating-key fit."""
+    """Check both shared clamp lands and the clearanced central U guide."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
+    planes = (
+        ("central_bulkhead_support", 2, 12.5, 396, (-9, -11, 18, 22)),
+        ("shared_clamp_positive_x", 1, -5.25, 206 - math.pi * 1.7**2, None),
+        ("shared_clamp_negative_x", 1, 5.25, 206 - math.pi * 1.7**2, None),
+    )
     contacts = []
-    for name, axis, station, minimum, bounds in servo_bridge.contact_planes():
+    for name, axis, station, minimum, bounds in planes:
         seat_frame, seat_bridge = frame, bridge
         if bounds is not None:
             x, y, width, length = bounds
-            region = Part.makeBox(
-                width,
-                length,
-                100,
-                App.Vector(x, y, 0),
-            )
+            region = Part.makeBox(width, length, 100, App.Vector(x, y, 0))
             seat_frame, seat_bridge = frame.common(region), bridge.common(region)
         area = _plane_contact_area(seat_frame, seat_bridge, axis, station)
         contacts.append(
@@ -68,93 +70,154 @@ def bridge_joint_check(doc, module):
             }
         )
     overlap = intersection_volume(frame, bridge)
-    key = bridge_key_check(frame, bridge)
+    wrap = bridge_wrap_check(frame, bridge)
     spec = drive_for_document(doc)
     return {
-        "key_fit": key,
+        "wrap_fit": wrap,
         "contacts": contacts,
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The central roof seats the bridge in Z; the shared bolt clamps its cheek to the frame in Y. A deep rectangular key bounds X/Z displacement and rotation with nominal 0.2mm side clearance. Seat and align the gear mesh before tightening; this is not automatic centering. Print fit, distortion, loaded stiffness, friction and creep require a prototype.",
+        "scope": "The central roof seats in Z. Opposed M3 clamps at X +/-17 mm seat two broad faces in Y; the central U guides have 0.2 mm lateral clearance and are not preload springs. Seat the bridge and align both gear meshes before tightening. Nominal geometry does not establish fit, automatic centering, loaded stiffness, friction or creep.",
         "passed": overlap < TOL
-        and key["passed"]
+        and wrap["passed"]
         and all(row["passed"] for row in contacts)
         and doc.ServoDriveBridge.PrintSKU == spec.bridge_sku,
     }
 
 
-def bridge_key_check(frame, bridge):
-    """Reject absent keys or enlarged/missing pocket walls independently of builders."""
-    key = Part.makeBox(5, 2.5, 5.5, App.Vector(20, -7.75, 4))
-    bore = Part.makeCylinder(1.7, 14, App.Vector(15, -11, 7), App.Vector(0, 1, 0))
-    recess = Part.makeBox(5.4, 2.7, 5.9, App.Vector(19.8, -7.95, 3.8))
-    head_recess = Part.makeCylinder(
-        3.2, 2, App.Vector(15, -9.75, 7), App.Vector(0, 1, 0)
-    )
-    region = Part.makeBox(18, 4.5, 10.3, App.Vector(9, -9.75, 2.2))
-    pocket_walls = region.cut(recess).cut(bore).cut(head_recess)
-    backing = Part.makeCylinder(
-        3, 2.5, App.Vector(15, -7.75, 7), App.Vector(0, 1, 0)
-    ).cut(bore)
-    frame_backing = Part.makeCylinder(
-        3, 4, App.Vector(15, -5.25, 7), App.Vector(0, 1, 0)
-    ).cut(bore)
-    rows = {
-        "missing_solid_head_backing_mm3": abs(backing.cut(bridge).Volume),
-        "missing_solid_frame_backing_mm3": abs(frame_backing.cut(frame).Volume),
-        "missing_key_mm3": abs(key.cut(frame).Volume),
-        "key_in_pocket_interference_mm3": abs(key.common(bridge).Volume),
-        "recess_obstruction_mm3": abs(recess.common(bridge).Volume),
-        "missing_pocket_walls_mm3": abs(pocket_walls.cut(bridge).Volume),
-    }
+def bridge_wrap_check(frame, bridge):
+    """Literal load/guide witnesses, independent of the production builders."""
+    rows = []
+    for sign in (1, -1):
+
+        def turn(shape):
+            if sign < 0:
+                shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+            return shape
+
+        bore = Part.makeCylinder(1.7, 14, App.Vector(17, -11, 7), App.Vector(0, 1, 0))
+        recess = Part.makeCylinder(
+            3.2, 2, App.Vector(17, -9.75, 7), App.Vector(0, 1, 0)
+        )
+        cheek = (
+            Part.makeBox(20, 4.5, 10.3, App.Vector(9, -9.75, 2.2)).cut(bore).cut(recess)
+        )
+        backing = Part.makeCylinder(
+            3, 2.5, App.Vector(17, -7.75, 7), App.Vector(0, 1, 0)
+        ).cut(bore)
+        frame_backing = Part.makeCylinder(
+            3, 4, App.Vector(17, -5.25, 7), App.Vector(0, 1, 0)
+        ).cut(bore)
+        guide = Part.makeBox(18, 2, 6.5, App.Vector(-9, 11.2, 8))
+        clearance = Part.makeBox(18, 0.2, 4.5, App.Vector(-9, 11, 8))
+        values = {
+            "missing_cheek_mm3": abs(turn(cheek).cut(bridge).Volume),
+            "missing_solid_head_backing_mm3": abs(turn(backing).cut(bridge).Volume),
+            "missing_solid_frame_backing_mm3": abs(
+                turn(frame_backing).cut(frame).Volume
+            ),
+            "missing_guide_mm3": abs(turn(guide).cut(bridge).Volume),
+            "guide_gap_obstruction_mm3": abs(turn(clearance).common(bridge).Volume),
+        }
+        rows.append(
+            {
+                "side": sign,
+                **values,
+                "passed": all(value < TOL for value in values.values()),
+            }
+        )
     return {
-        **rows,
-        "nominal_side_clearance_mm": 0.2,
-        "nominal_depth_clearance_mm": 0.2,
-        "remaining_cheek_skin_mm": 1.8,
-        "minimum_recess_edge_rim_mm": 1.6,
-        "passed": all(value < TOL for value in rows.values()),
+        "sides": rows,
+        "nominal_guide_side_clearance_mm": 0.2,
+        "minimum_guide_wall_mm": 2.0,
+        "head_bearing_floor_mm": 2.5,
+        "clamp_axis_spacing_mm": 34.0,
+        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
     }
 
 
 def _bridge_path(shape, waypoints, obstacles, spec):
-    """Sweep the joined flat plate and cradle stock with hardware holes filled.
+    """Exact box-prism sweeps retain the U opening and avoid tangent face artifacts.
 
-    Containment of the actual bridge is mandatory. Filling its holes is
-    conservative because every servo, ear bolt and clamp leaves with it.
-    Spaces between the stock sections stay open in the exact face-prism sweep.
+    Six deliberately plain stock boxes cover the actual bridge, including its
+    cradle. The visible windows and transverse fastener bores are conservatively
+    filled. Coverage and exact prescribed directions are independently required.
     """
-    envelope = servo_bridge.bridge_blank(spec)
+    width = servo_bridge.bulkhead_width(spec)
+    sections = (
+        ((width, 5, spec.input_z_mm + 10.1 - 12.5), (-width / 2, -2.5, 12.5)),
+        ((38, 26.4, 2), (-19, -13.2, 12.5)),
+        ((20, 4.5, 10.3), (9, -9.75, 2.2)),
+        ((20, 4.5, 10.3), (-29, 5.25, 2.2)),
+        ((18, 2, 6.5), (-9, -13.2, 8)),
+        ((18, 2, 6.5), (-9, 11.2, 8)),
+    )
+    envelope = union(
+        [Part.makeBox(*size, App.Vector(*origin)) for size, origin in sections]
+    )
     missing = abs(shape.cut(envelope).Volume)
-    path = continuous_path(envelope, waypoints, obstacles)
+    expected = [(0, 0, 0), (0, 0, 11), (80, 0, 11)]
+    if list(waypoints) != expected:
+        return {
+            "passed": False,
+            "error": "Unreviewed U-bridge service path",
+            "segments": [],
+        }
+    rows = []
+    for start, end in zip(waypoints, waypoints[1:]):
+        travel = [b - a for a, b in zip(start, end)]
+        swept = union(
+            [
+                Part.makeBox(
+                    *(size[i] + abs(travel[i]) for i in range(3)),
+                    App.Vector(*(origin[i] + min(start[i], end[i]) for i in range(3))),
+                )
+                for size, origin in sections
+            ]
+        )
+        hits = {
+            name: intersection_volume(swept, other) for name, other in obstacles.items()
+        }
+        rows.append(
+            {
+                "start_mm": list(start),
+                "end_mm": list(end),
+                "method": "continuous exact union of six axis-aligned stock-box prisms",
+                "intersection_mm3": hits,
+                "passed": all(v < TOL for v in hits.values()),
+            }
+        )
     return {
-        **path,
-        "envelope": "Planar bridge stock with case/fastener holes conservatively filled; actual bridge containment checked.",
+        "obstacles": sorted(obstacles),
+        "segments": rows,
+        "envelope": "Six stock boxes with holes conservatively filled; actual bridge containment required.",
         "uncovered_bridge_volume_mm3": missing,
-        "passed": missing < TOL and path["passed"],
+        "passed": missing < TOL and all(row["passed"] for row in rows),
     }
 
 
 def servo_module_service_check(doc, module):
-    """Bench removal after the common rail screw/nut and rail have been removed."""
+    """Bench removal after both shared rail pairs and the rail are removed."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
-    # The saved full assembly includes the rail pair; source bench modules do
-    # not. Inventory has already been checked, then explicitly remove only the
-    # documented common clamp for this off-rail bench sequence.
-    rail_pair = {
-        module["group"].Name + suffix for suffix in ("RailMountScrew", "RailMountNut")
+    # The saved assembly includes both rail pairs; source bench modules do not.
+    # Require the complete installed inventory before removing those pairs
+    # explicitly for this off-rail bench sequence.
+    rail_pairs = {
+        module["group"].Name + middle + suffix
+        for middle in ("", "Opposite")
+        for suffix in ("RailMountScrew", "RailMountNut")
     }
-    present_rail_pair = rail_pair & shapes.keys()
-    if present_rail_pair and present_rail_pair != rail_pair:
+    present_rail_pairs = rail_pairs & shapes.keys()
+    if present_rail_pairs and present_rail_pairs != rail_pairs:
         return {
             "passed": False,
-            "error": "Incomplete common rail clamp",
-            "missing_parts": sorted(rail_pair - shapes.keys()),
+            "error": "Incomplete shared rail clamps",
+            "missing_parts": sorted(rail_pairs - shapes.keys()),
         }
-    shapes = {name: shape for name, shape in shapes.items() if name not in rail_pair}
+    shapes = {name: shape for name, shape in shapes.items() if name not in rail_pairs}
     removed, gear_paths = set(), []
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
         name = prefix + "OutputGear"
@@ -165,6 +228,24 @@ def servo_module_service_check(doc, module):
         )
         gear_paths.append({"part": name, **path})
         removed.add(name)
+    shaft_paths = []
+    staged = retained_obstacles(shapes, removed)
+    for name, offset, clamp in (
+        ("PortOutputShaftNegative", (0, 12, 0), "PortOutputClampNegative"),
+        ("StarboardOutputShaftPositive", (0, -12, 0), "StarboardOutputClampPositive"),
+    ):
+        path = continuous_path(
+            staged[name], [(0, 0, 0), offset], retained_obstacles(staged, {name})
+        )
+        shaft_paths.append(
+            {
+                "part": name,
+                "loosened_clamp": clamp,
+                "staged_offset_mm": list(offset),
+                **path,
+            }
+        )
+        staged[name] = translated_shape(staged[name], *offset)
     moving = {
         name
         for name in shapes
@@ -198,7 +279,7 @@ def servo_module_service_check(doc, module):
             expected_moving.update(
                 prefix + "HornGearClamp" + side + "Nut" for side in ("Near", "Far")
             )
-    fixed = retained_obstacles(shapes, removed | moving)
+    fixed = retained_obstacles(staged, moving)
     points = list(servo_bridge.SERVICE_WAYPOINTS)
     rows = []
     spec = drive_for_document(doc)
@@ -229,12 +310,14 @@ def servo_module_service_check(doc, module):
         "removed_output_gears": [row["part"] for row in gear_paths],
         "released_fasteners": sorted(removed - {row["part"] for row in gear_paths}),
         "output_gear_removal": gear_paths,
-        "shared_rail_fasteners_removed_before_bench": sorted(present_rail_pair),
-        "prerequisites": "Remove the shared M3x12 rail screw and nut, lift the whole propulsion assembly off the rail and disconnect leads before this local bench check. Rail attachment service is checked separately.",
+        "shaft_staging": shaft_paths,
+        "loosened_carrier_clamps": [row["loosened_clamp"] for row in shaft_paths],
+        "shared_rail_fasteners_removed_before_bench": sorted(present_rail_pairs),
+        "prerequisites": "Remove both shared M3x12 rail screws and nuts, disconnect leads and support both modules. Slide the complete propulsion assembly +X10 mm, then lift it +Z30 mm from the rail before this local bench check. Rail attachment service is checked separately. Loosen only the two driven-stub carrier clamps for shaft staging; hold the rotors while their driven stubs are released.",
         "part_paths": rows,
         "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",
-        "scope": "Neutral, unpowered bench service after rail release. Release gear set screws and withdraw both small output gears inboard. Shift the paired servo module 2.7mm in -Y to disengage its locating key, lift 0.5mm and slide 80mm in +X. Servos, horns, adapters, driver gears, input stubs and radial clamps stay assembled. Output shafts, bearings and carriers remain installed. Reverse for installation; seat the central roof, align mesh within key clearance and tighten the shared rail clamp. Adjacent equipment, wires, tools and fit forces are outside this local bench path.",
+        "scope": "Neutral, unpowered bench service after removing both rail clamps. Release gear set screws and withdraw both small output gears inboard. Loosen the two driven-stub carrier clamps and retract Port negative stub 12 mm in +Y and Starboard positive stub 12 mm in -Y. These staged shafts remain visible and retained obstacles, with bearings and keepers unchanged. Support the rotors. Lift the paired servo module 11 mm and slide 80 mm in +X. Servos, horns, adapters, driver gears, input stubs and radial clamps stay assembled. Reverse for installation and restore shaft insertion and clamps before operation. Tools, flexible leads and real fit/clamp forces are not established by the rigid path.",
         "passed": moving == expected_moving
-        and all(row["passed"] for row in gear_paths + rows),
+        and all(row["passed"] for row in gear_paths + shaft_paths + rows),
     }

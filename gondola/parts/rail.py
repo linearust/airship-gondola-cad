@@ -361,47 +361,70 @@ def nut_shape(
     )
 
 
+def attachment_sites(*, x_offset=0, shared_drive=False):
+    """Local clamp centres and orientations; opposite is a half-turn about Z."""
+    _attachment_fastener(shared_drive)
+    if shared_drive:
+        from . import servo_bridge
+
+        if abs(x_offset - servo_bridge.CLAMP_AXIS_X) > TOL:
+            raise ValueError("Shared clamp offset must match the paired bridge")
+        return (
+            {"prefix": "", "x_offset": x_offset, "side": 1},
+            {"prefix": "Opposite", "x_offset": -x_offset, "side": -1},
+        )
+    return ({"prefix": "", "x_offset": x_offset, "side": 1},)
+
+
+def attachment_site_shape(shape, site):
+    result = shape.copy()
+    if site["side"] < 0:
+        result = result.mirror(V(), V(1, 0, 0)).mirror(V(), V(0, 1, 0))
+    return translated_shape(result, x=site["x_offset"])
+
+
 def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=False):
     screw_length, head_face_y = _attachment_fastener(shared_drive)
     result = []
-    for suffix, label, shape, sku in (
-        (
-            "RailMountScrew",
-            f"M3 x{screw_length:g} recessed side rail bolt | design head envelope",
-            attachment_screw_shape(screw_length, head_face_y=head_face_y),
-            f"M3X{screw_length:g}_BUTTON_HEAD",
-        ),
-        (
-            "RailMountNut",
-            "M3 rail hex nut | direct web bearing inside guard",
-            nut_shape(),
-            "M3_HEX_NUT",
-        ),
-    ):
-        obj = doc.addObject("Part::Feature", prefix + suffix)
-        parent.addObject(obj)
-        obj.Label = "BUY | " + label
-        obj.Shape = translated_shape(shape, x=x_offset)
-        for key, value in (
-            ("Role", "Purchased metric hardware"),
-            ("HardwareSKU", sku),
-            ("ThreadStandard", "ISO metric coarse M3 x0.5, right hand"),
+    for site in attachment_sites(x_offset=x_offset, shared_drive=shared_drive):
+        for suffix, label, shape, sku in (
             (
-                "Notes",
-                fasteners.RAIL_HEAD_ENVELOPE_NOTE
-                + " The nut bears directly on the rail web through the guard window; never substitute the guard for the compression stack. Full thread engagement, nut capture and actual fit require inspection.",
+                "RailMountScrew",
+                f"M3 x{screw_length:g} recessed side rail bolt | design head envelope",
+                attachment_screw_shape(screw_length, head_face_y=head_face_y),
+                f"M3X{screw_length:g}_BUTTON_HEAD",
             ),
-            ("ModelDetail", "Simplified thread envelope; do not print"),
-            ("MaterialSelection", fasteners.RAIL_FASTENER_MATERIAL),
-            ("SourceEvidence", fasteners.RAIL_FASTENER_SOURCE),
+            (
+                "RailMountNut",
+                "M3 rail hex nut | direct web bearing inside guard",
+                nut_shape(),
+                "M3_HEX_NUT",
+            ),
         ):
-            set_property(obj, key, value)
-        set_property(obj, "NominalThreadDiameter", 3.0, "App::PropertyLength")
-        set_property(obj, "ThreadPitch", 0.5, "App::PropertyLength")
-        set_property(obj, "PrintPart", False, "App::PropertyBool")
-        if App.GuiUp:
-            obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
-        result.append(obj)
+            obj = doc.addObject("Part::Feature", prefix + site["prefix"] + suffix)
+            parent.addObject(obj)
+            obj.Label = "BUY | " + label
+            obj.Shape = attachment_site_shape(shape, site)
+            for key, value in (
+                ("Role", "Purchased metric hardware"),
+                ("HardwareSKU", sku),
+                ("ThreadStandard", "ISO metric coarse M3 x0.5, right hand"),
+                (
+                    "Notes",
+                    fasteners.RAIL_HEAD_ENVELOPE_NOTE
+                    + " The nut bears directly on the rail web through the guard window; never substitute the guard for the compression stack. Full thread engagement, nut capture and actual fit require inspection.",
+                ),
+                ("ModelDetail", "Simplified thread envelope; do not print"),
+                ("MaterialSelection", fasteners.RAIL_FASTENER_MATERIAL),
+                ("SourceEvidence", fasteners.RAIL_FASTENER_SOURCE),
+            ):
+                set_property(obj, key, value)
+            set_property(obj, "NominalThreadDiameter", 3.0, "App::PropertyLength")
+            set_property(obj, "ThreadPitch", 0.5, "App::PropertyLength")
+            set_property(obj, "PrintPart", False, "App::PropertyBool")
+            if App.GuiUp:
+                obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
+            result.append(obj)
     return result
 
 
@@ -473,13 +496,15 @@ def attachment_contract(
         "head_bearing_y_mm": head_face_y,
         "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
         "shared_servo_bridge_clamp": shared_drive,
+        "clamp_count": 2 if shared_drive else 1,
+        "clamp_spacing_mm": 34.0 if shared_drive else None,
         "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a through guard window; unmeasured design envelopes",
         "shared_joint_service": (
-            "The same bolt retains the servo bridge and propulsion frame on the rail. Support both subassemblies whenever loosened or removed; keep the locating interface fully seated before tightening."
+            "Two opposed bolts 34 mm apart retain the servo saddle and propulsion frame on adjacent rail walls. Support both modules during release and seat both feet before alternating tightening. The 58 mm combined footprint locally restrains rail curvature; do not force a curved rail straight."
             if shared_drive
             else None
         ),
-        "assembly": "Lower the U seat onto one wall. Insert the M3 nut from positiveY through the guard window until it bears on the rail web; insert the bolt from negativeY into its head recess and tighten. The guard has 0.2mm clearance to the web and is not an axial clamp jaw. Loosen to slide only inside that wall's supported slot. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
+        "assembly": "Each canonical U seat lowers onto one wall; the propulsion counterpart is half-turned about Z. Both shared feet must seat simultaneously. Insert the M3 nut from positiveY through the guard window until it bears on the rail web; insert the bolt from negativeY into its head recess and tighten. The guard has 0.2mm clearance to the web and is not an axial clamp jaw. Loosen to slide only inside that wall's supported slot. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
         "physical_acceptance": "Process-matched coupon must seat flat without rocking. Finish contact faces or reprint warped parts. Slot clearance enables assembly/alignment, not acceptable looseness in use. The nut must contact the web, not bottom on guard material; check axial removal and resistance to turning in the hex window. Inspect actual M3 head/socket fit, thread engagement and under-base adhesive after installation.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,

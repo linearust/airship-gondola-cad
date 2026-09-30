@@ -47,6 +47,11 @@ class IntegralMountValidationTests(unittest.TestCase):
         )
         self.assertEqual(len(rows), 4)
         self.assertTrue(all(row["passed"] for row in rows), rows)
+        frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
+        self.assertEqual(
+            [site["attachment_local_x_mm"] for site in frame["attachment_sites"]],
+            [17, -17],
+        )
         for row in rows:
             self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
             self.assertLess(
@@ -99,6 +104,27 @@ class IntegralMountValidationTests(unittest.TestCase):
             )
         finally:
             obj.Shape = original
+
+    def test_opposite_clamp_leg_has_an_independent_saved_geometry_witness(self):
+        obj = self.doc.PropulsionFixedFrame
+        original = obj.Shape.copy()
+        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-23.5, 1.6, 5.5))
+        obj.Shape = original.cut(cut)
+        self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
+        row = next(row for row in self.checks() if row["part"] == obj.Name)
+        self.assertFalse(row["passed"])
+        self.assertLess(
+            row["attachment_sites"][0]["independent_lower_mount_comparison"][
+                "difference_mm3"
+            ],
+            1e-5,
+        )
+        self.assertGreater(
+            row["attachment_sites"][1]["independent_lower_mount_comparison"][
+                "difference_mm3"
+            ],
+            0.09,
+        )
 
     def test_removed_bolt_load_path_is_rejected_for_every_carrier(self):
         cut = Part.makeCylinder(0.3, 1, App.Vector(2.4, 0, 11))

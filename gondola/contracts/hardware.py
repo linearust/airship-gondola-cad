@@ -77,13 +77,13 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The four rail joints use separate M3 hardware. No washers. Raw PA12 tolerance alone does not guarantee nut capture; trial each captured joint. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
+        "requirements": "Selected M2 x 0.4 black-steel hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.4-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The five rail joints use separate M3 hardware. No washers. Raw PA12 tolerance alone does not guarantee nut capture; trial each captured joint. Check actual kit dimensions, fit and usable thread engagement before tightening. Exposed nuts need a holding tool.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. CAD dimensions are design acceptance envelopes pending receipt; they are not a measured supplier drawing or strength-class certification.",
     },
     "M3_HEX_NUT": {
         "search_query": "M3 0.5 hex nut 5.5mm AF 2.4mm A2 stainless",
         "candidate_url": "",
-        "requirements": "Four ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and the shared propulsion/servo-bridge rail joint. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The positive-side U-shoe guard has an open 5.9 mm across-flats hex window; the nut bears on the rail web. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
+        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed shared propulsion/servo-saddle rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The positive-side U-shoe guard has an open 5.9 mm across-flats hex window; the nut bears on the rail web. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
         "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex window is open for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
     },
 }
@@ -105,7 +105,7 @@ for _length in (6, 8, 12):
                 if _length == 8
                 else ""
             )
-            + "The four rail joints use separate M3 hardware. No washers by default; "
+            + "The five rail joints use separate M3 hardware. No washers by default; "
             "qualify actual bearing contact, PA12 retention and creep. These are "
             "not OEM motor or horn screws."
         ),
@@ -130,7 +130,7 @@ for _length in (8, 12):
                 "and 2.5 mm rail web give 4.5 mm effective grip. A nominal "
                 "2.4 mm nut leaves 1.1 mm tip projection. "
                 if _length == 8
-                else "the shared propulsion/servo-bridge rail joint. The 4.5 mm "
+                else "either shared propulsion/servo-saddle rail joint. The 4.5 mm "
                 "bridge cheek has a 2 mm deep head recess, followed by the 4 mm "
                 "frame leg and 2.5 mm rail web: 9 mm effective grip. A nominal "
                 "2.4 mm nut leaves 0.6 mm tip projection. Support both "

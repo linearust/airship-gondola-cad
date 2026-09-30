@@ -36,7 +36,7 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         # their deliberately unseated heads are not bearing-face stacks.
         "fastener_stacks": 16,
         "fastener_service": 16,
-        "functional_wall_probes": 24,  # Posts, cradle, shared cheek/key and rail seat.
+        "functional_wall_probes": 23,  # Posts, cradle, opposed cheeks, U guides and rail seat.
         "geometry": 10,  # Frame, bridge, two carriers, two adapters and four keepers.
     }
 )

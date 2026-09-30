@@ -1,41 +1,52 @@
 {
+  "revision": "BS",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "revision": "BR",
   "passed": true,
   "fixture_promotion_approved": true,
-  "reviewer": "Root reviewed the 21 independent optical audit checks, exact post/hardware reconstruction, inherited datum ancestry and continuous clearance proof; br_carrier_slots performed read-only native CAD audit.",
-  "reviewed_at_utc": "2026-09-30T13:06:55.894382+00:00",
-  "candidate_path": "/tmp/gondola-br-review/optical-candidate/gondola.FCStd",
-  "candidate_sha256": "93d4553aa7c13054c1d225dde46e77d83950ff2248d81b0eacc9ea88be2242c3",
-  "source_fingerprint": "797cafc8e3e3386cd78f054cc838c8743e62ad0bb01224fca389e743bd6fd90f",
-  "candidate_print_layout_sha256": "dda07271c05e02fa8071320c5af7025ab1de4157ed2998f124648ec6c0c5b7ed",
-  "old_production_path": "/tmp/gondola-br-review/pre-optical-fix/gondola.FCStd",
-  "old_production_sha256": "36a208a8782823e3dcffcecdce6994e25061d9939c8b291db3d031074feb7eef",
-  "old_fixture_path": "/tmp/gondola-br-review/final-candidate/gondola.FCStd",
-  "old_fixture_sha256": "97ee05edaaac75b2157f3574cbb9d1bccce8fab93526edb3ad58dce309a44985",
-  "followup_to_approval_sha256": "810b87f3715a5ee75435e6af8414791da13ef95f8b4e9f6907c5539314211f1f",
+  "reviewer": "root agent after independent bs_joint_review audit, complete saved rail service and direct visual review",
+  "reviewed_at_utc": "2026-09-30T14:27:30.062626+00:00",
+  "source_fingerprint": "7666a9d8237a65569cbbe8621c1c676f3db3a5568144d7d64310570229f03794",
+  "candidate_path": "/tmp/gondola-bs-review/candidate/gondola.FCStd",
+  "candidate_sha256": "9586b93d534b660c7814c69ca69280b65fa87c2422e2f958192c775509b27df4",
+  "candidate_print_layout_sha256": "55d8b3606b7a47e891779bc8e6919024d5038eeec389bdbf53e5a7ce0f8bb105",
+  "old_production_path": "/tmp/gondola-bs-review/before.FCStd",
+  "old_production_sha256": "90d528546cf6a57cf3609149b3c873808b64c19be5d0932522ac4337a1018a4a",
+  "old_fixture_path": "/tmp/gondola-bs-review/before-fixture.FCStd",
+  "old_fixture_sha256": "93d4553aa7c13054c1d225dde46e77d83950ff2248d81b0eacc9ea88be2242c3",
+  "required_independent_audits": [
+    "bs-independent-audit.json"
+  ],
+  "evidence_artifact_sha256": {
+    "bs-independent-audit.json": "9fbbd6b06e15cc5e6df4f8966984baec227fdc0b3322e7a026427aada43c4ae6",
+    "transition-capture.json": "92e940bf237a8fc3c70e85de52dec34f53b5dd46c79aabbf3c5f4d4822096ff1",
+    "independent-geometry-audit.json": "96fa457cea843a65d94159c5d216d9b083561775803278f57059c7496d13b2f1",
+    "capture_transition.py": "42d0060d567b1d522759e3375f58c6136ded242729f4423ad29b2a8c8eb2a928",
+    "independent_geometry_audit.py": "feed3be17edd96dd262dd3a6ac357c02b64faa05b4d2faa1ebdf9ead67e6920b",
+    "literal_joint_shapes.py": "a724606712b0ed922506969fdb5baa771a6385446db123cd9ff805b03fbaf627",
+    "audit_helpers.py": "32bacbaf539086926ef3f3e3929daae8c5f9afa4d214d61d8a3cdfde4021b962",
+    "control_audit.py": "e456e78b9eef114827e0c7d2d8be95bec7c4cc40a02ddeb31a9afde58678f2d1",
+    "finalize_independent_review.py": "9d2e6b0fea7ea40617f7a51cc67e0339ec6b81d258610184783aeb744fd840a7",
+    "candidatevisual_review.json": "9236075b4ca0582f04da0f5af7f20d3ea58d993df35ee1ba4c5011ab2cdca0bb",
+    "rail-full-service.json": "3d13d71b2c3276894b5aecdc656278e5b61985b48835d3a303fcb106ae81af7c",
+    "rail_full_service.py": "7012e5915a5a9faf89c6fae6e33e567ad26c2e429f6b36ca37c098b68c9cba78",
+    "shared_clamp_visuals.py": "812d8385fa32c964368c26bb968b9297832a20f3dc8a9401a6ac7dcafde0a81f",
+    "shared_clamp_visuals.FCMacro": "78a010ecd8c037c9f3805d6971a5adeed7e043d8f394cc7215f73a17baf74475"
+  },
   "evidence": {
     "archive": "references/design_checks.json.gz",
-    "review_key": "optical_design_review",
-    "artifact_key": "optical_review_artifacts"
-  },
-  "evidence_artifact_sha256": {
-    "incremental_optical_audit.py": "1e414b45818232e2068bc8517d2b6a32fc9b717bd0a58ed63067240607008c49",
-    "audit_helpers.py": "32bacbaf539086926ef3f3e3929daae8c5f9afa4d214d61d8a3cdfde4021b962",
-    "control_audit.py": "625ceca615d427ba00d3bc0846de6a1fea1a5fcdb318de8bb3a69f92628321fd",
-    "incremental-optical-capture.json": "d530a250f1814014ee4d4c77a9e05a3e364afa3b5452f8200eda1d5bfdf897f9",
-    "optical-correction.json": "ec0a8722c93406a98afb28aa76208d89c59636cb7b698e135065cd005b2fc71c",
-    "incremental-optical-audit.json": "8cd15189ea90b11259667ae3e96f76c5ccaf71fc921400ec8b0bf54bd19791ae",
-    "optical-test-correction.json": "11bb53b29925238de4b8cd2958f6c220a257aaa7c015cd723427112fb6293bad",
-    "optical-power-preflight.json": "099a917df3446b4693e6c78137642081b2f64391bb21f58530808baed0b959ff",
-    "optical_power_preflight.py": "dd6e2472331663662018dbce0582f8ced22ef87ff5f758625767c922ed1ea5fe"
+    "review_key": "independent_design_review",
+    "artifact_key": "approved_review_artifacts"
   },
   "approval_basis": [
-    "The sole production correction raises optical pivot Z35 to Z36, restoring local post19 while the carrier support remains17 and propulsion span150/height50 remain unchanged.",
-    "Only the OpticalMountBase intrinsic solid changes; independent reconstruction adds exactly16mm3 of stock. Pitch hardware and stage/head translations are independently checked. All115 other intrinsic shapes, all13 print SKU identities/bed poses and72 old/new native control cases are preserved.",
-    "Both complete sensor alternative checks pass. Independent full-angle connector and registration clearance bounds for MTF01P are2.113347mm and1.925347mm respectively, exceeding the unchanged1.5mm requirement.",
-    "All193 metadata changes and exact inherited datum links are explicitly reviewed; no unrelated geometry, parent, registry, schema, expression or source changes are permitted.",
-    "48 focused tests pass against source/candidate, while the unchanged new regression detects the three actual prior MTF01P endpoint failures. Optional power candidate audit also passes. Earlier failed release remains preserved and does not qualify this corrected release."
+    "Independent literal reconstruction matches both modified printed solids, four opposed M3 hardware solids, both changed wire routes and all13 printSKU geometries/poses. Only4 intrinsic shape changes and2 added hardware objects; all other shapes unchanged after placement normalization.",
+    "All169 native pose/schema deltas and126 metadata values reviewed; hierarchy and expressions intact;36 old and36 new native control cases passed and restored.",
+    "Both opposed clamps have broad support, complete head/nut access and ordered withdrawal. Whole propulsion +X10 then Z30 service and FC world-X4 then Z30 service pass with complete populated saved geometry. Bench saddle replacement retains shifted driven shafts as obstacles.",
+    "Directly inspected12 candidate assembly/detail/print/power previews and3 joint views. Two34mm-spaced clamps, simple central U saddle and shorter roof satisfy the requested symmetric support while retaining separate replaceable servo/output modules."
   ],
-  "limits": "Approval of nominal regression fixture only. Final fresh complete native tests and seven-stage pipeline required. No physical fit, clamp strength, PA12 creep, flexible harness, optics, electrical or flight qualification."
+  "limits": [
+    "Nominal geometry, not measured fit or strength. PA12 process, creep, clamp preload, curved seating, actual hardware and moving wires remain unqualified.",
+    "Two24mm feet span58mm and locally restrain rail curvature; do not use bolts to straighten a curved or warped rail.",
+    "Servo replacement requires bench service with both small gears removed and two driven shafts shifted12mm after releasing their clamps.",
+    "Release still requires fresh complete native tests and ordered7-stage rebuild/export verification."
+  ]
 }

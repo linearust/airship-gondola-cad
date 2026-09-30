@@ -91,9 +91,12 @@ def module_control_bindings(doc):
     ):
         raise ValueError("Registered modules do not match the unique station contract")
     if any(
-        not {"RailAttachmentOffsetX", "RailPositionX", "RailContactLength"}.issubset(
-            module.PropertiesList
-        )
+        not {
+            "RailAttachmentOffsetX",
+            "RailAttachmentOffsetsX",
+            "RailPositionX",
+            "RailContactLength",
+        }.issubset(module.PropertiesList)
         for module in modules
     ):
         raise ValueError(
@@ -104,14 +107,26 @@ def module_control_bindings(doc):
 
 
 def module_attachment_pose(station, module):
-    """Manual X translates the module; the fixed foot offset locates its clamp."""
+    """Manual X translates the module; every fixed foot must retain full support."""
     position = float(module.RailPositionX)
     offset = float(module.RailAttachmentOffsetX)
-    attachment_x = position + math.cos(math.radians(station.yaw_deg)) * offset
+    offsets = tuple(float(value) for value in module.RailAttachmentOffsetsX)
+    direction = math.cos(math.radians(station.yaw_deg))
+    attachment_x = position + direction * offset
+    attachment_axes = [position + direction * value for value in offsets]
     length = float(module.RailContactLength)
     attachment = rail.attachment_position_check(attachment_x, contact_length=length)
+    attachments = [
+        rail.attachment_position_check(value, contact_length=length)
+        for value in attachment_axes
+    ]
     length_matches = abs(length - station.contact_length_mm) < TOL
-    supported = attachment["passed"]
+    supported = bool(attachments) and all(row["passed"] for row in attachments)
+    expected_offsets = station.attachment_offsets_x_mm
+    offsets_match = len(offsets) == len(expected_offsets) and all(
+        abs(actual - expected) < TOL
+        for actual, expected in zip(offsets, expected_offsets)
+    )
     offset_matches = abs(offset - station.attachment_offset_x_mm) < TOL
     rotation_matches = module.Placement.Rotation.isSame(
         App.Rotation(App.Vector(0, 0, 1), station.yaw_deg), 1e-7
@@ -119,6 +134,10 @@ def module_attachment_pose(station, module):
     return {
         "rail_position_x_mm": position,
         "attachment_offset_x_mm": offset,
+        "attachment_offsets_x_mm": offsets,
+        "attachment_offsets_match": offsets_match,
+        "attachment_world_axes_x_mm": attachment_axes,
+        "rail_attachment_positions": attachments,
         "attachment_world_x_mm": attachment_x,
         "attachment_in_supported_slot": supported,
         "rail_attachment_position": attachment,
@@ -131,6 +150,8 @@ def module_attachment_pose(station, module):
         "carrier_rotation_matches": rotation_matches,
         "passed": supported
         and offset_matches
+        and offsets_match
+        and attachment["passed"]
         and length_matches
         and rotation_matches
         and abs(module.Placement.Base.x - position) < TOL
@@ -172,19 +193,24 @@ def control_behavior(doc):
     module_case_count = 0
     for station, module in bindings:
         original = float(module.RailPositionX)
-        offset = float(module.RailAttachmentOffsetX)
-        signed_offset = math.cos(math.radians(station.yaw_deg)) * offset
+        signed_offsets = [
+            math.cos(math.radians(station.yaw_deg)) * float(offset)
+            for offset in module.RailAttachmentOffsetsX
+        ]
         other_modules = {
             other.Name: other.Placement.copy() for other in modules if other != module
         }
         requests = [
             value
             for value in (original - 0.1, original + 0.1)
-            if any(
-                low <= value + signed_offset <= high
-                for low, high in rail.supported_slot_ranges(
-                    contact_length=float(module.RailContactLength)
+            if all(
+                any(
+                    low <= value + signed_offset <= high
+                    for low, high in rail.supported_slot_ranges(
+                        contact_length=float(module.RailContactLength)
+                    )
                 )
+                for signed_offset in signed_offsets
             )
         ]
         module_case_count += len(requests)
@@ -521,6 +547,7 @@ def procurement_and_scope_metadata(obj):
         "RailAttachmentContract",
         "TapeAttachmentContract",
         "RailAttachmentOffsetX",
+        "RailAttachmentOffsetsX",
         "RailContactLength",
         "StackHostName",
         "CarrierHostName",

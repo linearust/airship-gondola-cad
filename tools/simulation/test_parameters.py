@@ -38,13 +38,13 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
         self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.015, 0.075, 0.050]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.017, 0.075, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.015, -0.075, 0.050]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.017, -0.075, 0.050]
         )
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [-0.015, 0, 0])
+        self.assertEqual(frame["origin_cad_m"], [-0.017, 0, 0])
         self.assertEqual(
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},

@@ -14,17 +14,36 @@ def native_evidence():
         "saved_servo_module_service": {
             "passed": True,
             "shared_rail_fasteners_removed_before_bench": [
+                "MainPropulsionModuleOppositeRailMountNut",
+                "MainPropulsionModuleOppositeRailMountScrew",
                 "MainPropulsionModuleRailMountNut",
                 "MainPropulsionModuleRailMountScrew",
             ],
             "released_fasteners": [],
+            "loosened_carrier_clamps": [
+                "PortOutputClampNegative",
+                "StarboardOutputClampPositive",
+            ],
+            "shaft_staging": [
+                {
+                    "part": "PortOutputShaftNegative",
+                    "loosened_clamp": "PortOutputClampNegative",
+                    "staged_offset_mm": [0, 12, 0],
+                    "segments": [{"start_mm": [0, 0, 0], "end_mm": [0, 12, 0]}],
+                },
+                {
+                    "part": "StarboardOutputShaftPositive",
+                    "loosened_clamp": "StarboardOutputClampPositive",
+                    "staged_offset_mm": [0, -12, 0],
+                    "segments": [{"start_mm": [0, 0, 0], "end_mm": [0, -12, 0]}],
+                },
+            ],
             "part_paths": [
                 {
                     "waypoints_mm": [
                         [0, 0, 0],
-                        [0, -2.7, 0],
-                        [0, -2.7, 0.5],
-                        [80, -2.7, 0.5],
+                        [0, 0, 11],
+                        [80, 0, 11],
                     ]
                 }
             ],
@@ -76,31 +95,47 @@ class ReviewMotionBoundaries(unittest.TestCase):
                 with self.subTest(name=name, frame=frame):
                     self.assert_pose(name, frame, (0, y, 0), hidden)
 
-    def test_key_releases_before_lift_then_slide_without_hiding_drive_parts(self):
+    def test_shafts_stage_before_bridge_lift_and_stay_visible(self):
         names = ("ServoDriveBridge", "PortServo")
         for frame, x, y, z in (
             (108, 0, 0, 0),
             (109, 0, 0, 0),
-            (120, 0, -2.7 * 11 / 23, 0),
-            (132, 0, -2.7, 0),
-            (133, 0, -2.7, 0),
-            (134, 0, -2.7, 0.5 / 23),
-            (156, 0, -2.7, 0.5),
-            (157, 0, -2.7, 0.5),
-            (158, 80 / 59, -2.7, 0.5),
-            (215, 80 * 58 / 59, -2.7, 0.5),
-            (216, 80, -2.7, 0.5),
-            (241, 80, -2.7, 0.5),
+            (120, 0, 0, 0),
+            (132, 0, 0, 0),
+            (133, 0, 0, 0),
+            (134, 0, 0, 11 / 23),
+            (156, 0, 0, 11),
+            (157, 0, 0, 11),
+            (158, 80 / 59, 0, 11),
+            (215, 80 * 58 / 59, 0, 11),
+            (216, 80, 0, 11),
+            (241, 80, 0, 11),
         ):
             for name in names:
                 with self.subTest(name=name, frame=frame):
                     self.assert_pose(name, frame, (x, y, z), drive_names=names)
+        for frame, distance in (
+            (108, 0),
+            (109, 0),
+            (120, 12 * 11 / 23),
+            (132, 12),
+            (241, 12),
+        ):
+            self.assert_pose("PortOutputShaftNegative", frame, (0, distance, 0))
+            self.assert_pose("StarboardOutputShaftPositive", frame, (0, -distance, 0))
         offsets, hidden = REVIEW_MOTION.removal_pose(241, names)
         self.assertEqual(hidden, {"PortOutputGear", "StarboardOutputGear"})
-        self.assertEqual(set(offsets), set(names) | hidden)
+        self.assertEqual(
+            set(offsets),
+            set(names)
+            | hidden
+            | {"PortOutputShaftNegative", "StarboardOutputShaftPositive"},
+        )
 
     def test_bench_scene_excludes_shared_clamp_and_rejects_old_or_missing_pairs(self):
         pair = [
+            "MainPropulsionModuleOppositeRailMountNut",
+            "MainPropulsionModuleOppositeRailMountScrew",
             "MainPropulsionModuleRailMountNut",
             "MainPropulsionModuleRailMountScrew",
         ]
@@ -150,12 +185,12 @@ class ReviewMotionBoundaries(unittest.TestCase):
             [
                 (
                     1,
-                    "Off-rail bench / shared clamp already removed / support both parts",
+                    "Off-rail bench / both rail clamps removed / support both parts",
                 ),
                 (13, "Remove Port 16T"),
                 (61, "Remove Starboard 16T"),
-                (109, "Release key -Y 2.7 mm"),
-                (133, "Lift module 0.5 mm"),
+                (109, "Stage driven stubs outward 12 mm / hold rotors"),
+                (133, "Lift module 11 mm"),
                 (157, "Slide module +X 80 mm"),
                 (217, "Module removed; output supports retained"),
             ],
@@ -178,7 +213,11 @@ class ReviewMotionEvidence(unittest.TestCase):
         for side in (0, 1):
             for endpoint in ("start_mm", "end_mm"):
                 yield ("output_gear_removal", side, "segments", 0, endpoint)
-        for step in (0, 1, 2, 3):
+        for side in (0, 1):
+            yield ("shaft_staging", side, "staged_offset_mm")
+            for endpoint in ("start_mm", "end_mm"):
+                yield ("shaft_staging", side, "segments", 0, endpoint)
+        for step in (0, 1, 2):
             yield ("part_paths", 0, "waypoints_mm", step)
 
     @staticmethod
@@ -190,7 +229,7 @@ class ReviewMotionEvidence(unittest.TestCase):
     def test_matching_native_evidence_is_accepted(self):
         REVIEW_MOTION.check_basis(native_evidence())
 
-    def test_changed_service_endpoints_and_key_release_are_rejected(self):
+    def test_changed_service_endpoints_and_shaft_staging_are_rejected(self):
         for path in self.endpoint_paths():
             for axis in (0, 1, 2):
                 with self.subTest(path=path, axis=axis):
@@ -211,6 +250,7 @@ class ReviewMotionEvidence(unittest.TestCase):
                 ["MainPropulsionModuleRailMountScrew"],
             ),
             ("released_fasteners", ["ServoBridgePortBolt"]),
+            ("loosened_carrier_clamps", []),
         ):
             with self.subTest(key=key, value=value):
                 evidence = native_evidence()
@@ -221,7 +261,11 @@ class ReviewMotionEvidence(unittest.TestCase):
                     REVIEW_MOTION.check_basis(evidence)
 
     def test_empty_or_reordered_service_evidence_is_rejected(self):
-        for key, value in (("part_paths", []), ("output_gear_removal", [])):
+        for key, value in (
+            ("part_paths", []),
+            ("output_gear_removal", []),
+            ("shaft_staging", []),
+        ):
             evidence = native_evidence()
             evidence["saved_servo_module_service"][key] = value
             with self.assertRaisesRegex(RuntimeError, "removal paths"):

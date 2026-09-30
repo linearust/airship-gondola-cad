@@ -33,6 +33,7 @@ class ModuleControlMappingTests(unittest.TestCase):
                 Name=station.object_name,
                 PropertiesList=[
                     "RailAttachmentOffsetX",
+                    "RailAttachmentOffsetsX",
                     "RailPositionX",
                     "RailContactLength",
                 ],
@@ -96,6 +97,12 @@ class ModuleControlMappingTests(unittest.TestCase):
                 station.attachment_offset_x_mm,
                 "App::PropertyDistance",
             )
+            set_property(
+                module,
+                "RailAttachmentOffsetsX",
+                list(station.attachment_offsets_x_mm),
+                "App::PropertyFloatList",
+            )
             set_property(module, "RailPositionX", station.x_mm, "App::PropertyDistance")
             set_property(
                 module,
@@ -149,6 +156,7 @@ class ModuleControlMappingTests(unittest.TestCase):
             station = ModuleStation("Test", -70, yaw)
             module = SimpleNamespace(
                 RailAttachmentOffsetX=0,
+                RailAttachmentOffsetsX=[0],
                 RailContactLength=16,
                 RailPositionX=-70,
                 Placement=App.Placement(
@@ -158,6 +166,9 @@ class ModuleControlMappingTests(unittest.TestCase):
             self.assertTrue(module_attachment_pose(station, module)["passed"])
             for attribute, replacement in (
                 ("RailAttachmentOffsetX", 20),
+                ("RailAttachmentOffsetsX", []),
+                ("RailAttachmentOffsetsX", [0, 0]),
+                ("RailAttachmentOffsetsX", [20]),
                 ("RailContactLength", 32),
                 ("RailPositionX", -80),
             ):
@@ -176,6 +187,33 @@ class ModuleControlMappingTests(unittest.TestCase):
                 )
                 self.assertFalse(module_attachment_pose(station, module)["passed"])
             module.Placement = original
+
+    def test_propulsion_control_rejects_missing_or_unsupported_opposite_site(self):
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.validation.baseline import module_attachment_pose
+
+        station = next(
+            row for row in MODULE_STATIONS if row.object_name == "MainPropulsionModule"
+        )
+        module = SimpleNamespace(
+            RailAttachmentOffsetX=17,
+            RailAttachmentOffsetsX=[17, -17],
+            RailContactLength=24,
+            RailPositionX=-17,
+            Placement=App.Placement(App.Vector(-17, 0, 0), App.Rotation()),
+        )
+        self.assertTrue(module_attachment_pose(station, module)["passed"])
+        module.RailAttachmentOffsetsX = [17]
+        missing = module_attachment_pose(station, module)
+        self.assertFalse(missing["passed"])
+        self.assertFalse(missing["attachment_offsets_match"])
+        module.RailAttachmentOffsetsX = [17, -17]
+        module.RailPositionX = -153
+        module.Placement.Base = App.Vector(-153, 0, 0)
+        edge = module_attachment_pose(station, module)
+        self.assertTrue(edge["rail_attachment_positions"][0]["passed"])
+        self.assertFalse(edge["rail_attachment_positions"][1]["passed"])
+        self.assertFalse(edge["passed"])
 
     def test_shapeless_stack_and_rail_group_metadata_is_frozen_too(self):
         from gondola.cad import create_group, set_property
@@ -204,6 +242,10 @@ class ModuleControlMappingTests(unittest.TestCase):
         original = native_interface_metadata(doc)
         self.assertIn(carrier.Name, original)
         carrier.RailAttachmentContract = '{"physical_fit_verified": true}'
+        self.assertNotEqual(original, native_interface_metadata(doc))
+        set_property(carrier, "RailAttachmentOffsetsX", [0], "App::PropertyFloatList")
+        original = native_interface_metadata(doc)
+        carrier.RailAttachmentOffsetsX = [0, 17]
         self.assertNotEqual(original, native_interface_metadata(doc))
         mount = create_group(doc, "ElectronicsMount", "Equipment carrier")
         set_property(mount, "MountContract", '{"fc_wiring_clearance_mm": 8.0}')

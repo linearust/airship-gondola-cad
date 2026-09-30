@@ -6,7 +6,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import placed_shape, translated_shape
+from gondola.cad import placed_shape
 from gondola.parts import equipment_mounts, propulsion, rail
 from gondola.print_export import geometry_comparison
 
@@ -19,7 +19,7 @@ _BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
     ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 15.0, 24.0),
+    ("PropulsionFixedFrame", "MainPropulsionModule", None, 17.0, 24.0),
 )
 
 
@@ -38,10 +38,27 @@ def _offset(module):
     )
 
 
-def _foot_placement(module, inverse):
-    return inverse.multiply(module.getGlobalPlacement()).multiply(
-        App.Placement(V(_offset(module), 0, 0), App.Rotation())
+def _attachment_sites(module_name, offset=0):
+    """Literal independent site inventory; do not infer a missing second clamp."""
+    if module_name == "MainPropulsionModule":
+        return (
+            {"prefix": "", "x_offset": 17.0, "side": 1},
+            {"prefix": "Opposite", "x_offset": -17.0, "side": -1},
+        )
+    return ({"prefix": "", "x_offset": offset, "side": 1},)
+
+
+def _site_placement(site):
+    return App.Placement(
+        V(site["x_offset"], 0, 0),
+        App.Rotation(V(0, 0, 1), 180 if site["side"] < 0 else 0),
     )
+
+
+def _foot_placement(module, inverse, site=None):
+    if site is None:
+        site = _attachment_sites(module.Name, _offset(module))[0]
+    return inverse.multiply(module.getGlobalPlacement()).multiply(_site_placement(site))
 
 
 def tape_station_alignment(rail_object, modules, tapes, shapes):
@@ -52,30 +69,38 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
     ]
     rows = []
     for module in modules:
-        x = _foot_placement(module, inverse).Base.x
-        nearest = {}
-        for side, label in ((-1, "negative_y"), (1, "positive_y")):
-            candidates = [
-                (name, bounds)
-                for name, bounds in tape_bounds
-                if side * bounds.YMin > 0 and side * bounds.YMax > 0
-            ]
-            if not candidates:
-                nearest[label] = None
-                continue
-            name, bounds = min(candidates, key=lambda item: abs(item[1].Center.x - x))
-            nearest[label] = {
-                "object": name,
-                "centre_x_mm": bounds.Center.x,
-                "centre_distance_mm": abs(bounds.Center.x - x),
-                "station_within_tape_width": bounds.XMin - TOL
-                <= x
-                <= bounds.XMax + TOL,
-                "same_attachment_station": abs(bounds.Center.x - x) < TOL,
-            }
-        rows.append(
-            {"module": module.Name, "station_x_mm": x, "nearest_tapes": nearest}
-        )
+        for site in _attachment_sites(module.Name, _offset(module)):
+            x = _foot_placement(module, inverse, site).Base.x
+            nearest = {}
+            for side, label in ((-1, "negative_y"), (1, "positive_y")):
+                candidates = [
+                    (name, bounds)
+                    for name, bounds in tape_bounds
+                    if side * bounds.YMin > 0 and side * bounds.YMax > 0
+                ]
+                if not candidates:
+                    nearest[label] = None
+                    continue
+                name, bounds = min(
+                    candidates, key=lambda item: abs(item[1].Center.x - x)
+                )
+                nearest[label] = {
+                    "object": name,
+                    "centre_x_mm": bounds.Center.x,
+                    "centre_distance_mm": abs(bounds.Center.x - x),
+                    "station_within_tape_width": bounds.XMin - TOL
+                    <= x
+                    <= bounds.XMax + TOL,
+                    "same_attachment_station": abs(bounds.Center.x - x) < TOL,
+                }
+            rows.append(
+                {
+                    "module": module.Name,
+                    "attachment_prefix": site["prefix"],
+                    "station_x_mm": x,
+                    "nearest_tapes": nearest,
+                }
+            )
     return {
         "modules": rows,
         "scope": "Saved tape/attachment positions in the rail frame only. Under-base adhesive is unmodeled. Tape proximity neither proves adhesion/load capacity nor prohibits other supported slot positions; qualify retention and routing after relocation.",
@@ -190,16 +215,37 @@ def saved_integral_mount_checks(doc, registry):
             else equipment_mounts.mount_shape(kind)
         )
         complete = geometry_comparison(actual, source)
-        crop, literal = (
-            _lower_crop(offset, length),
-            translated_shape(
-                _literal_protected_mount(length, shared=kind is None), x=offset
-            ),
-        )
+        sites = _attachment_sites(parent_name, offset)
+        crops = [
+            placed_shape(_lower_crop(0, length), _site_placement(site))
+            for site in sites
+        ]
+        literals = [
+            placed_shape(
+                _literal_protected_mount(length, shared=kind is None),
+                _site_placement(site),
+            )
+            for site in sites
+        ]
+        crop, literal = Part.makeCompound(crops), Part.makeCompound(literals)
         lower, source_lower = (
             geometry_comparison(actual.common(crop), literal),
             geometry_comparison(source.common(crop), literal),
         )
+        site_checks = [
+            {
+                "attachment_prefix": site["prefix"],
+                "attachment_local_x_mm": site["x_offset"],
+                "attachment_side": site["side"],
+                "independent_lower_mount_comparison": geometry_comparison(
+                    actual.common(region), witness
+                ),
+                "source_lower_mount_comparison": geometry_comparison(
+                    source.common(region), witness
+                ),
+            }
+            for site, region, witness in zip(sites, crops, literals)
+        ]
         parent = doc.getObject(parent_name)
         parent_ok = parent is not None and obj.getParentGeoFeatureGroup() == parent
         registered = printed.count(obj) == 1
@@ -210,6 +256,7 @@ def saved_integral_mount_checks(doc, registry):
             {
                 "part": name,
                 "attachment_local_x_mm": offset,
+                "attachment_sites": site_checks,
                 "source_comparison": complete,
                 "independent_lower_mount_comparison": lower,
                 "source_lower_mount_comparison": source_lower,
@@ -256,113 +303,119 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 }
             )
             continue
-        foot_placement = _foot_placement(module, inverse)
-        position = foot_placement.Base
-        position_check = rail.attachment_position_check(
-            position.x, contact_length=length
-        )
-        centred = abs(position.y) < TOL and abs(position.z) < TOL
-        printed_in_rail = placed_shape(shapes[name], inverse)
-        overlap = intersection_volume(printed_in_rail, rail_shape)
-        lower = translated_shape(
-            local_shape(part).common(_lower_crop(offset, length)), x=-offset
-        )
-        local_rail = placed_shape(rail_shape, foot_placement.inverse())
-        shared = module.Name == "MainPropulsionModule"
-        screw_length, head_face_y = (12.0, -7.75) if shared else (8.0, -3.25)
-        head_support = None
-        if shared:
-            bridge = registry.Document.getObject("ServoDriveBridge")
-            if (
-                bridge is None
-                or bridge.Name not in shapes
-                or not belongs_to_group(bridge, module)
-                or list(registry.PrintedParts).count(bridge) != 1
-            ):
-                rows.append(
-                    {
-                        "module": module.Name,
-                        "passed": False,
-                        "error": "Missing registered shared-clamp servo bridge",
-                    }
-                )
-                continue
-            bridge_in_module = placed_shape(
-                shapes[bridge.Name], module.getGlobalPlacement().inverse()
+        for site in _attachment_sites(module.Name, offset):
+            site_placement = _site_placement(site)
+            foot_placement = _foot_placement(module, inverse, site)
+            position = foot_placement.Base
+            position_check = rail.attachment_position_check(
+                position.x, contact_length=length
             )
-            crop = Part.makeBox(length, 4.5, 10.3, V(offset - length / 2, -9.75, 2.2))
-            head_support = translated_shape(bridge_in_module.common(crop), x=-offset)
-        attachment = rail.attachment_check(
-            local_rail,
-            lower,
-            contact_length=length,
-            screw_length=screw_length,
-            head_face_y=head_face_y,
-            head_support=head_support,
-        )
-        hardware_rows = []
-        for suffix, expected, sku in (
-            (
-                "RailMountScrew",
-                rail.attachment_screw_shape(screw_length, head_face_y=head_face_y),
-                f"M3X{screw_length:g}_BUTTON_HEAD",
-            ),
-            ("RailMountNut", rail.nut_shape(), "M3_HEX_NUT"),
-        ):
-            hardware_name = module.Name + suffix
-            hardware = registry.Document.getObject(hardware_name)
-            if hardware is None or hardware_name not in shapes:
+            centred = abs(position.y) < TOL and abs(position.z) < TOL
+            printed_in_rail = placed_shape(shapes[name], inverse)
+            overlap = intersection_volume(printed_in_rail, rail_shape)
+            canonical_part = placed_shape(local_shape(part), site_placement.inverse())
+            lower = canonical_part.common(_lower_crop(0, length))
+            local_rail = placed_shape(rail_shape, foot_placement.inverse())
+            shared = module.Name == "MainPropulsionModule"
+            screw_length, head_face_y = (12.0, -7.75) if shared else (8.0, -3.25)
+            head_support = None
+            if shared:
+                bridge = registry.Document.getObject("ServoDriveBridge")
+                if (
+                    bridge is None
+                    or bridge.Name not in shapes
+                    or not belongs_to_group(bridge, module)
+                    or list(registry.PrintedParts).count(bridge) != 1
+                ):
+                    rows.append(
+                        {
+                            "module": module.Name,
+                            "passed": False,
+                            "error": "Missing registered shared-clamp servo bridge",
+                        }
+                    )
+                    continue
+                bridge_in_module = placed_shape(
+                    shapes[bridge.Name], module.getGlobalPlacement().inverse()
+                )
+                crop = Part.makeBox(length, 4.5, 10.3, V(-length / 2, -9.75, 2.2))
+                head_support = placed_shape(
+                    bridge_in_module, site_placement.inverse()
+                ).common(crop)
+            attachment = rail.attachment_check(
+                local_rail,
+                lower,
+                contact_length=length,
+                screw_length=screw_length,
+                head_face_y=head_face_y,
+                head_support=head_support,
+            )
+            hardware_rows = []
+            for suffix, expected, sku in (
+                (
+                    "RailMountScrew",
+                    rail.attachment_screw_shape(screw_length, head_face_y=head_face_y),
+                    f"M3X{screw_length:g}_BUTTON_HEAD",
+                ),
+                ("RailMountNut", rail.nut_shape(), "M3_HEX_NUT"),
+            ):
+                hardware_name = module.Name + site["prefix"] + suffix
+                hardware = registry.Document.getObject(hardware_name)
+                if hardware is None or hardware_name not in shapes:
+                    hardware_rows.append(
+                        {
+                            "object": hardware_name,
+                            "passed": False,
+                            "error": "Missing installed rail hardware",
+                        }
+                    )
+                    continue
+                in_module = placed_shape(
+                    shapes[hardware_name], module.getGlobalPlacement().inverse()
+                )
+                comparison = geometry_comparison(
+                    in_module, placed_shape(expected, site_placement)
+                )
+                binding_ok = (
+                    hardware.getParentGeoFeatureGroup() == module
+                    and list(registry.RailLocks).count(hardware) == 1
+                    and list(registry.HardwareParts).count(hardware) == 1
+                )
+                sku_ok = getattr(hardware, "HardwareSKU", None) == sku
                 hardware_rows.append(
                     {
                         "object": hardware_name,
-                        "passed": False,
-                        "error": "Missing installed rail hardware",
+                        "source_comparison": comparison,
+                        "binding_matches": binding_ok,
+                        "sku_matches": sku_ok,
+                        "passed": binding_ok
+                        and sku_ok
+                        and comparison_passed(comparison, TOL),
                     }
                 )
-                continue
-            in_module = placed_shape(
-                shapes[hardware_name], module.getGlobalPlacement().inverse()
-            )
-            comparison = geometry_comparison(
-                in_module, translated_shape(expected, x=offset)
-            )
-            binding_ok = (
-                hardware.getParentGeoFeatureGroup() == module
-                and list(registry.RailLocks).count(hardware) == 1
-                and list(registry.HardwareParts).count(hardware) == 1
-            )
-            sku_ok = getattr(hardware, "HardwareSKU", None) == sku
-            hardware_rows.append(
+            rows.append(
                 {
-                    "object": hardware_name,
-                    "source_comparison": comparison,
-                    "binding_matches": binding_ok,
-                    "sku_matches": sku_ok,
-                    "passed": binding_ok
-                    and sku_ok
-                    and comparison_passed(comparison, TOL),
+                    "module": module.Name,
+                    "part": name,
+                    "attachment_prefix": site["prefix"],
+                    "attachment_local_x_mm": site["x_offset"],
+                    "attachment_side": site["side"],
+                    "shared_servo_bridge_clamp": shared,
+                    "attachment_axis_x_mm": position.x,
+                    "supported_slot_position": position_check,
+                    "centred_yz": centred,
+                    "rail_overlap_mm3": overlap,
+                    "saved_lower_mount_attachment": attachment,
+                    "installed_hardware": hardware_rows,
+                    "passed": belongs_to_group(part, module)
+                    and position_check["passed"]
+                    and centred
+                    and lower.Volume > TOL
+                    and overlap < TOL
+                    and attachment["passed"]
+                    and all(row["passed"] for row in hardware_rows),
                 }
             )
-        rows.append(
-            {
-                "module": module.Name,
-                "part": name,
-                "shared_servo_bridge_clamp": shared,
-                "attachment_axis_x_mm": position.x,
-                "supported_slot_position": position_check,
-                "centred_yz": centred,
-                "rail_overlap_mm3": overlap,
-                "saved_lower_mount_attachment": attachment,
-                "installed_hardware": hardware_rows,
-                "passed": belongs_to_group(part, module)
-                and position_check["passed"]
-                and centred
-                and lower.Volume > TOL
-                and overlap < TOL
-                and attachment["passed"]
-                and all(row["passed"] for row in hardware_rows),
-            }
-        )
     return rows
 
 
@@ -417,7 +470,7 @@ def rail_check(registry, shapes):
                 and abs(bounds.XLength - 300) < TOL
                 and missing_base < TOL
                 and extra_base < TOL
-                and len(mounts) == 4
+                and len(mounts) == 5
                 and flex["passed"]
                 and wall_sections["passed"]
                 and tape_contract_matches
@@ -491,6 +544,17 @@ def rail_check(registry, shapes):
     module_inventory = sorted(module.Name for module in registry.Modules) == sorted(
         parent for _, parent, _, _, _ in _BINDINGS
     )
+    expected_lock_names = sorted(
+        parent + site["prefix"] + suffix
+        for _, parent, _, offset, _ in _BINDINGS
+        for site in _attachment_sites(parent, offset)
+        for suffix in ("RailMountScrew", "RailMountNut")
+    )
+    lock_inventory = sorted(
+        obj.Name for obj in registry.RailLocks
+    ) == expected_lock_names and all(
+        obj is doc.getObject(obj.Name) for obj in registry.RailLocks
+    )
     tape_inventory = (
         sorted(tape_positions)
         == sorted((x, sign) for x in (-136, 0, 136) for sign in (-1, 1))
@@ -499,6 +563,7 @@ def rail_check(registry, shapes):
     return {
         "rail_count": len(objects),
         "module_inventory_matches": module_inventory,
+        "rail_lock_inventory_matches": lock_inventory,
         "tape_inventory_matches": tape_inventory,
         "rails": rows,
         "saved_integral_mounts": integral,
@@ -509,11 +574,12 @@ def rail_check(registry, shapes):
         )
         if len(objects) == 1
         else None,
-        "scope": "Saved solids, actual poses, registry and nominal local contact only. M2 friction clamping, base and tape geometry do not qualify load capacity, creep, physical fits, tool access or bonded curvature.",
+        "scope": "Saved solids, actual poses, registry and nominal local contact only. M3 friction clamping, base and tape geometry do not qualify load capacity, creep, physical fits, tool access or bonded curvature.",
         "passed": len(objects) == 1
         and len(rows) == 1
         and len(tapes) == 6
         and module_inventory
+        and lock_inventory
         and tape_inventory
         and len(integral) == 4
         and all(row["passed"] for row in integral + rows + tapes)

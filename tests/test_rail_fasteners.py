@@ -95,11 +95,16 @@ class RailFastenerTests(unittest.TestCase):
             group = doc.addObject("App::Part", "Host")
             for prefix, offset, shared, expected_sku in (
                 ("FC", 0, False, "M3X8_BUTTON_HEAD"),
-                ("Propulsion", 15.0, True, "M3X12_BUTTON_HEAD"),
+                ("Propulsion", 17.0, True, "M3X12_BUTTON_HEAD"),
             ):
-                screw, nut = rail.build_attachment_hardware(
+                hardware = rail.build_attachment_hardware(
                     doc, group, prefix, x_offset=offset, shared_drive=shared
                 )
+                self.assertEqual(len(hardware), 4 if shared else 2)
+                screw, nut = hardware[:2]
+                if shared:
+                    self.assertAlmostEqual(hardware[2].Shape.BoundBox.Center.x, -17)
+                    self.assertAlmostEqual(hardware[3].Shape.BoundBox.YMin, -3.65)
                 self.assertEqual(screw.HardwareSKU, expected_sku)
                 self.assertEqual(nut.HardwareSKU, "M3_HEX_NUT")
                 self.assertFalse(screw.PrintPart)
@@ -116,9 +121,9 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.cad import translated_shape
         from gondola.parts import propulsion, rail, servo_bridge
 
-        crop = Part.makeBox(24, 13.7, 10.3, App.Vector(3, -9.75, 2.2))
-        frame = translated_shape(propulsion.fixed_frame_shape().common(crop), x=-15)
-        bridge = translated_shape(servo_bridge.bridge_shape().common(crop), x=-15)
+        crop = Part.makeBox(24, 13.7, 10.3, App.Vector(5, -9.75, 2.2))
+        frame = translated_shape(propulsion.fixed_frame_shape().common(crop), x=-17)
+        bridge = translated_shape(servo_bridge.bridge_shape().common(crop), x=-17)
         arguments = dict(
             mount=frame,
             head_support=bridge,

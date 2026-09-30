@@ -804,9 +804,14 @@ class NativeGearedDriveTests(unittest.TestCase):
             "PortOutputGear",
             "PropulsionFixedFrame",
         ):
-            self.assertIn(name, row["retained_during_access"])
-        self.assertEqual(row["side_bolt_axis_mm"], [15.0, 7.0])
-        self.assertEqual(row["contact_x_range_mm"], [3.0, 27.0])
+            self.assertTrue(
+                all(name in site["retained_during_access"] for site in row["sites"])
+            )
+        self.assertEqual(len(row["sites"]), 2)
+        self.assertEqual(row["clamp_spacing_mm"], 34.0)
+        for site in row["sites"]:
+            self.assertEqual(site["side_bolt_axis_mm"], [17.0, 7.0])
+            self.assertEqual(site["contact_x_range_mm"], [5.0, 29.0])
 
     def test_new_frame_obstacle_cannot_hide_from_side_rail_access(self):
         from gondola.parts import rail
@@ -816,14 +821,15 @@ class NativeGearedDriveTests(unittest.TestCase):
         original = frame.Shape.copy()
         try:
             obstruction = Part.makeBox(
-                8, 0.5, 4.5, App.Vector(7, -10, rail.BOLT_AXIS_Z - 2.25)
+                8, 0.5, 4.5, App.Vector(13, -10, rail.BOLT_AXIS_Z - 2.25)
             )
             frame.Shape = original.fuse(obstruction)
             self.doc.recompute()
             row = rail_mount_clearance_check(self.doc, self.module)
             self.assertFalse(row["passed"], row)
             self.assertGreater(
-                row["driver_clearance_overlap_mm3"]["PropulsionFixedFrame"], 0
+                row["sites"][0]["driver_clearance_overlap_mm3"]["PropulsionFixedFrame"],
+                0,
             )
         finally:
             frame.Shape = original
@@ -1366,17 +1372,17 @@ class SelectedGearDriveTests(unittest.TestCase):
                 0.2,
                 App.Vector(
                     spec.input_x_mm + 40 - 0.1,
-                    servo_bridge.case_front_y() - 11.2,
-                    spec.input_z_mm - 5 + 0.5,
+                    servo_bridge.case_front_y() - 8.5,
+                    spec.input_z_mm - 5 + 11,
                 ),
             )
             doc.recompute()
             obstacle = world_shape(witness)
             for name in self.servo_package_names():
                 shape = world_shape(doc.getObject(name))
-                for endpoint in (shape, translated_shape(shape, x=80, y=-2.7, z=0.5)):
+                for endpoint in (shape, translated_shape(shape, x=80, z=11)):
                     self.assertLess(intersection_volume(endpoint, obstacle), 1e-5, name)
-            middle = translated_shape(world_shape(doc.PortServo), x=40, y=-2.7, z=0.5)
+            middle = translated_shape(world_shape(doc.PortServo), x=40, z=11)
             self.assertGreater(intersection_volume(middle, obstacle), 0)
             with_obstacle = {**module, "references": [*module["references"], witness]}
             result = servo_module_service_check(doc, with_obstacle)

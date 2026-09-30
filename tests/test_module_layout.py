@@ -13,7 +13,7 @@ class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
         self.assertEqual(len(stations), 4)
-        self.assertEqual(stations["MainPropulsionModule"].x_mm, -15.0)
+        self.assertEqual(stations["MainPropulsionModule"].x_mm, -17.0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 100)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -70)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
@@ -42,7 +42,7 @@ class ModuleLayoutTests(unittest.TestCase):
             next(
                 s for s in MODULE_STATIONS if s.object_name == "MainPropulsionModule"
             ).attachment_offset_x_mm,
-            15.0,
+            17.0,
         )
 
     def test_modules_allow_only_fixed_forward_or_reverse_orientation(self):

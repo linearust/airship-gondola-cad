@@ -35,7 +35,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 0,
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
-            ("PropulsionFixedFrame", "MainPropulsionModule", None, -15.0, 0, 15.0),
+            ("PropulsionFixedFrame", "MainPropulsionModule", None, -17.0, 0, 17.0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -100,7 +100,7 @@ class SavedRailValidationTests(unittest.TestCase):
         }
         return rail_check(self.doc.DesignRegistry, shapes)
 
-    def test_actual_four_mounts_pass_in_common_rigid_frame(self):
+    def test_actual_five_attachments_pass_in_common_rigid_frame(self):
         self.root.Placement = App.Placement(
             App.Vector(20, -10, 7), App.Rotation(App.Vector(1, 2, 3), 37)
         )
@@ -111,7 +111,8 @@ class SavedRailValidationTests(unittest.TestCase):
             row["attachment_axis_x_mm"]
             for row in report["rails"][0]["installed_mounts"]
         )
-        for value, expected in zip(actual, (-140, -70, 0, 100)):
+        self.assertEqual(len(actual), 5)
+        for value, expected in zip(actual, (-140, -70, -34, 0, 100)):
             self.assertAlmostEqual(value, expected)
 
     def test_gap_position_is_rejected_even_without_a_collision(self):
@@ -133,7 +134,70 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
             if row["module"] == "MainPropulsionModule"
         )
-        self.assertAlmostEqual(row["attachment_axis_x_mm"], 15.0)
+        self.assertAlmostEqual(row["attachment_axis_x_mm"], 17.0)
+        self.assertFalse(row["passed"])
+
+    def test_missing_opposite_pair_cannot_pass_as_a_single_propulsion_clamp(self):
+        for suffix in ("RailMountScrew", "RailMountNut"):
+            self.doc.removeObject("MainPropulsionModuleOpposite" + suffix)
+        self.doc.recompute()
+        report = self.check()
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["rail_lock_inventory_matches"])
+        rows = [
+            row
+            for row in report["rails"][0]["installed_mounts"]
+            if row["module"] == "MainPropulsionModule"
+        ]
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(rows[0]["passed"], rows[0])
+        self.assertFalse(rows[1]["passed"])
+        self.assertTrue(
+            all(not item["passed"] for item in rows[1]["installed_hardware"])
+        )
+
+    def test_opposite_foot_requires_its_own_complete_rail_support(self):
+        obj = self.doc.ContinuousRail
+        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 9, App.Vector(-47, -1.25, 1.5)))
+        with patch(
+            "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
+        ):
+            report = self.check()
+        rows = [
+            row
+            for row in report["rails"][0]["installed_mounts"]
+            if row["module"] == "MainPropulsionModule"
+        ]
+        self.assertTrue(rows[0]["passed"], rows[0])
+        self.assertFalse(rows[1]["passed"])
+        self.assertFalse(rows[1]["saved_lower_mount_attachment"]["passed"])
+
+    def test_opposite_leg_defect_is_rejected_even_if_source_has_same_defect(self):
+        frame = self.doc.PropulsionFixedFrame
+        frame.Shape = frame.Shape.cut(
+            Part.makeBox(24, 4, 8.3, App.Vector(-29, 1.25, 2.2))
+        )
+        with patch(
+            "gondola.validation.rail_mount.propulsion.fixed_frame_shape",
+            return_value=frame.Shape,
+        ):
+            report = self.check()
+        row = next(
+            row for row in report["saved_integral_mounts"] if row["part"] == frame.Name
+        )
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+        self.assertLess(
+            row["attachment_sites"][0]["independent_lower_mount_comparison"][
+                "difference_mm3"
+            ],
+            1e-5,
+        )
+        self.assertGreater(
+            row["attachment_sites"][1]["independent_lower_mount_comparison"][
+                "difference_mm3"
+            ],
+            100,
+        )
         self.assertFalse(row["passed"])
 
     def test_shifted_saved_bolt_and_wrong_sku_are_rejected(self):
@@ -151,13 +215,13 @@ class SavedRailValidationTests(unittest.TestCase):
 
         screw = self.doc.MainPropulsionModuleRailMountScrew
         original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
-        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=15)
+        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=17)
         screw.HardwareSKU = "M3X8_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
         bridge = self.doc.ServoDriveBridge
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(14.5, -7.75, 9.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(16.5, -7.75, 9.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])

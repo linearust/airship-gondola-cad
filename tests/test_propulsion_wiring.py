@@ -92,7 +92,7 @@ class PropulsionWiringTests(unittest.TestCase):
 
         propulsion = self.propulsion.getGlobalPlacement()
         electronics = self.electronics.getGlobalPlacement()
-        self.assertEqual(propulsion.Base.x, -15)
+        self.assertEqual(propulsion.Base.x, -17)
         fc = world_shape(self.fc_reserve)
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, propulsion, electronics)

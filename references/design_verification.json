@@ -1,47 +1,65 @@
 {
-  "revision": "BR",
-  "recorded_utc": "2026-09-30T13:26:13.991651+00:00",
+  "revision": "BS",
+  "recorded_utc": "2026-09-30T14:44:51.144064+00:00",
   "passed": true,
-  "scope": "Nominal CAD, native controls, motion/service and export verification only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "8239188d19dbdb6bf8b5ba48147ef18986f87626f8c737b8fa2b97233371a12a",
-  "cad_sha256": "90d528546cf6a57cf3609149b3c873808b64c19be5d0932522ac4337a1018a4a",
+  "scope": "Nominal CAD, controls, motion/service and exports only; no physical, electrical or flight qualification.",
+  "source_fingerprint": "8b496e37f7802f714fa271ecaa2a9e4cd3dc357271946010e5d5b5a0d3b06cfc",
+  "cad_sha256": "ef6475ca852af45c9ed0a4ada84fced06d58e2bcc920261b8107c4be691a653d",
+  "predecessor": {
+    "revision": "BR",
+    "commit": "d0ef6a45fe9b0820047eb69f4e117868c39ce859",
+    "verification_sha256": "36e6e9823955fb79123f372a857346abfaf68100022ae0a5610b1228755a890d"
+  },
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "93d4553aa7c13054c1d225dde46e77d83950ff2248d81b0eacc9ea88be2242c3"
+    "sha256": "9586b93d534b660c7814c69ca69280b65fa87c2422e2f958192c775509b27df4"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "dbf83036fff21b2d2acf7b8533a7506d697692ad65f34ee9b2819383e1cfbe58"
+    "sha256": "a76fe439c52fd75c5a1727fc21295cd323b27b408b61fe6ac1ea5b8281c9b6ba"
   },
-  "post_approval_display_correction": {
-    "sha256": "287bf9d4f312f8cb3b4bc498d056d7abde4b654406c6e141635b907d8822c30a",
-    "source_fingerprint_before": "95a5f07786d4facfd84bedf78cd551ae90193de994dabfbc74f3296827bb12a6",
-    "source_fingerprint_after": "34add847da416160fa1853944f92e51cbce9af74037b9730fcb9b0aede3f8cc5",
-    "scope": "Four exact strings in the separate illustrative attachment-detail document; original geometry approval retained unchanged."
-  },
-  "fixture_approval_chain": {
-    "initial_approval_sha256": "42e1738f744ccf73d8549309e35a537e1d85b7670a954303490ca7d15a8d8369",
-    "initial_promotion_sha256": "1a3c7c2bbb9145a770683e776a6d21cbeac90745321e7b7ac82bf78aa482c2b9",
-    "display_correction_sha256": "287bf9d4f312f8cb3b4bc498d056d7abde4b654406c6e141635b907d8822c30a",
-    "wiring_correction_sha256": "8d2d434139def4015cc0cc04f2843295350e7866df0c7d2fba16a75f835eb6f1",
-    "incremental_approval_sha256": "810b87f3715a5ee75435e6af8414791da13ef95f8b4e9f6907c5539314211f1f",
-    "incremental_promotion_sha256": "0ea7e9d5b908e30996ab8ac94098018c8176034575fc350c3014dcaee7ecdc0c",
-    "optical_correction_sha256": "ec0a8722c93406a98afb28aa76208d89c59636cb7b698e135065cd005b2fc71c",
-    "optical_approval_sha256": "dbf83036fff21b2d2acf7b8533a7506d697692ad65f34ee9b2819383e1cfbe58",
-    "optical_promotion_sha256": "8c20c5bb7eebb1847a354bee26bb01675d7b1201acbf729356f34a251711e14c"
-  },
+  "fixture_promotion_sha256": "2804498a05eb2f7966c46a71ca6427cf68b2ca9c03090d6cb0717f8009a86232",
   "native_tests": {
     "passed": true,
-    "testsRun": 633,
+    "testsRun": 644,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "production_test_tool_source_unchanged": true,
     "execution_inputs_unchanged": true,
     "exact_discovery_coverage": true,
-    "execution": "One fresh complete native discovery run against the final frozen source, tests, tools and fixture. Historical failed/corrective attempts are retained separately and contribute no reused passing results.",
     "outer_launch_exit_code": 0
   },
+  "pipeline": [
+    {
+      "name": "build",
+      "exit_code": 0
+    },
+    {
+      "name": "preview",
+      "exit_code": 0
+    },
+    {
+      "name": "compare",
+      "exit_code": 0
+    },
+    {
+      "name": "validate",
+      "exit_code": 0
+    },
+    {
+      "name": "bundle",
+      "exit_code": 0
+    },
+    {
+      "name": "blender",
+      "exit_code": 0
+    },
+    {
+      "name": "simulation",
+      "exit_code": 0
+    }
+  ],
   "validation_passed": {
     "gondola_baseline_validation.json": true,
     "gondola_rail_validation.json": true,
@@ -50,38 +68,37 @@
     "gondola_equipment_validation.json": true,
     "gondola_validation.json": true
   },
+  "native_print_layout": {
+    "passed": true,
+    "sku_count": 13,
+    "sha256": "f07b1cd026d0a09d726b120b089949b0aa324c3ce2dbb6a771a1e664228c9e7a",
+    "approved_candidate_sha256": "55d8b3606b7a47e891779bc8e6919024d5038eeec389bdbf53e5a7ce0f8bb105"
+  },
   "blender": {
     "passed": true,
     "scene_count": 6,
     "sampled_frames": 1229,
-    "matrix_checks": 88208,
+    "matrix_checks": 90184,
     "discrepancy_count": 0
   },
-  "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
+  "blender_scope": "Sampled prescribed rigid motion, not dynamics or flexible wire simulation.",
   "mass_comparison": {
-    "before_revision": "BQ",
-    "after_revision": "BR",
-    "basis": "Nominal CAD volume/density and modeled hardware envelopes. This is not a measured mass difference or an all-up flight-mass estimate.",
-    "current_printed_g_delta_g": 3.2740265123545242,
-    "current_hardware_g_delta_g": 2.823045336372786,
-    "structure_hardware_g_delta_g": 6.0970718487273246
+    "before_revision": "BR",
+    "after_revision": "BS",
+    "basis": "Nominal CAD volume/density and modeled hardware envelopes; not measured mass or all-up flight mass.",
+    "current_printed_g_delta_g": 3.0192854187294103,
+    "current_hardware_g_delta_g": 1.4795160558355605,
+    "structure_hardware_g_delta_g": 4.498801474564971
   },
   "mass_budget_matches_saved_cad": true,
-  "native_print_layout": {
-    "passed": true,
-    "path": "build/gondola_print_parts.FCStd",
-    "sha256": "0d7c718c7591450dd657e0da1660074c1d266f89062191fa06a1c2597519c240",
-    "approved_candidate_sha256": "dda07271c05e02fa8071320c5af7025ab1de4157ed2998f124648ec6c0c5b7ed",
-    "sku_count": 13
-  },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "90d528546cf6a57cf3609149b3c873808b64c19be5d0932522ac4337a1018a4a",
-    "gondola_print_parts.FCStd": "0d7c718c7591450dd657e0da1660074c1d266f89062191fa06a1c2597519c240",
-    "gondola_power_options.FCStd": "9cd14ab89d8d9abe6c1b15ca705069535f0de1590e104788193b65c02e123783",
-    "gondola_attachment_detail.FCStd": "07534a74e37ddf4bc78da411cc1cbb07ea23c12b8e04840a0dac2c9a995a8788"
+    "gondola.FCStd": "ef6475ca852af45c9ed0a4ada84fced06d58e2bcc920261b8107c4be691a653d",
+    "gondola_print_parts.FCStd": "f07b1cd026d0a09d726b120b089949b0aa324c3ce2dbb6a771a1e664228c9e7a",
+    "gondola_power_options.FCStd": "355cffd1bb1714af617ef1ba2a6366ce5999c6841f33b45866ad59a18ee5a56f",
+    "gondola_attachment_detail.FCStd": "04b8753c4ef0a4245069e9f45e5f422db4b6f18816d9f233a3c392e29765e95e"
   },
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "9ffc6de17904a87fa6278b5a470027d587bdd69151a7d4db3c63b079e7e5d114",
-  "print_bundle_sha256": "8db8e1c6e6aa1e396c043dbd5ab1173a27dd82bbed1a73111c264a3e0b8e9276",
-  "record_scope": "Valid only for matching production/test/tool, CAD, fixture and artifact hashes; missing outputs must be regenerated and verified."
+  "evidence_archive_sha256": "02b365ea608987a0b6ac6f3d119f58ef3d99b8815781f8c8cfb31439f5657a66",
+  "print_bundle_sha256": "a64af1caff3ace1cf020808801436e16be2254eba9bdfb40a2177e677f596371",
+  "record_scope": "Valid only for matching source/test/tool, CAD, fixture and artifact hashes. Earlier evidence does not qualify changed inputs."
 }

@@ -239,7 +239,7 @@ def _output_support(sign):
 
 
 def fixed_frame_shape():
-    """One bearing frame with a broad central seat and shared keyed rail clamp."""
+    """One bearing frame with a central seat and two opposed shared rail clamps."""
     web_opening = rail.WEB_THICKNESS + 2 * RAIL_WEB_SIDE_CLEARANCE
     wings = box(18, 70, FRAME_CROSSBEAM_THICKNESS, (-9, -35, BASE_Z)).cut(
         box(20, web_opening, 20, (-10, -web_opening / 2, 0))
@@ -259,15 +259,15 @@ def fixed_frame_shape():
         [
             central_seat,
             rail_foot,
+            servo_bridge.opposite(rail_foot),
             wings,
             _output_support(1),
             _output_support(-1),
-            servo_bridge.frame_key_shape(),
         ]
     )
     return _checked(
         servo_bridge.cut_shared_bolt_passage(frame),
-        "Common output-bearing frame with keyed shared rail clamp",
+        "Common output-bearing frame with opposed shared rail clamps",
     )
 
 
@@ -718,46 +718,25 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
                 servo_bridge.CHEEK_THICKNESS,
             ),
             (
-                "servo_bridge_recess_skin",
+                "servo_bridge_opposite_cheek",
                 "ServoDriveBridge",
-                (22, servo_bridge.CHEEK_OUTER_Y - 0.01, 6.5),
-                (
-                    22,
-                    servo_bridge.CHEEK_CONTACT_Y
-                    - servo_bridge.KEY_DEPTH
-                    - servo_bridge.KEY_DEPTH_CLEARANCE
-                    + 0.01,
-                    6.5,
-                ),
-                servo_bridge.CHEEK_THICKNESS
-                - servo_bridge.KEY_DEPTH
-                - servo_bridge.KEY_DEPTH_CLEARANCE,
+                (-24, 5.24, 10.5),
+                (-24, 9.76, 10.5),
+                4.5,
             ),
             (
-                "servo_bridge_recess_end_rim",
+                "servo_bridge_positive_guide",
                 "ServoDriveBridge",
-                (
-                    servo_bridge.KEY_END_X + servo_bridge.KEY_FACE_CLEARANCE - 0.01,
-                    -6.0,
-                    6.5,
-                ),
-                (servo_bridge.CHEEK_END_X + 0.01, -6.0, 6.5),
-                servo_bridge.CHEEK_END_X
-                - servo_bridge.KEY_END_X
-                - servo_bridge.KEY_FACE_CLEARANCE,
+                (0, 11.19, 10),
+                (0, 13.21, 10),
+                2.0,
             ),
             (
-                "servo_bridge_recess_bottom_rim",
+                "servo_bridge_negative_guide",
                 "ServoDriveBridge",
-                (22, -6.0, servo_bridge.FRAME_BOTTOM_Z - 0.01),
-                (
-                    22,
-                    -6.0,
-                    servo_bridge.KEY_BOTTOM_Z - servo_bridge.KEY_FACE_CLEARANCE + 0.01,
-                ),
-                servo_bridge.KEY_BOTTOM_Z
-                - servo_bridge.KEY_FACE_CLEARANCE
-                - servo_bridge.FRAME_BOTTOM_Z,
+                (0, -13.21, 10),
+                (0, -11.19, 10),
+                2.0,
             ),
             (
                 "servo_bridge_connector_plate",
@@ -770,13 +749,6 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
                 ),
                 servo_bridge.CONNECTOR_PLATE_THICKNESS,
             ),
-            (
-                "servo_bridge_frame_key_height",
-                "PropulsionFixedFrame",
-                (22, -6.0, servo_bridge.KEY_BOTTOM_Z - 0.01),
-                (22, -6.0, servo_bridge.KEY_TOP_Z + 0.01),
-                servo_bridge.KEY_TOP_Z - servo_bridge.KEY_BOTTOM_Z,
-            ),
         ]
     )
 
@@ -788,7 +760,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Integral output frame with a 24 mm U rail contact at local X15. A broad 18 by 22 mm seat at Z12.5 and a 5 by 5.5 by 2.5 mm side key locate the removable bridge. One recessed M3x12 screw clamps its 2.5 mm head-bearing floor, the full 4 mm frame leg and the 2.5 mm rail web. The nut seats directly on the rail; the opposite U wall provides clearance and anti-rotation rather than clamp preload. The bridge key recess retains 1.8 mm back skin. Qualify seating, key fit, mesh, clamp retention and PA12 creep; nominal clearance is not loaded alignment accuracy. Support both subassemblies when releasing the shared clamp and remove the complete unit from the rail for bench replacement. Output feet, bearings, shafts, carrier geometry, 150 mm axis span and 50 mm axis height are retained.",
+        "Integral output frame with two opposed 24 mm U rail feet at local X +/-17 mm, matching the 34 mm rail-wall pitch. The broad 18 by 22 mm seat at Z12.5 supports the removable U-shaped servo saddle. Each recessed M3x12 screw clamps 2.5 mm bridge stock, 4 mm frame leg and 2.5 mm rail web. Nut guards carry no axial preload. The two feet span 58 mm and locally restrict rail curvature; seat both without forcing a curved or warped rail straight. No blind locating keys. Qualify side-guide fit, simultaneous seating, mesh, retention and PA12 creep. Support both modules before releasing both shared clamps. Output bearings, shafts, rotor geometry, 150 mm axis span and 50 mm axis height are retained.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -1178,7 +1150,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on a removable paired-servo bridge. Its flat central plate bears on the broad frame seat, while an open-faced rectangular key/recess locates the shared side-clamp interface. One recessed M3x12 pair clamps bridge, frame and rail together; no separate bridge mounting pairs remain. Support both subassemblies when releasing the common clamp and remove the propulsion unit from the rail before bench service. Key fit and simultaneous seating need qualification. Only the selected 48T/16T configuration is supported; a different ratio requires replacement geometry and complete transmission validation.",
+            "input_mount": "Prepared stock-horn drives on a removable paired-servo U saddle. Broad central seating, two short side guides and opposed shared M3x12 rail clamps at 34 mm pitch locate and retain it. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -1290,7 +1262,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "Removable paired bridge with unchanged servo windows, ear holes and 3 mm cradle sidewalls. Its 2 mm plate seats on the frame at Z12.5; a 4.5 mm cheek at X9..27 receives the 2.5 mm deep side key in a 2.7 mm deep open-faced recess, with 0.2 mm nominal face/depth allowance. Recess back skin and outer rim are 1.8 mm; bottom rim and separation from the head recess are 1.6 mm. The recessed M3x12 screw bears on 2.5 mm solid cheek stock, followed by 4 mm frame leg and 2.5 mm rail web. Clamp hardware does not locate the gear axes. Check production fit, simultaneous seating, mesh and creep without pulling a warped joint into place. For unpowered bench service, disconnect leads, support both modules, release the common clamp and remove the unit from the rail. Remove both small output gears, shift the servo module 2.7 mm in -Y, lift 0.5 mm and slide 80 mm in +X; output shafts, bearings and carriers remain installed. Reseat and align before tightening.",
+        "Removable paired servo saddle with unchanged servo windows, ear holes and 3 mm cradle walls. A 38 by 26.4 by 2 mm roof seats at Z12.5. Two short 2 mm side guides wrap the central frame seat with 0.2 mm nominal side allowance; two opposed 4.5 mm cheeks use shared recessed M3x12 rail clamps 34 mm apart. No blind key pockets. Align both gear meshes before alternating final tightening; do not use clamp force to straighten a warped joint. Unpowered bench service: disconnect leads, support both modules and slide the complete unit +X10 mm then lift Z30 mm from the rail. Remove both small output gears, loosen the two driven-stub carrier clamps and shift PortOutputShaftNegative +12 mm along Y and StarboardOutputShaftPositive -12 mm along Y. Keep their shifted shapes installed and support the rotors. Lift the servo assembly 11 mm then withdraw 80 mm along +X. Reverse the sequence, restore shaft flats and all clamp/gear security before operation.",
         sku=drive.bridge_sku,
     )
     parts = {
