@@ -193,7 +193,7 @@ class OpticalClearanceTests(unittest.TestCase):
         foot = self.doc.OpticalMountBase
         original = foot.Shape.copy()
         try:
-            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, -5, 0)))
+            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, 5, 0)))
             result = _carrier_interface_checks(self.doc)
             self.assertFalse(result["passed"])
             self.assertTrue(

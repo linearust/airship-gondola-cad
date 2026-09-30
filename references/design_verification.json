@@ -1,21 +1,21 @@
 {
-  "revision": "BL",
-  "recorded_utc": "2026-09-29T13:54:15.582336+00:00",
+  "revision": "BM",
+  "recorded_utc": "2026-09-30T05:43:54.421088+00:00",
   "passed": true,
   "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "5a252cb9a488a597a9c02ca1d8d36ac74b5ad38060857122d0f121121af5e9b6",
-  "cad_sha256": "526d46d7a03463bd6652a7876cdd39119ad24e9b6b3d6e303ef53b3249abd85c",
+  "source_fingerprint": "c59072670e39ae9aa79ce8a8bf24d68ff27f79e184cbc702f1891b7c7b9932a9",
+  "cad_sha256": "47735a38275a52e4e18dab9068538f7a3bee8770064bed961f71e893316b3953",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "13afa4689da8d6645d4db1dd6a1afc2860dd7f65a599d5043e89a650cdd7637f"
+    "sha256": "37b5f191160fdc33213ea5b9a34c87225f60a9f2c37fa383ab92e8f69d0b8a0f"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "f5489ce4367c503b987fb942098a5b6cf06e3b49b5f06b86baf00196cff2f903"
+    "sha256": "ee719610c2b7e2ffd887facf1e6c7d28bda17d5be7bad60288a2329783316264"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 577,
+    "testsRun": 594,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -23,22 +23,22 @@
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
-    "gondola_equipment_validation.json": true,
-    "gondola_power_validation.json": true,
-    "gondola_propulsion_validation.json": true,
     "gondola_rail_validation.json": true,
+    "gondola_propulsion_validation.json": true,
+    "gondola_power_validation.json": true,
+    "gondola_equipment_validation.json": true,
     "gondola_validation.json": true
   },
   "blender": {
     "passed": true,
     "scene_count": 6,
     "sampled_frames": 1349,
-    "matrix_checks": 108266,
+    "matrix_checks": 107158,
     "discrepancy_count": 0
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "29c6fbf93a6047f8a7533e298d2a90faf511f61bb338e7f5b4d706535fd3694f",
-  "record_scope": "Historical CAD execution result at recorded_utc. Applicable only to matching source, native CAD and fixture hashes. It does not verify subsequent documentation. Detailed executed checks and limitations are in the unchanged evidence archive; absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "a355be9a388756868af0468a83be0ad8d37f26bf3dcd7f5a3386ebf174fedf9f"
+  "evidence_archive_sha256": "fd02f4fcfe2b6e06feed1476fc6079dad6a0e8e4f123419ae79360464983d0e1",
+  "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
+  "print_bundle_sha256": "f375c4b451653b42dfcaf814ddf7961b18ef2af597e9688d89ec70861791ab51"
 }

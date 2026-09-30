@@ -138,7 +138,8 @@ def bridge_shape(drive=SELECTED_DRIVE):
     # Retain the sourced ear axes and their open necks into the body windows.
     void = _ear_clearance(drive)
     bridge = bridge.cut(void).cut(opposite(void))
-    # Horn screws now withdraw from the gear side. Keep the side columns solid;
+    # Remove front horn nuts/adapter on the detached servo module; rear screws
+    # stay in the horn until the servo is free. Keep the side columns solid;
     # the former rear tool-relief scallops are no longer needed.
     # The plate sits above the complete rail-key elbow; its arms stand outside
     # the rail screw head. Neither needs a tunnel, roof notch or thin ring.

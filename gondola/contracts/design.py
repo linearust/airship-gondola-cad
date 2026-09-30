@@ -24,7 +24,7 @@ from .servo_horns import SELECTED_BY_SIDE
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BL"
+DESIGN_REVISION = "BM"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -77,7 +77,7 @@ PART_SEPARATION_REASONS = {
     "bearings_and_frame": "Retain the four purchased generic 3x6x2.5 bearings for this iteration. Each rotor has two bearings at 70 mm centre spacing and 10 mm shaft grips; driven/idler rods remain 34/20 mm. A fixed round seat and integral rear shoulder locate each bearing; one identical removable front keeper per bearing uses one M2x6 screw and ordinary M2 nut. Broad pocket guides prevent keeper rotation. Tighten the keeper against its frame seat, not the bearing; no radial clamp or bearing preload is intended. The nominal diameter6.1 seat has a continuous bore across the full bearing width and requires process-matched coupon fit/finishing; reject radial rocking. The diameter5.6 keeper opening and0.5mm inward float require actual outer-ring/shield and axial-fit checks. Keeper fronts preserve the separate nominal +/-0.5mm carrier stops. Remove the carrier and shafts before bearing service; no latch deflection or two-blade release is required. No bought bearing spacers, push-on rings or replacement bearings. This is not a multiple-size housing; two bearings do not eliminate overhang bending or fit sensitivity.",
     "motor_carriers_and_frame": "Independent powered rotation; each carrier integrates the motor plate, guard, struts and shaft clamps. The selected carrier remains for 40 mm propellers, with a 50 mm outside / 46 mm inside guard. A separately checked symmetric replacement-rotor space allowance supports planning for a future 50 mm propeller carrier; it does not establish unknown motor, propeller, mounting, wiring or thrust compatibility. Replace the carrier rather than fitting a 50 mm blade into the present guard.",
     "horn_and_adapter": "One rounded, tapered adapter follows the selected manufacturer X06 stock plastic half arm 1 on both sides, retaining the root and nut-bearing lands. Preserve the supplied STEP geometry and factory hole axes; enlarge only the existing diameter-1mm holes at radii6.8/13.2mm to1.5mm for rear M1.4x8 screws and front M1.4 nuts. A near diameter1.8mm round hole limits translation; a far1.8x2.4mm radial slot accommodates hole-pitch error without leaving both joints free along the arm. The nominal diameter7mm root uses an open diameter7.3mm seat; its0.15mm radial clearance is assembly allowance, not certified concentricity. Keep the purchased spline, OEM centre retaining screw, full shaft-stop floor, gear/stub planes and ordered removal. Tighten both joints before operation. Resin, mass, actual seating, runout, clamping and reversing-load strength remain unmeasured.",
-    "optical_head": "Two prints provide one lockable manual pitch-Y axis. A small rectangular foot and straight pitch post attach to an existing universal carrier side slot with two M2 pairs; one more pair clamps pitch. No dedicated optical rail shoe or additional universal carrier is needed. Use the checked host/edge configurations and validate complete sensor, service and power clearances after relocation. Rail centring does not correct roll or actively level the sensor. Qualify foot seating, pointing retention and PA12 creep.",
+    "optical_head": "Two prints provide one lockable manual pitch-Y axis. A small rectangular foot and straight pitch post attach to an existing universal carrier side slot with an integral locating tongue and one M2 pair; one more pair clamps pitch. The tongue limits assembly yaw without extending below the deck; the screw locks the seated foot. It does not self-level or remove the need to align before tightening. No dedicated optical rail shoe or additional universal carrier is needed. Use the checked host/edge configurations and validate complete sensor, service and power clearances after relocation. Rail centring does not correct roll or actively level the sensor. Qualify foot seating, pointing retention and PA12 creep.",
 }
 
 
@@ -167,9 +167,9 @@ def _selected_horn_hardware():
 
 
 PURCHASED_HARDWARE_QUANTITIES = {
-    "M2X8_BUTTON_HEAD": 13,
+    "M2X8_BUTTON_HEAD": 12,
     "M2X6_BUTTON_HEAD": 6,
-    "M2_HEX_NUT": 19,
+    "M2_HEX_NUT": 18,
     "M1_6X8_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
@@ -387,7 +387,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Attach the optical foot through the existing carrier side slot with two M2 pairs; manually align and lock the single pitch joint. Verify foot seating, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead before removing or relocating the head. Recheck complete view cones after changing host, edge or rail station; common interfaces do not make every position acceptable.",
+        "Seat the optical foot and its integral locating tongue in the existing carrier side slot, align it, then tighten its single M2 pair; manually align and lock the single pitch joint. Finish or reprint an interfering locator rather than pulling an unseated foot down with the screw. Verify foot seating, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead before removing or relocating the head. Recheck complete view cones after changing host, edge or rail station; common interfaces do not make every position acceptable.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",

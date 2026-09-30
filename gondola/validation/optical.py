@@ -565,6 +565,36 @@ def _placement_checks(doc, physical, kit, *, profile=None):
     }
 
 
+def _seated_foot_lift_sweep(shape, distance):
+    """Continuously lift the actual locator separately from the backed foot.
+
+    The transverse pitch-ear cylinder otherwise makes the generic sweep use
+    one bounding prism, extending the locator's low Z across the whole foot.
+    Splitting at the known seating plane retains all actual saved material;
+    each component still uses the conservative continuous sweep unchanged.
+    """
+    if distance <= 0:
+        raise ValueError("Optical foot lift must be positive")
+    bounds = shape.BoundBox
+    below = shape.common(
+        Part.makeBox(
+            bounds.XLength + 2,
+            bounds.YLength + 2,
+            max(0, -bounds.ZMin) + 1,
+            V(bounds.XMin - 1, bounds.YMin - 1, min(0, bounds.ZMin) - 1),
+        )
+    )
+    above = shape.cut(below)
+    pieces, methods = [], []
+    for component in (below, above):
+        if component.Volume <= TOL:
+            continue
+        swept, method = translation_sweep(component, (0, 0, distance))
+        pieces.append(swept)
+        methods.append(method)
+    return Part.makeCompound(pieces), "seating-plane partition: " + "; ".join(methods)
+
+
 def _carrier_interface_checks(doc):
     """Saved material witnesses for seating, slot axes and clamp bearing lands."""
     from gondola.cad import box
@@ -579,17 +609,50 @@ def _carrier_interface_checks(doc):
     foot.Placement = inverse.multiply(foot.Placement)
     rows = []
     for x in (-4.0, 2.0):
-        witness = box(2, 16, 0.2, (x, -8, -0.2))
-        missing = witness.cut(plate).Volume
-        rows.append(
-            {
-                "kind": "foot_support_strip",
-                "x_min_mm": x,
-                "missing_material_mm3": missing,
-                "passed": missing <= TOL,
-            }
-        )
-    for index, (x, y) in enumerate(optical_interface.CLAMP_CENTRES):
+        for target, z, face in ((plate, -0.2, "carrier"), (foot, 0.0, "foot")):
+            witness = box(2, 16, 0.2, (x, -8, z))
+            missing = witness.cut(target).Volume
+            rows.append(
+                {
+                    "kind": "foot_support_strip",
+                    "surface": face,
+                    "x_min_mm": x,
+                    "missing_material_mm3": missing,
+                    "passed": missing <= TOL,
+                }
+            )
+    # Independent material witness: a narrow peg, shortened/rotated tongue or
+    # a historical two-bolt foot cannot certify this single-clamp connection.
+    locator_core = box(1.7, 6.0, 0.9, (-0.85, -5.0, -0.9))
+    missing = locator_core.cut(foot).Volume
+    rows.append(
+        {
+            "kind": "rigid_locator_full_length_and_section",
+            "missing_material_mm3": missing,
+            "passed": missing <= TOL,
+        }
+    )
+    underside = box(8, 16, 10, (-4, -8, -mounting_plate.THICKNESS_MM - 10))
+    intrusion = intersection_volume(underside, foot)
+    rows.append(
+        {
+            "kind": "locator_stays_above_carrier_underside",
+            "obstruction_mm3": intrusion,
+            "passed": intrusion <= TOL,
+        }
+    )
+    # The upward sweep is the same occupied set as the reversed insertion.
+    insertion, method = _seated_foot_lift_sweep(foot, 2.0)
+    blockage = intersection_volume(insertion, plate)
+    rows.append(
+        {
+            "kind": "continuous_full_seating_insertion",
+            "method": method,
+            "obstruction_mm3": blockage,
+            "passed": blockage <= TOL,
+        }
+    )
+    for index, (x, y) in optical_interface.CLAMP_CENTRES.items():
         axis = Part.makeCylinder(1.0, 4.0, V(x, y, -mounting_plate.THICKNESS_MM))
         obstruction = intersection_volume(axis, plate) + intersection_volume(axis, foot)
         rows.append(
@@ -620,7 +683,7 @@ def _carrier_interface_checks(doc):
         "carrier": carrier.Name,
         "witnesses": rows,
         "overlap_mm3": overlap,
-        "scope": "Nominal saved geometry, not bearing pressure or retention qualification. Full support strips and two axial passages plus nominal transverse head/nut lands must retain material.",
+        "scope": "Nominal saved geometry, not bearing pressure or retention qualification. Full flat support strips, the rigid locator and one axial passage plus nominal transverse head/nut lands must retain material. Insertion is a rigid translation, not a fit-force, preload or retention qualification.",
         "passed": overlap <= TOL and all(row["passed"] for row in rows),
     }
 
@@ -649,9 +712,17 @@ def _foot_service_checks(doc, physical, kit):
         for start, end in zip(points, points[1:]):
             moving = shape.copy()
             moving.translate(V(*start))
-            swept, method = translation_sweep(
-                moving, tuple(b - a for a, b in zip(start, end))
-            )
+            if (
+                name == "CompleteOpticalMount/OpticalMountBase"
+                and start == (0, 0, 0)
+                and end[:2] == (0, 0)
+                and end[2] > 0
+            ):
+                swept, method = _seated_foot_lift_sweep(moving, end[2])
+            else:
+                swept, method = translation_sweep(
+                    moving, tuple(b - a for a, b in zip(start, end))
+                )
             hits = [
                 {"object": other, "intersection_mm3": volume}
                 for other, target in obstacles.items()
@@ -674,7 +745,7 @@ def _foot_service_checks(doc, physical, kit):
             }
         )
 
-    for index in range(2):
+    for index in optical_interface.CLAMP_CENTRES:
         name = f"OpticalFootNut{index}"
         shape = remaining.pop(name)
         # First unthread beyond the bolt tip, then move outside the tray and lift.
@@ -684,14 +755,14 @@ def _foot_service_checks(doc, physical, kit):
             [(0, 0, 0), (0, 0, 4.2), (20, 0, 4.2), (20, 0, 40)],
             {**host_parts, **remaining},
         )
-    for index in range(2):
+    for index in optical_interface.CLAMP_CENTRES:
         name = f"OpticalFootBolt{index}"
         shape = remaining.pop(name)
         path(name, shape, [(0, 0, 0), (0, 0, -8.2)], {**host_parts, **remaining})
     for name, shape in remaining.items():
         path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
     return {
-        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Unthread each foot nut 4.2 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw screws8.2 mm toward carrier underside, then lift the complete mount40 mm. The rail, balloon, hand/tool and connected harness are outside this bench-service model.",
+        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Unthread the foot nut 4.2 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The rail, balloon, hand/tool and connected harness are outside this bench-service model.",
         "paths": rows,
         "passed": all(row["passed"] for row in rows),
     }

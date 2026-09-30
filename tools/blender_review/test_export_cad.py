@@ -46,7 +46,7 @@ class ExportContractTests(unittest.TestCase):
         )
         objects = {host.Name: host, "OpticalFlowModule": optical}
         for prefix in ("OpticalFoot", "OpticalPitch"):
-            for index in ("0", "1") if prefix == "OpticalFoot" else ("",):
+            for index in ("1",) if prefix == "OpticalFoot" else ("",):
                 for kind, sku in (("Bolt", "M2X8_BUTTON_HEAD"), ("Nut", "M2_HEX_NUT")):
                     objects[prefix + kind + index] = SimpleNamespace(HardwareSKU=sku)
         return SimpleNamespace(getObject=objects.get), objects
@@ -85,10 +85,8 @@ class ExportContractTests(unittest.TestCase):
 
     def test_each_optical_foot_and_pitch_fastener_is_required(self):
         for name in (
-            "OpticalFootBolt0",
             "OpticalFootBolt1",
             "OpticalPitchBolt",
-            "OpticalFootNut0",
             "OpticalFootNut1",
             "OpticalPitchNut",
         ):
@@ -99,7 +97,7 @@ class ExportContractTests(unittest.TestCase):
                         del objects[name]
                     else:
                         objects[name].HardwareSKU = "WrongFastener"
-                    with self.assertRaisesRegex(RuntimeError, "Expected three M2"):
+                    with self.assertRaisesRegex(RuntimeError, "Expected two M2"):
                         check_optical_carrier_basis(doc)
 
     @staticmethod

@@ -126,12 +126,12 @@ def mount_contract():
         "tray_top_z_in_pitch_frame_mm": TRAY_TOP_Z,
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
-        "hardware": "Three kit steel M2x8 button-head screw / M2 hex nut pairs total: two carrier-foot clamps and one pitch clamp. No washers.",
+        "hardware": "Two kit steel M2x8 button-head screw / M2 hex nut pairs total: one located carrier-foot clamp and one pitch clamp. No washers.",
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the integral carrier foot/post and sensor tray separately. Clamp the foot to an existing carrier middle-side slot with two M2 pairs; clamp the plain 2 mm pitch ears with the third pair.",
+        "assembly": "Print the integral carrier foot/post and sensor tray separately. Insert the integral tongue freely into an existing carrier middle-side slot and fully seat the foot before tightening its M2 pair; clamp the plain 2 mm pitch ears with the second pair.",
         "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while holding the nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
         "sensor_interface": "Continuous insulating adhesive pad for either MTF-01P or MTF-02P. OEM backside contact, retention and connector/wire fit remain unverified; no invented sensor fixing holes.",
     }
@@ -217,7 +217,7 @@ def build_optical_mount(doc, host, side=optical_interface.DEFAULT_SIDE):
             "PRINT | " + name,
             shape,
             App.Rotation(),
-            "PA12 SLS/MJF compact carrier foot with straight braced post and separate adhesive tray. Three M2x8/M2 nut pairs lock the foot and single pitch joint. Check received print fit, clamp retention, adhesive and optical alignment before use.",
+            "PA12 SLS/MJF compact carrier foot with straight braced post and separate adhesive tray. A rigid shallow tongue locates the foot; two M2x8/M2 nut pairs lock the foot and single pitch joint. Check received print fit, clamp retention, adhesive and optical alignment before use.",
         )
         set_property(obj, "PrintSKU", name)
         set_property(obj, "OpticalMountContract", contract)

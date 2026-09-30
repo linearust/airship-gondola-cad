@@ -6,7 +6,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import box, set_property
+from gondola.cad import box, set_property, union
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
@@ -17,9 +17,14 @@ HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
 HOST_OFFSET_X = 27.0
 FOOT_SIZE_MM = (8.0, 16.0)
 FOOT_THICKNESS = 2.0
-CLAMP_CENTRES = ((0.0, -5.0), (0.0, 5.0))
+# Retain the positive-Y joint's existing object identity; the negative joint
+# is replaced by a broad rigid locator, not a spring or interference fit.
+CLAMP_CENTRES = {1: (0.0, 5.0)}
 CLAMP_HOLE_DIAMETER = 2.6
 CLAMP_SCREW_LENGTH = 8.0
+LOCATOR_WIDTH = 2.0
+LOCATOR_END_CENTRES_Y = (-5.0, 1.0)
+LOCATOR_DEPTH = 1.2
 DEFAULT_HOST = "BatteryEquipmentModule"
 DEFAULT_SIDE = "PositiveX"
 SUPPORTED_HOSTS = {
@@ -28,7 +33,11 @@ SUPPORTED_HOSTS = {
     "AccessoryEquipmentModule": "AccessoryMount",
 }
 SIDES = ("PositiveX", "NegativeX")
-# Deliberately conservative assembly registration, not permissible operating play.
+# Retain the prior conservative assembly envelope; it is not operating play.
+# With +/-0.3 mm total-size variation, a 1.7 mm-wide locator with a 5.7 mm
+# straight centreline inside a 2.9 mm slot limits yaw to asin(1.2 / 5.7),
+# below this 12.71-degree bound. The positive-end screw bounds longitudinal
+# translation. Full foot seating and a tightened clamp are still required.
 DIMENSION_ALLOWANCE = 0.3
 MINIMUM_RECEIVED_BOLT_DIAMETER = 1.8
 MAX_REGISTRATION_ERROR = (
@@ -53,17 +62,34 @@ def placement(side=DEFAULT_SIDE):
 
 
 def foot_shape():
-    shape = box(*FOOT_SIZE_MM, FOOT_THICKNESS, (-4, -8, 0))
-    for x, y in CLAMP_CENTRES:
+    shape = union([box(*FOOT_SIZE_MM, FOOT_THICKNESS, (-4, -8, 0)), locator_shape()])
+    for x, y in CLAMP_CENTRES.values():
         shape = shape.cut(
             Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, FOOT_THICKNESS + 2, V(x, y, -1))
         )
     return shape.removeSplitter()
 
 
+def locator_shape():
+    """Shallow capsule enters only the slot; it never clips beneath the plate."""
+    radius = LOCATOR_WIDTH / 2
+    low, high = LOCATOR_END_CENTRES_Y
+    return union(
+        [
+            box(
+                LOCATOR_WIDTH, high - low, LOCATOR_DEPTH, (-radius, low, -LOCATOR_DEPTH)
+            ),
+            *(
+                Part.makeCylinder(radius, LOCATOR_DEPTH, V(0, y, -LOCATOR_DEPTH))
+                for y in (low, high)
+            ),
+        ]
+    ).removeSplitter()
+
+
 def interface_contract():
     return {
-        "mechanism": "Two-bolt rectangular foot on one existing carrier middle-side M2 slot",
+        "mechanism": "One M2 clamp and an integral rigid locating tongue in an existing carrier middle-side slot",
         "industry_standard_claimed": False,
         "supported_carriers": SUPPORTED_HOSTS,
         "default_host": DEFAULT_HOST,
@@ -71,10 +97,23 @@ def interface_contract():
         "host_offset_x_mm": HOST_OFFSET_X,
         "host_support_z_mm": HOST_SUPPORT_Z,
         "foot_size_mm": (*FOOT_SIZE_MM, FOOT_THICKNESS),
-        "foot_bolt_centres_xy_mm": CLAMP_CENTRES,
+        "foot_bolt_centres_xy_mm": tuple(CLAMP_CENTRES.values()),
+        "locator": {
+            "width_mm": LOCATOR_WIDTH,
+            "end_centres_y_mm": LOCATOR_END_CENTRES_Y,
+            "depth_mm": LOCATOR_DEPTH,
+            "nominal_slot_side_clearance_mm": (CLAMP_HOLE_DIAMETER - LOCATOR_WIDTH) / 2,
+            "nominal_recess_above_carrier_underside_mm": mounting_plate.THICKNESS_MM
+            - LOCATOR_DEPTH,
+            "dimensional_screen_recess_mm": mounting_plate.THICKNESS_MM
+            - DIMENSION_ALLOWANCE
+            - LOCATOR_DEPTH
+            - DIMENSION_ALLOWANCE,
+            "scope": "Rigid location only; no latch, interference or elastic preload. The 1.2 mm projection is a shallow locator, not an unsupported structural wall. With +/-0.3 mm size variation the side fit can reach contact: finish it to free insertion. The foot must sit flat on both support strips before tightening; never pull an interfering tongue into its slot with the screw. Verify the actual tongue remains above the carrier underside.",
+        },
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
-        "host_interface": "Existing x=+/-27 mm middle side slot; screw centres y=-5/+5 mm. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
-        "hardware": "Two M2x8 button-head screws from below the plate, ordinary M2 nuts above the foot; one further identical pair locks the pitch ears. No washers.",
+        "host_interface": "Existing x=+/-27 mm middle side slot; one screw at local y=+5 mm and the locating tongue toward negative Y. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
+        "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut above the foot; one further identical pair locks the pitch ears. No washers.",
         "minimum_received_flat_head_bearing_diameter_mm": 3.5,
         "concentric_head_land_across_maximum_slot_width_mm": (
             3.5 - CLAMP_HOLE_DIAMETER - DIMENSION_ALLOWANCE
@@ -91,10 +130,10 @@ def interface_contract():
             "minimum_received_screw_diameter_mm": MINIMUM_RECEIVED_BOLT_DIAMETER,
             "conservative_xy_translation_mm": (MAX_REGISTRATION_X, MAX_REGISTRATION_Y),
             "maximum_yaw_bound_deg": math.degrees(MAX_REGISTRATION_YAW_RAD),
-            "scope": "Assembly allowance around aligned 10 mm endpoint pitches; hand-align and lock both screws. Not an operating looseness or pointing specification. Received slot length and hole pitch require measurement.",
+            "scope": "Conservative assembly allowance bounded by the tongue width/length and positive-end screw, assuming full planar seating. Hand-align and lock the screw; this is not operating looseness, automatic alignment or a pointing specification. Width/length size screening does not include slot-end location, feature-position error or warpage. Inspect the actual features and align within these bounds before locking; they are not an all-process tolerance guarantee.",
         },
         "relocation": "Move the same foot to a free middle side slot on an existing carrier and recheck populated device, wiring and optical fields. Carrier and side compatibility alone do not establish a clear view or simultaneous power-platform fit.",
-        "service": "Disconnect the sensor and bench-support the carrier off the rail. Remove both exposed nuts and withdraw screws downward, then lift the optical mount. Remove obstructing equipment first if the selected populated host blocks access. No powered transfer or connected-cable service is modeled.",
+        "service": "Disconnect the sensor and bench-support the carrier off the rail. Remove the exposed foot nut and withdraw its screw downward, then lift the mount vertically to clear the 1.2 mm tongue. Remove obstructing equipment first if the selected populated host blocks access. No powered transfer or connected-cable service is modeled.",
         "qualification": "Nominal geometry only. Check actual print fit, full head/nut bearing, preload, PA12 creep, adhesive retention and pointing. The manual pitch joint does not self-level.",
     }
 
@@ -137,7 +176,7 @@ def attach_to_host(group, host, side=DEFAULT_SIDE):
 
 def build_hardware(doc, group):
     objects = []
-    for index, (x, y) in enumerate(CLAMP_CENTRES):
+    for index, (x, y) in CLAMP_CENTRES.items():
         for kind, shape, z, sku, source in (
             (
                 "Bolt",
@@ -164,7 +203,7 @@ def build_hardware(doc, group):
                     f"BUY | optical carrier foot {index + 1} {kind.lower()}",
                     shape,
                     sku,
-                    "M2x8 screw through carrier and 2 mm optical foot, ordinary M2 nut. Bench assembly; verify actual engagement and full slot bearing. No washer.",
+                    "One M2x8 screw through carrier and 2 mm optical foot, ordinary M2 nut. Integral shallow tongue limits rotation before clamping. Bench assembly; verify free insertion, full flat seating, actual engagement and full slot bearing. No washer.",
                     source,
                     fasteners.KIT_MATERIAL,
                 )
@@ -202,6 +241,20 @@ def manufacturing_wall_probes():
 
     x, y, z = mount.PIVOT_CENTRE
     return [
+        (
+            "optical_locator_transverse_width",
+            "OpticalMountBase",
+            (-LOCATOR_WIDTH / 2 - 0.01, -3, -LOCATOR_DEPTH / 2),
+            (LOCATOR_WIDTH / 2 + 0.01, -3, -LOCATOR_DEPTH / 2),
+            LOCATOR_WIDTH,
+        ),
+        (
+            "optical_locator_backed_by_foot",
+            "OpticalMountBase",
+            (0, -4, -LOCATOR_DEPTH - 0.01),
+            (0, -4, FOOT_THICKNESS + 0.01),
+            FOOT_THICKNESS + LOCATOR_DEPTH,
+        ),
         (
             "optical_upright_thickness",
             "OpticalMountBase",

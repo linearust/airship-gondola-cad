@@ -31,11 +31,11 @@ class OpticalMountTests(unittest.TestCase):
         self.host.Placement = App.Placement()
         self.doc.recompute()
 
-    def test_two_prints_and_three_common_fastener_pairs(self):
+    def test_two_prints_and_two_common_fastener_pairs(self):
         from gondola.contracts import fasteners
 
         self.assertEqual(len(self.module["printed"]), 2)
-        self.assertEqual(len(self.module["hardware"]), 6)
+        self.assertEqual(len(self.module["hardware"]), 4)
         self.assertIsNone(self.doc.getObject("OpticalRollStage"))
         self.assertIsNone(self.doc.getObject("OpticalRollBracket"))
         for obj in self.module["printed"] + self.module["hardware"]:
@@ -65,7 +65,7 @@ class OpticalMountTests(unittest.TestCase):
         self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
         post = Part.makeBox(8, 2, 15, App.Vector(-4, -2, 2))
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
-        self.assertAlmostEqual(shape.BoundBox.ZMin, 0)
+        self.assertAlmostEqual(shape.BoundBox.ZMin, -1.2)
 
     def test_actual_base_thickness_matches_every_manufacturing_probe(self):
         from gondola.parts import optical_interface, optical_mount

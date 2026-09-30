@@ -180,14 +180,14 @@ def check_optical_carrier_basis(doc):
         or "RailPositionX" in optical.PropertiesList
     ):
         raise RuntimeError("Update optical carrier review for changed host binding.")
-    for name in ("OpticalFootBolt0", "OpticalFootBolt1", "OpticalPitchBolt"):
+    for name in ("OpticalFootBolt1", "OpticalPitchBolt"):
         obj = doc.getObject(name)
         if obj is None or getattr(obj, "HardwareSKU", "") != "M2X8_BUTTON_HEAD":
-            raise RuntimeError("Expected three M2x8 optical foot/pitch screws.")
-    for name in ("OpticalFootNut0", "OpticalFootNut1", "OpticalPitchNut"):
+            raise RuntimeError("Expected two M2x8 optical foot/pitch screws.")
+    for name in ("OpticalFootNut1", "OpticalPitchNut"):
         obj = doc.getObject(name)
         if obj is None or getattr(obj, "HardwareSKU", "") != "M2_HEX_NUT":
-            raise RuntimeError("Expected three M2 optical foot/pitch nuts.")
+            raise RuntimeError("Expected two M2 optical foot/pitch nuts.")
     return {"host": host_name, "side": side}
 
 
@@ -414,11 +414,11 @@ def export(cad_path, output):
         scene(
             "05 Optical carrier pitch",
             "OPTICAL MANUAL PITCH / CARRIER SIDE FOOT",
-            "One manual pitch axis +/-20 deg. Two M2 pairs fix the foot to "
+            "One manual pitch axis +/-20 deg. A rigid shallow tongue and one M2 pair fix the foot to "
             + optical_attachment["host"]
             + " ("
             + optical_attachment["side"]
-            + "); a third pair locks pitch. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. Host and side remain fixed during this review. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
+            + "); a second pair locks pitch. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. Host and side remain fixed during this review. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
             145,
             all_names,
             [[origin.x - 35, origin.y - 30, 0], [origin.x + 35, origin.y + 30, 60]],
