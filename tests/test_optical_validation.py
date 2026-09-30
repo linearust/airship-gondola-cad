@@ -178,9 +178,10 @@ class OpticalClearanceTests(unittest.TestCase):
         carrier = self.doc.BatteryMount
         original = carrier.Shape.copy()
         try:
-            # Remove real stock through the raised Z15..17 carrier deck;
+            # Remove real stock through the saved carrier's top 2mm deck;
             # the outer support strip is at carrier X29..31, Y-8..8.
-            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, 15))
+            deck_bottom = original.BoundBox.ZMax - 2.0
+            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, deck_bottom))
             self.assertAlmostEqual(original.common(defect).Volume, 8.0)
             carrier.Shape = original.cut(defect)
             result = _carrier_interface_checks(self.doc)

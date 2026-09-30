@@ -71,11 +71,11 @@ def route_points(sign, propulsion_placement, electronics_placement):
     return [
         (WORKSPACE_X_MM, sign * propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z),
         # Come inward above the FC band before descending into its final entry.
-        # Retain the reviewed high approach above the FC band, then
-        # descend only into the terminal FC access region. Moving either module
-        # requires rechecking this layout-specific planning waypoint. The final
-        # 11 mm approach follows the FC endpoint when the rail station changes.
-        (endpoint.x - 11.0, sign * 12.0, 43.0),
+        # Keep the reviewed 14 mm rise above the terminal as the FC support
+        # height changes, then descend only into the terminal access region.
+        # The final 11 mm approach also follows the FC rail station. Moving
+        # either module still requires rechecking this planning reservation.
+        (endpoint.x - 11.0, sign * 12.0, endpoint.z + 14.0),
         (endpoint.x, endpoint.y, endpoint.z),
     ]
 

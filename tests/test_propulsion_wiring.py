@@ -85,7 +85,7 @@ class PropulsionWiringTests(unittest.TestCase):
                 1e-9,
             )
 
-    def test_previous_z42_approach_has_real_remote_overlap_at_actual_module_stations(
+    def test_thirteen_mm_rise_has_real_remote_overlap_at_actual_module_stations(
         self,
     ):
         from gondola.cad import placed_shape, world_shape
@@ -96,7 +96,10 @@ class PropulsionWiringTests(unittest.TestCase):
         fc = world_shape(self.fc_reserve)
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, propulsion, electronics)
-            points[1] = (*points[1][:2], 42.0)
+            self.assertAlmostEqual(points[1][2] - points[-1][2], 14.0)
+            # Retain the previous insufficient13 mm rise as the FC deck moves:
+            # its old absolute Z42 becomes Z44 after raising the carrier2 mm.
+            points[1] = (*points[1][:2], points[-1][2] + 13.0)
             with patch.object(self.wiring, "route_points", return_value=points):
                 route = self.wiring.route_geometry(sign, propulsion, electronics)
             shape = placed_shape(route["shape"], propulsion)
@@ -117,6 +120,27 @@ class PropulsionWiringTests(unittest.TestCase):
             maximum_radius = math.hypot(axial_distance, 1.5)
             self.assertGreater(maximum_radius, 8.02)
             self.assertLess(maximum_radius, 8.03)
+
+    def test_fixed_z43_waypoint_cannot_follow_the_raised_fc_terminal(self):
+        from gondola.cad import placed_shape, world_shape
+
+        propulsion = self.propulsion.getGlobalPlacement()
+        electronics = self.electronics.getGlobalPlacement()
+        fc = world_shape(self.fc_reserve)
+        for sign in (-1, 1):
+            points = self.wiring.route_points(sign, propulsion, electronics)
+            self.assertAlmostEqual(points[-1][2], 31.0)
+            self.assertAlmostEqual(points[1][2], 45.0)
+            # This was the actual regression: the terminal rose2 mm while
+            # the intermediate waypoint remained at absolute Z43.
+            points[1] = (*points[1][:2], 43.0)
+            with patch.object(self.wiring, "route_points", return_value=points):
+                route = self.wiring.route_geometry(sign, propulsion, electronics)
+            shape = placed_shape(route["shape"], propulsion)
+            endpoint = propulsion.multVec(App.Vector(*points[-1]))
+            result = self.audit.connection_check(shape, fc, tuple(endpoint))
+            self.assertFalse(result["passed"], result)
+            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 0.07)
 
     def test_disconnected_route_fails(self):
         route = self.routes[0]

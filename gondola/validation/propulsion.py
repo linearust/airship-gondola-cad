@@ -1036,19 +1036,14 @@ def servo_case_service_check(
 
 
 def frame_rail_bore_filled(frame):
-    """Fill the side bore and hex window outside the U opening for a conservative sweep.
-
-    The added stock lies entirely outside the rail web. It removes the
-    transverse cylinder that would otherwise make the generic sweep fill the
-    whole frame bounding box, including its real open rail passage.
-    """
+    """Fill both round side bores outside the fitted rail channel for exact sweeps."""
     additions = []
     for site in rail.attachment_sites(x_offset=17, shared_drive=True):
-        plug = Part.makeCylinder(1.7, 4, App.Vector(0, -5.25, 7), App.Vector(0, 1, 0))
-        guard = Part.makeBox(8, 2.5, 8, App.Vector(-4, 1.45, 3))
-        additions.extend(
-            rail.attachment_site_shape(item, site) for item in (plug, guard)
-        )
+        for start_y in (-6.0, 1.25):
+            plug = Part.makeCylinder(
+                1.7, 4.75, App.Vector(0, start_y, 7), App.Vector(0, 1, 0)
+            )
+            additions.append(rail.attachment_site_shape(plug, site))
     return frame.fuse(additions).removeSplitter()
 
 
@@ -1076,16 +1071,14 @@ def vertical_frame_release_check(frame, rail_shape=None):
     upper_gap = upper.BoundBox.ZMin - rail_shape.BoundBox.ZMax
     missing = abs(frame.cut(conservative).Volume)
     added = abs(conservative.cut(frame).Volume)
-    plug_volume = 2 * (
-        math.pi * (rail.SLOT_HEIGHT / 2) ** 2 * rail.MOUNT_LEG_THICKNESS + 8 * 2.5 * 8
-    )
+    plug_volume = 4 * math.pi * 1.7**2 * 4.75
     return {
         "lower_frame_path": path,
         "upper_geometry_initial_z_gap_mm": upper_gap,
         "original_shape_missing_from_envelope_mm3": missing,
         "side_bore_filled_volume_mm3": added,
         "maximum_side_bore_plug_volume_mm3": plug_volume,
-        "scope": "The complete frame is bounded by itself plus its side screw bore and guard nut window, filled only within the negative-Y clamp leg and positive-Y clearance guard. Both added regions stay outside the rail web. Split at the servo-seat plane: the exact lower planar/vertical-cylinder sweep preserves the U opening; upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
+        "scope": "The complete frame is bounded by itself plus its four side screw bores, filled only within the two solid U legs. Both added regions stay outside the rail web. Split at the servo-seat plane: the exact lower planar/vertical-cylinder sweep preserves the U opening; upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
         "passed": path["passed"]
         and upper_gap > TOL
         and missing < TOL
@@ -1102,8 +1095,8 @@ def rail_mount_clearance_check(doc, module):
     expected = {}
     for site in sites:
         for suffix, shape in (
-            ("RailMountScrew", rail.attachment_screw_shape(12, head_face_y=-7.75)),
-            ("RailMountNut", rail.nut_shape()),
+            ("RailMountScrew", rail.attachment_screw_shape(20, head_face_y=-9.0)),
+            ("RailMountNut", rail.attachment_nut_shape(shared_drive=True)),
         ):
             expected[module["group"].Name + site["prefix"] + suffix] = (
                 rail.attachment_site_shape(shape, site)
@@ -1147,12 +1140,16 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
     )
     screw, nut = shapes[screw_name], shapes[nut_name]
     expected_screw = translated_shape(
-        rail.attachment_screw_shape(12, head_face_y=-7.75), x=x
+        rail.attachment_screw_shape(20, head_face_y=-9.0), x=x
     )
     hardware_geometry = []
     for name, expected, sku in (
-        (screw_name, expected_screw, "M3X12_BUTTON_HEAD"),
-        (nut_name, translated_shape(rail.nut_shape(), x=x), "M3_HEX_NUT"),
+        (screw_name, expected_screw, "M3X20_BUTTON_HEAD"),
+        (
+            nut_name,
+            translated_shape(rail.attachment_nut_shape(shared_drive=True), x=x),
+            "M3_HEX_NUT",
+        ),
     ):
         comparison = geometry_comparison(shapes[name], expected)
         actual = doc.getObject(name)
@@ -1177,17 +1174,20 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
                 ),
             }
         )
-    crop = Part.makeBox(24, 14, 10.3, App.Vector(x - 12, -9.75, 2.2))
+    crop = Part.makeBox(24, 22, 10.3, App.Vector(x - 12, -11, 2.2))
     contact = rail.attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
         contact_length=24,
-        screw_length=12,
-        head_face_y=-7.75,
+        screw_length=20,
+        head_face_y=-9.0,
+        nut_bearing_y=8.0,
+        nut_outer_y=11.0,
+        frame_contact_y=6.0,
         head_support=translated_shape(shapes["ServoDriveBridge"].common(crop), x=-x),
     )
     screw_obstacles = retained_obstacles(shapes, {screw_name})
-    withdrawal = continuous_path(screw, [(0, 0, 0), (0, -15, 0)], screw_obstacles)
+    withdrawal = continuous_path(screw, [(0, 0, 0), (0, -25, 0)], screw_obstacles)
     # Remove the screw first; the unthreaded nut can move outward then sideways.
     nut_obstacles = retained_obstacles(shapes, {screw_name, nut_name})
     nut_path = continuous_path(nut, [(0, 0, 0), (0, 4, 0), (35, 4, 0)], nut_obstacles)
@@ -1198,7 +1198,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         )
         for name in screw_obstacles
     }
-    capture = nut_capture_check(x, nut, shapes["PropulsionFixedFrame"])
+    capture = nut_capture_check(x, nut, shapes["ServoDriveBridge"], shared=True)
     lift = vertical_frame_release_check(
         shapes["PropulsionFixedFrame"], shapes["LocalRailReference"]
     )
@@ -1234,7 +1234,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "nut_window_anti_rotation": capture,
         "frame_vertical_removal": lift,
         "seated_intersections_mm3": overlaps,
-        "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared recessed M3x12 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem is an external access envelope; the through hex window limits nut rotation without axially loading the guard. Actual socket engagement, nut insertion, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
+        "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared recessed M3x20 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem is an external access envelope; the blind hex pocket limits nut rotation and retains a 2 mm nominal load-bearing floor. Actual socket engagement, nut insertion, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
         "passed": contact["passed"]
         and all(row["passed"] for row in hardware_geometry)
         and withdrawal["passed"]

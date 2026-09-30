@@ -55,7 +55,12 @@ def translation_sweep(shape, displacement):
         surface = face.Surface
         name = type(surface).__name__
         if name == "Plane":
-            if face.normalAt(0, 0).dot(vector) > 0:
+            # Rigidly rotating an exactly tangent plane can leave a positive
+            # dot product of a few machine epsilons. Extruding it creates a
+            # degenerate sliver that OCC may accept but cannot fuse. Use the
+            # same relative angular tolerance as the coaxial-cylinder check;
+            # the test is independent of the world origin and travel length.
+            if face.normalAt(0, 0).dot(vector) > 1e-12 * vector.Length:
                 leading_faces.append(face)
             continue
         if (

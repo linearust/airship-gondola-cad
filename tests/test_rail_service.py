@@ -46,7 +46,7 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertFalse(report["passed"])
 
-    def test_through_hex_window_restrains_nut_without_an_external_wrench(self):
+    def test_blind_hex_pocket_supports_and_restrains_nut_without_wrench(self):
         from gondola.parts import rail
         from gondola.validation.rail_access import nut_capture_check
 
@@ -80,6 +80,35 @@ class RailServiceTests(unittest.TestCase):
             "BatteryMount", rail.mount_base_shape(), {"Rail": rail.rail_shape()}, 0
         )
         self.assertTrue(result["passed"], result)
+        self.assertLess(result["shape_outside_service_envelope_mm3"], 1e-5)
+        self.assertTrue(
+            all(
+                "face-prism" in segment["method"]
+                for row in result["regions"]
+                for segment in row["segments"]
+            )
+        )
+
+    def test_both_shared_frame_legs_preserve_the_open_channel_during_service(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import propulsion, rail
+        from gondola.validation.rail_access import _lift_path
+
+        result = _lift_path(
+            "PropulsionFixedFrame",
+            propulsion.fixed_frame_shape(),
+            {"Rail": translated_shape(rail.rail_shape(), x=17)},
+            17,
+            waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
+        )
+        self.assertTrue(result["passed"], result)
+        self.assertLess(result["shape_outside_service_envelope_mm3"], 1e-5)
+        lower = next(
+            row for row in result["regions"] if row["region"].endswith("Lower")
+        )
+        self.assertTrue(
+            all("face-prism" in segment["method"] for segment in lower["segments"])
+        )
 
     def test_missing_neighbour_duplicate_or_lookalike_cannot_pass_inventory(self):
         from gondola.validation.rail_access import (
@@ -276,6 +305,39 @@ class RailServiceTests(unittest.TestCase):
                     report["modules"][0]["native_attachment_pose"]["invalid_controls"],
                 )
 
+    def test_shared_nut_support_must_exist_be_registered_and_belong_to_module(self):
+        from gondola.validation import rail_access
+
+        for defect in ("missing", "unregistered", "wrong_parent", "empty_shape"):
+            with self.subTest(defect=defect):
+                doc, check = self.source_propulsion_service()
+                bridge = doc.ServoDriveBridge
+                if defect == "missing":
+                    doc.removeObject(bridge.Name)
+                elif defect == "unregistered":
+                    doc.DesignRegistry.PrintedParts = [
+                        obj for obj in doc.DesignRegistry.PrintedParts if obj != bridge
+                    ]
+                elif defect == "wrong_parent":
+                    # Detach the registry link while moving one print: FreeCAD
+                    # otherwise reparents the registry's other linked prints.
+                    printed = list(doc.DesignRegistry.PrintedParts)
+                    doc.DesignRegistry.PrintedParts = [
+                        obj for obj in printed if obj != bridge
+                    ]
+                    doc.addObject("App::Part", "WrongModule").addObject(bridge)
+                    doc.DesignRegistry.PrintedParts = printed
+                else:
+                    bridge.Shape = Part.Shape()
+                doc.recompute()
+                with patch.object(rail_access, "world_shape") as geometry:
+                    report = check()
+                geometry.assert_not_called()
+                self.assertFalse(report["passed"])
+                row = report["modules"][0]
+                self.assertEqual(row["error"], "Invalid required rail mount")
+                self.assertEqual(row["required_mount"]["object"], "ServoDriveBridge")
+
     def test_populated_propulsion_slides_clear_of_fc_carrier_before_lifting(self):
         from gondola.cad import placed_shape, world_shape
         from gondola.parts import equipment_mounts
@@ -311,14 +373,14 @@ class RailServiceTests(unittest.TestCase):
             if part["part"] == "ServoDriveBridge"
         )
         self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
-        self.assertEqual(len(bridge["regions"]), 6)
+        self.assertEqual(len(bridge["regions"]), 8)
 
     def test_bridge_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
         from gondola.parts import servo_bridge
         from gondola.validation.rail_access import _lift_path
 
         bridge = servo_bridge.bridge_shape().fuse(
-            Part.makeBox(1, 1, 1, App.Vector(28.5, -1, 14))
+            Part.makeBox(1, 1, 1, App.Vector(29.5, -1, 14))
         )
         report = _lift_path(
             "ServoDriveBridge",
@@ -329,6 +391,23 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertFalse(report["passed"])
         self.assertGreater(report["bridge_outside_stock_mm3"], 0.7)
+
+    def test_carrier_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
+        from gondola.parts import equipment_mounts
+        from gondola.validation.rail_access import _lift_path
+
+        carrier = equipment_mounts.mount_shape("electronics").fuse(
+            Part.makeBox(1, 1, 1, App.Vector(20, 0, 16.4))
+        )
+        report = _lift_path(
+            "ElectronicsMount",
+            carrier,
+            {},
+            0,
+            waypoints=[(0, 0, 0), (4, 0, 0), (4, 0, 30)],
+        )
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["shape_outside_service_envelope_mm3"], 0.5)
 
     def test_populated_fc_carrier_slides_away_from_retained_starboard_adapter(self):
         from gondola.cad import placed_shape, set_property, world_shape
@@ -374,7 +453,7 @@ class RailServiceTests(unittest.TestCase):
         literal_at_twenty = carrier.Shape.copy()
         literal_at_twenty.translate(App.Vector(0, 0, 20))
         self.assertGreater(
-            abs(literal_at_twenty.common(retained[adapter.Name]).Volume), 9
+            abs(literal_at_twenty.common(retained[adapter.Name]).Volume), 1
         )
         result = check()
         self.assertTrue(result["passed"], result)

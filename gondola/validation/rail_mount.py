@@ -90,35 +90,36 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
 
 
 def _literal_protected_mount(length=16, *, shared=False):
-    """Independent U saddle, direct-web nut window and optional head recess."""
-    leg = Part.makeBox(length, 4, 10.3, V(-length / 2, -5.25, 2.2))
-    roof = Part.makeBox(length, 9.2, 2, V(-length / 2, -5.25, 10.5))
-    guard = Part.makeBox(length, 2.5, 10.3, V(-length / 2, 1.45, 2.2))
-    radius = 5.9 / math.sqrt(3)
-    vertices = [
-        V(
-            radius * math.cos(math.radians(a)),
-            1.35,
-            7 + radius * math.sin(math.radians(a)),
-        )
-        for a in range(0, 360, 60)
-    ]
-    nut_window = Part.Face(Part.makePolygon(vertices + vertices[:1])).extrude(
-        V(0, 2.7, 0)
-    )
-    result = (
-        leg.fuse(roof)
-        .fuse(guard)
-        .cut(nut_window)
-        .cut(Part.makeCylinder(1.7, 11.2, V(0, -6.25, 7), V(0, 1, 0)))
-    )
+    """Independent fitted U stock; shared frame carries no nut recess."""
+    low, high = (-6.0, 6.0) if shared else (-5.25, 6.95)
+    leg = Part.makeBox(length, -1.25 - low, 10.3, V(-length / 2, low, 2.2))
+    roof = Part.makeBox(length, high - low, 2, V(-length / 2, low, 10.5))
+    far_leg = Part.makeBox(length, high - 1.25, 10.3, V(-length / 2, 1.25, 2.2))
+    result = leg.fuse(roof).fuse(far_leg)
     if not shared:
-        result = result.cut(Part.makeCylinder(3.2, 2.1, V(0, -5.35, 7), V(0, 1, 0)))
-    return result.removeSplitter()
+        radius = 5.9 / math.sqrt(3)
+        vertices = [
+            V(
+                radius * math.cos(math.radians(a)),
+                3.25,
+                7 + radius * math.sin(math.radians(a)),
+            )
+            for a in range(0, 360, 60)
+        ]
+        pocket = Part.Face(Part.makePolygon(vertices + vertices[:1])).extrude(
+            V(0, 3.8, 0)
+        )
+        result = result.cut(pocket).cut(
+            Part.makeCylinder(3.2, 2.1, V(0, -5.35, 7), V(0, 1, 0))
+        )
+    return result.cut(
+        Part.makeCylinder(1.7, high - low + 2, V(0, low - 1, 7), V(0, 1, 0))
+    ).removeSplitter()
 
 
-def _lower_crop(offset=0, length=16):
-    return Part.makeBox(length, 9.2, 10.3, V(offset - length / 2, -5.25, 2.2))
+def _lower_crop(offset=0, length=16, *, shared=False):
+    low, width = (-6.0, 12.0) if shared else (-5.25, 12.2)
+    return Part.makeBox(length, width, 10.3, V(offset - length / 2, low, 2.2))
 
 
 def _literal_plate(x, length, width, chamfer):
@@ -199,7 +200,10 @@ def saved_integral_mount_checks(doc, registry):
         complete = geometry_comparison(actual, source)
         sites = attachment_sites(parent_name, offset)
         crops = [
-            placed_shape(_lower_crop(0, length), site_placement(site)) for site in sites
+            placed_shape(
+                _lower_crop(0, length, shared=kind is None), site_placement(site)
+            )
+            for site in sites
         ]
         literals = [
             placed_shape(
@@ -297,10 +301,11 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             canonical_part = placed_shape(
                 local_shape(part), canonical_placement.inverse()
             )
-            lower = canonical_part.common(_lower_crop(0, length))
+            shared = module.Name == "MainPropulsionModule"
+            lower = canonical_part.common(_lower_crop(0, length, shared=shared))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             shared = module.Name == "MainPropulsionModule"
-            screw_length, head_face_y = (12.0, -7.75) if shared else (8.0, -3.25)
+            screw_length, head_face_y = (20.0, -9.0) if shared else (10.0, -3.25)
             head_support = None
             if shared:
                 bridge = registry.Document.getObject("ServoDriveBridge")
@@ -321,7 +326,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 bridge_in_module = placed_shape(
                     shapes[bridge.Name], module.getGlobalPlacement().inverse()
                 )
-                crop = Part.makeBox(length, 4.5, 10.3, V(-length / 2, -9.75, 2.2))
+                crop = Part.makeBox(length, 22, 10.3, V(-length / 2, -11, 2.2))
                 head_support = placed_shape(
                     bridge_in_module, canonical_placement.inverse()
                 ).common(crop)
@@ -332,6 +337,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 screw_length=screw_length,
                 head_face_y=head_face_y,
                 head_support=head_support,
+                nut_bearing_y=8.0 if shared else 3.25,
+                nut_outer_y=11.0 if shared else 6.95,
+                frame_contact_y=6.0 if shared else None,
             )
             hardware_rows = []
             for suffix, expected, sku in (
@@ -340,7 +348,11 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     rail.attachment_screw_shape(screw_length, head_face_y=head_face_y),
                     f"M3X{screw_length:g}_BUTTON_HEAD",
                 ),
-                ("RailMountNut", rail.nut_shape(), "M3_HEX_NUT"),
+                (
+                    "RailMountNut",
+                    rail.nut_shape(bearing_y=8.0 if shared else 3.25),
+                    "M3_HEX_NUT",
+                ),
             ):
                 hardware_name = module.Name + site["prefix"] + suffix
                 hardware = registry.Document.getObject(hardware_name)

@@ -16,6 +16,8 @@ class AttachmentPattern:
     half_spacing_mm: float
     extra_cheek_mm: float
     screw_length_mm: float
+    nut_bearing_y_mm: float
+    frame_half_width_mm: float = 0.0
 
     @property
     def shared_drive(self):
@@ -44,11 +46,16 @@ class AttachmentPattern:
         return (first, {"prefix": "Opposite", "x_offset": -offset, "side": -1})
 
     def head_bearing_y(self, mount_outer_y, recess_depth):
-        return mount_outer_y - self.extra_cheek_mm + recess_depth
+        outer_y = (
+            -self.frame_half_width_mm - self.extra_cheek_mm
+            if self.shared_drive
+            else mount_outer_y
+        )
+        return outer_y + recess_depth
 
 
-CARRIER_ATTACHMENT = AttachmentPattern(0.0, 0.0, RAIL_SCREW_LENGTH)
-PROPULSION_ATTACHMENT = AttachmentPattern(17.0, 4.5, 12.0)
+CARRIER_ATTACHMENT = AttachmentPattern(0.0, 0.0, RAIL_SCREW_LENGTH, 3.25)
+PROPULSION_ATTACHMENT = AttachmentPattern(17.0, 5.0, 20.0, 8.0, 6.0)
 
 
 def attachment_pattern(shared_drive):

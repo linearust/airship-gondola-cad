@@ -216,7 +216,7 @@ class ReviewMotionPlan:
 
     def removal_description(self):
         return (
-            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove both shared M3x12 rail screw/nut pairs "
+            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove both shared M3x20 rail screw/nut pairs "
             "and slide the complete propulsion assembly +X10 mm, then lift it +Z30 mm from the rail "
             "while supporting frame and bridge together. "
             "Those prerequisites are checked separately and are not animated here; the common clamp and "

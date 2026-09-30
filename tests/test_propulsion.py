@@ -821,7 +821,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         original = frame.Shape.copy()
         try:
             obstruction = Part.makeBox(
-                8, 0.5, 4.5, App.Vector(13, -10, rail.BOLT_AXIS_Z - 2.25)
+                8, 0.5, 4.5, App.Vector(13, -12, rail.BOLT_AXIS_Z - 2.25)
             )
             frame.Shape = original.fuse(obstruction)
             self.doc.recompute()
@@ -1308,7 +1308,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                             ["PortOutputGear", "StarboardOutputGear"],
                         )
                         self.assertEqual(result["released_fasteners"], [])
-                        self.assertIn("shared M3x12", result["prerequisites"])
+                        self.assertIn("shared M3x20", result["prerequisites"])
                         retained = {"PropulsionFixedFrame"} | {
                             prefix + "Output" + part + side
                             for prefix in ("Port", "Starboard")

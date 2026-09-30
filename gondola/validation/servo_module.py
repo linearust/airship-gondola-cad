@@ -40,15 +40,15 @@ def _plane_contact_area(first, second, axis, station):
 
 
 def bridge_joint_check(doc, module):
-    """Check both shared clamp lands and the clearanced central U guide."""
+    """Require both fitted U walls and the complete flat frame roof."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
     planes = (
-        ("central_bulkhead_support", 2, 12.5, 396, (-9, -11, 18, 22)),
-        ("shared_clamp_positive_x", 1, -5.25, 206 - math.pi * 1.7**2, None),
-        ("shared_clamp_negative_x", 1, 5.25, 206 - math.pi * 1.7**2, None),
+        ("full_roof_support", 2, 12.5, 696, (-29, -6, 58, 12)),
+        ("negative_y_wall", 1, -6, 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2, None),
+        ("positive_y_wall", 1, 6, 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2, None),
     )
     contacts = []
     for name, axis, station, minimum, bounds in planes:
@@ -78,7 +78,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The central roof seats in Z. Opposed M3 clamps at X +/-17 mm seat two broad faces in Y; the central U guides have 0.2 mm lateral clearance and are not preload springs. Seat the bridge and align both gear meshes before tightening. Nominal geometry does not establish fit, automatic centering, loaded stiffness, friction or creep.",
+        "scope": "The continuous roof seats in Z and both U walls seat in Y. Two shared M3x20 pairs at X +/-17 load both cap walls, both frame legs and the rail. These are nominal fitted contact planes, not spring jaws or guaranteed as-printed fits. Coupon-finish and hand-seat the complete stack before tightening; reject warp rather than pulling it closed. Nominal geometry establishes no strength, automatic centering, preload or creep resistance.",
         "passed": overlap < TOL
         and wrap["passed"]
         and all(row["passed"] for row in contacts)
@@ -87,7 +87,30 @@ def bridge_joint_check(doc, module):
 
 
 def bridge_wrap_check(frame, bridge):
-    """Literal load/guide witnesses, independent of the production builders."""
+    """Literal complete U walls and head/nut floors, independent of builders."""
+    bores = union(
+        [
+            Part.makeCylinder(1.7, 24, App.Vector(x, -12, 7), App.Vector(0, 1, 0))
+            for x in (-17, 17)
+        ]
+    )
+    nut_radius = 5.9 / math.sqrt(3)
+    nut_points = [
+        App.Vector(
+            -17 + nut_radius * math.cos(math.radians(a)),
+            -11.1,
+            7 + nut_radius * math.sin(math.radians(a)),
+        )
+        for a in range(0, 360, 60)
+    ]
+    nut_cut = Part.Face(Part.makePolygon(nut_points + [nut_points[0]])).extrude(
+        App.Vector(0, 3.1, 0)
+    )
+    relief = Part.makeBox(18.4, 24, 3.3, App.Vector(-9.2, -12, 2.1))
+    wall = Part.makeBox(58, 5, 12.3, App.Vector(-29, -11, 2.2)).cut(relief).cut(bores)
+    wall = wall.cut(
+        Part.makeCylinder(3.2, 2, App.Vector(17, -11, 7), App.Vector(0, 1, 0))
+    ).cut(nut_cut)
     rows = []
     for sign in (1, -1):
 
@@ -96,30 +119,19 @@ def bridge_wrap_check(frame, bridge):
                 shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
             return shape
 
-        bore = Part.makeCylinder(1.7, 14, App.Vector(17, -11, 7), App.Vector(0, 1, 0))
-        recess = Part.makeCylinder(
-            3.2, 2, App.Vector(17, -9.75, 7), App.Vector(0, 1, 0)
-        )
-        cheek = (
-            Part.makeBox(20, 4.5, 10.3, App.Vector(9, -9.75, 2.2)).cut(bore).cut(recess)
-        )
-        backing = Part.makeCylinder(
-            3, 2.5, App.Vector(17, -7.75, 7), App.Vector(0, 1, 0)
-        ).cut(bore)
-        frame_backing = Part.makeCylinder(
-            3, 4, App.Vector(17, -5.25, 7), App.Vector(0, 1, 0)
-        ).cut(bore)
-        guide = Part.makeBox(18, 2, 6.5, App.Vector(-9, 11.2, 8))
-        clearance = Part.makeBox(18, 0.2, 4.5, App.Vector(-9, 11, 8))
         values = {
-            "missing_cheek_mm3": abs(turn(cheek).cut(bridge).Volume),
-            "missing_solid_head_backing_mm3": abs(turn(backing).cut(bridge).Volume),
-            "missing_solid_frame_backing_mm3": abs(
-                turn(frame_backing).cut(frame).Volume
-            ),
-            "missing_guide_mm3": abs(turn(guide).cut(bridge).Volume),
-            "guide_gap_obstruction_mm3": abs(turn(clearance).common(bridge).Volume),
+            "missing_continuous_wall_mm3": abs(turn(wall.copy()).cut(bridge).Volume)
         }
+        for label, target, y, thickness in (
+            ("head_floor", bridge, -9, 3),
+            ("nut_floor", bridge, 6, 2),
+            ("frame_head_leg", frame, -6, 4.75),
+            ("frame_nut_leg", frame, 1.25, 4.75),
+        ):
+            land = Part.makeCylinder(
+                3, thickness, App.Vector(17, y, 7), App.Vector(0, 1, 0)
+            ).cut(bores)
+            values["missing_" + label + "_mm3"] = abs(turn(land).cut(target).Volume)
         rows.append(
             {
                 "side": sign,
@@ -127,31 +139,43 @@ def bridge_wrap_check(frame, bridge):
                 "passed": all(value < TOL for value in values.values()),
             }
         )
+    roof_missing = abs(
+        Part.makeBox(58, 22, 2, App.Vector(-29, -11, 12.5)).cut(bridge).Volume
+    )
+    relief_obstruction = abs(bridge.common(relief).Volume)
     return {
         "sides": rows,
-        "nominal_guide_side_clearance_mm": 0.2,
-        "minimum_guide_wall_mm": 2.0,
-        "head_bearing_floor_mm": 2.5,
+        "missing_roof_mm3": roof_missing,
+        "crossbeam_relief_obstruction_mm3": relief_obstruction,
+        "nominal_fitted_side_gap_mm": 0.0,
+        "nominal_sidewall_mm": 5.0,
+        "head_bearing_floor_mm": 3.0,
+        "nut_bearing_floor_mm": 2.0,
         "clamp_axis_spacing_mm": 34.0,
-        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
+        "passed": len(rows) == 2
+        and all(row["passed"] for row in rows)
+        and roof_missing < TOL
+        and relief_obstruction < TOL,
     }
 
 
 def _bridge_path(shape, waypoints, obstacles, spec):
     """Exact box-prism sweeps retain the U opening and avoid tangent face artifacts.
 
-    Six deliberately plain stock boxes cover the actual bridge, including its
+    Eight deliberately plain stock boxes cover the actual bridge, including its
     cradle. The visible windows and transverse fastener bores are conservatively
     filled. Coverage and exact prescribed directions are independently required.
     """
     width = servo_bridge.bulkhead_width(spec)
     sections = (
         ((width, 5, spec.input_z_mm + 10.1 - 12.5), (-width / 2, -2.5, 12.5)),
-        ((38, 26.4, 2), (-19, -13.2, 12.5)),
-        ((20, 4.5, 10.3), (9, -9.75, 2.2)),
-        ((20, 4.5, 10.3), (-29, 5.25, 2.2)),
-        ((18, 2, 6.5), (-9, -13.2, 8)),
-        ((18, 2, 6.5), (-9, 11.2, 8)),
+        ((58, 22, 2), (-29, -11, 12.5)),
+        ((58, 5, 7.1), (-29, -11, 5.4)),
+        ((58, 5, 7.1), (-29, 6, 5.4)),
+        ((19.8, 5, 3.2), (-29, -11, 2.2)),
+        ((19.8, 5, 3.2), (9.2, -11, 2.2)),
+        ((19.8, 5, 3.2), (-29, 6, 2.2)),
+        ((19.8, 5, 3.2), (9.2, 6, 2.2)),
     )
     envelope = union(
         [Part.makeBox(*size, App.Vector(*origin)) for size, origin in sections]
@@ -183,7 +207,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
             {
                 "start_mm": list(start),
                 "end_mm": list(end),
-                "method": "continuous exact union of six axis-aligned stock-box prisms",
+                "method": "continuous exact union of eight axis-aligned stock-box prisms",
                 "intersection_mm3": hits,
                 "passed": all(v < TOL for v in hits.values()),
             }
@@ -191,7 +215,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     return {
         "obstacles": sorted(obstacles),
         "segments": rows,
-        "envelope": "Six stock boxes with holes conservatively filled; actual bridge containment required.",
+        "envelope": "Eight stock boxes with holes conservatively filled; actual bridge containment required.",
         "uncovered_bridge_volume_mm3": missing,
         "passed": missing < TOL and all(row["passed"] for row in rows),
     }
@@ -313,7 +337,7 @@ def servo_module_service_check(doc, module):
         "shaft_staging": shaft_paths,
         "loosened_carrier_clamps": [row["loosened_clamp"] for row in shaft_paths],
         "shared_rail_fasteners_removed_before_bench": sorted(present_rail_pairs),
-        "prerequisites": "Remove both shared M3x12 rail screws and nuts, disconnect leads and support both modules. Slide the complete propulsion assembly +X10 mm, then lift it +Z30 mm from the rail before this local bench check. Rail attachment service is checked separately. Loosen only the two driven-stub carrier clamps for shaft staging; hold the rotors while their driven stubs are released.",
+        "prerequisites": "Remove both shared M3x20 rail screws and nuts, disconnect leads and support both modules. Slide the complete propulsion assembly +X10 mm, then lift it +Z30 mm from the rail before this local bench check. Rail attachment service is checked separately. Loosen only the two driven-stub carrier clamps for shaft staging; hold the rotors while their driven stubs are released.",
         "part_paths": rows,
         "retained_parts": sorted(fixed),
         "coordinate_frame": "propulsion module",

@@ -1,8 +1,8 @@
 """Flexible PA12 base with segmented walls and recessed M3 U mounts.
 
-Each wall slot permits local longitudinal adjustment. A U mount surrounds the
-wall with one loaded clamp leg and a clearance guard. The nut bears directly
-on the rail through a hexagonal guard window; segment gaps retain compliance.
+Each wall slot permits local longitudinal adjustment. A fitted U mount bears
+on both sides of the wall. A blind hex pocket retains a printed nut-bearing
+floor; segment gaps retain compliance outside the supported joint footprint.
 """
 
 import json
@@ -39,10 +39,12 @@ MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 2.2, 12.5
 MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
 HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
 HEAD_BEARING_Y = MOUNT_OUTER_Y + HEAD_RECESS_DEPTH
-GUARD_GAP, GUARD_THICKNESS = 0.2, 2.5
-GUARD_INNER_Y = WEB_THICKNESS / 2 + GUARD_GAP
-GUARD_OUTER_Y = GUARD_INNER_Y + GUARD_THICKNESS
-NUT_WINDOW_AF = 5.9
+NUT_FLOOR_THICKNESS = 2.0
+FAR_LEG_INNER_Y = WEB_THICKNESS / 2
+FAR_LEG_OUTER_Y = 6.95
+FAR_LEG_THICKNESS = FAR_LEG_OUTER_Y - FAR_LEG_INNER_Y
+NUT_BEARING_Y = FAR_LEG_INNER_Y + NUT_FLOOR_THICKNESS
+NUT_POCKET_AF = 5.9
 SLOT_END_SUPPORT_RESERVE = 1.0
 SCREW_LENGTH = fasteners.RAIL_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
@@ -150,8 +152,8 @@ def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
 def supported_slot_ranges(length=LENGTH, contact_length=MOUNT_LENGTH):
     """Permitted nominal centres, retaining at least0.8mm full-foot end reserve.
 
-    Every26mm wall supports either a16mm carrier foot or the24mm propulsion
-    foot. The longer foot has only0.4mm total trim. These are geometry limits,
+    Each26mm wall supports a16mm carrier foot or one24mm support land of
+    the58mm propulsion spine. The paired lands have only0.4mm total trim. These are geometry limits,
     not a loaded fit.
     """
     return tuple(
@@ -239,11 +241,28 @@ def head_recess_shape(outer_y, *, x=0, z=BOLT_AXIS_Z):
     )
 
 
-def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True):
-    """U seat with a clamp leg, roof and unloaded positive-Y nut guard.
+def nut_pocket_shape(inner_y, outer_y, *, x=0, z=BOLT_AXIS_Z):
+    """Outside-entry hex cutter retaining a nominal 2 mm load-bearing floor."""
+    if not all(
+        isinstance(value, Real) and not isinstance(value, bool) and math.isfinite(value)
+        for value in (inner_y, outer_y, x, z)
+    ):
+        raise ValueError("Nut pocket positions must be finite numbers")
+    bearing_y = inner_y + NUT_FLOOR_THICKNESS
+    if outer_y - bearing_y < fasteners.RAIL_HEX_NUT_HEIGHT - TOL:
+        raise ValueError("Nut pocket must contain the complete nominal nut height")
+    return translated_shape(
+        _nut_outer(NUT_POCKET_AF, outer_y - bearing_y + 0.01, bearing_y=bearing_y),
+        x=x,
+        z=z - BOLT_AXIS_Z,
+    )
 
-    Shared bridge/frame joints omit the foot counterbore so the additional
-    bridge cheek can load the complete flat negative-Y face.
+
+def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True):
+    """Fitted carrier U seat with two loaded legs and a blind nut pocket.
+
+    The paired propulsion frame uses its own continuous U spine; its nut
+    pocket belongs to the outer servo saddle, beyond both frame side faces.
     """
     top_z = _positive(top_z, "Mount top")
     length = _contact_length(length)
@@ -261,31 +280,27 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True
             ),
             box(
                 length,
-                GUARD_OUTER_Y - MOUNT_OUTER_Y,
+                FAR_LEG_OUTER_Y - MOUNT_OUTER_Y,
                 top_z - WEB_TOP_Z,
                 (-length / 2, MOUNT_OUTER_Y, WEB_TOP_Z),
             ),
             box(
                 length,
-                GUARD_THICKNESS,
+                FAR_LEG_THICKNESS,
                 top_z - MOUNT_BOTTOM_Z,
-                (-length / 2, GUARD_INNER_Y, MOUNT_BOTTOM_Z),
+                (-length / 2, FAR_LEG_INNER_Y, MOUNT_BOTTOM_Z),
             ),
         ]
     )
     result = result.cut(
         Part.makeCylinder(
             SLOT_HEIGHT / 2,
-            GUARD_OUTER_Y - MOUNT_OUTER_Y + 2,
+            FAR_LEG_OUTER_Y - MOUNT_OUTER_Y + 2,
             V(0, MOUNT_OUTER_Y - 1, BOLT_AXIS_Z),
             V(0, 1, 0),
         )
     )
-    # This is an open window: no guard material lies between nut and rail web.
-    # The nut flats are restrained without clamping the clearance guard inward.
-    result = result.cut(
-        _nut_outer(NUT_WINDOW_AF, GUARD_OUTER_Y - WEB_THICKNESS / 2 + 0.1)
-    )
+    result = result.cut(nut_pocket_shape(FAR_LEG_INNER_Y, FAR_LEG_OUTER_Y))
     if recess_head:
         result = result.cut(head_recess_shape(MOUNT_OUTER_Y))
     result = result.removeSplitter()
@@ -328,13 +343,13 @@ def attachment_screw_shape(screw_length=SCREW_LENGTH, *, head_face_y=HEAD_BEARIN
     )
 
 
-def _nut_outer(across_flats, thickness):
+def _nut_outer(across_flats, thickness, *, bearing_y=NUT_BEARING_Y):
     radius = across_flats / math.sqrt(3)
     return polygon_extrusion(
         [
             (
                 radius * math.cos(math.radians(a)),
-                WEB_THICKNESS / 2,
+                bearing_y,
                 BOLT_AXIS_Z + radius * math.sin(math.radians(a)),
             )
             for a in range(0, 360, 60)
@@ -344,16 +359,23 @@ def _nut_outer(across_flats, thickness):
 
 
 def nut_shape(
-    across_flats=fasteners.RAIL_HEX_NUT_AF, thickness=fasteners.RAIL_HEX_NUT_HEIGHT
+    across_flats=fasteners.RAIL_HEX_NUT_AF,
+    thickness=fasteners.RAIL_HEX_NUT_HEIGHT,
+    *,
+    bearing_y=NUT_BEARING_Y,
 ):
-    return _nut_outer(across_flats, thickness).cut(
+    return _nut_outer(across_flats, thickness, bearing_y=bearing_y).cut(
         Part.makeCylinder(
             fasteners.RAIL_THREAD_DIAMETER / 2,
             thickness + 2,
-            V(0, WEB_THICKNESS / 2 - 1, BOLT_AXIS_Z),
+            V(0, bearing_y - 1, BOLT_AXIS_Z),
             V(0, 1, 0),
         )
     )
+
+
+def attachment_nut_shape(*, shared_drive=False):
+    return nut_shape(bearing_y=attachment_pattern(shared_drive).nut_bearing_y_mm)
 
 
 def attachment_sites(*, x_offset=0, shared_drive=False):
@@ -381,8 +403,8 @@ def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=F
             ),
             (
                 "RailMountNut",
-                "M3 rail hex nut | direct web bearing inside guard",
-                nut_shape(),
+                "M3 rail hex nut | blind pocket on a printed bearing floor",
+                attachment_nut_shape(shared_drive=shared_drive),
                 "M3_HEX_NUT",
             ),
         ):
@@ -397,7 +419,7 @@ def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=F
                 (
                     "Notes",
                     fasteners.RAIL_HEAD_ENVELOPE_NOTE
-                    + " The nut bears directly on the rail web through the guard window; never substitute the guard for the compression stack. Full thread engagement, nut capture and actual fit require inspection.",
+                    + " The nut bears on a nominal2mm printed pocket floor. Fit both opposed contact faces before tightening; reject loose or warped seats instead of pulling a rigid clearance gap closed. Full thread engagement, floor thickness after finishing and actual fit require inspection.",
                 ),
                 ("ModelDetail", "Simplified thread envelope; do not print"),
                 ("MaterialSelection", fasteners.RAIL_FASTENER_MATERIAL),
@@ -445,6 +467,14 @@ def attachment_contract(
     _contact_length(contact_length)
     spans = flex_spans(length)
     screw_length, head_face_y = _attachment_fastener(shared_drive)
+    pattern = attachment_pattern(shared_drive)
+    nut_bearing_y = pattern.nut_bearing_y_mm
+    pocket_inner_y = pattern.frame_half_width_mm if shared_drive else FAR_LEG_INNER_Y
+    pocket_outer_y = (
+        pattern.frame_half_width_mm + pattern.extra_cheek_mm
+        if shared_drive
+        else FAR_LEG_OUTER_Y
+    )
     return {
         "rail_length_mm": length,
         "wall_count": len(wall_segments(length)),
@@ -466,31 +496,48 @@ def attachment_contract(
         "slot_height_mm": SLOT_HEIGHT,
         "bolt_axis_z_mm": BOLT_AXIS_Z,
         "mount_contact_length_mm": contact_length,
-        "mount_section": "U; negative-Y clamp leg, seating roof, positive-Y clearance guard",
-        "mount_outer_y_mm": MOUNT_OUTER_Y,
+        "mount_section": "Fitted U; two opposed rail-contact legs, seating roof and blind nut-bearing pocket",
+        "mount_outer_y_mm": -pattern.frame_half_width_mm
+        if shared_drive
+        else MOUNT_OUTER_Y,
         "head_recess_diameter_mm": HEAD_RECESS_DIAMETER,
         "head_recess_depth_mm": HEAD_RECESS_DEPTH,
         "ordinary_head_bearing_floor_mm": MOUNT_LEG_THICKNESS - HEAD_RECESS_DEPTH,
-        "guard_inner_y_mm": GUARD_INNER_Y,
-        "guard_outer_y_mm": GUARD_OUTER_Y,
-        "guard_clearance_to_web_mm": GUARD_GAP,
-        "nut_window_across_flats_mm": NUT_WINDOW_AF,
-        "nut_bearing_y_mm": WEB_THICKNESS / 2,
-        "nut_bearing_scope": "Nut bears directly on the positive-Y rail web through the open hex guard window. The guard restrains nut rotation and lateral separation; it is outside the axial compression stack.",
+        "fitted_channel_width_mm": WEB_THICKNESS,
+        "nominal_side_clearance_mm": 0.0,
+        "far_leg_inner_y_mm": FAR_LEG_INNER_Y,
+        "far_leg_outer_y_mm": pattern.frame_half_width_mm
+        if shared_drive
+        else FAR_LEG_OUTER_Y,
+        "nut_pocket_across_flats_mm": NUT_POCKET_AF,
+        "nut_pocket_inner_y_mm": pocket_inner_y,
+        "nut_pocket_outer_y_mm": pocket_outer_y,
+        "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
+        "minimum_finished_nut_floor_mm": 1.5,
+        "nut_bearing_y_mm": nut_bearing_y,
+        "nut_bearing_scope": (
+            "Nut bears on the far servo-saddle cheek floor. The nominal compression path crosses both saddle cheeks, both fitted frame legs and the rail web."
+            if shared_drive
+            else "Nut bears on the far U-leg floor. Both fitted legs contact the rail; no clearance guard is bypassed by direct nut-to-rail bearing."
+        ),
         "bolt_length_mm": screw_length,
         "head_bearing_y_mm": head_face_y,
-        "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
+        "printed_grip_mm": nut_bearing_y - head_face_y,
+        "bolt_tip_beyond_nut_mm": head_face_y
+        + screw_length
+        - nut_bearing_y
+        - fasteners.RAIL_HEX_NUT_HEIGHT,
         "shared_servo_bridge_clamp": shared_drive,
         "clamp_count": attachment_pattern(shared_drive).count,
         "clamp_spacing_mm": attachment_pattern(shared_drive).spacing_mm,
-        "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a through guard window; unmeasured design envelopes",
+        "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a blind load-bearing pocket; unmeasured design envelopes",
         "shared_joint_service": (
             "Two opposed bolts 34 mm apart retain the servo saddle and propulsion frame on adjacent rail walls. Support both modules during release and seat both feet before alternating tightening. The 58 mm combined footprint locally restrains rail curvature; do not force a curved rail straight."
             if shared_drive
             else None
         ),
-        "assembly": "Each canonical U seat lowers onto one wall; the propulsion counterpart is half-turned about Z. Both shared feet must seat simultaneously. Insert the M3 nut from positiveY through the guard window until it bears on the rail web; insert the bolt from negativeY into its head recess and tighten. The guard has 0.2mm clearance to the web and is not an axial clamp jaw. Loosen to slide only inside that wall's supported slot. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
-        "physical_acceptance": "Process-matched coupon must seat flat without rocking. Finish contact faces or reprint warped parts. Slot clearance enables assembly/alignment, not acceptable looseness in use. The nut must contact the web, not bottom on guard material; check axial removal and resistance to turning in the hex window. Inspect actual M3 head/socket fit, thread engagement and under-base adhesive after installation.",
+        "assembly": "Fit the opposed U contact faces before installing hardware. Insert the M3 nut from positiveY into the blind pocket until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared rail lands and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
+        "physical_acceptance": "Use a process-matched coupon and actual hardware. The nominal channel is line-to-line with the rail; this is not an as-printed slip-fit guarantee. Finish only high spots while retaining at least1.5mm nut-floor and head-floor thickness. Reject or reprint loose or warped seats; do not force a rigid gap closed with the bolt. Verify simultaneous contact without rocking, nut seating and anti-rotation, actual socket access, full thread engagement and loaded retention. Printed creep, clamp force and fit remain unqualified.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,
         "holding_force_verified": False,
@@ -508,7 +555,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One straight5x1.5mm PA12 strip with three tape-wing pairs. Nine identical26mm-long walls at34mm pitch have local3.4mm slots for M3 bolts and eight8mm free spans. Every wall supports either a16mm carrier U foot or24mm propulsion U foot; the latter has only0.4mm total adjustment. U guards restrain lateral separation while nuts bear directly on the web. Small planar corner chamfers replace curved outlines. Qualify loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no whole-rail flexibility or strength rating.",
+        "One straight5x1.5mm PA12 strip with three tape-wing pairs. Nine identical26mm-long walls at34mm pitch have local3.4mm slots for M3 bolts and eight8mm free spans. Every wall supports either a16mm carrier U land or24mm propulsion U land; the latter has only0.4mm total adjustment. Fitted opposed legs and blind nut-pocket floors carry the nominal clamp stack. The paired continuous propulsion U restrains local rail curvature. Qualify actual fit, loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no whole-rail flexibility or strength rating.",
     )
     set_property(
         printed,
@@ -572,7 +619,7 @@ def build_coupons(doc):
             label,
             shape,
             App.Rotation(),
-            "Same26mm wall/U-seat geometry as full rail. Use the actual M3x8 bolt and M3 nut; test recessed head fit, direct nut-to-web seating, nut-window fit, local sliding, side tool access and clamp retention. Keep the guard clear of the web by nominal0.2mm; it must not take the axial preload. The companion50mm base coupon has one complete support and no inter-wall gap; it does not test full rail bending, adhesion or creep.",
+            "Same26mm wall/fitted U-seat geometry as full rail. Use the actual M3x10 bolt and M3 nut; test recessed head fit, blind pocket seating, both rail-contact faces, local sliding and side tool access. Finish only high spots while retaining at least1.5mm nut/head floors. Reject or reprint a loose or warped seat; do not pull a rigid clearance gap closed with the bolt. The companion50mm rail sample has one complete support and no inter-wall gap; it does not qualify the paired servo/frame interface, loaded clamping, full rail bending, adhesion or creep.",
         )
         set_property(
             obj,
@@ -622,16 +669,35 @@ def attachment_check(
     contact_length=MOUNT_LENGTH,
     head_face_y=HEAD_BEARING_Y,
     head_support=None,
+    nut_bearing_y=NUT_BEARING_Y,
+    nut_outer_y=FAR_LEG_OUTER_Y,
+    frame_contact_y=None,
 ):
-    """Nominal local contact and release, not clamp force or whole-module service."""
+    """Nominal fitted load stack and local release, not physical clamp strength.
+
+    Shared checks supply both saddle cheeks in head_support, nut seat8/outer11,
+    and frame_contact_y6. Independent saved validators also check actual parts.
+    """
     from gondola.validation.geometry import translation_sweep
 
     contact_length = _contact_length(contact_length)
+    if (
+        not all(
+            isinstance(value, Real)
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            for value in (nut_bearing_y, nut_outer_y)
+        )
+        or nut_outer_y < nut_bearing_y + fasteners.RAIL_HEX_NUT_HEIGHT - TOL
+    ):
+        raise ValueError("Nut bearing/pocket positions must contain the nominal nut")
+    if frame_contact_y is not None:
+        frame_contact_y = _positive(frame_contact_y, "Frame contact half-width")
     section = rail_shape(50, (0,)) if rail_section is None else rail_section
     mount = mount_base_shape(length=contact_length) if mount is None else mount
     clamp = mount if head_support is None else union([mount, head_support])
     screw = attachment_screw_shape(screw_length, head_face_y=head_face_y)
-    nut = nut_shape()
+    nut = nut_shape(bearing_y=nut_bearing_y)
     overlaps = {
         name: abs(first.common(second).Volume)
         for name, first, second in (
@@ -643,9 +709,7 @@ def attachment_check(
             ("screw_nut", screw, nut),
         )
     }
-    # Fill only the head recess, bore and guard window for a conservative
-    # planar sweep. Keeping the U cavity open avoids a whole-box false collision.
-    # These witnesses stay outside the web's two side planes.
+    # Fill only recesses and bores, keeping the fitted rail channel open.
     filled_mount = union(
         [
             clamp,
@@ -665,12 +729,21 @@ def attachment_check(
                 SLOT_HEIGHT,
                 (-SLOT_HEIGHT / 2, head_face_y, BOLT_AXIS_Z - SLOT_HEIGHT / 2),
             ),
-            translated_shape(_nut_outer(NUT_WINDOW_AF, GUARD_THICKNESS), y=GUARD_GAP),
+            box(
+                SLOT_HEIGHT,
+                nut_outer_y - WEB_THICKNESS / 2,
+                SLOT_HEIGHT,
+                (-SLOT_HEIGHT / 2, WEB_THICKNESS / 2, BOLT_AXIS_Z - SLOT_HEIGHT / 2),
+            ),
+            _nut_outer(
+                NUT_POCKET_AF,
+                nut_outer_y - nut_bearing_y,
+                bearing_y=nut_bearing_y,
+            ),
         ]
     ).removeSplitter()
     lift, method = translation_sweep(filled_mount, (0, 0, 25))
     lift_overlap = abs(lift.common(section).Volume)
-    # Exact full-width top seating; no guessed force/area multiplier.
     top_below = box(
         contact_length,
         WEB_THICKNESS,
@@ -679,87 +752,135 @@ def attachment_check(
     )
     top_above = translated_shape(top_below, z=0.01)
     missing_top = abs(top_below.cut(section).Volume) + abs(top_above.cut(mount).Volume)
-    # Side contact at both sides of the slot, across the entire foot.
+    # Both side faces, above and below the longitudinal rail slot, must contact.
     side = box(
         contact_length,
         0.01,
         WEB_TOP_Z - MOUNT_BOTTOM_Z,
         (-contact_length / 2, -WEB_THICKNESS / 2 - 0.01, MOUNT_BOTTOM_Z),
-    )
-    side = side.cut(_slot(-contact_length, contact_length))
+    ).cut(_slot(-contact_length, contact_length))
     missing_side = abs(side.cut(mount).Volume) + abs(
         translated_shape(side, y=0.01).cut(section).Volume
     )
-    head_face = Part.makeCylinder(
-        fasteners.RAIL_SCREW_HEAD_DIAMETER / 2,
-        0.01,
-        V(0, head_face_y, BOLT_AXIS_Z),
-        V(0, 1, 0),
+    opposite_side = translated_shape(side, y=WEB_THICKNESS + 0.01)
+    missing_opposite = abs(opposite_side.cut(mount).Volume) + abs(
+        translated_shape(opposite_side, y=-0.01).cut(section).Volume
+    )
+
+    def annulus(y, depth):
+        return Part.makeCylinder(
+            fasteners.RAIL_SCREW_HEAD_DIAMETER / 2,
+            depth,
+            V(0, y, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        ).cut(
+            Part.makeCylinder(
+                SLOT_HEIGHT / 2, depth + 0.02, V(0, y - 0.01, BOLT_AXIS_Z), V(0, 1, 0)
+            )
+        )
+
+    missing_head = abs(annulus(head_face_y, 0.01).cut(clamp).Volume)
+    nut_floor = _nut_outer(
+        fasteners.RAIL_HEX_NUT_AF,
+        NUT_FLOOR_THICKNESS,
+        bearing_y=nut_bearing_y - NUT_FLOOR_THICKNESS,
     ).cut(
         Part.makeCylinder(
-            SLOT_HEIGHT / 2, 0.02, V(0, head_face_y, BOLT_AXIS_Z), V(0, 1, 0)
+            SLOT_HEIGHT / 2,
+            NUT_FLOOR_THICKNESS + 0.02,
+            V(0, nut_bearing_y - NUT_FLOOR_THICKNESS - 0.01, BOLT_AXIS_Z),
+            V(0, 1, 0),
         )
     )
-    missing_head = abs(head_face.cut(clamp).Volume)
-    # The window restrains rotation; only the rail web supports the nut axially.
-    nut_face = _nut_outer(fasteners.RAIL_HEX_NUT_AF, 0.01)
-    nut_face = translated_shape(nut_face, y=-0.01).cut(
-        _slot(-contact_length, contact_length)
+    missing_floor = abs(nut_floor.cut(clamp).Volume)
+    nut_face = _nut_outer(
+        fasteners.RAIL_HEX_NUT_AF, 0.01, bearing_y=nut_bearing_y - 0.01
+    ).cut(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2, 0.03, V(0, nut_bearing_y - 0.02, BOLT_AXIS_Z), V(0, 1, 0)
+        )
     )
-    missing_nut = abs(nut_face.cut(section).Volume)
+    missing_nut = abs(nut_face.cut(clamp).Volume)
     nut_area = nut_face.Volume / 0.01
+    frame_faces = []
+    if frame_contact_y is not None:
+        for side_sign in (-1, 1):
+            face_y = side_sign * frame_contact_y
+            inside = annulus(face_y if side_sign < 0 else face_y - 0.01, 0.01)
+            outside = translated_shape(inside, y=side_sign * 0.01)
+            missing_frame = abs(inside.cut(mount).Volume)
+            missing_saddle = (
+                outside.Volume
+                if head_support is None
+                else abs(outside.cut(head_support).Volume)
+            )
+            frame_faces.append(
+                {
+                    "side": side_sign,
+                    "face_y_mm": face_y,
+                    "missing_frame_support_mm3": missing_frame,
+                    "missing_saddle_support_mm3": missing_saddle,
+                    "passed": max(missing_frame, missing_saddle) < TOL,
+                }
+            )
     tip = head_face_y + screw_length
-    engagement = tip - (WEB_THICKNESS / 2 + fasteners.RAIL_HEX_NUT_HEIGHT)
-    # The open guard window permits straight +Y loading/removal of the nut.
+    engagement = tip - (nut_bearing_y + fasteners.RAIL_HEX_NUT_HEIGHT)
     nut_sweep, nut_method = translation_sweep(
-        _nut_outer(fasteners.RAIL_HEX_NUT_AF, fasteners.RAIL_HEX_NUT_HEIGHT),
+        _nut_outer(
+            fasteners.RAIL_HEX_NUT_AF,
+            fasteners.RAIL_HEX_NUT_HEIGHT,
+            bearing_y=nut_bearing_y,
+        ),
         (0, 10, 0),
     )
     nut_release = abs(nut_sweep.common(section).Volume) + abs(
         nut_sweep.common(clamp).Volume
     )
-    guard_gap = box(
-        contact_length,
-        GUARD_GAP,
-        WEB_TOP_Z - MOUNT_BOTTOM_Z,
-        (-contact_length / 2, WEB_THICKNESS / 2, MOUNT_BOTTOM_Z),
-    )
-    guard_gap_overlap = abs(guard_gap.common(mount).Volume)
-    nut_guard_axial_support = abs(nut_face.common(mount).Volume)
-    # A turned filled hex must hit the window sidewalls; nominal acceptance
-    # geometry only, not a measured lot or a qualified tightening torque.
     turned_nut = nut.copy()
     turned_nut.rotate(V(0, 0, BOLT_AXIS_Z), V(0, 1, 0), 30)
-    nut_rotation_stop = abs(turned_nut.common(mount).Volume)
+    nut_rotation_stop = abs(turned_nut.common(clamp).Volume)
     return {
         "seated_intersections_mm3": overlaps,
         "continuous_vertical_removal": {"method": method, "overlap_mm3": lift_overlap},
         "continuous_nut_release": {"method": nut_method, "overlap_mm3": nut_release},
         "missing_full_top_contact_mm3": missing_top,
         "missing_flat_side_contact_mm3": missing_side,
+        "missing_opposite_side_contact_mm3": missing_opposite,
         "missing_head_support_mm3": missing_head,
         "missing_nut_support_mm3": missing_nut,
-        "nut_bearing_area_outside_slot_mm2": nut_area,
-        "positive_guard_clearance_mm": GUARD_GAP,
-        "guard_clearance_obstruction_mm3": guard_gap_overlap,
-        "nut_axial_support_from_guard_mm3": nut_guard_axial_support,
+        "missing_printed_nut_floor_mm3": missing_floor,
+        "nut_bearing_area_outside_bore_mm2": nut_area,
+        "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
+        "nut_bearing_y_mm": nut_bearing_y,
+        "nut_pocket_outer_y_mm": nut_outer_y,
+        "nominal_side_clearance_mm": 0.0,
+        "frame_saddle_contact_faces": frame_faces,
         "nut_30deg_rotation_stop_block_mm3": nut_rotation_stop,
         "bolt_length_mm": screw_length,
         "head_bearing_y_mm": head_face_y,
-        "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
+        "printed_grip_mm": nut_bearing_y - head_face_y,
         "shared_head_support_supplied": head_support is not None,
         "bolt_tip_beyond_nut_mm": engagement,
         "full_nominal_nut_height_engaged": engagement >= -TOL,
-        "scope": "Unloaded local U-seat geometry. The nut bears directly on the web and is restrained by a through hex guard window; its axial load does not pass through the clearance guard. Tighten after aligning. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
+        "minimum_thread_projection_mm": fasteners.RAIL_THREAD_PITCH,
+        "thread_projection_margin_ok": engagement >= fasteners.RAIL_THREAD_PITCH - TOL,
+        "scope": "Nominal fitted U geometry with both rail-contact legs and a printed nut-bearing floor in the compression path. Shared saddle checks include both frame/saddle contact faces at the bolt load annulus. This is a line-to-line design, not an as-printed fit guarantee; qualify by coupon and finish high spots, rejecting loose or warped seats. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
         "passed": max(overlaps.values()) < TOL
         and lift_overlap < TOL
         and nut_release < TOL
-        and max(missing_top, missing_side, missing_head, missing_nut) < TOL
+        and max(
+            missing_top,
+            missing_side,
+            missing_opposite,
+            missing_head,
+            missing_nut,
+            missing_floor,
+        )
+        < TOL
         and nut_area > 0
-        and guard_gap_overlap < TOL
-        and nut_guard_axial_support < TOL
+        and all(row["passed"] for row in frame_faces)
         and nut_rotation_stop > TOL
-        and engagement >= -TOL,
+        and engagement >= fasteners.RAIL_THREAD_PITCH - TOL,
     }
 
 
@@ -773,7 +894,7 @@ def validate_mechanism():
         "continuous_single_rail": True,
         "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(),
         "tape": tape_attachment_contract(),
-        "release": "Loosen the recessed side M3 bolt and slide within the current supported slot. To change wall segment remove bolt and nut, then lift the U seat. The nut window restrains rotation while allowing straight axial removal; no full-length slide or automatic calibration.",
+        "release": "Loosen the recessed side M3 bolt and slide within the current supported slot. To change wall segment remove bolt and nut, then lift the U seat. The blind nut pocket restrains rotation while allowing straight axial removal; both fitted contact faces must seat without forcing a rigid clearance gap closed. No full-length slide or automatic calibration.",
     }
 
 

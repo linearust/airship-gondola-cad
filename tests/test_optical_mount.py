@@ -93,9 +93,9 @@ class OpticalMountTests(unittest.TestCase):
 
         self.assertEqual(optical_mount.PIVOT_CENTRE, (0.0, 0.0, 19.0))
         self.assertEqual(self.module["group"].getParentGeoFeatureGroup(), self.host)
-        self.assertAlmostEqual(self.module["group"].Placement.Base.z, 17.0)
+        self.assertAlmostEqual(self.module["group"].Placement.Base.z, 19.0)
         self.assertAlmostEqual(
-            self.module["pitch_stage"].getGlobalPlacement().Base.z, 36
+            self.module["pitch_stage"].getGlobalPlacement().Base.z, 38
         )
 
     def test_pitch_limit_is_native_and_every_part_follows_the_host(self):

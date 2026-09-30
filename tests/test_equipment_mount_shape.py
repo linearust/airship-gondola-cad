@@ -129,12 +129,12 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for kind in mounts.MOUNT_NAMES:
             result = carrier_centre_mount_check(mounts.mount_shape(kind))
             self.assertTrue(result["passed"], result)
-            self.assertAlmostEqual(result["under_deck_gap_mm"], 2.5)
-            self.assertAlmostEqual(result["bare_deck_tip_to_roof_mm"], 0.5)
+            self.assertAlmostEqual(result["under_deck_gap_mm"], 4.5)
+            self.assertAlmostEqual(result["bare_deck_tip_to_roof_mm"], 2.5)
         contract = mounts.centre_mount_contract()
         self.assertTrue(contract["available_as_spare_accessory_mount"])
         self.assertFalse(contract["carrier_nut_pocket"])
-        self.assertEqual(mounts.SUPPORT_FACE_Z, 17.0)
+        self.assertEqual(mounts.SUPPORT_FACE_Z, 19.0)
 
     def test_raised_deck_preserves_centre_hardware_and_moves_device_datums_together(
         self,
@@ -149,21 +149,21 @@ class EquipmentMountShapeTests(unittest.TestCase):
         )
 
         shape = equipment_mounts.mount_shape("battery")
-        # Independently witness BR's actual envelope: a 2 mm head fits below
-        # the raised deck while preserving 0.5 mm above the taller U-shoe roof.
-        head = Part.makeCylinder(2.25, 2, App.Vector(0, 0, 13))
+        # Independently witness BT's actual envelope: a 2 mm head fits below
+        # the raised deck while preserving 2.5 mm above the taller U-shoe roof.
+        head = Part.makeCylinder(2.25, 2, App.Vector(0, 0, 15))
         nut = purchased_hardware.hex_nut_shape().copy()
-        nut.translate(App.Vector(0, 0, 13.4))
+        nut.translate(App.Vector(0, 0, 15.4))
         for hardware in (head, nut):
             self.assertLess(hardware.common(shape).Volume, 1e-6)
-        self.assertEqual(equipment_mounts.DECK_BOTTOM_Z, 15.0)
-        self.assertEqual(equipment_mounts.SUPPORT_FACE_Z, 17.0)
-        self.assertEqual(equipment_layout.adhesive_bottom(), 18.0)
-        self.assertEqual(devices.FC_BOTTOM_Z, 25.0)
-        self.assertAlmostEqual(devices.radio_envelope_shape().BoundBox.ZMax, 14.0)
+        self.assertEqual(equipment_mounts.DECK_BOTTOM_Z, 17.0)
+        self.assertEqual(equipment_mounts.SUPPORT_FACE_Z, 19.0)
+        self.assertEqual(equipment_layout.adhesive_bottom(), 20.0)
+        self.assertEqual(devices.FC_BOTTOM_Z, 27.0)
+        self.assertAlmostEqual(devices.radio_envelope_shape().BoundBox.ZMax, 16.0)
         # Only the portal's installation follows the raised host. Its local
         # plate/beam interface and 32 mm tower remain the same construction.
-        self.assertEqual(stack_interface.STACK_TOP_Z, 49.0)
+        self.assertEqual(stack_interface.STACK_TOP_Z, 51.0)
         self.assertEqual(power_mount.DECK_BOTTOM_Z, 1.0)
         self.assertEqual(power_mount.SUPPORT_Z, 3.0)
 

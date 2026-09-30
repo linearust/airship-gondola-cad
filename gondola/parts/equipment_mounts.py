@@ -291,7 +291,7 @@ def build_mount(doc, parent, kind):
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
         f"Centred 64 x 64 mm deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots. "
-        "One recessed transverse M3x8 screw and a nut in the opposite open hex window clamp the integral U-shoe to the rail wall. "
+        "One recessed transverse M3x10 screw and a nut on the opposite 2 mm blind-pocket floor clamp the integral U-shoe to the rail wall. "
         "The upper seat and two sides surround the rail wall; loosen the side screw to adjust within a supported rail segment. "
         f"Two short deck supports preserve the centre accessory bore, with a {DECK_BOTTOM_Z - rail.MOUNT_TOP_Z:g} mm under-deck gap; accessory head/nut height and screw-tip length must fit that space. "
         "Keep the declared adhesive regions and underside slot head paths clear. "

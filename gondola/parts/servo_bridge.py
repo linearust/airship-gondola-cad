@@ -1,8 +1,8 @@
-"""Replaceable paired-servo saddle with two opposed shared rail clamps.
+"""Replaceable paired servos on a continuous U cap around the output frame.
 
-A broad roof seats on the output frame and two short side guides form an open
-U saddle. Half-turn paired M3 cheeks distribute the clamp load at 34 mm spacing.
-No blind keys trap the module; bench removal requires clearing the driven shafts.
+The flat roof and both sidewalls transfer load through two shared M3 clamps.
+Only the transverse frame beam needs lower-edge relief. Contact lands are a
+coupon-fitted interface; screws must not pull an unseated or warped cap closed.
 """
 
 import FreeCAD as App
@@ -26,17 +26,15 @@ REAR_LEAD_ALLOWANCE = 13.9
 SEAT_Z = 12.5
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
 FRAME_BOTTOM_Z = 2.2
-CENTRAL_SEAT_LENGTH, CENTRAL_SEAT_WIDTH = 18.0, 22.0
+CENTRAL_SEAT_LENGTH = 58.0
+CENTRAL_SEAT_WIDTH = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
 CLAMP_AXIS_X = PROPULSION_ATTACHMENT.half_spacing_mm
-CHEEK_START_X, CHEEK_END_X = 9.0, 29.0
 CHEEK_THICKNESS = PROPULSION_ATTACHMENT.extra_cheek_mm
-CHEEK_CONTACT_Y = rail.MOUNT_OUTER_Y
+CHEEK_CONTACT_Y = -PROPULSION_ATTACHMENT.frame_half_width_mm
 CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
-GUIDE_CLEARANCE = 0.2
-GUIDE_INNER_Y = CENTRAL_SEAT_WIDTH / 2 + GUIDE_CLEARANCE
-GUIDE_OUTER_Y = GUIDE_INNER_Y + 2.0
-GUIDE_BOTTOM_Z = 8.0
-ROOF_HALF_LENGTH = 19.0
+ROOF_HALF_LENGTH = CENTRAL_SEAT_LENGTH / 2
+CROSSBEAM_RELIEF_HALF_X = 9.2
+CROSSBEAM_RELIEF_TOP_Z = 5.4
 SHARED_SCREW_LENGTH = PROPULSION_ATTACHMENT.screw_length_mm
 SHAFT_SERVICE_SHIFTS = {
     "PortOutputShaftNegative": 12.0,
@@ -90,7 +88,7 @@ def cut_shared_bolt_passage(shape):
         shape = shape.cut(
             Part.makeCylinder(
                 rail.SLOT_HEIGHT / 2,
-                CHEEK_THICKNESS + rail.MOUNT_LEG_THICKNESS + rail.WEB_THICKNESS + 2,
+                2 * -CHEEK_OUTER_Y + 2,
                 V(sign * CLAMP_AXIS_X, sign * (CHEEK_OUTER_Y - 1), rail.BOLT_AXIS_Z),
                 V(0, sign, 0),
             )
@@ -99,41 +97,35 @@ def cut_shared_bolt_passage(shape):
 
 
 def bridge_blank_blocks(drive=SELECTED_DRIVE):
-    """Exact axis-aligned stock; usable independently for continuous service sweeps."""
-    top = SEAT_Z + CONNECTOR_PLATE_THICKNESS
-    return (
+    """Eight stock boxes retain the U opening and the crossbeam relief for sweeps."""
+    blocks = [
         _cradle_blank(drive),
         box(
             2 * ROOF_HALF_LENGTH,
-            2 * GUIDE_OUTER_Y,
+            -2 * CHEEK_OUTER_Y,
             CONNECTOR_PLATE_THICKNESS,
-            (-ROOF_HALF_LENGTH, -GUIDE_OUTER_Y, SEAT_Z),
+            (-ROOF_HALF_LENGTH, CHEEK_OUTER_Y, SEAT_Z),
         ),
-        box(
-            CHEEK_END_X - CHEEK_START_X,
-            CHEEK_THICKNESS,
-            SEAT_Z - FRAME_BOTTOM_Z,
-            (CHEEK_START_X, CHEEK_OUTER_Y, FRAME_BOTTOM_Z),
-        ),
-        box(
-            CHEEK_END_X - CHEEK_START_X,
-            CHEEK_THICKNESS,
-            SEAT_Z - FRAME_BOTTOM_Z,
-            (-CHEEK_END_X, -CHEEK_CONTACT_Y, FRAME_BOTTOM_Z),
-        ),
-        box(
-            CENTRAL_SEAT_LENGTH,
-            GUIDE_OUTER_Y - GUIDE_INNER_Y,
-            top - GUIDE_BOTTOM_Z,
-            (-CENTRAL_SEAT_LENGTH / 2, GUIDE_INNER_Y, GUIDE_BOTTOM_Z),
-        ),
-        box(
-            CENTRAL_SEAT_LENGTH,
-            GUIDE_OUTER_Y - GUIDE_INNER_Y,
-            top - GUIDE_BOTTOM_Z,
-            (-CENTRAL_SEAT_LENGTH / 2, -GUIDE_OUTER_Y, GUIDE_BOTTOM_Z),
-        ),
-    )
+    ]
+    for y in (CHEEK_OUTER_Y, -CHEEK_CONTACT_Y):
+        blocks.append(
+            box(
+                CENTRAL_SEAT_LENGTH,
+                CHEEK_THICKNESS,
+                SEAT_Z - CROSSBEAM_RELIEF_TOP_Z,
+                (-ROOF_HALF_LENGTH, y, CROSSBEAM_RELIEF_TOP_Z),
+            )
+        )
+        for x in (-ROOF_HALF_LENGTH, CROSSBEAM_RELIEF_HALF_X):
+            blocks.append(
+                box(
+                    ROOF_HALF_LENGTH - CROSSBEAM_RELIEF_HALF_X,
+                    CHEEK_THICKNESS,
+                    CROSSBEAM_RELIEF_TOP_Z - FRAME_BOTTOM_Z,
+                    (x, y, FRAME_BOTTOM_Z),
+                )
+            )
+    return tuple(blocks)
 
 
 def bridge_blank(drive=SELECTED_DRIVE):
@@ -158,4 +150,7 @@ def bridge_shape(drive=SELECTED_DRIVE):
     void = _ear_clearance(drive)
     bridge = cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
     head_cut = rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
-    return bridge.cut(head_cut).cut(opposite(head_cut)).removeSplitter()
+    nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
+    for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):
+        bridge = bridge.cut(cutter)
+    return bridge.removeSplitter()

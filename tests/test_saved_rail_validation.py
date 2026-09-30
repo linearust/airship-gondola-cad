@@ -221,7 +221,7 @@ class SavedRailValidationTests(unittest.TestCase):
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
         bridge = self.doc.ServoDriveBridge
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(16.5, -7.75, 9.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(16.5, -9.0, 9.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])

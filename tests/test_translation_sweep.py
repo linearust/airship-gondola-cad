@@ -68,6 +68,47 @@ class TranslationSweepTests(unittest.TestCase):
         swept, _ = translation_sweep(body, (1.5, 0, 0))
         self.assert_same_volume(swept, Part.makeBox(4.5, 1, 1))
 
+    def test_rigid_rotation_does_not_extrude_numerically_tangent_planes(self):
+        from gondola.validation.geometry import translation_sweep
+
+        # A flipped adhesive-mounted body exposed a degenerate side-face
+        # prism after an arbitrary parent rotation. These analytical boxes
+        # retain exact continuous coverage, including a midpath obstruction.
+        local = Part.makeBox(24, 18.2, 5.8, App.Vector(-12, -9.1, 0))
+        mount = App.Placement(
+            App.Vector(26, -11, 16),
+            App.Rotation(App.Vector(0, 0, 1), 90).multiply(
+                App.Rotation(App.Vector(1, 0, 0), 180)
+            ),
+        )
+        for origin in ((12, 30, 60), (-90, 140, -70)):
+            parent = App.Placement(
+                App.Vector(*origin), App.Rotation(App.Vector(1, 2, 3), 37)
+            )
+            pose = parent.multiply(mount)
+            body = local.copy()
+            body.Placement = pose.multiply(body.Placement)
+            for distance in (-32.0, 32.0):
+                expected = Part.makeBox(
+                    24,
+                    18.2,
+                    5.8 + abs(distance),
+                    App.Vector(-12, -9.1, min(0, distance)),
+                )
+                expected.Placement = pose.multiply(expected.Placement)
+                travel = pose.Rotation.multVec(App.Vector(0, 0, distance))
+                with self.subTest(origin=origin, distance=distance):
+                    swept, method = translation_sweep(body, tuple(travel))
+                    self.assertIn("face-prism", method)
+                    self.assert_same_volume(swept, expected)
+                    obstacle = Part.makeBox(1, 1, 0.1, App.Vector(0, 0, distance / 2))
+                    obstacle.Placement = pose.multiply(obstacle.Placement)
+                    self.assertLess(body.common(obstacle).Volume, 1e-7)
+                    end = body.copy()
+                    end.translate(travel)
+                    self.assertLess(end.common(obstacle).Volume, 1e-7)
+                    self.assertAlmostEqual(swept.common(obstacle).Volume, 0.1)
+
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class TranslationCertificateTests(unittest.TestCase):

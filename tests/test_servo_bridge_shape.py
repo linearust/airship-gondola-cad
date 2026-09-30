@@ -1,4 +1,4 @@
-"""Opposed shared clamps, clearanced U guide and ordered shaft-aware bench service."""
+"""Continuous nested U joint, full clamp lands and shaft-aware bench service."""
 
 import math
 import unittest
@@ -34,58 +34,55 @@ class ServoBridgeShapeTests(unittest.TestCase):
             shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
         return shape
 
-    def test_two_clamp_faces_and_central_seat_are_required_without_extra_pairs(self):
+    def test_full_roof_and_both_fitted_walls_require_no_extra_pairs(self):
         result = self.joint()
         self.assertTrue(result["passed"], result)
         contacts = {row["interface"]: row for row in result["contacts"]}
         self.assertEqual(
             set(contacts),
             {
-                "central_bulkhead_support",
-                "shared_clamp_positive_x",
-                "shared_clamp_negative_x",
+                "full_roof_support",
+                "negative_y_wall",
+                "positive_y_wall",
             },
         )
         self.assertAlmostEqual(
-            contacts["central_bulkhead_support"]["actual_contact_area_mm2"], 396
+            contacts["full_roof_support"]["actual_contact_area_mm2"], 696
         )
         for name, y in (
-            ("shared_clamp_positive_x", -5.25),
-            ("shared_clamp_negative_x", 5.25),
+            ("negative_y_wall", -6),
+            ("positive_y_wall", 6),
         ):
             self.assertAlmostEqual(
-                contacts[name]["actual_contact_area_mm2"], 206 - math.pi * 1.7**2
+                contacts[name]["actual_contact_area_mm2"],
+                58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2,
             )
             self.assertEqual(contacts[name]["plane_position_mm"], y)
         for side in ("Port", "Starboard"):
             for kind in ("Bolt", "Nut"):
                 self.assertIsNone(self.doc.getObject("ServoBridge" + side + kind))
-        self.assertEqual(result["wrap_fit"]["nominal_guide_side_clearance_mm"], 0.2)
+        self.assertEqual(result["wrap_fit"]["nominal_fitted_side_gap_mm"], 0.0)
         self.assertEqual(result["wrap_fit"]["clamp_axis_spacing_mm"], 34)
 
-    def test_bridge_roof_and_both_guides_have_full_simple_stock(self):
+    def test_bridge_roof_is_flat_and_beam_relief_is_functional(self):
         bridge = self.doc.ServoDriveBridge.Shape
         self.assertTrue(bridge.isValid())
         self.assertEqual(len(bridge.Solids), 1)
-        roof = Part.makeBox(38, 26.4, 2, App.Vector(-19, -13.2, 12.5))
+        roof = Part.makeBox(58, 22, 2, App.Vector(-29, -11, 12.5))
         self.assertLess(abs(roof.cut(bridge).Volume), 1e-7)
-        for x in (-29, 19):
-            removed_overhang = Part.makeBox(10, 26.4, 2, App.Vector(x, -13.2, 12.5))
-            self.assertLess(abs(removed_overhang.common(bridge).Volume), 1e-7)
+        relief = Part.makeBox(18.4, 22, 3.2, App.Vector(-9.2, -11, 2.2))
+        self.assertLess(abs(relief.common(bridge).Volume), 1e-7)
         for sign in (1, -1):
-            guide = self.opposite(
-                Part.makeBox(18, 2, 6.5, App.Vector(-9, 11.2, 8)), sign
-            )
-            gap = self.opposite(Part.makeBox(18, 0.2, 4.5, App.Vector(-9, 11, 8)), sign)
-            with self.subTest(side=sign):
-                self.assertLess(abs(guide.cut(bridge).Volume), 1e-7)
-                self.assertLess(abs(gap.common(bridge).Volume), 1e-7)
+            wall = self.opposite(Part.makeBox(58, 5, 1, App.Vector(-29, -11, 11)), sign)
+            self.assertLess(abs(wall.cut(bridge).Volume), 1e-7)
 
-    def test_both_heads_compress_complete_cheek_and_frame_lands(self):
+    def test_heads_and_nuts_compress_both_bridge_and_frame_legs(self):
         for sign in (1, -1):
             for name, y, thickness in (
-                ("ServoDriveBridge", -7.75, 2.5),
-                ("PropulsionFixedFrame", -5.25, 4),
+                ("ServoDriveBridge", -9, 3),
+                ("ServoDriveBridge", 6, 2),
+                ("PropulsionFixedFrame", -6, 4.75),
+                ("PropulsionFixedFrame", 1.25, 4.75),
             ):
                 stock = Part.makeCylinder(
                     3, thickness, App.Vector(17, y, 7), App.Vector(0, 1, 0)
@@ -108,7 +105,12 @@ class ServoBridgeShapeTests(unittest.TestCase):
                     )
 
     def test_either_missing_head_or_frame_land_fails_independently(self):
-        for name, y in (("ServoDriveBridge", -7.75), ("PropulsionFixedFrame", -5.25)):
+        for name, y in (
+            ("ServoDriveBridge", -9),
+            ("ServoDriveBridge", 6),
+            ("PropulsionFixedFrame", -6),
+            ("PropulsionFixedFrame", 1.25),
+        ):
             obj = self.doc.getObject(name)
             original = obj.Shape.copy()
             for sign in (1, -1):
@@ -129,33 +131,27 @@ class ServoBridgeShapeTests(unittest.TestCase):
         original = frame.Shape.copy()
         try:
             frame.Shape = original.cut(
-                Part.makeBox(18, 22, 0.2, App.Vector(-9, -11, 12.4))
+                Part.makeBox(58, 12, 0.2, App.Vector(-29, -6, 12.4))
             )
             self.doc.recompute()
             result = self.joint()
             self.assertFalse(result["passed"], result)
-            self.assertTrue(result["wrap_fit"]["passed"], result)
             contacts = {row["interface"]: row for row in result["contacts"]}
             self.assertAlmostEqual(
-                contacts["central_bulkhead_support"]["actual_contact_area_mm2"], 0
+                contacts["full_roof_support"]["actual_contact_area_mm2"], 0
             )
-            self.assertTrue(contacts["shared_clamp_positive_x"]["passed"])
-            self.assertTrue(contacts["shared_clamp_negative_x"]["passed"])
         finally:
             frame.Shape = original
             self.doc.recompute()
 
-    def test_each_guide_is_required_and_its_clearance_cannot_be_filled(self):
+    def test_each_wall_is_required_and_beam_relief_cannot_be_filled(self):
         bridge = self.doc.ServoDriveBridge
         original = bridge.Shape.copy()
         for sign in (1, -1):
-            for kind, size, origin in (
-                ("missing", (2, 0.4, 2), (-1, 11.2, 9)),
-                ("tight", (2, 0.2, 2), (-1, 11, 9)),
-            ):
+            for kind, origin in (("missing", (-1, -11, 7)), ("blocked", (-1, -8, 4))):
                 try:
                     change = self.opposite(
-                        Part.makeBox(*size, App.Vector(*origin)), sign
+                        Part.makeBox(2, 0.4, 1, App.Vector(*origin)), sign
                     )
                     bridge.Shape = (
                         original.cut(change)
@@ -175,15 +171,13 @@ class ServoBridgeShapeTests(unittest.TestCase):
         for sign in (1, -1):
             try:
                 loss = self.opposite(
-                    Part.makeBox(1, 0.2, 0.5, App.Vector(25, -5.35, 10)), sign
+                    Part.makeBox(1, 0.2, 0.5, App.Vector(25, -6.1, 10)), sign
                 )
                 frame.Shape = original.cut(loss)
                 self.doc.recompute()
                 result = self.joint()
                 self.assertFalse(result["passed"], result)
-                name = (
-                    "shared_clamp_positive_x" if sign > 0 else "shared_clamp_negative_x"
-                )
+                name = "negative_y_wall" if sign > 0 else "positive_y_wall"
                 row = next(
                     row for row in result["contacts"] if row["interface"] == name
                 )
@@ -214,7 +208,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
 
         envelope = servo_bridge.bridge_blank()
         self.assertLess(abs(self.doc.ServoDriveBridge.Shape.cut(envelope).Volume), 1e-7)
-        frame_seat = Part.makeBox(18, 22, 4.5, App.Vector(-9, -11, 8))
+        frame_seat = Part.makeBox(58, 12, 7.1, App.Vector(-29, -6, 5.4))
         self.assertLess(abs(frame_seat.common(envelope).Volume), 1e-7)
 
     def test_ordered_service_keeps_shifted_driven_shafts_as_obstacles(self):
@@ -226,7 +220,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
             result["removed_output_gears"], ["PortOutputGear", "StarboardOutputGear"]
         )
         self.assertEqual(result["released_fasteners"], [])
-        self.assertIn("both shared M3x12", result["prerequisites"])
+        self.assertIn("both shared M3x20", result["prerequisites"])
         self.assertEqual(
             result["loosened_carrier_clamps"],
             ["PortOutputClampNegative", "StarboardOutputClampPositive"],

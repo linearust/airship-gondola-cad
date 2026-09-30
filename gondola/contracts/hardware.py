@@ -83,8 +83,8 @@ PROCUREMENT_SPECS = {
     "M3_HEX_NUT": {
         "search_query": "M3 0.5 hex nut 5.5mm AF 2.4mm A2 stainless",
         "candidate_url": "",
-        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed shared propulsion/servo-saddle rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The positive-side U-shoe guard has an open 5.9 mm across-flats hex window; the nut bears on the rail web. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
-        "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex window is open for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
+        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed shared propulsion/servo-saddle rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The opposite U leg has a 5.9 mm across-flats hex pocket with a 2 mm nominal floor; the nut bears on printed stock, not the rail. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
+        "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex pocket is externally accessible for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
     },
 }
 
@@ -118,31 +118,31 @@ for _length in (6, 8, 12):
         ),
     }
 
-for _length in (8, 12):
+for _length in (10, 20):
     PROCUREMENT_SPECS[f"M3X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M3x{_length} button head hex socket screw A2 stainless",
         "candidate_url": "",
         "requirements": (
             f"M3 x 0.5 screw with {_length} mm under-head length for "
             + (
-                "the three equipment-carrier rail joints. The 4 mm negative-side "
-                "shoe leg has a 2 mm deep head recess; the remaining 2 mm leg "
-                "and 2.5 mm rail web give 4.5 mm effective grip. A nominal "
-                "2.4 mm nut leaves 1.1 mm tip projection. "
-                if _length == 8
-                else "either shared propulsion/servo-saddle rail joint. The 4.5 mm "
-                "bridge cheek has a 2 mm deep head recess, followed by the 4 mm "
-                "frame leg and 2.5 mm rail web: 9 mm effective grip. A nominal "
-                "2.4 mm nut leaves 0.6 mm tip projection. Support both "
-                "subassemblies before releasing this shared clamp. "
+                "the three equipment-carrier rail joints. A 2 mm recessed head floor, "
+                "2.5 mm rail web and 2 mm nut floor give 6.5 mm effective grip. "
+                "A nominal 2.4 mm nut leaves 1.1 mm tip projection. "
+                if _length == 10
+                else "either shared propulsion/servo-saddle rail joint. The fitted "
+                "U saddle has 5 mm walls around a 12 mm frame. A 2 mm head recess "
+                "and 2 mm opposite nut floor give 17 mm effective grip. A nominal "
+                "2.4 mm nut leaves 0.6 mm tip projection. Support both modules "
+                "before releasing either shared clamp. "
             )
             + "Design acceptance envelope: head diameter at most 6 mm and "
             "head height at most 2 mm. These limits are not a supplier drawing "
             "or a standard button-head conformity claim. Verify a flat bearing "
             "face beyond the 3.4 mm clearance opening, actual head/recess fit, "
             "key access, full thread engagement and clear projection. The "
-            "positive-side guard surrounds an ordinary M3 nut in an open hex "
-            "window. Seat the U-shoe fully before tightening. No washers or "
+            "opposite blind hex pocket retains an ordinary M3 nut on a nominal "
+            "2 mm floor. Fit both rigid U legs before tightening; do not use bolt "
+            "force to close a loose channel. No washers or "
             "spring preload; actual clamping, PA12 creep and friction retention "
             "require physical checks. A2 stainless steel is the design material "
             "selection, not confirmation of the owned stock grade."

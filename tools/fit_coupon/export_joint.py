@@ -24,6 +24,7 @@ PARTS = {
     "FrameJointCoupon": ("PropulsionFixedFrame", (62, 28, 12.5)),
     "SaddleJointCoupon": ("ServoDriveBridge", (62, 28, 14.5)),
 }
+CROP_ORIGIN = (-31, -14, 0)
 TOL = 1e-6
 
 
@@ -52,7 +53,7 @@ def extract(doc):
         # rotating the crop frame would require explicitly composing rotations.
         if abs(shape.Placement.Rotation.Angle) > TOL:
             raise ValueError("Source part axes changed: " + source_name)
-        crop = Part.makeBox(*size, App.Vector(-31, -14, 0))
+        crop = Part.makeBox(*size, App.Vector(*CROP_ORIGIN))
         cropped = shape.common(crop).removeSplitter()
         if not is_single_closed_solid(cropped):
             raise ValueError("Crop is not one closed solid: " + source_name)
@@ -73,12 +74,15 @@ def joint_checks(shapes):
     rail, frame, saddle = (shapes[name] for name in PARTS)
     wrap = bridge_wrap_check(frame, saddle)
     contacts = []
-    for first, second, axis, station, area, region in (
-        (frame, saddle, 2, 12.5, 396, (-9, -11, 0, 18, 22, 20)),
-        (frame, saddle, 1, -5.25, 206 - math.pi * 1.7**2, None),
-        (frame, saddle, 1, 5.25, 206 - math.pi * 1.7**2, None),
-        (rail, frame, 2, 10.5, 60, (5, -14, 0, 24, 28, 20)),
-        (rail, frame, 2, 10.5, 60, (-29, -14, 0, 24, 28, 20)),
+    # Both full side walls contact the frame, except their two bolt bores and
+    # the central relief needed to pass the transverse propulsion wings.
+    side_contact = 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2
+    for name, first, second, axis, station, area, region in (
+        ("full_U_roof", frame, saddle, 2, 12.5, 58 * 12, None),
+        ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
+        ("positive_U_side", frame, saddle, 1, 6, side_contact, None),
+        ("positive_rail_seat", rail, frame, 2, 10.5, 62.5, (4, -14, 0, 25, 28, 20)),
+        ("negative_rail_seat", rail, frame, 2, 10.5, 62.5, (-29, -14, 0, 25, 28, 20)),
     ):
         if region is not None:
             x, y, z, *size = region
@@ -87,6 +91,7 @@ def joint_checks(shapes):
         actual = _plane_contact_area(first, second, axis, station)
         contacts.append(
             {
+                "interface": name,
                 "axis": axis,
                 "plane_mm": station,
                 "area_mm2": actual,
@@ -244,10 +249,10 @@ def export(cad, output_dir):
                     ],
                 },
                 "coordinate_frame": "Saved MainPropulsionModule local frame; assembled coupon poses.",
-                "hardware": "Reuse two intended M3x12 screws and two M3 nuts; no additional hardware purchase or installed parts.",
-                "limits": "Cropped fit specimen only: simultaneous rail seating, U-guide fit, nut/head access and opposed closure. Match each source part's production print orientation, material, process and finish. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength; no physical fit qualification is implied.",
+                "hardware": "Reuse two intended M3x20 screws and two M3 nuts; no additional hardware purchase or installed parts.",
+                "limits": "Cropped fit specimen only: simultaneous rail seating, fitted continuous-U surfaces, nut-floor support, local nut/head access and opposed closure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
                 "source_crop_boxes": {
-                    name: {"origin_mm": [-31, -14, 0], "size_mm": list(spec[1])}
+                    name: {"origin_mm": list(CROP_ORIGIN), "size_mm": list(spec[1])}
                     for name, spec in PARTS.items()
                 },
                 "checks": checks,

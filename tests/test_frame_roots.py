@@ -93,26 +93,30 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
         support = Part.makeBox(
-            18,
-            22,
+            58,
+            12,
             servo_bridge.SEAT_Z - rail.WEB_TOP_Z,
-            App.Vector(-9, -11, rail.WEB_TOP_Z),
+            App.Vector(-29, -6, rail.WEB_TOP_Z),
         )
-        contact = Part.makePlane(18, 22, App.Vector(-9, -11, servo_bridge.SEAT_Z))
+        contact = Part.makePlane(58, 12, App.Vector(-29, -6, servo_bridge.SEAT_Z))
         self.assertLess(support.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(contact.common(frame).Area, 396, places=5)
-        self.assertAlmostEqual(contact.common(bridge).Area, 396, places=5)
+        self.assertAlmostEqual(contact.common(frame).Area, 696, places=5)
+        self.assertAlmostEqual(contact.common(bridge).Area, 696, places=5)
         self.assertLess(frame.common(bridge).Volume, 1e-7)
 
     def test_standard_side_foot_has_broad_overlap_with_central_support(
         self,
     ):
-        from gondola.parts import propulsion, rail
+        from gondola.parts import propulsion
 
         frame = self.doc.PropulsionFixedFrame.Shape
         offset = propulsion.RAIL_BOLT_OFFSET_X
         length = propulsion.RAIL_CONTACT_LENGTH
-        foot = rail.mount_base_shape(length=length, recess_head=False)
+        foot = Part.makeBox(24, 12, 10.3, App.Vector(-12, -6, 2.2))
+        foot = foot.cut(Part.makeBox(24, 2.5, 8.3, App.Vector(-12, -1.25, 2.2)))
+        foot = foot.cut(
+            Part.makeCylinder(1.7, 14, App.Vector(0, -7, 7), App.Vector(0, 1, 0))
+        )
         foot.translate(App.Vector(offset, 0, 0))
         self.assertLess(foot.cut(frame).Volume, 1e-7)
         self.assertAlmostEqual(offset - length / 2, 5.0)

@@ -47,18 +47,21 @@ class RailManufacturingTests(unittest.TestCase):
         actual = material_length_on_line(self.shapes[name].cut(cut), start, end)
         self.assertAlmostEqual(expected - actual, 0.2, places=6)
 
-    def test_counterbore_floor_and_guard_ligaments_are_real_material(self):
+    def test_both_bearing_floors_and_pocket_ligaments_are_real_material(self):
         from gondola.validation.manufacturing import material_length_on_line
 
         cuts = {
+            "carrier_nut_pocket_floor": Part.makeBox(
+                1, 0.2, 1, App.Vector(2, 1.25, 6.5)
+            ),
             "carrier_head_recess_floor": Part.makeBox(
                 1, 0.2, 1, App.Vector(2, -3.25, 6.5)
             ),
-            "carrier_nut_window_bottom_ligament": Part.makeBox(
-                1, 1, 0.2, App.Vector(-0.5, 2.2, 3.85)
+            "carrier_nut_pocket_bottom_ligament": Part.makeBox(
+                1, 1, 0.2, App.Vector(-0.5, 4.0, 3.85)
             ),
-            "carrier_nut_window_top_ligament": Part.makeBox(
-                1, 1, 0.2, App.Vector(-0.5, 2.2, 9.95)
+            "carrier_nut_pocket_top_ligament": Part.makeBox(
+                1, 1, 0.2, App.Vector(-0.5, 4.0, 9.95)
             ),
         }
         for feature, cut in cuts.items():

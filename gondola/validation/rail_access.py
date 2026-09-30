@@ -39,28 +39,38 @@ def side_driver_clearance(screw, obstacles):
     }
 
 
-def nut_capture_check(x, nut, guard):
-    """The saved hex window admits the nut axially and blocks continuous rotation.
-
-    Only guard material around the nut is considered. Axial clamping support
-    belongs to the rail web and is checked separately by attachment_check.
-    """
-    region = Part.makeBox(8, 2.5, 8, V(x - 4, 1.45, 3))
-    retaining_guard = guard.common(region)
-    nominal = abs(nut.common(retaining_guard).Volume)
+def nut_capture_check(x, nut, support, *, shared=False):
+    """Independent saved blind-pocket floor and anti-rotation checks."""
+    inner, seat, outer = (6.0, 8.0, 11.0) if shared else (1.25, 3.25, 6.95)
+    region = Part.makeBox(8, outer - seat, 8, V(x - 4, seat, 3))
+    pocket_wall = support.common(region)
+    nominal = abs(nut.common(support).Volume)
+    floor = Part.makeCylinder(2.75, 2, V(x, inner, 7), V(0, 1, 0)).cut(
+        Part.makeCylinder(1.7, 2, V(x, inner, 7), V(0, 1, 0))
+    )
+    missing_floor = abs(floor.cut(support).Volume)
+    seated = abs(nut.BoundBox.YMin - seat) < TOL
     turns = []
     for angle in (-30, 30):
         rotated = nut.copy()
         rotated.rotate(V(x, 0, 7), V(0, 1, 0), angle)
-        blocked = abs(rotated.common(retaining_guard).Volume)
-        turns.append({"rotation_deg": angle, "rotation_block_mm3": blocked})
+        turns.append(
+            {
+                "rotation_deg": angle,
+                "rotation_block_mm3": abs(rotated.common(pocket_wall).Volume),
+            }
+        )
     return {
         "nominal_nut_to_guard_overlap_mm3": nominal,
+        "missing_nut_floor_mm3": missing_floor,
+        "nut_on_expected_bearing_plane": seated,
         "rotation_limits": turns,
         "external_holding_wrench_required": False,
-        "nut_axial_clamping_surface": "Rail web at Y=1.25 mm; guard carries no axial preload.",
-        "scope": "Nominal saved hex-window anti-rotation geometry. The nut remains removable in +Y; actual nut fit, corner clearance, printed-wall torque capacity and wear require inspection.",
+        "nut_axial_clamping_surface": f"Printed 2 mm nominal floor at Y={seat:g} mm; both U sides are in the fitted compression stack.",
+        "scope": "Nominal saved floor/hex geometry. Remove the bolt before withdrawing the nut in +Y. Coupon-fit and finish contact faces before tightening; no physical torque, creep or retention rating.",
         "passed": nominal < TOL
+        and missing_floor < TOL
+        and seated
         and all(row["rotation_block_mm3"] > 0.1 for row in turns),
     }
 
@@ -84,7 +94,7 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             "part": name,
             "regions": rows,
             "bridge_outside_stock_mm3": uncovered,
-            "scope": "Six separate solid stock blocks contain the complete saved bridge, with holes filled conservatively. Each block is swept continuously; the broad roof does not extend to the height of the narrower cradle.",
+            "scope": "Separate solid stock blocks contain the complete saved bridge, with holes filled conservatively. Each block is swept continuously; the broad roof does not extend to the height of the narrower cradle.",
             "passed": uncovered < TOL
             and bool(rows)
             and all(row["passed"] for row in rows),
@@ -107,38 +117,63 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             V(bounds.XMin - 1, bounds.YMin - 1, bounds.ZMin - 1),
         )
         lower, upper = shape.common(low_region), shape.cut(low_region)
-        # Bound the transverse bore by a small rectangular plug outside the web,
-        # preserving the open U profile. Bound both mirrored shared-clamp
-        # bores independently; their collars never fill the open web channel.
-        bore_start, bore_length = rail.MOUNT_OUTER_Y, rail.MOUNT_LEG_THICKNESS
-        canonical_fill = Part.makeBox(
-            rail.HEAD_RECESS_DIAMETER,
-            bore_length,
-            rail.HEAD_RECESS_DIAMETER,
-            V(
-                -rail.HEAD_RECESS_DIAMETER / 2,
-                bore_start,
-                rail.BOLT_AXIS_Z - rail.HEAD_RECESS_DIAMETER / 2,
-            ),
-        )
+        # Fill every transverse cylindrical face so the continuous sweep can
+        # preserve the fitted U channel. The carrier's blind nut floor adds a
+        # second bore; each shared frame station has two full 4.75 mm legs.
         module_name = (
             "MainPropulsionModule"
             if name in {"PropulsionFixedFrame", "ServoDriveBridge"}
             else "Carrier"
         )
+        sections = (
+            ((-6.0, 4.75, 3.4), (1.25, 4.75, 3.4))
+            if module_name == "MainPropulsionModule"
+            else ((-5.25, 4.0, 6.4), (1.25, 2.0, 3.4))
+        )
+        canonical_fills = [
+            Part.makeBox(width, depth, width, V(-width / 2, y, 7 - width / 2))
+            for y, depth, width in sections
+        ]
         for site in attachment_sites(module_name, offset):
-            lower = lower.fuse(placed_shape(canonical_fill, site_placement(site)))
+            for fill in canonical_fills:
+                lower = lower.fuse(placed_shape(fill, site_placement(site)))
         lower = lower.removeSplitter()
-        pieces = [(name + "Lower", lower), (name + "Upper", upper)]
-    rows = [
-        {"region": label, **continuous_path(part, waypoints, obstacles)}
+        if name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
+            # The deck is broad, but its two supports are narrow. A whole upper
+            # bounding box invents stock below the deck and blocks the adjacent
+            # servo cap during a real horizontal service slide. Literal stock
+            # bounds are independent of the carrier builder; containment below
+            # rejects an added feature outside them instead of omitting it.
+            pieces = [
+                (name + "Lower", lower),
+                (name + "Deck", Part.makeBox(64, 64, 2, V(-32, -32, 17))),
+                (
+                    name + "SupportNegativeX",
+                    Part.makeBox(5, 5, 4.5, V(-8, -3.75, 12.5)),
+                ),
+                (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -3.75, 12.5))),
+            ]
+        else:
+            pieces = [(name + "Lower", lower), (name + "Upper", upper)]
+    solids = [
+        (label, part)
         for label, part in pieces
         if part.Solids and abs(part.Volume) > TOL
+    ]
+    uncovered = (
+        abs(shape.cut(union([part for _, part in solids])).Volume)
+        if solids
+        else abs(shape.Volume)
+    )
+    rows = [
+        {"region": label, **continuous_path(part, waypoints, obstacles)}
+        for label, part in solids
     ]
     return {
         "part": name,
         "regions": rows,
-        "passed": bool(rows) and all(row["passed"] for row in rows),
+        "shape_outside_service_envelope_mm3": uncovered,
+        "passed": bool(rows) and uncovered < TOL and all(row["passed"] for row in rows),
     }
 
 
@@ -211,30 +246,38 @@ def _service_preflight(doc, registry, bindings):
             continue
         binding = mount_binding(module.Name)
         name = binding[0] if binding is not None else None
-        mount = doc.getObject(name) if name is not None else None
-        mount_check = {
-            "object": name,
-            "present": mount is not None,
-            "registered_once_as_print": mount is not None
-            and list(registry.PrintedParts).count(mount) == 1,
-            "belongs_to_module": mount is not None and belongs_to_group(mount, module),
-            "valid_solid": mount is not None
-            and hasattr(mount, "Shape")
-            and not mount.Shape.isNull()
-            and mount.Shape.isValid()
-            and bool(mount.Shape.Solids),
-        }
-        if not all(value for key, value in mount_check.items() if key != "object"):
-            failures.append(
-                {
-                    "module": module.Name,
-                    "required_mount": mount_check,
-                    "error": "Invalid required rail mount",
-                    "passed": False,
-                }
-            )
-            continue
-        checked.append((module, pose, name))
+        required = (
+            (name, "ServoDriveBridge")
+            if module.Name == "MainPropulsionModule"
+            else (name,)
+        )
+        for required_name in required:
+            mount = doc.getObject(required_name) if required_name is not None else None
+            mount_check = {
+                "object": required_name,
+                "present": mount is not None,
+                "registered_once_as_print": mount is not None
+                and list(registry.PrintedParts).count(mount) == 1,
+                "belongs_to_module": mount is not None
+                and belongs_to_group(mount, module),
+                "valid_solid": mount is not None
+                and hasattr(mount, "Shape")
+                and not mount.Shape.isNull()
+                and mount.Shape.isValid()
+                and bool(mount.Shape.Solids),
+            }
+            if not all(value for key, value in mount_check.items() if key != "object"):
+                failures.append(
+                    {
+                        "module": module.Name,
+                        "required_mount": mount_check,
+                        "error": "Invalid required rail mount",
+                        "passed": False,
+                    }
+                )
+                break
+        else:
+            checked.append((module, pose, name))
     return checked, failures
 
 
@@ -310,9 +353,15 @@ def rail_attachment_service(doc, registry, objects):
                 if name not in removed | {screw_name}
             }
             driver = side_driver_clearance(screw, bolt_obstacles)
-            nut_capture = nut_capture_check(0, nut, canonical[mount_name])
+            shared = module.Name == "MainPropulsionModule"
+            nut_capture = nut_capture_check(
+                0,
+                nut,
+                canonical["ServoDriveBridge" if shared else mount_name],
+                shared=shared,
+            )
             withdrawal = continuous_path(
-                screw, [(0, 0, 0), (0, -15, 0)], bolt_obstacles
+                screw, [(0, 0, 0), (0, -25, 0)], bolt_obstacles
             )
             after_bolt = {
                 name: shape
@@ -384,7 +433,7 @@ def rail_attachment_service(doc, registry, objects):
         "modules": rows,
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The through-hex window restrains nut rotation. For each clamp in order, withdraw its transverse screw and slide its nut outward through the hex window, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels to clear the FC carrier edge, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm to clear the retained starboard horn, adapter and nut; this temporary unclamped position is not an operating setting. Battery and accessory carriers retain direct vertical lift. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-window fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The blind hex pocket restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels to clear the FC carrier edge, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm to clear the retained starboard horn, adapter and nut; this temporary unclamped position is not an operating setting. Battery and accessory carriers retain direct vertical lift. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
         "passed": len(rows) == len(MODULE_STATIONS)
         and all(row["passed"] for row in rows),
     }

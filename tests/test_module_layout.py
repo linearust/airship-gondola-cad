@@ -92,13 +92,13 @@ class ModuleLayoutTests(unittest.TestCase):
         )
         self.assertEqual(
             (pattern.count, pattern.spacing_mm, pattern.screw_length_mm),
-            (2, 34.0, 12.0),
+            (2, 34.0, 20.0),
         )
-        self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -7.75)
+        self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -9.0)
         ordinary = attachment_pattern(False)
         self.assertEqual(
             (ordinary.count, ordinary.spacing_mm, ordinary.screw_length_mm),
-            (1, None, 8.0),
+            (1, None, 10.0),
         )
         self.assertEqual(ordinary.head_bearing_y(-5.25, 2.0), -3.25)
 

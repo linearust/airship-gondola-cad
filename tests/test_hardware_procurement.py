@@ -63,8 +63,8 @@ class HardwareSpecificationTests(unittest.TestCase):
         from gondola.procurement import hardware_material_code
 
         expected = {
-            "M3X8_BUTTON_HEAD": 3,
-            "M3X12_BUTTON_HEAD": 2,
+            "M3X10_BUTTON_HEAD": 3,
+            "M3X20_BUTTON_HEAD": 2,
             "M3_HEX_NUT": 5,
             "M2X8_BUTTON_HEAD": 6,
             "M2X6_BUTTON_HEAD": 6,
@@ -73,7 +73,7 @@ class HardwareSpecificationTests(unittest.TestCase):
         for code, quantity in expected.items():
             self.assertEqual(PURCHASED_HARDWARE_QUANTITIES[code], quantity)
         self.assertNotIn("M2X12_BUTTON_HEAD", PURCHASED_HARDWARE_QUANTITIES)
-        for code in ("M3X8_BUTTON_HEAD", "M3X12_BUTTON_HEAD", "M3_HEX_NUT"):
+        for code in ("M3X10_BUTTON_HEAD", "M3X20_BUTTON_HEAD", "M3_HEX_NUT"):
             spec = procurement_spec(code)
             self.assertEqual(spec["candidate_url"], "")
             self.assertIn("owned", spec["evidence_notes"])
@@ -82,17 +82,18 @@ class HardwareSpecificationTests(unittest.TestCase):
             self.assertEqual(hardware_material_code(HARDWARE_MATERIALS[code]), "A2")
         self.assertIn(
             "head diameter at most 6 mm",
-            procurement_spec("M3X8_BUTTON_HEAD")["requirements"],
+            procurement_spec("M3X10_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
-            "9 mm effective grip", procurement_spec("M3X12_BUTTON_HEAD")["requirements"]
+            "17 mm effective grip",
+            procurement_spec("M3X20_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
             "0.6 mm tip projection",
-            procurement_spec("M3X12_BUTTON_HEAD")["requirements"],
+            procurement_spec("M3X20_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
-            "5.9 mm across-flats hex window",
+            "5.9 mm across-flats hex pocket",
             procurement_spec("M3_HEX_NUT")["requirements"],
         )
 

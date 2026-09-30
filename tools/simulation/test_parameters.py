@@ -55,7 +55,7 @@ class SavedGeometryTests(unittest.TestCase):
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.036])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.038])
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "PositiveX")
         self.assertNotIn("optical_rail_station_x_mm", geo)
@@ -97,7 +97,7 @@ class SavedGeometryTests(unittest.TestCase):
         geo = extract(self.doc)["exact_geometry"]
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "NegativeX")
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.036])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.038])
         self.assertEqual(geo["optical_pitch_deg"], 20)
 
     def test_optical_export_uses_actual_clamped_pose_without_mutating_controls(self):

@@ -260,10 +260,10 @@ def carrier_contact_patch_checks(shape, *, bottom, thickness):
 
 def carrier_centre_mount_check(shape):
     """Check the spare centre bore and the two solid, open-sided supports."""
-    bore = Part.makeCylinder(1.3, 4.5, App.Vector(0, 0, 12.5))
-    access = Part.makeBox(6, 16, 2.5, App.Vector(-3, -8, 12.5))
-    supports = [Part.makeBox(5, 5, 2.5, App.Vector(x, -3.75, 12.5)) for x in (-8, 3)]
-    # M2x4 through the bare 2 mm deck: tip13.0, nut13.4..15.0.
+    bore = Part.makeCylinder(1.3, 6.5, App.Vector(0, 0, 12.5))
+    access = Part.makeBox(6, 16, 4.5, App.Vector(-3, -8, 12.5))
+    supports = [Part.makeBox(5, 5, 4.5, App.Vector(x, -3.75, 12.5)) for x in (-8, 3)]
+    # M2x4 through the bare 2 mm deck: tip15.0, nut15.4..17.0.
     # Additional equipment thickness changes required length and is not modeled.
     rows = {
         "through_bore_obstruction_mm3": intersection_volume(shape, bore),
@@ -275,10 +275,10 @@ def carrier_centre_mount_check(shape):
     return {
         **rows,
         "centre_xy_mm": [0.0, 0.0],
-        "under_deck_gap_mm": 2.5,
-        "bare_deck_m2x4_tip_z_mm": 13.0,
-        "bare_deck_tip_to_roof_mm": 0.5,
-        "scope": "Spare centre M2 bore; the recessed rail M3 fastener is transverse and separate. Two open-sided supports leave a 6 mm wide, 2.5 mm high space above the U-shoe roof. The raised 15..17 mm deck preserves space for a 2 mm head or 1.6 mm nut while the roof still limits screw length. Nominal bare-deck M2x4 planning only: select lengths for actual attachments and ensure the tip clears the roof. Actual nut/head, tool access, clamping and PA12 creep remain unqualified.",
+        "under_deck_gap_mm": 4.5,
+        "bare_deck_m2x4_tip_z_mm": 15.0,
+        "bare_deck_tip_to_roof_mm": 2.5,
+        "scope": "Spare centre M2 bore; the recessed rail M3 fastener is transverse and separate. Two open-sided supports leave a 6 mm wide, 4.5 mm high space above the U-shoe roof. The 17..19 mm deck clears the adjacent full servo saddle by 2.5 mm and preserves central hardware access. Nominal bare-deck M2x4 planning only: select lengths for actual attachments and ensure the tip clears the roof. Actual nut/head, tool access, clamping and PA12 creep remain unqualified.",
         "passed": all(value < TOL for value in rows.values()),
     }
 

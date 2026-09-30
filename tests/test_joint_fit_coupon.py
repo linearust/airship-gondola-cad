@@ -1,6 +1,7 @@
 """Optional crops must preserve the paired fit without modifying installed CAD."""
 
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -34,6 +35,17 @@ class JointFitCouponTests(unittest.TestCase):
         self.assertTrue(joint_checks(shapes)["passed"])
         self.assertEqual(len(shapes["RailPairCoupon"].Solids), 1)
         self.assertAlmostEqual(shapes["RailPairCoupon"].BoundBox.XLength, 62)
+        contacts = {
+            row["interface"]: row["area_mm2"]
+            for row in joint_checks(shapes)["contacts"]
+        }
+        self.assertAlmostEqual(contacts["full_U_roof"], 696)
+        for side in ("negative", "positive"):
+            self.assertAlmostEqual(
+                contacts[side + "_U_side"],
+                58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2,
+            )
+            self.assertAlmostEqual(contacts[side + "_rail_seat"], 62.5)
 
     def test_wrong_rail_station_loses_full_foot_support(self):
         shapes = self.shapes()
@@ -43,9 +55,35 @@ class JointFitCouponTests(unittest.TestCase):
     def test_blocked_shared_bore_is_rejected(self):
         shapes = self.shapes()
         obstruction = Part.makeCylinder(
-            1.7, 4.5, App.Vector(17, -9.75, 7), App.Vector(0, 1, 0)
+            1.7, 5, App.Vector(17, -11, 7), App.Vector(0, 1, 0)
         )
         shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].fuse(obstruction)
+        self.assertFalse(joint_checks(shapes)["passed"])
+
+    def test_missing_nut_bearing_floor_is_rejected_on_both_sides(self):
+        for sign in (-1, 1):
+            with self.subTest(sign=sign):
+                shapes = self.shapes()
+                floor = Part.makeCylinder(
+                    2.7,
+                    2,
+                    App.Vector(sign * 17, sign * 6, 7),
+                    App.Vector(0, sign, 0),
+                )
+                shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].cut(floor)
+                self.assertFalse(joint_checks(shapes)["passed"])
+
+    def test_interfering_fitted_U_is_rejected_without_bolt_forcing(self):
+        shapes = self.shapes()
+        shapes["SaddleJointCoupon"].translate(App.Vector(0, 0.1, 0))
+        report = joint_checks(shapes)
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["pair_overlap_mm3"][1], 1)
+
+    def test_removed_continuous_side_wall_is_rejected(self):
+        shapes = self.shapes()
+        missing = Part.makeBox(4, 5, 4, App.Vector(23, 6, 3))
+        shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].cut(missing)
         self.assertFalse(joint_checks(shapes)["passed"])
 
     def test_export_is_separate_read_only_and_round_tripped(self):
@@ -75,6 +113,8 @@ class JointFitCouponTests(unittest.TestCase):
             self.assertEqual(len(manifest["parts"]), 3)
             self.assertEqual(len(manifest["artifacts"]), 7)
             self.assertEqual(manifest["basis"]["cad_sha256"], digest)
+            self.assertIn("M3x20", manifest["hardware"])
+            self.assertIn("never use the bolts to force", manifest["limits"])
             for row in manifest["parts"]:
                 self.assertEqual(row["installed_quantity"], 0)
                 self.assertTrue(row["saved_crop_comparison"]["passed"])

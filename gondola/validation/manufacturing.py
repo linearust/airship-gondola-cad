@@ -67,7 +67,7 @@ def material_length_on_line(shape, a, b):
 
 
 def rail_mount_wall_probes():
-    """Native sections of the web, U saddle, recessed head and through-hex window."""
+    """Native sections of the web, U saddle, recessed head and blind hex nut pocket."""
     e = 0.01
     probes = [
         (
@@ -123,24 +123,31 @@ def rail_mount_wall_probes():
                 2.0,
             ),
             (
-                "carrier_positive_guard_wall",
+                "carrier_positive_clamp_leg",
                 "BatteryMount",
-                (0, 1.45 - e, 3),
-                (0, 3.95 + e, 3),
-                2.5,
+                (0, 1.25 - e, 3),
+                (0, 6.95 + e, 3),
+                5.7,
             ),
             (
-                "carrier_nut_window_top_ligament",
+                "carrier_nut_pocket_floor",
                 "BatteryMount",
-                (0, 2.7, 9.95 - e),
-                (0, 2.7, 12.5 + e),
+                (2.5, 1.25 - e, 7),
+                (2.5, 3.25 + e, 7),
+                2.0,
+            ),
+            (
+                "carrier_nut_pocket_top_ligament",
+                "BatteryMount",
+                (0, 4.5, 9.95 - e),
+                (0, 4.5, 12.5 + e),
                 2.55,
             ),
             (
-                "carrier_nut_window_bottom_ligament",
+                "carrier_nut_pocket_bottom_ligament",
                 "BatteryMount",
-                (0, 2.7, 2.2 - e),
-                (0, 2.7, 4.05 + e),
+                (0, 4.5, 2.2 - e),
+                (0, 4.5, 4.05 + e),
                 1.85,
             ),
         ]
@@ -307,7 +314,7 @@ def review(doc, registry):
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Wall slots, U saddles, through-hex nut windows, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. The rail nut window restrains rotation while remaining axially open; no sealed hollow print is claimed.",
+        "powder_removal": "Wall slots, U saddles, externally open blind hex nut pockets, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. The nut pocket restrains rotation and retains a 2 mm nominal bearing floor; no sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,
