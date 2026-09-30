@@ -33,13 +33,27 @@ class ComparisonEvidenceTests(unittest.TestCase):
                             comparison_passed(comparison, tolerance), expected
                         )
 
-    def test_nan_or_infinite_difference_cannot_pass(self):
+    def test_invalid_or_negative_difference_cannot_pass(self):
         for key in self.comparison():
-            for value in (math.nan, math.inf):
+            for value in (math.nan, math.inf, -math.inf, -0.1, True, False, None, "0"):
                 with self.subTest(field=key, value=value):
                     comparison = self.comparison()
                     comparison[key] = value
                     self.assertFalse(comparison_passed(comparison, 1e-5))
+
+    def test_missing_metrics_or_malformed_report_cannot_pass(self):
+        for key in self.comparison():
+            comparison = self.comparison()
+            del comparison[key]
+            self.assertFalse(comparison_passed(comparison, 1e-5))
+        for comparison in (None, [], "passed", {"passed": True}):
+            with self.subTest(comparison=comparison):
+                self.assertFalse(comparison_passed(comparison, 1e-5))
+
+    def test_invalid_tolerance_cannot_pass(self):
+        for tolerance in (0, -1, math.nan, math.inf, -math.inf, True, None, "0.1"):
+            with self.subTest(tolerance=tolerance):
+                self.assertFalse(comparison_passed(self.comparison(), tolerance))
 
     def test_general_geometry_gate_does_not_apply_step_empty_cut_exception(self):
         comparison = self.comparison()

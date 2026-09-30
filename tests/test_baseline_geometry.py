@@ -418,6 +418,46 @@ class FrozenBaselineTests(unittest.TestCase):
         actual.PurchaseRequirements = "M2x10 substituted without geometric changes"
         self.assertFalse(compare_shape_objects(actual, expected)["passed"])
 
+    def test_unchanged_rail_cannot_hide_changed_tape_conditions(self):
+        from gondola.parts.rail import tape_attachment_contract
+        from gondola.validation.baseline import compare_shape_objects
+
+        shape = Part.makeBox(2, 2, 2)
+        expected = self.feature("ExpectedRail", shape)
+        actual = self.feature("ActualRail", shape)
+        contract = tape_attachment_contract()
+        for obj in (expected, actual):
+            obj.addProperty("App::PropertyString", "TapeAttachmentContract")
+            obj.TapeAttachmentContract = json.dumps(contract)
+        self.assertTrue(compare_shape_objects(actual, expected)["passed"])
+        contract["qualification"] = "Adhesion verified"
+        actual.TapeAttachmentContract = json.dumps(contract)
+        result = compare_shape_objects(actual, expected)
+        self.assertFalse(result["procurement_and_scope_metadata_unchanged"])
+        self.assertFalse(result["passed"])
+        actual.removeProperty("TapeAttachmentContract")
+        self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+
+    def test_invalid_comparison_metrics_fail_for_local_world_and_blank_shapes(self):
+        from gondola.validation.baseline import compare_shape_objects
+
+        shape = Part.makeBox(2, 2, 2)
+        expected = self.feature("ExpectedPart", shape)
+        actual = self.feature("ActualPart", shape)
+        for obj in (expected, actual):
+            obj.addProperty("Part::PropertyPartShape", "PrintBlankShape")
+            obj.PrintBlankShape = shape
+        valid = dict(difference_mm3=0, bounds_difference_mm=0, volume_difference_mm3=0)
+        for index in range(3):
+            with self.subTest(comparison=index):
+                comparisons = [dict(valid) for _ in range(3)]
+                comparisons[index]["difference_mm3"] = -float("inf")
+                with patch(
+                    "gondola.validation.baseline.geometry_comparison",
+                    side_effect=comparisons,
+                ):
+                    self.assertFalse(compare_shape_objects(actual, expected)["passed"])
+
     def test_geometry_cannot_promote_an_unverified_assembly_to_production(self):
         from gondola.validation.baseline import unresolved_scope
 

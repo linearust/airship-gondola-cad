@@ -33,6 +33,7 @@ from gondola.parts import rail
 from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
 
+from .evidence import comparison_passed
 from .geometry import local_shape
 
 TOL = 1e-5
@@ -518,6 +519,7 @@ def procurement_and_scope_metadata(obj):
         "StackInterfaceContract",
         "BatteryPlacementContract",
         "RailAttachmentContract",
+        "TapeAttachmentContract",
         "RailAttachmentOffsetX",
         "RailContactLength",
         "StackHostName",
@@ -579,17 +581,7 @@ def compare_shape_objects(actual, expected):
     blank = None
     if hasattr(actual, "PrintBlankShape") and hasattr(expected, "PrintBlankShape"):
         blank = geometry_comparison(actual.PrintBlankShape, expected.PrintBlankShape)
-    same_blank = blank_presence and (
-        blank is None
-        or all(
-            blank[field] < TOL
-            for field in (
-                "difference_mm3",
-                "bounds_difference_mm",
-                "volume_difference_mm3",
-            )
-        )
-    )
+    same_blank = blank_presence and (blank is None or comparison_passed(blank, TOL))
     return {
         "object": actual.Name,
         "print_blank_unchanged": same_blank,
@@ -607,12 +599,7 @@ def compare_shape_objects(actual, expected):
         and same_placement
         and same_solids
         and same_metadata
-        and all(
-            comparison["difference_mm3"] < TOL
-            and comparison["bounds_difference_mm"] < TOL
-            and comparison["volume_difference_mm3"] < TOL
-            for comparison in (local, world)
-        ),
+        and all(comparison_passed(comparison, TOL) for comparison in (local, world)),
     }
 
 

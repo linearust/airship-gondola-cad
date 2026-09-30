@@ -56,6 +56,18 @@ def _positive(value, description):
     return float(value)
 
 
+def _contact_length(value):
+    length = _positive(value, "Mount contact length")
+    if length < MOUNT_LENGTH - TOL:
+        raise ValueError("Mount must retain the16mm minimum contact length")
+    return length
+
+
+def _slot_end_inset(contact_length=MOUNT_LENGTH):
+    """Nominal slot-circle inset before accounting for bolt clearance."""
+    return contact_length / 2 + SLOT_END_SUPPORT_RESERVE
+
+
 def _stations(values, length, footprint, description):
     try:
         values = tuple(values)
@@ -95,7 +107,7 @@ def wall_segments(length=LENGTH):
     for start, end in sections:
         first = max(-length / 2, start)
         last = min(length / 2, end)
-        if last - first >= MOUNT_LENGTH + 2 * SLOT_END_SUPPORT_RESERVE - TOL:
+        if last - first >= 2 * _slot_end_inset() - TOL:
             segments.append((first, last))
     return tuple(segments)
 
@@ -147,11 +159,9 @@ def base_shape(length=LENGTH):
 
 def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
     """Intersect the physical bolt slot with the requested full-foot support."""
-    contact_length = _positive(contact_length, "Mount contact length")
+    contact_length = _contact_length(contact_length)
     clearance = (SLOT_HEIGHT - fasteners.THREAD_DIAMETER) / 2
-    physical_inset = MOUNT_LENGTH / 2 + SLOT_END_SUPPORT_RESERVE - clearance
-    support_inset = contact_length / 2 + SLOT_END_SUPPORT_RESERVE - clearance
-    inset = max(physical_inset, support_inset)
+    inset = _slot_end_inset(max(MOUNT_LENGTH, contact_length)) - clearance
     return tuple(
         {
             "wall_x_range_mm": (first, last),
@@ -229,7 +239,7 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     if not segments:
         raise ValueError("Rail must contain at least one usable wall segment")
     pieces = [base_shape(length)] + [rounded_plate(x) for x in pads]
-    inset = MOUNT_LENGTH / 2 + SLOT_END_SUPPORT_RESERVE
+    inset = _slot_end_inset()
     for first, last in segments:
         wall = box(
             last - first,
@@ -247,9 +257,7 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
 def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH):
     """One flat clamp leg and one seating roof; head and nut remain exposed."""
     top_z = _positive(top_z, "Mount top")
-    length = _positive(length, "Mount length")
-    if length < MOUNT_LENGTH - TOL:
-        raise ValueError("Mount must retain the16mm minimum contact length")
+    length = _contact_length(length)
     if top_z < WEB_TOP_Z + PAD_THICKNESS - TOL:
         raise ValueError("Mount roof must retain at least1.5mm")
     result = union(
@@ -398,6 +406,7 @@ def tape_attachment_contract():
 
 def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
     length = _positive(length, "Rail length")
+    _contact_length(contact_length)
     spans = flex_spans(length)
     return {
         "rail_length_mm": length,
@@ -556,6 +565,7 @@ def attachment_check(
     """Nominal local contact and release, not clamp force or whole-module service."""
     from gondola.validation.geometry import translation_sweep
 
+    contact_length = _contact_length(contact_length)
     section = rail_shape(50, (0,)) if rail_section is None else rail_section
     mount = mount_base_shape(length=contact_length) if mount is None else mount
     screw, nut = attachment_screw_shape(screw_length), nut_shape()

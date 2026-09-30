@@ -1,12 +1,29 @@
 """Inspect numeric audit evidence without importing the CAD runtime."""
 
 import math
+from collections.abc import Mapping
+from numbers import Real
+
+
+def _finite_nonnegative(value):
+    return (
+        isinstance(value, Real)
+        and not isinstance(value, bool)
+        and value >= 0
+        and math.isfinite(value)
+    )
 
 
 def comparison_passed(comparison, tolerance):
-    """Require every geometric difference to be strictly below the caller's limit."""
+    """Require complete, finite, nonnegative differences below a valid limit."""
+    if (
+        not isinstance(comparison, Mapping)
+        or not _finite_nonnegative(tolerance)
+        or tolerance == 0
+    ):
+        return False
     return all(
-        comparison[key] < tolerance
+        _finite_nonnegative(comparison.get(key)) and comparison[key] < tolerance
         for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
     )
 

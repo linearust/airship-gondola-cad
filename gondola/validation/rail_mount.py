@@ -9,6 +9,7 @@ from gondola.cad import placed_shape, translated_shape
 from gondola.parts import equipment_mounts, propulsion, rail
 from gondola.print_export import geometry_comparison
 
+from .evidence import comparison_passed
 from .geometry import belongs_to_group, intersection_volume, local_shape
 
 V = App.Vector
@@ -21,11 +22,13 @@ _BINDINGS = (
 )
 
 
-def _same_shape(comparison):
-    return all(
-        comparison[key] < TOL
-        for key in ("difference_mm3", "bounds_difference_mm", "volume_difference_mm3")
-    )
+def _contract_matches(obj, property_name, expected):
+    try:
+        return json.loads(getattr(obj, property_name)) == json.loads(
+            json.dumps(expected)
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
 
 
 def _offset(module):
@@ -219,7 +222,8 @@ def saved_integral_mount_checks(doc, registry):
                 and registered
                 and inventory
                 and all(
-                    _same_shape(check) for check in (complete, lower, source_lower)
+                    comparison_passed(check, TOL)
+                    for check in (complete, lower, source_lower)
                 ),
             }
         )
@@ -298,7 +302,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     "source_comparison": comparison,
                     "binding_matches": binding_ok,
                     "sku_matches": sku_ok,
-                    "passed": binding_ok and sku_ok and _same_shape(comparison),
+                    "passed": binding_ok
+                    and sku_ok
+                    and comparison_passed(comparison, TOL),
                 }
             )
         rows.append(
@@ -351,6 +357,9 @@ def rail_check(registry, shapes):
         flex = rail.flex_relief_check(actual)
         wall_sections = _independent_wall_top_sections(actual)
         mounts = _saved_mounts(registry, shapes, obj, actual)
+        tape_contract_matches = _contract_matches(
+            obj, "TapeAttachmentContract", rail.tape_attachment_contract()
+        )
         rows.append(
             {
                 "object": obj.Name,
@@ -362,17 +371,19 @@ def rail_check(registry, shapes):
                 "open_wall_spans": flex,
                 "independent_wall_top_sections": wall_sections,
                 "tape_wings": wings,
+                "tape_attachment_contract_matches": tape_contract_matches,
                 "installed_mounts": mounts,
                 "single_valid_solid": actual.isValid() and len(actual.Solids) == 1,
                 "passed": actual.isValid()
                 and len(actual.Solids) == 1
-                and _same_shape(comparison)
+                and comparison_passed(comparison, TOL)
                 and abs(bounds.XLength - 300) < TOL
                 and missing_base < TOL
                 and filled_reliefs < TOL
                 and len(mounts) == 4
                 and flex["passed"]
                 and wall_sections["passed"]
+                and tape_contract_matches
                 and all(row["passed"] for row in wings + mounts),
             }
         )
@@ -384,10 +395,6 @@ def rail_check(registry, shapes):
         + objects
         + [doc.getObject("RailFitSample"), doc.getObject("MountFitSample")]
     ):
-        try:
-            saved = json.loads(obj.RailAttachmentContract)
-        except (AttributeError, TypeError, ValueError):
-            saved = None
         contact_length = next(
             (
                 length
@@ -404,11 +411,10 @@ def rail_check(registry, shapes):
         annotations.append(
             {
                 "object": obj.Name if obj else "missing_coupon",
-                "matches_current_attachment_contract": saved
-                == json.loads(
-                    json.dumps(
-                        rail.attachment_contract(contact_length, length=contract_length)
-                    )
+                "matches_current_attachment_contract": _contract_matches(
+                    obj,
+                    "RailAttachmentContract",
+                    rail.attachment_contract(contact_length, length=contract_length),
                 ),
             }
         )
@@ -436,7 +442,7 @@ def rail_check(registry, shapes):
                 "rail_overlap_mm3": overlap,
                 "passed": bounds.ZMin >= -TOL
                 and inner >= 7.8 - TOL
-                and _same_shape(comparison)
+                and comparison_passed(comparison, TOL)
                 and overlap < TOL,
             }
         )

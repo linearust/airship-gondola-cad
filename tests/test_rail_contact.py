@@ -194,6 +194,36 @@ class RailContactTests(unittest.TestCase):
             with self.subTest(top=top), self.assertRaises(ValueError):
                 rail.mount_base_shape(top)
 
+    def test_attachment_contract_cannot_promise_an_unsupported_short_foot(self):
+        from gondola.parts import rail
+
+        existing_mount = rail.mount_base_shape()
+        queries = (
+            lambda length: rail.attachment_windows(contact_length=length),
+            lambda length: rail.supported_slot_ranges(contact_length=length),
+            lambda length: rail.attachment_position_check(0, contact_length=length),
+            lambda length: rail.attachment_contract(contact_length=length),
+            lambda length: rail.mount_base_shape(length=length),
+            # Supplying a shape must not bypass the dimensional contract.
+            lambda length: rail.attachment_check(
+                mount=existing_mount, contact_length=length
+            ),
+        )
+        for length in (1, 15.9, 0, -1, math.nan, math.inf, True, None, "16"):
+            for index, query in enumerate(queries):
+                with (
+                    self.subTest(length=length, query=index),
+                    self.assertRaises(ValueError),
+                ):
+                    query(length)
+        # Both supported footprints retain the same nominal contact contract.
+        for length, expected_windows in ((16, 9), (32, 1)):
+            contract = rail.attachment_contract(contact_length=length)
+            self.assertEqual(contract["mount_contact_length_mm"], length)
+            self.assertEqual(
+                len(contract["supported_bolt_axis_ranges_x_mm"]), expected_windows
+            )
+
     def test_tape_pairs_and_process_matched_coupons(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail

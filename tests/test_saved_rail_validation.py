@@ -231,6 +231,29 @@ class SavedRailValidationTests(unittest.TestCase):
         self.doc.DesignRegistry.TapeReferences = tapes[:-1]
         self.assertFalse(self.check()["passed"])
 
+    def test_saved_tape_contract_cannot_misrepresent_unqualified_adhesion(self):
+        obj = self.doc.ContinuousRail
+        original = obj.TapeAttachmentContract
+        changed = json.loads(original)
+        changed["qualification"] = "Adhesion and loaded curvature verified"
+        for value in (json.dumps(changed), "{}", "not JSON"):
+            with self.subTest(value=value):
+                obj.TapeAttachmentContract = value
+                report = self.check()
+                self.assertFalse(report["passed"])
+                row = report["rails"][0]
+                self.assertFalse(row["tape_attachment_contract_matches"])
+                self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+                self.assertTrue(all(tape["passed"] for tape in row["tape_wings"]))
+        obj.TapeAttachmentContract = original
+        self.assertTrue(self.check()["passed"])
+
+    def test_missing_tape_contract_is_rejected(self):
+        self.doc.ContinuousRail.removeProperty("TapeAttachmentContract")
+        report = self.check()
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["rails"][0]["tape_attachment_contract_matches"])
+
     def test_coupon_cannot_claim_full_rail_adjustment_ranges(self):
         from gondola.parts import rail
 
