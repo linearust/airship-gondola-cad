@@ -31,28 +31,49 @@ class RailContactTests(unittest.TestCase):
                 line = Part.makeLine(App.Vector(x, y, -0.1), App.Vector(x, y, 1.6))
                 self.assertAlmostEqual(shape.common(line).Length, 1.5)
 
-    def test_wider_centre_retains_two_six_and_four_twelve_mm_flex_spans(self):
+    def test_nine_walls_retain_eight_open_flex_spans(self):
         from gondola.parts import rail
 
         report = rail.flex_relief_check()
         self.assertTrue(report["passed"], report)
-        self.assertEqual(len(report["open_spans"]), 6)
+        self.assertEqual(len(report["open_spans"]), 8)
         widths = [
             row["x_range_mm"][1] - row["x_range_mm"][0] for row in report["open_spans"]
         ]
-        self.assertEqual(widths, [12, 12, 6, 6, 12, 12])
+        self.assertEqual(widths, [17, 8, 8, 6, 6, 8, 8, 17])
+        line = Part.makeLine(App.Vector(-151, 0, 8.5), App.Vector(151, 0, 8.5))
+        actual_walls = sorted(
+            (edge.BoundBox.XMin, edge.BoundBox.XMax)
+            for edge in rail.rail_shape().common(line).Edges
+        )
+        self.assertEqual(
+            actual_walls,
+            [
+                (-150, -128),
+                (-111, -89),
+                (-81, -59),
+                (-51, -31),
+                (-25, 25),
+                (31, 51),
+                (59, 81),
+                (89, 111),
+                (128, 150),
+            ],
+        )
 
     def test_waists_preserve_wall_roots_and_transition_smoothly(self):
         from gondola.parts import rail
 
         shape = rail.rail_shape()
         for first, last in (
-            (-131, -119),
-            (-81, -69),
+            (-128, -111),
+            (-89, -81),
+            (-59, -51),
             (-31, -25),
             (25, 31),
-            (69, 81),
-            (119, 131),
+            (51, 59),
+            (81, 89),
+            (111, 128),
         ):
             for fraction, expected in ((0, 6), (0.25, 5.25), (0.5, 4.5), (1, 6)):
                 x = first + (last - first) * fraction
@@ -79,7 +100,7 @@ class RailContactTests(unittest.TestCase):
         from gondola.parts import rail
 
         shape = rail.rail_shape()
-        self.assertEqual(len(rail.supported_slot_ranges()), 7)
+        self.assertEqual(len(rail.supported_slot_ranges()), 9)
         for low, high in rail.supported_slot_ranges():
             for x in (low, (low + high) / 2, high):
                 with self.subTest(x=x):
@@ -93,24 +114,23 @@ class RailContactTests(unittest.TestCase):
                     )
             for x in (low - 0.01, high + 0.01):
                 self.assertFalse(rail.attachment_position_check(x)["passed"])
-        for x in (-125, -75, -28, 28, 75, 125):
+        for x in (-119.5, -85, -55, -28, 28, 55, 85, 119.5):
             self.assertFalse(rail.attachment_position_check(x)["passed"])
         # Having no collision in a gap does not imply a valid attachment.
         self.assertFalse(
             rail.attachment_check(translated_shape(shape, x=-28))["passed"]
         )
 
-    def test_long_propulsion_foot_has_shorter_supported_travel(self):
+    def test_long_propulsion_foot_is_supported_only_by_central_wall(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
         shape = rail.rail_shape()
         ranges = rail.supported_slot_ranges(contact_length=32)
-        self.assertEqual(len(ranges), 5)
-        for centre, (low, high) in zip((-100, -50, 0, 50, 100), ranges):
-            half_travel = 8.2 if centre == 0 else 2.2
-            self.assertAlmostEqual(low, centre - half_travel)
-            self.assertAlmostEqual(high, centre + half_travel)
+        self.assertEqual(len(ranges), 1)
+        for low, high in ranges:
+            self.assertAlmostEqual(low, -8.2)
+            self.assertAlmostEqual(high, 8.2)
             for x in (low, high):
                 self.assertTrue(
                     rail.attachment_position_check(x, contact_length=32)["passed"]
@@ -123,7 +143,7 @@ class RailContactTests(unittest.TestCase):
             self.assertFalse(
                 rail.attachment_position_check(high + 0.01, contact_length=32)["passed"]
             )
-        for x in (-140, 140, 10):
+        for x in (-140, -100, -70, -41, -10, 10, 41, 70, 100, 140):
             self.assertFalse(
                 rail.attachment_position_check(x, contact_length=32)["passed"]
             )
@@ -164,7 +184,7 @@ class RailContactTests(unittest.TestCase):
     def test_invalid_dimensions_fail_before_building_geometry(self):
         from gondola.parts import rail
 
-        for length in (0, -1, math.nan, math.inf, True, None, "300", 10):
+        for length in (0, -1, math.nan, math.inf, True, None, "300", 10, 301):
             with self.subTest(length=length), self.assertRaises(ValueError):
                 rail.rail_shape(length, ())
         for values in ((math.nan,), (True,), ("0",), None, (0, 0), (24,)):

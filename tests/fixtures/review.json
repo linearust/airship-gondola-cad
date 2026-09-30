@@ -1,17 +1,17 @@
 {
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "revision": "BO",
+  "revision": "BP",
   "passed": true,
   "fixture_promotion_approved": true,
-  "reviewer": "rail_mechanics_review independent literal geometry/native controls review",
-  "reviewed_at_utc": "2026-09-30T09:01:37.293803+00:00",
-  "candidate_path": "/tmp/gondola-bo-review/candidate/gondola.FCStd",
-  "candidate_sha256": "084e65c7c6288ccf1b1a17c744b3c13dbb9a9eb09042dcda3820c620a587299f",
-  "source_fingerprint": "290974ef2a6079609a2b6e97179c4e22522546e7925fbb96e6fd2e14c032d714",
-  "old_production_path": "/tmp/gondola-bo-review/before.FCStd",
-  "old_production_sha256": "9519b7db7a0c1be8993d0ac67549fc6bdda0e3862ab5823ea347fa01eec27de0",
-  "old_fixture_path": "/tmp/gondola-bo-review/before-fixture.FCStd",
-  "old_fixture_sha256": "890ff9b4830058df96bfb554cf59d1432d77297c35ee551835a83205a3a89508",
+  "reviewer": "segment_mechanics independent literal geometry/native controls review",
+  "reviewed_at_utc": "2026-09-30T09:46:28.504819+00:00",
+  "candidate_path": "/tmp/gondola-bp-review/candidate/gondola.FCStd",
+  "candidate_sha256": "e10eb2cd18ea9e81598cc296ed79f318584f821791297c96a26cddd8b47d9176",
+  "source_fingerprint": "7d0713878a8d4bf5b65a894d065cbbf4528308a287273140a6af8387f7006f28",
+  "old_production_path": "/tmp/gondola-bp-review/before.FCStd",
+  "old_production_sha256": "90798d148dd131a6964fed0147cf5586101e78405893642fcc329e7a7f22500e",
+  "old_fixture_path": "/tmp/gondola-bp-review/before-fixture.FCStd",
+  "old_fixture_sha256": "084e65c7c6288ccf1b1a17c744b3c13dbb9a9eb09042dcda3820c620a587299f",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "review_key": "independent_design_review",
@@ -21,37 +21,41 @@
     "retained_control_script_key": "retained_control_audit_script",
     "old_fixture_consistency_key": "old_fixture_consistency",
     "print_layout_transition_key": "print_layout_transition",
+    "print_layout_script_key": "print_layout_audit_script",
+    "metadata_delta_summary_key": "metadata_delta_summary",
     "flexibility_comparison_key": "flexibility_comparison",
     "flexibility_script_key": "flexibility_calculation_script"
   },
   "approval_basis": [
-    "All120 saved local/world shapes reviewed; the only geometric change is ContinuousRail, with no added/removed objects. Main native type, parent, local/world placement, property schema, expressions, registries, print blanks and motion-control datums remain unchanged.",
-    "Independent cubic primitives reproduce exactly the material removed at all six free spans. Roots remain6mm, waist minimum4.5mm, thickness1.5mm. Rail remains one valid solid. No source geometry generator or waist helper used for the independent expected shape.",
-    "Both old and new documents pass36 independent literal native control cases each, plus current native control validation. All properties and placements are restored in memory; no document was saved.",
-    "All four candidate native artifacts retain consistent Creallo SLS/MJF, PA12 unfilled manufacturing labels and metadata. All shape/metadata/source hashes remained unchanged throughout review.",
-    "All13 print-layout local shapes compared; only ContinuousRail changes geometry. Rotations, object names and schema remain unchanged. Tiny regenerated print-layout translations are retained in raw audit and classified below."
+    "All120 saved local/world shapes reviewed. Only ContinuousRail and the two PhaseLeadLoopReserve clearance solids change local geometry. The remaining117local shapes,all print blank shapes,object types,parentage,property schema,expressions and registries remain unchanged. No added or removed objects.",
+    "Independent rounded plates,wall boxes,capsule slots and tangent cubic reliefs reproduce old and new complete rail shapes with0mm^3 difference. New rail is one valid solid with9walls,8free spans totaling78mm,unchanged1.5mm base/wings,6\u21924.5mm waists,three tape-wing pairs and central50mm support.",
+    "Only ElectronicsEquipmentModule translates-10mmX (from-60to-70);its descendants follow by the same world translation with unchanged local poses. Allother local/world poses retained.",
+    "Independent three-point wire planning paths reproduce both old and new Port/Starboard reservations with0mm^3 difference. The endpoint shifts-10mmX with FC;centreline80.4104943\u219276.9079497mm. These are planning reserves,not actual cable models.",
+    "Both saved versions pass36independent native control cases each;BP also passes current-source control validation. Old current-source result is preserved as an expected failure because BP wall intervals cannot support BO FC-60;the literal BO control audit confirms BO itself remains valid. All properties/placements restored in memory and no document saved.",
+    "All13print-layout local shapes reviewed:onlyContinuousRail changes,all layoutposes and rotations identical. All4candidate native artifacts preserve Creallo SLS/MJF,PA12 unfilled labels/metadata."
   ],
   "reviewed_metadata_deltas": [
-    "Seven RailAttachmentContract values now declare rail section length, actual free spans,6mm base width and4.5mm free-span minimum width. Three redundant gap/central-length summaries removed; exact wall/support intervals remain unchanged for full rail.",
-    "The two unchanged fit-coupon solids now have a50mm rail-section contract: one wall interval, no free spans, null minimum free-span width and clamp-only scope. Notes explicitly refer to the companion50mm rail coupon, so no16mm L-foot length is mislabeled.",
-    "ContinuousRail Notes/PrintNotes and TapeAttachmentContract explain the narrower spans, constant thickness, reduced lateral/torsional resistance and the influence of adhesive. No strength, loaded curvature, fatigue or adhesion qualification is introduced.",
-    "Generated Uid/Visibility and SourceFingerprint changes are preserved and classified as generation/presentation state, not geometric deltas."
+    "Five full-rail RailAttachmentContract values update literal wall/gap/support ranges and add wall_count9. Two unchanged50mm clamp coupons add wall_count1 only;they retain no free spans and cannot qualify bending.",
+    "MainPropulsionModule32mm-foot contract now permits only central-wall bolt axes[-8.2,8.2]mm. Short20/22mm outerwalls cannot accept this broad propulsion foot. Actual default7.5mm axis and32mm support preserved.",
+    "ElectronicsEquipmentModule RailPositionX and ModulePlacementContract x change-60\u2192-70mm. Both WiringContract route endpoints change-31\u2192-41mm in propulsion-localX;allother wiring claims retained.",
+    "ContinuousRail Notes/PrintNotes accurately state9walls/8spans/78mm and reduced local trim,retaining physical qualification limits. Generated Uid/Visibility/SourceFingerprint deltas are generation/presentation state,not geometry changes."
   ],
-  "geometry_volume_change_mm3": 67.50000054600928,
-  "nominal_mass_reduction_g_at_1p01_g_per_cm3": 0.06817500055146937,
-  "print_layout_numerical_translation_mm_max": 2.0000004496978363e-07,
-  "print_layout_translation_classification": "Up to2.1e-7mm, with identical rotations, following spline BRep bounding-box padding. Raw strict placement deltas preserved; negligible under1e-6mm review tolerance, not silently asserted byte-identical.",
-  "old_fixture_consistency_review": "Old fixture and old production have identical geometry, interface metadata, native schema, placements, parentage and expressions. In addition to generated Uid/Visibility/SourceFingerprint, PropulsionFixedFrame Notes/PrintNotes only clarify that the unchanged80mm\u00b2 contact area belongs to the32mm L foot.",
+  "geometry_volume_change_mm3": 78.86946343532145,
+  "nominal_mass_reduction_g_at_1p01_g_per_cm3": 0.07965815806967466,
+  "print_layout_numerical_translation_mm_max": 0.0,
+  "print_layout_translation_classification": "All layout positions and rotations unchanged;no numerical translation difference recorded.",
+  "old_fixture_consistency_review": "Old fixture and production have identical geometry,poses,parentage,interface metadata,native schema and expressions. Only generated Uid/Visibility/SourceFingerprint differ.",
   "limits": [
-    "Approval is for the intentional CAD fixture transition, not production/flight release or physical strength, tolerance, adhesion, bend radius, creep or fatigue qualification.",
-    "Beam calculation compares isolated free spans at constant moment or fixed end rotation. It does not predict a bonded, loaded whole rail. Same section reduction also reduces lateral/torsional resistance.",
-    "50mm clamp coupon lacks a free span and cannot establish full-rail bending performance.",
-    "Parent must promote this exact candidate, change only the source fixture hash pointer, regenerate production, compare geometry/parents/controls/design metadata and complete regression before claiming final verification."
+    "Approval covers intentional regression fixture transition;full production regeneration and regression remain required. It does not qualify physical bending,print fit,strength,adhesion,creep,fatigue,cable installation or flight.",
+    "The isolated constant-moment free-span compliance ratio78/60=1.30 is not a measured or predicted complete bonded rail flexibility. The longest unsupported span grows12\u219217mm and lateral/torsional stability remains a physical check.",
+    "Local trim on20/22mm walls is2.4/4.4mm;former38mm walls allowed20.4mm. Cross-gap relocation needs bolt removal. The32mm propulsion foot is limited to the centre support.",
+    "Regular nine-wall proposal withFC-77 was rejected for native interference;selectedFC-70 stillrequires complete integrated clearances and actual cable/service access checks.",
+    "Promote only this exact candidate;update fixture hash pointer,regenerate and compare final production before claiming release verification."
   ],
   "fixture_modified_by_reviewer": false,
   "repo_modified_during_review": false,
   "promoted_fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "084e65c7c6288ccf1b1a17c744b3c13dbb9a9eb09042dcda3820c620a587299f"
+    "sha256": "e10eb2cd18ea9e81598cc296ed79f318584f821791297c96a26cddd8b47d9176"
   }
 }

@@ -101,12 +101,14 @@ def _independent_base_witnesses():
     """
     reliefs = []
     for first, last in (
-        (-131, -119),
-        (-81, -69),
+        (-128, -111),
+        (-89, -81),
+        (-59, -51),
         (-31, -25),
         (25, 31),
-        (69, 81),
-        (119, 131),
+        (51, 59),
+        (81, 89),
+        (111, 128),
     ):
         middle, sixth = (first + last) / 2, (last - first) / 6
         for sign in (-1, 1):
@@ -133,6 +135,36 @@ def _independent_base_witnesses():
     removed = Part.makeCompound(reliefs)
     retained = Part.makeBox(294, 6, 1.5, V(-147, -3, 0)).cut(removed)
     return retained, removed
+
+
+def _independent_wall_top_sections(shape):
+    """Literal nine wall intervals above the slots, independent of generator data."""
+    line = Part.makeLine(V(-151, 0, 8.5), V(151, 0, 8.5))
+    actual = sorted(
+        (edge.BoundBox.XMin, edge.BoundBox.XMax) for edge in shape.common(line).Edges
+    )
+    expected = (
+        (-150, -128),
+        (-111, -89),
+        (-81, -59),
+        (-51, -31),
+        (-25, 25),
+        (31, 51),
+        (59, 81),
+        (89, 111),
+        (128, 150),
+    )
+    return {
+        "sample_yz_mm": [0, 8.5],
+        "actual_wall_intervals_x_mm": actual,
+        "expected_wall_intervals_x_mm": expected,
+        "passed": len(actual) == len(expected)
+        and all(
+            abs(value - target) < TOL
+            for pair, reference in zip(actual, expected)
+            for value, target in zip(pair, reference)
+        ),
+    }
 
 
 def saved_integral_mount_checks(doc, registry):
@@ -317,6 +349,7 @@ def rail_check(registry, shapes):
                 }
             )
         flex = rail.flex_relief_check(actual)
+        wall_sections = _independent_wall_top_sections(actual)
         mounts = _saved_mounts(registry, shapes, obj, actual)
         rows.append(
             {
@@ -325,8 +358,9 @@ def rail_check(registry, shapes):
                 "size_mm": [bounds.XLength, bounds.YLength, bounds.ZLength],
                 "missing_unbroken_base_witness_mm3": missing_base,
                 "filled_flexure_relief_mm3": filled_reliefs,
-                "independent_base_witness_scope": "Literal 6-to-4.5 mm cubic waist profiles across all six wall gaps and the full 1.5 mm base thickness within X +/-147 mm; rounded end tips are covered by the separate full-shape comparison.",
+                "independent_base_witness_scope": "Literal 6-to-4.5 mm cubic waist profiles across all eight wall gaps and the full 1.5 mm base thickness within X +/-147 mm; rounded end tips are covered by the separate full-shape comparison.",
                 "open_wall_spans": flex,
+                "independent_wall_top_sections": wall_sections,
                 "tape_wings": wings,
                 "installed_mounts": mounts,
                 "single_valid_solid": actual.isValid() and len(actual.Solids) == 1,
@@ -338,6 +372,7 @@ def rail_check(registry, shapes):
                 and filled_reliefs < TOL
                 and len(mounts) == 4
                 and flex["passed"]
+                and wall_sections["passed"]
                 and all(row["passed"] for row in wings + mounts),
             }
         )

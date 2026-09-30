@@ -25,7 +25,7 @@ from .servo_horns import SELECTED_BY_SIDE
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "BO"
+DESIGN_REVISION = "BP"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -57,7 +57,7 @@ MANUFACTURING_DECISION = {
     "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and seated mounting fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": RAIL_BASE_THICKNESS_MM,
-    "flexure_exception": "The rail base and tape wings use the user-reported manufacturing-review minimum of 1.5 mm nominal. The narrow base remains a functional flexure, not a generic broad plate; actual thickness, full-length curvature, tape retention and fatigue remain unqualified. Gaps between slotted walls permit bending without thinning the base:6mm beside the longer central wall and12mm elsewhere. The reinforced centre preserves the broad propulsion support and FC wiring distance. This does not establish whole-rail stiffness or a qualified bend radius.",
+    "flexure_exception": "The rail base and tape wings retain the user-reported manufacturing-review minimum of1.5mm nominal. Symmetric short outer walls distribute flexure while the broad centre supports the32mm propulsion foot; that foot cannot use the shorter walls. More wall-free length trades local adjustment and lateral/torsional resistance for nominal bending compliance. Actual thickness, bonded curvature, tape retention, stiffness and fatigue remain unqualified; use the rail contract for exact intervals.",
     "dfam_basis": "Prefer simple integral load-bearing sections and accessible through-features. Retain openings for assembly, wiring or motion; omit lightening windows that leave fragile narrow ligaments for negligible system-level benefit. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
@@ -315,7 +315,7 @@ MODULE_STATIONS = (
     ModuleStation(
         "MainPropulsionModule", -5, attachment_offset_x_mm=12.5, contact_length_mm=32
     ),
-    ModuleStation("ElectronicsEquipmentModule", -60, 180),
+    ModuleStation("ElectronicsEquipmentModule", -70, 180),
     ModuleStation("AccessoryEquipmentModule", -140, 180),
 )
 

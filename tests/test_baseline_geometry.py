@@ -146,13 +146,13 @@ class ModuleControlMappingTests(unittest.TestCase):
         from gondola.validation.baseline import module_attachment_pose
 
         for yaw in (0, 180):
-            station = ModuleStation("Test", -60, yaw)
+            station = ModuleStation("Test", -70, yaw)
             module = SimpleNamespace(
                 RailAttachmentOffsetX=0,
                 RailContactLength=16,
-                RailPositionX=-60,
+                RailPositionX=-70,
                 Placement=App.Placement(
-                    App.Vector(-60, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
+                    App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
                 ),
             )
             self.assertTrue(module_attachment_pose(station, module)["passed"])
@@ -167,9 +167,9 @@ class ModuleControlMappingTests(unittest.TestCase):
                 setattr(module, attribute, original)
             original = module.Placement.copy()
             for vector, angle in (
-                (App.Vector(-60, 0.1, 0), yaw),
-                (App.Vector(-60, 0, 0.1), yaw),
-                (App.Vector(-60, 0, 0), 180 - yaw),
+                (App.Vector(-70, 0.1, 0), yaw),
+                (App.Vector(-70, 0, 0.1), yaw),
+                (App.Vector(-70, 0, 0), 180 - yaw),
             ):
                 module.Placement = App.Placement(
                     vector, App.Rotation(App.Vector(0, 0, 1), angle)

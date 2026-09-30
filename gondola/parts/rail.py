@@ -30,8 +30,9 @@ PAD_CENTRES = (-140.0, 0.0, 140.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
 BASE_WIDTH = 6.0
 FLEXURE_MIN_WIDTH = 4.5
-SEGMENT_PITCH, FLEX_GAP = 50.0, 12.0
 CENTRAL_WALL_LENGTH = 50.0
+# Shorter outer supports distribute bending while retaining a full clamp foot.
+POSITIVE_WALL_SECTIONS = ((31.0, 51.0), (59.0, 81.0), (89.0, 111.0), (128.0, 150.0))
 WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
 SLOT_HEIGHT, BOLT_AXIS_Z = 2.4, 6.5
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = 16.0, 2.5
@@ -81,23 +82,26 @@ def rounded_plate(x, length=PAD_LENGTH, width=PAD_WIDTH):
 
 
 def wall_segments(length=LENGTH):
-    """Clip a common 50mm wall grid; preserve only usable end remnants."""
+    """Clip the symmetric nine-wall layout; retain only usable clamp supports."""
     length = _positive(length, "Rail length")
-    half_wall = (SEGMENT_PITCH - FLEX_GAP) / 2
-    count = math.ceil(length / (2 * SEGMENT_PITCH))
+    if length > LENGTH + TOL:
+        raise ValueError("Rail length exceeds the designed wall layout")
+    sections = (
+        *((-last, -first) for first, last in reversed(POSITIVE_WALL_SECTIONS)),
+        (-CENTRAL_WALL_LENGTH / 2, CENTRAL_WALL_LENGTH / 2),
+        *POSITIVE_WALL_SECTIONS,
+    )
     segments = []
-    for index in range(-count, count + 1):
-        centre = index * SEGMENT_PITCH
-        half = CENTRAL_WALL_LENGTH / 2 if index == 0 else half_wall
-        first = max(-length / 2, centre - half)
-        last = min(length / 2, centre + half)
+    for start, end in sections:
+        first = max(-length / 2, start)
+        last = min(length / 2, end)
         if last - first >= MOUNT_LENGTH + 2 * SLOT_END_SUPPORT_RESERVE - TOL:
             segments.append((first, last))
     return tuple(segments)
 
 
 def flex_spans(length=LENGTH):
-    """Wall-free intervals; keep their roots and supported slots unchanged."""
+    """Wall-free intervals between the selected clamp-support sections."""
     segments = wall_segments(length)
     return tuple((left[1], right[0]) for left, right in zip(segments, segments[1:]))
 
@@ -161,8 +165,9 @@ def attachment_windows(length=LENGTH, contact_length=MOUNT_LENGTH):
 def supported_slot_ranges(length=LENGTH, contact_length=MOUNT_LENGTH):
     """Permitted nominal centres, retaining at least0.8mm full-foot end reserve.
 
-    The32mm propulsion foot has shorter permitted travel than the physical slot
-    and cannot use19mm end walls. These are geometry limits, not a loaded fit.
+    The32mm propulsion foot fits only the central50mm wall. Other walls retain
+    the16mm foot with shorter local adjustment. These are geometry limits,
+    not a loaded fit.
     """
     return tuple(
         row["axis_travel_x_range_mm"]
@@ -396,6 +401,7 @@ def attachment_contract(contact_length=MOUNT_LENGTH, *, length=LENGTH):
     spans = flex_spans(length)
     return {
         "rail_length_mm": length,
+        "wall_count": len(wall_segments(length)),
         "wall_segments_x_mm": wall_segments(length),
         "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(
             length, contact_length=contact_length
@@ -434,7 +440,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One PA12 strip with1.5mm closed base and three tape-wing pairs.2.5mm upright walls have local M2 slots; the central50mm wall has6mm free spans beside it, other gaps12mm. Free spans smoothly narrow from6 to4.5mm, without thinning the base or changing wall roots. This reduces nominal bending stiffness but also lateral/torsional resistance; no whole-rail flexibility or strength rating. Qualify loaded curvature, friction retention, creep and adhesion with the actual parts.",
+        "One PA12 strip with1.5mm closed base and three tape-wing pairs. Nine2.5mm upright walls have local M2 slots; eight free spans total78mm. The central50mm wall supports the32mm propulsion foot;20/22mm outer walls support16mm carrier feet with reduced local adjustment. Free spans smoothly narrow from6 to4.5mm without thinning the base. Qualify loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no whole-rail flexibility or strength rating.",
     )
     set_property(
         printed,

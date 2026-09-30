@@ -266,12 +266,10 @@ def review(doc, registry):
         "rail_functional_flexure_assessment": {
             "nominal_base_and_tape_wing_thickness_mm": rail.PAD_THICKNESS,
             "minimum_requested_tape_attachment_thickness_mm": 1.5,
-            "wall_segment_pitch_mm": rail.SEGMENT_PITCH,
-            "free_base_spans_between_walls_mm": [
-                last - first for first, last in rail.flex_spans()
-            ],
+            "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
+            "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_range_mm": [rail.FLEXURE_MIN_WIDTH, rail.BASE_WIDTH],
-            "scope": "The base and three wing pairs retain at least1.5mm nominal thickness. Free-span widths smoothly narrow from6 to4.5mm; wall roots keep6mm. Six-mm gaps border the longer central wall; other gaps are12mm. A50mm clamp coupon contains no flex span. Actual full-rail curvature, adhesion, lateral/torsional stability, bending strain, fatigue and one-piece supplier acceptance remain unqualified.",
+            "scope": "The base and three wing pairs retain at least1.5mm nominal thickness. Free-span widths smoothly narrow from6 to4.5mm; wall roots keep6mm. Nine walls retain eight free spans,6/8/17mm long. The50mm central wall retains the32mm propulsion foot; outer walls support16mm carrier feet. A50mm clamp coupon contains no flex span. Actual full-rail curvature, adhesion, lateral/torsional stability, bending strain, fatigue and one-piece supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,

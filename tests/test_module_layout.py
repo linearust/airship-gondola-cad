@@ -15,7 +15,7 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(len(stations), 4)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, -5)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 100)
-        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -60)
+        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -70)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)

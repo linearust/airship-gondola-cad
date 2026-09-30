@@ -30,7 +30,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "ElectronicsMount",
                 "ElectronicsEquipmentModule",
                 "electronics",
-                -60,
+                -70,
                 180,
                 0,
             ),
@@ -103,11 +103,11 @@ class SavedRailValidationTests(unittest.TestCase):
             row["attachment_axis_x_mm"]
             for row in report["rails"][0]["installed_mounts"]
         )
-        for value, expected in zip(actual, (-140, -60, 7.5, 100)):
+        for value, expected in zip(actual, (-140, -70, 7.5, 100)):
             self.assertAlmostEqual(value, expected)
 
     def test_gap_position_is_rejected_even_without_a_collision(self):
-        self.doc.BatteryEquipmentModule.Placement.Base = App.Vector(75, 0, 0)
+        self.doc.BatteryEquipmentModule.Placement.Base = App.Vector(85, 0, 0)
         report = self.check()
         self.assertFalse(report["passed"])
         row = next(
@@ -163,7 +163,7 @@ class SavedRailValidationTests(unittest.TestCase):
     def test_filled_waist_is_rejected_even_if_generator_has_the_same_defect(self):
         obj = self.doc.ContinuousRail
         obj.Shape = obj.Shape.fuse(
-            Part.makeBox(12, 6, 1.5, App.Vector(69, -3, 0))
+            Part.makeBox(8, 6, 1.5, App.Vector(51, -3, 0))
         ).removeSplitter()
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
@@ -172,13 +172,26 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         row = report["rails"][0]
         self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
-        self.assertGreater(row["filled_flexure_relief_mm3"], 13)
+        self.assertGreater(row["filled_flexure_relief_mm3"], 8.9)
         self.assertAlmostEqual(row["missing_unbroken_base_witness_mm3"], 0, places=6)
+
+    def test_missing_unused_wall_is_rejected_independently_of_generator(self):
+        obj = self.doc.ContinuousRail
+        obj.Shape = obj.Shape.cut(Part.makeBox(20, 2.5, 8, App.Vector(31, -1.25, 1.5)))
+        with patch(
+            "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
+        ):
+            report = self.check()
+        row = report["rails"][0]
+        self.assertFalse(report["passed"])
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
+        self.assertFalse(row["independent_wall_top_sections"]["passed"])
+        self.assertTrue(all(mount["passed"] for mount in row["installed_mounts"]))
 
     def test_thinned_waist_is_rejected_even_if_generator_has_the_same_defect(self):
         obj = self.doc.ContinuousRail
         obj.Shape = obj.Shape.cut(
-            Part.makeBox(1, 4.5, 0.2, App.Vector(74.5, -2.25, 1.3))
+            Part.makeBox(1, 4.5, 0.2, App.Vector(54.5, -2.25, 1.3))
         )
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape

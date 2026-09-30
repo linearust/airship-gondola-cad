@@ -1,21 +1,21 @@
 {
-  "revision": "BO",
-  "recorded_utc": "2026-09-30T09:17:19.878300+00:00",
+  "revision": "BP",
+  "recorded_utc": "2026-09-30T10:03:01.362932+00:00",
   "passed": true,
   "scope": "Nominal CAD, native controls, motion/service and exports only; no physical, electrical or flight qualification.",
-  "source_fingerprint": "29d073baf250dfe0080f10e404d34eef57e201d8e4861fdb06347f6ee3287dfc",
-  "cad_sha256": "90798d148dd131a6964fed0147cf5586101e78405893642fcc329e7a7f22500e",
+  "source_fingerprint": "8931a290bb128c7a69282fe93f14c7987fb4bdc64c6ae27cd574b4b2cea56908",
+  "cad_sha256": "4692bb06c59e3ba2bd134ad796eeefaeb403bb1cfd369d5a7ba159872bfde7eb",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "084e65c7c6288ccf1b1a17c744b3c13dbb9a9eb09042dcda3820c620a587299f"
+    "sha256": "e10eb2cd18ea9e81598cc296ed79f318584f821791297c96a26cddd8b47d9176"
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "6bdbf96edc77adcb5b3a36ccebfe6aefe005bd8cd31b6c869239d5ddd9ea9052"
+    "sha256": "e2e163fea434d60f9d65f8772744fc3dd8c6ff9f7a851c01b8f26267617f1f4f"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 611,
+    "testsRun": 612,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -23,10 +23,8 @@
     "exact_discovery_coverage": true,
     "execution": "Complete native unittest discovery grouped by TestCase class across six isolated FreeCAD Python workers. Class fixtures preserved; exact discovery ID coverage, no skips, frozen production/test/tool sources required.",
     "source_unchanged_scope": "One complete frozen phase: production/test/tool Python and fixture hashes match before, after and recording.",
-    "outer_launch_exit_code": 143,
-    "outer_launch_cause_unconfirmed": true,
-    "independent_worker_reconciliation_passed": true,
-    "launcher_scope": "All native test workers completed with exit0; the original enclosing command ended143 after writing the complete result. The cause was not established. Fresh native discovery and completed-worker records were independently reconciled; subsequent minimal/native/discovery launcher probes exited0. Original whole-launcher clean termination is not claimed."
+    "outer_launch_exit_code": 0,
+    "launcher_scope": "Observed subprocess return code for this BP native wrapper. Native harness ran in its own session; result data and logs are independently hashed. No prior-run exception is reused."
   },
   "validation_passed": {
     "gondola_baseline_validation.json": true,
@@ -45,7 +43,7 @@
   },
   "blender_scope": "Sampled prescribed rigid motion, not physical/dynamic/wire simulation.",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "37a58dd4e2cf66aed55682dfdd264429cbe64a750dc0309dd80f145908efb696",
+  "evidence_archive_sha256": "24ddc37829a5b844a49ef4a63a8051aa7c92a4546cf5e4de7d4d70cd59f5b555",
   "record_scope": "Execution result at recorded_utc; valid only for matching source, native CAD and fixture hashes. Absent generated files must be regenerated and revalidated.",
-  "print_bundle_sha256": "2f4070097e2ca76b41f831ce9bd2e00b3c4e0d99c434c870b627823e8d2411d1"
+  "print_bundle_sha256": "7788fd48e755030166e4efea92af39829a8f4a5137fb418de3167071e87e7d9d"
 }
