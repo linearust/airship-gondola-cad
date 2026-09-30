@@ -1,9 +1,13 @@
 """Bounded export-contract checks; run with native FreeCAD's Python runtime."""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
+from tools.blender_review import export_cad
 from tools.blender_review.export_cad import (
     check_optical_carrier_basis,
     check_review_basis,
@@ -13,6 +17,24 @@ from tools.blender_review.export_cad import (
 
 
 class ExportContractTests(unittest.TestCase):
+    def test_export_rejects_input_paths_before_opening_the_document(self):
+        with tempfile.TemporaryDirectory() as folder:
+            cad = Path(folder) / "saved.FCStd"
+            report = Path(folder) / "saved_validation.json"
+            cad.write_bytes(b"native CAD sentinel")
+            report.write_bytes(b"validation sentinel")
+            originals = {path: path.read_bytes() for path in (cad, report)}
+            with patch.object(export_cad.App, "openDocument") as open_document:
+                for output in (cad, report):
+                    with (
+                        self.subTest(output=output),
+                        self.assertRaisesRegex(ValueError, "separate JSON"),
+                    ):
+                        export_cad.export(cad, output)
+                open_document.assert_not_called()
+            for path, contents in originals.items():
+                self.assertEqual(path.read_bytes(), contents)
+
     @staticmethod
     def optical_basis():
         host = SimpleNamespace(Name="BatteryEquipmentModule")

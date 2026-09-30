@@ -17,8 +17,9 @@ import MeshPart
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.parts import optical_mount
-from gondola.provenance import file_sha256, source_fingerprint
+from gondola.provenance import file_sha256
 from tools.blender_review.motion_plan import REVIEW_MOTION, curve
+from tools.cad_snapshot import open_validated_cad
 
 CATEGORIES = ("PrintedParts", "HardwareParts", "ReferenceParts", "TapeReferences")
 REVIEW_HORN_PROFILE = "KST_X06_HALF_ARM_1"
@@ -191,26 +192,10 @@ def check_optical_carrier_basis(doc):
 
 
 def export(cad_path, output):
-    original_hash = file_sha256(cad_path)
-    fingerprint = source_fingerprint()
-    doc = App.openDocument(str(cad_path))
-    try:
+    with open_validated_cad(cad_path, output) as snapshot:
+        doc = snapshot.doc
         registry = doc.DesignRegistry
-        if registry.SourceFingerprint != fingerprint:
-            raise RuntimeError(
-                "Saved CAD does not match current source; rebuild and validate it first."
-            )
-        report_path = cad_path.with_name(cad_path.stem + "_validation.json")
-        report = json.loads(report_path.read_text())
-        if not report.get("passed") or report["source_fingerprint"] != fingerprint:
-            raise RuntimeError(
-                "A passing validation report for this source is required."
-            )
-        hashes = report["source_hashes_after"]
-        if hashes.get(cad_path.name) != original_hash:
-            raise RuntimeError(
-                "Validation report does not identify these exact saved CAD bytes."
-            )
+        report = snapshot.report
         check_review_basis(doc, report)
         optical_attachment = check_optical_carrier_basis(doc)
         objects = review_objects(registry)
@@ -461,9 +446,15 @@ def export(cad_path, output):
 
         result = {
             "metadata": {
-                "cad_path": str(cad_path),
-                "cad_sha256": original_hash,
-                "source_fingerprint": fingerprint,
+                "cad_path": str(snapshot.cad_path),
+                **snapshot.provenance(),
+                "exporter_sha256": file_sha256(__file__),
+                "snapshot_helper_sha256": file_sha256(
+                    Path(__file__).resolve().parents[1] / "cad_snapshot.py"
+                ),
+                "motion_plan_sha256": file_sha256(
+                    Path(__file__).with_name("motion_plan.py")
+                ),
                 "revision": report["revision"],
                 "units": "mm",
                 "fps": 24,
@@ -472,30 +463,22 @@ def export(cad_path, output):
                 "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry with two declared hole enlargements are displayed, including rear M1.4x8 screws and front M1.4 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
-                "validation_report": str(report_path),
+                "validation_report": str(snapshot.report_path),
             },
             "parts": parts,
             "scenes": scenes,
         }
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(result, separators=(",", ":")) + "\n")
-        print(
-            json.dumps(
-                {
-                    "parts": len(parts),
-                    "scenes": len(scenes),
-                    "max_mesh_bound_error_mm": max_bound_error,
-                    "output": str(output),
-                }
-            )
+    snapshot.write_json(result, separators=(",", ":"))
+    print(
+        json.dumps(
+            {
+                "parts": len(parts),
+                "scenes": len(scenes),
+                "max_mesh_bound_error_mm": max_bound_error,
+                "output": str(snapshot.output_path),
+            }
         )
-    finally:
-        App.closeDocument(doc.Name)
-        if (
-            file_sha256(cad_path) != original_hash
-            or source_fingerprint() != fingerprint
-        ):
-            raise RuntimeError("CAD or design source changed during review export.")
+    )
 
 
 if __name__ == "__main__":

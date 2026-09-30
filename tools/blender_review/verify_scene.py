@@ -10,6 +10,10 @@ from pathlib import Path
 
 import bpy
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from tools.cad_snapshot import json_output_path, write_json_atomic  # noqa: E402
+
 TRANSLATION_TOLERANCE_M = 1e-7
 ROTATION_TOLERANCE_RAD = 1e-5
 MATRIX_TOLERANCE = 1e-5
@@ -333,6 +337,7 @@ def main():
     args = parser.parse_args(
         sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     )
+    output = json_output_path(args.output, (args.input, args.blend))
     started = time.monotonic()
     report = {"passed": False}
     try:
@@ -350,11 +355,10 @@ def main():
     except Exception as error:
         report.update(passed=False, error=f"{type(error).__name__}: {error}")
     report["elapsed_seconds"] = time.monotonic() - started
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({"passed": report["passed"], "report": str(args.output)}))
+    write_json_atomic(output, report, indent=2)
+    print(json.dumps({"passed": report["passed"], "report": str(output)}))
     if not report["passed"]:
-        raise RuntimeError(f"Blender review verification failed; see {args.output}")
+        raise RuntimeError(f"Blender review verification failed; see {output}")
 
 
 if __name__ == "__main__":

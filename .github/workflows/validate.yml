@@ -11,9 +11,10 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install ruff==0.16.8
-      - run: python -m ruff check gondola tests build_gondola.FCMacro preview_gondola.FCMacro
-      - run: python -m ruff format --check gondola tests build_gondola.FCMacro preview_gondola.FCMacro
+      - run: python -m ruff check gondola tools tests build_gondola.FCMacro preview_gondola.FCMacro
+      - run: python -m ruff format --check gondola tools tests build_gondola.FCMacro preview_gondola.FCMacro
       - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q gondola
+      - run: python -m unittest tools.blender_review.test_motion_plan tools.blender_review.test_verify_scene -v
+      - run: python -m compileall -q gondola tools
       - run: python -m gondola status
 # CAD geometry checks require installed FreeCAD: python -m gondola validate / compare.

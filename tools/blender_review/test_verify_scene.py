@@ -231,6 +231,37 @@ class SceneVerifierTests(unittest.TestCase):
                 self.assertFalse(report["passed"])
                 self.assertFalse(report["input_files_unchanged_during_verification"])
 
+    def test_report_cannot_overwrite_its_json_or_blend_input(self):
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder)
+            exported, blend = directory / "input.json", directory / "review.blend"
+            exported.write_text(json.dumps(self.payload))
+            blend.write_bytes(b"saved Blender input")
+            originals = {path: path.read_bytes() for path in (exported, blend)}
+            for protected in (exported, blend):
+                alias = directory / "alias.json"
+                alias.symlink_to(protected)
+                for output in (protected, alias):
+                    argv = [
+                        "verify_scene.py",
+                        "--",
+                        "--input",
+                        str(exported),
+                        "--blend",
+                        str(blend),
+                        "--output",
+                        str(output),
+                    ]
+                    with (
+                        self.subTest(output=output, protected=protected),
+                        patch.object(sys, "argv", argv),
+                        self.assertRaisesRegex(ValueError, "separate JSON"),
+                    ):
+                        self.verifier.main()
+                    for path, contents in originals.items():
+                        self.assertEqual(path.read_bytes(), contents)
+                alias.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()

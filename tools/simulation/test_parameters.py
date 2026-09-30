@@ -179,7 +179,7 @@ class SavedGeometryTests(unittest.TestCase):
             output = Path(folder) / "snapshot.json"
             original_hash = file_sha256(cad)
             with patch(
-                "tools.simulation.export_parameters.source_fingerprint",
+                "tools.cad_snapshot.source_fingerprint",
                 return_value=source,
             ):
                 export(cad, output)

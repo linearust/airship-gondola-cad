@@ -16,7 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from gondola.provenance import file_sha256, source_fingerprint  # noqa: E402
+from gondola.provenance import file_sha256  # noqa: E402
+from tools.cad_snapshot import open_validated_cad  # noqa: E402
 
 
 def vector_m(value):
@@ -181,29 +182,7 @@ def extract(doc):
 
 
 def export(cad, output):
-    import FreeCAD as App
-
-    cad, output = Path(cad).resolve(), Path(output).resolve()
-    report_path = cad.with_name(cad.stem + "_validation.json")
-    if output.suffix.lower() != ".json" or output in (cad, report_path):
-        raise ValueError(
-            "Output must be a separate JSON snapshot, not CAD or its validation report."
-        )
-    digest = file_sha256(cad)
-    fingerprint = source_fingerprint()
-    report = json.loads(report_path.read_text())
-    if (
-        not report.get("passed")
-        or report.get("source_fingerprint") != fingerprint
-        or report.get("source_hashes_after", {}).get(cad.name) != digest
-    ):
-        raise ValueError(
-            "Passing validation must match current source and exact saved CAD bytes."
-        )
-    doc = App.openDocument(str(cad))
-    try:
-        if doc.DesignRegistry.SourceFingerprint != fingerprint:
-            raise ValueError("Saved CAD is stale relative to current geometry source.")
+    with open_validated_cad(cad, output) as snapshot:
         result = {
             "schema_version": 4,
             "units": {
@@ -213,23 +192,14 @@ def export(cad, output):
                 "angle": "rad except explicitly named *_deg fields",
             },
             "basis": {
-                "cad_file": cad.name,
-                "cad_sha256": digest,
-                "source_fingerprint": fingerprint,
-                "validation_sha256": file_sha256(report_path),
+                **snapshot.provenance(),
                 "exporter_sha256": file_sha256(__file__),
+                "snapshot_helper_sha256": file_sha256(ROOT / "tools/cad_snapshot.py"),
             },
-            **extract(doc),
+            **extract(snapshot.doc),
         }
-    finally:
-        App.closeDocument(doc.Name)
-    if file_sha256(cad) != digest or source_fingerprint() != fingerprint:
-        raise RuntimeError(
-            "CAD or source changed while extracting simulation parameters."
-        )
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
-    print(f"Simulation parameter snapshot: {output}")
+    snapshot.write_json(result, indent=2)
+    print(f"Simulation parameter snapshot: {snapshot.output_path}")
 
 
 def main():
