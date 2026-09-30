@@ -5,6 +5,7 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import FreeCAD as App
@@ -12,7 +13,12 @@ import FreeCAD as App
 from gondola.cad import world_shape
 from gondola.config import BASELINE_FILE
 from gondola.provenance import file_sha256
-from tools.simulation.export_parameters import export, extract, vector_m
+from tools.simulation.export_parameters import (
+    export,
+    extract,
+    optical_pitch_degrees,
+    vector_m,
+)
 
 
 class UnitTests(unittest.TestCase):
@@ -93,6 +99,76 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertEqual(geo["optical_mount_side"], "NegativeX")
         self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.036])
         self.assertEqual(geo["optical_pitch_deg"], 20)
+
+    def test_optical_export_uses_actual_clamped_pose_without_mutating_controls(self):
+        stage = self.doc.OpticalPitchStage
+        for command, expected in (
+            (-20, -20),
+            (-10, -10),
+            (0, 0),
+            (10, 10),
+            (20, 20),
+            (999, 20),
+            (-999, -20),
+        ):
+            with self.subTest(command=command):
+                stage.Pitch = command
+                self.doc.recompute()
+                stored = float(stage.Pitch)
+                pose = stage.Placement.copy()
+                expressions = list(stage.ExpressionEngine)
+                geo = extract(self.doc)["exact_geometry"]
+                self.assertEqual(geo["optical_pitch_deg"], expected)
+                self.assertEqual(float(stage.Pitch), stored)
+                self.assertTrue(stage.Placement.isSame(pose, 1e-10))
+                self.assertEqual(list(stage.ExpressionEngine), expressions)
+
+    def test_optical_export_does_not_substitute_command_for_actual_local_pose(self):
+        stage = self.doc.OpticalPitchStage
+        stage.Pitch = 0
+        stage.setExpression("Placement.Rotation.Angle", None)
+        stage.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), -7)
+        self.doc.recompute()
+        self.assertEqual(float(stage.Pitch), 0)
+        self.assertEqual(extract(self.doc)["exact_geometry"]["optical_pitch_deg"], -7)
+
+    def test_unexpected_optical_axis_and_actual_out_of_range_pose_are_rejected(self):
+        stage = self.doc.OpticalPitchStage
+        stage.setExpression("Placement.Rotation.Angle", None)
+        for axis, angle, message in (
+            ((1, 0, 0), 5, "pure local-Y"),
+            ((0, 0, 1), 5, "pure local-Y"),
+            ((1, 1, 0), 5, "pure local-Y"),
+            ((0, 1, 0), 21, "outside its declared limits"),
+            ((0, 1, 0), -21, "outside its declared limits"),
+        ):
+            with self.subTest(axis=axis, angle=angle):
+                stage.Placement.Rotation = App.Rotation(App.Vector(*axis), angle)
+                self.doc.recompute()
+                with self.assertRaisesRegex(ValueError, message):
+                    extract(self.doc)
+
+    def test_corrupt_optical_metadata_is_rejected(self):
+        for field, value in (
+            ("Pitch", float("nan")),
+            ("Pitch", float("inf")),
+            ("MinimumAngle", float("nan")),
+            ("MaximumAngle", float("inf")),
+            ("MinimumAngle", 20),
+            ("MaximumAngle", -20),
+            ("MaximumAngle", 30),
+        ):
+            stage = SimpleNamespace(
+                Pitch=0, MinimumAngle=-20, MaximumAngle=20, Placement=App.Placement()
+            )
+            setattr(stage, field, value)
+            with (
+                self.subTest(field=field, value=value),
+                self.assertRaisesRegex(ValueError, "metadata|limits"),
+            ):
+                optical_pitch_degrees(stage)
+        with self.assertRaisesRegex(ValueError, "metadata"):
+            optical_pitch_degrees(SimpleNamespace())
 
     def test_optical_metadata_cannot_name_a_different_parent(self):
         self.doc.OpticalFlowModule.CarrierHostName = "ElectronicsEquipmentModule"

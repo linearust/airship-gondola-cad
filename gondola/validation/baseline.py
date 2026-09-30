@@ -106,20 +106,70 @@ def module_control_bindings(doc):
     return [(station, by_name[station.object_name]) for station in MODULE_STATIONS]
 
 
+def _rail_control_values(module):
+    """Read native controls without propagating malformed values into geometry."""
+
+    def finite(value):
+        if isinstance(value, (bool, str, bytes)):
+            raise ValueError("Expected a numeric value")
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("Expected a finite number")
+        return number
+
+    values, errors = {}, {}
+    for name in (
+        "RailPositionX",
+        "RailAttachmentOffsetX",
+        "RailAttachmentOffsetsX",
+        "RailContactLength",
+    ):
+        try:
+            raw = getattr(module, name)
+            if name == "RailAttachmentOffsetsX":
+                if not isinstance(raw, (list, tuple)) or not raw:
+                    raise ValueError("Expected a nonempty list of attachment offsets")
+                value = tuple(finite(item) for item in raw)
+            else:
+                value = finite(raw)
+                if name == "RailContactLength" and value <= 0:
+                    raise ValueError("Contact length must be positive")
+            values[name] = value
+        except (AttributeError, TypeError, ValueError, OverflowError) as error:
+            errors[name] = str(error)
+    return values, errors
+
+
+def _invalid_rail_controls(errors):
+    return {
+        "error": "Invalid native rail controls",
+        "invalid_controls": errors,
+        "passed": False,
+    }
+
+
 def module_attachment_pose(station, module):
     """Manual X translates the module; every fixed foot must retain full support."""
-    position = float(module.RailPositionX)
-    offset = float(module.RailAttachmentOffsetX)
-    offsets = tuple(float(value) for value in module.RailAttachmentOffsetsX)
+    controls, errors = _rail_control_values(module)
+    if errors:
+        return _invalid_rail_controls(errors)
+    position = controls["RailPositionX"]
+    offset = controls["RailAttachmentOffsetX"]
+    offsets = controls["RailAttachmentOffsetsX"]
     direction = math.cos(math.radians(station.yaw_deg))
     attachment_x = position + direction * offset
     attachment_axes = [position + direction * value for value in offsets]
-    length = float(module.RailContactLength)
-    attachment = rail.attachment_position_check(attachment_x, contact_length=length)
-    attachments = [
-        rail.attachment_position_check(value, contact_length=length)
-        for value in attachment_axes
-    ]
+    length = controls["RailContactLength"]
+    try:
+        attachment = rail.attachment_position_check(attachment_x, contact_length=length)
+        attachments = [
+            rail.attachment_position_check(value, contact_length=length)
+            for value in attachment_axes
+        ]
+    except ValueError as error:
+        # The rail API rejects positive lengths below its supported minimum.
+        # Keep this saved-document failure separate from geometry-kernel errors.
+        return _invalid_rail_controls({"RailContactLength": str(error)})
     length_matches = abs(length - station.contact_length_mm) < TOL
     supported = bool(attachments) and all(row["passed"] for row in attachments)
     expected_offsets = station.attachment_offsets_x_mm

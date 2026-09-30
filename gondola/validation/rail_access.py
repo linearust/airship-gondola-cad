@@ -16,7 +16,7 @@ from gondola.parts import rail
 from .baseline import module_attachment_pose, module_control_bindings
 from .geometry import TOL
 from .propulsion_service import continuous_path
-from .rail_mount import _attachment_sites, _site_placement
+from .rail_interface import attachment_sites, mount_binding, site_placement
 
 V = App.Vector
 
@@ -126,8 +126,8 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             if name in {"PropulsionFixedFrame", "ServoDriveBridge"}
             else "Carrier"
         )
-        for site in _attachment_sites(module_name, offset):
-            lower = lower.fuse(placed_shape(canonical_fill, _site_placement(site)))
+        for site in attachment_sites(module_name, offset):
+            lower = lower.fuse(placed_shape(canonical_fill, site_placement(site)))
         lower = lower.removeSplitter()
         pieces = [(name + "Lower", lower), (name + "Upper", upper)]
     rows = [
@@ -194,6 +194,50 @@ def _saved_stage_settings(doc):
     return rows
 
 
+def _service_preflight(doc, registry, bindings):
+    """Require saved poses and mounted prints before constructing service shapes."""
+    checked, failures = [], []
+    for station, module in bindings:
+        pose = module_attachment_pose(station, module)
+        if not pose["passed"]:
+            failures.append(
+                {
+                    "module": module.Name,
+                    "native_attachment_pose": pose,
+                    "error": "Invalid native rail attachment pose",
+                    "passed": False,
+                }
+            )
+            continue
+        binding = mount_binding(module.Name)
+        name = binding[0] if binding is not None else None
+        mount = doc.getObject(name) if name is not None else None
+        mount_check = {
+            "object": name,
+            "present": mount is not None,
+            "registered_once_as_print": mount is not None
+            and list(registry.PrintedParts).count(mount) == 1,
+            "belongs_to_module": mount is not None and belongs_to_group(mount, module),
+            "valid_solid": mount is not None
+            and hasattr(mount, "Shape")
+            and not mount.Shape.isNull()
+            and mount.Shape.isValid()
+            and bool(mount.Shape.Solids),
+        }
+        if not all(value for key, value in mount_check.items() if key != "object"):
+            failures.append(
+                {
+                    "module": module.Name,
+                    "required_mount": mount_check,
+                    "error": "Invalid required rail mount",
+                    "passed": False,
+                }
+            )
+            continue
+        checked.append((module, pose, name))
+    return checked, failures
+
+
 def rail_attachment_service(doc, registry, objects):
     """Check each populated module independently, with all neighbours present."""
     objects = list(objects)
@@ -208,17 +252,24 @@ def rail_attachment_service(doc, registry, objects):
         bindings = module_control_bindings(doc)
     except (AttributeError, ValueError) as error:
         return {"passed": False, "error": str(error)}
+    checked, failures = _service_preflight(doc, registry, bindings)
+    if failures:
+        return {
+            "modules": failures,
+            "obstacle_inventory": inventory,
+            "error": "Rail service preflight failed",
+            "passed": False,
+        }
     world = {obj.Name: world_shape(obj) for obj in objects}
     rows = []
-    for station, module in bindings:
-        pose = module_attachment_pose(station, module)
+    for module, pose, mount_name in checked:
         members = {obj.Name for obj in objects if belongs_to_group(obj, module)}
         attachment_names = [
             obj.Name for obj in registry.RailLocks if belongs_to_group(obj, module)
         ]
         attachments = set(attachment_names)
         offset = float(module.RailAttachmentOffsetX)
-        sites = _attachment_sites(module.Name, offset)
+        sites = attachment_sites(module.Name, offset)
         expected = {
             module.Name + site["prefix"] + suffix
             for site in sites
@@ -243,15 +294,9 @@ def rail_attachment_service(doc, registry, objects):
         shapes = {name: shape.copy() for name, shape in world.items()}
         for shape in shapes.values():
             shape.Placement = inverse.multiply(shape.Placement)
-        mount_name = {
-            "BatteryEquipmentModule": "BatteryMount",
-            "ElectronicsEquipmentModule": "ElectronicsMount",
-            "AccessoryEquipmentModule": "AccessoryMount",
-            "MainPropulsionModule": "PropulsionFixedFrame",
-        }[module.Name]
         services, removed = [], set()
         for site in sites:
-            site_inverse = _site_placement(site).inverse()
+            site_inverse = site_placement(site).inverse()
             canonical = {
                 name: placed_shape(shape, site_inverse)
                 for name, shape in shapes.items()

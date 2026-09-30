@@ -152,7 +152,7 @@ def build_assembly():
             json.dumps(
                 rail.attachment_contract(
                     station.contact_length_mm,
-                    shared_drive=module.Name == "MainPropulsionModule",
+                    shared_drive=station.attachment_pattern.shared_drive,
                 ),
                 sort_keys=True,
             ),
@@ -182,7 +182,7 @@ def build_assembly():
             module,
             module.Name,
             x_offset=station.attachment_offset_x_mm,
-            shared_drive=module.Name == "MainPropulsionModule",
+            shared_drive=station.attachment_pattern.shared_drive,
         )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:

@@ -7,6 +7,7 @@ the other contract modules. Geometric test success never changes release status.
 import math
 from collections import Counter
 from dataclasses import asdict, dataclass
+from numbers import Real
 
 from .drive import SELECTED_DRIVE
 from .equipment_interfaces import (
@@ -21,6 +22,7 @@ from .equipment_options import get_navigation_profile, get_radio_profile
 from .fasteners import KIT_MATERIAL, RAIL_FASTENER_MATERIAL
 from .optical_sensors import get_sensor_profile
 from .power_options import power_option_contract
+from .rail_attachments import module_attachment_pattern
 from .servo_horns import SELECTED_BY_SIDE
 from .servo_horns import profile as horn_profile
 
@@ -306,21 +308,32 @@ class ModuleStation:
     contact_length_mm: float = 16.0
 
     @property
+    def attachment_pattern(self):
+        return module_attachment_pattern(self.object_name)
+
+    @property
     def attachment_offsets_x_mm(self):
-        first = self.attachment_offset_x_mm
-        return (
-            (first, -first) if self.object_name == "MainPropulsionModule" else (first,)
+        return tuple(
+            site["x_offset"]
+            for site in self.attachment_pattern.sites(self.attachment_offset_x_mm)
         )
 
     def __post_init__(self):
         if self.yaw_deg not in (0, 180):
             raise ValueError("Rail module orientation must be 0 or 180 degrees")
-        if not all(
-            math.isfinite(value) for value in (self.x_mm, self.attachment_offset_x_mm)
+        values = (self.x_mm, self.attachment_offset_x_mm, self.contact_length_mm)
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, Real)
+            or not math.isfinite(value)
+            for value in values
         ):
-            raise ValueError("Module and attachment positions must be finite")
-        if not math.isfinite(self.contact_length_mm) or self.contact_length_mm <= 0:
-            raise ValueError("Contact length must be finite and positive")
+            raise ValueError(
+                "Module positions and contact length must be finite numbers"
+            )
+        if self.contact_length_mm <= 0:
+            raise ValueError("Contact length must be positive")
+        self.attachment_pattern.sites(self.attachment_offset_x_mm)
 
 
 MODULE_STATIONS = (

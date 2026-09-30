@@ -193,6 +193,89 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(row["removed_attachment_hardware"]), 4)
 
+    def test_deleted_saved_mounts_fail_before_constructing_service_shapes(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
+        from gondola.validation import rail_access
+
+        before = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        try:
+            for part, module in (
+                ("BatteryMount", "BatteryEquipmentModule"),
+                ("ElectronicsMount", "ElectronicsEquipmentModule"),
+                ("AccessoryMount", "AccessoryEquipmentModule"),
+                ("PropulsionFixedFrame", "MainPropulsionModule"),
+            ):
+                with self.subTest(part=part):
+                    doc.removeObject(part)
+                    doc.recompute()
+                    registry = doc.DesignRegistry
+                    objects = [
+                        obj
+                        for key in (
+                            "PrintedParts",
+                            "ReferenceParts",
+                            "HardwareParts",
+                            "TapeReferences",
+                        )
+                        for obj in getattr(registry, key)
+                    ]
+                    with patch.object(rail_access, "world_shape") as geometry:
+                        report = rail_access.rail_attachment_service(
+                            doc, registry, objects
+                        )
+                    geometry.assert_not_called()
+                    self.assertFalse(report["passed"])
+                    row = next(
+                        row for row in report["modules"] if row["module"] == module
+                    )
+                    self.assertEqual(row["required_mount"]["object"], part)
+                    self.assertFalse(row["required_mount"]["present"])
+        finally:
+            App.closeDocument(doc.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), before)
+
+    def test_required_mount_must_be_registered_valid_and_in_its_module(self):
+        from gondola.validation import rail_access
+
+        for defect in ("unregistered", "wrong_parent", "empty_shape"):
+            with self.subTest(defect=defect):
+                doc, check = self.source_propulsion_service()
+                frame = doc.PropulsionFixedFrame
+                if defect == "unregistered":
+                    doc.DesignRegistry.PrintedParts = [
+                        obj for obj in doc.DesignRegistry.PrintedParts if obj != frame
+                    ]
+                elif defect == "wrong_parent":
+                    other = doc.addObject("App::Part", "WrongModule")
+                    other.addObject(frame)
+                else:
+                    frame.Shape = Part.Shape()
+                with patch.object(rail_access, "world_shape") as geometry:
+                    report = check()
+                geometry.assert_not_called()
+                self.assertFalse(report["passed"])
+                self.assertEqual(
+                    report["modules"][0]["error"], "Invalid required rail mount"
+                )
+
+    def test_invalid_native_controls_stop_service_before_constructing_shapes(self):
+        from gondola.validation import rail_access
+
+        doc, check = self.source_propulsion_service()
+        for value in (0, 8, float("nan")):
+            with self.subTest(contact_length=value):
+                doc.MainPropulsionModule.RailContactLength = value
+                with patch.object(rail_access, "world_shape") as geometry:
+                    report = check()
+                geometry.assert_not_called()
+                self.assertFalse(report["passed"])
+                self.assertIn(
+                    "RailContactLength",
+                    report["modules"][0]["native_attachment_pose"]["invalid_controls"],
+                )
+
     def test_populated_propulsion_slides_clear_of_fc_carrier_before_lifting(self):
         from gondola.cad import placed_shape, world_shape
         from gondola.parts import equipment_mounts

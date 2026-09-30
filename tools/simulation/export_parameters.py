@@ -24,6 +24,35 @@ def vector_m(value):
     return [round(float(component) / 1000, 9) for component in value]
 
 
+def optical_pitch_degrees(stage):
+    """Read signed local-Y pose; the saved command may exceed native limits."""
+    import FreeCAD as App
+
+    try:
+        command = float(stage.Pitch)
+        minimum, maximum = float(stage.MinimumAngle), float(stage.MaximumAngle)
+        rotation = stage.Placement.Rotation
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError("Optical pitch metadata is missing or invalid.") from error
+    if not all(math.isfinite(value) for value in (command, minimum, maximum)):
+        raise ValueError("Optical pitch metadata must be finite.")
+    if abs(minimum + 20) > 1e-8 or abs(maximum - 20) > 1e-8:
+        raise ValueError("Optical pitch limits changed; review the exported frame.")
+    if not all(math.isfinite(value) for value in rotation.Q):
+        raise ValueError("Optical pitch rotation must be finite.")
+    local_x = rotation.multVec(App.Vector(1, 0, 0))
+    angle = math.degrees(math.atan2(-local_x.z, local_x.x))
+    if not math.isfinite(angle) or not rotation.isSame(
+        App.Rotation(App.Vector(0, 1, 0), angle), 1e-8
+    ):
+        raise ValueError("Optical pitch must be a pure local-Y rotation.")
+    if not minimum - 1e-8 <= angle <= maximum + 1e-8:
+        raise ValueError("Actual optical pitch is outside its declared limits.")
+    # Suppress floating-point serialization noise without replacing the pose
+    # with a clamped command or changing the existing degrees-valued field.
+    return round(angle, 9)
+
+
 def extract(doc):
     import FreeCAD as App
 
@@ -151,7 +180,7 @@ def extract(doc):
             "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
             "optical_carrier_host": optical_host.Name,
             "optical_mount_side": optical_side,
-            "optical_pitch_deg": float(doc.OpticalPitchStage.Pitch),
+            "optical_pitch_deg": optical_pitch_degrees(doc.OpticalPitchStage),
             "optical_pitch_pivot_cad_m": point(doc.OpticalPitchStage),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
         },

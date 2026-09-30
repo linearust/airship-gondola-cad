@@ -255,6 +255,91 @@ class ModuleControlMappingTests(unittest.TestCase):
         self.assertNotEqual(original, native_interface_metadata(doc))
 
 
+@unittest.skipIf(App is None, "Requires FreeCAD")
+class SavedRailControlFailureTests(unittest.TestCase):
+    def setUp(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.contracts.design import MODULE_STATIONS
+        from gondola.provenance import file_sha256
+
+        self.path = BASELINE_FILE
+        self.before = file_sha256(self.path)
+        self.doc = App.openDocument(str(self.path), hidden=True)
+        self.module = self.doc.MainPropulsionModule
+        self.station = next(
+            row for row in MODULE_STATIONS if row.object_name == self.module.Name
+        )
+        self.addCleanup(self.close_without_saving)
+
+    def close_without_saving(self):
+        from gondola.provenance import file_sha256
+
+        App.closeDocument(self.doc.Name)
+        self.assertEqual(file_sha256(self.path), self.before)
+
+    def assert_control_failure(self, property_name):
+        from gondola.validation.baseline import control_behavior
+
+        placements = {
+            obj.Name: obj.Placement.copy() for obj in self.doc.DesignRegistry.Modules
+        }
+        report = control_behavior(self.doc)
+        self.assertFalse(report["passed"], report)
+        self.assertEqual(report["cases"], [])
+        failed = report["initial_module_poses"][self.module.Name]
+        self.assertIn(property_name, failed["invalid_controls"])
+        json.dumps(report, allow_nan=False)
+        for name, placement in placements.items():
+            self.assertTrue(self.doc.getObject(name).Placement.isSame(placement, 1e-7))
+
+    def test_saved_zero_and_below_minimum_contact_lengths_fail_without_exception(self):
+        from gondola.validation import baseline
+
+        self.module.RailContactLength = 0
+        with patch.object(baseline.rail, "attachment_position_check") as geometry:
+            pose = baseline.module_attachment_pose(self.station, self.module)
+        geometry.assert_not_called()
+        self.assertFalse(pose["passed"])
+        self.assert_control_failure("RailContactLength")
+        self.module.RailContactLength = 8
+        self.assert_control_failure("RailContactLength")
+
+    def test_saved_nonfinite_controls_fail_before_attachment_geometry(self):
+        from gondola.validation import baseline
+
+        cases = (
+            ("RailPositionX", float("nan")),
+            ("RailPositionX", float("inf")),
+            ("RailAttachmentOffsetX", float("nan")),
+            ("RailAttachmentOffsetX", float("-inf")),
+            ("RailAttachmentOffsetsX", [17, float("nan")]),
+            ("RailAttachmentOffsetsX", [17, float("inf")]),
+            ("RailContactLength", float("nan")),
+        )
+        for name, value in cases:
+            with self.subTest(property=name, value=value):
+                original = getattr(self.module, name)
+                try:
+                    setattr(self.module, name, value)
+                    with patch.object(
+                        baseline.rail, "attachment_position_check"
+                    ) as geometry:
+                        pose = baseline.module_attachment_pose(
+                            self.station, self.module
+                        )
+                    geometry.assert_not_called()
+                    self.assertFalse(pose["passed"])
+                    self.assert_control_failure(name)
+                finally:
+                    setattr(self.module, name, original)
+
+    def test_saved_malformed_offset_list_returns_a_named_failure(self):
+        self.module.removeProperty("RailAttachmentOffsetsX")
+        self.module.addProperty("App::PropertyString", "RailAttachmentOffsetsX")
+        self.module.RailAttachmentOffsetsX = "17, -17"
+        self.assert_control_failure("RailAttachmentOffsetsX")
+
+
 @unittest.skipIf(
     App is None, "Requires FreeCAD; exercised by the CAD validation workflow"
 )

@@ -5,13 +5,12 @@ U saddle. Half-turn paired M3 cheeks distribute the clamp load at 34 mm spacing.
 No blind keys trap the module; bench removal requires clearing the driven shafts.
 """
 
-import math
-
 import FreeCAD as App
 import Part
 
 from gondola.cad import box, mirrored_y, union
 from gondola.contracts.drive import SELECTED_DRIVE
+from gondola.contracts.rail_attachments import PROPULSION_ATTACHMENT
 
 from . import rail, servo_envelope
 from .servo_envelope import case_front_y as case_front_y
@@ -28,23 +27,17 @@ SEAT_Z = 12.5
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
 FRAME_BOTTOM_Z = 2.2
 CENTRAL_SEAT_LENGTH, CENTRAL_SEAT_WIDTH = 18.0, 22.0
-CLAMP_AXIS_X = 17.0
+CLAMP_AXIS_X = PROPULSION_ATTACHMENT.half_spacing_mm
 CHEEK_START_X, CHEEK_END_X = 9.0, 29.0
-CHEEK_THICKNESS = 4.5
+CHEEK_THICKNESS = PROPULSION_ATTACHMENT.extra_cheek_mm
 CHEEK_CONTACT_Y = rail.MOUNT_OUTER_Y
 CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
-GUIDE_INNER_Y, GUIDE_OUTER_Y = 11.2, 13.2
-GUIDE_BOTTOM_Z = 8.0
 GUIDE_CLEARANCE = 0.2
+GUIDE_INNER_Y = CENTRAL_SEAT_WIDTH / 2 + GUIDE_CLEARANCE
+GUIDE_OUTER_Y = GUIDE_INNER_Y + 2.0
+GUIDE_BOTTOM_Z = 8.0
 ROOF_HALF_LENGTH = 19.0
-HEAD_BEARING_Y = CHEEK_OUTER_Y + rail.HEAD_RECESS_DEPTH
-SHARED_GRIP = (
-    CHEEK_THICKNESS
-    - rail.HEAD_RECESS_DEPTH
-    + rail.MOUNT_LEG_THICKNESS
-    + rail.WEB_THICKNESS
-)
-SHARED_SCREW_LENGTH = 12.0
+SHARED_SCREW_LENGTH = PROPULSION_ATTACHMENT.screw_length_mm
 SHAFT_SERVICE_SHIFTS = {
     "PortOutputShaftNegative": 12.0,
     "StarboardOutputShaftPositive": -12.0,
@@ -166,26 +159,3 @@ def bridge_shape(drive=SELECTED_DRIVE):
     bridge = cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
     head_cut = rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     return bridge.cut(head_cut).cut(opposite(head_cut)).removeSplitter()
-
-
-def contact_planes():
-    """Seated roof and opposed clamp faces; guides have deliberate clearance."""
-    cheek_area = (CHEEK_END_X - CHEEK_START_X) * (SEAT_Z - FRAME_BOTTOM_Z) - math.pi * (
-        rail.SLOT_HEIGHT / 2
-    ) ** 2
-    return (
-        (
-            "central_bulkhead_support",
-            2,
-            SEAT_Z,
-            CENTRAL_SEAT_LENGTH * CENTRAL_SEAT_WIDTH,
-            (
-                -CENTRAL_SEAT_LENGTH / 2,
-                -CENTRAL_SEAT_WIDTH / 2,
-                CENTRAL_SEAT_LENGTH,
-                CENTRAL_SEAT_WIDTH,
-            ),
-        ),
-        ("shared_clamp_positive_x", 1, CHEEK_CONTACT_Y, cheek_area, None),
-        ("shared_clamp_negative_x", 1, -CHEEK_CONTACT_Y, cheek_area, None),
-    )

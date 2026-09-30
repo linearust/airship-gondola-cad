@@ -12,15 +12,15 @@ from gondola.print_export import geometry_comparison
 
 from .evidence import comparison_passed
 from .geometry import belongs_to_group, intersection_volume, local_shape
+from .rail_interface import (
+    MOUNT_BINDINGS,
+    attachment_sites,
+    mount_binding,
+    site_placement,
+)
 
 V = App.Vector
 TOL = 1e-5
-_BINDINGS = (
-    ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
-    ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
-    ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 17.0, 24.0),
-)
 
 
 def _contract_matches(obj, property_name, expected):
@@ -33,32 +33,14 @@ def _contract_matches(obj, property_name, expected):
 
 
 def _offset(module):
-    return next(
-        (offset for _, parent, _, offset, _ in _BINDINGS if parent == module.Name), 0
-    )
-
-
-def _attachment_sites(module_name, offset=0):
-    """Literal independent site inventory; do not infer a missing second clamp."""
-    if module_name == "MainPropulsionModule":
-        return (
-            {"prefix": "", "x_offset": 17.0, "side": 1},
-            {"prefix": "Opposite", "x_offset": -17.0, "side": -1},
-        )
-    return ({"prefix": "", "x_offset": offset, "side": 1},)
-
-
-def _site_placement(site):
-    return App.Placement(
-        V(site["x_offset"], 0, 0),
-        App.Rotation(V(0, 0, 1), 180 if site["side"] < 0 else 0),
-    )
+    binding = mount_binding(module.Name)
+    return binding[3] if binding is not None else 0
 
 
 def _foot_placement(module, inverse, site=None):
     if site is None:
-        site = _attachment_sites(module.Name, _offset(module))[0]
-    return inverse.multiply(module.getGlobalPlacement()).multiply(_site_placement(site))
+        site = attachment_sites(module.Name, _offset(module))[0]
+    return inverse.multiply(module.getGlobalPlacement()).multiply(site_placement(site))
 
 
 def tape_station_alignment(rail_object, modules, tapes, shapes):
@@ -69,7 +51,7 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
     ]
     rows = []
     for module in modules:
-        for site in _attachment_sites(module.Name, _offset(module)):
+        for site in attachment_sites(module.Name, _offset(module)):
             x = _foot_placement(module, inverse, site).Base.x
             nearest = {}
             for side, label in ((-1, "negative_y"), (1, "positive_y")):
@@ -196,12 +178,12 @@ def _independent_wall_top_sections(shape):
 
 def saved_integral_mount_checks(doc, registry):
     printed, equipment = list(registry.PrintedParts), list(registry.EquipmentMounts)
-    expected = [name for name, _, kind, _, _ in _BINDINGS if kind is not None]
+    expected = [name for name, _, kind, _, _ in MOUNT_BINDINGS if kind is not None]
     inventory = sorted(obj.Name for obj in equipment) == sorted(expected) and all(
         obj == doc.getObject(obj.Name) for obj in equipment
     )
     rows = []
-    for name, parent_name, kind, offset, length in _BINDINGS:
+    for name, parent_name, kind, offset, length in MOUNT_BINDINGS:
         obj = doc.getObject(name)
         if obj is None or not hasattr(obj, "Shape"):
             rows.append(
@@ -215,15 +197,14 @@ def saved_integral_mount_checks(doc, registry):
             else equipment_mounts.mount_shape(kind)
         )
         complete = geometry_comparison(actual, source)
-        sites = _attachment_sites(parent_name, offset)
+        sites = attachment_sites(parent_name, offset)
         crops = [
-            placed_shape(_lower_crop(0, length), _site_placement(site))
-            for site in sites
+            placed_shape(_lower_crop(0, length), site_placement(site)) for site in sites
         ]
         literals = [
             placed_shape(
                 _literal_protected_mount(length, shared=kind is None),
-                _site_placement(site),
+                site_placement(site),
             )
             for site in sites
         ]
@@ -282,7 +263,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
     inverse = rail_obj.getGlobalPlacement().inverse()
     bindings = {
         parent: (part, kind, offset, length)
-        for part, parent, kind, offset, length in _BINDINGS
+        for part, parent, kind, offset, length in MOUNT_BINDINGS
     }
     rows = []
     for module in registry.Modules:
@@ -303,8 +284,8 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 }
             )
             continue
-        for site in _attachment_sites(module.Name, offset):
-            site_placement = _site_placement(site)
+        for site in attachment_sites(module.Name, offset):
+            canonical_placement = site_placement(site)
             foot_placement = _foot_placement(module, inverse, site)
             position = foot_placement.Base
             position_check = rail.attachment_position_check(
@@ -313,7 +294,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             centred = abs(position.y) < TOL and abs(position.z) < TOL
             printed_in_rail = placed_shape(shapes[name], inverse)
             overlap = intersection_volume(printed_in_rail, rail_shape)
-            canonical_part = placed_shape(local_shape(part), site_placement.inverse())
+            canonical_part = placed_shape(
+                local_shape(part), canonical_placement.inverse()
+            )
             lower = canonical_part.common(_lower_crop(0, length))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             shared = module.Name == "MainPropulsionModule"
@@ -340,7 +323,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 )
                 crop = Part.makeBox(length, 4.5, 10.3, V(-length / 2, -9.75, 2.2))
                 head_support = placed_shape(
-                    bridge_in_module, site_placement.inverse()
+                    bridge_in_module, canonical_placement.inverse()
                 ).common(crop)
             attachment = rail.attachment_check(
                 local_rail,
@@ -374,7 +357,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     shapes[hardware_name], module.getGlobalPlacement().inverse()
                 )
                 comparison = geometry_comparison(
-                    in_module, placed_shape(expected, site_placement)
+                    in_module, placed_shape(expected, canonical_placement)
                 )
                 binding_ok = (
                     hardware.getParentGeoFeatureGroup() == module
@@ -488,7 +471,7 @@ def rail_check(registry, shapes):
         contact_length = next(
             (
                 length
-                for _, parent, _, _, length in _BINDINGS
+                for _, parent, _, _, length in MOUNT_BINDINGS
                 if obj is not None and parent == obj.Name
             ),
             16.0,
@@ -542,12 +525,12 @@ def rail_check(registry, shapes):
             }
         )
     module_inventory = sorted(module.Name for module in registry.Modules) == sorted(
-        parent for _, parent, _, _, _ in _BINDINGS
+        parent for _, parent, _, _, _ in MOUNT_BINDINGS
     )
     expected_lock_names = sorted(
         parent + site["prefix"] + suffix
-        for _, parent, _, offset, _ in _BINDINGS
-        for site in _attachment_sites(parent, offset)
+        for _, parent, _, offset, _ in MOUNT_BINDINGS
+        for site in attachment_sites(parent, offset)
         for suffix in ("RailMountScrew", "RailMountNut")
     )
     lock_inventory = sorted(

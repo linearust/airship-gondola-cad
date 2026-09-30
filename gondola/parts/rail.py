@@ -23,6 +23,7 @@ from gondola.cad import (
 )
 from gondola.contracts import fasteners
 from gondola.contracts.design import RAIL_BASE_THICKNESS_MM, RAIL_LENGTH_MM
+from gondola.contracts.rail_attachments import attachment_pattern
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
@@ -294,16 +295,10 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True
 
 
 def _attachment_fastener(shared_drive):
-    if not isinstance(shared_drive, bool):
-        raise ValueError("Shared drive attachment must be a boolean")
-    if shared_drive:
-        from . import servo_bridge
-
-        return (
-            servo_bridge.SHARED_SCREW_LENGTH,
-            servo_bridge.CHEEK_OUTER_Y + HEAD_RECESS_DEPTH,
-        )
-    return SCREW_LENGTH, HEAD_BEARING_Y
+    pattern = attachment_pattern(shared_drive)
+    return pattern.screw_length_mm, pattern.head_bearing_y(
+        MOUNT_OUTER_Y, HEAD_RECESS_DEPTH
+    )
 
 
 def attachment_screw_shape(screw_length=SCREW_LENGTH, *, head_face_y=HEAD_BEARING_Y):
@@ -363,17 +358,7 @@ def nut_shape(
 
 def attachment_sites(*, x_offset=0, shared_drive=False):
     """Local clamp centres and orientations; opposite is a half-turn about Z."""
-    _attachment_fastener(shared_drive)
-    if shared_drive:
-        from . import servo_bridge
-
-        if abs(x_offset - servo_bridge.CLAMP_AXIS_X) > TOL:
-            raise ValueError("Shared clamp offset must match the paired bridge")
-        return (
-            {"prefix": "", "x_offset": x_offset, "side": 1},
-            {"prefix": "Opposite", "x_offset": -x_offset, "side": -1},
-        )
-    return ({"prefix": "", "x_offset": x_offset, "side": 1},)
+    return attachment_pattern(shared_drive).sites(x_offset)
 
 
 def attachment_site_shape(shape, site):
@@ -496,8 +481,8 @@ def attachment_contract(
         "head_bearing_y_mm": head_face_y,
         "printed_grip_mm": WEB_THICKNESS / 2 - head_face_y,
         "shared_servo_bridge_clamp": shared_drive,
-        "clamp_count": 2 if shared_drive else 1,
-        "clamp_spacing_mm": 34.0 if shared_drive else None,
+        "clamp_count": attachment_pattern(shared_drive).count,
+        "clamp_spacing_mm": attachment_pattern(shared_drive).spacing_mm,
         "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a through guard window; unmeasured design envelopes",
         "shared_joint_service": (
             "Two opposed bolts 34 mm apart retain the servo saddle and propulsion frame on adjacent rail walls. Support both modules during release and seat both feet before alternating tightening. The 58 mm combined footprint locally restrains rail curvature; do not force a curved rail straight."
