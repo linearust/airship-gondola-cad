@@ -30,19 +30,14 @@ FC_HOLE_CENTRES = (
     (_FC_AXIS_OFFSET, 0.0),
 )
 CENTRE_HOLE_DIAMETER_MM = 2.6
-FIXED_HOLE_CENTRES = (*FC_HOLE_CENTRES, (0.0, 0.0))
+FIXED_HOLE_CENTRES = ((0.0, 0.0),)
 
 
 def cutters(bottom, depth):
-    """Five M2 bores and the shared slot array."""
-    return (
-        [
-            Part.makeCylinder(FIXED_HOLE_DIAMETER_MM / 2, depth, V(x, y, bottom))
-            for x, y in FC_HOLE_CENTRES
-        ]
-        + [Part.makeCylinder(CENTRE_HOLE_DIAMETER_MM / 2, depth, V(0, 0, bottom))]
-        + mounting_slots.shapes(bottom, depth)
-    )
+    """One central M2 bore and the shared slot array, including the FC seats."""
+    return [
+        Part.makeCylinder(CENTRE_HOLE_DIAMETER_MM / 2, depth, V(0, 0, bottom))
+    ] + mounting_slots.shapes(bottom, depth)
 
 
 def shape(bottom=CARRIER_BOTTOM_Z):

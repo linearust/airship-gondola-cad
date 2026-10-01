@@ -48,7 +48,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "RailAttachmentContract",
                 json.dumps(
                     rail.attachment_contract(
-                        46 if kind is None else 16, shared_drive=kind is None
+                        40 if kind is None else 16, shared_drive=kind is None
                     ),
                     sort_keys=True,
                 ),
@@ -130,13 +130,13 @@ class SavedRailValidationTests(unittest.TestCase):
                 self.assertEqual(len(shared), 2)
                 for row in shared:
                     self.assertAlmostEqual(
-                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 37
+                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 32
                     )
                     self.assertEqual(
                         row["saved_lower_mount_attachment"][
                             "checked_centred_contact_length_mm"
                         ],
-                        12,
+                        10,
                     )
         self.doc.MainPropulsionModule.Placement.Base.x = 16.01
         self.assertFalse(self.check()["passed"])

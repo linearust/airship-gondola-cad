@@ -232,13 +232,13 @@ def _paired_bottom_contacts(rail_in_module, frame):
     """Require both complete lower lands on the continuous rail base."""
     bottoms = []
     for side, y in ((-1, -3), (1, 1.25)):
-        below = Part.makeBox(46, 1.75, 0.01, V(-23, y, 1.49))
-        above = Part.makeBox(46, 1.75, 0.01, V(-23, y, 1.5))
+        below = Part.makeBox(40, 1.75, 0.01, V(-20, y, 1.49))
+        above = Part.makeBox(40, 1.75, 0.01, V(-20, y, 1.5))
         missing = abs(below.cut(rail_in_module).Volume) + abs(above.cut(frame).Volume)
         bottoms.append(
             {
                 "side": side,
-                "minimum_area_mm2": 80.5,
+                "minimum_area_mm2": 70.0,
                 "missing_contact_mm3": missing,
                 "passed": missing < TOL,
             }
@@ -256,9 +256,9 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
             "error": "Each bolt must lie on one continuous wall",
         }
     first, last = matches[0]
-    low, high = max(first, -23), min(last, 23)
+    low, high = max(first, -20), min(last, 20)
     span = max(0.0, high - low)
-    end_margin = min(axis - 6 - first, last - axis - 6)
+    end_margin = min(axis - 5 - first, last - axis - 5)
     centre = (first + last) / 2
     slot = _literal_rail_slot(centre)
     faces = []
@@ -283,12 +283,12 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
         "supported_side_interval_x_mm": [low, high],
         "wall_overlap_length_mm": span,
         "side_contacts": faces,
-        "centred_load_zone_length_mm": 12.0,
+        "centred_load_zone_length_mm": 10.0,
         "minimum_load_zone_end_margin_mm": end_margin,
         "standard_wall_length_mm": last - first,
-        "passed": span >= 17 - TOL
+        "passed": span >= 14 - TOL
         and abs(last - first - 20) < TOL
-        and end_margin >= 1 - TOL
+        and end_margin >= 2 - TOL
         and all(face["passed"] for face in faces),
     }
 
@@ -296,12 +296,12 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
 def paired_spine_support_check(rail_in_module, frame):
     """Independent full bottom datum and two supported rail-wall overlaps.
 
-    The 46 mm spine may bridge an 8 mm rail-wall gap. Both complete lower
+    The 40 mm spine may bridge an 8 mm rail-wall gap. Both complete lower
     lands bear on the continuous base; wall overlap and the local bolt zones
     are checked separately. The 0.2 mm roof gap is intentional fit relief.
     """
     bottoms = _paired_bottom_contacts(rail_in_module, frame)
-    relief = Part.makeBox(46, 2.5, 0.2, V(-23, -1.25, 9.5))
+    relief = Part.makeBox(40, 2.5, 0.2, V(-20, -1.25, 9.5))
     blocked_relief = abs(relief.common(frame).Volume)
     line = Part.makeLine(V(-200, 0, 8.5), V(200, 0, 8.5))
     intervals = sorted(
@@ -318,21 +318,21 @@ def paired_spine_support_check(rail_in_module, frame):
         and abs(pair_intervals[1][0] - pair_intervals[0][1] - 8) < TOL
     )
     return {
-        "spine_extent_mm": 46.0,
+        "spine_extent_mm": 40.0,
         "bottom_datum_z_mm": 1.5,
         "bottom_datum_contacts": bottoms,
-        "minimum_bottom_contact_area_mm2": 161.0,
+        "minimum_bottom_contact_area_mm2": 140.0,
         "inner_roof_clearance_mm": 0.2,
         "blocked_inner_roof_relief_mm3": blocked_relief,
-        "minimum_wall_overlap_length_mm": 17.0,
-        "minimum_total_wall_overlap_length_mm": 37.0,
+        "minimum_wall_overlap_length_mm": 14.0,
+        "minimum_total_wall_overlap_length_mm": 32.0,
         "wall_overlap_length_total_mm": total,
         "wall_supports": rows,
         "adjacent_standard_walls": adjacent,
-        "scope": "Both full46x1.75mm bottom lands seat on the continuous base; the inner roof clears the rail by0.2mm nominal. Two wall overlaps retain12mm bolt-load zones and1mm end margins, at least17mm per wall/37mm total. Neutral overlaps19+19mm; travel extremes17+20mm. The30mm bolt spacing uses±1mm outward slot positions on28mm wall pitch; independent±3mm bolt travel intersects into±2mm module trim. Nominal geometry only; no printed-fit, equal-stiffness or loaded-retention claim.",
+        "scope": "Both full40x1.75mm bottom lands seat on the continuous base; the inner roof clears the rail by0.2mm nominal. Two wall overlaps retain10mm bolt-load zones and2mm wall-end margins, at least14mm per wall/32mm total. Neutral overlaps16+16mm; travel extremes14+18mm. The shorter footprint reduces contact area; retained diameter6mm fastener-bearing faces have2mm outer longitudinal stock. The30mm bolt spacing uses±1mm outward slot positions on28mm wall pitch; independent±3mm bolt travel intersects into±2mm module trim. Nominal geometry only; no printed-fit, equal-stiffness or loaded-retention claim.",
         "passed": len(rows) == 2
         and adjacent
-        and total >= 37 - TOL
+        and total >= 32 - TOL
         and all(row["passed"] for row in rows + bottoms)
         and blocked_relief < TOL
         and rows[0].get("wall_interval_x_mm") != rows[1].get("wall_interval_x_mm"),
@@ -361,7 +361,7 @@ def saved_integral_mount_checks(doc, registry):
         )
         complete = geometry_comparison(actual, source)
         sites = attachment_sites(parent_name, offset)
-        zone_length = 12.0 if kind is None else length
+        zone_length = 10.0 if kind is None else length
         crops = [
             placed_shape(
                 _lower_crop(0, zone_length, shared=kind is None), site_placement(site)
@@ -382,9 +382,9 @@ def saved_integral_mount_checks(doc, registry):
         )
         if kind is None:
             # Full continuous spine, beyond the two local clamp zones.
-            whole_crop = _lower_crop(0, 46, shared=True)
+            whole_crop = _lower_crop(0, 40, shared=True)
             whole_literal = _literal_protected_mount(
-                46, shared=True, bolt_positions=(-15, 15)
+                40, shared=True, bolt_positions=(-15, 15)
             )
             lower = geometry_comparison(actual.common(whole_crop), whole_literal)
             source_lower = geometry_comparison(source.common(whole_crop), whole_literal)
@@ -479,7 +479,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             canonical_part = placed_shape(
                 local_shape(part), canonical_placement.inverse()
             )
-            zone_length = 12.0 if shared else length
+            zone_length = 10.0 if shared else length
             lower = canonical_part.common(_lower_crop(0, zone_length, shared=shared))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             screw_length, head_face_y = (20.0, -9.0) if shared else (10.0, -3.25)

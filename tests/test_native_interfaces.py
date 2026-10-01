@@ -193,22 +193,14 @@ class NativeInterfaceTests(unittest.TestCase):
         self.assertTrue(part.PrintPart)
         self.assertEqual(part.getTypeIdOfProperty("PrintPart"), "App::PropertyBool")
 
-    def test_saved_mount_has_complete_bearing_annuli_and_clear_bores(self):
+    def test_saved_mount_has_complete_slot_bearing_faces_and_clear_axes(self):
         from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import (
-            mounting_pad_check,
-            slot_mounting_pad_check,
-        )
+        from gondola.validation.equipment import slot_mounting_pad_check
 
         for kind in ("electronics", "accessory"):
             shape = mounts.mount_shape(kind).copy()
             for centre in mounts.mount_hole_centres(kind):
-                check = (
-                    mounting_pad_check
-                    if kind == "electronics"
-                    else slot_mounting_pad_check
-                )
-                result = check(
+                result = slot_mounting_pad_check(
                     shape,
                     centre,
                     bottom=mounts.DECK_BOTTOM_Z,
@@ -220,7 +212,7 @@ class NativeInterfaceTests(unittest.TestCase):
 
     def test_partial_bearing_or_filled_bore_is_rejected(self):
         from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
+        from gondola.validation.equipment import slot_mounting_pad_check
 
         shape = mounts.mount_shape("electronics").copy()
         centre = mounts.FC_HOLE_CENTRES[0]
@@ -233,7 +225,7 @@ class NativeInterfaceTests(unittest.TestCase):
             Part.makeCylinder(0.4, thickness, App.Vector(x, y, bottom))
         )
         for changed in (missing_edge, blocked_bore):
-            result = mounting_pad_check(
+            result = slot_mounting_pad_check(
                 changed,
                 centre,
                 bottom=bottom,

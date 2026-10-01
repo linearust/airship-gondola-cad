@@ -29,6 +29,7 @@ SIDE_WALL = (CRADLE_WIDTH - CASE_WINDOW_WIDTH) / 2
 REAR_LEAD_ALLOWANCE = 13.9
 SEAT_Z = PROPULSION_ATTACHMENT.seat_z_mm
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.5
+CRADLE_ROOT_RADIUS = 1.0
 # Outer cheeks clear tape wings; the inner frame feet seat on the rail base.
 CHEEK_BOTTOM_Z = 2.2
 CENTRAL_SEAT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
@@ -110,8 +111,8 @@ def _ear_nut_pockets(drive):
 cut_shared_bolt_passage = rail.cut_shared_bolt_passage
 
 
-def bridge_blank_blocks(drive=SELECTED_DRIVE):
-    """Six plain stock boxes retain both clamp legs and the raised beam opening."""
+def _bridge_core_blocks(drive):
+    """Plain stock before root blending, retaining the raised beam opening."""
     blocks = [
         _cradle_blank(drive),
         box(
@@ -134,9 +135,46 @@ def bridge_blank_blocks(drive=SELECTED_DRIVE):
     return tuple(blocks)
 
 
+def bridge_blank_blocks(drive=SELECTED_DRIVE):
+    """Seven conservative boxes enclose the cradle, root blends and both U legs."""
+    width = bulkhead_width(drive)
+    radius = CRADLE_ROOT_RADIUS
+    root = box(
+        width + 2 * radius,
+        MOUNT_DEPTH + 2 * radius,
+        radius,
+        (
+            -width / 2 - radius,
+            -MOUNT_DEPTH / 2 - radius,
+            SEAT_Z + CONNECTOR_PLATE_THICKNESS,
+        ),
+    )
+    return (*_bridge_core_blocks(drive), root)
+
+
 def bridge_blank(drive=SELECTED_DRIVE):
-    """Conservative stock with servo windows and clamp passages filled."""
-    return union(bridge_blank_blocks(drive)).removeSplitter()
+    """Blended stock with servo windows and clamp passages filled."""
+    body = union(_bridge_core_blocks(drive)).removeSplitter()
+    width = bulkhead_width(drive)
+    root_z = SEAT_Z + CONNECTOR_PLATE_THICKNESS
+    edges = []
+    for edge in body.Edges:
+        points = [vertex.Point for vertex in edge.Vertexes]
+        if len(points) != 2 or not all(abs(p.z - root_z) < 1e-7 for p in points):
+            continue
+        if any(
+            all(abs(p[axis] - position) < 1e-7 for p in points)
+            for axis, position in (
+                (0, -width / 2),
+                (0, width / 2),
+                (1, -MOUNT_DEPTH / 2),
+                (1, MOUNT_DEPTH / 2),
+            )
+        ):
+            edges.append(edge)
+    if len(edges) != 4:
+        raise RuntimeError("Servo cradle must expose four root edges")
+    return body.makeFillet(CRADLE_ROOT_RADIUS, edges).removeSplitter()
 
 
 def bridge_shape(drive=SELECTED_DRIVE):
@@ -161,4 +199,6 @@ def bridge_shape(drive=SELECTED_DRIVE):
     nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):
         bridge = bridge.cut(cutter)
+    # Cosmetic corner fillets can propagate along tangent edges and trim the
+    # shallow servo-nut rims. Preserve those rims and retain only root blends.
     return bridge.removeSplitter()

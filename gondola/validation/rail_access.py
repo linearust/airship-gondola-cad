@@ -199,7 +199,25 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             for fill in canonical_fills:
                 lower = lower.fuse(placed_shape(fill, site_placement(site)))
         lower = lower.removeSplitter()
-        if name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
+        if name == "PropulsionFixedFrame":
+            # Rounded outboard beam edges must not make the whole lower frame
+            # fall back to a bounding prism that fills its open rail channel.
+            # Keep the planar fitted U spine and both outboard beam stocks as
+            # separate regions. The containment check below rejects omissions.
+            spine_region = Part.makeBox(40, 12, 11, V(-20, -6, 1.5))
+            pieces = [
+                (name + "LowerSpine", lower.common(spine_region)),
+                (
+                    name + "LowerBeamNegativeY",
+                    Part.makeBox(18, -6 - bounds.YMin, 5, V(-9, bounds.YMin, 7.5)),
+                ),
+                (
+                    name + "LowerBeamPositiveY",
+                    Part.makeBox(18, bounds.YMax - 6, 5, V(-9, 6, 7.5)),
+                ),
+                (name + "Upper", upper),
+            ]
+        elif name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
             # The deck is broad, but its two supports are narrow. A whole upper
             # bounding box invents stock below the deck and blocks the adjacent
             # servo cap during a real horizontal service slide. Literal stock
@@ -362,10 +380,10 @@ def _shared_trim_interval(pose):
     low, high = max(row[0] for row in limits), min(row[1] for row in limits)
     if abs(high - low - 4) > TOL:
         raise ValueError("Shared clamp intervals do not give the reviewed4mm trim")
-    # The continuous46mm bottom lands must also stay inside the full-width
-    # base, X±149 before its1mm end chamfers. Outer wall pairs have less travel.
+    # The continuous40mm bottom lands must also stay inside the full-width
+    # base, X±149 before its1mm end chamfers. Full±2mm trim fits every wall pair.
     centre = sum(axes) / 2
-    low, high = max(low, -126 - centre), min(high, 126 - centre)
+    low, high = max(low, -129 - centre), min(high, 129 - centre)
     if low > TOL or high < -TOL:
         raise ValueError("Shared bottom datum is outside the full-width rail base")
     return low, high

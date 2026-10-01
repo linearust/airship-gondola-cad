@@ -216,6 +216,8 @@ def _boundary_signature(shape):
     Identical faceted solids can raise 'Null shape' on subtraction. Compare
     face and wire structure plus five points per edge at 1e-5 mm precision;
     callers also require valid solids, equal exact bounds and equal volume.
+    OCC pole/degenerate edges may have no readable Curve. Such a boundary
+    disables this optional shortcut; it must still pass exact BRep comparison.
     """
 
     def point(vector):
@@ -227,20 +229,23 @@ def _boundary_signature(shape):
             tuple(sorted(point(p) for p in edge.discretize(Number=5))),
         )
 
-    return sorted(
-        (
-            face.Surface.__class__.__name__,
-            round(face.Area, 5),
-            point(face.CenterOfMass),
-            tuple(
-                sorted(
-                    tuple(sorted(edge_signature(edge) for edge in wire.Edges))
-                    for wire in face.Wires
-                )
-            ),
+    try:
+        return sorted(
+            (
+                face.Surface.__class__.__name__,
+                round(face.Area, 5),
+                point(face.CenterOfMass),
+                tuple(
+                    sorted(
+                        tuple(sorted(edge_signature(edge) for edge in wire.Edges))
+                        for wire in face.Wires
+                    )
+                ),
+            )
+            for face in shape.Faces
         )
-        for face in shape.Faces
-    )
+    except (TypeError, ValueError, RuntimeError):
+        return None
 
 
 def _topologically_empty(shape):
@@ -266,7 +271,10 @@ def geometry_comparison(first, second):
         and bounds_delta < 1e-6
         and volume_delta < 1e-6
     ):
-        if _boundary_signature(first) == _boundary_signature(second):
+        first_signature = _boundary_signature(first)
+        if first_signature is not None and first_signature == _boundary_signature(
+            second
+        ):
             return {
                 "difference_mm3": 0.0,
                 "method": "equal typed face/wire/edge boundary signatures at1e-5mm with exact bounds and volume agreement",

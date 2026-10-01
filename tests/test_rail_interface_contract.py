@@ -61,7 +61,7 @@ class SharedRailInterfaceTests(unittest.TestCase):
         from gondola.parts import rail, servo_bridge
         from gondola.print_export import geometry_comparison
 
-        stock = Part.makeBox(46, 22, 11, App.Vector(-23, -11, 1.5))
+        stock = Part.makeBox(40, 22, 11, App.Vector(-20, -11, 1.5))
         actual = servo_bridge.cut_shared_bolt_passage(stock)
         expected = stock
         for x in (-15, 15):

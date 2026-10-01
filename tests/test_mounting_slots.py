@@ -14,6 +14,67 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class MountingSlotTests(unittest.TestCase):
+    def test_decimal_patterns_keep_complete_continuous_metric_travel(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import mounting_slots
+
+        solid = mounting_plate.shape()
+        self.assertEqual(mounting_slots.FC_PITCH_RANGE, (25.0, 26.0))
+        self.assertEqual(mounting_slots.LARGE_PITCH_RANGE, (30.0, 31.0))
+        for centre in mounts.FC_HOLE_CENTRES:
+            self.assertAlmostEqual(math.hypot(*centre), 25.5 / math.sqrt(2))
+        # Independent analytic screw-axis sweeps cover every intermediate pitch,
+        # not just endpoints or the implementation's own cutter records.
+        for pitch_range, start_angle, diameter in (
+            ((25.0, 26.0), 0.0, 2.6),
+            ((30.0, 31.0), 45.0, 3.6),
+        ):
+            for index in range(4):
+                angle = math.radians(start_angle + index * 90)
+                direction = App.Vector(math.cos(angle), math.sin(angle), 0)
+                start = direction * (pitch_range[0] / math.sqrt(2))
+                start.z = mounts.DECK_BOTTOM_Z
+                delta = direction * ((pitch_range[1] - pitch_range[0]) / math.sqrt(2))
+                radius, length = diameter / 2, delta.Length
+                # Independently construct the exact capsule boundary. The
+                # general motion helper intentionally returns a bounding box
+                # for cylinders moving sideways, so it is unsuitable here.
+                low, high = App.Vector(0, -radius, 0), App.Vector(0, radius, 0)
+                far_high = App.Vector(length, radius, 0)
+                far_low = App.Vector(length, -radius, 0)
+                wire = Part.Wire(
+                    [
+                        Part.Arc(low, App.Vector(-radius, 0, 0), high).toShape(),
+                        Part.makeLine(high, far_high),
+                        Part.Arc(
+                            far_high, App.Vector(length + radius, 0, 0), far_low
+                        ).toShape(),
+                        Part.makeLine(far_low, low),
+                    ]
+                )
+                sweep = Part.Face(wire).extrude(App.Vector(0, 0, mounts.DECK_THICKNESS))
+                sweep.rotate(App.Vector(), App.Vector(0, 0, 1), math.degrees(angle))
+                sweep.translate(start)
+                with self.subTest(pitch_range=pitch_range, corner=index):
+                    self.assertLess(sweep.common(solid).Volume, 1e-6)
+
+    def test_fc_full_travel_bearing_checks_reject_endpoint_land_damage(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import carrier_opening_checks
+
+        solid = mounting_plate.shape()
+        original = carrier_opening_checks(solid)
+        self.assertTrue(original["passed"], original)
+        self.assertEqual(len(original["fc_full_travel_bearing_sweeps"]), 4)
+        # This outward-end notch is outside the generic 1.5 mm slot rim but
+        # inside the 6.5 mm required bearing face. A rim-only check must miss it.
+        point = App.Vector(26 / math.sqrt(2) + 3.05, 0, mounts.DECK_BOTTOM_Z)
+        notch = Part.makeCylinder(0.08, mounts.DECK_THICKNESS, point)
+        damaged = carrier_opening_checks(solid.cut(notch))
+        self.assertTrue(all(row["passed"] for row in damaged["mounting_slots"]))
+        self.assertFalse(damaged["fc_full_travel_bearing_sweeps"][0]["passed"])
+        self.assertFalse(damaged["passed"])
+
     def test_saved_deck_openings_have_quarter_turn_and_both_mirror_symmetries(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_opening_checks
@@ -136,9 +197,9 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.parts import mounting_slots
 
         rows = mounting_slots.rows()
-        self.assertEqual(len(rows), 36)
+        self.assertEqual(len(rows), 40)
         self.assertEqual(len({row["name"] for row in rows}), len(rows))
-        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 32)
+        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 36)
         self.assertEqual(sum(row["kind"] == "polyline" for row in rows), 4)
         for row in rows:
             for border in (0.0, 1.5):
@@ -175,7 +236,7 @@ class MountingSlotTests(unittest.TestCase):
         self.assertEqual(len(specs), 4)
         self.assertEqual(
             mounting_slots.contract()["central_axis_opposed_pitch_range_mm"],
-            (23.0, 26.8),
+            (23.0, 26.0),
         )
         for name, solid, bottom in (
             ("carrier", mounts.mount_shape("battery"), mounts.DECK_BOTTOM_Z),
@@ -247,7 +308,7 @@ class MountingSlotTests(unittest.TestCase):
             for family in (
                 "square16_20",
                 "square40_45",
-                "rectangle25_30_square30_5",
+                "rectangle25_30_square30_31",
                 "central_axis",
                 "side",
             )

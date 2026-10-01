@@ -130,7 +130,7 @@ def mounting_pad_check(
 def slot_mounting_pad_check(
     shape, centre, *, bottom, thickness, hole_diameter, pad_diameter
 ):
-    """Check a P-AS axis in a slot and the complete two-sided bearing material.
+    """Check a selected FC/P-AS axis and complete two-sided bearing material.
 
     A slot deliberately removes part of a circular annulus. Its expected bearing
     region is the pad disk minus the exact slot, not a filled round-hole annulus.
@@ -142,7 +142,7 @@ def slot_mounting_pad_check(
     bore = Part.makeCylinder(hole_diameter / 2, thickness, origin)
     candidates = []
     for spec in mounting_slots.rows():
-        if spec["family"] != "central_axis":
+        if spec["family"] not in ("central_axis", "square25_26"):
             continue
         opening = mounting_slots.shape(spec, bottom, thickness)
         if bore.cut(opening).Volume < TOL:
@@ -151,7 +151,7 @@ def slot_mounting_pad_check(
         return {
             "centre_xy_mm": list(centre),
             "matching_slot_count": len(candidates),
-            "error": "Device fastener axis must fit exactly one axial M2 slot",
+            "error": "Device fastener axis must fit exactly one declared M2 device slot",
             "passed": False,
         }
     spec, opening = candidates[0]
@@ -295,7 +295,7 @@ def optional_payload_pattern_checks(shape, *, bottom, thickness):
     results = []
     openings_by_family = {}
     for spec in mounting_slots.rows():
-        if spec["family"] in ("rectangle58_49", "rectangle25_30_square30_5"):
+        if spec["family"] in ("rectangle58_49", "rectangle25_30_square30_31"):
             openings_by_family.setdefault(spec["family"], []).append(
                 mounting_slots.shape(spec, bottom, thickness)
             )
@@ -399,6 +399,7 @@ def carrier_opening_checks(
         row["passed"] &= obstruction < TOL
         fixed.append(row)
     slots = []
+    fc_sweeps = []
     for spec in mounting_slots.rows():
         opening = mounting_slots.shape(spec, through_bottom, through_depth)
         deck_opening = mounting_slots.shape(spec, bottom, thickness)
@@ -415,6 +416,21 @@ def carrier_opening_checks(
                 "passed": obstruction < TOL and missing_land < TOL,
             }
         )
+        if spec["family"] == "square25_26":
+            # Sweep the complete accepted bearing face through every allowed
+            # FC-axis position, rather than checking just the nominal midpoint.
+            sweep = mounting_slots.shape(
+                {**spec, "width_mm": mounts.MOUNT_PAD_DIAMETER}, bottom, thickness
+            ).cut(deck_opening)
+            missing = sweep.cut(shape).Volume
+            fc_sweeps.append(
+                {
+                    "slot_name": spec["name"],
+                    "bearing_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
+                    "missing_full_travel_bearing_mm3": missing,
+                    "passed": missing < TOL,
+                }
+            )
     single_solid = shape.isValid() and len(shape.Solids) == 1
     symmetry = carrier_symmetry_check(shape, bottom=bottom, thickness=thickness)
     contact = carrier_contact_patch_checks(shape, bottom=bottom, thickness=thickness)
@@ -444,14 +460,16 @@ def carrier_opening_checks(
         "deck_symmetry": symmetry,
         "nominal_adhesive_patches": contact,
         "pas_slot_mounts": pas,
-        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC axes retain complete bearing annuli; P-AS axes use the axial slots with the complete expected side-bearing material. The saved deck is a centred square with quarter-turn and X/Y mirror symmetry. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
+        "fc_full_travel_bearing_sweeps": fc_sweeps,
+        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. FC slots retain complete6.5mm bearing-face sweeps except their intentional openings over square pitches25..26mm; P-AS axes use the shorter axial slots with complete expected side-bearing material. The saved deck is a centred square with quarter-turn and X/Y mirror symmetry. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
         "passed": single_solid
         and bool(fixed)
         and bool(slots)
         and symmetry["passed"]
         and contact["passed"]
         and payload["passed"]
-        and all(row["passed"] for row in fixed + slots + pas),
+        and len(fc_sweeps) == 4
+        and all(row["passed"] for row in fixed + slots + pas + fc_sweeps),
     }
 
 
@@ -583,12 +601,7 @@ def _device_hole_checks(doc, carriers, physical_shapes_by_name, navigation_profi
         bounds = body.optimalBoundingBox(False, False)
         holes = []
         for centre in centres:
-            pad_check = (
-                mounting_pad_check
-                if name == "ModuleFCEnvelope"
-                else slot_mounting_pad_check
-            )
-            pad = pad_check(
+            pad = slot_mounting_pad_check(
                 carrier_shape,
                 centre,
                 bottom=mounts.DECK_BOTTOM_Z,

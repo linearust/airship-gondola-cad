@@ -17,13 +17,14 @@ SMALL_PITCH_RANGE = (16.0, 20.0)
 SMALL_PATTERN_ROTATION = 0.0
 OUTER_DIAGONAL_PITCH_RANGE = (40.0, 45.0)
 LARGE_PITCH = 30.5
+LARGE_PITCH_RANGE = (30.0, 31.0)
 LARGE_ROTATION_RANGE = (0.0, 0.0)
+FC_PITCH_RANGE = (25.0, 26.0)
 SIDE_X = 27.0
 SIDE_Y_RANGE = (13.0, 19.0)
 SIDE_MIDDLE_Y_RANGE = (-5.0, 5.0)
-# Limited radial travel avoids the central adhesive strips and complete fixed
-# FC bearing pads, keeping their support despite the additional openings.
-CENTRAL_AXIS_RADIUS_RANGE = (11.5, 13.4)
+# Stop before the complete 6.5 mm FC bearing-face sweep at the 25 mm endpoint.
+CENTRAL_AXIS_RADIUS_RANGE = (11.5, 13.0)
 
 
 def _radial_point(radius, angle):
@@ -34,7 +35,23 @@ def _radial_point(radius, angle):
 def rows():
     """Return fresh scalar records so consumers cannot mutate shared datums."""
     result = []
+    large_near, large_far = (pitch / 2 for pitch in LARGE_PITCH_RANGE)
     for index in range(4):
+        result.append(
+            {
+                "name": f"square25_26_{index}",
+                "kind": "straight",
+                "family": "square25_26",
+                "width_mm": 2.6,
+                "fastener": "M2",
+                "start_xy_mm": _radial_point(
+                    FC_PITCH_RANGE[0] / math.sqrt(2), 90 * index
+                ),
+                "end_xy_mm": _radial_point(
+                    FC_PITCH_RANGE[1] / math.sqrt(2), 90 * index
+                ),
+            }
+        )
         angle = SMALL_PATTERN_ROTATION - 45 + 90 * index
         result.append(
             {
@@ -75,13 +92,22 @@ def rows():
 
         result.append(
             {
-                "name": f"rectangle25_30_square30_5_{index}",
+                "name": f"rectangle25_30_square30_31_{index}",
                 "kind": "polyline",
-                "family": "rectangle25_30_square30_5",
+                "family": "rectangle25_30_square30_31",
                 "width_mm": 3.6,
                 "fastener": "M2.5 or M3 with reviewed broad bearing hardware",
                 "points_xy_mm": tuple(
-                    rotate(point) for point in ((12.5, 15), (15.25, 15.25), (15, 12.5))
+                    # Retracing the short radial branch preserves mirror symmetry
+                    # and the full 30..31 square travel between the A8 endpoints.
+                    rotate(point)
+                    for point in (
+                        (12.5, 15),
+                        (large_near, large_near),
+                        (large_far, large_far),
+                        (large_near, large_near),
+                        (15, 12.5),
+                    )
                 ),
             }
         )
@@ -190,7 +216,10 @@ def contract():
         "square_pitch_range_rotation_deg": SMALL_PATTERN_ROTATION,
         "outer_diagonal_square_pitch_range_mm": OUTER_DIAGONAL_PITCH_RANGE,
         "square30_5_pitch_mm": LARGE_PITCH,
+        "large_square_pitch_range_mm": LARGE_PITCH_RANGE,
         "square30_5_rotation_range_deg": LARGE_ROTATION_RANGE,
+        "fc_square_pitch_range_mm": FC_PITCH_RANGE,
+        "fc_square_pitch_range_rotation_deg": 45.0,
         "side_row_spacing_mm": 2 * SIDE_X,
         "side_centre_travel_y_mm": SIDE_Y_RANGE,
         "side_middle_centre_travel_y_mm": SIDE_MIDDLE_Y_RANGE,
@@ -209,13 +238,13 @@ def contract():
                 "pitch_mm": 30.5,
                 "fastener": "M3",
                 "source": "https://www.mateksys.com/?portfolio=f405-std",
-                "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs. Slot width and the shared rectangular/square corner path are this project's printed clearance choices; no full angular travel is claimed.",
+                "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs. This project's short radial branch covers square pitches30..31mm; slot width and the shared rectangular/square corner path are printed clearance choices, not full angular travel.",
             },
         ],
         "x500_drop_in_compatible": False,
         "reference": "references/dense_mount_review.md",
         "optional_payloads": optional_payload_profiles(),
-        "scope": "Project array, not a universal industry breadboard or drop-in X500 interface. Four inner M2 diagonal slots accept square pitches16..20mm; four outer diagonals accept40..45mm. Four short corner paths accept a30.5mm M3 square and a25x30mm M2.5 rectangle in either quarter-turn orientation; the former +/-15deg arc coverage is not retained. Eight outer M2.5 slots accept58x49mm rectangles in either quarter-turn orientation. Four axial M2 slots provide opposed spacing23..26.8mm, including the repositioned P-AS pair. Twelve side M2 slots on a54mm square preserve the optical foot at each side midpoint and accept reviewed power feet at(+27,+19)/(-27,-19). The fixed25.5mm FC pattern retains full bearing pads. Patterns are alternative uses, not simultaneous-device clearance or load qualification. Wider slots require separately reviewed bearing hardware; default small M2 heads must not bridge them. Bench-service and occupied-device checks remain mandatory.",
+        "scope": "Project array, not a universal industry breadboard or drop-in X500 interface. Four inner M2 diagonal slots accept square pitches16..20mm; four outer diagonals accept40..45mm. Four short corner paths accept M3 square pitches30..31mm and a25x30mm M2.5 rectangle in either quarter-turn orientation; no angular travel is claimed. Eight outer M2.5 slots accept58x49mm rectangles in either quarter-turn orientation. Four axial M2 slots provide opposed spacing23..26mm, including the repositioned P-AS pair. Twelve side M2 slots on a54mm square preserve the optical foot at each side midpoint and accept reviewed power feet at(+27,+19)/(-27,-19). Four short M2 radial slots accept square pitches25..26mm at45deg, including the unchanged nominal25.5mm FC axes; complete6.5mm bearing-face sweeps remain except for the intended slots. Tighten the installed stack before operation; these openings do not self-centre a board. Patterns are alternative uses, not simultaneous-device clearance or load qualification. Wider slots require separately reviewed bearing hardware; default small M2 heads must not bridge them. Bench-service and occupied-device checks remain mandatory.",
     }
 
 
@@ -241,7 +270,7 @@ def optional_payload_profiles():
             "pattern_mm": (25.0, 30.0),
             "published_hole_diameter_mm": 2.7,
             "fastener": "M2.5",
-            "slot_family": "rectangle25_30_square30_5",
+            "slot_family": "rectangle25_30_square30_31",
             "bearing_diameter_mm": 7.0,
             "bearing_type": "Flat circular load-spreading face; verify selected washer/standoff",
             "source": "https://res.siyi.biz/oss/other/2026/06/15/A8_mini_User_Manual_v1_10_563cde30.pdf",

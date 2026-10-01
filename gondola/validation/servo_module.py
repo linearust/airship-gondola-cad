@@ -46,11 +46,11 @@ def bridge_joint_check(doc, module):
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
     planes = (
-        ("full_roof_support", 2, 12.5, 552, (-23, -6, 46, 12)),
+        ("full_roof_support", 2, 12.5, 480, (-20, -6, 40, 12)),
         ("negative_y_beam_roof", 2, 12.5, 90, (-9, -11, 18, 5)),
         ("positive_y_beam_roof", 2, 12.5, 90, (-9, 6, 18, 5)),
-        ("negative_y_wall", 1, -6, 27.6 * 10.3 - 2 * math.pi * 1.7**2, None),
-        ("positive_y_wall", 1, 6, 27.6 * 10.3 - 2 * math.pi * 1.7**2, None),
+        ("negative_y_wall", 1, -6, 21.6 * 10.3 - 2 * math.pi * 1.7**2, None),
+        ("positive_y_wall", 1, 6, 21.6 * 10.3 - 2 * math.pi * 1.7**2, None),
     )
     contacts = []
     for name, axis, station, minimum, bounds in planes:
@@ -110,7 +110,7 @@ def bridge_wrap_check(frame, bridge):
     )
     nut_cut = nut_cut.fuse(Part.makeBox(5.9, 3.1, 7, App.Vector(-17.95, -11.1, -1)))
     relief = Part.makeBox(18.4, 24, 10.4, App.Vector(-9.2, -12, 2.1))
-    wall = Part.makeBox(46, 5, 12.8, App.Vector(-23, -11, 2.2)).cut(relief).cut(bores)
+    wall = Part.makeBox(40, 5, 12.8, App.Vector(-20, -11, 2.2)).cut(relief).cut(bores)
     wall = (
         wall.cut(Part.makeCylinder(3.2, 2, App.Vector(15, -11, 6), App.Vector(0, 1, 0)))
         .cut(Part.makeBox(6.4, 2, 7, App.Vector(11.8, -11, -1)))
@@ -145,7 +145,7 @@ def bridge_wrap_check(frame, bridge):
             }
         )
     roof_missing = abs(
-        Part.makeBox(46, 22, 2.5, App.Vector(-23, -11, 12.5)).cut(bridge).Volume
+        Part.makeBox(40, 22, 2.5, App.Vector(-20, -11, 12.5)).cut(bridge).Volume
     )
     relief_obstruction = abs(bridge.common(relief).Volume)
     return {
@@ -167,18 +167,19 @@ def bridge_wrap_check(frame, bridge):
 def _bridge_path(shape, waypoints, obstacles, spec):
     """Exact box-prism sweeps retain the U opening and avoid tangent face artifacts.
 
-    Six deliberately plain stock boxes cover the actual bridge, including its
+    Seven deliberately plain stock boxes cover the actual bridge, including its
     cradle. The visible windows and transverse fastener bores are conservatively
     filled. Coverage and exact prescribed directions are independently required.
     """
     width = servo_bridge.bulkhead_width(spec)
     sections = (
         ((width, 5, spec.input_z_mm + 10.2 - 12.5), (-width / 2, -2.5, 12.5)),
-        ((46, 22, 2.5), (-23, -11, 12.5)),
-        ((13.8, 5, 10.3), (-23, -11, 2.2)),
-        ((13.8, 5, 10.3), (9.2, -11, 2.2)),
-        ((13.8, 5, 10.3), (-23, 6, 2.2)),
-        ((13.8, 5, 10.3), (9.2, 6, 2.2)),
+        ((40, 22, 2.5), (-20, -11, 12.5)),
+        ((10.8, 5, 10.3), (-20, -11, 2.2)),
+        ((10.8, 5, 10.3), (9.2, -11, 2.2)),
+        ((10.8, 5, 10.3), (-20, 6, 2.2)),
+        ((10.8, 5, 10.3), (9.2, 6, 2.2)),
+        ((width + 2, 7, 1), (-width / 2 - 1, -3.5, 15)),
     )
     envelope = union(
         [Part.makeBox(*size, App.Vector(*origin)) for size, origin in sections]
@@ -210,7 +211,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
             {
                 "start_mm": list(start),
                 "end_mm": list(end),
-                "method": "continuous exact union of six axis-aligned stock-box prisms",
+                "method": "continuous exact union of seven axis-aligned stock-box prisms",
                 "intersection_mm3": hits,
                 "passed": all(v < TOL for v in hits.values()),
             }

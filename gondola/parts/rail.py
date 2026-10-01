@@ -41,13 +41,13 @@ WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
 SLOT_HEIGHT, BOLT_AXIS_Z = 3.4, 6.0
 SLOT_CENTRE_HALF_SPAN = 3.0
 SHARED_SPINE_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
-SHARED_LOAD_ZONE_LENGTH = 12.0
+SHARED_LOAD_ZONE_LENGTH = 10.0
 SHARED_BOLT_HALF_RANGE = 3.0
 # The 30 mm bolt pair sits 1 mm outward of the 28 mm wall-centre pair.
 # Individual bolt travel and complete module travel are different quantities.
 SHARED_TRIM_HALF_RANGE = 2.0
-SHARED_MINIMUM_WALL_SEAT = 17.0
-SHARED_MINIMUM_TOTAL_SEAT = 37.0
+SHARED_MINIMUM_WALL_SEAT = 14.0
+SHARED_MINIMUM_TOTAL_SEAT = 32.0
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = CARRIER_ATTACHMENT.contact_length_mm, 4.0
 MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, CARRIER_ATTACHMENT.seat_z_mm
 MOUNT_INNER_ROOF_Z = 9.7
@@ -161,16 +161,16 @@ def attachment_windows(
     """Intersect bolt travel with the explicitly selected contact policy.
 
     Carrier feet retain their complete footprint and 0.8 mm end reserve.
-    A shared drive has a continuous 46 mm spine across two walls. Each bolt
-    may travel ±3 mm while its 12 mm load zone retains 1 mm to the wall ends.
+    A shared drive has a continuous 40 mm spine across two walls. Each bolt
+    may travel ±3 mm while its 10 mm load zone retains 2 mm to the wall ends.
     The 30 mm bolt pair on 28 mm wall pitch has only ±2 mm module travel.
-    Separate saved-solid checks require17mm side-wall overlap per wall and37mm total.
+    Separate saved-solid checks require14mm side-wall overlap per wall and32mm total.
     A paired module must also keep its full bottom datum inside the rail base.
     """
     contact_length = _contact_length(contact_length)
     attachment_pattern(shared_drive)
     if shared_drive and abs(contact_length - SHARED_SPINE_LENGTH) > TOL:
-        raise ValueError("Shared support requires the complete46mm spine extent")
+        raise ValueError("Shared support requires the complete40mm spine extent")
     clearance = (SLOT_HEIGHT - fasteners.RAIL_THREAD_DIAMETER) / 2
     inset = (
         WALL_LENGTH / 2 - SHARED_BOLT_HALF_RANGE
@@ -627,7 +627,7 @@ def attachment_contract(
         "bolt_axis_z_mm": BOLT_AXIS_Z,
         "mount_contact_length_mm": contact_length,
         "contact_length_scope": (
-            "Complete46mm spine extent: both lower lands contact the continuous base; side walls bridge the rail-wall gap."
+            "Complete40mm spine extent: both lower lands contact the continuous base; side walls bridge the rail-wall gap."
             if shared_drive
             else "Complete carrier foot length; the whole footprint retains at least0.8mm to wall ends."
         ),
@@ -694,7 +694,7 @@ def attachment_contract(
         "clamp_spacing_mm": pattern.spacing_mm,
         "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in an open-bottom load-bearing recess; unmeasured design envelopes",
         "shared_joint_service": (
-            "Two opposed bolts30mm apart retain the servo saddle and continuous46mm frame spine on adjacent20mm walls at28mm pitch. Individual bolt windows are±3mm; their intersection gives±2mm module trim; the outermost wall pairs are additionally limited by the full-width base ends; each bolt retains a12mm centred load zone with at least1mm to the wall ends. At travel extremes the spine overlaps17mm and20mm of wall (37mm total); at neutral it overlaps19mm each. These shorter contacts retain complete12mm bolt load zones and1mm wall-end margins; the smaller bolt spacing increases couple forces for a given moment. Both lower legs seat on the rail base atZ1.5; the inner roof retains0.2mm nominal clearance above the wall. These are contact-geometry checks, not equal-stiffness or loaded-retention claims. Support both modules during release and seat both walls before alternating tightening. The spine locally restrains rail curvature; do not force a curved rail straight."
+            "Two opposed bolts30mm apart retain the servo saddle and continuous40mm frame spine on adjacent20mm walls at28mm pitch. Individual bolt windows are±3mm; their intersection gives±2mm module trim, including the endmost wall pairs; each bolt retains a10mm centred load zone with at least2mm to the wall ends. At travel extremes the spine overlaps14mm and18mm of wall (32mm total); at neutral it overlaps16mm each. The10mm zones retain2mm of longitudinal stock beyond the diameter6mm fastener-bearing face. The shorter footprint reduces contact area; equal stiffness or retention is not established. Both lower legs seat on the rail base atZ1.5; the inner roof retains0.2mm nominal clearance above the wall. These are contact-geometry checks, not equal-stiffness or loaded-retention claims. Support both modules during release and seat both walls before alternating tightening. The spine locally restrains rail curvature; do not force a curved rail straight."
             if shared_drive
             else None
         ),
@@ -722,7 +722,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven identical20mm walls at28mm pitch retain ten8mm flex gaps. Each3.4x9.4mm slot leaves5.3mm end ligaments. Ordinary16mm feet retain±1.2mm full-foot travel, clipped to1mm toward each rail end to preserve the chamfered base lands. The paired continuous46mm propulsion spine uses30mm screw spacing and permits±2mm default module trim from the intersection of two±3mm individual bolt windows (endmost pairs are limited by full bottom-land support), with independently checked12mm clamp zones,1mm wall-end reserves, and at least17mm side-wall overlap per wall/37mm total. Fitted opposed legs and open-bottom recess floors carry the nominal clamp stack. Qualify actual fit, loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
+        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven identical20mm walls at28mm pitch retain ten8mm flex gaps. Each3.4x9.4mm slot leaves5.3mm end ligaments. Ordinary16mm feet retain±1.2mm full-foot travel, clipped to1mm toward each rail end to preserve the chamfered base lands. The paired continuous40mm propulsion spine uses30mm screw spacing and permits±2mm module trim from the intersection of two±3mm individual bolt windows, including the endmost wall pairs, with independently checked10mm clamp zones,2mm wall-end reserves, and at least14mm side-wall overlap per wall/32mm total. Fitted opposed legs and open-bottom recess floors carry the nominal clamp stack. Qualify actual fit, loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
     )
     set_property(
         printed,

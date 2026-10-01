@@ -38,12 +38,12 @@ class RailServiceTests(unittest.TestCase):
         from gondola.validation.rail_access import _shared_trim_interval
 
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [111, 141]}), (-2, 0)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [111, 141]}), (-2, 2)
         )
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [-141, -111]}), (0, 2)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [-141, -111]}), (-2, 2)
         )
-        for axes in ((111.01, 141.01), (-141.01, -111.01)):
+        for axes in ((113.01, 143.01), (-143.01, -113.01)):
             with self.assertRaises(ValueError):
                 _shared_trim_interval({"attachment_world_axes_x_mm": axes})
 
@@ -156,7 +156,7 @@ class RailServiceTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertLess(result["shape_outside_service_envelope_mm3"], 1e-5)
         lower = next(
-            row for row in result["regions"] if row["region"].endswith("Lower")
+            row for row in result["regions"] if row["region"].endswith("LowerSpine")
         )
         self.assertTrue(
             all("face-prism" in segment["method"] for segment in lower["segments"])
@@ -210,7 +210,7 @@ class RailServiceTests(unittest.TestCase):
             ("RailPositionX", station.x_mm, "App::PropertyDistance"),
             ("RailAttachmentOffsetX", 15, "App::PropertyDistance"),
             ("RailAttachmentOffsetsX", [15, -15], "App::PropertyFloatList"),
-            ("RailContactLength", 46, "App::PropertyLength"),
+            ("RailContactLength", 40, "App::PropertyLength"),
         ):
             set_property(module, name, value, kind)
         printed = []
@@ -425,7 +425,7 @@ class RailServiceTests(unittest.TestCase):
             if part["part"] == "ServoDriveBridge"
         )
         self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
-        self.assertEqual(len(bridge["regions"]), 6)
+        self.assertEqual(len(bridge["regions"]), 7)
         self.assertTrue(row["populated_supported_trim"]["passed"])
         self.assertEqual(row["populated_supported_trim"]["travel_mm"], 4)
 

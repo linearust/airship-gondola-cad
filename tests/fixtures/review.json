@@ -1,15 +1,15 @@
 {
-  "revision": "CA",
+  "revision": "CB",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "7f25969b7f8be55d5b36cd581899f29d07a8d5703cb61eb8c7a0919e1e0cf905",
-  "old_fixture_sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
+  "candidate_sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
+  "old_fixture_sha256": "7f25969b7f8be55d5b36cd581899f29d07a8d5703cb61eb8c7a0919e1e0cf905",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "fit_audit_verification",
+      "metric_flexure_verification",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "5d1b8bb98dbe842025842ff4a040284ecc4b2e0ef774e77f28f3654cf1747b7b"
+    "canonical_json_sha256": "6eab09e2c6aa9d5310432ccbf7e38de00fbf12db1dc47a31bcbea40dfa6b5279"
   },
-  "scope": "Approval of the exact fixture transition only; final CAD release checks are recorded separately in references/design_verification.json. Physical fit, retention, strength, wiring and flight readiness remain unqualified."
+  "scope": "Approval of the exact reviewed geometry transition; final CAD release checks follow separately. Physical strength, fit, curvature, retention and flight readiness remain unqualified."
 }

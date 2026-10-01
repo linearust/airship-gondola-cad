@@ -285,6 +285,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
             slot_contract["outer_diagonal_square_pitch_range_mm"], (40.0, 45.0)
         )
         self.assertEqual(slot_contract["square30_5_pitch_mm"], 30.5)
+        self.assertEqual(slot_contract["large_square_pitch_range_mm"], (30.0, 31.0))
+        self.assertEqual(slot_contract["fc_square_pitch_range_mm"], (25.0, 26.0))
         self.assertEqual(slot_contract["square30_5_rotation_range_deg"], (0.0, 0.0))
         self.assertFalse(slot_contract["x500_drop_in_compatible"])
         shape = mounts.mount_shape("electronics")
@@ -292,7 +294,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         # lands are audited separately; this is not a sampled full-range proof.
         patterns = [(pitch, 0, 2.6) for pitch in (16.0, 17.37, 20.0)]
         patterns += [(pitch, 0, 2.6) for pitch in (40.0, 42.6, 45.0)]
-        patterns += [(30.5, turn, 3.6) for turn in (0.0,)]
+        patterns += [(pitch, 0.0, 3.6) for pitch in (30.0, 30.5, 31.0)]
         for pitch, turn, diameter in patterns:
             for index in range(4):
                 angle = math.radians(45 + turn + index * 90)
@@ -311,8 +313,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for kind in mounts.MOUNT_NAMES:
             self.assertNotIn("generic_fastening", mounts.mount_contract(kind))
             contract = mounts.common_plate_contract()
-            self.assertEqual(contract["fixed_bore_count"], 5)
-            self.assertEqual(contract["slot_count"], 36)
+            self.assertEqual(contract["fixed_bore_count"], 1)
+            self.assertEqual(contract["slot_count"], 40)
 
     def test_m2_slot_screws_clear_base_and_rail_over_the_whole_straight_path(self):
         from gondola.contracts import fasteners
@@ -457,12 +459,12 @@ class EquipmentMountShapeTests(unittest.TestCase):
     def test_every_carrier_preserves_fc_and_published_pas_hole_patterns(self):
         from gondola.contracts import equipment_interfaces as interfaces
         from gondola.parts import equipment_mounts as mounts
-        from gondola.validation.equipment import mounting_pad_check
+        from gondola.validation.equipment import slot_mounting_pad_check
 
         for kind in mounts.MOUNT_NAMES:
             shape = mounts.mount_shape(kind)
             for centre in mounts.FC_HOLE_CENTRES:
-                check = mounting_pad_check(
+                check = slot_mounting_pad_check(
                     shape,
                     centre,
                     bottom=mounts.DECK_BOTTOM_Z,
@@ -527,7 +529,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         original = mounts.mount_shape("battery")
         report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 36))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (1, 40))
         for centre in mounts.COMMON_FIXED_HOLE_CENTRES:
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(
@@ -667,9 +669,9 @@ class FCInstallationTests(unittest.TestCase):
             self.assertEqual(obj.MountKind, kind)
             self.assertFalse(obj.HalfTurnSymmetric)
             contract = json.loads(obj.MountContract)
-            self.assertEqual(len(contract["physical_fixed_hole_centres_xy_mm"]), 5)
+            self.assertEqual(len(contract["physical_fixed_hole_centres_xy_mm"]), 1)
             self.assertIn([0.0, 0.0], contract["physical_fixed_hole_centres_xy_mm"])
-            self.assertEqual(contract["common_plate"]["fixed_fc_bore_count"], 4)
+            self.assertEqual(contract["common_plate"]["fc_slot_count"], 4)
             self.assertEqual(
                 contract["mount_hole_centres_xy_mm"],
                 [list(xy) for xy in mounts.mount_hole_centres(kind)],

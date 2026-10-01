@@ -569,7 +569,7 @@ class NativeGearedDriveTests(unittest.TestCase):
             frame.Shape = original
             self.doc.recompute()
 
-    def test_plain_bearing_post_roots_keep_the_complete_load_section(self):
+    def test_blended_bearing_post_roots_keep_the_complete_load_section(self):
         from gondola.validation.propulsion import bearing_post_roots_check
 
         rows = bearing_post_roots_check(self.doc)
@@ -577,6 +577,25 @@ class NativeGearedDriveTests(unittest.TestCase):
         for row in rows:
             self.assertTrue(row["passed"], row)
             self.assertEqual(row["root_section_mm"], [13, 6])
+            self.assertEqual(row["root_blend_radius_mm"], 1.5)
+            self.assertLess(row["missing_root_blend_mm3"], 1e-7)
+
+    def test_missing_bearing_root_blend_is_rejected(self):
+        from gondola.validation.propulsion import bearing_post_roots_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            frame.Shape = original.cut(
+                Part.makeBox(1.5, 6, 1.5, App.Vector(6.5, 37.25, 12.5))
+            )
+            self.doc.recompute()
+            rows = bearing_post_roots_check(self.doc)
+            self.assertEqual(sum(not row["passed"] for row in rows), 1)
+            self.assertGreater(max(row["missing_root_blend_mm3"] for row in rows), 1)
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
 
     def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
         from gondola.cad import belongs_to_group, world_shape
@@ -811,16 +830,16 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(row["clamp_spacing_mm"], 30.0)
         for site in row["sites"]:
             self.assertEqual(site["side_bolt_axis_mm"], [15.0, 6.0])
-            self.assertEqual(site["centred_load_zone_x_range_mm"], [9.0, 21.0])
-            self.assertEqual(site["physical_spine_x_range_mm"], [-23, 23])
+            self.assertEqual(site["centred_load_zone_x_range_mm"], [10.0, 20.0])
+            self.assertEqual(site["physical_spine_x_range_mm"], [-20, 20])
             self.assertEqual(
                 site["shared_grip_contact_check"]["checked_centred_contact_length_mm"],
-                12,
+                10,
             )
             support = site["paired_spine_support"]
             self.assertTrue(support["passed"])
-            self.assertEqual(support["spine_extent_mm"], 46)
-            self.assertEqual(support["wall_overlap_length_total_mm"], 38)
+            self.assertEqual(support["spine_extent_mm"], 40)
+            self.assertEqual(support["wall_overlap_length_total_mm"], 32)
             self.assertTrue(
                 all(row["passed"] for row in support["bottom_datum_contacts"])
             )

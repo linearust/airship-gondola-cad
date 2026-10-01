@@ -22,7 +22,7 @@ PARTS = {
     "FrameJointCoupon": ("PropulsionFixedFrame", (50, 28, 12.5)),
     "SaddleJointCoupon": ("ServoDriveBridge", (50, 28, 15.0)),
 }
-# Retain the entire 46 mm spine and both 20 mm rail walls (at +/-14),
+# Retain the entire 40 mm spine and both 20 mm rail walls (at +/-14),
 # including the full 2.5 mm saddle roof. The extra millimetre beyond each
 # rail wall is coupon stock, not a change to the installed interface.
 CROP_ORIGIN = (-25, -14, 0)
@@ -80,9 +80,9 @@ def joint_checks(shapes):
     contacts = []
     # Both full side walls contact the frame, except their two bolt bores and
     # the central relief needed to pass the transverse propulsion wings.
-    side_contact = 27.6 * 10.3 - 2 * math.pi * 1.7**2
+    side_contact = 21.6 * 10.3 - 2 * math.pi * 1.7**2
     for name, first, second, axis, station, area, region in (
-        ("full_U_roof", frame, saddle, 2, 12.5, 46 * 12, (-23, -6, 0, 46, 12, 20)),
+        ("full_U_roof", frame, saddle, 2, 12.5, 40 * 12, (-20, -6, 0, 40, 12, 20)),
         ("negative_beam_roof", frame, saddle, 2, 12.5, 90, (-9, -11, 0, 18, 5, 20)),
         ("positive_beam_roof", frame, saddle, 2, 12.5, 90, (-9, 6, 0, 18, 5, 20)),
         ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
@@ -93,8 +93,8 @@ def joint_checks(shapes):
             frame,
             2,
             1.5,
-            80.5,
-            (-23, -6, 0, 46, 4.75, 20),
+            70.0,
+            (-20, -6, 0, 40, 4.75, 20),
         ),
         (
             "positive_bottom_datum",
@@ -102,8 +102,8 @@ def joint_checks(shapes):
             frame,
             2,
             1.5,
-            80.5,
-            (-23, 1.25, 0, 46, 4.75, 20),
+            70.0,
+            (-20, 1.25, 0, 40, 4.75, 20),
         ),
     ):
         if region is not None:

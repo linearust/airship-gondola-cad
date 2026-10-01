@@ -202,7 +202,7 @@ def attachment_check(
     if shared_drive and (
         abs(contact_length - rail.SHARED_SPINE_LENGTH) > rail.TOL or mount is None
     ):
-        raise ValueError("Shared attachment requires the actual46mm frame spine")
+        raise ValueError("Shared attachment requires the actual40mm frame spine")
     zone_length = rail.SHARED_LOAD_ZONE_LENGTH if shared_drive else contact_length
     if (
         not all(
@@ -299,7 +299,7 @@ def attachment_check(
         "support_policy": "paired_spine_clamp_zone" if shared_drive else "full_foot",
         "checked_centred_contact_length_mm": zone_length,
         "shared_support_scope": (
-            "This local check covers only the12mm centred clamp zone. The saved paired-spine check must additionally verify complete bottom lands and both side-wall overlaps of minimum17/37mm."
+            "This local check covers only the10mm centred clamp zone. The saved paired-spine check must additionally verify complete bottom lands and both side-wall overlaps of minimum14/32mm."
             if shared_drive
             else None
         ),

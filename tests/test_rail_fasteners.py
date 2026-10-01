@@ -220,13 +220,13 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.validation.rail_mount import paired_spine_support_check
 
         complete_frame = propulsion.fixed_frame_shape()
-        crop = Part.makeBox(12, 22, 11, App.Vector(9, -11, 1.5))
+        crop = Part.makeBox(10, 22, 11, App.Vector(10, -11, 1.5))
         frame = translated_shape(complete_frame.common(crop), x=-15)
         bridge = translated_shape(servo_bridge.bridge_shape().common(crop), x=-15)
         arguments = dict(
             mount=frame,
             head_support=bridge,
-            contact_length=46,
+            contact_length=40,
             shared_drive=True,
             screw_length=20,
             head_face_y=-9,
@@ -237,12 +237,12 @@ class RailFastenerTests(unittest.TestCase):
         report = rail_contact.attachment_check(**arguments)
         self.assertTrue(report["passed"], report)
         self.assertEqual(report["support_policy"], "paired_spine_clamp_zone")
-        self.assertEqual(report["checked_centred_contact_length_mm"], 12)
+        self.assertEqual(report["checked_centred_contact_length_mm"], 10)
         support = paired_spine_support_check(
             translated_shape(rail.rail_shape(), x=14), complete_frame
         )
         self.assertTrue(support["passed"], support)
-        self.assertEqual(support["wall_overlap_length_total_mm"], 38)
+        self.assertEqual(support["wall_overlap_length_total_mm"], 32)
         self.assertAlmostEqual(report["printed_grip_mm"], 17)
         self.assertAlmostEqual(report["bolt_tip_beyond_nut_mm"], 0.6)
         self.assertAlmostEqual(report["missing_head_support_mm3"], 0)
@@ -271,16 +271,16 @@ class RailFastenerTests(unittest.TestCase):
     def test_shared_clamp_declares_distinct_hardware_and_service_scope(self):
         from gondola.parts import rail
 
-        contract = rail.attachment_contract(46, shared_drive=True)
+        contract = rail.attachment_contract(40, shared_drive=True)
         self.assertEqual(contract["bolt_length_mm"], 20)
         self.assertEqual(contract["head_bearing_y_mm"], -9)
         self.assertEqual(contract["nut_bearing_y_mm"], 8)
         self.assertEqual(contract["printed_grip_mm"], 17)
         self.assertTrue(contract["shared_servo_bridge_clamp"])
-        self.assertEqual(contract["mount_contact_length_mm"], 46)
-        self.assertEqual(contract["centred_load_zone_length_mm"], 12)
-        self.assertEqual(contract["shared_minimum_wall_seat_length_mm"], 17)
-        self.assertEqual(contract["shared_minimum_total_seat_length_mm"], 37)
+        self.assertEqual(contract["mount_contact_length_mm"], 40)
+        self.assertEqual(contract["centred_load_zone_length_mm"], 10)
+        self.assertEqual(contract["shared_minimum_wall_seat_length_mm"], 14)
+        self.assertEqual(contract["shared_minimum_total_seat_length_mm"], 32)
         self.assertEqual(contract["shared_usable_trim_half_range_mm"], 2)
         self.assertIn("Support both", contract["shared_joint_service"])
         screw = rail.attachment_screw_shape(20, head_face_y=-9)

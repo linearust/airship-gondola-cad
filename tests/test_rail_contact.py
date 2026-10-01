@@ -216,22 +216,22 @@ class RailContactTests(unittest.TestCase):
         from gondola.validation.rail_mount import paired_spine_support_check
 
         frame, shape = propulsion.fixed_frame_shape(), rail.rail_shape()
-        bolt_ranges = rail.supported_slot_ranges(300, 46, shared_drive=True)
+        bolt_ranges = rail.supported_slot_ranges(300, 40, shared_drive=True)
         self.assertEqual(bolt_ranges[5], (-3, 3))
         module_ranges = rail.shared_module_ranges()
         self.assertEqual(len(module_ranges), 10)
-        self.assertEqual(module_ranges[0], (-126, -124))
-        self.assertEqual(module_ranges[-1], (124, 126))
+        self.assertEqual(module_ranges[0], (-128, -124))
+        self.assertEqual(module_ranges[-1], (124, 128))
         self.assertEqual(module_ranges[4:6], ((-16, -12), (12, 16)))
-        for delta, expected in ((-2, [20, 17]), (0, [19, 19]), (2, [17, 20])):
+        for delta, expected in ((-2, [18, 14]), (0, [16, 16]), (2, [14, 18])):
             station = -14 + delta
             for axis in (station - 15, station + 15):
                 position = rail.attachment_position_check(
-                    axis, contact_length=46, shared_drive=True
+                    axis, contact_length=40, shared_drive=True
                 )
                 self.assertTrue(position["passed"], position)
                 self.assertGreaterEqual(
-                    position["minimum_centred_contact_end_margin_mm"], 1
+                    position["minimum_centred_contact_end_margin_mm"], 2
                 )
             seats = paired_spine_support_check(
                 translated_shape(shape, x=-station), frame
@@ -241,11 +241,11 @@ class RailContactTests(unittest.TestCase):
                 [row["wall_overlap_length_mm"] for row in seats["wall_supports"]],
                 expected,
             )
-            self.assertEqual(seats["minimum_bottom_contact_area_mm2"], 161)
+            self.assertEqual(seats["minimum_bottom_contact_area_mm2"], 140)
         for axis in (-3.01, 3.01, 14):
             self.assertFalse(
                 rail.attachment_position_check(
-                    axis, contact_length=46, shared_drive=True
+                    axis, contact_length=40, shared_drive=True
                 )["passed"]
             )
         for obsolete in (12, 16, 24):
@@ -259,14 +259,12 @@ class RailContactTests(unittest.TestCase):
 
         frame = propulsion.fixed_frame_shape()
         local_rail = translated_shape(rail.rail_shape(), x=12)  # +2mm propulsion trim
-        # X-22 is outside both12mm clamp zones; its lower land must still bear.
-        missing_bottom = frame.cut(Part.makeBox(1, 1.75, 0.5, App.Vector(-22, -3, 1.5)))
+        # X-8 is between the10mm clamp zones; its lower land must still bear.
+        missing_bottom = frame.cut(Part.makeBox(1, 1.75, 0.5, App.Vector(-8, -3, 1.5)))
         self.assertFalse(
             paired_spine_support_check(local_rail, missing_bottom)["passed"]
         )
-        missing_wall = local_rail.cut(
-            Part.makeBox(1, 2.5, 2, App.Vector(-22, -1.25, 8))
-        )
+        missing_wall = local_rail.cut(Part.makeBox(1, 2.5, 2, App.Vector(-8, -1.25, 8)))
         self.assertFalse(paired_spine_support_check(missing_wall, frame)["passed"])
 
     def test_u_saddle_seats_and_lifts_without_deflecting_ears(self):

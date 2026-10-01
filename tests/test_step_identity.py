@@ -90,6 +90,58 @@ class StepIdentityTests(unittest.TestCase):
         self.assertGreater(result["difference_mm3"], 1)
         self.assertFalse(result["closed_solid_identity_by_empty_cuts"])
 
+    def test_pole_boundaries_survive_orientation_and_step_round_trip(self):
+        from gondola.print_export import (
+            _boundary_signature,
+            print_shape,
+            print_solid_comparison,
+        )
+
+        block = Part.makeBox(10, 8, 6)
+        for label, shape in (
+            ("sphere", Part.makeSphere(3)),
+            ("rounded_block", block.makeFillet(1, block.Edges)),
+        ):
+            with self.subTest(shape=label), tempfile.TemporaryDirectory() as folder:
+                original = print_shape(
+                    SimpleNamespace(
+                        Shape=shape,
+                        PrintRotation=App.Rotation(App.Vector(1, 2, 3), 37),
+                    )
+                )
+                # A valid pole edge has no readable Curve in this OCC runtime.
+                # No sentinel may itself count as an identity signature.
+                self.assertIsNone(_boundary_signature(original))
+                for suffix in ("brep", "step"):
+                    path = str(Path(folder) / (label + "." + suffix))
+                    if suffix == "brep":
+                        original.exportBrep(path)
+                    else:
+                        original.exportStep(path)
+                    restored = Part.Shape()
+                    restored.read(path)
+                    result = print_solid_comparison(original, restored, 1e-5)
+                    self.assertTrue(result["passed"], result)
+                    self.assertEqual(result["method"], "BRep symmetric difference")
+                    self.assertTrue(result["closed_solid_identity_by_empty_cuts"])
+
+    def test_two_unreadable_boundaries_do_not_match_by_equal_volume(self):
+        from gondola.print_export import _boundary_signature, print_solid_comparison
+
+        sphere = Part.makeSphere(3)
+        first = sphere.cut(Part.makeCylinder(0.4, 6, App.Vector(1, 0, -3)))
+        second = first.copy()
+        second.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+        shapes = (first, second)
+        self.assertTrue(all(shape.isValid() for shape in shapes))
+        self.assertTrue(all(_boundary_signature(shape) is None for shape in shapes))
+        result = print_solid_comparison(*shapes, 1e-5)
+        self.assertLess(result["volume_difference_mm3"], 1e-6)
+        self.assertLess(result["bounds_difference_mm"], 1e-6)
+        self.assertGreater(result["difference_mm3"], 1)
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["closed_solid_identity_by_empty_cuts"])
+
     def test_small_real_material_loss_is_not_accepted_as_empty(self):
         from gondola.print_export import print_solid_comparison
 

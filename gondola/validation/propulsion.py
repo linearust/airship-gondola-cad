@@ -15,6 +15,7 @@ import Part
 
 from gondola.cad import (
     translated_shape,
+    union,
     world_shape,
 )
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
@@ -833,7 +834,27 @@ def vertical_frame_release_check(frame, rail_shape=None):
     conservative = frame_rail_bore_filled(frame)
     lower = conservative.common(region)
     upper = conservative.cut(region)
-    path = continuous_path(lower, [(0, 0, 0), (0, 0, 30)], {"Rail": rail_shape})
+    # Preserve the planar U channel: a whole bounding prism of the new rounded
+    # beam would invent material inside it. Full outboard beam stock is safe
+    # to sweep separately and conservatively fills only the R0.5 edge cuts.
+    sections = (
+        ("spine", lower.common(Part.makeBox(40, 12, 11, App.Vector(-20, -6, 1.5)))),
+        ("negative_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, -113.25, 7.5))),
+        ("positive_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, 6, 7.5))),
+    )
+    lower_uncovered = abs(lower.cut(union([shape for _, shape in sections])).Volume)
+    paths = [
+        {
+            "region": label,
+            **continuous_path(shape, [(0, 0, 0), (0, 0, 30)], {"Rail": rail_shape}),
+        }
+        for label, shape in sections
+    ]
+    path = {
+        "regions": paths,
+        "lower_frame_outside_envelope_mm3": lower_uncovered,
+        "passed": lower_uncovered < TOL and all(row["passed"] for row in paths),
+    }
     upper_gap = upper.BoundBox.ZMin - rail_shape.BoundBox.ZMax
     missing = abs(frame.cut(conservative).Volume)
     added = abs(conservative.cut(frame).Volume)
@@ -844,7 +865,7 @@ def vertical_frame_release_check(frame, rail_shape=None):
         "original_shape_missing_from_envelope_mm3": missing,
         "side_bore_filled_volume_mm3": added,
         "maximum_side_bore_plug_volume_mm3": plug_volume,
-        "scope": "The complete frame is bounded by itself plus its four side screw bores, filled only within the two solid U legs. Both added regions stay outside the rail web. Split at the servo-seat plane: the exact lower planar/vertical-cylinder sweep preserves the U opening; upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
+        "scope": "Fill only the four side screw bores within the solid U legs, then split at the servo-seat plane. Sweep the planar U spine separately from two full outboard beam stocks, conservatively filling only their R0.5 edge cuts. Complete lower-shape containment is required. Upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
         "passed": path["passed"]
         and upper_gap > TOL
         and missing < TOL
@@ -941,11 +962,11 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
                 ),
             }
         )
-    crop = Part.makeBox(12, 22, 11, App.Vector(x - 6, -11, 1.5))
+    crop = Part.makeBox(10, 22, 11, App.Vector(x - 5, -11, 1.5))
     contact = attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
-        contact_length=46,
+        contact_length=40,
         shared_drive=True,
         screw_length=20,
         head_face_y=-9.0,
@@ -996,8 +1017,8 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "hardware_geometry": hardware_geometry,
         "screw_length_mm": servo_bridge.SHARED_SCREW_LENGTH,
         "driver_access": driver,
-        "centred_load_zone_x_range_mm": [x - 6, x + 6],
-        "physical_spine_x_range_mm": [-23, 23],
+        "centred_load_zone_x_range_mm": [x - 5, x + 5],
+        "physical_spine_x_range_mm": [-20, 20],
         "bolt_withdrawal": withdrawal,
         "nut_removal_after_bolt": nut_path,
         "driver_clearance_overlap_mm3": stem_hits,
@@ -1019,7 +1040,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
 
 
 def bearing_post_roots_check(doc):
-    """Independently require four straight post roots and the shared beam."""
+    """Require full post cores, eight R1.5 roots and a softly edged shared beam."""
     frame = doc.getObject("PropulsionFixedFrame")
     if frame is None:
         return [{"passed": False, "error": "Missing output support frame"}]
@@ -1027,7 +1048,14 @@ def bearing_post_roots_check(doc):
     shape.Placement = App.Placement()
     # One uninterrupted raised beam carries all four roots into the U spine.
     # Keep this literal witness independent of source-builder dimensions.
-    beam = Part.makeBox(18, 226.5, 5, App.Vector(-9, -113.25, 7.5)).cut(
+    beam = Part.makeBox(18, 226.5, 5, App.Vector(-9, -113.25, 7.5))
+    beam_edges = [
+        edge
+        for edge in beam.Edges
+        if abs(edge.Length - 226.5) < TOL
+        and all(abs(v.Point.z - 7.5) < TOL for v in edge.Vertexes)
+    ]
+    beam = beam.makeFillet(0.5, beam_edges).cut(
         Part.makeBox(20, 2.5, 9.7, App.Vector(-10, -1.25, 0))
     )
     missing_beam = abs(beam.cut(shape).Volume)
@@ -1043,10 +1071,28 @@ def bearing_post_roots_check(doc):
                 App.Vector(-6.5, centre_y - 3, bottom),
             )
             missing = abs(witness.cut(shape).Volume)
+            # Analytic concave quarter circles are independent of makeFillet
+            # and edge selection in the production builder.
+            positive_blend = Part.makeBox(
+                1.5, 6, 1.5, App.Vector(6.5, centre_y - 3, bottom)
+            ).cut(
+                Part.makeCylinder(
+                    1.5,
+                    6,
+                    App.Vector(8, centre_y - 3, bottom + 1.5),
+                    App.Vector(0, 1, 0),
+                )
+            )
+            blends = positive_blend.fuse(
+                positive_blend.mirror(App.Vector(), App.Vector(1, 0, 0))
+            )
+            missing_blend = abs(blends.cut(shape).Volume)
             former_root_envelope = Part.makeBox(
                 18, 6, top - bottom, App.Vector(-9, centre_y - 3, bottom)
             )
-            extra = abs(former_root_envelope.cut(witness).common(shape).Volume)
+            extra = abs(
+                former_root_envelope.cut(witness.fuse(blends)).common(shape).Volume
+            )
             rows.append(
                 {
                     "side": sign,
@@ -1054,11 +1100,16 @@ def bearing_post_roots_check(doc):
                     "root_section_mm": [13, 6],
                     "root_height_range_mm": [bottom, top],
                     "missing_root_material_mm3": missing,
+                    "root_blend_radius_mm": 1.5,
+                    "missing_root_blend_mm3": missing_blend,
                     "unexpected_root_material_mm3": extra,
                     "shared_beam_z_range_mm": [7.5, 12.5],
                     "missing_shared_beam_mm3": missing_beam,
-                    "scope": "Complete raised 18x5 transverse beam and straight 13x6 roots through the cup bottom at Z27; no flared stock within the former 18 mm root envelope. Upper bearing/keeper cuts are checked separately. Not a stress, stiffness or fatigue qualification.",
-                    "passed": missing < TOL and extra < TOL and missing_beam < TOL,
+                    "scope": "Raised 18x5 transverse beam with R0.5 lower exterior edges, unchanged full 13x6 post cores through Z27 and paired R1.5 root blends along X. Keep the roof mating face flat. Upper bearing/keeper cuts are checked separately. No post thinning or quantified strength, stiffness or fatigue improvement is inferred.",
+                    "passed": missing < TOL
+                    and missing_blend < TOL
+                    and extra < TOL
+                    and missing_beam < TOL,
                 }
             )
     return rows

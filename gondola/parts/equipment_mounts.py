@@ -169,10 +169,10 @@ def common_plate_contract():
         "standard_mounting": mounting_slots.contract(),
         "expansion": expansion_contract(),
         "fixed_bore_count": len(COMMON_FIXED_HOLE_CENTRES),
-        "fixed_fc_bore_count": len(FC_HOLE_CENTRES),
+        "fc_slot_count": len(FC_HOLE_CENTRES),
         "centre_through_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One66mm rounded-square plate with five2.6mm fixed bores and36 shared slots. FC fixed bearing pads and optical side-middle slots remain. P-AS uses the23mm opposed axial endpoints with its declared positive-Y offset. The deck has quarter-turn and X/Y mirror symmetry; its U rail shoe is directional. Three installed carriers share one print and the optional power deck shares its plate template. Optional Pi5/A8 provisions are alternative mounting patterns, not populated-device, fastener, electrical, strength or simultaneous-installation qualification.",
+        "scope": "One66mm rounded-square plate with one2.6mm central bore and40 shared slots. Four short FC slots retain the nominal25.5mm axes within square pitches25..26mm and full6.5mm bearing-face sweeps except the intentional openings. Optical side-middle slots remain. P-AS uses the23mm opposed axial endpoints with its declared positive-Y offset. The deck has quarter-turn and X/Y mirror symmetry; its U rail shoe is directional. Three installed carriers share one print and the optional power deck shares its plate template. Optional Pi5/A8 provisions are alternative mounting patterns, not populated-device, fastener, electrical, strength or simultaneous-installation qualification.",
     }
 
 
@@ -284,7 +284,7 @@ def mount_contract(kind):
         "fc_wiring_corridor_width_mm": FC_WIRING_CORRIDOR_WIDTH,
         "fc_wiring_corridor_centre_y_mm": FC_WIRING_CORRIDOR_CENTRE_Y,
         "pas_service_clearance_mm": PAS_SERVICE_CLEARANCE,
-        "hole_interface_scope": "Four fixed FC bores preserve the 25.5 mm pattern and complete bearing annuli. The P-AS's published two axes lie at endpoints of two opposed axial slots at23mm spacing after the declared navigation shift. M2 openings are 2.6 mm wide; this is our clearance choice, not the OEM hole diameter. Slot seats have continuous side lands, not full circular annuli. No printed threads or device posts.",
+        "hole_interface_scope": "Four short radial slots preserve the nominal25.5mm FC axes and allow25..26mm square patterns at45deg; clamp the selected mounting stack before use. The P-AS's published two axes lie at endpoints of opposed axial slots at23mm spacing after the declared navigation shift; generic axial travel ends at26mm to preserve FC bearing support. M2 openings are2.6mm wide, a printed clearance choice rather than the OEM hole diameter. Slot seats have continuous side lands, not full circular annuli. No printed threads or device posts.",
         "unresolved_mounting_stack": "Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.",
         "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }
