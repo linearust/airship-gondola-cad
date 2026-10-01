@@ -612,7 +612,7 @@ def _carrier_interface_checks(doc):
     rows = []
     for x in (-4.0, 2.0):
         for target, z, face in ((plate, -0.2, "carrier"), (foot, 0.0, "foot")):
-            witness = box(2, 16, 0.2, (x, -8, z))
+            witness = box(2, 18, 0.2, (x, -9, z))
             missing = witness.cut(target).Volume
             rows.append(
                 {
@@ -634,7 +634,7 @@ def _carrier_interface_checks(doc):
             "passed": missing <= TOL,
         }
     )
-    underside = box(8, 16, 10, (-4, -8, -mounting_plate.THICKNESS_MM - 10))
+    underside = box(8, 18, 10, (-4, -9, -mounting_plate.THICKNESS_MM - 10))
     intrusion = intersection_volume(underside, foot)
     rows.append(
         {
@@ -667,7 +667,7 @@ def _carrier_interface_checks(doc):
         )
         for side in (-1, 1):
             lower_x = x + (1.35 if side == 1 else -1.7)
-            for material, z in ((plate, -mounting_plate.THICKNESS_MM), (foot, 1.8)):
+            for material, z in ((plate, -mounting_plate.THICKNESS_MM), (foot, 1.3)):
                 witness = box(0.35, 1.0, 0.2, (lower_x, y - 0.5, z))
                 missing = witness.cut(material).Volume
                 rows.append(
@@ -747,6 +747,7 @@ def _foot_service_checks(doc, physical, kit):
             }
         )
 
+    release_z = 4.7  # 6 mm tip - 1.5 mm recessed seat + 0.2 mm clearance.
     for index in optical_interface.CLAMP_CENTRES:
         name = f"OpticalFootNut{index}"
         shape = remaining.pop(name)
@@ -754,7 +755,7 @@ def _foot_service_checks(doc, physical, kit):
         path(
             name,
             shape,
-            [(0, 0, 0), (0, 0, 4.2), (20, 0, 4.2), (20, 0, 40)],
+            [(0, 0, 0), (0, 0, release_z), (20, 0, release_z), (20, 0, 40)],
             {**host_parts, **remaining},
         )
     for index in optical_interface.CLAMP_CENTRES:
@@ -764,8 +765,69 @@ def _foot_service_checks(doc, physical, kit):
     for name, shape in remaining.items():
         path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
     return {
-        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Unthread the foot nut 4.2 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
+        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut 4.7 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
         "paths": rows,
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
+def _nut_recess_checks(doc):
+    """Saved shallow seats restrain minimum M2 nuts without raising outer surfaces."""
+    from gondola.parts.purchased_hardware import hex_prism
+
+    rows = []
+    for name, part, parent, origin, rotation in (
+        (
+            "OpticalFootNut1",
+            "OpticalMountBase",
+            doc.OpticalFlowModule,
+            V(0, 5, 1.5),
+            App.Rotation(),
+        ),
+        (
+            "OpticalPitchNut",
+            "OpticalSensorTray",
+            doc.OpticalPitchStage,
+            V(0, 1.5, 0),
+            App.Rotation(V(1, 0, 0), -90),
+        ),
+    ):
+        support = world_shape(doc.getObject(part))
+        support.Placement = (
+            parent.getGlobalPlacement().inverse().multiply(support.Placement)
+        )
+        frame = App.Placement(origin, rotation)
+        support.Placement = frame.inverse().multiply(support.Placement)
+        nut = hex_prism(3.8, 1.35).cut(Part.makeCylinder(1.0, 1.55, V(0, 0, -0.1)))
+        overlap = abs(nut.common(support).Volume)
+        turns = []
+        for angle in (-30, 30):
+            turned = nut.copy()
+            turned.rotate(V(), V(0, 0, 1), angle)
+            turns.append(abs(turned.common(support).Volume))
+        floor_lengths = [
+            support.common(Part.makeLine(V(x, 0, -1.5), V(x, 0, 0))).Length
+            for x in (-1.5, 1.5)
+        ]
+        actual = doc.getObject(name)
+        parent_ok = actual.getParentGeoFeatureGroup() == parent
+        rows.append(
+            {
+                "nut": name,
+                "support": part,
+                "aligned_minimum_nut_overlap_mm3": overlap,
+                "turn_30deg_obstruction_mm3": turns,
+                "nut_follows_its_seat": parent_ok,
+                "retained_floor_lengths_mm": floor_lengths,
+                "passed": overlap < TOL
+                and min(turns) > TOL
+                and parent_ok
+                and all(abs(length - 1.5) < TOL for length in floor_lengths),
+            }
+        )
+    return {
+        "seats": rows,
+        "scope": "Nominal minimum AF3.8 x1.35 nut without chamfers; actual chamfer engagement, print fit, tightening and PA12 creep remain unqualified. Pockets are open and do not retain a loose nut axially.",
         "passed": all(row["passed"] for row in rows),
     }
 
@@ -808,6 +870,8 @@ def mtf_sensor_check(doc):
         return report
     interface = _carrier_interface_checks(doc)
     report["carrier_interface"] = interface
+    nut_recesses = _nut_recess_checks(doc)
+    report["nut_recesses"] = nut_recesses
     group = doc.OpticalFlowModule
     old_model = group.SensorModel
     saved_sensor_state = _saved_sensor_state(doc)
@@ -833,8 +897,10 @@ def mtf_sensor_check(doc):
         report["carrier_side"] = str(group.MountSide)
         report["selected_sensor_model"] = old_model
         report["sensor_alternatives"] = alternatives
-        report["passed"] = interface["passed"] and all(
-            row["passed"] for row in alternatives.values()
+        report["passed"] = (
+            interface["passed"]
+            and nut_recesses["passed"]
+            and all(row["passed"] for row in alternatives.values())
         )
         return report
     finally:

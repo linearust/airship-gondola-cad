@@ -170,7 +170,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     """
     width = servo_bridge.bulkhead_width(spec)
     sections = (
-        ((width, 5, spec.input_z_mm + 10.1 - 12.5), (-width / 2, -2.5, 12.5)),
+        ((width, 5, spec.input_z_mm + 10.2 - 12.5), (-width / 2, -2.5, 12.5)),
         ((58, 22, 2), (-29, -11, 12.5)),
         ((19.8, 5, 10.3), (-29, -11, 2.2)),
         ((19.8, 5, 10.3), (9.2, -11, 2.2)),

@@ -62,7 +62,7 @@ class OpticalMountTests(unittest.TestCase):
 
         shape = optical_mount.base_shape()
         self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
-        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
+        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 18))
         # The raised carrier retains a local Z19 pivot. Preserve the complete
         # straight post witness while excluding its intentional clearance bore.
         bore = Part.makeCylinder(1.1, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
@@ -70,6 +70,30 @@ class OpticalMountTests(unittest.TestCase):
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
         self.assertLess(abs(bore.common(shape).Volume), 1e-5)
         self.assertAlmostEqual(shape.BoundBox.ZMin, -1.2)
+
+    def test_foot_nut_pocket_keeps_printable_end_stock(self):
+        from gondola.parts import optical_mount
+        from gondola.validation.manufacturing import planar_wall_regions
+
+        shape = optical_mount.base_shape()
+        corrected = planar_wall_regions(shape)
+        self.assertTrue(
+            corrected, "The production floor must remain in the wall screen"
+        )
+        self.assertTrue(
+            all(row["material_thickness_mm"] >= 1.5 - 1e-5 for row in corrected),
+            corrected,
+        )
+        # Reproduce the former 8x16 foot from this exact production solid.
+        # Its pocket axes, floor and every other feature remain unchanged.
+        trimmed = shape.common(Part.makeBox(20, 16, 40, App.Vector(-10, -8, -5)))
+        old_screen = planar_wall_regions(trimmed)
+        thin = [row for row in old_screen if row["material_thickness_mm"] < 1.5 - 1e-5]
+        self.assertTrue(thin, old_screen)
+        self.assertTrue(
+            any(abs(row["material_thickness_mm"] - 0.9) < 1e-5 for row in thin)
+        )
+        self.assertTrue(all(row["interior_samples_mm"] for row in thin))
 
     def test_actual_base_thickness_matches_every_manufacturing_probe(self):
         from gondola.parts import optical_interface, optical_mount
@@ -145,6 +169,38 @@ class OpticalMountTests(unittest.TestCase):
             for (first, a), (second, b) in itertools.combinations(shapes, 2):
                 self.assertLess(intersection_volume(a, b), 1e-5, (pitch, first, second))
 
+    def test_recessed_pitch_nut_follows_tray_and_minimum_nuts_cannot_spin(self):
+        from gondola.parts import optical_mount
+        from gondola.validation.optical import _nut_recess_checks
+
+        self.assertEqual(
+            self.doc.OpticalPitchNut.getParentGeoFeatureGroup(),
+            self.doc.OpticalPitchStage,
+        )
+        for pitch in (-20, 0, 20):
+            optical_mount.set_pitch(self.doc, pitch)
+            result = _nut_recess_checks(self.doc)
+            self.assertTrue(result["passed"], result)
+        tray = self.doc.OpticalSensorTray
+        original = tray.Shape.copy()
+        try:
+            tray.Shape = original.cut(
+                Part.makeCylinder(2.7, 0.6, App.Vector(0, 1.5, 0), App.Vector(0, 1, 0))
+            )
+            self.assertFalse(_nut_recess_checks(self.doc)["passed"])
+        finally:
+            tray.Shape = original
+        foot = self.doc.OpticalMountBase
+        original = foot.Shape.copy()
+        try:
+            foot.Shape = original.cut(
+                Part.makeCylinder(2.7, 0.6, App.Vector(0, 5, 1.5))
+            )
+            self.assertFalse(_nut_recess_checks(self.doc)["passed"])
+        finally:
+            foot.Shape = original
+        self.assertTrue(_nut_recess_checks(self.doc)["passed"])
+
     def test_pitch_screw_engages_full_nut_and_clearance_holes_are_open(self):
         from gondola.cad import world_shape
 
@@ -159,7 +215,7 @@ class OpticalMountTests(unittest.TestCase):
         )
         self.assertLess(abs(core.cut(bolt).Volume), 1e-5)
         self.assertAlmostEqual(b.YLength, 1.6)
-        self.assertAlmostEqual(bolt.BoundBox.YMax - b.YMax, 2.4)
+        self.assertAlmostEqual(bolt.BoundBox.YMax - b.YMax, 2.9)
         for obj in self.module["printed"]:
             self.assertLess(abs(world_shape(obj).common(core).Volume), 1e-5)
 

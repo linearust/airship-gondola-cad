@@ -33,7 +33,7 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
         )
         self.assertLess(abs(shape.cut(proxies).Volume), 1e-5)
         self.assertEqual(len(optical_interface.base_component_proxies()), 3)
-        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
+        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 18))
 
     def test_both_sides_reuse_existing_slot_without_intersecting_plate(self):
         from gondola.parts import mounting_plate, optical_interface, optical_mount

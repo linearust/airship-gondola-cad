@@ -35,7 +35,7 @@ KEEPER_HALF_WIDTH = 4.5
 KEEPER_BOTTOM_Z = -21.5
 KEEPER_TOP_Z = 4.5
 KEEPER_GUIDE_CLEARANCE = 0.2
-KEEPER_FOOT_TOP_Z = -14.0
+KEEPER_FOOT_TOP_Z = -5.0
 KEEPER_FOOT_BACK_Y = 1.5
 KEEPER_SCREW_Z = -18.0
 KEEPER_SCREW_SEAT_Y = 0.0
@@ -51,7 +51,7 @@ def _cylinder(radius, start_y, length, z=0.0):
 
 
 def keeper_pocket_tool():
-    """Open-front broad guides and a deeper seat for the recessed screw foot."""
+    """Open-front guides and a deeper nest for the continuous keeper backing."""
     half = KEEPER_HALF_WIDTH + KEEPER_GUIDE_CLEARANCE
     bottom = KEEPER_BOTTOM_Z - KEEPER_GUIDE_CLEARANCE
     return union(
@@ -120,7 +120,13 @@ def cup_shape():
 
 
 def keeper_shape():
-    """Simple plate and thick lower screw foot; no elastic/radial clamp."""
+    """Symmetric thick backing below the ring; no extra fastener or clamp.
+
+    The backing extends from the recessed screw foot to 5 mm below the
+    bearing axis. Its front plane stays flush with the outer-ring plate,
+    preserving the carrier stops and inward removal path. The upper plate
+    and circular bearing guide keep their existing axial/radial allowances.
+    """
     body = union(
         [
             box(

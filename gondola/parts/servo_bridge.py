@@ -17,6 +17,10 @@ from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
+EAR_NUT_POCKET_AF = 3.4
+EAR_NUT_POCKET_DEPTH = 0.5
+EAR_NUT_GRIP = MOUNT_DEPTH + servo_envelope.EAR_THICKNESS - EAR_NUT_POCKET_DEPTH
+CRADLE_TOP_FROM_AXIS = 10.2
 CASE_CLEARANCE = 0.3
 CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
 CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
@@ -80,8 +84,27 @@ def _cradle_blank(drive):
         raise ValueError("Paired servo ears must share the central mounting wall")
     width = bulkhead_width(drive)
     return box(
-        width, MOUNT_DEPTH, drive.input_z_mm + 10.1 - SEAT_Z, (-width / 2, y, SEAT_Z)
+        width,
+        MOUNT_DEPTH,
+        drive.input_z_mm + CRADLE_TOP_FROM_AXIS - SEAT_Z,
+        (-width / 2, y, SEAT_Z),
     )
+
+
+def _ear_nut_pockets(drive):
+    """Shallow rear hex seats keep the open ear passages and 4.5mm wall floor."""
+    from .purchased_hardware import hex_prism
+
+    rear = servo_envelope.ear_seat_y() - MOUNT_DEPTH
+    cuts = []
+    for hole_z in servo_envelope.EAR_CENTRES_Z:
+        pocket = hex_prism(EAR_NUT_POCKET_AF, EAR_NUT_POCKET_DEPTH + 0.1)
+        pocket.Placement = App.Placement(
+            V(drive.input_x_mm, rear - 0.1, drive.input_z_mm + hole_z),
+            App.Rotation(V(0, 0, 1), V(0, 1, 0)),
+        )
+        cuts.append(pocket)
+    return union(cuts)
 
 
 def cut_shared_bolt_passage(shape):
@@ -142,6 +165,8 @@ def bridge_shape(drive=SELECTED_DRIVE):
     bridge = bridge_blank(drive).cut(window).cut(opposite(window))
     void = _ear_clearance(drive)
     bridge = cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
+    pockets = _ear_nut_pockets(drive)
+    bridge = bridge.cut(pockets).cut(opposite(pockets))
     head_cut = rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):

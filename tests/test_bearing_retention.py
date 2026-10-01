@@ -33,6 +33,29 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
         self.assertAlmostEqual(report["nominal_axial_endplay_mm"], 0.5)
         self.assertAlmostEqual(self.b.SEAT_RADIUS * 2, 6.1)
 
+    def test_symmetric_keeper_backing_retains_frame_load_paths(self):
+        from gondola.validation.bearing_capture import keeper_backing_check
+
+        report = keeper_backing_check(self.cup, self.b.keeper_shape())
+        self.assertTrue(report["passed"], report)
+
+    def test_saved_backing_check_rejects_missing_paths_or_asymmetric_additions(self):
+        from gondola.cad import box
+        from gondola.validation.bearing_capture import keeper_backing_check
+
+        keeper = self.b.keeper_shape()
+        cases = (
+            (self.cup, keeper.cut(box(9, 2, 9, (-4.5, -0.5, -14)))),
+            (self.cup, keeper.cut(box(2, 4, 1, (2.5, -2, -20)))),
+            (self.cup.cut(box(9, 1, 9, (-4.5, 2, -14))), keeper),
+            (self.cup.cut(box(1, 6, 9, (5, -2, -14))), keeper),
+            (self.cup, keeper.fuse(box(0.3, 1, 1, (4.4, -1.5, -8)))),
+        )
+        for seat, candidate in cases:
+            with self.subTest(seat_volume=seat.Volume, keeper_volume=candidate.Volume):
+                report = keeper_backing_check(seat, candidate)
+                self.assertFalse(report["passed"], report)
+
     def test_keeper_alignment_has_a_finite_shield_clearance_budget(self):
         from gondola.validation.bearing_capture import keeper_alignment_sensitivity
 

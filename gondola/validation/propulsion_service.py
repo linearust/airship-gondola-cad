@@ -4,6 +4,8 @@ Inventory every physical module obstacle and certify ordered rigid-part paths
 without changing the scope of the calling assembly or removal check.
 """
 
+import math
+
 import FreeCAD as App
 import Part
 
@@ -245,12 +247,21 @@ def fastener_service_check(
     nut_lateral_direction=None,
     retain_bolt=False,
     guided_nut=False,
+    capture_depth_mm=1.0,
 ):
     """Check an ordered threaded-fastener release and its head-tool approach."""
     if retain_bolt and nut_lateral_direction is not None:
         raise ValueError("A retained bolt requires axial nut disengagement")
     if retain_bolt and guided_nut:
         raise ValueError("A guided nut requires screw-first withdrawal")
+    if (
+        not isinstance(capture_depth_mm, (int, float))
+        or isinstance(capture_depth_mm, bool)
+        or not math.isfinite(capture_depth_mm)
+        or capture_depth_mm <= 0
+    ):
+        raise ValueError("Nut capture depth must be a positive finite number")
+    release_lift = capture_depth_mm + 0.2 if guided_nut else 0.2
     bore = next(
         face.Surface
         for face in nut.Faces
@@ -277,11 +288,11 @@ def fastener_service_check(
     if nut_lateral_direction is None:
         nut_waypoints = [
             (0, 0, 0),
-            tuple(axis * (max(1.2, nut_travel) if guided_nut else nut_travel)),
+            tuple(axis * (max(release_lift, nut_travel) if guided_nut else nut_travel)),
         ]
         sequence = "Disengage the nut beyond the thread tip, then withdraw the bolt."
     else:
-        offset = axis * (1.2 if guided_nut else 0.2)
+        offset = axis * release_lift
         lateral = App.Vector(*nut_lateral_direction) * 25
         nut_waypoints = [(0, 0, 0), tuple(offset), tuple(offset + lateral)]
         sequence = "Hold the nut and withdraw the bolt first, then move the unthreaded nut 0.2 mm away from its seat and 25 mm sideways."
@@ -289,7 +300,7 @@ def fastener_service_check(
         sequence = (
             "Keep the nut flat between its guides while turning and withdrawing "
             "the screw from the head side. With the screw fully removed, lift "
-            "the nut axially at least 1.2 mm to clear the 1 mm guides before any "
+            f"the nut axially at least {release_lift:g} mm to clear the {capture_depth_mm:g} mm capture walls before any "
             "sideways removal. For assembly seat the aligned hex nut flat and "
             "turn the screw head; do not try to turn the nut between the guides."
         )
@@ -336,7 +347,7 @@ def fastener_service_check(
         "bolt_axial_withdrawal": bolt_path,
         "bolt_retained_in_servo_unit": retain_bolt,
         "screw_first_with_nut_held_in_guides": guided_nut,
-        "minimum_nut_lift_before_lateral_mm": 1.2 if guided_nut else 0.2,
+        "minimum_nut_lift_before_lateral_mm": release_lift,
         "released_nut_bore_filled_after_screw_removal": guided_nut,
         "driver_approach_collisions": tool_hits,
         "tool_reserve_radius_mm": tool_radius,

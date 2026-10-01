@@ -1,20 +1,20 @@
 {
-  "revision": "BW",
-  "change_kind": "Refactor rail contact checks without changing CAD or fixture",
-  "recorded_utc": "2026-10-01T03:59:22.900286+00:00",
+  "revision": "BX",
+  "change_kind": "Recessed nut seats, planar motor carriers and backed bearing keepers",
+  "recorded_utc": "2026-10-01T06:12:27.337496+00:00",
   "passed": true,
   "scope": "Nominal CAD and software verification; no new physical qualification.",
-  "predecessor_commit": "244193638e7b9d25b8c35e072628362186580e2d",
-  "source_fingerprint": "6c929a05ee6de7d03f50ed96afed078704e9209ce1075929ccf9bd54e2b59777",
-  "cad_sha256": "d08995230d4600715a6dcae96ce78e97de3f60799ed74045fcea02373f7a5d8a",
+  "predecessor_commit": "f468a47cdad0fb121e6d48f1b79dba09de64f78a",
+  "source_fingerprint": "440f731406d6615a260a06905b34fbccf6b21d0543ba65a655a91f080bd54822",
+  "cad_sha256": "f01da1110a091b84af8c9949221f7aa3a0d75d3cebc8ca9ef14750782502cbd6",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "07f766341a20754e6375b1d348c3953fec48cc83b449a6896480b62f1f30cde0",
-    "changed": false
+    "sha256": "7fb4a7984935cfd74e7cbc74e3ba481a2d2fb1f0c42368dbcef81aa6169c2ed0",
+    "promoted_after_explicit_review": true
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 705,
+    "testsRun": 719,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -72,16 +72,17 @@
     "passed": true
   },
   "mass_change": {
-    "printed_delta_g": 0.0,
-    "hardware_delta_g": 0.0
+    "printed_delta_g": 1.4522007059459696,
+    "hardware_delta_g": 0.0,
+    "scope": "Nominal modeled mass; finished weights and unmeasured equipment remain unqualified."
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "d08995230d4600715a6dcae96ce78e97de3f60799ed74045fcea02373f7a5d8a",
-    "gondola_print_parts.FCStd": "9f8aa32e48e1726125e1d901ddb613a48a479fcc074cc0041d0ba08fb942fbb5",
-    "gondola_power_options.FCStd": "1d03bcc319737e3c73a0f6020701f1d9ceed796789e05d7951670d0505ad20c7",
-    "gondola_attachment_detail.FCStd": "efa0e373b7b3c6db5f8e12497d1ff76c118e372922c093cb4c5012ab54b83c72"
+    "gondola.FCStd": "f01da1110a091b84af8c9949221f7aa3a0d75d3cebc8ca9ef14750782502cbd6",
+    "gondola_print_parts.FCStd": "ada554c9afe1f31aa69afa37a9e75af56d4688a9ac6a3da57def9f67213abba9",
+    "gondola_power_options.FCStd": "ecd49df8fb9b216f496f2408ca3ca0774c1a96d252ee095518e39ea1b989a51a",
+    "gondola_attachment_detail.FCStd": "457a529ae460260a8823cbb5d39c1f281023e17e86dbd03cc2217a529ce4a630"
   },
-  "print_bundle_sha256": "cab18e30d46540cc7d3b6a00eccfd6a02a719618765e0db5f972d54f55f07c83",
+  "print_bundle_sha256": "d377887f7c2e454fa87f217ffd9effb5d4666e5178b4e01d59f04cd7b9137f26",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "f516f2b8ead01dbe18162c8da53df8c23db53df4e8381988a9911c17bd03c79a"
+  "evidence_archive_sha256": "90a28a7bce9485496fee429ea85d62b18199d1f559157e95ce03dae00572b04f"
 }

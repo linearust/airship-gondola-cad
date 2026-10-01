@@ -32,7 +32,7 @@ def rails_shape(length):
 
 def fit_contract():
     return {
-        "sites": "Four rotor shaft clamps and four fixed bearing-keeper nut seats",
+        "sites": "Four fixed bearing-keeper nut seats; rotor clamps use separate recessed hex pockets",
         "clear_gap_mm": CLEAR_GAP,
         "wall_width_mm": WALL_WIDTH,
         "height_above_unchanged_seat_mm": HEIGHT,

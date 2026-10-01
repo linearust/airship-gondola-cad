@@ -1,4 +1,4 @@
-"""Independent saved-geometry witnesses for the eight shallow M2 nut guides."""
+"""Independent witnesses for M2 nut pockets and open bearing-seat guides."""
 
 import math
 
@@ -23,7 +23,7 @@ def is_guided_nut_bolt(name):
 
 
 def guided_nut_service_direction(doc, bolt_name):
-    """Open-side lateral route after the nut clears the one-millimetre rails."""
+    """Lateral route after the nut clears its independently specified capture depth."""
     if not is_guided_nut_bolt(bolt_name):
         return None
     prefix = "Port" if bolt_name.startswith("Port") else "Starboard"
@@ -32,6 +32,11 @@ def guided_nut_service_direction(doc, bolt_name):
     else:
         parent, direction = doc.getObject("MainPropulsionModule"), V(1, 0, 0)
     return tuple(parent.getGlobalPlacement().Rotation.multVec(direction))
+
+
+def guided_nut_capture_depth(bolt_name):
+    """Literal release depths, independent of production shape constructors."""
+    return 1.5 if "OutputClamp" in bolt_name else 1.0
 
 
 def _hex_face(across_flats):
@@ -43,7 +48,7 @@ def _hex_face(across_flats):
     return Part.Face(Part.makePolygon(points + points[:1]))
 
 
-def nut_guide_check(host_shape, placement, rail_length):
+def nut_guide_check(host_shape, placement, rail_length, *, recessed=False):
     """Check actual host stock in a frame whose unchanged nut seat is Z0.
 
     Literal dimensions below deliberately do not import the production guide
@@ -52,14 +57,29 @@ def nut_guide_check(host_shape, placement, rail_length):
     """
     host = host_shape.copy()
     host.Placement = placement.inverse().multiply(host.Placement)
+    capture_depth = 1.5 if recessed else 1.0
+    if recessed:
+        witnesses = [
+            (
+                "hexagonal_wall",
+                _hex_face(7.25).cut(_hex_face(4.25)).extrude(V(0, 0, 1.5)),
+            )
+        ]
+    else:
+        witnesses = [
+            (
+                side,
+                Part.makeBox(
+                    rail_length,
+                    1.5,
+                    1.0,
+                    V(-rail_length / 2, side * 2.125 - (1.5 if side < 0 else 0), 0),
+                ),
+            )
+            for side in (-1, 1)
+        ]
     rails = []
-    for side in (-1, 1):
-        witness = Part.makeBox(
-            rail_length,
-            1.5,
-            1.0,
-            V(-rail_length / 2, side * 2.125 - (1.5 if side < 0 else 0), 0),
-        )
+    for side, witness in witnesses:
         missing = abs(witness.cut(host).Volume)
         rails.append(
             {"side": side, "missing_rail_mm3": missing, "passed": missing < TOL}
@@ -110,13 +130,14 @@ def nut_guide_check(host_shape, placement, rail_length):
         "nut_fit_and_axial_service": fits,
         "minimum_nut_rotation_stops": stops,
         "nominal_clear_gap_mm": 4.25,
-        "guide_height_mm": 1.0,
+        "capture_type": "recessed_hex_pocket" if recessed else "open_parallel_rails",
+        "guide_height_mm": capture_depth,
         "finished_gap_acceptance_mm": [4.2, 4.3],
         "maximum_nut_af_height_mm": [4.0, 1.6],
         "minimum_nut_af_height_mm": [3.8, 1.35],
         "nominal_axis_float_radius_mm": 0.1,
         "physical_fit_verified": False,
-        "scope": "Nominal sharp-hex geometry at the fixed axis and eight boundary directions of its 0.1 mm circular clearance. Axial insertion/removal is continuous for each tested offset; transverse float and nut rotation are sampled. Both literal rails and complete flat bearing lands must remain. Coupon-check the finished 4.2–4.3 mm gap, actual chamfers, full seating, engagement and torque restraint. This is not a strength, preload, as-printed tolerance or full nut-rotation/service proof; installed drive motion and ordered service remain separate checks.",
+        "scope": "Nominal sharp-hex geometry at the fixed axis and eight boundary directions of its 0.1 mm circular clearance. Axial insertion/removal is continuous for each tested offset; transverse float and nut rotation are sampled. The complete capture-wall witnesses and flat bearing lands must remain. Coupon-check the finished flat gap, actual chamfers, full seating, engagement and torque restraint. This is not a strength, preload, as-printed tolerance or full nut-rotation/service proof; installed drive motion and ordered service remain separate checks.",
         "passed": all(row["passed"] for row in rails + fits + stops),
     }
 
@@ -160,7 +181,9 @@ def installed_nut_guide_checks(doc):
                     )
                     continue
                 pose = parent.getGlobalPlacement().multiply(local)
-                report = nut_guide_check(world_shape(host), pose, length)
+                report = nut_guide_check(
+                    world_shape(host), pose, length, recessed=kind == "rotor_clamp"
+                )
                 expected_nut = (
                     _hex_face(4)
                     .extrude(V(0, 0, 1.6))

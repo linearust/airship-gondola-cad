@@ -1533,8 +1533,6 @@ class SelectedGearDriveTests(unittest.TestCase):
                         prefix + suffix
                         for suffix in (
                             "Servo",
-                            "ServoEarLowerBolt",
-                            "ServoEarUpperBolt",
                             "ServoHorn",
                             "HornGearAdapter",
                             "HornGearClampNearBolt",
@@ -1562,10 +1560,14 @@ class SelectedGearDriveTests(unittest.TestCase):
                         all(row["passed"] for row in result["ear_fastener_release"])
                     )
                     for release in result["ear_fastener_release"]:
-                        self.assertTrue(release["bolt_retained_in_servo_unit"])
-                        self.assertIsNone(release["bolt_axial_withdrawal"])
+                        self.assertFalse(release["bolt_retained_in_servo_unit"])
+                        self.assertTrue(release["screw_first_with_nut_held_in_guides"])
+                        self.assertAlmostEqual(
+                            release["minimum_nut_lift_before_lateral_mm"], 0.7
+                        )
+                        self.assertTrue(release["bolt_axial_withdrawal"]["passed"])
                         self.assertTrue(release["nut_axial_removal"]["passed"])
-                        self.assertIn(release["bolt"], result["moving_parts"])
+                        self.assertNotIn(release["bolt"], result["moving_parts"])
                     self.assertTrue(result["adapter_clamp_release"]["passed"])
                     clamp_release = result["adapter_clamp_release"]
                     self.assertEqual(
@@ -1590,7 +1592,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                         self.assertTrue(route["passed"], route)
                         self.assertEqual(len(route["segments"]), 2)
                         self.assertEqual(route["segments"][0]["start_mm"], [0, 0, 0])
-                        self.assertAlmostEqual(route["segments"][0]["end_mm"][1], 2.6)
+                        self.assertAlmostEqual(route["segments"][0]["end_mm"][1], 3.2)
                         self.assertEqual(
                             route["segments"][1]["start_mm"],
                             route["segments"][0]["end_mm"],
@@ -1701,9 +1703,10 @@ class SelectedGearDriveTests(unittest.TestCase):
             for side in ("Lower", "Upper"):
                 bolt_name = prefix + "ServoEar" + side + "Bolt"
                 ear = rows[bolt_name]
-                self.assertTrue(ear["bolt_retained_in_servo_unit"])
-                self.assertIn(bolt_name, ear["retained_service_parts"])
-                self.assertNotIn(bolt_name, ear["removed_local_parts"])
+                self.assertFalse(ear["bolt_retained_in_servo_unit"])
+                self.assertTrue(ear["screw_first_with_nut_held_in_guides"])
+                self.assertNotIn(bolt_name, ear["retained_service_parts"])
+                self.assertIn(bolt_name, ear["removed_local_parts"])
             far = rows[prefix + "HornGearClampFarBolt"]
             near = rows[prefix + "HornGearClampNearBolt"]
             self.assertTrue(far["passed"], far)
@@ -1730,31 +1733,28 @@ class SelectedGearDriveTests(unittest.TestCase):
                 near["service_dependencies"],
             )
 
-    def test_off_bridge_horn_release_keeps_ear_bolts_as_obstacles(self):
-        from gondola.validation.horn_coupling import (
-            assembled_servo_service_check,
-            coupling_frame,
-        )
+    def test_horn_obstruction_cannot_hide_from_ear_screw_first_removal(self):
+        from gondola.validation.horn_coupling import assembled_servo_service_check
 
         doc, module = self.configurations["48_16"]
-        bolt = doc.PortServoEarUpperBolt
-        original = bolt.Shape.copy()
+        adapter = doc.PortHornGearAdapter
+        original = adapter.Shape.copy()
         try:
-            # After unit withdrawal, this added ear-bolt feature blocks only the
-            # horn nut's lateral release; do not drop retained bolts from that audit.
-            obstruction = Part.makeBox(1, 1, 1, App.Vector(20, 9.8, -0.5))
+            # The fitted horn unit remains an obstacle while each ear screw
+            # withdraws. This boss clears the seated head but blocks its path.
+            obstruction = Part.makeBox(1, 1, 1, App.Vector(-0.5, 8, 6.5))
             obstruction.Placement = (
-                bolt.Placement.multiply(bolt.getGlobalPlacement().inverse())
-                .multiply(coupling_frame(doc, "Port"))
+                adapter.Placement.multiply(adapter.getGlobalPlacement().inverse())
+                .multiply(doc.PortServoMount.getGlobalPlacement())
                 .multiply(obstruction.Placement)
             )
-            bolt.Shape = Part.makeCompound([original, obstruction])
+            adapter.Shape = Part.makeCompound([original, obstruction])
             result = assembled_servo_service_check(doc, module, "Port")
             self.assertFalse(result["passed"], result)
-            far = result["adapter_clamp_release"]["fasteners"][0]
-            self.assertFalse(far["front_nut_release"]["passed"], far)
+            upper = result["ear_fastener_release"][1]
+            self.assertFalse(upper["bolt_axial_withdrawal"]["passed"], upper)
         finally:
-            bolt.Shape = original
+            adapter.Shape = original
             doc.recompute()
 
     def test_servo_case_service_rejects_a_midpath_cradle_obstruction(self):

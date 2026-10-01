@@ -108,16 +108,16 @@ class ServoCouplingTests(unittest.TestCase):
             )
             self.assertLess(expected_screw.cut(screw).Volume, 1e-7)
             self.assertLess(screw.cut(expected_screw).Volume, 1e-7)
-            self.assertAlmostEqual(nut.BoundBox.YMin, 7.1, places=6)
+            self.assertAlmostEqual(nut.BoundBox.YMin, 6.5, places=6)
             self.assertAlmostEqual(nut.BoundBox.YLength, 1.2, places=6)
             self.assertAlmostEqual(
                 nut.Volume,
                 (math.sqrt(3) / 2 * 3.0**2 - math.pi * 0.7**2) * 1.2,
                 places=6,
             )
-            self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.2)
+            self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.8)
             self.assertGreater(_plane_contact(c.horn_shape(), screw, 1.5), 1.0)
-            self.assertGreater(_plane_contact(c.adapter_shape(), nut, 7.1), 1.0)
+            self.assertGreater(_plane_contact(c.adapter_shape(), nut, 6.5), 1.0)
 
     def test_taper_keeps_oem_face_support_and_far_nut_seat_at_slot_limits(self):
         from gondola.parts import servo_coupling as c
@@ -214,7 +214,7 @@ class ServoCouplingTests(unittest.TestCase):
             ):
                 section = Part.makeLine(App.Vector(*start), App.Vector(*end))
                 self.assertAlmostEqual(adapter.common(section).Length, material)
-        web = Part.makeBox(3.8, 3.6, 1.8, App.Vector(8.1, 3.5, -0.9))
+        web = Part.makeBox(3.8, 3.0, 1.8, App.Vector(8.1, 3.5, -0.9))
         self.assertLess(web.cut(adapter).Volume, 1e-7)
         for name, shape, _ in c.horn_hardware_shapes():
             limit = 0.2 if name.startswith("Near") else 0.5
@@ -276,7 +276,7 @@ class ServoCouplingTests(unittest.TestCase):
             for offset in (-limit, 0.0, limit):
                 moved = nut.copy()
                 moved.translate(App.Vector(offset, 0, 0))
-                self.assertGreaterEqual(_plane_contact(adapter, moved, 7.1), 1.0)
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.5), 1.0)
         for x, limit in ((6.8, 0.2), (13.2, 0.5)):
             minimum_nut = purchased_hardware.hex_prism(2.9, 1.2).cut(
                 Part.makeCylinder(0.7, 1.4, App.Vector(0, 0, -0.1))
@@ -284,10 +284,31 @@ class ServoCouplingTests(unittest.TestCase):
             for offset in (-limit, 0.0, limit):
                 moved = minimum_nut.copy()
                 moved.Placement = App.Placement(
-                    App.Vector(x + offset, 7.1, 0),
+                    App.Vector(x + offset, 6.5, 0),
                     App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
                 )
-                self.assertGreaterEqual(_plane_contact(adapter, moved, 7.1), 1.0)
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.5), 1.0)
+
+    def test_recessed_minimum_nuts_float_radially_but_cannot_spin(self):
+        from gondola.parts import servo_coupling as c
+        from gondola.validation.horn_coupling import nut_recess_check
+
+        adapter = c.adapter_shape()
+        for x, allowance in ((6.8, 0.0), (13.2, 0.3)):
+            with self.subTest(radius=x):
+                capture = nut_recess_check(adapter, x, allowance)
+                self.assertTrue(capture["passed"], capture)
+                # An oversized shallow round pocket preserves the floor but
+                # loses the flanks that prevent a minimum AF2.9 nut spinning.
+                damaged = adapter.cut(
+                    Part.makeCylinder(
+                        2.5, 0.7, App.Vector(x, 6.5, 0), App.Vector(0, 1, 0)
+                    )
+                )
+                failed = nut_recess_check(damaged, x, allowance)
+                self.assertFalse(failed["passed"], failed)
+                self.assertEqual(failed["retained_floor_lengths_mm"], [3.0, 3.0])
+        self.assertAlmostEqual(c.assembly_contract()["fastener_grip_mm"], 3.0)
 
     def test_front_nuts_release_off_bridge_while_rear_bolts_remain(self):
         from gondola.parts import servo_coupling as c
@@ -305,7 +326,7 @@ class ServoCouplingTests(unittest.TestCase):
             with self.subTest(joint=name):
                 nut = fixed.pop(name)
                 result = continuous_path(
-                    nut, [(0, 0, 0), (0, 2.6, 0), (20, 2.6, 0)], fixed
+                    nut, [(0, 0, 0), (0, 3.2, 0), (20, 3.2, 0)], fixed
                 )
                 self.assertTrue(result["passed"], result)
         self.assertIn("NearBolt", fixed)

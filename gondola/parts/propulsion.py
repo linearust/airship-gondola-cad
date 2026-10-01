@@ -73,6 +73,11 @@ FUTURE_ROTOR_ORBIT_RADIUS = 34.0
 MOTOR_NOMINAL_DIAMETER = 13.5
 MOTOR_DIAMETER = 13.6
 MOTOR_LENGTH = 14.0
+# Centre-plane datum, distinct from the two faces of the propeller envelope.
+PROPELLER_PLANE_X = 12.0
+PROPELLER_ENVELOPE_THICKNESS = 5.0
+GUARD_DEPTH = 2.0
+CARRIER_SIDE_THICKNESS = 8.0
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
@@ -106,7 +111,8 @@ CARRIER_END_Y = 31.25
 CARRIER_CLAMP_START_Y = 21.25
 CARRIER_CLAMP_LENGTH = CARRIER_END_Y - CARRIER_CLAMP_START_Y
 CARRIER_CLAMP_BOLT_Y = (CARRIER_CLAMP_START_Y + CARRIER_END_Y) / 2
-CARRIER_STOP_RADIUS = 3.8
+CARRIER_NUT_RECESS_DEPTH = CARRIER_SIDE_THICKNESS / 2 - 2.5
+CARRIER_NUT_POCKET_AF = 4.25
 SHAFT_ASSEMBLY_RETRACTION = 12.0
 SHAFT_FINAL_WITHDRAWAL = 20.0
 OUTPUT_SHAFT_INNER_Y = 20.0
@@ -149,29 +155,26 @@ def _carrier_side_shape():
     Apply the bore, split and bolt clearance after union so the adjacent strut
     cannot refill a clamp opening when either section is changed.
     """
-    body = union(
-        [
-            cylinder(3.1, CARRIER_CLAMP_LENGTH, (0, CARRIER_CLAMP_START_Y, 0)),
-            cylinder(CARRIER_STOP_RADIUS, 1.5, (0, CARRIER_END_Y - 1.5, 0)),
-            box(6, CARRIER_CLAMP_LENGTH, 6, (1, CARRIER_CLAMP_START_Y, -3)),
-            box(18, CARRIER_CLAMP_LENGTH, 6.4, (-7, CARRIER_CLAMP_START_Y, -3.2)),
-        ]
+    body = box(
+        18,
+        CARRIER_CLAMP_LENGTH,
+        CARRIER_SIDE_THICKNESS,
+        (-7, CARRIER_CLAMP_START_Y, -CARRIER_SIDE_THICKNESS / 2),
     )
     passage_start = CARRIER_CLAMP_START_Y - 0.25
     passage_length = CARRIER_CLAMP_LENGTH + 0.5
     body = body.cut(cylinder(1.6, passage_length, (0, passage_start, 0)))
     body = body.cut(box(12, passage_length, 0.8, (0, passage_start, -0.4)))
     body = body.cut(cylinder(1.1, 8, (4.2, CARRIER_CLAMP_BOLT_Y, -4), (0, 0, 1)))
-    # Open complete head/nut seats without leaving thin cylindrical crescents.
-    for z in (2.5, -4.5):
-        body = body.cut(box(5.8, passage_length, 2, (1.3, passage_start, z)))
-    from . import nut_guides
-
-    # Add above the nut plane only; the split and both grip planes stay open.
-    guides = translated_shape(
-        nut_guides.rails_shape(5.8), x=4.2, y=CARRIER_CLAMP_BOLT_Y, z=2.5
+    # Keep the existing grip planes; the nut pocket is sunk into the flat top.
+    # The uninterrupted end faces replace the former round stop flange.
+    body = body.cut(cylinder(2.9, 2, (4.2, CARRIER_CLAMP_BOLT_Y, -4.5), (0, 0, 1)))
+    pocket = translated_shape(
+        purchased_hardware.hex_prism(CARRIER_NUT_POCKET_AF, 2, z=2.5),
+        x=4.2,
+        y=CARRIER_CLAMP_BOLT_Y,
     )
-    body = union([body, guides])
+    body = body.cut(pocket)
     return _checked(body, "Integral carrier strut and split shaft clamp")
 
 
@@ -179,7 +182,12 @@ def moving_carrier_shape():
     rear = union(
         [
             cylinder(8.2, 1.5, (-8.5, 0, 0), (1, 0, 0)),
-            box(1.5, 2 * CARRIER_END_Y, 6.4, (-8.5, -CARRIER_END_Y, -3.2)),
+            box(
+                1.5,
+                2 * CARRIER_END_Y,
+                CARRIER_SIDE_THICKNESS,
+                (-8.5, -CARRIER_END_Y, -CARRIER_SIDE_THICKNESS / 2),
+            ),
         ]
     )
     rear = rear.cut(cylinder(2.2, 3, (-9, 0, 0), (1, 0, 0)))
@@ -195,14 +203,29 @@ def moving_carrier_shape():
     side_shape = _carrier_side_shape()
     for side in (-1, 1):
         parts.append(mirrored_y(side_shape, side))
-    guard = cylinder(GUARD_OUTER_RADIUS, 2, (11, 0, 0), (1, 0, 0)).cut(
-        cylinder(GUARD_INNER_RADIUS, 4, (10, 0, 0), (1, 0, 0))
+    guard_start = PROPELLER_PLANE_X - GUARD_DEPTH / 2
+    guard = cylinder(
+        GUARD_OUTER_RADIUS, GUARD_DEPTH, (guard_start, 0, 0), (1, 0, 0)
+    ).cut(
+        cylinder(
+            GUARD_INNER_RADIUS, GUARD_DEPTH + 2, (guard_start - 1, 0, 0), (1, 0, 0)
+        )
     )
     parts.extend(
         [
             guard,
-            box(2, CARRIER_END_Y - 22, 6.4, (11, -CARRIER_END_Y, -3.2)),
-            box(2, CARRIER_END_Y - 22, 6.4, (11, 22, -3.2)),
+            box(
+                GUARD_DEPTH,
+                CARRIER_END_Y - 22,
+                CARRIER_SIDE_THICKNESS,
+                (guard_start, -CARRIER_END_Y, -CARRIER_SIDE_THICKNESS / 2),
+            ),
+            box(
+                GUARD_DEPTH,
+                CARRIER_END_Y - 22,
+                CARRIER_SIDE_THICKNESS,
+                (guard_start, 22, -CARRIER_SIDE_THICKNESS / 2),
+            ),
         ]
     )
     return _checked(union(parts), "Motor carrier with split shaft clamps")
@@ -413,7 +436,7 @@ def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False, le
     # Servo case length is vertical; the hex nut's flats face the case ends.
     nut.Placement = App.Placement(V(*origin) + V(*direction) * grip, rotation)
     notes = (
-        f"Selected M1.6x0.35 x8 Phillips kit head envelope and DIN934 hex nut;{grip:g}mm grip+1.3mm nut gives{8 - grip - 1.3:g}mm tip. NominalØ2 OEM hole gives0.2mm radial clearance,Ø3.5 head envelope gives0.25mm nominal case gap. Verify actual ear/seat fit."
+        f"Selected M1.6x0.35 x8 Phillips kit head envelope and DIN934 hex nut;{grip:g}mm grip+1.3mm nut gives{8 - grip - 1.3:g}mm tip. A0.5mm rear hex recess restrains the nut over4.5mm of printed wall. NominalØ2 OEM hole gives0.2mm radial clearance,Ø3.5 head envelope gives0.25mm nominal case gap. Verify actual ear/seat fit."
         if servo_ear
         else f"Selected-kit M2x0.4 x{length:g} button-head bolt and hex nut; nominal{grip:g}mm grip,1.6mm nut,{length - grip - 1.6:g}mm tip projection. Head is a conservative clearance envelope pending measurement. Hand snug; actual preload and printed bearing faces unqualified."
     )
@@ -714,8 +737,8 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
                 "servo_cradle_upper_wall",
                 "ServoDriveBridge",
                 (x, y, z + 8.09),
-                (x, y, z + 10.11),
-                2.0,
+                (x, y, z + 10.21),
+                2.1,
             ),
             (
                 "servo_bridge_shared_cheek",
@@ -822,7 +845,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(),
-        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; the radial split and bearing planes are unchanged. Two 1 mm high open rails at each M2 nut seat restrain rotation after clearance is taken up. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        "Integral guard, motor plate and two rectangular 18x10x8 mm shaft-clamp sides. Flat end faces replace the separate circular stop flanges; the 3.2mm bores, radial splits and bearing planes are unchanged. Each M2 nut sits in a1.5mm-deep hex recess in the flat top, with2.1mm stock between its seat and the split. Existing M2x8 screws retain their5mm grip. The propeller envelope and guard share a centre plane exactly12mm from the tilt axis; the actual installed propeller plane needs measurement. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
         App.Rotation(V(0, 1, 0), -90),
         sku="GearedMotorCarrier",
     )
@@ -891,7 +914,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 y=sign * PIVOT_HALF_SPAN + side * BEARING_START_Y,
                 z=PIVOT_Z,
             ),
-            "Rigid replaceable outer-ring keeper; one recessed M2x6 and ordinary "
+            "Rigid replaceable outer-ring keeper with a symmetric3.5mm backing extending to5mm below the axis; one recessed M2x6 and ordinary "
             "M2 nut clamp the broad frame seat, not the bearing. Open 1 mm nut rails on the fixed seat aid assembly without shifting the bearing plane. The existing "
             "rotor stop plane is retained. No flexure, radial squeeze or bearing "
             "preload. Centre its opening on the received bearing before tightening; "
@@ -980,7 +1003,7 @@ def _build_servo(doc, mount, prefix, sign):
                 prefix + "ServoEar" + suffix,
                 (0, sign * servo_envelope.ear_head_y(), hole_z),
                 (0, -sign, 0),
-                grip=6,
+                grip=servo_bridge.EAR_NUT_GRIP,
                 servo_ear=True,
             )
         )
@@ -990,7 +1013,7 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3.2 mm outer sides and a 5.2 mm central web. Each nonlocating 7.6 by 20.6 mm case opening has nominal 0.3 mm side and end clearance around the body. M1.6×8 Phillips kit screws clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3.2 mm outer sides and a 5.2 mm central web. Each nonlocating 7.6 by 20.6 mm case opening has nominal 0.3 mm side and end clearance around the body. M1.6×8 Phillips kit screws clamp4.5mm printed grip plus1mm ears;0.5mm rear hex recesses restrain ordinary M1.6 nuts. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware
@@ -1009,10 +1032,10 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
         mount,
         "ServiceSequence",
         "First remove both output gears and the paired servo/input module. On the "
-        "bench remove the selected driver gear and input stub, release only the "
-        "rear ear nuts, and withdraw the complete servo/horn/adapter with both "
-        "ear bolts retained. Detach the adapter before withdrawing either ear "
-        "bolt. Fit ear bolts before the adapter during reverse assembly.",
+        "bench remove the selected driver gear and input stub, turn and withdraw "
+        "the ear screws while their rear nuts remain in the shallow pockets, "
+        "then remove the nuts and withdraw the servo/horn/adapter unit. "
+        "Reverse for assembly; verify head-tool access and full nut seating.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
     references, servo_hardware = _build_servo(doc, mount, prefix, sign)
@@ -1060,12 +1083,22 @@ def _build_motor_references(doc, pod, prefix, sign):
         pod,
         prefix + "PropellerDisk",
         "Gemfan1610 spinning envelope",
-        cylinder(20, 5, (9.5, 0, 0), (1, 0, 0)),
+        cylinder(
+            20,
+            PROPELLER_ENVELOPE_THICKNESS,
+            (PROPELLER_PLANE_X - PROPELLER_ENVELOPE_THICKNESS / 2, 0, 0),
+            (1, 0, 0),
+        ),
         "Published40mm diameter,5mm hub thickness applied to full disk; not blade geometry.",
         PROP_SOURCE,
     )
     set_property(propeller, "PropDiameter", 40, "App::PropertyLength")
-    set_property(propeller, "HubThickness", 5, "App::PropertyLength")
+    set_property(
+        propeller, "HubThickness", PROPELLER_ENVELOPE_THICKNESS, "App::PropertyLength"
+    )
+    set_property(
+        propeller, "TiltAxisToCentrePlane", PROPELLER_PLANE_X, "App::PropertyLength"
+    )
     set_property(propeller, "Variant", "CW" if sign > 0 else "CCW")
     references.append(propeller)
     return references
@@ -1222,6 +1255,16 @@ def _module_metrics(printed, hardware, references, spec):
         "OEM_interfaces": PROPULSION_EVIDENCE,
         "horn_coupling": coupling_metrics(),
         "nut_assembly_guides": nut_guide_contract(),
+        "carrier_nut_pockets": {
+            "depth_mm": CARRIER_NUT_RECESS_DEPTH,
+            "across_flats_mm": CARRIER_NUT_POCKET_AF,
+            "seat_to_split_wall_mm": 2.1,
+            "axis_float_radius_mm": 0.1,
+            "nut_axially_captive": False,
+            "physical_fit_verified": False,
+            "scope": "Ordinary M2 nuts; flat18x10x8mm clamp block. Qualify nut chamfers, free seating, torque restraint and split-clamp grip with the production print and actual hardware.",
+        },
+        "propeller_centre_plane_from_tilt_axis_mm": PROPELLER_PLANE_X,
         "unfinished_interfaces": [
             "Measured OEM horn seating and retaining screw",
             "Actual direct horn-to-gear adapter clearance and grip",

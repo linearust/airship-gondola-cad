@@ -31,7 +31,7 @@ TRAY_TOP_Z = 6.5
 ADHESIVE_ALLOWANCE = 1.0
 SCREW_LENGTH = fasteners.OPTICAL_PIVOT_SCREW_LENGTH
 SCREW_BEARING_START = -EAR_THICKNESS
-NUT_START = EAR_THICKNESS
+NUT_START = EAR_THICKNESS - optical_interface.NUT_RECESS_DEPTH
 BOLT_TIP = SCREW_BEARING_START + SCREW_LENGTH
 
 
@@ -101,7 +101,12 @@ def sensor_tray_shape():
         (-TRAY_SIZE_MM[0] / 2, -TRAY_SIZE_MM[1] / 2, TRAY_BOTTOM_Z),
     )
     bore = _cylinder(PIVOT_HOLE_DIAMETER / 2, 4, (0, -1, 0), (0, 1, 0))
-    return _finished(union([ear, neck, pad]).cut(bore), "sensor tray")
+    recess = purchased_hardware.hex_prism(
+        optical_interface.NUT_RECESS_AF, optical_interface.NUT_RECESS_DEPTH + 0.1
+    )
+    recess.rotate(V(), V(1, 0, 0), -90)
+    recess.translate(V(0, NUT_START, 0))
+    return _finished(union([ear, neck, pad]).cut(bore).cut(recess), "sensor tray")
 
 
 def mount_contract():
@@ -128,17 +133,18 @@ def mount_contract():
         "nominal_tray_to_fixed_pitch_disc_gap_mm": TRAY_BOTTOM_Z - EAR_RADIUS,
         "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
         "hardware": "Two kit steel M2x8 button-head screw / M2 hex nut pairs total: one located carrier-foot clamp and one pitch clamp. No washers.",
+        "nut_recess": optical_interface.nut_recess_contract(),
         "full_nut_engagement_mm": purchased_hardware.HEX_NUT_HEIGHT,
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the integral carrier foot/post and sensor tray separately. Insert the integral tongue freely into an existing carrier middle-side slot and fully seat the foot before tightening its M2 pair; finish both 2.2 mm pitch bores for a free M2 screw before clamping the plain 2 mm ears with the second pair. Do not use screw torque to force an undersized bore.",
-        "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while holding the nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
+        "assembly": "Print the integral carrier foot/post and sensor tray separately. Insert the integral tongue freely into an existing carrier middle-side slot and fully seat the foot before tightening its M2 pair; finish both 2.2 mm pitch bores for a free M2 screw before clamping the two 2 mm ears with the second pair. Its nut sits in a 0.5 mm tray-ear recess, leaving a 1.5 mm floor, and rotates with the tray. Fit the nut freely and keep both ear faces seated. Do not use screw torque to force an undersized bore.",
+        "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while the tray pocket restrains its nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
         "sensor_interface": "Continuous insulating adhesive pad for either MTF-01P or MTF-02P. OEM backside contact, retention and connector/wire fit remain unverified; no invented sensor fixing holes.",
     }
 
 
-def _pivot_hardware(doc, parent):
+def _pivot_hardware(doc, parent, pitch):
     objects = []
     for kind, shape, axial, sku, source in (
         (
@@ -158,16 +164,24 @@ def _pivot_hardware(doc, parent):
     ):
         shape = shape.copy()
         shape.rotate(V(), V(1, 0, 0), -90)
-        shape.translate(V(PIVOT_CENTRE[0], PIVOT_CENTRE[1] + axial, PIVOT_CENTRE[2]))
+        # The keyed nut must follow its tray pocket during manual pitch adjustment.
+        if kind == "Nut":
+            hardware_parent = pitch
+            shape.translate(V(0, axial, 0))
+        else:
+            hardware_parent = parent
+            shape.translate(
+                V(PIVOT_CENTRE[0], PIVOT_CENTRE[1] + axial, PIVOT_CENTRE[2])
+            )
         objects.append(
             purchased_hardware.add_hardware(
                 doc,
-                parent,
+                hardware_parent,
                 "OpticalPitch" + kind,
                 "BUY | manual optical pitch " + kind.lower(),
                 shape,
                 sku,
-                "M2x8 and ordinary M2 nut clamp two plain 2 mm PA12 ears. Nominal full 1.6 mm engagement and 2.4 mm tip projection; verify actual hardware, printed fit and angle retention. No washer, bearing or qualified holding-torque claim.",
+                "M2x8 and ordinary M2 nut clamp two 2 mm PA12 ears with a 0.5 mm tray nut recess and 1.5 mm remaining floor. Nominal full 1.6 mm engagement and 2.9 mm tip projection; verify actual hardware, printed fit and angle retention. No washer, bearing or qualified holding-torque claim.",
                 source,
                 fasteners.KIT_MATERIAL,
             )
@@ -226,7 +240,7 @@ def build_optical_mount(doc, host, side=optical_interface.DEFAULT_SIDE):
         if name == "OpticalMountBase":
             optical_interface.annotate_interface(obj)
         printed.append(obj)
-    hardware = _pivot_hardware(doc, group) + optical_interface.build_hardware(
+    hardware = _pivot_hardware(doc, group, pitch) + optical_interface.build_hardware(
         doc, group
     )
     doc.recompute()

@@ -867,11 +867,14 @@ def _servo_rear_body_allowance(doc, prefix):
 
 def servo_mount_check(doc, prefix):
     """Require both stock ears to seat on the removable bridge without collision."""
+    from .servo_ear_nuts import servo_ear_nut_check
+
     frame = world_shape(doc.ServoDriveBridge)
     servo = world_shape(doc.getObject(prefix + "Servo"))
     frame_overlap = intersection_volume(frame, servo)
     clamps = Part.makeCompound([frame, servo])
     rear_allowance = _servo_rear_body_allowance(doc, prefix)
+    nut_capture = servo_ear_nut_check(doc, prefix)
     rows = []
     for suffix in ("Lower", "Upper"):
         name = prefix + "ServoEar" + suffix
@@ -891,10 +894,12 @@ def servo_mount_check(doc, prefix):
         "pod": prefix,
         "servo_frame_intersection_mm3": frame_overlap,
         "rear_body_and_inward_lead_allowance": rear_allowance,
+        "shallow_nut_capture": nut_capture,
         "cases": rows,
         "scope": "The two published X06 ears bear directly on the removable bridge using M1.6 fasteners. Nominal rigid contact is not proof of clamp torque, stiffness or actual case fit.",
         "passed": frame_overlap < TOL
         and rear_allowance["passed"]
+        and nut_capture["passed"]
         and all(row["passed"] for row in rows),
     }
 
@@ -1689,7 +1694,11 @@ def _record_drive_checks(report, doc, module, physical, frame, prefix, sign):
 
 def _record_fastener_checks(report, module, physical):
     """Verify installed fastener seats, engagement and ordered access routes."""
-    from .nut_guides import guided_nut_service_direction, is_guided_nut_bolt
+    from .nut_guides import (
+        guided_nut_capture_depth,
+        guided_nut_service_direction,
+        is_guided_nut_bolt,
+    )
 
     clamp_parts = Part.makeCompound(
         [world_shape(obj) for obj in module["printed"]]
@@ -1729,14 +1738,16 @@ def _record_fastener_checks(report, module, physical):
         dependencies = []
         service_group = module["group"].Name
         prerequisites = "Other local propulsion parts stay installed at neutral tilt."
-        retain_bolt = "ServoEar" in bolt.Name
-        if retain_bolt:
+        servo_ear = "ServoEar" in bolt.Name
+        retain_bolt = False
+        if servo_ear:
             prefix = "Port" if bolt.Name.startswith("Port") else "Starboard"
             service_excluded.update({prefix + "DriverGear", prefix + "InputShaft"})
             if "Upper" in bolt.Name:
                 service_excluded.add(prefix + "ServoEarLowerNut")
+                service_excluded.add(prefix + "ServoEarLowerBolt")
             service_parts = servo_bench_members(module["group"].Document, physical)
-            prerequisites = "Remove the paired servo module and selected driver gear/input stub, then release only the lower and upper rear ear nuts in order. Keep both ear bolts seated and carry them with the complete servo/horn/adapter unit through the checked withdrawal. Remove the adapter off the bridge before withdrawing either ear bolt. Keep both horn rear-screw/front-nut pairs attached until the unit is free."
+            prerequisites = "Remove the paired servo module and selected driver gear/input stub. Turn and withdraw the lower ear screw while its rear nut remains in the shallow hex pocket, then remove that nut. Repeat for the upper pair before withdrawing the complete servo/horn/adapter unit. Keep both horn screw/nut pairs attached until the unit is free."
             matches = [
                 row for row in report["input_drive_service"] if row["pod"] == prefix
             ]
@@ -1776,7 +1787,8 @@ def _record_fastener_checks(report, module, physical):
             retained,
             thread_diameter=thread_diameter,
             retain_bolt=retain_bolt,
-            guided_nut=is_guided_nut_bolt(bolt.Name),
+            guided_nut=servo_ear or is_guided_nut_bolt(bolt.Name),
+            capture_depth_mm=0.5 if servo_ear else guided_nut_capture_depth(bolt.Name),
             nut_lateral_direction=guided_nut_service_direction(
                 module["group"].Document, bolt.Name
             ),

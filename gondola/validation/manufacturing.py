@@ -314,7 +314,7 @@ def review(doc, registry):
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Wall slots, U saddles, externally open blind hex nut pockets, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. The nut pocket restrains rotation and retains a 2 mm nominal bearing floor; no sealed hollow print is claimed.",
+        "powder_removal": "Wall slots, U saddles, externally open blind hex nut pockets, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. Rail nut pockets restrain rotation and retain their 2 mm nominal bearing floors; other nut recesses follow their respective interface contracts. No sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,

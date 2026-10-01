@@ -5,7 +5,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import translated_shape
+from gondola.cad import box, translated_shape, union
 from gondola.parts import bearing_retention
 from gondola.print_export import geometry_comparison
 
@@ -79,6 +79,32 @@ def keeper_alignment_sensitivity(keeper):
     }
 
 
+def keeper_backing_check(seat, keeper):
+    """Screen the saved symmetric backing and remaining frame load paths.
+
+    These independent witnesses establish material continuity, not stiffness
+    or strength. The lower screw stays outside the rotating carrier envelope.
+    """
+    backing = box(8.8, 3.3, 8.8, (-4.4, -1.9, -13.9))
+    side_paths = union([box(1.8, 3.3, 16.3, (x, -1.9, -21.4)) for x in (-4.4, 2.6)])
+    frame_back = box(8.8, 2.3, 8.8, (-4.4, 1.6, -13.9))
+    frame_sides = union([box(1.6, 5.8, 8.8, (x, -1.9, -13.9)) for x in (-6.4, 4.8)])
+    mirrored = keeper.mirror(App.Vector(), App.Vector(1, 0, 0))
+    report = {
+        "missing_continuous_keeper_backing_mm3": backing.cut(keeper).Volume,
+        "missing_keeper_to_screw_side_paths_mm3": side_paths.cut(keeper).Volume,
+        "missing_frame_backing_mm3": frame_back.cut(seat).Volume,
+        "missing_frame_side_walls_mm3": frame_sides.cut(seat).Volume,
+        "keeper_lateral_asymmetry_mm3": keeper.cut(mirrored).Volume
+        + mirrored.cut(keeper).Volume,
+        "scope": "Saved nominal geometry. A 3.5 mm thick, 9 mm wide backing extends to 5 mm below the bearing axis, reducing the unsupported thin section without changing its front stop plane or adding hardware. Two continuous side paths join the backing to the lower screw foot. The frame retains side walls and a rear wall outside the deeper open pocket. These material witnesses are not structural, fatigue, creep or physical-fit qualification; the one lower screw still gives an offset axial load path.",
+    }
+    report["passed"] = all(
+        value < TOL for key, value in report.items() if key.endswith("_mm3")
+    )
+    return report
+
+
 def bearing_stack_check(
     bearing, shaft, seat, carrier, keeper, *, toward_travel, away_travel
 ):
@@ -127,6 +153,7 @@ def bearing_stack_check(
         return {"passed": False, "error": "Missing keeper screw-hole registration"}
     normalised_seat, normalised_keeper = normalised
     capture = bearing_retention.geometry_check(normalised_seat, normalised_keeper)
+    backing = keeper_backing_check(normalised_seat, normalised_keeper)
     # A continuous annular witness excludes the assumed shield region. This
     # is only a design envelope; the delivered outer-ring land needs inspection.
     stop_slice = _annulus(2.81, 2.99, bounds.YMin - inward - 0.01, 0.01, x, z)
@@ -172,6 +199,7 @@ def bearing_stack_check(
         "missing_complete_guide_wall_mm3": missing_guide,
         "missing_complete_outer_shoulder_mm3": missing_shoulder,
         "capture_geometry": capture,
+        "keeper_backing": backing,
         **overlaps,
         "scope": "Saved nominal solids. A rigid removable keeper and rear shoulder contact only the assumed outer-ring land. The keeper clamps against the frame, leaving 0.5 mm nominal bearing endplay. The radial bore has 0.1 mm diametral design allowance. These allowances are not guaranteed process tolerances: actual bore finishing, ring-land compatibility, free rotation, screw retention, wear and loaded fit remain unqualified. The carrier is independently bounded by assembled frame/keeper stops.",
         "passed": comparison["difference_mm3"] < TOL
@@ -180,6 +208,7 @@ def bearing_stack_check(
         and shaft_coverage >= 2.5 + inward - TOL
         and contact_area > 3.0
         and capture["passed"]
+        and backing["passed"]
         and missing_bore < TOL
         and missing_guide < TOL
         and missing_shoulder < TOL

@@ -13,16 +13,10 @@ except ImportError:
 class ShallowNutGuideTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import bearing_retention, propulsion
+        from gondola.parts import bearing_retention
 
-        cls.clamp = propulsion._carrier_side_shape()
         cls.cup = bearing_retention.cup_shape()
         cls.frames = (
-            (
-                cls.clamp,
-                App.Placement(App.Vector(4.2, 26.25, 2.5), App.Rotation()),
-                5.8,
-            ),
             (
                 cls.cup,
                 App.Placement(
@@ -115,6 +109,56 @@ class ShallowNutGuideTests(unittest.TestCase):
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
+class RecessedClampNutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from gondola.parts import propulsion
+
+        cls.host = propulsion._carrier_side_shape()
+        cls.pose = App.Placement(App.Vector(4.2, 26.25, 2.5), App.Rotation())
+
+    def test_flat_block_pocket_has_full_wall_floor_and_clearance(self):
+        from gondola.validation.nut_guides import nut_guide_check
+
+        report = nut_guide_check(self.host, self.pose, 5.8, recessed=True)
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["guide_height_mm"], 1.5)
+        box = Part.makeBox(18, 10, 8, App.Vector(-7, 21.25, -4))
+        self.assertLess(self.host.cut(box).Volume, 1e-6)
+        # A wide planar end replaces the separate raised circular stop flange.
+        end = Part.makeBox(17.8, 0.1, 1, App.Vector(-6.9, 31.15, 2.9))
+        self.assertLess(end.cut(self.host).Volume, 1e-6)
+
+    def test_opened_hex_wall_and_missing_floor_are_rejected(self):
+        from gondola.validation.nut_guides import nut_guide_check
+
+        for cutter in (
+            Part.makeBox(1, 2, 1.5, App.Vector(-0.5, 2, 0)),
+            Part.makeBox(0.2, 0.2, 0.4, App.Vector(1.6, 0, -0.2)),
+        ):
+            cutter.Placement = self.pose.multiply(cutter.Placement)
+            report = nut_guide_check(
+                self.host.cut(cutter), self.pose, 5.8, recessed=True
+            )
+            self.assertFalse(report["passed"], report)
+
+    def test_old_lift_is_insufficient_for_deeper_pocket(self):
+        from gondola.parts import purchased_hardware
+        from gondola.validation.propulsion_service import fastener_service_check
+
+        bolt, nut = purchased_hardware.screw_shape(), purchased_hardware.hex_nut_shape()
+        bolt.translate(App.Vector(4.2, 26.25, -2.5))
+        nut.translate(App.Vector(4.2, 26.25, 2.5))
+        options = dict(nut_lateral_direction=(-1, 0, 0), guided_nut=True)
+        old = fastener_service_check(bolt, nut, {"carrier": self.host}, **options)
+        new = fastener_service_check(
+            bolt, nut, {"carrier": self.host}, capture_depth_mm=1.5, **options
+        )
+        self.assertFalse(old["passed"], old)
+        self.assertTrue(new["passed"], new)
+
+
+@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class GuidedNutServiceTests(unittest.TestCase):
     def test_short_legacy_lateral_release_is_blocked_but_raised_release_is_clear(self):
         from gondola.parts import propulsion, purchased_hardware
@@ -128,11 +172,16 @@ class GuidedNutServiceTests(unittest.TestCase):
             bolt, nut, obstacles, nut_lateral_direction=(0, 1, 0)
         )
         new = fastener_service_check(
-            bolt, nut, obstacles, nut_lateral_direction=(0, 1, 0), guided_nut=True
+            bolt,
+            nut,
+            obstacles,
+            nut_lateral_direction=(0, 1, 0),
+            guided_nut=True,
+            capture_depth_mm=1.5,
         )
         self.assertFalse(old["passed"], old)
         self.assertTrue(new["passed"], new)
-        self.assertEqual(new["minimum_nut_lift_before_lateral_mm"], 1.2)
+        self.assertEqual(new["minimum_nut_lift_before_lateral_mm"], 1.7)
         self.assertTrue(new["screw_first_with_nut_held_in_guides"])
         self.assertIn(
             "seated_guided_nut",
@@ -188,6 +237,7 @@ class GuidedNutServiceTests(unittest.TestCase):
                                 retained,
                                 nut_lateral_direction=lateral,
                                 guided_nut=True,
+                                capture_depth_mm=1.5 if joint == "OutputClamp" else 1.0,
                             )
                             self.assertTrue(report["passed"], report)
         finally:

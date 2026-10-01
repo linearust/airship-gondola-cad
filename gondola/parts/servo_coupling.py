@@ -32,7 +32,10 @@ BOLT_DIRECTION = (0, 1, 0)
 
 # Preserve the selected gears' established axial plane and output shaft fit.
 PLATE_FRONT_Y = 7.1
-FASTENER_SEAT_Y = PLATE_FRONT_Y
+HORN_NUT_RECESS_DEPTH = 0.6
+HORN_NUT_POCKET_AF = 3.2
+HORN_NUT_RADIAL_EXTENSION = 0.1
+FASTENER_SEAT_Y = PLATE_FRONT_Y - HORN_NUT_RECESS_DEPTH
 PLATE_HALF_WIDTH = 5.15
 PLATE_TIP_RADIUS = 2.8
 PLATE_TIP_X = HORN_BOLT_CENTRES[-1][0]
@@ -172,8 +175,27 @@ def plate_blank():
     ).removeSplitter()
 
 
+def horn_nut_recess(x, z, allowance):
+    """Shallow hexagon elongated radially; its parallel flats still stop rotation."""
+    radius = HORN_NUT_POCKET_AF / math.sqrt(3)
+    extension = HORN_NUT_RADIAL_EXTENSION + allowance
+    corners = [
+        V(
+            x
+            + radius * math.cos(math.pi * i / 3)
+            + (extension if i in (0, 1, 5) else -extension),
+            FASTENER_SEAT_Y,
+            z + radius * math.sin(math.pi * i / 3),
+        )
+        for i in range(6)
+    ]
+    return Part.Face(Part.makePolygon(corners + [corners[0]])).extrude(
+        V(0, HORN_NUT_RECESS_DEPTH + 0.1, 0)
+    )
+
+
 def adapter_shape():
-    """One piece, a near round hole and far short slot, with flat nut seats."""
+    """One piece with round/far-slot holes and shallow radially floating nut seats."""
     root = (
         _cylinder(REGISTER_OUTER_RADIUS, REGISTER_ENGAGEMENT, (0, BODY_BACK_Y, 0))
         .cut(
@@ -222,7 +244,7 @@ def adapter_shape():
     )
     # The near round opening bounds translation along the open register. Only
     # the far joint is slotted, so pitch variation does not force the two holes.
-    # Both joints clear the shaft boss without a head channel or nut recess.
+    # Shallow elongated nut pockets retain radial fitting freedom without raised walls.
     for (x, z), allowance in zip(HORN_BOLT_CENTRES, HORN_ADAPTER_OPENING_ALLOWANCES):
         shape = shape.cut(
             capsule(
@@ -234,6 +256,7 @@ def adapter_shape():
                 z,
             )
         )
+        shape = shape.cut(horn_nut_recess(x, z, allowance))
     pocket = _hex_along_axis(
         NUT_POCKET_AF,
         SHAFT_NUT_POCKET_LENGTH,
@@ -384,7 +407,18 @@ def assembly_contract(profile=None):
         - profile.root_diameter_mm / 2,
         "register_engagement_mm": REGISTER_ENGAGEMENT,
         "register_scope": "Open C seat follows the nominal Ø7 root with 0.15 mm radial trial clearance. It limits rearward/side motion without enclosing the arm. Fit the root seat evenly, check metal-stub alignment and free mesh before clamping; nominal surfaces are not precision pilots or proof of zero runout.",
-        "assembly_adjustment": "A diameter 1.8 mm round hole at 6.8 mm bounds motion along the open root seat; a 1.8 x 2.4 mm radial slot at 13.2 mm accommodates pitch variation. For nominal diameter 1.4 mm shanks, near centre travel is 0.2 mm radially and far travel is 0.5 mm along/0.2 mm across the arm, before the tighter root seat or horn holes intervene. These are loose-part geometric limits, not a rectangular tolerance box or operating play. Align the input axis and check runout before tightening both joints. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
+        "assembly_adjustment": "A diameter 1.8 mm round hole at 6.8 mm bounds motion along the open root seat; a 1.8 x 2.4 mm radial slot at 13.2 mm accommodates pitch variation. For nominal diameter 1.4 mm shanks, near centre travel is 0.2 mm radially and far travel is 0.5 mm along/0.2 mm across the arm before other features intervene; the shallow nut pockets restrict nominal AF3.0 nut centres to +/-0.1 mm across the arm. The root seat and horn holes can restrict the final fit further. These are loose-part geometric limits, not a rectangular tolerance box or operating play. Align the input axis and check runout before tightening both joints. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
+        "nut_recess": {
+            "depth_mm": HORN_NUT_RECESS_DEPTH,
+            "across_parallel_flats_mm": HORN_NUT_POCKET_AF,
+            "radial_extensions_mm": tuple(
+                HORN_NUT_RADIAL_EXTENSION + value
+                for value in HORN_ADAPTER_OPENING_ALLOWANCES
+            ),
+            "remaining_adapter_floor_mm": FASTENER_SEAT_Y - profile.height_mm,
+            "finished_flat_gap_acceptance_mm": [3.1, 3.25],
+            "scope": "Shallow open hex pockets restrain ordinary AF2.9..3.0 M1.4 nuts; no axial captivity or tightening-torque qualification. Their radial extension retains nominal screw-centre travel +/-0.2 and +/-0.5 mm; the AF3.0 nut limits transverse centre travel to +/-0.1 mm. Confirm actual chamfer/flank engagement, finish for free insertion and full floor seating, and reject rotation or floor damage. These are fit acceptance targets, not guaranteed PA12 process tolerances.",
+        },
         "fastener_grip_mm": FASTENER_SEAT_Y - profile.height_mm,
         "total_horn_and_adapter_grip_mm": FASTENER_SEAT_Y - profile.blade_bottom_mm,
         "screw_length_mm": profile.screw_length_mm,
@@ -396,8 +430,8 @@ def assembly_contract(profile=None):
         + profile.screw_length_mm
         - FASTENER_SEAT_Y
         - servo_horns.NUT_HEIGHT_MM,
-        "thread_engagement_scope": "Nominal 2 mm horn + 3.6 mm adapter + 1.2 mm nut = 6.8 mm stack; M1.4x8 gives 1.2 mm tip projection beyond the nut. Rear head seats on the horn, front nut on the flat adapter; no recesses or washers. Actual thread runout, head size, plastic bearing stress and retention need inspection.",
-        "centre_screw_service": "Remove both output gears and the paired servo/input module; remove selected driver gear and metal stub, remove only the rear ear nuts, then withdraw servo+horn+adapter with both ear bolts retained. Off the bridge, remove front nuts and adapter before accessing the OEM centre screw or withdrawing the ear bolts. For assembly place both M1.6 ear bolts in the servo ears before fitting the adapter; insert rear M1.4 screws into the detached prepared horn, install horn and OEM centre screw on the free servo, fit adapter/front nuts, and clamp with a <=1.5 mm rear holding-tool stem. Refit the complete servo unit, stub and gear. Rear tool access past the assembled bridge is not assumed; the shaft-stop floor stays intact.",
+        "thread_engagement_scope": "Nominal 2 mm horn + 3.0 mm adapter floor + 1.2 mm nut = 6.2 mm stack; M1.4x8 gives 1.8 mm tip projection beyond the nut. Rear head seats on the horn; the front nut seats 0.6 mm below the plate face. No washers. Actual thread runout, head size, plastic bearing stress and retention need inspection.",
+        "centre_screw_service": "Remove both output gears and the paired servo/input module; remove selected driver gear and metal stub, withdraw both M1.6 ear screws and release their pocket-held nuts, then withdraw servo+horn+adapter. Off the bridge, remove front nuts and adapter before accessing the OEM centre screw. For assembly insert rear M1.4 screws into the detached prepared horn, install horn and OEM centre screw on the free servo, fit adapter/front nuts, and turn the rear screws using a <=1.5 mm tool stem while the pockets restrain the nuts. For removal turn the rear screw to release the pocket-held nut; its exposed portion remains accessible to fine pliers once it leaves the pocket. Refit the complete servo unit and both ear fastener pairs, then the stub and gear. Rear tool access past the assembled bridge is not assumed; the shaft-stop floor stays intact.",
     }
 
 

@@ -66,7 +66,41 @@ class HornProfileGeometryTests(unittest.TestCase):
             self.assertTrue(service["module_removal_passed"])
             self.assertTrue(service["driver_gear_removal"]["passed"])
             self.assertTrue(service["input_stub_removal"]["passed"])
-            self.assertEqual(len(service["ear_fastener_release"]), 2)
+            ear_releases = service["ear_fastener_release"]
+            prefix = service["pod"]
+            self.assertEqual(
+                [release["bolt"] for release in ear_releases],
+                [prefix + "ServoEar" + side + "Bolt" for side in ("Lower", "Upper")],
+            )
+            removed_ears = {
+                prefix + "ServoEar" + side + kind
+                for side in ("Lower", "Upper")
+                for kind in ("Bolt", "Nut")
+            }
+            self.assertTrue(removed_ears.issubset(service["bench_members"]))
+            self.assertTrue(removed_ears.isdisjoint(service["moving_parts"]))
+            self.assertTrue(removed_ears.isdisjoint(service["retained_parts"]))
+            for release in ear_releases:
+                self.assertTrue(release["passed"], release)
+                self.assertTrue(release["screw_first_with_nut_held_in_guides"])
+                self.assertFalse(release["bolt_retained_in_servo_unit"])
+                self.assertTrue(release["bolt_axial_withdrawal"]["passed"])
+                self.assertTrue(release["nut_axial_removal"]["passed"])
+                self.assertAlmostEqual(release["bolt_withdrawal_travel_mm"], 8.2)
+                self.assertAlmostEqual(
+                    release["minimum_nut_lift_before_lateral_mm"], 0.7
+                )
+            # Both upper fasteners remain obstacles during lower-pair removal;
+            # only after that checked release may the upper pair be removed.
+            for kind in ("Bolt", "Nut"):
+                self.assertIn(
+                    prefix + "ServoEarUpper" + kind,
+                    ear_releases[0]["bolt_axial_withdrawal"]["obstacles"],
+                )
+                self.assertNotIn(
+                    prefix + "ServoEarLower" + kind,
+                    ear_releases[1]["bolt_axial_withdrawal"]["obstacles"],
+                )
             self.assertEqual(len(service["rear_holding_tool_off_bridge"]), 2)
             releases = service["adapter_clamp_release"]["fasteners"]
             self.assertEqual([r["joint"] for r in releases], ["Far", "Near"])
@@ -76,17 +110,16 @@ class HornProfileGeometryTests(unittest.TestCase):
                 self.assertIn(release["bolt"], release["retained_parts"])
                 for suffix in (
                     "Servo",
-                    "ServoEarLowerBolt",
-                    "ServoEarUpperBolt",
                     "InputShaftClampBolt",
                     "InputShaftClampNut",
                 ):
                     self.assertIn(service["pod"] + suffix, release["retained_parts"])
+                self.assertTrue(removed_ears.isdisjoint(release["retained_parts"]))
             self.assertIn(releases[0]["nut"], releases[1]["removed_prior_parts"])
             adapter = service["adapter_release_off_bridge"]
             self.assertTrue(adapter["passed"])
-            for suffix in ("Servo", "ServoEarLowerBolt", "ServoEarUpperBolt"):
-                self.assertIn(service["pod"] + suffix, adapter["obstacles"])
+            self.assertIn(service["pod"] + "Servo", adapter["obstacles"])
+            self.assertTrue(removed_ears.isdisjoint(adapter["obstacles"]))
             self.assertEqual(len(adapter["retained_clamp_hardware_paths"]), 2)
             self.assertTrue(
                 all(row["passed"] for row in adapter["retained_clamp_hardware_paths"])

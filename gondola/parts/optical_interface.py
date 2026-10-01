@@ -15,8 +15,11 @@ from . import mounting_plate, purchased_hardware
 V = App.Vector
 HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
 HOST_OFFSET_X = 27.0
-FOOT_SIZE_MM = (8.0, 16.0)
+FOOT_SIZE_MM = (8.0, 18.0)
 FOOT_THICKNESS = 2.0
+NUT_RECESS_DEPTH = 0.5
+NUT_RECESS_AF = 4.2
+FOOT_NUT_SEAT_Z = FOOT_THICKNESS - NUT_RECESS_DEPTH
 # Retain the positive-Y joint's existing object identity; the negative joint
 # is replaced by a broad rigid locator, not a spring or interference fit.
 CLAMP_CENTRES = {1: (0.0, 5.0)}
@@ -62,12 +65,31 @@ def placement(side=DEFAULT_SIDE):
 
 
 def foot_shape():
-    shape = union([box(*FOOT_SIZE_MM, FOOT_THICKNESS, (-4, -8, 0)), locator_shape()])
+    width, length = FOOT_SIZE_MM
+    shape = union(
+        [
+            box(width, length, FOOT_THICKNESS, (-width / 2, -length / 2, 0)),
+            locator_shape(),
+        ]
+    )
     for x, y in CLAMP_CENTRES.values():
         shape = shape.cut(
             Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, FOOT_THICKNESS + 2, V(x, y, -1))
         )
+        recess = purchased_hardware.hex_prism(NUT_RECESS_AF, NUT_RECESS_DEPTH + 0.1)
+        recess.translate(V(x, y, FOOT_NUT_SEAT_Z))
+        shape = shape.cut(recess)
     return shape.removeSplitter()
+
+
+def nut_recess_contract():
+    return {
+        "depth_mm": NUT_RECESS_DEPTH,
+        "across_flats_mm": NUT_RECESS_AF,
+        "remaining_floor_mm": FOOT_NUT_SEAT_Z,
+        "finished_flat_gap_acceptance_mm": [4.1, 4.25],
+        "scope": "Ordinary M2 hex nuts only. Shallow open pockets restrain turning without raised guides; they do not retain a loose nut axially or qualify tightening torque. Check received nut chamfers and flank engagement, finish for free insertion and full floor seating, and reject a freely rotating nut or damaged floor. The finished range is an acceptance target, not guaranteed PA12 process tolerance.",
+    }
 
 
 def locator_shape():
@@ -113,17 +135,18 @@ def interface_contract():
         },
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
         "host_interface": "Existing x=+/-27 mm middle side slot; one screw at local y=+5 mm and the locating tongue toward negative Y. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
-        "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut above the foot; one further identical pair locks the pitch ears. No washers.",
+        "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut in a shallow foot recess; one further identical pair locks the pitch ears. No washers.",
         "minimum_received_flat_head_bearing_diameter_mm": 3.5,
         "concentric_head_land_across_maximum_slot_width_mm": (
             3.5 - CLAMP_HOLE_DIAMETER - DIMENSION_ALLOWANCE
         )
         / 2,
         "bearing_scope": "Heads bridge the carrier slot on two transverse lands. Inspect actual flat bearing diameter >=3.5 mm and slot width <=2.9 mm; centred residual land is only 0.3 mm per side. No washer is modeled. Eccentric seating and PA12 clamp pressure/creep remain unqualified.",
-        "nominal_grip_mm": mounting_plate.THICKNESS_MM + FOOT_THICKNESS,
+        "nut_recess": nut_recess_contract(),
+        "nominal_grip_mm": mounting_plate.THICKNESS_MM + FOOT_NUT_SEAT_Z,
         "nominal_bolt_tip_projection_mm": CLAMP_SCREW_LENGTH
         - mounting_plate.THICKNESS_MM
-        - FOOT_THICKNESS
+        - FOOT_NUT_SEAT_Z
         - fasteners.HEX_NUT_HEIGHT,
         "registration": {
             "printed_hole_and_slot_width_allowance_mm": DIMENSION_ALLOWANCE,
@@ -188,7 +211,7 @@ def build_hardware(doc, group):
             (
                 "Nut",
                 purchased_hardware.hex_nut_shape(),
-                FOOT_THICKNESS,
+                FOOT_NUT_SEAT_Z,
                 "M2_HEX_NUT",
                 HEX_NUT_SOURCE,
             ),
@@ -203,7 +226,7 @@ def build_hardware(doc, group):
                     f"BUY | optical carrier foot {index + 1} {kind.lower()}",
                     shape,
                     sku,
-                    "One M2x8 screw through carrier and 2 mm optical foot, ordinary M2 nut. Integral shallow tongue limits rotation before clamping. Bench assembly; verify free insertion, full flat seating, actual engagement and full slot bearing. No washer.",
+                    "One M2x8 screw through carrier and 1.5 mm foot floor under a 0.5 mm shallow ordinary M2 nut recess. Integral shallow tongue limits rotation before clamping. Bench assembly; verify free insertion, full flat seating, actual engagement and full slot bearing. No washer.",
                     source,
                     fasteners.KIT_MATERIAL,
                 )
@@ -241,6 +264,20 @@ def manufacturing_wall_probes():
 
     x, y, z = mount.PIVOT_CENTRE
     return [
+        (
+            "optical_foot_nut_recess_floor",
+            "OpticalMountBase",
+            (1.5, 5.0, -0.01),
+            (1.5, 5.0, FOOT_THICKNESS + 0.01),
+            FOOT_NUT_SEAT_Z,
+        ),
+        (
+            "optical_foot_nut_pocket_end_ligament",
+            "OpticalMountBase",
+            (0.0, 7.09, 1.75),
+            (0.0, FOOT_SIZE_MM[1] / 2 + 0.01, 1.75),
+            FOOT_SIZE_MM[1] / 2 - CLAMP_CENTRES[1][1] - NUT_RECESS_AF / 2,
+        ),
         (
             "optical_locator_transverse_width",
             "OpticalMountBase",
