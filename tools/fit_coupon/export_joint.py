@@ -7,8 +7,6 @@ new; no installed CAD, standard print manifest or source file is overwritten.
 
 import argparse
 import math
-import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -282,26 +280,18 @@ def main():
     if args.native:
         export(args.cad, args.output_dir)
         return
-    from gondola.freecad_runtime import locate_appimage, mounted_appimage
+    from gondola.freecad_runtime import run_native_python
 
-    with mounted_appimage(locate_appimage()) as mount:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(mount / "usr/lib")))
-        subprocess.run(
-            [
-                str(mount / "AppRun"),
-                "python",
-                __file__,
-                "--native",
-                "--cad",
-                str(args.cad.resolve()),
-                "--output-dir",
-                str(args.output_dir.resolve()),
-            ],
-            cwd=ROOT,
-            env=env,
-            check=True,
-        )
+    run_native_python(
+        [
+            __file__,
+            "--native",
+            "--cad",
+            args.cad.resolve(),
+            "--output-dir",
+            args.output_dir.resolve(),
+        ]
+    )
 
 
 if __name__ == "__main__":

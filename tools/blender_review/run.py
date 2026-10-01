@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from gondola.freecad_runtime import locate_appimage, mounted_appimage  # noqa: E402
+from gondola.freecad_runtime import locate_appimage, run_native_python  # noqa: E402
 
 
 def locate_blender(explicit=None):
@@ -76,23 +76,7 @@ def run(args):
     exported = output_dir / "cad_review.json"
     blend = output_dir / "cad_review.blend"
     print(f"Exporting saved CAD: {cad}", flush=True)
-    with mounted_appimage(appimage) as mount:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join((str(REPO_ROOT), str(mount / "usr/lib")))
-        subprocess.run(
-            [
-                str(mount / "AppRun"),
-                "python",
-                str(exporter),
-                "--cad",
-                str(cad),
-                "--output",
-                str(exported),
-            ],
-            cwd=REPO_ROOT,
-            env=env,
-            check=True,
-        )
+    run_native_python([exporter, "--cad", cad, "--output", exported], appimage=appimage)
     if not exported.is_file():
         raise RuntimeError(f"FreeCAD exporter did not create {exported}")
     command = [

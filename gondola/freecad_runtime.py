@@ -70,6 +70,32 @@ def mounted_appimage(appimage):
             process.stderr.close()
 
 
+@contextlib.contextmanager
+def _runtime(appimage=None):
+    """Own the mount and environment for one native process invocation."""
+    with mounted_appimage(locate_appimage(appimage)) as mount:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.pathsep.join(
+            (str(REPO_ROOT), str(mount / "usr" / "lib"))
+        )
+        yield mount, env
+
+
+def run_native_python(arguments, *, appimage=None):
+    """Run Python arguments in FreeCAD, propagating failure and releasing the mount.
+
+    The child works in REPO_ROOT; callers must resolve input/output paths before
+    calling. Arguments are passed directly, without shell interpretation.
+    """
+    with _runtime(appimage) as (mount, env):
+        return subprocess.run(
+            [str(mount / "AppRun"), "python", *map(str, arguments)],
+            cwd=REPO_ROOT,
+            env=env,
+            check=True,
+        )
+
+
 def _stop_preview_process(process):
     """Stop the dedicated GUI session, including children started by AppRun."""
     try:
@@ -181,11 +207,7 @@ def run_with_freecad(command, output_dir, appimage=None, source=None):
     # AppRun executes from REPO_ROOT; resolve caller-relative paths before changing cwd.
     output_dir = Path(output_dir).expanduser().resolve()
     source = Path(source).expanduser().resolve() if source is not None else None
-    with mounted_appimage(locate_appimage(appimage)) as mount:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join(
-            (str(REPO_ROOT), str(mount / "usr" / "lib"))
-        )
+    with _runtime(appimage) as (mount, env):
         env["GONDOLA_OUTPUT_DIR"] = str(output_dir)
         if command == "preview":
             return _run_preview(mount, output_dir, env)

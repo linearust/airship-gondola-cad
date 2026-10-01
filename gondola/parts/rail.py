@@ -309,13 +309,6 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True
     return result
 
 
-def _attachment_fastener(shared_drive):
-    pattern = attachment_pattern(shared_drive)
-    return pattern.screw_length_mm, pattern.head_bearing_y(
-        MOUNT_OUTER_Y, HEAD_RECESS_DEPTH
-    )
-
-
 def attachment_screw_shape(screw_length=SCREW_LENGTH, *, head_face_y=HEAD_BEARING_Y):
     length = _positive(screw_length, "Screw length")
     if (
@@ -391,23 +384,27 @@ def attachment_site_shape(shape, site):
 
 
 def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=False):
-    screw_length, head_face_y = _attachment_fastener(shared_drive)
+    pattern = attachment_pattern(shared_drive)
+    sites = pattern.sites(x_offset)
+    screw_length = pattern.screw_length_mm
+    head_face_y = pattern.head_bearing_y(MOUNT_OUTER_Y, HEAD_RECESS_DEPTH)
+    hardware = (
+        (
+            "RailMountScrew",
+            f"M3 x{screw_length:g} recessed side rail bolt | design head envelope",
+            attachment_screw_shape(screw_length, head_face_y=head_face_y),
+            f"M3X{screw_length:g}_BUTTON_HEAD",
+        ),
+        (
+            "RailMountNut",
+            "M3 rail hex nut | blind pocket on a printed bearing floor",
+            nut_shape(bearing_y=pattern.nut_bearing_y_mm),
+            "M3_HEX_NUT",
+        ),
+    )
     result = []
-    for site in attachment_sites(x_offset=x_offset, shared_drive=shared_drive):
-        for suffix, label, shape, sku in (
-            (
-                "RailMountScrew",
-                f"M3 x{screw_length:g} recessed side rail bolt | design head envelope",
-                attachment_screw_shape(screw_length, head_face_y=head_face_y),
-                f"M3X{screw_length:g}_BUTTON_HEAD",
-            ),
-            (
-                "RailMountNut",
-                "M3 rail hex nut | blind pocket on a printed bearing floor",
-                attachment_nut_shape(shared_drive=shared_drive),
-                "M3_HEX_NUT",
-            ),
-        ):
+    for site in sites:
+        for suffix, label, shape, sku in hardware:
             obj = doc.addObject("Part::Feature", prefix + site["prefix"] + suffix)
             parent.addObject(obj)
             obj.Label = "BUY | " + label
@@ -426,8 +423,15 @@ def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=F
                 ("SourceEvidence", fasteners.RAIL_FASTENER_SOURCE),
             ):
                 set_property(obj, key, value)
-            set_property(obj, "NominalThreadDiameter", 3.0, "App::PropertyLength")
-            set_property(obj, "ThreadPitch", 0.5, "App::PropertyLength")
+            set_property(
+                obj,
+                "NominalThreadDiameter",
+                fasteners.RAIL_THREAD_DIAMETER,
+                "App::PropertyLength",
+            )
+            set_property(
+                obj, "ThreadPitch", fasteners.RAIL_THREAD_PITCH, "App::PropertyLength"
+            )
             set_property(obj, "PrintPart", False, "App::PropertyBool")
             if App.GuiUp:
                 obj.ViewObject.ShapeColor = (0.92, 0.64, 0.19)
@@ -466,8 +470,9 @@ def attachment_contract(
     length = _positive(length, "Rail length")
     _contact_length(contact_length)
     spans = flex_spans(length)
-    screw_length, head_face_y = _attachment_fastener(shared_drive)
     pattern = attachment_pattern(shared_drive)
+    screw_length = pattern.screw_length_mm
+    head_face_y = pattern.head_bearing_y(MOUNT_OUTER_Y, HEAD_RECESS_DEPTH)
     nut_bearing_y = pattern.nut_bearing_y_mm
     pocket_inner_y = pattern.frame_half_width_mm if shared_drive else FAR_LEG_INNER_Y
     pocket_outer_y = (
@@ -528,8 +533,8 @@ def attachment_contract(
         - nut_bearing_y
         - fasteners.RAIL_HEX_NUT_HEIGHT,
         "shared_servo_bridge_clamp": shared_drive,
-        "clamp_count": attachment_pattern(shared_drive).count,
-        "clamp_spacing_mm": attachment_pattern(shared_drive).spacing_mm,
+        "clamp_count": pattern.count,
+        "clamp_spacing_mm": pattern.spacing_mm,
         "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a blind load-bearing pocket; unmeasured design envelopes",
         "shared_joint_service": (
             "Two opposed bolts 34 mm apart retain the servo saddle and propulsion frame on adjacent rail walls. Support both modules during release and seat both feet before alternating tightening. The 58 mm combined footprint locally restrains rail curvature; do not force a curved rail straight."

@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import signal
 import subprocess
 import tempfile
@@ -54,6 +55,48 @@ class FreeCADLauncher(unittest.TestCase):
         args = run.call_args.args[0]
         self.assertEqual(args[-2:], ["--source", str(Path("saved.FCStd").resolve())])
         self.assertEqual(run.call_args.kwargs["cwd"], freecad_runtime.REPO_ROOT)
+
+    def test_native_python_preserves_arguments_and_isolates_child_environment(self):
+        arguments = [self.output / "a script.py", "--label", "spaces; $literal"]
+        with (
+            patch.dict(os.environ, PYTHONPATH="unrelated modules", CUSTOM="retained"),
+            patch.object(freecad_runtime.subprocess, "run") as run,
+        ):
+            result = freecad_runtime.run_native_python(arguments)
+            self.assertEqual(os.environ["PYTHONPATH"], "unrelated modules")
+        self.assertIs(result, run.return_value)
+        self.assertEqual(
+            run.call_args.args[0],
+            [str(self.output / "AppRun"), "python", *map(str, arguments)],
+        )
+        self.assertEqual(run.call_args.kwargs["cwd"], freecad_runtime.REPO_ROOT)
+        self.assertTrue(run.call_args.kwargs["check"])
+        self.assertEqual(run.call_args.kwargs["env"]["CUSTOM"], "retained")
+        self.assertEqual(
+            run.call_args.kwargs["env"]["PYTHONPATH"].split(os.pathsep),
+            [str(freecad_runtime.REPO_ROOT), str(self.output / "usr/lib")],
+        )
+
+    def test_native_python_releases_runtime_on_failure_or_interruption(self):
+        for error in (subprocess.CalledProcessError(2, "export"), KeyboardInterrupt()):
+            with self.subTest(error=type(error).__name__):
+                released = []
+
+                @contextlib.contextmanager
+                def mounted(_):
+                    try:
+                        yield self.output
+                    finally:
+                        released.append(True)
+
+                with (
+                    patch.object(freecad_runtime, "mounted_appimage", mounted),
+                    patch.object(freecad_runtime.subprocess, "run", side_effect=error),
+                ):
+                    with self.assertRaises(type(error)) as raised:
+                        freecad_runtime.run_native_python(["-c", "pass"])
+                self.assertIs(raised.exception, error)
+                self.assertEqual(released, [True])
 
     def test_preview_cannot_reuse_previous_success_when_child_writes_nothing(self):
         (self.output / "preview_state.json").write_text(
