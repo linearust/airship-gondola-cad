@@ -15,7 +15,6 @@ import Part
 
 from gondola.cad import (
     translated_shape,
-    union,
     world_shape,
 )
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
@@ -51,6 +50,7 @@ from .horn_coupling import coupling_frame
 from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 from .propulsion_service import (
+    contained_region_paths,
     continuous_path,
     fastener_service_check,
     module_service_shapes,
@@ -842,18 +842,13 @@ def vertical_frame_release_check(frame, rail_shape=None):
         ("negative_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, -113.25, 7.5))),
         ("positive_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, 6, 7.5))),
     )
-    lower_uncovered = abs(lower.cut(union([shape for _, shape in sections])).Volume)
-    paths = [
-        {
-            "region": label,
-            **continuous_path(shape, [(0, 0, 0), (0, 0, 30)], {"Rail": rail_shape}),
-        }
-        for label, shape in sections
-    ]
+    checked = contained_region_paths(
+        lower, sections, [(0, 0, 0), (0, 0, 30)], {"Rail": rail_shape}
+    )
     path = {
-        "regions": paths,
-        "lower_frame_outside_envelope_mm3": lower_uncovered,
-        "passed": lower_uncovered < TOL and all(row["passed"] for row in paths),
+        "regions": checked["regions"],
+        "lower_frame_outside_envelope_mm3": checked["uncovered_volume_mm3"],
+        "passed": checked["passed"],
     }
     upper_gap = upper.BoundBox.ZMin - rail_shape.BoundBox.ZMax
     missing = abs(frame.cut(conservative).Volume)

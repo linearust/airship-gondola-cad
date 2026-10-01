@@ -16,7 +16,7 @@ from gondola.parts import rail
 
 from .baseline import module_attachment_pose, module_control_bindings
 from .geometry import TOL, translation_sweep
-from .propulsion_service import continuous_path
+from .propulsion_service import contained_region_paths, continuous_path
 from .rail_interface import attachment_sites, mount_binding, site_placement
 
 V = App.Vector
@@ -136,123 +136,97 @@ def nut_capture_check(x, nut, support, *, shared=False):
     }
 
 
-def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
-    """Continuously move each supported stock region without filling empty corners."""
-    waypoints = [(0, 0, 0), (0, 0, 30)] if waypoints is None else waypoints
-    if name == "ServoDriveBridge":
-        from gondola.parts import servo_bridge
-
-        blocks = servo_bridge.bridge_blank_blocks()
-        uncovered = abs(shape.cut(union(blocks)).Volume)
-        rows = [
-            {
-                "region": name + "Stock" + str(index),
-                **continuous_path(block, waypoints, obstacles),
-            }
-            for index, block in enumerate(blocks)
-        ]
-        return {
-            "part": name,
-            "regions": rows,
-            "bridge_outside_stock_mm3": uncovered,
-            "scope": "Separate solid stock blocks contain the complete saved bridge, with holes filled conservatively. Each block is swept continuously; the broad roof does not extend to the height of the narrower cradle.",
-            "passed": uncovered < TOL
-            and bool(rows)
-            and all(row["passed"] for row in rows),
-        }
+def _mount_service_regions(name, shape, offset):
+    """Preserve fitted channels and empty corners in each mount's sweep stock."""
     bounds = shape.BoundBox
     mount_names = {
         "BatteryMount",
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
-        "ServoDriveBridge",
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
-        pieces = [(name, shape)]
-    else:
-        low_region = Part.makeBox(
-            bounds.XLength + 2,
-            bounds.YLength + 2,
-            rail.MOUNT_TOP_Z - bounds.ZMin + 1,
-            V(bounds.XMin - 1, bounds.YMin - 1, bounds.ZMin - 1),
-        )
-        lower, upper = shape.common(low_region), shape.cut(low_region)
-        # Fill every transverse cylindrical face so the continuous sweep can
-        # preserve the fitted U channel. The carrier's open-bottom recess floor adds a
-        # second bore; each shared frame station has two full 4.75 mm legs.
-        module_name = (
-            "MainPropulsionModule"
-            if name in {"PropulsionFixedFrame", "ServoDriveBridge"}
-            else "Carrier"
-        )
-        sections = (
-            ((-6.0, 4.75, 3.4), (1.25, 4.75, 3.4))
-            if module_name == "MainPropulsionModule"
-            else ((-5.25, 4.0, 6.4), (1.25, 2.0, 3.4))
-        )
-        canonical_fills = [
-            Part.makeBox(width, depth, width, V(-width / 2, y, 6 - width / 2))
-            for y, depth, width in sections
+        return [(name, shape)]
+    low_region = Part.makeBox(
+        bounds.XLength + 2,
+        bounds.YLength + 2,
+        rail.MOUNT_TOP_Z - bounds.ZMin + 1,
+        V(bounds.XMin - 1, bounds.YMin - 1, bounds.ZMin - 1),
+    )
+    lower, upper = shape.common(low_region), shape.cut(low_region)
+    # Fill transverse bores without filling the fitted U channel. Each shared
+    # frame station has two full 4.75 mm legs; carriers have two different floors.
+    shared = name == "PropulsionFixedFrame"
+    module_name = "MainPropulsionModule" if shared else "Carrier"
+    sections = (
+        ((-6.0, 4.75, 3.4), (1.25, 4.75, 3.4))
+        if shared
+        else ((-5.25, 4.0, 6.4), (1.25, 2.0, 3.4))
+    )
+    canonical_fills = [
+        Part.makeBox(width, depth, width, V(-width / 2, y, 6 - width / 2))
+        for y, depth, width in sections
+    ]
+    for site in attachment_sites(module_name, offset):
+        for fill in canonical_fills:
+            lower = lower.fuse(placed_shape(fill, site_placement(site)))
+    lower = lower.removeSplitter()
+    if shared:
+        # A single prism around the rounded beam would fill the open U channel.
+        # Keep the planar spine and both outboard beam stocks separate.
+        spine_region = Part.makeBox(40, 12, 11, V(-20, -6, 1.5))
+        return [
+            (name + "LowerSpine", lower.common(spine_region)),
+            (
+                name + "LowerBeamNegativeY",
+                Part.makeBox(18, -6 - bounds.YMin, 5, V(-9, bounds.YMin, 7.5)),
+            ),
+            (
+                name + "LowerBeamPositiveY",
+                Part.makeBox(18, bounds.YMax - 6, 5, V(-9, 6, 7.5)),
+            ),
+            (name + "Upper", upper),
         ]
-        for site in attachment_sites(module_name, offset):
-            for fill in canonical_fills:
-                lower = lower.fuse(placed_shape(fill, site_placement(site)))
-        lower = lower.removeSplitter()
-        if name == "PropulsionFixedFrame":
-            # Rounded outboard beam edges must not make the whole lower frame
-            # fall back to a bounding prism that fills its open rail channel.
-            # Keep the planar fitted U spine and both outboard beam stocks as
-            # separate regions. The containment check below rejects omissions.
-            spine_region = Part.makeBox(40, 12, 11, V(-20, -6, 1.5))
-            pieces = [
-                (name + "LowerSpine", lower.common(spine_region)),
-                (
-                    name + "LowerBeamNegativeY",
-                    Part.makeBox(18, -6 - bounds.YMin, 5, V(-9, bounds.YMin, 7.5)),
-                ),
-                (
-                    name + "LowerBeamPositiveY",
-                    Part.makeBox(18, bounds.YMax - 6, 5, V(-9, 6, 7.5)),
-                ),
-                (name + "Upper", upper),
-            ]
-        elif name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
-            # The deck is broad, but its two supports are narrow. A whole upper
-            # bounding box invents stock below the deck and blocks the adjacent
-            # servo cap during a real horizontal service slide. Literal stock
-            # bounds are independent of the carrier builder; containment below
-            # rejects an added feature outside them instead of omitting it.
-            pieces = [
-                (name + "Lower", lower),
-                (name + "Deck", Part.makeBox(66, 66, 2, V(-33, -33, 17))),
-                (
-                    name + "SupportNegativeX",
-                    Part.makeBox(5, 5, 4.5, V(-8, -2.5, 12.5)),
-                ),
-                (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -2.5, 12.5))),
-            ]
-        else:
-            pieces = [(name + "Lower", lower), (name + "Upper", upper)]
-    solids = [
+    # The broad deck has narrow supports. A whole upper bounding box would
+    # obstruct the adjacent servo cap during a real horizontal service slide.
+    # These literal witnesses remain independent of the carrier builder.
+    return [
+        (name + "Lower", lower),
+        (name + "Deck", Part.makeBox(66, 66, 2, V(-33, -33, 17))),
+        (name + "SupportNegativeX", Part.makeBox(5, 5, 4.5, V(-8, -2.5, 12.5))),
+        (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -2.5, 12.5))),
+    ]
+
+
+def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
+    """Continuously move supported stock without omitting saved part features."""
+    waypoints = [(0, 0, 0), (0, 0, 30)] if waypoints is None else waypoints
+    if name == "ServoDriveBridge":
+        from gondola.parts import servo_bridge
+
+        regions = [
+            (name + "Stock" + str(index), block)
+            for index, block in enumerate(servo_bridge.bridge_blank_blocks())
+        ]
+        checked = contained_region_paths(shape, regions, waypoints, obstacles)
+        return {
+            "part": name,
+            "regions": checked["regions"],
+            "bridge_outside_stock_mm3": checked["uncovered_volume_mm3"],
+            "scope": "Separate solid stock blocks contain the complete saved bridge, with holes filled conservatively. Each block is swept continuously; the broad roof does not extend to the height of the narrower cradle.",
+            "passed": checked["passed"],
+        }
+    regions = [
         (label, part)
-        for label, part in pieces
+        for label, part in _mount_service_regions(name, shape, offset)
         if part.Solids and abs(part.Volume) > TOL
     ]
-    uncovered = (
-        abs(shape.cut(union([part for _, part in solids])).Volume)
-        if solids
-        else abs(shape.Volume)
-    )
-    rows = [
-        {"region": label, **continuous_path(part, waypoints, obstacles)}
-        for label, part in solids
-    ]
+    checked = contained_region_paths(shape, regions, waypoints, obstacles)
     return {
         "part": name,
-        "regions": rows,
-        "shape_outside_service_envelope_mm3": uncovered,
-        "passed": bool(rows) and uncovered < TOL and all(row["passed"] for row in rows),
+        "regions": checked["regions"],
+        "shape_outside_service_envelope_mm3": checked["uncovered_volume_mm3"],
+        "passed": checked["passed"],
     }
 
 

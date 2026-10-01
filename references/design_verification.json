@@ -1,21 +1,21 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-01T13:23:19.981251+00:00",
-  "change_kind": "Metric slot ranges, compact shared propulsion clamp and selective root/edge blends",
-  "scope": "Nominal CAD verification. No thinner rail grooves or post cores; strength, curvature, creep, physical fit and flight readiness remain unqualified.",
-  "predecessor_commit": "a7518292105b7816a29835192ffb4d5a38405c4b",
-  "source_fingerprint": "c01429781b2dee2baed0f7404988fc9ae093819f1108240007b9ee648af04414",
-  "cad_sha256": "e2311cd20508c9231788f7fe902be2c169b88f24dd422e628c3dfbe7e8b59945",
+  "recorded_utc": "2026-10-01T13:48:16.726493+00:00",
+  "change_kind": "Geometry-preserving mounting-slot and service-path refactor",
+  "scope": "Refactoring only: slot values, CAD shapes, placement, native controls and interface metadata retained; service-report parity includes collision/coverage rejection. No new physical fit, strength or motion qualification.",
+  "predecessor_commit": "4412573083223d8d93b8f9cd15eba808761736a7",
+  "source_fingerprint": "62a28610c7bc0ed83d55bf16c2b4ddc9d4a5ea7ee9dc99633a5cf42cf6c4a66c",
+  "cad_sha256": "0bd7f1f12187dd2da6de40cc386f0bd90d32f4254de0177f9b76ef3ea717923e",
   "revision": "CB",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
-    "unchanged": false,
-    "independently_reviewed": true
+    "unchanged": true,
+    "existing_review_retained": true
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 783,
+    "testsRun": 786,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -60,16 +60,12 @@
     "gondola_rail_validation.json": true,
     "gondola_validation.json": true
   },
-  "saved_geometry_matches_reviewed_fixture": true,
+  "saved_geometry_matches_unchanged_fixture": true,
   "installed_placements_and_kinematic_expressions_preserved": true,
-  "changed_shapes": [
-    "AccessoryMount",
-    "BatteryMount",
-    "ElectronicsMount",
-    "PropulsionFixedFrame",
-    "ServoDriveBridge"
-  ],
-  "installed_print_volume_reduction_mm3": 1642.2029886934033,
+  "changed_shapes": [],
+  "native_interface_metadata_unchanged": true,
+  "service_report_equivalence_passed": true,
+  "slot_record_equivalence_passed": true,
   "blender": {
     "passed": true,
     "scene_count": 6,
@@ -77,15 +73,14 @@
     "matrix_checks": 90184,
     "discrepancy_count": 0
   },
-  "optional_joint_coupon_passed": true,
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "e2311cd20508c9231788f7fe902be2c169b88f24dd422e628c3dfbe7e8b59945",
-    "gondola_print_parts.FCStd": "84d70bb0bedcf660d6642c7db0274c65ab851c2a99818591b849424187801218",
-    "gondola_power_options.FCStd": "3c2beca8e38fdd9c1d7987767d0d38ebf2feef47fdcfc39bd7a823eb4fa3b0f8",
-    "gondola_attachment_detail.FCStd": "aff38e7b956bf859b699aee3074f0339084baab5d7fe383ed5a8299a6196f4e8"
+    "gondola.FCStd": "0bd7f1f12187dd2da6de40cc386f0bd90d32f4254de0177f9b76ef3ea717923e",
+    "gondola_print_parts.FCStd": "f73a3a74b52e05331aafa9319a8854a851a855d4831d0d67288f4bfaa4d2e37c",
+    "gondola_power_options.FCStd": "0283b1fd5dd70db692a7026dc789758e59305f337833bfc85d097504e9e12131",
+    "gondola_attachment_detail.FCStd": "548f98efb2d80e54e9d47e51dd1e38ff593a4facee3f36b6a9667fbae65df8b2"
   },
-  "print_bundle_sha256": "cc682bca7a034a8394c0081f99c00d55b6a32c4ea4ac7bf7c341c3cc7bc696db",
+  "print_bundle_sha256": "2e11865a8087220b53afaca7aa55080d2cbb79431cafc947263afe2bb0fc921e",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "metric_flexure_verification",
-  "evidence_archive_sha256": "7c876dd5be5b2c4de2650117d9c5a9a0de7cae0742c3f23b6e1f6a395edeeea6"
+  "evidence_record_key": "service_refactor_verification",
+  "evidence_archive_sha256": "7a01946589d59e5a972ee515981cf18c2681356288c33bd10b1475bb0dbb7db7"
 }

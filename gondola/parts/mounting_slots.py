@@ -32,64 +32,57 @@ def _radial_point(radius, angle):
     return (radius * math.cos(radians), radius * math.sin(radians))
 
 
+def _rotated_point(point, radians):
+    x, y = point
+    return (
+        x * math.cos(radians) - y * math.sin(radians),
+        x * math.sin(radians) + y * math.cos(radians),
+    )
+
+
+def _straight_row(family, suffix, start, end, *, width=2.6, fastener="M2"):
+    return {
+        "name": f"{family}_{suffix}",
+        "kind": "straight",
+        "family": family,
+        "width_mm": width,
+        "fastener": fastener,
+        "start_xy_mm": start,
+        "end_xy_mm": end,
+    }
+
+
 def rows():
     """Return fresh scalar records so consumers cannot mutate shared datums."""
     result = []
     large_near, large_far = (pitch / 2 for pitch in LARGE_PITCH_RANGE)
     for index in range(4):
         result.append(
-            {
-                "name": f"square25_26_{index}",
-                "kind": "straight",
-                "family": "square25_26",
-                "width_mm": 2.6,
-                "fastener": "M2",
-                "start_xy_mm": _radial_point(
-                    FC_PITCH_RANGE[0] / math.sqrt(2), 90 * index
-                ),
-                "end_xy_mm": _radial_point(
-                    FC_PITCH_RANGE[1] / math.sqrt(2), 90 * index
-                ),
-            }
+            _straight_row(
+                "square25_26",
+                index,
+                _radial_point(FC_PITCH_RANGE[0] / math.sqrt(2), 90 * index),
+                _radial_point(FC_PITCH_RANGE[1] / math.sqrt(2), 90 * index),
+            )
         )
         angle = SMALL_PATTERN_ROTATION - 45 + 90 * index
         result.append(
-            {
-                "name": f"square16_20_{index}",
-                "kind": "straight",
-                "family": "square16_20",
-                "width_mm": 2.6,
-                "fastener": "M2",
-                "start_xy_mm": _radial_point(
-                    SMALL_PITCH_RANGE[0] / math.sqrt(2), angle
-                ),
-                "end_xy_mm": _radial_point(SMALL_PITCH_RANGE[1] / math.sqrt(2), angle),
-            }
+            _straight_row(
+                "square16_20",
+                index,
+                _radial_point(SMALL_PITCH_RANGE[0] / math.sqrt(2), angle),
+                _radial_point(SMALL_PITCH_RANGE[1] / math.sqrt(2), angle),
+            )
         )
         result.append(
-            {
-                "name": f"square40_45_{index}",
-                "kind": "straight",
-                "family": "square40_45",
-                "width_mm": 2.6,
-                "fastener": "M2",
-                "start_xy_mm": _radial_point(
-                    OUTER_DIAGONAL_PITCH_RANGE[0] / math.sqrt(2), angle
-                ),
-                "end_xy_mm": _radial_point(
-                    OUTER_DIAGONAL_PITCH_RANGE[1] / math.sqrt(2), angle
-                ),
-            }
+            _straight_row(
+                "square40_45",
+                index,
+                _radial_point(OUTER_DIAGONAL_PITCH_RANGE[0] / math.sqrt(2), angle),
+                _radial_point(OUTER_DIAGONAL_PITCH_RANGE[1] / math.sqrt(2), angle),
+            )
         )
         quarter_turn = math.radians(90 * index)
-
-        def rotate(point):
-            x, y = point
-            return (
-                x * math.cos(quarter_turn) - y * math.sin(quarter_turn),
-                x * math.sin(quarter_turn) + y * math.cos(quarter_turn),
-            )
-
         result.append(
             {
                 "name": f"rectangle25_30_square30_31_{index}",
@@ -100,7 +93,7 @@ def rows():
                 "points_xy_mm": tuple(
                     # Retracing the short radial branch preserves mirror symmetry
                     # and the full 30..31 square travel between the A8 endpoints.
-                    rotate(point)
+                    _rotated_point(point, quarter_turn)
                     for point in (
                         (12.5, 15),
                         (large_near, large_near),
@@ -113,27 +106,23 @@ def rows():
         )
         for sign in (-1, 1):
             result.append(
-                {
-                    "name": f"rectangle58_49_{index}_{sign}",
-                    "kind": "straight",
-                    "family": "rectangle58_49",
-                    "width_mm": 3.2,
-                    "fastener": "M2.5 with reviewed broad bearing hardware",
-                    "start_xy_mm": rotate((29, sign * 23.5)),
-                    "end_xy_mm": rotate((29, sign * 25.5)),
-                }
+                _straight_row(
+                    "rectangle58_49",
+                    f"{index}_{sign}",
+                    _rotated_point((29, sign * 23.5), quarter_turn),
+                    _rotated_point((29, sign * 25.5), quarter_turn),
+                    width=3.2,
+                    fastener="M2.5 with reviewed broad bearing hardware",
+                )
             )
     for index in range(4):
         result.append(
-            {
-                "name": f"central_axis_{index}",
-                "kind": "straight",
-                "family": "central_axis",
-                "width_mm": 2.6,
-                "fastener": "M2",
-                "start_xy_mm": _radial_point(CENTRAL_AXIS_RADIUS_RANGE[0], 90 * index),
-                "end_xy_mm": _radial_point(CENTRAL_AXIS_RADIUS_RANGE[1], 90 * index),
-            }
+            _straight_row(
+                "central_axis",
+                index,
+                _radial_point(CENTRAL_AXIS_RADIUS_RANGE[0], 90 * index),
+                _radial_point(CENTRAL_AXIS_RADIUS_RANGE[1], 90 * index),
+            )
         )
         angle = math.radians(90 * index)
         for suffix, interval in (
@@ -141,23 +130,9 @@ def rows():
             ("middle", SIDE_MIDDLE_Y_RANGE),
             ("positive", SIDE_Y_RANGE),
         ):
-            points = tuple(
-                (
-                    SIDE_X * math.cos(angle) - y * math.sin(angle),
-                    SIDE_X * math.sin(angle) + y * math.cos(angle),
-                )
-                for y in interval
-            )
+            points = tuple(_rotated_point((SIDE_X, y), angle) for y in interval)
             result.append(
-                {
-                    "name": f"side_{index}_{suffix}",
-                    "kind": "straight",
-                    "family": "side",
-                    "width_mm": 2.6,
-                    "fastener": "M2",
-                    "start_xy_mm": points[0],
-                    "end_xy_mm": points[1],
-                }
+                _straight_row("side", f"{index}_{suffix}", points[0], points[1])
             )
     return result
 

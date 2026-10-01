@@ -9,7 +9,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, translated_shape, world_shape
+from gondola.cad import belongs_to_group, translated_shape, union, world_shape
 from gondola.contracts.drive import FACE_WIDTH_MM, MODULE_MM
 from gondola.parts import propulsion
 
@@ -78,6 +78,30 @@ def continuous_path(shape, waypoints, obstacles):
         "obstacles": sorted(obstacles),
         "segments": rows,
         "passed": bool(rows) and all(row["passed"] for row in rows),
+    }
+
+
+def contained_region_paths(shape, regions, waypoints, obstacles):
+    """Sweep named stock regions only after accounting for the complete part.
+
+    Callers define their own conservative stock. Keeping regions separate avoids
+    filling empty corners with one bounding box; their union must contain every
+    part feature so an omitted region cannot silently pass the path check.
+    """
+    regions = tuple(regions)
+    uncovered = (
+        abs(shape.cut(union([part for _, part in regions])).Volume)
+        if regions
+        else abs(shape.Volume)
+    )
+    rows = [
+        {"region": label, **continuous_path(part, waypoints, obstacles)}
+        for label, part in regions
+    ]
+    return {
+        "regions": rows,
+        "uncovered_volume_mm3": uncovered,
+        "passed": bool(rows) and uncovered < TOL and all(row["passed"] for row in rows),
     }
 
 
