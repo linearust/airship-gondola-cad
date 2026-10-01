@@ -47,6 +47,7 @@ from gondola.print_export import (
     print_shape,
     print_size_declaration_check,
     print_solid_comparison,
+    saved_print_layout_check,
 )
 from gondola.print_materials import print_specification
 from gondola.procurement import purchase_code
@@ -655,6 +656,9 @@ def export_check(source, registry):
         )
     count = sum(r["quantity"] for r in manifest["parts"])
     each_once = len(exported_names) == len(names) and set(exported_names) == names
+    layout = saved_print_layout_check(
+        source.parent / (source.stem + "_print_parts.FCStd"), registry, manifest
+    )
     return {
         "process": "SLS/MJF powder-bed PA12",
         "supplier_single_piece_acceptance_still_required": True,
@@ -663,6 +667,7 @@ def export_check(source, registry):
         "published_size_guide_scope": MANUFACTURING_DECISION["size_guide_scope"],
         "one_piece_machine_fit_proven": False,
         "source_identity": identity,
+        "native_print_layout": layout,
         "unique_stl_count": len(rows),
         "installed_printed_count": len(registry.PrintedParts),
         "coupon_count": len(registry.FitCoupons),
@@ -671,6 +676,7 @@ def export_check(source, registry):
         "every_print_object_exported_once": each_once,
         "no_purchased_hardware_in_stls": not bool(set(exported_names) & bought_names),
         "passed": identity["passed"]
+        and layout["passed"]
         and bool(rows)
         and all(r["passed"] for r in rows)
         and count == len(printed)

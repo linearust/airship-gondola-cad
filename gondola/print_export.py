@@ -11,7 +11,7 @@ from pathlib import Path
 import FreeCAD as App
 import MeshPart
 
-from .cad import set_print_sku, set_property
+from .cad import set_print_sku, set_property, world_shape
 from .config import ARTIFACT_SCHEMA_VERSION
 from .contracts.design import (
     MANUFACTURING_DECISION,
@@ -36,6 +36,9 @@ MESH_PARAMETERS = {
     "relative": False,
 }
 SIZE_NUMERICAL_TOLERANCE_MM = 1e-5
+PRINT_LAYOUT_ROLE = (
+    "Manufacturing overview; one printable SKU, quantity recorded separately"
+)
 
 
 def _valid_dimensions(dimensions):
@@ -397,6 +400,119 @@ def print_entry_manufacturing_check(entry, instances):
     )
 
 
+def print_layout_shape(shape, cursor):
+    """Place one oriented print in the overview and return the next row cursor."""
+    x, y, row_depth = cursor
+    bounds = shape.optimalBoundingBox(False, False)
+    if x and x + bounds.XLength > 380:
+        x, y, row_depth = 0, y + row_depth + 15, 0
+    result = shape.copy()
+    result.translate(App.Vector(x - bounds.XMin, y - bounds.YMin, 0))
+    return result, (x + bounds.XLength + 15, y, max(row_depth, bounds.YLength))
+
+
+def print_layout_label(sku, installed_quantity, coupon_quantity):
+    return print_label(
+        f"{sku} | installed {installed_quantity} + sample {coupon_quantity}"
+    )
+
+
+def print_layout_check(layout, registry, manifest):
+    """Audit the saved overview against native prints, never its display alone.
+
+    Its shape, orientation and packing translation must match the exported print.
+    Counts and source names come from native installed/coupon roles rather than
+    trusting either the manifest or the overview's own metadata.
+    """
+    installed, coupons = list(registry.PrintedParts), list(registry.FitCoupons)
+    buckets = {}
+    for obj in installed + coupons:
+        buckets.setdefault(str(getattr(obj, "PrintSKU", obj.Name)), []).append(obj)
+    entries = manifest.get("parts")
+    if not isinstance(entries, list) or not all(
+        isinstance(entry, dict) for entry in entries
+    ):
+        return {"passed": False, "error": "Malformed print manifest inventory."}
+    manifest_skus = [entry.get("sku") for entry in entries]
+    inventory_matches = (
+        bool(buckets)
+        and manifest_skus == list(buckets)
+        and len(layout.Objects) == len(buckets)
+        and {obj.Name for obj in layout.Objects} == set(buckets)
+    )
+    fingerprint = source_fingerprint()
+    source_matches = (
+        str(getattr(registry, "SourceFingerprint", "")) == fingerprint
+        and manifest.get("source_fingerprint") == fingerprint
+    )
+    rows, cursor = [], (0, 0, 0)
+    for index, (sku, instances) in enumerate(buckets.items()):
+        expected, cursor = print_layout_shape(print_shape(instances[0]), cursor)
+        item = layout.getObject(sku)
+        row = {"sku": sku, "passed": False}
+        rows.append(row)
+        if item is None or not item.isDerivedFrom("Part::Feature"):
+            row["error"] = "Missing native print-layout feature."
+            continue
+        installed_quantity = sum(obj in installed for obj in instances)
+        coupon_quantity = sum(obj in coupons for obj in instances)
+        quantities = {
+            "Quantity": len(instances),
+            "InstalledQuantity": installed_quantity,
+            "CouponQuantity": coupon_quantity,
+        }
+        metadata_matches = (
+            getattr(item, "PrintPart", None) is True
+            and str(getattr(item, "PrintSKU", "")) == sku
+            and str(getattr(item, "Role", "")) == PRINT_LAYOUT_ROLE
+            and list(getattr(item, "SourceObjectNames", []))
+            == [obj.Name for obj in instances]
+            and item.Label
+            == print_layout_label(sku, installed_quantity, coupon_quantity)
+            and print_metadata_matches(item)
+            and all(
+                type(getattr(item, key, None)) is int and getattr(item, key) == value
+                for key, value in quantities.items()
+            )
+        )
+        try:
+            manifest_matches = (
+                index < len(entries)
+                and entries[index].get("sku") == sku
+                and print_entry_inventory_check(entries[index], installed, coupons)[
+                    "passed"
+                ]
+                and entries[index].get("instances") == [obj.Name for obj in instances]
+            )
+        except (KeyError, TypeError):
+            manifest_matches = False
+        comparison = print_solid_comparison(expected, world_shape(item), 1e-5)
+        row.update(
+            metadata_matches=metadata_matches,
+            manifest_matches_native_roles=manifest_matches,
+            geometry=comparison,
+            passed=metadata_matches and manifest_matches and comparison["passed"],
+        )
+    return {
+        "inventory_matches": inventory_matches,
+        "source_fingerprint_matches": source_matches,
+        "parts": rows,
+        "scope": "One native overview object per printable SKU; exact print orientation and overview placement, source roles, quantities and manufacturing labels. Not a nested machine job.",
+        "passed": inventory_matches
+        and source_matches
+        and all(row["passed"] for row in rows),
+    }
+
+
+def saved_print_layout_check(path, registry, manifest):
+    """Read the native inspection artifact without changing or saving it."""
+    layout = App.openDocument(str(path), hidden=True)
+    try:
+        return print_layout_check(layout, registry, manifest)
+    finally:
+        App.closeDocument(layout.Name)
+
+
 def export_print_parts(assembly, installed, coupons, out, stem):
     """Export one STL/STEP per verified print SKU and record all quantities."""
     out = Path(out)
@@ -415,7 +531,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
     layout = App.newDocument("GondolaPrintParts")
     layout.Label = print_label("Individual print files and quantities")
     entries = []
-    x = y = row_depth = 0
+    cursor = (0, 0, 0)
     for sku, instances in buckets.items():
         obj = instances[0]
         oriented_shapes = {part.Name: print_shape(part) for part in instances}
@@ -461,10 +577,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         mesh.write(str(folder / filename))
         shape.exportStep(str(folder / step_filename))
         # The native overview is for inspection, not a nested machine job.
-        if x and x + bounds.XLength > 380:
-            x, y, row_depth = 0, y + row_depth + 15, 0
-        view_shape = shape.copy()
-        view_shape.translate(App.Vector(x - bounds.XMin, y - bounds.YMin, 0))
+        view_shape, cursor = print_layout_shape(shape, cursor)
         item = layout.addObject("Part::Feature", sku)
         item.Shape = view_shape
         set_property(item, "PrintPart", True, "App::PropertyBool", "Printing")
@@ -474,7 +587,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         set_property(
             item,
             "Role",
-            "Manufacturing overview; one printable SKU, quantity recorded separately",
+            PRINT_LAYOUT_ROLE,
         )
         set_property(
             item,
@@ -485,9 +598,7 @@ def export_print_parts(assembly, installed, coupons, out, stem):
         )
         installed_quantity = sum(part in installed for part in instances)
         coupon_quantity = sum(part in coupons for part in instances)
-        item.Label = print_label(
-            f"{sku} | installed {installed_quantity} + sample {coupon_quantity}"
-        )
+        item.Label = print_layout_label(sku, installed_quantity, coupon_quantity)
         for key, value in [
             ("Quantity", len(instances)),
             ("InstalledQuantity", installed_quantity),
@@ -526,8 +637,6 @@ def export_print_parts(assembly, installed, coupons, out, stem):
                 "checks": checks,
             }
         )
-        x += bounds.XLength + 15
-        row_depth = max(row_depth, bounds.YLength)
 
     layout.recompute()
     layout.saveAs(str(out / (stem + "_print_parts.FCStd")))

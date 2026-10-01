@@ -29,6 +29,9 @@ class PreviewCallbacks(unittest.TestCase):
             "Part": Mock(),
             "PySide": types.SimpleNamespace(QtCore=qt),
             "gondola.assembly": types.SimpleNamespace(style_assembly=Mock()),
+            "gondola.print_export": types.SimpleNamespace(
+                print_layout_check=Mock(return_value={"passed": True})
+            ),
             "gondola.cad": types.SimpleNamespace(
                 create_group=Mock(),
                 world_shape=Mock(),
@@ -43,6 +46,9 @@ class PreviewCallbacks(unittest.TestCase):
             spec.loader.exec_module(self.preview)
         self.preview.OUTPUT_DIR = self.output
         self.preview.source_fingerprint = Mock(return_value="current source")
+        manifest_folder = self.output / "gondola_print_parts"
+        manifest_folder.mkdir()
+        (manifest_folder / "print_manifest.json").write_text("{}")
 
     def read_state(self):
         return json.loads((self.output / "preview_state.json").read_text())
@@ -125,6 +131,25 @@ class PreviewCallbacks(unittest.TestCase):
         self.assertTrue(board.ViewObject.Visibility)
         self.assertFalse(unrelated.ViewObject.Visibility)
         self.assertFalse(reserve.ViewObject.Visibility)
+
+    def test_inconsistent_native_layout_prevents_rendering_and_invalidates_success(
+        self,
+    ):
+        self.preview.print_layout_check.return_value = {"passed": False}
+        assembly = types.SimpleNamespace(
+            DesignRegistry=types.SimpleNamespace(SourceFingerprint="current source")
+        )
+        layout = types.SimpleNamespace(Name="layout")
+        self.app.openDocument.side_effect = [assembly, layout]
+        self.preview.render_previews()
+        state = self.read_state()
+        self.assertFalse(state["passed"])
+        self.assertIn("Saved print layout is stale or inconsistent", state["error"])
+        self.preview.print_layout_check.assert_called_once_with(
+            layout, assembly.DesignRegistry, {}
+        )
+        self.assertEqual(self.callbacks, [])
+        self.gui.activeDocument.assert_not_called()
 
     def test_pending_callbacks_do_not_run_after_first_failure(self):
         session = self.preview._PreviewSession(self.output, close_after=False)

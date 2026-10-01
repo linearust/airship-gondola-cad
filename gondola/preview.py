@@ -15,6 +15,7 @@ from gondola.assembly import style_assembly
 from gondola.cad import belongs_to_group, create_group, world_shape
 from gondola.config import ARTIFACT_STEM, OUTPUT_DIR
 from gondola.contracts.design import DESIGN_REVISION
+from gondola.print_export import print_layout_check
 from gondola.provenance import file_sha256, source_fingerprint
 
 
@@ -182,6 +183,15 @@ def render_previews(close_after=False):
         layout = App.openDocument(
             str(OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd"))
         )
+        manifest = json.loads(
+            (
+                OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts") / "print_manifest.json"
+            ).read_text()
+        )
+        if not print_layout_check(layout, doc.DesignRegistry, manifest)["passed"]:
+            raise RuntimeError(
+                "Saved print layout is stale or inconsistent; rebuild before preview."
+            )
         power = App.openDocument(str(OUTPUT_DIR / "gondola_power_options.FCStd"))
         style_power_option(power)
         detail = create_attachment_detail_document()
@@ -305,6 +315,9 @@ def render_previews(close_after=False):
                         for job in jobs
                     },
                     source_sha256=file_sha256(OUTPUT_DIR / (ARTIFACT_STEM + ".FCStd")),
+                    print_layout_sha256=file_sha256(
+                        OUTPUT_DIR / (ARTIFACT_STEM + "_print_parts.FCStd")
+                    ),
                     images=[ARTIFACT_STEM + job[2] for job in jobs],
                 )
                 if close_after:

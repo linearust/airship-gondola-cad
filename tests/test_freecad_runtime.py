@@ -22,6 +22,10 @@ class FreeCADLauncher(unittest.TestCase):
         self.output = Path(directory.name)
         self.cad = self.output / (freecad_runtime.ARTIFACT_STEM + ".FCStd")
         self.cad.write_bytes(b"native assembly")
+        self.layout = self.output / (
+            freecad_runtime.ARTIFACT_STEM + "_print_parts.FCStd"
+        )
+        self.layout.write_bytes(b"native print layout")
         self.fingerprint = "current source fingerprint"
         for target, value in (
             ("locate_appimage", Mock(return_value=self.output / "FreeCAD.AppImage")),
@@ -38,6 +42,7 @@ class FreeCADLauncher(unittest.TestCase):
             "run_id": env["GONDOLA_PREVIEW_RUN_ID"],
             "source_fingerprint": self.fingerprint,
             "source_sha256": hashlib.sha256(self.cad.read_bytes()).hexdigest(),
+            "print_layout_sha256": hashlib.sha256(self.layout.read_bytes()).hexdigest(),
             **changes,
         }
         (self.output / "preview_state.json").write_text(json.dumps(state))
@@ -132,6 +137,8 @@ class FreeCADLauncher(unittest.TestCase):
         for changes, message in (
             ({"source_fingerprint": "old source"}, "Source changed"),
             ({"source_sha256": "old CAD"}, "Saved CAD changed"),
+            ({"print_layout_sha256": "old layout"}, "Print layout changed"),
+            ({"print_layout_sha256": None}, "Print layout changed"),
         ):
             with self.subTest(changes=changes):
 
@@ -226,6 +233,9 @@ class FreeCADLauncher(unittest.TestCase):
                         "source_fingerprint": self.fingerprint,
                         "source_sha256": hashlib.sha256(
                             self.cad.read_bytes()
+                        ).hexdigest(),
+                        "print_layout_sha256": hashlib.sha256(
+                            self.layout.read_bytes()
                         ).hexdigest(),
                         "error": reported_error or "GUI did not close",
                         "views": {"assembly": "rendered"},

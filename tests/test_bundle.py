@@ -34,6 +34,8 @@ class BundleIntegrityTests(unittest.TestCase):
         self.cad_path = self.output / (self.stem + ".FCStd")
         self.cad_path.write_bytes(b"saved CAD")
         self.cad_sha = bundle.file_sha256(self.cad_path)
+        self.layout_path = self.output / (self.stem + "_print_parts.FCStd")
+        self.layout_path.write_bytes(b"saved print layout")
         for name in bundle.POWER_ARTIFACT_NAMES:
             (self.output / name).write_bytes(("optional " + name).encode())
         self.power_audit = {
@@ -170,6 +172,7 @@ class BundleIntegrityTests(unittest.TestCase):
                 "source_fingerprint": self.fingerprint,
                 "source_sha256": self.cad_sha,
                 "images": [self.image],
+                "print_layout_sha256": bundle.file_sha256(self.layout_path),
                 "image_sha256": {self.image: sha256_bytes(b"rendered preview")},
             },
         )
@@ -202,6 +205,11 @@ class BundleIntegrityTests(unittest.TestCase):
                 bundle.EXPECTED_INVENTORY["unique_print_files"] + 1,
             )
             self.assertNotIn("obsolete.stl", names)
+            self.assertNotIn(self.layout_path.name, names)
+            self.assertEqual(
+                zipped.read("inspection/" + self.layout_path.name),
+                self.layout_path.read_bytes(),
+            )
             self.assertIn("optional_power/" + bundle.POWER_ARTIFACT_NAMES[1], names)
             self.assertIn("validation/baseline.json", names)
             self.assertEqual(
@@ -281,6 +289,33 @@ class BundleIntegrityTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Stale or altered"):
                     self.package()
                 path.write_bytes(original)
+
+    def test_changed_or_missing_native_print_layout_cannot_publish(self):
+        self.layout_path.write_bytes(b"stale geometry or quantities")
+        with self.assertRaisesRegex(RuntimeError, "Stale or altered"):
+            self.package()
+        self.layout_path.unlink()
+        with self.assertRaisesRegex(RuntimeError, "Missing or malformed"):
+            self.package()
+
+    def test_preview_must_match_validated_native_print_layout(self):
+        state_path = self.output / "preview_state.json"
+        state = json.loads(state_path.read_text())
+        for layout_hash in (None, sha256_bytes(b"previous print layout")):
+            with self.subTest(layout_hash=layout_hash):
+                write_json(state_path, {**state, "print_layout_sha256": layout_hash})
+                with self.assertRaisesRegex(RuntimeError, "Preview is missing/stale"):
+                    self.package()
+
+    def test_revalidated_layout_requires_new_preview(self):
+        self.layout_path.write_bytes(b"new validated layout")
+        for field in ("artifact_hashes_before", "artifact_hashes"):
+            self.audit[field][self.layout_path.name] = bundle.file_sha256(
+                self.layout_path
+            )
+        write_json(self.audit_path, self.audit)
+        with self.assertRaisesRegex(RuntimeError, "Preview is missing/stale"):
+            self.package()
 
     def test_exports_must_match_both_validation_snapshots(self):
         self.audit["artifact_hashes_before"] = {}
@@ -400,6 +435,7 @@ class BundleIntegrityTests(unittest.TestCase):
             self.output / self.image,
             self.manifest_path,
             self.bom_path,
+            self.layout_path,
             self.folder / self.parts[0]["file"],
             self.baseline_file,
         )

@@ -106,6 +106,7 @@ def print_artifact_paths(output, stem, manifest):
     paths = {
         folder + "/print_manifest.json": output / folder / "print_manifest.json",
         stem + "_hardware_bom.json": output / (stem + "_hardware_bom.json"),
+        stem + "_print_parts.FCStd": output / (stem + "_print_parts.FCStd"),
     }
     skus, instances = set(), set()
     installed = coupons = 0
@@ -282,7 +283,7 @@ def build_bundle():
             or audit.get("artifact_hashes") != hashes
         ):
             raise RuntimeError(
-                "Stale or altered print files, manifest or BOM; run validate again."
+                "Stale or altered print files, layout, manifest or BOM; run validate again."
             )
         bom_sha = hashes[ARTIFACT_STEM + "_hardware_bom.json"]
         if (
@@ -302,7 +303,12 @@ def build_bundle():
                     raise RuntimeError("Export checksum disagrees with print manifest.")
         state_path = output / "preview_state.json"
         state = _read_json(state_path, inputs)
-        if state.get("passed") is not True or state.get("source_sha256") != cad_sha:
+        layout_name = ARTIFACT_STEM + "_print_parts.FCStd"
+        if (
+            state.get("passed") is not True
+            or state.get("source_sha256") != cad_sha
+            or state.get("print_layout_sha256") != hashes[layout_name]
+        ):
             raise RuntimeError("Preview is missing/stale. Run preview, then validate.")
         _same_source(state, fingerprint, "preview")
         images = state.get("images")
@@ -320,6 +326,7 @@ def build_bundle():
                 ARTIFACT_STEM + "_print_parts/print_manifest.json"
             ),
             "hardware_bom.json": snapshots.pop(ARTIFACT_STEM + "_hardware_bom.json"),
+            "inspection/" + layout_name: snapshots.pop(layout_name),
             "validation/assembly.json": inputs[audit_path],
             "validation/equipment.json": inputs[equipment_path],
             "validation/baseline.json": inputs[baseline_path],

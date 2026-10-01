@@ -61,6 +61,7 @@ def _native_structure_check(doc):
             "FitCoupons",
             "OpticalMountParts",
             "TapeReferences",
+            "RailLocks",
         ),
         "OpticalFlowModule": (
             "OpticalMountContract",

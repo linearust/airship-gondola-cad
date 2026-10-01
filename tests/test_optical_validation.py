@@ -123,6 +123,51 @@ class OpticalClearanceTests(unittest.TestCase):
         group.removeProperty("OpticalMountContract")
         self.assertFalse(mtf_sensor_check(self.doc)["passed"])
 
+    def test_missing_rail_registry_returns_failure_without_changing_cad(self):
+        from gondola.parts.optical_mount import set_pitch
+        from gondola.validation.optical import mtf_sensor_check
+
+        # Use a non-neutral saved control to catch validation resetting the pose.
+        set_pitch(self.doc, 11)
+        self.doc.DesignRegistry.removeProperty("RailLocks")
+        before_objects = tuple(obj.Name for obj in self.doc.Objects)
+        before_properties = {
+            obj.Name: tuple(obj.PropertiesList) for obj in self.doc.Objects
+        }
+        before_placements = {
+            obj.Name: obj.Placement.copy()
+            for obj in self.doc.Objects
+            if "Placement" in obj.PropertiesList
+        }
+        before_sensor_model = self.doc.OpticalFlowModule.SensorModel
+        before_sensor_shapes = {
+            name: self.doc.getObject(name).Shape.exportBrepToString()
+            for name in (
+                "ModuleMTF02PEnvelope",
+                "MTF02POpticalClearanceReserve",
+                "MTF02PConnectorReserve",
+            )
+        }
+
+        report = mtf_sensor_check(self.doc)
+
+        self.assertFalse(report["passed"])
+        structure = report["source_evidence"]["native_structure"]
+        self.assertFalse(structure["passed"])
+        self.assertIn(
+            {"object": "DesignRegistry", "missing_properties": ["RailLocks"]},
+            structure["errors"],
+        )
+        self.assertEqual(tuple(obj.Name for obj in self.doc.Objects), before_objects)
+        for obj in self.doc.Objects:
+            self.assertEqual(tuple(obj.PropertiesList), before_properties[obj.Name])
+        for name, placement in before_placements.items():
+            self.assertTrue(self.doc.getObject(name).Placement.isSame(placement, 1e-7))
+        self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, 11)
+        self.assertEqual(self.doc.OpticalFlowModule.SensorModel, before_sensor_model)
+        for name, shape in before_sensor_shapes.items():
+            self.assertEqual(self.doc.getObject(name).Shape.exportBrepToString(), shape)
+
     def test_both_sensors_visit_actual_carrier_and_restore_state_on_exception(self):
         from gondola.parts.optical_mount import set_pitch
         from gondola.validation import optical

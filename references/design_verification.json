@@ -1,12 +1,12 @@
 {
   "revision": "BZ",
-  "change_kind": "Refactor rail validation ownership and common datums; consolidate thread metadata; correct servo-wall note",
+  "change_kind": "Bind native print layout to validation, preview and bundle; report missing optical registry without mutation",
   "passed": true,
-  "recorded_utc": "2026-10-01T09:44:37.126576+00:00",
-  "scope": "Behavior/geometry-preserving code refactor and corrected servo-wall description; physical qualification unchanged.",
-  "predecessor_commit": "3fdaa60f09ff94beeeda0d8b7278c3139268dca5",
-  "source_fingerprint": "fce5e58230d1e979bf1b28757e15e6bb1733a2f19d43e2314f416a95c354a330",
-  "cad_sha256": "556529c55ed315a7f0ca1ff5258c1528f323e9a42c35194a54ed7c32fa6a9f5a",
+  "recorded_utc": "2026-10-01T10:20:49.142035+00:00",
+  "scope": "Validation improvements with unchanged CAD geometry, native controls, quantities and mechanical qualification.",
+  "predecessor_commit": "046d48527264c1eb317c2b0bb3261d908590327b",
+  "source_fingerprint": "177bbc2b31d11500517d59562dde8318bf4f05ef9ce6e1db07ee2d41506d2684",
+  "cad_sha256": "26277002711bcc4162598d469ae02b0960658fed180ecf1835b8ff1c76ecb0e1",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
@@ -14,7 +14,7 @@
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 740,
+    "testsRun": 753,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -77,13 +77,13 @@
     "current_hardware_g": 0.0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "556529c55ed315a7f0ca1ff5258c1528f323e9a42c35194a54ed7c32fa6a9f5a",
-    "gondola_print_parts.FCStd": "08aa2d9d2acc556e463cdf53690e5e078f354c68453f977e00aa9880d91c00b6",
-    "gondola_power_options.FCStd": "c2cb5b540c8deadc38739bfb9e35e71dc68053599f884fefafe475731f1d4630",
-    "gondola_attachment_detail.FCStd": "ee865c34e63e7c36ff4da7c0993f9080167432704c951650db3561ed6dcaef9d"
+    "gondola.FCStd": "26277002711bcc4162598d469ae02b0960658fed180ecf1835b8ff1c76ecb0e1",
+    "gondola_print_parts.FCStd": "77bbe81b00967953da1d748b92fd900966f83e748d701b53ce2d5825b128a5cd",
+    "gondola_power_options.FCStd": "9d525176532976b46b970828df46d9187719160579b6a6e094a0b1602d5158c3",
+    "gondola_attachment_detail.FCStd": "850347296f4a6fad037f1c62542726dd299bca295af95fde199e5fada251e4b9"
   },
-  "print_bundle_sha256": "f208cdf9cdf182655c8d89fadb88fec264c9880f042f8e365676b5a637952f65",
+  "print_bundle_sha256": "7b2b4e781754e04908e43a95ae804623111516bba85dc707f87fc06f1518cbb2",
   "evidence_archive": "design_checks.json.gz",
   "evidence_record_key": "refactor_verification",
-  "evidence_archive_sha256": "a7b56eb0a2b4d89480814dd79126b6c56f3fc23209ce4b05669a7b6fba8b5efe"
+  "evidence_archive_sha256": "52f8872c72d418ef417ca13694592788bd80e4c319705dd8966b1425a231d9a7"
 }

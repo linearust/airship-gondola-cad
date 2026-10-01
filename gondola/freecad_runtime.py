@@ -153,6 +153,11 @@ def _verify_preview_state(output_dir, run_id, fingerprint):
             raise RuntimeError(
                 "Saved CAD changed during preview; render and validate again."
             )
+        layout_hash = file_sha256(output_dir / (ARTIFACT_STEM + "_print_parts.FCStd"))
+        if state.get("print_layout_sha256") != layout_hash:
+            raise RuntimeError(
+                "Print layout changed during preview; render and validate again."
+            )
     except (OSError, ValueError) as error:
         raise RuntimeError(
             "FreeCAD preview did not write a readable result; inspect its output."
