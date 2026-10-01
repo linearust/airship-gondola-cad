@@ -33,6 +33,18 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
         self.assertAlmostEqual(report["nominal_axial_endplay_mm"], 0.5)
         self.assertAlmostEqual(self.b.SEAT_RADIUS * 2, 6.1)
 
+    def test_snug_keeper_guides_and_shallow_nut_recess_retain_the_frame_floor(self):
+        from gondola.cad import box
+
+        self.assertAlmostEqual(self.b.KEEPER_GUIDE_CLEARANCE, 0.1)
+        self.assertAlmostEqual(self.cup.BoundBox.YMax, 4.0)
+        self.assertAlmostEqual(self.b.KEEPER_NUT_SEAT_Y, 3.5)
+        # Pocket bearing plane at3.5 leaves2.0mm from the keeper hard seat1.5.
+        floor = box(0.2, 2.0, 0.2, (1.5, 1.5, -18.1))
+        self.assertLess(floor.cut(self.cup).Volume, 1e-7)
+        pocket = box(0.2, 0.49, 0.2, (1.5, 3.51, -18.1))
+        self.assertLess(pocket.common(self.cup).Volume, 1e-7)
+
     def test_symmetric_keeper_backing_retains_frame_load_paths(self):
         from gondola.validation.bearing_capture import keeper_backing_check
 

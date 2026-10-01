@@ -158,11 +158,18 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
 
         self.assertGreaterEqual(2.0 - 0.3 - (1.2 + 0.3), 0.19)
         self.assertLess(
-            math.asin((2.9 - 1.7) / 5.7),
+            math.asin((2.9 - 2.1) / 5.7),
             optical_interface.MAX_REGISTRATION_YAW_RAD,
         )
         self.assertAlmostEqual(optical_interface.LOCATOR_DEPTH, 1.2)
-        self.assertAlmostEqual(optical_interface.LOCATOR_WIDTH, 2.0)
+        self.assertAlmostEqual(optical_interface.LOCATOR_WIDTH, 2.4)
+        self.assertAlmostEqual(optical_interface.CLAMP_HOLE_DIAMETER, 2.2)
+        self.assertAlmostEqual(
+            optical_interface.interface_contract()["locator"][
+                "nominal_slot_side_clearance_mm"
+            ],
+            0.1,
+        )
 
     def test_registration_bound_encloses_rotated_and_shifted_sensor(self):
         import math

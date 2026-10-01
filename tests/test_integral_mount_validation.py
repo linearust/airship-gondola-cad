@@ -65,7 +65,7 @@ class IntegralMountValidationTests(unittest.TestCase):
         # Outside the protected U-shoe crop but within the actual load path.
         # Complete source comparison must catch defects above that witness.
         cuts = {
-            name: Part.makeBox(1, 1, 0.4, App.Vector(4, -3, 13))
+            name: Part.makeBox(1, 1, 0.4, App.Vector(4, -0.5, 13))
             for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount")
         }
         cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 0, 10.8))

@@ -26,7 +26,7 @@ COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
 COMMON_DECK_SIZE = mounting_plate.SIZE_MM
 # Two short straight supports leave the centre accessory bore open below the deck.
 SUPPORT_X_RANGES_MM = ((-8.0, -3.0), (3.0, 8.0))
-SUPPORT_Y_RANGE_MM = (-3.75, 1.25)
+SUPPORT_Y_RANGE_MM = (-2.5, 2.5)
 NAVIGATION_CENTRE_XY = (0.0, -2.2)
 PAS_HOLE_CENTRES = tuple(
     (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
@@ -154,12 +154,12 @@ def common_plate_contract():
         "deck_centre_xy_mm": (0.0, 0.0),
         "outline_corner_radius_mm": mounting_plate.CORNER_RADIUS_MM,
         "central_support": {
-            "profile": "two short rectangular supports with an open centre",
+            "profile": "two centred rectangular supports with an open centre",
             "x_ranges_mm": SUPPORT_X_RANGES_MM,
             "y_range_mm": SUPPORT_Y_RANGE_MM,
             "height_mm": DECK_BOTTOM_Z - rail.MOUNT_TOP_Z,
             "z_range_mm": (rail.MOUNT_TOP_Z, DECK_BOTTOM_Z),
-            "scope": "Two integral supports connect the deck to the U-shaped rail-shoe roof. Their 6 mm central gap preserves access below the centre bore; the declared deck-to-roof height limits screw-head, nut and tip clearance. No centre nut pocket or separate spacer. Geometry does not qualify strength or creep.",
+            "scope": "Two symmetrically centred integral supports connect the deck to the U-shaped rail-shoe roof. Their 6 mm central gap preserves access below the centre bore; the declared deck-to-roof height limits screw-head, nut and tip clearance. No centre nut pocket or separate spacer. Geometry does not qualify strength or creep.",
         },
         "complete_carrier_half_turn_symmetric": False,
         "plate_quarter_turn_and_xy_mirror_symmetric": True,

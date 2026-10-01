@@ -1,4 +1,4 @@
-"""Nominal capture, unchanged bearing planes and release of shallow M2 guides."""
+"""Nominal capture, bearing planes and release of recessed M2 nut seats."""
 
 import unittest
 
@@ -20,14 +20,14 @@ class ShallowNutGuideTests(unittest.TestCase):
             (
                 cls.cup,
                 App.Placement(
-                    App.Vector(0, 4, -18),
+                    App.Vector(0, 3.5, -18),
                     App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
                 ),
                 6.0,
             ),
         )
 
-    def test_both_hosts_fit_and_restrain_ordinary_nuts_without_moving_seats(self):
+    def test_shallow_keeper_pocket_fits_and_restrains_ordinary_nuts(self):
         from gondola.validation.nut_guides import nut_guide_check
 
         for host, pose, length in self.frames:
@@ -38,18 +38,13 @@ class ShallowNutGuideTests(unittest.TestCase):
                 self.assertTrue(report["passed"], report)
                 self.assertEqual(len(report["minimum_nut_rotation_stops"]), 18)
 
-    def test_each_rail_is_required_even_if_the_other_can_stop_rotation(self):
+    def test_complete_recess_wall_is_required(self):
         from gondola.validation.nut_guides import nut_guide_check
 
         for host, pose, length in self.frames:
             for side in (-1, 1):
                 cutter = Part.makeBox(
-                    length + 0.2,
-                    1.7,
-                    1.1,
-                    App.Vector(
-                        -length / 2 - 0.1, side * 2.125 - (1.6 if side < 0 else 0.1), 0
-                    ),
+                    2, 2, 0.5, App.Vector(-1, side * 2.125 - (2 if side < 0 else 0), 0)
                 )
                 cutter.Placement = pose.multiply(cutter.Placement)
                 with self.subTest(rail_length=length, side=side):
@@ -59,7 +54,7 @@ class ShallowNutGuideTests(unittest.TestCase):
                         sum(
                             row["missing_rail_mm3"] for row in report["rail_witnesses"]
                         ),
-                        1,
+                        0.1,
                     )
 
     def test_clearance_loss_cannot_be_hidden_by_a_fitting_centred_nut(self):
@@ -237,7 +232,7 @@ class GuidedNutServiceTests(unittest.TestCase):
                                 retained,
                                 nut_lateral_direction=lateral,
                                 guided_nut=True,
-                                capture_depth_mm=1.5 if joint == "OutputClamp" else 1.0,
+                                capture_depth_mm=1.5 if joint == "OutputClamp" else 0.5,
                             )
                             self.assertTrue(report["passed"], report)
         finally:

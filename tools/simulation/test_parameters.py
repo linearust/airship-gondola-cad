@@ -61,9 +61,14 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertNotIn("optical_rail_station_x_mm", geo)
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
         for name in ("Port", "Starboard"):
+            pod = self.doc.getObject(name + "Pod")
             self.assertEqual(
-                geo["main_propulsors"][name]["pivot_cad_m"],
+                vector_m(pod.getGlobalPlacement().multVec(App.Vector(3, 0, 0))),
                 geo["main_propulsors"][name]["motor_envelope_centre_cad_m"],
+            )
+            self.assertEqual(
+                vector_m(pod.getGlobalPlacement().multVec(App.Vector(15, 0, 0))),
+                geo["main_propulsors"][name]["propeller_envelope_centre_cad_m"],
             )
 
     def test_propulsion_frame_follows_continuous_station(self):
@@ -209,7 +214,7 @@ class SavedGeometryTests(unittest.TestCase):
                 disk = world_shape(
                     self.doc.getObject(name + "PropellerDisk")
                 ).CenterOfMass
-                self.assertLess(((disk - pivot) - 12 * axis).Length, 1e-7)
+                self.assertLess(((disk - pivot) - 15 * axis).Length, 1e-7)
                 for force_sign in (-1, 1):
                     force = force_sign * 2.5 * axis
                     self.assertLess(

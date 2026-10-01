@@ -4,6 +4,7 @@ Every other module stays installed. Rigid paths do not qualify real tools,
 flexible leads, curved installation, clamp preload or adhesive loading.
 """
 
+import math
 from collections import Counter
 
 import FreeCAD as App
@@ -14,7 +15,7 @@ from gondola.contracts.design import MODULE_STATIONS
 from gondola.parts import rail
 
 from .baseline import module_attachment_pose, module_control_bindings
-from .geometry import TOL
+from .geometry import TOL, translation_sweep
 from .propulsion_service import continuous_path
 from .rail_interface import attachment_sites, mount_binding, site_placement
 
@@ -39,9 +40,64 @@ def side_driver_clearance(screw, obstacles):
     }
 
 
+def _rail_hex_nut(across_flats, height, x, seat):
+    """Literal ordinary-M3 envelope independent of the production nut builder."""
+    radius = across_flats / math.sqrt(3)
+    points = [
+        V(
+            x + radius * math.cos(i * math.pi / 3),
+            seat,
+            7 + radius * math.sin(i * math.pi / 3),
+        )
+        for i in range(6)
+    ]
+    return Part.Face(Part.makePolygon(points + points[:1])).extrude(V(0, height, 0))
+
+
+def standard_nut_clearance_check(x, support, seat):
+    """Free axial insertion and rotation stops across ordinary-M3 envelopes.
+
+    Dimensions span DIN934 AF5.32..5.50 and height2.15..2.40. No flange,
+    prevailing-torque nut, chamfer engagement or as-printed fit claim.
+    """
+    offsets = [(0.0, 0.0)] + [
+        (0.2 * math.cos(i * math.pi / 4), 0.2 * math.sin(i * math.pi / 4))
+        for i in range(8)
+    ]
+    rows = []
+    for dx, dz in offsets:
+        large = _rail_hex_nut(5.5, 2.4, x + dx, seat)
+        large.translate(V(0, 0, dz))
+        swept, method = translation_sweep(large, (0, 10, 0))
+        collision = abs(swept.common(support).Volume)
+        stops = []
+        for angle in (-30, 30):
+            small = _rail_hex_nut(5.32, 2.15, x, seat)
+            small.rotate(V(x, seat, 7), V(0, 1, 0), angle)
+            small.translate(V(dx, 0, dz))
+            stops.append(abs(small.common(support).Volume))
+        rows.append(
+            {
+                "axis_offset_xz_mm": [dx, dz],
+                "maximum_nut_service_overlap_mm3": collision,
+                "minimum_nut_rotation_block_mm3": stops,
+                "method": method,
+                "passed": collision < TOL and min(stops) > TOL,
+            }
+        )
+    return {
+        "cases": rows,
+        "nut_af_range_mm": [5.32, 5.5],
+        "nut_height_range_mm": [2.15, 2.4],
+        "nominal_axis_float_radius_mm": 0.2,
+        "scope": "Sharp hex and sampled transverse offsets/rotation; actual chamfer and free seating require coupon inspection. Clearance does not imply operating looseness after clamping.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def nut_capture_check(x, nut, support, *, shared=False):
     """Independent saved blind-pocket floor and anti-rotation checks."""
-    inner, seat, outer = (6.0, 8.0, 11.0) if shared else (1.25, 3.25, 6.95)
+    inner, seat, outer = (6.0, 8.0, 11.0) if shared else (1.25, 3.25, 5.25)
     region = Part.makeBox(8, outer - seat, 8, V(x - 4, seat, 3))
     pocket_wall = support.common(region)
     nominal = abs(nut.common(support).Volume)
@@ -60,7 +116,10 @@ def nut_capture_check(x, nut, support, *, shared=False):
                 "rotation_block_mm3": abs(rotated.common(pocket_wall).Volume),
             }
         )
+    standard_envelope = standard_nut_clearance_check(x, support, seat)
     return {
+        "standard_nut_envelope": standard_envelope,
+        "nut_recess_depth_mm": outer - seat,
         "nominal_nut_to_guard_overlap_mm3": nominal,
         "missing_nut_floor_mm3": missing_floor,
         "nut_on_expected_bearing_plane": seated,
@@ -69,6 +128,7 @@ def nut_capture_check(x, nut, support, *, shared=False):
         "nut_axial_clamping_surface": f"Printed 2 mm nominal floor at Y={seat:g} mm; both U sides are in the fitted compression stack.",
         "scope": "Nominal saved floor/hex geometry. Remove the bolt before withdrawing the nut in +Y. Coupon-fit and finish contact faces before tightening; no physical torque, creep or retention rating.",
         "passed": nominal < TOL
+        and standard_envelope["passed"]
         and missing_floor < TOL
         and seated
         and all(row["rotation_block_mm3"] > 0.1 for row in turns),
@@ -149,9 +209,9 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
                 (name + "Deck", Part.makeBox(64, 64, 2, V(-32, -32, 17))),
                 (
                     name + "SupportNegativeX",
-                    Part.makeBox(5, 5, 4.5, V(-8, -3.75, 12.5)),
+                    Part.makeBox(5, 5, 4.5, V(-8, -2.5, 12.5)),
                 ),
-                (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -3.75, 12.5))),
+                (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -2.5, 12.5))),
             ]
         else:
             pieces = [(name + "Lower", lower), (name + "Upper", upper)]

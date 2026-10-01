@@ -1,6 +1,6 @@
 """Continuous output-carrier clearance from live solids, including axial play.
 
-The carrier is enclosed in two solids invariant under a complete rotation
+The carrier is enclosed in three solids invariant under a complete rotation
 about its native Y axis. Containment is a BRep difference, including curved
 faces. Distances from these envelopes to actual fixed fasteners therefore bound
 all output angles, without replacing close sampled poses with a motion proof.
@@ -16,9 +16,11 @@ from gondola.cad import world_shape
 TOL = 1e-5
 MINIMUM_METAL_RESERVE_MM = 1.5
 # Declared, reviewable envelope; changes to the live carrier must still fit it.
-GUARD_SPHERE_RADIUS_MM = math.hypot(13.0, 25.0)
+GUARD_SPHERE_RADIUS_MM = math.hypot(16.0, 25.0)
 RIB_CYLINDER_RADIUS_MM = math.hypot(13.0, 4.0)
 CARRIER_HALF_WIDTH_MM = 31.25
+FORWARD_RIB_CYLINDER_RADIUS_MM = math.hypot(16.0, 4.0)
+FORWARD_RIB_HALF_WIDTH_MM = 29.25
 # This band lies on the clamp end and the retained bearing-cup stop sectors.
 STOP_WITNESS_INNER_MM = 3.25
 STOP_WITNESS_OUTER_MM = 3.55
@@ -159,8 +161,8 @@ def carrier_axial_travel(doc, prefix):
 def carrier_metal_clearance_check(doc, prefix):
     """Prove the required reserve from the rotating carrier to fixed mounting metalwork.
 
-    Both a sphere around the guard and a narrower full-width cylinder around
-    its connections are necessary. A single sphere enclosing the full carrier
+    A guard sphere, a full-width clamp cylinder and an axially shorter cylinder
+    for the forward connections are necessary. A sphere enclosing the full carrier
     would include empty corners and incorrectly consume the nut clearance.
     After proving actual BRep containment, the minimum envelope-to-fastener
     distance is reduced by the measured maximum axial travel. Euclidean
@@ -209,7 +211,13 @@ def carrier_metal_clearance_check(doc, prefix):
         App.Vector(0, -CARRIER_HALF_WIDTH_MM, 0),
         App.Vector(0, 1, 0),
     )
-    envelope = sphere.fuse(cylinder)
+    forward = Part.makeCylinder(
+        FORWARD_RIB_CYLINDER_RADIUS_MM,
+        FORWARD_RIB_HALF_WIDTH_MM * 2,
+        App.Vector(0, -FORWARD_RIB_HALF_WIDTH_MM, 0),
+        App.Vector(0, 1, 0),
+    )
+    envelope = sphere.fuse(cylinder).fuse(forward)
     containment = [
         {"object": name, "outside_envelope_mm3": abs(shapes[name].cut(envelope).Volume)}
         for name in names
@@ -249,6 +257,7 @@ def carrier_metal_clearance_check(doc, prefix):
             distances = {
                 "guard_sphere": sphere.distToShape(shapes[name])[0],
                 "ribs_and_clamps_cylinder": cylinder.distToShape(shapes[name])[0],
+                "inboard_forward_ribs_cylinder": forward.distToShape(shapes[name])[0],
             }
             lower_bound = min(distances.values()) - axial["maximum_mm"]
             rows.append(
@@ -268,6 +277,11 @@ def carrier_metal_clearance_check(doc, prefix):
             "guard_sphere_radius_mm": GUARD_SPHERE_RADIUS_MM,
             "rib_cylinder_radius_mm": RIB_CYLINDER_RADIUS_MM,
             "rib_cylinder_y_mm": [-CARRIER_HALF_WIDTH_MM, CARRIER_HALF_WIDTH_MM],
+            "forward_rib_cylinder_radius_mm": FORWARD_RIB_CYLINDER_RADIUS_MM,
+            "forward_rib_cylinder_y_mm": [
+                -FORWARD_RIB_HALF_WIDTH_MM,
+                FORWARD_RIB_HALF_WIDTH_MM,
+            ],
             "containment": containment,
         },
         "axial_travel": axial,

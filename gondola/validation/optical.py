@@ -625,7 +625,7 @@ def _carrier_interface_checks(doc):
             )
     # Independent material witness: a narrow peg, shortened/rotated tongue or
     # a historical two-bolt foot cannot certify this single-clamp connection.
-    locator_core = box(1.7, 6.0, 0.9, (-0.85, -5.0, -0.9))
+    locator_core = box(2.4, 6.0, 1.2, (-1.2, -5.0, -1.2))
     missing = locator_core.cut(foot).Volume
     rows.append(
         {

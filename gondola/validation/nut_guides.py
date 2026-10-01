@@ -1,4 +1,4 @@
-"""Independent witnesses for M2 nut pockets and open bearing-seat guides."""
+"""Independent witnesses for M2 rotor pockets and shallow bearing-keeper recesses."""
 
 import math
 
@@ -36,7 +36,7 @@ def guided_nut_service_direction(doc, bolt_name):
 
 def guided_nut_capture_depth(bolt_name):
     """Literal release depths, independent of production shape constructors."""
-    return 1.5 if "OutputClamp" in bolt_name else 1.0
+    return 1.5 if "OutputClamp" in bolt_name else 0.5
 
 
 def _hex_face(across_flats):
@@ -49,7 +49,7 @@ def _hex_face(across_flats):
 
 
 def nut_guide_check(host_shape, placement, rail_length, *, recessed=False):
-    """Check actual host stock in a frame whose unchanged nut seat is Z0.
+    """Check actual host stock in a frame whose nut bearing plane is Z0.
 
     Literal dimensions below deliberately do not import the production guide
     builder. The small-nut rotation probes describe ideal sharp hex flanks;
@@ -57,27 +57,13 @@ def nut_guide_check(host_shape, placement, rail_length, *, recessed=False):
     """
     host = host_shape.copy()
     host.Placement = placement.inverse().multiply(host.Placement)
-    capture_depth = 1.5 if recessed else 1.0
-    if recessed:
-        witnesses = [
-            (
-                "hexagonal_wall",
-                _hex_face(7.25).cut(_hex_face(4.25)).extrude(V(0, 0, 1.5)),
-            )
-        ]
-    else:
-        witnesses = [
-            (
-                side,
-                Part.makeBox(
-                    rail_length,
-                    1.5,
-                    1.0,
-                    V(-rail_length / 2, side * 2.125 - (1.5 if side < 0 else 0), 0),
-                ),
-            )
-            for side in (-1, 1)
-        ]
+    capture_depth = 1.5 if recessed else 0.5
+    witnesses = [
+        (
+            "hexagonal_wall",
+            _hex_face(7.25).cut(_hex_face(4.25)).extrude(V(0, 0, capture_depth)),
+        )
+    ]
     rails = []
     for side, witness in witnesses:
         missing = abs(witness.cut(host).Volume)
@@ -130,7 +116,7 @@ def nut_guide_check(host_shape, placement, rail_length, *, recessed=False):
         "nut_fit_and_axial_service": fits,
         "minimum_nut_rotation_stops": stops,
         "nominal_clear_gap_mm": 4.25,
-        "capture_type": "recessed_hex_pocket" if recessed else "open_parallel_rails",
+        "capture_type": "recessed_hex_pocket",
         "guide_height_mm": capture_depth,
         "finished_gap_acceptance_mm": [4.2, 4.3],
         "maximum_nut_af_height_mm": [4.0, 1.6],
@@ -164,7 +150,7 @@ def installed_nut_guide_checks(doc):
                     prefix + "OutputBearingKeeper" + suffix + "Nut",
                     module,
                     App.Placement(
-                        V(0, sign * 75 + side * 37.75, 32),
+                        V(0, sign * 75 + side * 37.25, 32),
                         App.Rotation(V(0, 0, 1), V(0, side, 0)),
                     ),
                     6.0,

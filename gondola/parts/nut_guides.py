@@ -1,45 +1,30 @@
-"""Low, open M2 nut guides added above an existing bearing plane.
+"""Shallow, freely seating M2 keeper pockets within the fixed frame face.
 
-These guides stop an ordinary hex nut turning after nominal clearance is taken
-up. They neither retain a loose nut axially nor qualify tightening torque.
+The recess limits ordinary hex-nut rotation after clearance is taken up.
+It neither captures a loose nut axially nor qualifies tightening torque.
 """
 
-from gondola.cad import box, union
+from .purchased_hardware import hex_prism
 
 CLEAR_GAP = 4.25
-WALL_WIDTH = 1.5
-HEIGHT = 1.0
+POCKET_DEPTH = 0.5
 
 
-def rails_shape(length):
-    """Two rails parallel to X; the unchanged nut seat is local Z0."""
-    return union(
-        [
-            box(
-                length,
-                WALL_WIDTH,
-                HEIGHT,
-                (
-                    -length / 2,
-                    sign * CLEAR_GAP / 2 - (WALL_WIDTH if sign < 0 else 0),
-                    0,
-                ),
-            )
-            for sign in (-1, 1)
-        ]
-    )
+def pocket_tool():
+    """Hex cutter; local Z0 is the nut bearing plane below the host face."""
+    return hex_prism(CLEAR_GAP, POCKET_DEPTH + 0.01)
 
 
 def fit_contract():
     return {
-        "sites": "Four fixed bearing-keeper nut seats; rotor clamps use separate recessed hex pockets",
+        "sites": "Four fixed bearing-keeper nut seats; rotor clamps use deeper recessed hex pockets",
         "clear_gap_mm": CLEAR_GAP,
-        "wall_width_mm": WALL_WIDTH,
-        "height_above_unchanged_seat_mm": HEIGHT,
+        "recess_depth_mm": POCKET_DEPTH,
+        "minimum_frame_floor_mm": 2.0,
         "finished_gap_acceptance_mm": [4.2, 4.3],
         "nut_type": "Ordinary M2 hex nut; no flange, prevailing-torque or thin-nut compatibility claimed",
         "nominal_screw_axis_float_radius_mm": 0.1,
         "nut_axially_captive": False,
         "physical_fit_verified": False,
-        "scope": "Nominal geometry only. Coupon-match the actual nut and production PA12 process/finish. The 4.2–4.3 mm finished gap is an acceptance target, not a general print-tolerance guarantee. Check full flat seating, actual nut chamfers, flank engagement, axial insertion/removal and torque restraint. Finish or reprint an unsuitable guide; do not force the nut between rails. The seat planes, screw lengths and clamp splits are unchanged. Open ends and tops allow powder removal and nut release.",
+        "scope": "Nominal geometry only. Coupon-match the actual nut and production PA12 process/finish. The 4.2–4.3 mm finished gap is an acceptance target, not a general print-tolerance guarantee. Nuts must enter and leave freely while retaining flat-flank engagement; actual chamfers can consume the shallow 0.5 mm recess. Check full seating, antirotation and axial service. Finish or reprint an unsuitable pocket; do not force the nut. The keeper screw remains M2x6; its seat moves 0.5 mm inward without moving bearing or keeper datums. No strength or torque rating.",
     }

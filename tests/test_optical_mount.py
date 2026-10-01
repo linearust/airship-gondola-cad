@@ -91,7 +91,7 @@ class OpticalMountTests(unittest.TestCase):
         thin = [row for row in old_screen if row["material_thickness_mm"] < 1.5 - 1e-5]
         self.assertTrue(thin, old_screen)
         self.assertTrue(
-            any(abs(row["material_thickness_mm"] - 0.9) < 1e-5 for row in thin)
+            any(abs(row["material_thickness_mm"] - 0.875) < 1e-5 for row in thin)
         )
         self.assertTrue(all(row["interior_samples_mm"] for row in thin))
 

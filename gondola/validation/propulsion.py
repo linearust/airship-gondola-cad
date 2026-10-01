@@ -1876,8 +1876,16 @@ def _record_print_checks(report, module, physical):
         (
             "guard_radial",
             "PortMotorCarrier",
-            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 22.99),
-            (12, propulsion.PIVOT_HALF_SPAN, propulsion.PIVOT_Z + 25.01),
+            (
+                propulsion.PROPELLER_PLANE_X,
+                propulsion.PIVOT_HALF_SPAN,
+                propulsion.PIVOT_Z + 22.99,
+            ),
+            (
+                propulsion.PROPELLER_PLANE_X,
+                propulsion.PIVOT_HALF_SPAN,
+                propulsion.PIVOT_Z + 25.01,
+            ),
             2.0,
         ),
     ]

@@ -9,6 +9,8 @@ Later user instructions take precedence. Inspect Git status and
   parts unless assembly, motion or replacement benefits from separation.
 - Prefer available metric parts, reusable interfaces and few fastener types.
   Accommodate fit variation without operating looseness or elaborate adjustment.
+  Favor symmetric supports and snug located joints; nuts should insert freely
+  while their pockets prevent rotation.
 - Consider wiring, moving clearances, optical visibility and balance together.
   Improve existing geometry on merit, respecting confirmed purchases and intentional
   replaceable modules.

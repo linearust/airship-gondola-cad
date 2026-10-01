@@ -25,6 +25,29 @@ class RailFastenerTests(unittest.TestCase):
         self.assertAlmostEqual(report["missing_printed_nut_floor_mm3"], 0)
         self.assertIn("tool", report["scope"])
 
+    def test_equal_carrier_legs_retain_partial_nut_capture_and_free_standard_nuts(self):
+        from gondola.parts import rail
+        from gondola.validation.rail_access import nut_capture_check
+
+        mount = rail.mount_base_shape()
+        bounds = mount.BoundBox
+        self.assertAlmostEqual(bounds.YMin, -5.25)
+        self.assertAlmostEqual(bounds.YMax, 5.25)
+        report = nut_capture_check(0, rail.nut_shape(), mount)
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["nut_recess_depth_mm"], 2)
+        self.assertTrue(report["standard_nut_envelope"]["passed"])
+        self.assertGreater(rail.nut_shape().BoundBox.YMax, bounds.YMax)
+
+    def test_oversized_pocket_that_allows_small_standard_nut_rotation_is_rejected(self):
+        from gondola.parts import rail
+        from gondola.validation.rail_access import nut_capture_check
+
+        mount = rail.mount_base_shape().cut(rail._nut_outer(6.2, 2.1, bearing_y=3.25))
+        report = nut_capture_check(0, rail.nut_shape(), mount)
+        self.assertFalse(report["standard_nut_envelope"]["passed"])
+        self.assertFalse(report["passed"])
+
     def test_nut_can_load_with_tape_and_all_supported_slot_endpoints(self):
         from gondola.cad import translated_shape, union
         from gondola.parts import rail

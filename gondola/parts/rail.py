@@ -48,10 +48,11 @@ HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
 HEAD_BEARING_Y = MOUNT_OUTER_Y + HEAD_RECESS_DEPTH
 NUT_FLOOR_THICKNESS = 2.0
 FAR_LEG_INNER_Y = WEB_THICKNESS / 2
-FAR_LEG_OUTER_Y = 6.95
+FAR_LEG_OUTER_Y = -MOUNT_OUTER_Y
 FAR_LEG_THICKNESS = FAR_LEG_OUTER_Y - FAR_LEG_INNER_Y
 NUT_BEARING_Y = FAR_LEG_INNER_Y + NUT_FLOOR_THICKNESS
 NUT_POCKET_AF = 5.9
+MINIMUM_NUT_CAPTURE_DEPTH = 1.5
 SLOT_END_SUPPORT_RESERVE = 1.0
 SCREW_LENGTH = fasteners.RAIL_SCREW_LENGTH
 TAPE_THICKNESS = 0.15
@@ -294,8 +295,8 @@ def nut_pocket_shape(inner_y, outer_y, *, x=0, z=BOLT_AXIS_Z):
     ):
         raise ValueError("Nut pocket positions must be finite numbers")
     bearing_y = inner_y + NUT_FLOOR_THICKNESS
-    if outer_y - bearing_y < fasteners.RAIL_HEX_NUT_HEIGHT - TOL:
-        raise ValueError("Nut pocket must contain the complete nominal nut height")
+    if outer_y - bearing_y < MINIMUM_NUT_CAPTURE_DEPTH - TOL:
+        raise ValueError("Nut pocket must retain at least 1.5 mm nominal recess depth")
     return translated_shape(
         _nut_outer(NUT_POCKET_AF, outer_y - bearing_y + 0.01, bearing_y=bearing_y),
         x=x,
@@ -591,6 +592,10 @@ def attachment_contract(
         if shared_drive
         else FAR_LEG_OUTER_Y,
         "nut_pocket_across_flats_mm": NUT_POCKET_AF,
+        "nut_capture_depth_mm": pocket_outer_y - nut_bearing_y,
+        "carrier_side_legs_equal_thickness_mm": None
+        if shared_drive
+        else MOUNT_LEG_THICKNESS,
         "nut_pocket_inner_y_mm": pocket_inner_y,
         "nut_pocket_outer_y_mm": pocket_outer_y,
         "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
@@ -617,7 +622,12 @@ def attachment_contract(
             if shared_drive
             else None
         ),
-        "assembly": "Fit both bottom lands and opposed U side faces before installing hardware; retain the0.2mm inner-roof relief. Insert the M3 nut from positiveY into the blind pocket until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared rail lands and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
+        "assembly": (
+            "Shared saddle cheeks are both 5 mm; the nut sits in a 3 mm-deep pocket. "
+            if shared_drive
+            else "Carrier legs are both 4 mm; the nut sits 2 mm into its pocket and may protrude. "
+        )
+        + "Fit both bottom lands and opposed U side faces before installing hardware; retain the0.2mm inner-roof relief. Insert the M3 nut from positiveY into the blind pocket until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared rail lands and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
         "physical_acceptance": "Use a process-matched coupon and actual hardware. The nominal channel is line-to-line with the rail; this is not an as-printed slip-fit guarantee. Finish only high spots while retaining at least1.5mm nut-floor and head-floor thickness. Reject or reprint loose or warped seats; do not force a rigid gap closed with the bolt. Verify bilateral bottom and side contact without rocking, a clear relieved roof, nut seating and anti-rotation, actual socket access, full thread engagement and loaded retention. Printed creep, clamp force and fit remain unqualified.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,
@@ -898,9 +908,9 @@ def attachment_check(
             and math.isfinite(value)
             for value in (nut_bearing_y, nut_outer_y)
         )
-        or nut_outer_y < nut_bearing_y + fasteners.RAIL_HEX_NUT_HEIGHT - TOL
+        or nut_outer_y < nut_bearing_y + MINIMUM_NUT_CAPTURE_DEPTH - TOL
     ):
-        raise ValueError("Nut bearing/pocket positions must contain the nominal nut")
+        raise ValueError("Nut pocket must retain at least 1.5 mm nominal recess depth")
     if frame_contact_y is not None:
         frame_contact_y = _positive(frame_contact_y, "Frame contact half-width")
     section = rail_shape(50, (0,)) if rail_section is None else rail_section
@@ -995,6 +1005,7 @@ def attachment_check(
         "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
         "nut_bearing_y_mm": nut_bearing_y,
         "nut_pocket_outer_y_mm": nut_outer_y,
+        "nut_capture_depth_mm": nut_outer_y - nut_bearing_y,
         "nominal_side_clearance_mm": 0.0,
         "frame_saddle_contact_faces": supports["frame_saddle_contact_faces"],
         "nut_30deg_rotation_stop_block_mm3": nut_rotation_stop,

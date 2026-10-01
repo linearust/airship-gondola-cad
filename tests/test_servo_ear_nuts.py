@@ -33,6 +33,56 @@ class ServoEarNutTests(unittest.TestCase):
                 self.assertEqual(row["capture_depth_mm"], 0.5)
                 self.assertEqual(row["retained_wall_floor_mm"], 4.5)
                 self.assertGreater(row["required_bearing_area_mm2"], 3)
+                sizes = row["nut_size_range"]
+                self.assertEqual(sizes["minimum_nut_af_height_mm"], [3.02, 1.05])
+                self.assertEqual(sizes["maximum_nut_af_height_mm"], [3.2, 1.3])
+                self.assertEqual(len(sizes["maximum_nut_free_insertion"]), 9)
+                self.assertEqual(len(sizes["minimum_nut_rotation_stops"]), 18)
+
+    def test_minimum_standard_nut_cannot_be_ignored_when_nominal_nut_still_stops(self):
+        from gondola.validation.servo_ear_nuts import _hex, servo_ear_nut_check
+
+        bridge = self.doc.ServoDriveBridge
+        original = bridge.Shape.copy()
+        mount = self.doc.PortServoMount.Placement.Base
+        # AF3.5 still blocks a nominal AF3.2 nut, but clears every orientation
+        # of a centred minimum AF3.02 nut (corner diameter approximately3.487).
+        enlarged = _hex(3.5, -2.5, 0.5, 7)
+        enlarged.translate(mount)
+        try:
+            bridge.Shape = original.cut(enlarged)
+            result = servo_ear_nut_check(self.doc, "Port")
+            self.assertFalse(result["passed"])
+            upper = result["cases"][1]
+            self.assertGreater(upper["nut_30deg_rotation_block_mm3"], 0.01)
+            self.assertTrue(
+                all(
+                    row["passed"]
+                    for row in upper["nut_size_range"]["maximum_nut_free_insertion"]
+                )
+            )
+            centred = upper["nut_size_range"]["minimum_nut_rotation_stops"][:2]
+            self.assertTrue(all(not row["passed"] for row in centred))
+        finally:
+            bridge.Shape = original
+
+    def test_maximum_nut_requires_a_clear_approach_not_only_clear_installed_shape(self):
+        from gondola.validation.servo_ear_nuts import servo_ear_nut_check
+
+        bridge = self.doc.ServoDriveBridge
+        original = bridge.Shape.copy()
+        mount = self.doc.PortServoMount.Placement.Base
+        obstruction = Part.makeBox(0.2, 0.2, 0.2, mount + App.Vector(1.3, -4, 7.3))
+        try:
+            bridge.Shape = original.fuse(obstruction)
+            result = servo_ear_nut_check(self.doc, "Port")
+            self.assertFalse(result["passed"])
+            upper = result["cases"][1]
+            self.assertAlmostEqual(upper["nut_print_intersection_mm3"], 0)
+            fit = upper["nut_size_range"]["maximum_nut_free_insertion"][0]
+            self.assertGreater(fit["maximum_nut_insertion_removal_overlap_mm3"], 0.001)
+        finally:
+            bridge.Shape = original
 
     def test_missing_internal_floor_fails_even_with_the_nut_seat_intact(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check

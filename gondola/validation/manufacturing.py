@@ -126,8 +126,8 @@ def rail_mount_wall_probes():
                 "carrier_positive_clamp_leg",
                 "BatteryMount",
                 (0, 1.25 - e, 3),
-                (0, 6.95 + e, 3),
-                5.7,
+                (0, 5.25 + e, 3),
+                4.0,
             ),
             (
                 "carrier_nut_pocket_floor",
@@ -186,7 +186,7 @@ def review(doc, registry):
             }
         )
     analytic = rail_mount_wall_probes() + [
-        ("guard_radial_wall", "PortMotorCarrier", (12, 0, 22.99), (12, 0, 25.01), 2.0),
+        ("guard_radial_wall", "PortMotorCarrier", (15, 0, 22.99), (15, 0, 25.01), 2.0),
         (
             "battery_mount_deck_thickness",
             "BatteryMount",

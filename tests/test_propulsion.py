@@ -516,11 +516,11 @@ class NativeGearedDriveTests(unittest.TestCase):
         from gondola.parts import propulsion
 
         carrier = self.doc.PortMotorCarrier.Shape
-        current_prop = propulsion.cylinder(20, 5, (9.5, 0, 0), (1, 0, 0))
-        future_prop = propulsion.cylinder(25, 5, (9.5, 0, 0), (1, 0, 0))
+        current_prop = propulsion.cylinder(20, 5, (12.5, 0, 0), (1, 0, 0))
+        future_prop = propulsion.cylinder(25, 5, (12.5, 0, 0), (1, 0, 0))
         self.assertLess(carrier.common(current_prop).Volume, 1e-7)
         self.assertGreater(carrier.common(future_prop).Volume, 100)
-        guard = carrier.common(Part.makeBox(1.8, 2, 5, App.Vector(11.1, -1, 21)))
+        guard = carrier.common(Part.makeBox(1.8, 2, 5, App.Vector(14.1, -1, 21)))
         self.assertAlmostEqual(guard.BoundBox.ZMax, 25, places=6)
         self.assertGreater(guard.BoundBox.ZMin, 22.97)
 

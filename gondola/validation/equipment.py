@@ -262,7 +262,7 @@ def carrier_centre_mount_check(shape):
     """Check the spare centre bore and the two solid, open-sided supports."""
     bore = Part.makeCylinder(1.3, 6.5, App.Vector(0, 0, 12.5))
     access = Part.makeBox(6, 16, 4.5, App.Vector(-3, -8, 12.5))
-    supports = [Part.makeBox(5, 5, 4.5, App.Vector(x, -3.75, 12.5)) for x in (-8, 3)]
+    supports = [Part.makeBox(5, 5, 4.5, App.Vector(x, -2.5, 12.5)) for x in (-8, 3)]
     # M2x4 through the bare 2 mm deck: tip15.0, nut15.4..17.0.
     # Additional equipment thickness changes required length and is not modeled.
     rows = {

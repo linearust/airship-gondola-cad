@@ -8,7 +8,8 @@ Nominal allowances are trial dimensions, not a guaranteed SLS/MJF fit.
 Match the production coupon to the received bearing/process. Finish or
 reprint an unsuitable seat; never force a bearing in or tighten away play.
 The broad keeper guides prevent gross rotation, not precision centering:
-center the aperture on the actual bearing before tightening, and check
+the 0.1 mm nominal clearance is a trial fit, not automatic centering. Align
+the aperture on the actual bearing before tightening, and check
 outer-ring contact and free rotation at both axial limits.
 """
 
@@ -34,13 +35,14 @@ KEEPER_STOP_Y = -0.5
 KEEPER_HALF_WIDTH = 4.5
 KEEPER_BOTTOM_Z = -21.5
 KEEPER_TOP_Z = 4.5
-KEEPER_GUIDE_CLEARANCE = 0.2
+KEEPER_GUIDE_CLEARANCE = 0.1
 KEEPER_FOOT_TOP_Z = -5.0
 KEEPER_FOOT_BACK_Y = 1.5
 KEEPER_SCREW_Z = -18.0
 KEEPER_SCREW_SEAT_Y = 0.0
 KEEPER_SCREW_LENGTH = 6.0
-KEEPER_NUT_SEAT_Y = SHOULDER_START_Y + SHOULDER_THICKNESS
+BODY_REAR_Y = SHOULDER_START_Y + SHOULDER_THICKNESS
+KEEPER_NUT_SEAT_Y = BODY_REAR_Y - nut_guides.POCKET_DEPTH
 KEEPER_HEAD_CLEARANCE_RADIUS = 2.5
 
 
@@ -72,6 +74,16 @@ def keeper_pocket_tool():
     )
 
 
+def nut_pocket_tool():
+    """Cut through both the housing and any adjoining post stock."""
+    pocket = nut_guides.pocket_tool()
+    pocket.Placement = App.Placement(
+        App.Vector(0, KEEPER_NUT_SEAT_Y, KEEPER_SCREW_Z),
+        App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
+    )
+    return pocket
+
+
 def post_clearance_tool():
     """Cut the seat, keeper nest and fastener path before adjoining post union."""
     return union(
@@ -82,13 +94,14 @@ def post_clearance_tool():
             _cylinder(
                 SHIELD_OPENING_DIAMETER / 2,
                 GUIDE_START_Y - 0.1,
-                KEEPER_NUT_SEAT_Y - GUIDE_START_Y + 0.2,
+                BODY_REAR_Y - GUIDE_START_Y + 0.2,
             ),
             keeper_pocket_tool(),
+            nut_pocket_tool(),
             _cylinder(
                 1.1,
                 GUIDE_START_Y - 0.1,
-                KEEPER_NUT_SEAT_Y - GUIDE_START_Y + 0.2,
+                BODY_REAR_Y - GUIDE_START_Y + 0.2,
                 KEEPER_SCREW_Z,
             ),
         ]
@@ -96,19 +109,14 @@ def post_clearance_tool():
 
 
 def fixed_body_shape():
-    """Rigid seat/shoulder, keeper guides and low rails above the nut seat."""
+    """Rigid seat/shoulder and a shallow M2 pocket within the rear face."""
     body = box(
         2 * BODY_HALF_WIDTH,
-        KEEPER_NUT_SEAT_Y - GUIDE_START_Y,
+        BODY_REAR_Y - GUIDE_START_Y,
         BODY_TOP_Z - BODY_BOTTOM_Z,
         (-BODY_HALF_WIDTH, GUIDE_START_Y, BODY_BOTTOM_Z),
     )
-    guides = nut_guides.rails_shape(6.0)
-    guides.Placement = App.Placement(
-        App.Vector(0, KEEPER_NUT_SEAT_Y, KEEPER_SCREW_Z),
-        App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
-    )
-    return union([body.cut(post_clearance_tool()), guides]).removeSplitter()
+    return body.cut(post_clearance_tool()).removeSplitter()
 
 
 def cup_shape():
@@ -223,6 +231,7 @@ def geometry_check(cup=None, keeper=None):
         "screw_shank_collision_mm3": support.common(screw_path).Volume,
         "keeper_screw_hard_seat_missing_mm3": foot_seat.cut(cup).Volume,
         "nominal_axial_endplay_mm": -KEEPER_STOP_Y,
+        "keeper_guide_clearance_per_side_mm": KEEPER_GUIDE_CLEARANCE,
         "nominal_diametral_clearance_mm": 2 * (SEAT_RADIUS - BEARING_RADIUS),
         "scope": "Nominal rigid capture only. Coupon-match the actual bearing and keeper; verify radial fit, ring lands, shields, cap alignment, no preload, fastener retention and loaded motion. General PA12 tolerance is not absorbed by the nominal seat allowance. No strength or physical fit qualification.",
     }

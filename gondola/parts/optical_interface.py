@@ -18,14 +18,15 @@ HOST_OFFSET_X = 27.0
 FOOT_SIZE_MM = (8.0, 18.0)
 FOOT_THICKNESS = 2.0
 NUT_RECESS_DEPTH = 0.5
-NUT_RECESS_AF = 4.2
+NUT_RECESS_AF = 4.25
 FOOT_NUT_SEAT_Z = FOOT_THICKNESS - NUT_RECESS_DEPTH
 # Retain the positive-Y joint's existing object identity; the negative joint
 # is replaced by a broad rigid locator, not a spring or interference fit.
 CLAMP_CENTRES = {1: (0.0, 5.0)}
-CLAMP_HOLE_DIAMETER = 2.6
+HOST_SLOT_WIDTH = 2.6
+CLAMP_HOLE_DIAMETER = 2.2
 CLAMP_SCREW_LENGTH = 8.0
-LOCATOR_WIDTH = 2.0
+LOCATOR_WIDTH = 2.4
 LOCATOR_END_CENTRES_Y = (-5.0, 1.0)
 LOCATOR_DEPTH = 1.2
 DEFAULT_HOST = "BatteryEquipmentModule"
@@ -37,14 +38,14 @@ SUPPORTED_HOSTS = {
 }
 SIDES = ("PositiveX", "NegativeX")
 # Retain the prior conservative assembly envelope; it is not operating play.
-# With +/-0.3 mm total-size variation, a 1.7 mm-wide locator with a 5.7 mm
-# straight centreline inside a 2.9 mm slot limits yaw to asin(1.2 / 5.7),
+# With +/-0.3 mm total-size variation, a 2.1 mm-wide locator with a 5.7 mm
+# straight centreline inside a 2.9 mm slot limits yaw to asin(0.8 / 5.7),
 # below this 12.71-degree bound. The positive-end screw bounds longitudinal
 # translation. Full foot seating and a tightened clamp are still required.
 DIMENSION_ALLOWANCE = 0.3
 MINIMUM_RECEIVED_BOLT_DIAMETER = 1.8
 MAX_REGISTRATION_ERROR = (
-    CLAMP_HOLE_DIAMETER + DIMENSION_ALLOWANCE - MINIMUM_RECEIVED_BOLT_DIAMETER
+    HOST_SLOT_WIDTH + DIMENSION_ALLOWANCE - MINIMUM_RECEIVED_BOLT_DIAMETER
 )
 REGISTRATION_HALF_PITCH = 5.0
 MAX_REGISTRATION_YAW_RAD = math.asin(MAX_REGISTRATION_ERROR / REGISTRATION_HALF_PITCH)
@@ -87,7 +88,7 @@ def nut_recess_contract():
         "depth_mm": NUT_RECESS_DEPTH,
         "across_flats_mm": NUT_RECESS_AF,
         "remaining_floor_mm": FOOT_NUT_SEAT_Z,
-        "finished_flat_gap_acceptance_mm": [4.1, 4.25],
+        "finished_flat_gap_acceptance_mm": [4.15, 4.3],
         "scope": "Ordinary M2 hex nuts only. Shallow open pockets restrain turning without raised guides; they do not retain a loose nut axially or qualify tightening torque. Check received nut chamfers and flank engagement, finish for free insertion and full floor seating, and reject a freely rotating nut or damaged floor. The finished range is an acceptance target, not guaranteed PA12 process tolerance.",
     }
 
@@ -124,21 +125,21 @@ def interface_contract():
             "width_mm": LOCATOR_WIDTH,
             "end_centres_y_mm": LOCATOR_END_CENTRES_Y,
             "depth_mm": LOCATOR_DEPTH,
-            "nominal_slot_side_clearance_mm": (CLAMP_HOLE_DIAMETER - LOCATOR_WIDTH) / 2,
+            "nominal_slot_side_clearance_mm": (HOST_SLOT_WIDTH - LOCATOR_WIDTH) / 2,
             "nominal_recess_above_carrier_underside_mm": mounting_plate.THICKNESS_MM
             - LOCATOR_DEPTH,
             "dimensional_screen_recess_mm": mounting_plate.THICKNESS_MM
             - DIMENSION_ALLOWANCE
             - LOCATOR_DEPTH
             - DIMENSION_ALLOWANCE,
-            "scope": "Rigid location only; no latch, interference or elastic preload. The 1.2 mm projection is a shallow locator, not an unsupported structural wall. With +/-0.3 mm size variation the side fit can reach contact: finish it to free insertion. The foot must sit flat on both support strips before tightening; never pull an interfering tongue into its slot with the screw. Verify the actual tongue remains above the carrier underside.",
+            "scope": "Rigid location only; no latch, interference or elastic preload. The 1.2 mm projection is a shallow locator, not an unsupported structural wall. The nominal side gap is 0.1 mm; +/-0.3 mm size variation can cause interference. Finish high spots for snug hand insertion without rocking; reprint an oversized slot or undersized tongue. The foot must sit flat on both support strips before tightening; never pull an interfering tongue into its slot with the screw. Verify the actual tongue remains above the carrier underside.",
         },
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
         "host_interface": "Existing x=+/-27 mm middle side slot; one screw at local y=+5 mm and the locating tongue toward negative Y. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
         "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut in a shallow foot recess; one further identical pair locks the pitch ears. No washers.",
         "minimum_received_flat_head_bearing_diameter_mm": 3.5,
         "concentric_head_land_across_maximum_slot_width_mm": (
-            3.5 - CLAMP_HOLE_DIAMETER - DIMENSION_ALLOWANCE
+            3.5 - HOST_SLOT_WIDTH - DIMENSION_ALLOWANCE
         )
         / 2,
         "bearing_scope": "Heads bridge the carrier slot on two transverse lands. Inspect actual flat bearing diameter >=3.5 mm and slot width <=2.9 mm; centred residual land is only 0.3 mm per side. No washer is modeled. Eccentric seating and PA12 clamp pressure/creep remain unqualified.",

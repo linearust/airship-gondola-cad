@@ -122,6 +122,24 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     )
                 )
 
+    def test_support_stock_is_centred_without_filling_central_access(self):
+        from gondola.parts import equipment_mounts as mounts
+
+        actual = mounts.mount_shape("battery").common(
+            Part.makeBox(20, 20, 4.3, App.Vector(-10, -10, 12.6))
+        )
+        reflected = actual.copy()
+        reflected.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+        self.assertLess(actual.cut(reflected).Volume, 1e-6)
+        self.assertLess(reflected.cut(actual).Volume, 1e-6)
+        self.assertAlmostEqual(
+            sum(solid.CenterOfMass.y * solid.Volume for solid in actual.Solids)
+            / actual.Volume,
+            0,
+            places=6,
+        )
+        self.assertAlmostEqual(actual.Volume, 2 * 5 * 5 * 4.3, places=5)
+
     def test_two_short_supports_leave_the_spare_centre_mount_open(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_centre_mount_check

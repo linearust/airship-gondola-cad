@@ -91,7 +91,7 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
 
 def _literal_protected_mount(length=16, *, shared=False, bolt_positions=(0,)):
     """Independent fitted U stock; shared frame carries no nut recess."""
-    low, high = (-6.0, 6.0) if shared else (-5.25, 6.95)
+    low, high = (-6.0, 6.0) if shared else (-5.25, 5.25)
     leg = Part.makeBox(length, -1.25 - low, 11, V(-length / 2, low, 1.5))
     roof = Part.makeBox(length, high - low, 1.8, V(-length / 2, low, 10.7))
     far_leg = Part.makeBox(length, high - 1.25, 11, V(-length / 2, 1.25, 1.5))
@@ -120,7 +120,7 @@ def _literal_protected_mount(length=16, *, shared=False, bolt_positions=(0,)):
 
 
 def _lower_crop(offset=0, length=16, *, shared=False):
-    low, width = (-6.0, 12.0) if shared else (-5.25, 12.2)
+    low, width = (-6.0, 12.0) if shared else (-5.25, 10.5)
     return Part.makeBox(length, width, 11, V(offset - length / 2, low, 1.5))
 
 
@@ -501,7 +501,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 head_face_y=head_face_y,
                 head_support=head_support,
                 nut_bearing_y=8.0 if shared else 3.25,
-                nut_outer_y=11.0 if shared else 6.95,
+                nut_outer_y=11.0 if shared else 5.25,
                 frame_contact_y=6.0 if shared else None,
                 shared_drive=shared,
             )

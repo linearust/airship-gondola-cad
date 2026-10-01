@@ -1,46 +1,27 @@
 {
-  "revision": "BX",
+  "revision": "BY",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
   "passed": true,
   "fixture_promotion_approved": true,
-  "reviewer": "Root: independent saved geometry, placements, native controls, classified metadata and candidate rendered views reviewed.",
-  "reviewed_at_utc": "2026-10-01T05:55:47.997144+00:00",
-  "source_fingerprint": "f5955136fe9650f042bde24b4a021cdaf9b9c154c23e35f193e266c4f6f79508",
-  "candidate_path": "/tmp/gondola-bx-review/candidate/gondola.FCStd",
-  "candidate_sha256": "7fb4a7984935cfd74e7cbc74e3ba481a2d2fb1f0c42368dbcef81aa6169c2ed0",
-  "candidate_print_layout_sha256": "293bbafa2be0d122e2827b21f99e0f92d155be4f2f2daf9f5a3cce1b5a3df536",
-  "old_production_path": "/tmp/gondola-bx-review/before/gondola.FCStd",
-  "old_production_sha256": "d08995230d4600715a6dcae96ce78e97de3f60799ed74045fcea02373f7a5d8a",
-  "old_fixture_path": "/tmp/gondola-bx-review/before/fixture.FCStd",
-  "old_fixture_sha256": "07f766341a20754e6375b1d348c3953fec48cc83b449a6896480b62f1f30cde0",
-  "required_independent_audits": [
-    "independent-approval.json",
-    "independent-saved-audit.json"
-  ],
+  "reviewer": "Independent agent saved-shape, controls and metadata audit; root direct rendered geometry review.",
+  "reviewed_at_utc": "2026-10-01T06:42:45.552768+00:00",
+  "source_fingerprint": "aa05ce308dff3cf003f76f7eef6742d654acc8a6d77cf3a7f18648af63f668b2",
+  "candidate_path": "/tmp/gondola-by-review/candidate/gondola.FCStd",
+  "candidate_sha256": "1b08a44f377e0b7b44955cd3cdaf4da1a6f6a54539f7a416f8f5a2ea9d980d8a",
+  "candidate_print_layout_sha256": "8f13da775edaf4df392fb24a42fd9f330e51ae36ec6f1dce04e10cf49e1dcaf7",
+  "old_production_path": "/tmp/gondola-by-review/before/gondola.FCStd",
+  "old_production_sha256": "f01da1110a091b84af8c9949221f7aa3a0d75d3cebc8ca9ef14750782502cbd6",
+  "old_fixture_path": "/tmp/gondola-by-review/before/geometry.FCStd",
+  "old_fixture_sha256": "7fb4a7984935cfd74e7cbc74e3ba481a2d2fb1f0c42368dbcef81aa6169c2ed0",
   "evidence_artifact_sha256": {
-    "approve_candidate.py": "5c64ccc9f1024c9ea8ed87cb4a0b355eaacaf2d23c63016ffb33e14fc07af41d",
+    "independent-approval.json": "10133e13ace30b2f5a9a71edaa2a117eaaece6c94e10d076ec86886759410325",
+    "independent-saved-audit.json": "77c06bb3b2e83a8f86f94c88eb45682e663f63db65635482b12a47ea83713ed8",
+    "independent_saved_audit.py": "bb51097b4edcaecba45c14df40c4d81bab998271e0efc3bdc89a35e59c5195d6",
     "audit_helpers.py": "f8888d45d65f69834a5e450f18304e9390bf33dab16cd3c00e2a33c1c0304d78",
-    "before-manufacturing-correction/gondola_validation.json": "524a842d9adb7629b1e679ab1b3d6451da7fa6b5b6a3bb59e73e2230efd4c1f0",
-    "before-service-test-correction/test_classes/tests_test_servo_horn_profiles_HornProfileGeometryTests.json": "91bb6fd062584b5cbbacdb5b5b77b014c913b9d0b2d92218af2f415fdd2ee4e5",
-    "candidate-visual-review.json": "d7b61cb43037765e48735f800e3d391c9bcbf2f7eb851bec8e32c51fd817c289",
-    "independent-approval.json": "84724645d2673857d5fc460908b2b95fe40b0f4cc37a07d23c6ff7d69fc674a8",
-    "independent-saved-audit.json": "d72aebde66928d265b0611b3bb072507ae972f996f89f493e755779255dfd992",
-    "independent_saved_audit.py": "e744052e8afaefe7cb59b61f65e32a0824f9c26e364cd0e876989c282c51d047",
-    "optical-foot-correction/audit.py": "e9337007af84424e3798f402b48ccee1c0b2974f1a836561f153908987f62d06",
-    "optical-foot-correction/before/gondola/parts/optical_interface.py": "57cf8d1c3658490bfe4b16d88330e9e8d1301e687b40b5ad14999f7eef86475e",
-    "optical-foot-correction/before/gondola/validation/manufacturing.py": "e84e1f3ccd68abe4c90e2d4bcb381b88f7bd7c429d53f383967e1d210c8f254f",
-    "optical-foot-correction/before/gondola/validation/optical.py": "928b702fc684efc49e7c59be0f39d5af85079150e6b5c5c462349a1c5c1d47c5",
-    "optical-foot-correction/before/tests/test_optical_interface.py": "fd9e48ab0b37ca24a8a628ffefbbbfc4846d71ac04501791f4b90509dc159181",
-    "optical-foot-correction/before/tests/test_optical_mount.py": "0d18f6352518b7400dde493cdc420540630357d9ef7774ed529afc8a89c8bce8",
-    "optical-foot-correction/correction-audit.json": "639f8060789f94d71200269acefada78341f5c5c848015045d56549c63592ad8",
-    "optical-foot-correction/interface-tests.json": "28579c5c3f2aa78e93896e3128d537dec554d5d3a1e2643a19294b6559892b3e",
-    "optical-foot-correction/mount-tests.json": "1d505c68585742b47d10eb918c50dc54553b056c75cc6ed14a5615b1b4886b97",
-    "pre-prose-correction/design.py": "ff0285cbe2daa4e2e4aab045ee5b39d3540a5eeeb0ed757a216274cddd47f3b1",
-    "pre-prose-correction/hardware.py": "2e6babaad9c59e2ed4ecee0b0d3dc4fcbd6d14f8faed95e1956fbc26c107d9aa",
-    "prose-correction-review.json": "acaab1dd30c5c0230614533c43afcfb3d7312126ca558f66b11ad381e0d9506f",
-    "test-correction-review.json": "f358b301750a5d28a1faf6aac40f97432b131f924965b6a547ddb96642e99fb5",
-    "test_servo_horn_profiles.after-service-correction.py": "fd9a55618c3558695ee66a5c1d2c8b4fb13946dcd45a3ab2a408cfef554b3332",
-    "test_servo_horn_profiles.before-service-correction.py": "93ee446d41a55a19d29bb0d8eec886a2ceb473c97d2aae0c8a4ed548cbd6e371"
+    "candidate-visual-review.json": "9c83107f67b08dc51f83805284154e1436aa80362e3f55913b6e19a25a1ac565",
+    "approve_candidate.py": "f74da9afe8de71859eae1055389b43c86d3a7bc8e088e41dbea1ef9443b41241",
+    "motor-symmetry-witness.json": "e02492c20ae668c65a178282ad2daf820ef3a4ecd1ec45e2eaae0e8bfb0d79db",
+    "motor_symmetry_witness.py": "91da581fec7855a264d19b492c1efba7ea494cfb23f8ea9bdf56cbf4a05031cf"
   },
   "evidence": {
     "archive": "references/design_checks.json.gz",
@@ -48,18 +29,12 @@
     "artifact_key": "review_artifacts"
   },
   "approval_basis": [
-    "Keeper rear backing extends upward from Z -14 to -5 mm; paired frame pocket changes preserve bearing contact, float, aperture, ordinary fastener and service direction. The lower single-screw load path remains asymmetric.",
-    "Two horn nuts, two optical nuts and four servo-ear nuts receive shallow recessed antirotation seats. Horn registration freedoms and screw-tip locations are retained; optical pitch nut now follows its tray. Servo service removes ear screws before nuts.",
-    "Motor carrier side blocks become flat 18 x 10 x 8 mm stock with recessed head and nut seats; circular axial flanges and raised nut rails are removed. Shaft bore, split, grip, axial stop planes and exact 12 mm propeller centre-plane offset remain unchanged.",
-    "Independent literal reconstruction covers all changed solids; five documents and all print instances reviewed. Purchased part geometry and fastener inventory remain unchanged.",
-    "Nominal printed mass increases 1.4522007059459696 g. Native test discovery and ordered frozen release remain required after promotion.",
-    "Five stale purchase/release descriptions corrected; independent AST and exact saved metadata review confirms prose-only changes. Full independent saved-CAD approval renewed after regeneration.",
-    "Final manufacturing screen exposed a0.9mm optical-foot pocket end wall. Extend the centered foot8x16→8x18mm with only two8x1x2mm strips; actual end wall is1.9mm. Bolt, locator and assembly datums unchanged. Entire saved-candidate manufacturing review and independent negative/positive witnesses pass; print-layout-only Y rebase increases1mm."
+    "All altered physical solids independently reconstructed from literal dimensions and compared to saved CAD; native controls, placements, unchanged purchased interfaces and print layouts reviewed.",
+    "Carrier U legs4mm and centred deck supports remove one-sided bulk. M3 nuts seat2mm into the ordinary carrier while bearing floors and existing fastener lengths are preserved.",
+    "Fixed bearing-keeper nut guides become shallow0.5mm recesses; keeper guide0.1mm per side and optical tongue2.4mm/footbore2.2mm reduce location slack without pressing bearing rings.",
+    "Ordinary-nut maximum-size insertion and minimum-size turn restraint checked; shallow optical M2 pockets useAF4.25; the input shaft pocket retainsAF4.2 and its1.5mm end wall. Horn pitch-relief slots and intentional moving clearances retained.",
+    "Propeller/guard plane15mm, motor plate3mm, motor body+3mm. Inboard straight guard connections preserve full-angle metal reserve without changing18x10x8mm shaft clamps.",
+    "Stale manufacturing guard probe corrected fromX12 toX15 with unchanged2mm threshold; former failed candidates and independent reports preserved. The input shaft nut pocket retainsAF4.2 rather than sacrificing its1.5mm end wall."
   ],
-  "limits": "Nominal CAD regression approval only. Planar/line wall screening does not certify a global curved minimum. The shallow0.6mm horn-pocket rim locally narrows to about0.55mm above a3mm floor and requires actual print/torque checks. Fit, strength, creep, fatigue, adhesion, wiring and flight readiness remain unqualified.",
-  "test_assertion_correction": {
-    "review": "test-correction-review.json",
-    "approved_by": "Root: exact single test-method correction reviewed against the independently approved ordered servo service.",
-    "scope": "Require checked screw-first ear removal before absence from later horn/adapter obstacles. Test identities, production, approved geometry and fixture remain unchanged; complete fresh frozen validation follows."
-  }
+  "limits": "Regression approval, not physical qualification. PA12 fit, nut chamfers, shaft/keeper centring, motor screw lengths, loaded retention and assembled CG remain to be verified."
 }
