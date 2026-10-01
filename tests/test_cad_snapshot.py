@@ -54,6 +54,14 @@ class ValidatedCADSnapshot(unittest.TestCase):
     def assert_previous_output(self):
         self.assertEqual(self.output.read_bytes(), self.previous_output)
 
+    def make_tool_inputs(self):
+        tools = {}
+        for name in ("exporter", "snapshot_helper", "motion_plan"):
+            path = self.root / (name + ".py")
+            path.write_text("# original " + name + "\n")
+            tools[name + "_sha256"] = path
+        return tools
+
     def test_success_preserves_inputs_and_records_the_exact_evidence(self):
         input_hashes = {
             path: file_sha256(path) for path in (self.cad, self.report_path)
@@ -103,6 +111,112 @@ class ValidatedCADSnapshot(unittest.TestCase):
             with cad_snapshot.open_validated_cad(self.cad, self.root / "out.txt"):
                 self.fail("Non-JSON output was accepted")
         self.app.openDocument.assert_not_called()
+
+    def test_tool_hashes_are_captured_without_changing_existing_provenance_schema(self):
+        tools = self.make_tool_inputs()
+        expected = {name: file_sha256(path) for name, path in tools.items()}
+        with cad_snapshot.open_validated_cad(
+            self.cad, self.output, tool_inputs=tools
+        ) as snapshot:
+            tools.clear()
+            self.assertEqual(snapshot.tool_hashes, expected)
+            detached = snapshot.tool_hashes
+            detached.clear()
+            self.assertEqual(snapshot.tool_hashes, expected)
+        snapshot.write_json(
+            {"basis": {**snapshot.provenance(), **snapshot.tool_hashes}}
+        )
+        basis = json.loads(self.output.read_text())["basis"]
+        self.assertEqual(set(basis), set(snapshot.provenance()) | set(expected))
+        self.assertEqual({key: basis[key] for key in expected}, expected)
+
+    def test_output_cannot_alias_any_tool_input(self):
+        tools = self.make_tool_inputs()
+        for path in tools.values():
+            for kind in ("same", "symlink", "hardlink"):
+                with self.subTest(tool=path.name, kind=kind):
+                    alias = self.root / f"{path.stem}-{kind}.json"
+                    if kind == "same":
+                        alias = path
+                    elif kind == "symlink":
+                        alias.symlink_to(path)
+                    else:
+                        os.link(path, alias)
+                    before = file_sha256(path)
+                    with self.assertRaisesRegex(ValueError, "not an input"):
+                        with cad_snapshot.open_validated_cad(
+                            self.cad, alias, tool_inputs=tools
+                        ):
+                            self.fail("Aliased tool output was accepted")
+                    self.assertEqual(file_sha256(path), before)
+        self.app.openDocument.assert_not_called()
+
+    def test_changed_tools_during_extraction_reject_the_result(self):
+        tools = self.make_tool_inputs()
+        for path in tools.values():
+            with self.subTest(tool=path.name):
+                self.app.closeDocument.reset_mock()
+                with self.assertRaisesRegex(RuntimeError, "Export tool changed"):
+                    with cad_snapshot.open_validated_cad(
+                        self.cad, self.output, tool_inputs=tools
+                    ):
+                        path.write_text(path.read_text() + "# changed\n")
+                self.app.closeDocument.assert_called_once_with(self.doc.Name)
+                self.assert_previous_output()
+
+    def test_tool_change_during_json_encoding_preserves_output_and_cleans_temp(self):
+        tools = self.make_tool_inputs()
+        with cad_snapshot.open_validated_cad(
+            self.cad, self.output, tool_inputs=tools
+        ) as snapshot:
+            pass
+        before = set(self.root.iterdir())
+        dumps = json.dumps
+
+        def encode_and_change_tool(*args, **kwargs):
+            payload = dumps(*args, **kwargs)
+            tools["motion_plan_sha256"].write_text("# changed during encoding\n")
+            return payload
+
+        with patch.object(
+            cad_snapshot.json, "dumps", side_effect=encode_and_change_tool
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Export tool changed"):
+                snapshot.write_json({"new": True})
+        self.assert_previous_output()
+        self.assertEqual(set(self.root.iterdir()), before)
+
+    def test_late_tool_alias_is_rejected_before_output_replacement(self):
+        tools = self.make_tool_inputs()
+        with cad_snapshot.open_validated_cad(
+            self.cad, self.output, tool_inputs=tools
+        ) as snapshot:
+            pass
+        path = tools["exporter_sha256"]
+        before = file_sha256(path)
+        self.output.unlink()
+        os.link(path, self.output)
+        with self.assertRaisesRegex(ValueError, "not an input"):
+            snapshot.write_json({"new": True})
+        self.assertEqual(file_sha256(path), before)
+
+    def test_simulation_export_rejects_tool_change_during_extraction(self):
+        from tools.simulation import export_parameters as exporter
+
+        tool = self.make_tool_inputs()["exporter_sha256"]
+
+        def extract_and_change_tool(_):
+            tool.write_text("# changed while extracting simulation data\n")
+            return {"synthetic_result": 1}
+
+        with (
+            patch.object(exporter, "__file__", str(tool)),
+            patch.object(exporter, "extract", side_effect=extract_and_change_tool),
+            self.assertRaisesRegex(RuntimeError, "Export tool changed"),
+        ):
+            exporter.export(self.cad, self.output)
+        self.app.closeDocument.assert_called_once_with(self.doc.Name)
+        self.assert_previous_output()
 
     def test_validation_requires_literal_success_current_source_and_exact_cad(self):
         original = dict(self.report)

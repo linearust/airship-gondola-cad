@@ -144,16 +144,19 @@ def export(cad, output_dir):
     cad, output_dir = Path(cad).resolve(), Path(output_dir).resolve()
     if output_dir.exists():
         raise ValueError("Use a new, separate coupon output directory.")
-    tool_hashes = {
-        Path(__file__): file_sha256(__file__),
-        ROOT / "tools/cad_snapshot.py": file_sha256(ROOT / "tools/cad_snapshot.py"),
-    }
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=".joint-coupon-", dir=output_dir.parent
     ) as tmp:
         folder = Path(tmp)
-        with open_validated_cad(cad, output_dir / "manifest.json") as snapshot:
+        with open_validated_cad(
+            cad,
+            output_dir / "manifest.json",
+            tool_inputs={
+                "exporter_sha256": __file__,
+                "snapshot_helper_sha256": ROOT / "tools/cad_snapshot.py",
+            },
+        ) as snapshot:
             crops = extract(snapshot.doc)
             checks = joint_checks({name: row[1] for name, row in crops.items()})
             if not checks["passed"]:
@@ -241,10 +244,7 @@ def export(cad, output_dir):
                 "optional_fit_coupon": True,
                 "basis": {
                     **snapshot.provenance(),
-                    "exporter_sha256": tool_hashes[Path(__file__)],
-                    "snapshot_helper_sha256": tool_hashes[
-                        ROOT / "tools/cad_snapshot.py"
-                    ],
+                    **snapshot.tool_hashes,
                 },
                 "coordinate_frame": "Saved MainPropulsionModule local frame; assembled coupon poses.",
                 "hardware": "Reuse two intended M3x20 screws and two M3 nuts; no additional hardware purchase or installed parts.",
@@ -261,9 +261,12 @@ def export(cad, output_dir):
                 "passed": True,
             }
         snapshot.assert_unchanged()
-        if any(file_sha256(path) != digest for path, digest in tool_hashes.items()):
-            raise RuntimeError("Coupon export tools changed during export.")
-        write_json_atomic(folder / "manifest.json", manifest, indent=2)
+        write_json_atomic(
+            folder / "manifest.json",
+            manifest,
+            before_replace=snapshot.assert_unchanged,
+            indent=2,
+        )
         snapshot.assert_unchanged()
         folder.rename(output_dir)
     print("Optional paired joint coupon: " + str(output_dir))

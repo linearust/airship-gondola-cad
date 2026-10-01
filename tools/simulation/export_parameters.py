@@ -14,7 +14,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from gondola.provenance import file_sha256  # noqa: E402
 from tools.cad_snapshot import open_validated_cad  # noqa: E402
 
 
@@ -209,7 +208,14 @@ def extract(doc):
 
 
 def export(cad, output):
-    with open_validated_cad(cad, output) as snapshot:
+    with open_validated_cad(
+        cad,
+        output,
+        tool_inputs={
+            "exporter_sha256": __file__,
+            "snapshot_helper_sha256": ROOT / "tools/cad_snapshot.py",
+        },
+    ) as snapshot:
         result = {
             "schema_version": 4,
             "units": {
@@ -220,8 +226,7 @@ def export(cad, output):
             },
             "basis": {
                 **snapshot.provenance(),
-                "exporter_sha256": file_sha256(__file__),
-                "snapshot_helper_sha256": file_sha256(ROOT / "tools/cad_snapshot.py"),
+                **snapshot.tool_hashes,
             },
             **extract(snapshot.doc),
         }

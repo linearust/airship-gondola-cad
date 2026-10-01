@@ -17,7 +17,6 @@ import MeshPart
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.parts import optical_mount
-from gondola.provenance import file_sha256
 from tools.blender_review.motion_plan import REVIEW_MOTION, curve
 from tools.cad_snapshot import open_validated_cad
 
@@ -207,7 +206,16 @@ def check_optical_carrier_basis(doc):
 
 
 def export(cad_path, output):
-    with open_validated_cad(cad_path, output) as snapshot:
+    with open_validated_cad(
+        cad_path,
+        output,
+        tool_inputs={
+            "exporter_sha256": __file__,
+            "snapshot_helper_sha256": Path(__file__).resolve().parents[1]
+            / "cad_snapshot.py",
+            "motion_plan_sha256": Path(__file__).with_name("motion_plan.py"),
+        },
+    ) as snapshot:
         doc = snapshot.doc
         registry = doc.DesignRegistry
         report = snapshot.report
@@ -463,13 +471,7 @@ def export(cad_path, output):
             "metadata": {
                 "cad_path": str(snapshot.cad_path),
                 **snapshot.provenance(),
-                "exporter_sha256": file_sha256(__file__),
-                "snapshot_helper_sha256": file_sha256(
-                    Path(__file__).resolve().parents[1] / "cad_snapshot.py"
-                ),
-                "motion_plan_sha256": file_sha256(
-                    Path(__file__).with_name("motion_plan.py")
-                ),
+                **snapshot.tool_hashes,
                 "revision": report["revision"],
                 "units": "mm",
                 "fps": 24,

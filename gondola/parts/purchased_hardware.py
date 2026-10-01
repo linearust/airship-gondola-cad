@@ -57,7 +57,7 @@ def hex_prism(across_flats, height, z=0):
 
 
 @functools.lru_cache(None)
-def screw_shape(length=CLAMP_SCREW_LENGTH):
+def _screw_shape(length):
     # The bearing face is Z0; the head is a design envelope below that plane.
     # No socket recess is invented: the selected kit supplies a 1.5 mm key but
     # does not document socket depth or the button-head profile.
@@ -68,8 +68,13 @@ def screw_shape(length=CLAMP_SCREW_LENGTH):
     return head.fuse(shank).removeSplitter()
 
 
+def screw_shape(length=CLAMP_SCREW_LENGTH):
+    """Return an independent M2 screw envelope for positioning or modification."""
+    return _screw_shape(length).copy()
+
+
 @functools.lru_cache(None)
-def servo_screw_shape(length=fasteners.SERVO_SCREW_LENGTH):
+def _servo_screw_shape(length):
     """M1.6 kit head acceptance envelope; actual Phillips recess is unmodeled."""
     head = Part.makeCylinder(
         fasteners.SERVO_SCREW_HEAD_DIAMETER / 2,
@@ -80,8 +85,13 @@ def servo_screw_shape(length=fasteners.SERVO_SCREW_LENGTH):
     return head.fuse(shank).removeSplitter()
 
 
+def servo_screw_shape(length=fasteners.SERVO_SCREW_LENGTH):
+    """Return an independent M1.6 screw envelope with the selected kit head."""
+    return _servo_screw_shape(length).copy()
+
+
 @functools.lru_cache(None)
-def servo_nut_shape():
+def _servo_nut_shape():
     """DIN 934 M1.6 hex nut; nominal geometry omits chamfers and threads."""
     return (
         hex_prism(3.2, 1.3)
@@ -90,8 +100,13 @@ def servo_nut_shape():
     )
 
 
+def servo_nut_shape():
+    """Return an independent nominal DIN 934 M1.6 nut envelope."""
+    return _servo_nut_shape().copy()
+
+
 @functools.lru_cache(None)
-def hex_nut_shape():
+def _hex_nut_shape():
     """Accepted M2 kit hex-nut envelope; chamfers and threads are unmeasured."""
     return (
         hex_prism(HEX_NUT_AF, HEX_NUT_HEIGHT)
@@ -100,6 +115,11 @@ def hex_nut_shape():
         )
         .removeSplitter()
     )
+
+
+def hex_nut_shape():
+    """Return an independent selected-kit M2 nut envelope."""
+    return _hex_nut_shape().copy()
 
 
 def add_hardware(

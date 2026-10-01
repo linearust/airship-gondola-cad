@@ -188,10 +188,8 @@ def centre_mount_contract():
     }
 
 
-@functools.lru_cache(None)
-def mount_shape(kind):
-    if kind not in MOUNT_NAMES:
-        raise ValueError("Unknown equipment mount kind: " + str(kind))
+@functools.lru_cache(maxsize=1)
+def _common_mount_shape():
     pieces = [mounting_plate.shape(), rail.mount_base_shape()]
     for left, right in SUPPORT_X_RANGES_MM:
         pieces.append(
@@ -207,8 +205,15 @@ def mount_shape(kind):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
     if not shape.isValid() or len(shape.Solids) != 1:
-        raise RuntimeError("Equipment mount is not one valid solid: " + kind)
+        raise RuntimeError("Common equipment mount is not one valid solid")
     return shape
+
+
+def mount_shape(kind):
+    """Return an independent copy of the common carrier for a supported role."""
+    if kind not in MOUNT_NAMES:
+        raise ValueError("Unknown equipment mount kind: " + str(kind))
+    return _common_mount_shape().copy()
 
 
 def mount_contract(kind):

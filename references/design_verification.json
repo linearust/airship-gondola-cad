@@ -1,36 +1,36 @@
 {
   "revision": "BU",
-  "change_kind": "Four additive planar bearing-post root flares",
-  "recorded_utc": "2026-10-01T01:07:27.059916+00:00",
+  "change_kind": "Geometry-preserving refactor",
+  "recorded_utc": "2026-10-01T01:32:55.135398+00:00",
   "passed": true,
   "scope": "Nominal CAD, native controls, motion/service and exports; no physical fit, strength or flight qualification.",
-  "predecessor_commit": "32b30227cc4481d73570fca9cefc6310adc31875",
-  "source_fingerprint": "821cb0b7682a43be15a42f7aff0dcce9e321f0e4ef20a4254661deb5fa752b99",
-  "cad_sha256": "56ad4981423e27ddaeccd5a02b96ce9c0c4bc592d23f13efdd5e9acf3e5473c6",
+  "predecessor_commit": "fe776834b8f89f0b65aaaca4f5c55045cc593c02",
+  "source_fingerprint": "981869ce9203aaf1e175a1cd90ff3446ffe0499cb05f5a8b6581cabb230bf127",
+  "cad_sha256": "930a5c2eff79c59f8b7ac77e26a3fee8494ed66679ef6b1c9e99744916514030",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
-    "promoted_after_explicit_review": true
+    "unchanged": true
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
     "sha256": "00d40e1ae5970b0e1dd9f53c8e525fdffc1fca2e03514c58b6cce62a81486c3a",
-    "candidate_sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
-    "independent_gate_count": 39
+    "unchanged": true,
+    "supporting_approval_preserved": true
   },
-  "approved_geometry_transition": {
+  "refactor_equivalence": {
     "passed": true,
-    "added_frame_volume_mm3": 504.0,
-    "removed_material_mm3": 0.0,
-    "estimated_printed_mass_delta_g": 0.50904,
-    "density_g_cm3": 1.01,
-    "all_other_budget_fields_unchanged": true,
-    "simulation_values_unchanged": true,
-    "scope": "Geometry-derived mass estimate only; not measured mass or structural qualification."
+    "native_documents": 4,
+    "assembly_shapes": 118,
+    "print_skus": 13,
+    "native_geometry_metadata_and_controls_unchanged": true,
+    "complete_modeled_mass_budget_unchanged": true,
+    "simulation_schema_and_values_unchanged": true,
+    "scope": "Saved-CAD modeled quantities, assumptions and unknown/null masses; no physical qualification."
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 674,
+    "testsRun": 684,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -83,22 +83,17 @@
     "matrix_checks": 90184,
     "discrepancy_count": 0
   },
-  "final_print_layout": {
-    "passed": true,
-    "skus": 13,
-    "approved_candidate_equivalence": true
-  },
   "optional_fit_coupon": {
     "present": true,
     "passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "56ad4981423e27ddaeccd5a02b96ce9c0c4bc592d23f13efdd5e9acf3e5473c6",
-    "gondola_print_parts.FCStd": "8872fa11b3fe27c6ece19eabd22f4bfd63b081f2cfc84498364f6fd28981681a",
-    "gondola_power_options.FCStd": "dcd2917f86058ce7f50716928b4aa6a462c1e3d0654e0374ce1155d3ed4311bf",
-    "gondola_attachment_detail.FCStd": "c325f54b23bc1685c8d0570778526970fe0e0e5ac471a6b689ab0e7b0c4a0832"
+    "gondola.FCStd": "930a5c2eff79c59f8b7ac77e26a3fee8494ed66679ef6b1c9e99744916514030",
+    "gondola_print_parts.FCStd": "b07611749681bd38ac9e6b6d238c5267c875c932840eaffeeb44da7296206e09",
+    "gondola_power_options.FCStd": "5d3e1bb96f06f9ce030283e9b2e2dfa1798e1aa0a430a259143c1af946f5fb68",
+    "gondola_attachment_detail.FCStd": "54c9715c903f38304032f9325ac185adb1a604fa5f28c0d92ffd188d8764112a"
   },
-  "print_bundle_sha256": "cc23ea30fd4732df5abecc1d3b643944310ef8ded36c07f25de6b1ed85669403",
+  "print_bundle_sha256": "e82bd6fb102fe578b8edd9d4e945b4f5899310ed30dbf9ee59f0edba8a72066d",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "3e97b9ad1a6862e170e959a6614fd458f5dac2a9fc64f9ff79a0c57aed154345"
+  "evidence_archive_sha256": "a98040b2f32612317cb0451293acd89591a5d7d5284af945715431f3ffb9babb"
 }

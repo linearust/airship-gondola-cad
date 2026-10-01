@@ -103,7 +103,7 @@ def platform_contract():
 
 
 @functools.lru_cache(None)
-def platform_shape():
+def _platform_shape():
     shape = stack_interface.tower_shape().fuse(mounting_plate.shape(DECK_BOTTOM_Z))
     for hole in mounting_plate.cutters(-1, 5):
         shape = shape.cut(hole)
@@ -111,6 +111,11 @@ def platform_shape():
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Optional power platform is not one valid solid")
     return shape
+
+
+def platform_shape():
+    """Return an independent optional-platform solid for each caller."""
+    return _platform_shape().copy()
 
 
 @functools.lru_cache(None)

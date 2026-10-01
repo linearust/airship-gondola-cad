@@ -60,6 +60,18 @@ class CadSnapshot:
     cad_sha256: str
     source_fingerprint: str
     validation_sha256: str
+    tool_inputs: tuple[tuple[str, Path, str], ...] = ()
+
+    @property
+    def tool_hashes(self):
+        """A fresh metadata mapping; the captured paths/hashes stay immutable."""
+        return {name: digest for name, _, digest in self.tool_inputs}
+
+    @property
+    def protected_paths(self):
+        return (self.cad_path, self.report_path) + tuple(
+            path for _, path, _ in self.tool_inputs
+        )
 
     def provenance(self):
         return {
@@ -70,6 +82,7 @@ class CadSnapshot:
         }
 
     def assert_unchanged(self):
+        json_output_path(self.output_path, self.protected_paths)
         if (
             file_sha256(self.cad_path) != self.cad_sha256
             or source_fingerprint() != self.source_fingerprint
@@ -78,26 +91,36 @@ class CadSnapshot:
             raise RuntimeError(
                 "CAD, source or validation report changed during export."
             )
+        for _, path, digest in self.tool_inputs:
+            if file_sha256(path) != digest:
+                raise RuntimeError("Export tool changed during export: " + str(path))
 
     def write_json(self, data, **formatting):
         """Call after leaving open_validated_cad; publish only unchanged inputs."""
 
-        def check_inputs():
-            json_output_path(self.output_path, (self.cad_path, self.report_path))
-            self.assert_unchanged()
-
-        check_inputs()
+        self.assert_unchanged()
         write_json_atomic(
-            self.output_path, data, before_replace=check_inputs, **formatting
+            self.output_path, data, before_replace=self.assert_unchanged, **formatting
         )
 
 
 @contextmanager
-def open_validated_cad(cad_path, output_path):
-    """Open one document for extraction, close it without saving, then recheck."""
+def open_validated_cad(cad_path, output_path, *, tool_inputs=None):
+    """Freeze CAD/evidence and named tool paths, then extract without saving.
+
+    Tool inputs are explicit because the production fingerprint excludes tools.
+    Their metadata names are preserved in ``snapshot.tool_hashes``.
+    """
     cad_path = Path(cad_path).expanduser().resolve()
     report_path = cad_path.with_name(cad_path.stem + "_validation.json")
-    output_path = json_output_path(output_path, (cad_path, report_path))
+    tool_paths = tuple(
+        (name, Path(path).expanduser().resolve())
+        for name, path in (tool_inputs or {}).items()
+    )
+    output_path = json_output_path(
+        output_path, (cad_path, report_path, *(path for _, path in tool_paths))
+    )
+    captured_tools = tuple((name, path, file_sha256(path)) for name, path in tool_paths)
     digest = file_sha256(cad_path)
     fingerprint = source_fingerprint()
     report_bytes = report_path.read_bytes()
@@ -126,6 +149,7 @@ def open_validated_cad(cad_path, output_path):
         digest,
         fingerprint,
         hashlib.sha256(report_bytes).hexdigest(),
+        captured_tools,
     )
     try:
         if (
