@@ -10,7 +10,7 @@ from gondola.cad import box, set_property, union
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
 
-from . import mounting_plate, purchased_hardware
+from . import mounting_plate, purchased_hardware, slot_bearing
 
 V = App.Vector
 HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
@@ -137,12 +137,9 @@ def interface_contract():
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
         "host_interface": "Existing x=+/-27 mm middle side slot; one screw at local y=+5 mm and the locating tongue toward negative Y. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
         "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut in a shallow foot recess; one further identical pair locks the pitch ears. No washers.",
-        "minimum_received_flat_head_bearing_diameter_mm": 3.5,
-        "concentric_head_land_across_maximum_slot_width_mm": (
-            3.5 - HOST_SLOT_WIDTH - DIMENSION_ALLOWANCE
-        )
-        / 2,
-        "bearing_scope": "Heads bridge the carrier slot on two transverse lands. Inspect actual flat bearing diameter >=3.5 mm and slot width <=2.9 mm; centred residual land is only 0.3 mm per side. No washer is modeled. Eccentric seating and PA12 clamp pressure/creep remain unqualified.",
+        **slot_bearing.contract(
+            HOST_SLOT_WIDTH + DIMENSION_ALLOWANCE, MINIMUM_RECEIVED_BOLT_DIAMETER
+        ),
         "nut_recess": nut_recess_contract(),
         "nominal_grip_mm": mounting_plate.THICKNESS_MM + FOOT_NUT_SEAT_Z,
         "nominal_bolt_tip_projection_mm": CLAMP_SCREW_LENGTH
@@ -154,7 +151,7 @@ def interface_contract():
             "minimum_received_screw_diameter_mm": MINIMUM_RECEIVED_BOLT_DIAMETER,
             "conservative_xy_translation_mm": (MAX_REGISTRATION_X, MAX_REGISTRATION_Y),
             "maximum_yaw_bound_deg": math.degrees(MAX_REGISTRATION_YAW_RAD),
-            "scope": "Conservative assembly allowance bounded by the tongue width/length and positive-end screw, assuming full planar seating. Hand-align and lock the screw; this is not operating looseness, automatic alignment or a pointing specification. Width/length size screening does not include slot-end location, feature-position error or warpage. Inspect the actual features and align within these bounds before locking; they are not an all-process tolerance guarantee.",
+            "scope": "Conservative collision allowance bounded by the tongue width/length and positive-end screw, assuming full planar seating. This includes positions that fail head-bearing acceptance; admissible assembly additionally requires screw centring within 0.1 mm across the slot and retained lands after tightening. Hand-align and lock the screw; this is not operating looseness, automatic alignment or a pointing specification. Width/length size screening does not include slot-end location, feature-position error or warpage. Inspect the actual features; these bounds are not an all-process tolerance guarantee.",
         },
         "relocation": "Move the same foot to a free middle side slot on an existing carrier and recheck populated device, wiring and optical fields. Carrier and side compatibility alone do not establish a clear view or simultaneous power-platform fit.",
         "service": "Disconnect the sensor and bench-support the carrier off the rail. Remove the exposed foot nut and withdraw its screw downward, then lift the mount vertically to clear the 1.2 mm tongue. Remove obstructing equipment first if the selected populated host blocks access. No powered transfer or connected-cable service is modeled.",

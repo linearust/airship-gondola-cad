@@ -537,8 +537,10 @@ def build_fit_coupons(doc):
         "Qualify actual outer-ring contact, no shield rubbing, endplay, free "
         "rotation and ordinary screw/keeper removal before full printing. "
         "Centre the keeper aperture on the received bearing before tightening. "
-        "No spacer or press-fit retention is assumed. Raw printing does not "
-        "guarantee the nominal 0.1 mm diametral or 0.5 mm axial allowance.",
+        "The nominal diameter-6 bore has no radial allowance: finish for hand "
+        "insertion without rocking and reprint an oversized seat. No spacer "
+        "or press-fit retention is assumed. Raw printing does not guarantee "
+        "this located fit or the nominal 0.5 mm axial allowance.",
         rotation=App.Rotation(V(0, 0, 1), 45),
     )
     keeper = _print(
@@ -607,7 +609,7 @@ def _build_coupling(doc, parent, prefix, sign):
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, near Ø1.8 round hole at X6.8, far 1.8 x 2.4 mm radial slot at X13.2 and flat front nut seats. The near hole bounds displacement along the open seat; the far slot accommodates pitch variation. No long head channel, separate cap or centring jig. Centre the shaft and check runout before tightening both rear M1.4x8/front-nut pairs; the openings do not permit operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
+        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, near Ø1.6 round hole at X6.8, far 1.6 x 2.2 mm radial slot at X13.2 and flat front nut seats. The near hole bounds displacement along the open seat; the far slot accommodates pitch variation. No long head channel, separate cap or centring jig. Centre the shaft and check runout before tightening both rear M1.4x8/front-nut pairs; the openings do not permit operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
         sku="FactoryHoleHornGearAdapter",
     )
@@ -734,9 +736,17 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "output_bearing_outer_wall",
                 "PropulsionFixedFrame",
-                (-6.51, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
-                (-3.04, PIVOT_HALF_SPAN + BEARING_START_Y + 1.5, PIVOT_Z),
-                3.45,
+                (
+                    -bearing_retention.BODY_HALF_WIDTH - 0.01,
+                    PIVOT_HALF_SPAN + BEARING_START_Y + 1.5,
+                    PIVOT_Z,
+                ),
+                (
+                    -bearing_retention.SEAT_RADIUS + 0.01,
+                    PIVOT_HALF_SPAN + BEARING_START_Y + 1.5,
+                    PIVOT_Z,
+                ),
+                bearing_retention.BODY_HALF_WIDTH - bearing_retention.SEAT_RADIUS,
             ),
             (
                 "bearing_integral_outer_shoulder",
@@ -1305,7 +1315,7 @@ def _module_metrics(printed, hardware, references, spec):
             - bearing_retention.KEEPER_STOP_Y,
             "minimum_complete_guide_overlap_mm": bearing_retention.BEARING_WIDTH,
             "keeper_screw_length_mm": bearing_retention.KEEPER_SCREW_LENGTH,
-            "finishing": "Print the production cup and keeper coupons first. Finish and measure the seat, centre the keeper aperture on the actual bearing, then check both axial limits for shield clearance/free rotation and retention. Broad guide clearance is not automatic precision centring. The 0.1 mm diametral allowance does not absorb general PA12 variation. Never force the bearing or use keeper torque to remove radial play.",
+            "finishing": "Print the production cup and keeper coupons first. Finish and measure the nominal diameter-6 contact seat for hand insertion without rocking; reprint an oversized seat. Centre the keeper aperture on the actual bearing, then check both axial limits for shield clearance/free rotation and retention. Broad guide clearance is not automatic precision centring. No designed radial allowance or interference absorbs PA12 variation. Never force the bearing or use keeper torque to remove radial play.",
             "running_axial_clearance_mm": 0.5,
             "assembly": "Insert bearings from the empty carrier bay, centre the keepers and secure each M2x6/nut against the frame seat. Remove the output gear, loosen carrier clamps and retract output shafts 12 mm. Insert the carrier transversely, then advance shafts and clamp. Bearing service requires removal of the carrier/shafts, then the keeper screw/nut and keeper. The paired servo module stays installed.",
         },

@@ -72,7 +72,7 @@ def keeper_alignment_sensitivity(keeper):
         "nominal_shield_envelope_overlap_mm3": by_offset[0.0][
             "maximum_hypothetical_shield_penetration_mm3"
         ],
-        "scope": "Cardinal relative-error sensitivity only. Ø5.4 shield envelope is unmeasured. The nominal 0.05 mm bearing radial allowance can add to keeper displacement: opposing 0.05 mm movements give 0.10 mm relative offset and zero nominal gap, while the revised 0.10 mm nominal keeper guide allowance plus 0.05 mm bearing movement can still give 0.15 mm relative offset and interference. The tighter guide reduces alignment freedom; it does not automatically align the aperture. Non-overlap at 0.10 mm is mathematical tangency, not positive clearance or physical qualification. Align the aperture, inspect the actual ring land and shield, then check free rotation at both axial limits after tightening. Manufacturing error, loaded displacement and actual ring geometry remain unqualified.",
+        "scope": "Cardinal relative-error sensitivity only. Ø5.4 shield envelope is unmeasured. The nominal diameter-6 seat has no designed bearing radial allowance; its finished physical fit must still be checked. The 0.10 mm keeper guide allowance alone can consume the 0.10 mm nominal shield gap. The guide does not automatically align the aperture. Non-overlap at 0.10 mm is mathematical tangency, not positive clearance or physical qualification. Align the aperture, inspect the actual ring land and shield, then check free rotation at both axial limits after tightening. Manufacturing error, loaded displacement and actual ring geometry remain unqualified.",
         "passed": by_offset[0.0]["all_cardinal_offsets_clear"]
         and by_offset[0.05]["all_cardinal_offsets_clear"]
         and not by_offset[0.2]["all_cardinal_offsets_clear"],
@@ -201,7 +201,7 @@ def bearing_stack_check(
         "capture_geometry": capture,
         "keeper_backing": backing,
         **overlaps,
-        "scope": "Saved nominal solids. A rigid removable keeper and rear shoulder contact only the assumed outer-ring land. The keeper clamps against the frame, leaving 0.5 mm nominal bearing endplay. The radial bore has 0.1 mm diametral design allowance. These allowances are not guaranteed process tolerances: actual bore finishing, ring-land compatibility, free rotation, screw retention, wear and loaded fit remain unqualified. The carrier is independently bounded by assembled frame/keeper stops.",
+        "scope": "Saved nominal solids. A rigid removable keeper and rear shoulder contact only the assumed outer-ring land. The keeper clamps against the frame, leaving 0.5 mm nominal bearing endplay. The nominal diameter-6 radial bore has no designed clearance or interference; finish the production coupon for hand insertion without rocking and reprint an oversized bore. Actual bore finishing, ring-land compatibility, free rotation, screw retention, wear and loaded fit remain unqualified. The carrier is independently bounded by assembled frame/keeper stops.",
         "passed": comparison["difference_mm3"] < TOL
         and axis_error < TOL
         and shaft_journal

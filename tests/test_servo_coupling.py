@@ -207,17 +207,17 @@ class ServoCouplingTests(unittest.TestCase):
         from gondola.parts import servo_coupling as c
 
         adapter = c.adapter_shape()
-        for x, opening_length in ((6.8, 1.8), (13.2, 2.4)):
+        for x, opening_length in ((6.8, 1.6), (13.2, 2.2)):
             for start, end, material in (
                 ((x - 2, 5.3, 0), (x + 2, 5.3, 0), 4.0 - opening_length),
-                ((x, 5.3, -2), (x, 5.3, 2), 4.0 - 1.8),
+                ((x, 5.3, -2), (x, 5.3, 2), 4.0 - 1.6),
             ):
                 section = Part.makeLine(App.Vector(*start), App.Vector(*end))
                 self.assertAlmostEqual(adapter.common(section).Length, material)
         web = Part.makeBox(3.8, 3.0, 1.8, App.Vector(8.1, 3.5, -0.9))
         self.assertLess(web.cut(adapter).Volume, 1e-7)
         for name, shape, _ in c.horn_hardware_shapes():
-            limit = 0.2 if name.startswith("Near") else 0.5
+            limit = 0.1 if name.startswith("Near") else 0.4
             for shift in (-limit, limit):
                 moved = shape.copy()
                 moved.translate(App.Vector(shift, 0, 0))
@@ -235,7 +235,7 @@ class ServoCouplingTests(unittest.TestCase):
 
         adapter, horn = c.adapter_shape(), c.horn_shape()
         hardware = {name: shape for name, shape, _ in c.horn_hardware_shapes()}
-        for shift, blocked in ((-0.19, False), (-0.21, True)):
+        for shift, blocked in ((-0.09, False), (-0.11, True)):
             moved = adapter.copy()
             moved.translate(App.Vector(shift, 0, 0))
             # The purchased taper clears this direction. The near round hole,
@@ -272,12 +272,12 @@ class ServoCouplingTests(unittest.TestCase):
         for name, nut, _ in c.horn_hardware_shapes():
             if not name.endswith("Nut"):
                 continue
-            limit = 0.2 if name.startswith("Near") else 0.5
+            limit = 0.1 if name.startswith("Near") else 0.4
             for offset in (-limit, 0.0, limit):
                 moved = nut.copy()
                 moved.translate(App.Vector(offset, 0, 0))
                 self.assertGreaterEqual(_plane_contact(adapter, moved, 6.5), 1.0)
-        for x, limit in ((6.8, 0.2), (13.2, 0.5)):
+        for x, limit in ((6.8, 0.1), (13.2, 0.4)):
             minimum_nut = purchased_hardware.hex_prism(2.9, 1.2).cut(
                 Part.makeCylinder(0.7, 1.4, App.Vector(0, 0, -0.1))
             )
@@ -428,6 +428,40 @@ class InputShaftEvidenceTests(unittest.TestCase):
             finally:
                 pod.Tilt = original
                 self.doc.recompute()
+
+    def test_jack_reacts_at_centred_shaft_before_any_radial_take_up(self):
+        from gondola.validation.propulsion import input_shaft_retention_check
+
+        for prefix in ("Port", "Starboard"):
+            report = input_shaft_retention_check(self.doc, prefix)
+            self.assertTrue(report["passed"], report)
+            reaction = report["centred_jack_reaction"]
+            self.assertAlmostEqual(reaction["centred_reaction_contact_length_mm"], 7.8)
+            self.assertGreater(reaction["jack_direction_probe_penetration_mm3"], 0.01)
+
+    def test_old_radial_socket_clearance_cannot_pass_the_centred_reaction_check(self):
+        from gondola.parts import servo_coupling as coupling
+        from gondola.validation.propulsion import input_shaft_retention_check
+
+        adapter = self.doc.PortHornGearAdapter
+        original = adapter.Shape.copy()
+        try:
+            # Restore the old 0.05mm radial gap without disturbing the stop,
+            # flat, tip contact, nut, or full-length metal journal.
+            relief = coupling.shaft_frame_shape(coupling._d_section(7.1, 8.1, 0.05))
+            relief.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
+            adapter.Shape = original.cut(relief).removeSplitter()
+            self.doc.recompute()
+            report = input_shaft_retention_check(self.doc, "Port")
+            self.assertFalse(report["passed"], report)
+            self.assertGreater(report["screw_tip_to_flat_contact_mm2"], 1)
+            self.assertGreater(report["shaft_stop_contact_mm2"], 1)
+            reaction = report["centred_jack_reaction"]
+            self.assertLess(reaction["centred_reaction_contact_length_mm"], 1e-7)
+            self.assertLess(reaction["jack_direction_probe_penetration_mm3"], 1e-7)
+        finally:
+            adapter.Shape = original
+            self.doc.recompute()
 
     def test_full_gear_engagement_does_not_hide_a_missing_end_reserve(self):
         from gondola.parts import servo_coupling as coupling

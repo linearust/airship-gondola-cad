@@ -27,11 +27,39 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
                 self.assertTrue(shape.isValid())
                 self.assertEqual(len(shape.Solids), 1)
 
-    def test_outer_ring_capture_leaves_axial_and_diametral_allowance(self):
+    def test_outer_ring_capture_preserves_axial_float_with_radial_location(self):
         report = self.b.geometry_check(self.cup, self.b.keeper_shape())
         self.assertTrue(report["passed"], report)
         self.assertAlmostEqual(report["nominal_axial_endplay_mm"], 0.5)
-        self.assertAlmostEqual(self.b.SEAT_RADIUS * 2, 6.1)
+        self.assertAlmostEqual(self.b.SEAT_RADIUS * 2, 6.0)
+        self.assertAlmostEqual(report["nominal_diametral_clearance_mm"], 0)
+        self.assertTrue(all(row["passed"] for row in report["radial_seating_probes"]))
+        self.assertTrue(all(row["passed"] for row in report["radial_seating_contacts"]))
+
+    def test_small_oversize_fails_exact_contact_even_when_shift_probes_are_blocked(
+        self,
+    ):
+        oversized = self.cup.cut(
+            Part.makeCylinder(3.005, 4.6, App.Vector(0, -2.1, 0), App.Vector(0, 1, 0))
+        )
+        report = self.b.geometry_check(oversized, self.b.keeper_shape())
+        self.assertFalse(report["passed"], report)
+        self.assertTrue(all(row["passed"] for row in report["radial_seating_probes"]))
+        self.assertTrue(
+            all(not row["passed"] for row in report["radial_seating_contacts"])
+        )
+
+    def test_old_oversized_seat_fails_radial_location_even_with_axial_capture(self):
+        oversized = self.cup.cut(
+            Part.makeCylinder(3.05, 4.6, App.Vector(0, -2.1, 0), App.Vector(0, 1, 0))
+        )
+        report = self.b.geometry_check(oversized, self.b.keeper_shape())
+        self.assertFalse(report["passed"], report)
+        self.assertGreater(report["inward_overtravel_block_mm3"], 0.01)
+        self.assertGreater(report["outward_overtravel_block_mm3"], 0.01)
+        self.assertTrue(
+            all(not row["passed"] for row in report["radial_seating_probes"])
+        )
 
     def test_snug_keeper_guides_and_shallow_nut_recess_retain_the_frame_floor(self):
         from gondola.cad import box

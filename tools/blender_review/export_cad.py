@@ -58,7 +58,7 @@ def representation(obj):
             + " Resin, mass, installed seating and root concentricity remain unmeasured."
         )
     if getattr(obj, "Name", "").endswith("HornGearAdapter"):
-        return "Installed round-hole/slot adapter for the OEM half arm: near diameter 1.8 mm hole at 6.8 mm, far 1.8 x 2.4 mm slot at 13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat and near hole limit assembly movement; they do not certify received-horn concentricity or assembled runout."
+        return "Installed round-hole/slot adapter for the OEM half arm: near diameter 1.6 mm hole at 6.8 mm, far 1.6 x 2.2 mm slot at 13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat and near hole limit assembly movement; they do not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
 
 
@@ -126,11 +126,11 @@ def check_review_basis(doc, report):
             "manufacturer_geometry_sha256": REVIEW_HORN_STEP_SHA256,
             "attachment_radii_mm": [6.8, 13.2],
             "adapter_round_hole_x_mm": 6.8,
-            "adapter_round_hole_diameter_mm": 1.8,
-            "adapter_slot_width_mm": 1.8,
+            "adapter_round_hole_diameter_mm": 1.6,
+            "adapter_slot_width_mm": 1.6,
             "adapter_slot_centres_x_mm": [13.2],
             "adapter_slot_centre_allowance_mm": 0.3,
-            "adapter_slot_overall_length_mm": 2.4,
+            "adapter_slot_overall_length_mm": 2.2,
             "nominal_arm_thickness_mm": 2.0,
             "screw_length_mm": 8.0,
             "nuts_per_side": 2,

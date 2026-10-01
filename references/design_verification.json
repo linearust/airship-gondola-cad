@@ -1,20 +1,22 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-01T11:01:34.405399+00:00",
-  "change_kind": "Refactor equipment validation and reject empty Blender axial-clearance evidence",
-  "scope": "Behavior-preserving equipment validation refactor; Blender rejects missing axial evidence. CAD geometry, nominal dimensions, native controls and inventories unchanged. This does not qualify physical manufacture or operation.",
-  "predecessor_commit": "94992f52bfd6e08bceaccd1395375505fa4afd4e",
-  "source_fingerprint": "de50fc12fbc0fc7c0f221736ea89605ba77016e78743c36ed361beb8a6cfc847",
-  "cad_sha256": "9ff66c0a392f3ff29387cd116d8055c1b1878c723796b6c86dcc810a63ac9c20",
-  "revision": "BZ",
+  "recorded_utc": "2026-10-01T11:43:13.459685+00:00",
+  "change_kind": "Located bearing and input-shaft fits, tighter OEM horn fixing, and complete carrier/slot-head checks",
+  "scope": "Nominal bearing bore changes6.1 to6.0mm; input D socket uses a centred3mm circular datum with0.05mm flat relief; horn near hole and far-slot width change1.8 to1.6mm. Carrier-trim and accepted slot-head footprint checks are added. This is a fit-prototype CAD verification, not physical fit, strength or motion qualification.",
+  "predecessor_commit": "c932b9b1627f827bd688ebbe48a83fb26211743d",
+  "source_fingerprint": "9f2efa408be4a0e1b506b09810651ee4e4b3d5936aa1972929cd28736bbb630c",
+  "cad_sha256": "14bca15ec13d438d9f18ce83e284bb9524c1cd7a1031572c4681117f4670b6bf",
+  "revision": "CA",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
-    "unchanged": true
+    "sha256": "7f25969b7f8be55d5b36cd581899f29d07a8d5703cb61eb8c7a0919e1e0cf905",
+    "unchanged": false,
+    "previous_sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
+    "independently_reviewed": true
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 754,
+    "testsRun": 768,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -59,8 +61,14 @@
     "gondola_rail_validation.json": true,
     "gondola_validation.json": true
   },
-  "saved_geometry_and_native_controls_unchanged": true,
-  "mounting_report_byte_identity": true,
+  "saved_geometry_matches_reviewed_fixture": true,
+  "native_controls_and_placements_preserved": true,
+  "changed_shapes": [
+    "BearingSeatFitSample",
+    "PortHornGearAdapter",
+    "PropulsionFixedFrame",
+    "StarboardHornGearAdapter"
+  ],
   "blender": {
     "passed": true,
     "scene_count": 6,
@@ -69,13 +77,13 @@
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "9ff66c0a392f3ff29387cd116d8055c1b1878c723796b6c86dcc810a63ac9c20",
-    "gondola_print_parts.FCStd": "800d22050a1bd86938e05a277505ad831a0fd2f0ea7e8bd3d972f237a943568b",
-    "gondola_power_options.FCStd": "302147e05e237331d51a7ef45d4e1555a1a6a165dece8c0d8bddd21ff9a27f8b",
-    "gondola_attachment_detail.FCStd": "bb6b3351782da429c8df8c89157cee3c97c2cdcd910aefd1a217b803fca06f6d"
+    "gondola.FCStd": "14bca15ec13d438d9f18ce83e284bb9524c1cd7a1031572c4681117f4670b6bf",
+    "gondola_print_parts.FCStd": "6667d13e125cc87363ca19202959f91fe393b4c29d1b520b5a9579b2e524491e",
+    "gondola_power_options.FCStd": "af3b343f9a1c8a8d91a1fdcae606a2e33e2b43c2233afae955d89fd57aa4658f",
+    "gondola_attachment_detail.FCStd": "b1efc274ece5255be82dc2ff638951647f748e8b88e778a1dae7452bb3460436"
   },
-  "print_bundle_sha256": "2feddcf70eed7db5a0e05251c9cb7e3831b49c7187f9914b1c40d538aed18f9f",
+  "print_bundle_sha256": "8e10fdea79209ccfd843f608998aa3cf7fc7fb3565b4c674aea6ce49c7c11a64",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "refactor_verification",
-  "evidence_archive_sha256": "0477faee56635d1b66a25b1d0e2ddd456113728731004c1e5f4ed80f227a149d"
+  "evidence_record_key": "fit_audit_verification",
+  "evidence_archive_sha256": "351860eed6812e2b3bed291be09194c6b592fd32291d7575dad09157754e334f"
 }

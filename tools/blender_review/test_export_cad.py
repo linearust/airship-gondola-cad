@@ -121,11 +121,11 @@ class ExportContractTests(unittest.TestCase):
                         "manufacturer_geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
                         "attachment_radii_mm": [6.8, 13.2],
                         "adapter_round_hole_x_mm": 6.8,
-                        "adapter_round_hole_diameter_mm": 1.8,
-                        "adapter_slot_width_mm": 1.8,
+                        "adapter_round_hole_diameter_mm": 1.6,
+                        "adapter_slot_width_mm": 1.6,
                         "adapter_slot_centres_x_mm": [13.2],
                         "adapter_slot_centre_allowance_mm": 0.3,
-                        "adapter_slot_overall_length_mm": 2.4,
+                        "adapter_slot_overall_length_mm": 2.2,
                         "nominal_arm_thickness_mm": 2.0,
                         "screw_length_mm": 8.0,
                         "nuts_per_side": 2,
@@ -168,7 +168,23 @@ class ExportContractTests(unittest.TestCase):
         )
         self.assertIn("rear M1.4x8", representation(objects["PortHornGearAdapter"]))
         self.assertIn("front M1.4 nuts", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("diameter 1.6 mm", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("1.6 x 2.2 mm", representation(objects["PortHornGearAdapter"]))
         self.assertNotIn("undrilled", representation(objects["PortHornGearAdapter"]))
+
+    def test_old_looser_horn_dimensions_cannot_reuse_the_review_basis(self):
+        for prefix in ("Port", "Starboard"):
+            doc, objects, report = self.basis()
+            horn = objects[prefix + "ServoHorn"]
+            contract = json.loads(horn.HornInterfaceContract)
+            contract.update(
+                adapter_round_hole_diameter_mm=1.8,
+                adapter_slot_width_mm=1.8,
+                adapter_slot_overall_length_mm=2.4,
+            )
+            horn.HornInterfaceContract = json.dumps(contract)
+            with self.assertRaisesRegex(RuntimeError, "OEM horn dimensions"):
+                check_review_basis(doc, report)
 
     def test_native_oem_module_metadata_matches_the_review_basis(self):
         import FreeCAD as App

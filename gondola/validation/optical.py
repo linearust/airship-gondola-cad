@@ -19,6 +19,7 @@ from gondola.parts import (
     optical_interface,
     optical_mount,
     optical_sensor,
+    slot_bearing,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
@@ -664,6 +665,20 @@ def _carrier_interface_checks(doc):
                 "index": index,
                 "obstruction_mm3": obstruction,
                 "passed": obstruction <= TOL,
+            }
+        )
+        rows.append(
+            {
+                "kind": "centred_slot_head_bearing",
+                "index": index,
+                **slot_bearing.check(
+                    plate,
+                    (x, y),
+                    -mounting_plate.THICKNESS_MM,
+                    maximum_slot_width=optical_interface.HOST_SLOT_WIDTH
+                    + optical_interface.DIMENSION_ALLOWANCE,
+                    minimum_screw_diameter=optical_interface.MINIMUM_RECEIVED_BOLT_DIAMETER,
+                ),
             }
         )
         for side in (-1, 1):

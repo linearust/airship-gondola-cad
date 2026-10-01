@@ -4,7 +4,8 @@ A fixed circular seat locates the bearing radially; a rear shoulder and
 removable keeper limit axial motion. The keeper screw clamps the frame,
 not the bearing. No spring arms or radial clamp are used.
 
-Nominal allowances are trial dimensions, not a guaranteed SLS/MJF fit.
+The nominal diameter-6 seat is a finish-to-fit locating datum, not a
+guaranteed SLS/MJF slip fit. There is no designed radial shake or press fit.
 Match the production coupon to the received bearing/process. Finish or
 reprint an unsuitable seat; never force a bearing in or tighten away play.
 The broad keeper guides prevent gross rotation, not precision centering:
@@ -22,7 +23,7 @@ from . import nut_guides
 
 BEARING_RADIUS = 3.0
 BEARING_WIDTH = 2.5
-SEAT_RADIUS = 3.05
+SEAT_RADIUS = BEARING_RADIUS
 SHIELD_OPENING_DIAMETER = 5.6
 GUIDE_START_Y = -2.0
 SHOULDER_START_Y = BEARING_WIDTH
@@ -210,6 +211,37 @@ def geometry_check(cup=None, keeper=None):
     foot_seat = _cylinder(2.0, KEEPER_FOOT_BACK_Y, 0.05, KEEPER_SCREW_Z).cut(
         _cylinder(1.11, KEEPER_FOOT_BACK_Y - 0.1, 0.25, KEEPER_SCREW_Z)
     )
+    radial_seating, radial_contacts = [], []
+    for axial in (0.0, KEEPER_STOP_Y):
+        for dx, dz in (
+            (BEARING_RADIUS, 0),
+            (-BEARING_RADIUS, 0),
+            (0, BEARING_RADIUS),
+            (0, -BEARING_RADIUS),
+        ):
+            line = Part.makeLine(
+                App.Vector(dx, axial, dz),
+                App.Vector(dx, axial + BEARING_WIDTH, dz),
+            )
+            contact = cup.common(line).Length
+            radial_contacts.append(
+                {
+                    "reaction_line_start_xyz_mm": [dx, axial, dz],
+                    "nominal_contact_length_mm": contact,
+                    "required_contact_length_mm": BEARING_WIDTH,
+                    "passed": abs(contact - BEARING_WIDTH) < 1e-7,
+                }
+            )
+        for dx, dz in ((0.01, 0), (-0.01, 0), (0, 0.01), (0, -0.01)):
+            shifted = translated_shape(bearing, x=dx, y=axial, z=dz)
+            blocked = cup.common(shifted).Volume
+            radial_seating.append(
+                {
+                    "bearing_offset_xyz_mm": [dx, axial, dz],
+                    "radial_shift_probe_penetration_mm3": blocked,
+                    "passed": blocked > 0.01,
+                }
+            )
     metrics = {
         "valid_single_solid": cup.isValid() and len(cup.Solids) == 1,
         "valid_keeper_solid": keeper.isValid() and len(keeper.Solids) == 1,
@@ -233,7 +265,9 @@ def geometry_check(cup=None, keeper=None):
         "nominal_axial_endplay_mm": -KEEPER_STOP_Y,
         "keeper_guide_clearance_per_side_mm": KEEPER_GUIDE_CLEARANCE,
         "nominal_diametral_clearance_mm": 2 * (SEAT_RADIUS - BEARING_RADIUS),
-        "scope": "Nominal rigid capture only. Coupon-match the actual bearing and keeper; verify radial fit, ring lands, shields, cap alignment, no preload, fastener retention and loaded motion. General PA12 tolerance is not absorbed by the nominal seat allowance. No strength or physical fit qualification.",
+        "radial_seating_probes": radial_seating,
+        "radial_seating_contacts": radial_contacts,
+        "scope": "Nominal rigid capture only. The diameter-6 bore locates the nominal bearing with no radial allowance or intended interference. Coupon-match and finish the actual bore for hand insertion without rocking; reprint an oversized seat. Verify ring lands, shields, cap alignment, no preload, fastener retention and loaded motion. Nominal contact is not an as-printed PA12 fit or strength qualification.",
     }
     zero_keys = [k for k in metrics if k.endswith("_mm3") and "overtravel" not in k]
     metrics["passed"] = (
@@ -241,6 +275,8 @@ def geometry_check(cup=None, keeper=None):
         and metrics["valid_keeper_solid"]
         and metrics["inward_overtravel_block_mm3"] > 0.01
         and metrics["outward_overtravel_block_mm3"] > 0.01
+        and all(row["passed"] for row in radial_seating)
+        and all(row["passed"] for row in radial_contacts)
         and all(metrics[k] < 1e-7 for k in zero_keys)
     )
     return metrics

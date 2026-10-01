@@ -23,7 +23,13 @@ from gondola.contracts.power_options import (
 )
 
 from . import equipment_mounts as mounts
-from . import mounting_plate, mounting_slots, purchased_hardware, stack_interface
+from . import (
+    mounting_plate,
+    mounting_slots,
+    purchased_hardware,
+    slot_bearing,
+    stack_interface,
+)
 
 V = App.Vector
 DECK_SIZE_MM = mounting_plate.SIZE_MM
@@ -143,15 +149,25 @@ def attachment_check(carrier_in_platform_coordinates):
     for index, (expected_seat, bore) in enumerate(_attachment_templates()):
         missing = expected_seat.cut(carrier_in_platform_coordinates).Volume
         obstruction = bore.common(carrier_in_platform_coordinates).Volume
+        bearing = slot_bearing.check(
+            carrier_in_platform_coordinates,
+            stack_interface.CLAMP_CENTRES[index],
+            -stack_interface.TOWER_HEIGHT - depth,
+            maximum_slot_width=stack_interface.HOST_SLOT_WIDTH
+            + stack_interface.DIMENSION_ALLOWANCE,
+            minimum_screw_diameter=stack_interface.MINIMUM_RECEIVED_BOLT_DIAMETER,
+        )
         rows.append(
             {
                 "foot": index,
                 "expected_supported_contact_area_mm2": expected_seat.Volume / depth,
                 "missing_contact_material_mm3": missing,
                 "screw_path_obstruction_mm3": obstruction,
+                "centred_slot_head_bearing": bearing,
                 "passed": expected_seat.Volume / depth > 50
                 and missing < 1e-5
-                and obstruction < 1e-5,
+                and obstruction < 1e-5
+                and bearing["passed"],
             }
         )
     return {

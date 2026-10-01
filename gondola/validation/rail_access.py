@@ -371,15 +371,10 @@ def _shared_trim_interval(pose):
     return low, high
 
 
-def _shared_screw_slide(name, shape, obstacles, low, high):
+def _screw_slide(name, shape, obstacles, low, high, x, sections):
     """Exact two-cylinder swept envelopes, without filling slot-end corners."""
-    opposite = "Opposite" in name
-    x = -15 if opposite else 15
     reference, swept = [], []
-    for radius, y, depth in (
-        (3.0, 9.0 if opposite else -11.0, 2.0),
-        (1.5, -11.0 if opposite else -9.0, 20.0),
-    ):
+    for radius, y, depth in sections:
         reference.append(Part.makeCylinder(radius, depth, V(x, y, 6), V(0, 1, 0)))
         ends = [
             Part.makeCylinder(radius, depth, V(x + shift, y, 6), V(0, 1, 0))
@@ -400,6 +395,76 @@ def _shared_screw_slide(name, shape, obstacles, low, high):
         "actual_shape_outside_envelope_mm3": outside,
         "intersection_mm3": hits,
         "passed": outside < TOL and all(value < TOL for value in hits.values()),
+    }
+
+
+def _shared_screw_slide(name, shape, obstacles, low, high):
+    opposite = "Opposite" in name
+    return _screw_slide(
+        name,
+        shape,
+        obstacles,
+        low,
+        high,
+        -15 if opposite else 15,
+        (
+            (3.0, 9.0 if opposite else -11.0, 2.0),
+            (1.5, -11.0 if opposite else -9.0, 20.0),
+        ),
+    )
+
+
+def _carrier_trim_interval(pose):
+    """Literal full-foot window, clipped at the rail ends, in module local X."""
+    axes = pose["attachment_world_axes_x_mm"]
+    if len(axes) != 1 or not math.isfinite(axes[0]):
+        raise ValueError("Carrier trim requires one finite rail-clamp axis")
+    axis = axes[0]
+    centres = [
+        centre for centre in range(-140, 141, 28) if abs(axis - centre) <= 1.2 + TOL
+    ]
+    if len(centres) != 1:
+        raise ValueError("Carrier trim axis is outside the reviewed full-foot range")
+    yaw = pose["expected_carrier_yaw_deg"]
+    if not math.isfinite(yaw) or min(abs(yaw), abs(yaw - 180)) > TOL:
+        raise ValueError("Carrier trim requires the reviewed 0 or 180 degree yaw")
+    direction = 1 if abs(yaw) < TOL else -1
+    # A16mm foot stops at X±149 before the1mm base end chamfers.
+    low = max(centres[0] - 1.2, -141) - axis
+    high = min(centres[0] + 1.2, 141) - axis
+    if low > TOL or high < -TOL:
+        raise ValueError("Carrier bottom datum is outside the full-width rail base")
+    return tuple(sorted((direction * low, direction * high)))
+
+
+def supported_carrier_slide(shapes, obstacles, pose):
+    """Continuously sweep the populated carrier and its loosened M3 pair."""
+    low, high = _carrier_trim_interval(pose)
+    path = [(low, 0, 0), (high, 0, 0)]
+    rows = []
+    for name, shape in sorted(shapes.items()):
+        if name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
+            row = _lift_path(name, shape, obstacles, 0, waypoints=path)
+        elif name.endswith("RailMountScrew"):
+            row = _screw_slide(
+                name,
+                shape,
+                obstacles,
+                low,
+                high,
+                0,
+                ((3.0, -5.25, 2.0), (1.5, -3.25, 10.0)),
+            )
+        else:
+            row = {"part": name, **continuous_path(shape, path, obstacles)}
+        rows.append(row)
+    return {
+        "relative_x_range_mm": [low, high],
+        "travel_mm": high - low,
+        "coordinate_frame": "Module local X; a 180-degree carrier yaw reverses world X.",
+        "parts": rows,
+        "scope": "Continuous nominal rigid slide through the current wall's full-foot window, ordinarily±1.2mm about its centre and clipped at the base ends. All carried parts and loosened hardware move against every retained registered neighbour, rail and tape. The carrier uses separate stock regions with complete saved-shape containment. Only the saved other-module positions and stage angles are checked; disconnect/reroute leads and revalidate after relocation. No curved-rail, friction, preload, cable-motion or physical-fit qualification.",
+        "passed": bool(rows) and all(row["passed"] for row in rows),
     }
 
 
@@ -548,7 +613,9 @@ def rail_attachment_service(doc, registry, objects):
                 {name: shapes[name] for name in members}, fixed, pose
             )
             if shared
-            else None
+            else supported_carrier_slide(
+                {name: shapes[name] for name in members}, fixed, pose
+            )
         )
         slide = (
             10 if shared else 4 if module.Name == "ElectronicsEquipmentModule" else 0
@@ -582,7 +649,7 @@ def rail_attachment_service(doc, registry, objects):
                 and all(row["passed"] for row in services)
                 and bool(lifts)
                 and all(row["passed"] for row in lifts)
-                and (trim is None or trim["passed"]),
+                and trim["passed"],
             }
         )
     return {

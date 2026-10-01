@@ -25,7 +25,7 @@ HORN_FACTORY_HOLE_CENTRES = tuple((x, 0.0) for x, _ in HORN_PROFILE.holes)
 HORN_BOLT_CENTRES = tuple((x, 0.0) for x in HORN_PROFILE.attachment_radii_mm)
 HORN_ADAPTER_SLOT_ALLOWANCE = 0.3
 HORN_ADAPTER_OPENING_ALLOWANCES = (0.0, HORN_ADAPTER_SLOT_ALLOWANCE)
-SLOT_WIDTH = 1.8
+SLOT_WIDTH = 1.6
 HORN_CLAMP_THREAD_DIAMETER = 1.4
 HORN_CLAMP_LENGTH = HORN_PROFILE.screw_length_mm
 BOLT_DIRECTION = (0, 1, 0)
@@ -57,7 +57,12 @@ SHAFT_START_Y = PLATE_FRONT_Y
 SHAFT_LENGTH = 18.0
 SHAFT_FLAT_DEPTH = 0.5
 SHAFT_SOCKET_LENGTH = 8.0
-SHAFT_SOCKET_CLEARANCE = 0.05
+# The jack screw must react against a centred circular journal, rather than
+# pushing the shaft across a radial gap and making the gear run eccentrically.
+# Finish this nominal contact fit to the actual shaft. Only the filed flat is
+# relieved; it is not the radial locating datum.
+SHAFT_SOCKET_CLEARANCE = 0.0
+SHAFT_SOCKET_FLAT_CLEARANCE = 0.05
 GEAR_START_Y = SHAFT_START_Y + SHAFT_SOCKET_LENGTH
 GEAR_LENGTH = 8.0
 SHAFT_CLAMP_Y = SHAFT_START_Y + SHAFT_SOCKET_LENGTH / 2 + 0.4
@@ -95,10 +100,11 @@ def _hex_along_axis(across_flats, length, origin, direction):
     return shape
 
 
-def _d_section(y, length, clearance=0.0):
+def _d_section(y, length, clearance=0.0, *, flat_clearance=None):
     radius = SHAFT_DIAMETER / 2 + clearance
     shape = _cylinder(radius, length, (0, y, 0))
-    flat_x = -(SHAFT_DIAMETER / 2 - SHAFT_FLAT_DEPTH) - clearance
+    flat_clearance = clearance if flat_clearance is None else flat_clearance
+    flat_x = -(SHAFT_DIAMETER / 2 - SHAFT_FLAT_DEPTH) - flat_clearance
     return shape.cut(box(4 + flat_x, length + 0.2, 4, (-4, y - 0.1, -2)))
 
 
@@ -239,7 +245,12 @@ def adapter_shape():
     # Keep the full 1.5 mm shaft-stop floor.
     shape = shape.cut(
         shaft_frame_shape(
-            _d_section(SHAFT_START_Y, SHAFT_SOCKET_LENGTH + 0.1, SHAFT_SOCKET_CLEARANCE)
+            _d_section(
+                SHAFT_START_Y,
+                SHAFT_SOCKET_LENGTH + 0.1,
+                SHAFT_SOCKET_CLEARANCE,
+                flat_clearance=SHAFT_SOCKET_FLAT_CLEARANCE,
+            )
         )
     )
     # The near round opening bounds translation along the open register. Only
@@ -407,7 +418,7 @@ def assembly_contract(profile=None):
         - profile.root_diameter_mm / 2,
         "register_engagement_mm": REGISTER_ENGAGEMENT,
         "register_scope": "Open C seat follows the nominal Ø7 root with 0.15 mm radial trial clearance. It limits rearward/side motion without enclosing the arm. Fit the root seat evenly, check metal-stub alignment and free mesh before clamping; nominal surfaces are not precision pilots or proof of zero runout.",
-        "assembly_adjustment": "A diameter 1.8 mm round hole at 6.8 mm bounds motion along the open root seat; a 1.8 x 2.4 mm radial slot at 13.2 mm accommodates pitch variation. For nominal diameter 1.4 mm shanks, near centre travel is 0.2 mm radially and far travel is 0.5 mm along/0.2 mm across the arm before other features intervene; the shallow nut pockets restrict nominal AF3.0 nut centres to +/-0.1 mm across the arm. The root seat and horn holes can restrict the final fit further. These are loose-part geometric limits, not a rectangular tolerance box or operating play. Align the input axis and check runout before tightening both joints. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
+        "assembly_adjustment": "A diameter 1.6 mm round hole at 6.8 mm bounds motion along the open root seat; a 1.6 x 2.2 mm radial slot at 13.2 mm accommodates pitch variation. For nominal diameter 1.4 mm shanks, near centre travel is 0.1 mm radially and far travel is 0.4 mm along/0.1 mm across the arm before other features intervene; the shallow nut pockets restrict nominal AF3.0 nut centres to +/-0.1 mm across the arm. The root seat and horn holes can restrict the final fit further. These are loose-part geometric limits, not a rectangular tolerance box or operating play. Align the input axis and check runout before tightening both joints. Finish interfering print surfaces rather than pulling misaligned parts together with screws.",
         "nut_recess": {
             "depth_mm": HORN_NUT_RECESS_DEPTH,
             "across_parallel_flats_mm": HORN_NUT_POCKET_AF,
@@ -417,7 +428,7 @@ def assembly_contract(profile=None):
             ),
             "remaining_adapter_floor_mm": FASTENER_SEAT_Y - profile.height_mm,
             "finished_flat_gap_acceptance_mm": [3.1, 3.25],
-            "scope": "Shallow open hex pockets restrain ordinary AF2.9..3.0 M1.4 nuts; no axial captivity or tightening-torque qualification. Their radial extension retains nominal screw-centre travel +/-0.2 and +/-0.5 mm; the AF3.0 nut limits transverse centre travel to +/-0.1 mm. Confirm actual chamfer/flank engagement, finish for free insertion and full floor seating, and reject rotation or floor damage. These are fit acceptance targets, not guaranteed PA12 process tolerances.",
+            "scope": "Shallow open hex pockets restrain ordinary AF2.9..3.0 M1.4 nuts; no axial captivity or tightening-torque qualification. Their radial extension exceeds the tighter openings' nominal screw-centre travel +/-0.1 and +/-0.4 mm; the AF3.0 nut limits transverse centre travel to +/-0.1 mm. Confirm actual chamfer/flank engagement, finish for free insertion and full floor seating, and reject rotation or floor damage. These are fit acceptance targets, not guaranteed PA12 process tolerances.",
         },
         "fastener_grip_mm": FASTENER_SEAT_Y - profile.height_mm,
         "total_horn_and_adapter_grip_mm": FASTENER_SEAT_Y - profile.blade_bottom_mm,
@@ -468,6 +479,7 @@ def metrics():
         "driver_shaft_flat_facing": "negative Z in horn-local coordinates",
         "driver_shaft_socket_length_mm": SHAFT_SOCKET_LENGTH,
         "driver_shaft_socket_clearance_mm": SHAFT_SOCKET_CLEARANCE,
+        "driver_shaft_socket_flat_clearance_mm": SHAFT_SOCKET_FLAT_CLEARANCE,
         "driver_shaft_projection_beyond_gear_mm": SHAFT_START_Y
         + SHAFT_LENGTH
         - GEAR_START_Y
@@ -476,7 +488,7 @@ def metrics():
         "horn_long_side_walls_retained": False,
         "adapter_axial_release_travel_mm": RETAINED_BOLT_RELEASE_TRAVEL,
         "common_clamp_screws_per_side": 3,
-        "shaft_retention": "Nominal Ø3x18 mm 304 stock, full-length 0.5 mm flat, 8 mm D socket and radial M2 clamp. Full 1.5 mm stop floor; selected gear M3 screw and 2 mm end reserve retained. No input bearing. Actual shaft fit and retention require inspection.",
+        "shaft_retention": "Nominal Ø3x18 mm 304 stock, full-length 0.5 mm flat, 8 mm D socket and radial M2 clamp. The nominal Ø3 circular socket locates the shaft at the horn axis under jack-screw load; only the filed-flat side has 0.05 mm relief. Coupon-match and finish for hand insertion without radial rocking; reprint an oversized socket. Full 1.5 mm stop floor; selected gear M3 screw and 2 mm end reserve retained. No input bearing. Actual concentricity, shaft fit and retention require inspection.",
         "assembly": contract["assembly_adjustment"]
         + " "
         + contract["centre_screw_service"],

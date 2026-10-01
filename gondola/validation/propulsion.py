@@ -588,6 +588,26 @@ def input_shaft_retention_check(doc, prefix):
         _coupling_shape_world(doc, prefix, socket_probe)
     )
     missing_engagement = abs(socket_shaft.cut(shaft).Volume)
+    # The jack must have a reaction at the centred shaft, not after taking up
+    # a radial gap. That gap would turn with the horn and make the gear run out.
+    support_line = coupling.shaft_frame_shape(
+        Part.makeLine(App.Vector(1.5, 7.2, 0), App.Vector(1.5, 15.0, 0))
+    )
+    support_line = _coupling_shape_world(doc, prefix, support_line)
+    centred_support = adapter.common(support_line).common(shaft).Length
+    loaded_probe = coupling.driver_shaft_shape()
+    loaded_probe.translate(coupling.shaft_frame_point(0.01, 0, 0))
+    loaded_penetration = intersection_volume(
+        adapter, _coupling_shape_world(doc, prefix, loaded_probe)
+    )
+    radial_seating = {
+        "centred_reaction_contact_length_mm": centred_support,
+        "required_contact_length_mm": 7.8,
+        "jack_direction_probe_travel_mm": 0.01,
+        "jack_direction_probe_penetration_mm3": loaded_penetration,
+        "scope": "Nominal circular journal contact opposite the jack at the horn axis, with a 0.01 mm attempted radial shift blocked. The filed flat is relieved. Finish the actual socket for hand insertion without rocking; reprint an oversized bore. No as-printed fit, concentricity or loaded-strength qualification.",
+        "passed": abs(centred_support - 7.8) < TOL and loaded_penetration > 0.01,
+    }
     return {
         "pod": prefix,
         "shaft_nominal_diameter_mm": coupling.SHAFT_DIAMETER,
@@ -597,6 +617,7 @@ def input_shaft_retention_check(doc, prefix):
         "missing_nominal_stub_mm3": missing_shaft,
         "extra_stub_material_mm3": extra_shaft,
         "missing_socket_engagement_mm3": missing_engagement,
+        "centred_jack_reaction": radial_seating,
         "shaft_stop_contact_mm2": stop_contact,
         "stop_probe_penetration_mm3": stop_overlap,
         "key_checks": key_checks,
@@ -606,11 +627,12 @@ def input_shaft_retention_check(doc, prefix):
         "screw_head_to_adapter_gap_mm": head_gap,
         "required_nominal_head_gap_mm": 0.5,
         "shaft_stop_roof_thickness_mm": roof_thickness,
-        "scope": "Nominal metal D stub and finished printed socket; positive key engagement after clearance is taken up, axial stop, radial M2x6 screw contact and retained hex nut. The screw head must remain free to advance against the flat. Manual rod diameter/straightness/flat, nut capture, clamp preload, axial grip, actual gear set-screw retention and loaded servo deflection remain physical checks. The bore key alone is not axial retention.",
+        "scope": "Nominal metal D stub and finished printed socket; the centred circular journal reacts against the radial M2x6 jack without designed lateral take-up. Only the filed flat is relieved. Positive key engagement, axial stop and retained hex nut remain separate checks. The screw head must remain free to advance against the flat. Manual rod diameter/straightness/flat, nut capture, clamp preload, axial grip, actual gear set-screw retention and loaded servo deflection remain physical checks. The bore key alone is not axial retention.",
         "passed": missing_shaft < TOL
         and extra_shaft < TOL
         and socket_shaft.Volume > TOL
         and missing_engagement < TOL
+        and radial_seating["passed"]
         and stop_contact > 1
         and stop_overlap > 1e-5
         and all(row["passed"] for row in key_checks)

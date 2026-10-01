@@ -2118,6 +2118,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                     "port_servo_bridge_sidewall": 4.2,
                     "starboard_servo_bridge_sidewall": 4.2,
                     "servo_common_cradle_central_web": 5.2,
+                    "output_bearing_outer_wall": 3.5,
                 }
                 for feature, expected in expected_sections.items():
                     with self.subTest(saved_section=feature):
@@ -2189,6 +2190,30 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 self.assertTrue(
                     all(row["passed"] for row in evidence["functional_wall_probes"])
                 )
+                # Removing real material must fail the same release probe;
+                # changing the nominal bore did not relax the wall threshold.
+                frame = saved.PropulsionFixedFrame
+                original = frame.Shape.copy()
+                try:
+                    frame.Shape = original.cut(
+                        Part.makeBox(0.1, 1, 1, App.Vector(-6.5, 109.75, 49.5))
+                    )
+                    saved.recompute()
+                    physical, missing = module_service_shapes(saved, saved_module)
+                    self.assertFalse(missing)
+                    evidence = {"functional_wall_probes": [], "geometry": []}
+                    _record_print_checks(evidence, saved_module, physical)
+                    wall = next(
+                        row
+                        for row in evidence["functional_wall_probes"]
+                        if row["feature"] == "output_bearing_outer_wall"
+                    )
+                    self.assertFalse(wall["passed"], wall)
+                    self.assertAlmostEqual(wall["expected_wall_mm"], 3.5)
+                    self.assertAlmostEqual(wall["measured_wall_mm"], 3.4)
+                finally:
+                    frame.Shape = original
+                    saved.recompute()
             finally:
                 App.closeDocument(saved.Name)
 

@@ -1,7 +1,8 @@
 """Optional power portal clamped through the common square carrier slot array.
 
 The carrier has no dedicated portal holes. Two opposed feet use existing outer
-M2 slots; accepted seated registration includes their full available travel.
+M2 slots. Collision bounds include their full available travel; admissible clamp
+seating also requires centred heads and retained bearing lands after tightening.
 Physical clamp retention, print flatness and PA12 creep remain unqualified.
 """
 
@@ -18,7 +19,7 @@ from gondola.contracts.design import (
     STACK_PITCH_MM,
 )
 
-from . import mounting_plate, mounting_slots, purchased_hardware
+from . import mounting_plate, mounting_slots, purchased_hardware, slot_bearing
 
 V = App.Vector
 PITCH_MM = STACK_PITCH_MM
@@ -91,7 +92,7 @@ def clamp_fit_contract():
         "combined_axis_clearance_from_slot_centreline_mm": COMBINED_AXIS_CLEARANCE,
         "host_slot_centre_travel_mm": HOST_SLOT_TRAVEL,
         "nominal_position": "Opposed slot outer endpoints at (+27,+19) and (-27,-19) mm",
-        "registration_scope": "Both foot axes must simultaneously fit the opposed carrier slots. Full slot travel plus printed clearance is enclosed by the continuous XY/yaw bound; this is not a circular-host-hole locating joint. Feet seat before tightening, with no operating axial gap.",
+        "registration_scope": "Both foot axes must simultaneously fit the opposed carrier slots. The continuous XY/yaw collision bound conservatively encloses full slot travel and printed clearance, including positions that fail head-bearing acceptance. Admissible seating additionally requires each head axis within 0.1 mm of its slot centreline and both retained lands after tightening. Feet seat before tightening, with no operating axial gap; this is not a circular-host-hole locating joint.",
         "printed_grip_mm": DECK_THICKNESS + FOOT_THICKNESS,
         "screw_length_mm": CLAMP_SCREW_LENGTH,
         "nut_height_mm": fasteners.HEX_NUT_HEIGHT,
@@ -104,13 +105,10 @@ def clamp_fit_contract():
         - FOOT_THICKNESS
         - 2 * DIMENSION_ALLOWANCE
         - fasteners.HEX_NUT_HEIGHT,
-        "minimum_received_flat_head_bearing_diameter_mm": 3.5,
-        "concentric_head_land_across_maximum_slot_width_mm": (
-            3.5 - HOST_SLOT_WIDTH - DIMENSION_ALLOWANCE
-        )
-        / 2,
-        "bearing_scope": "Underside bolt heads bridge a slot rather than a circular bore; the two transverse lands are the bearing surfaces. Minimum flat head diameter 3.5 mm and accepted slot width at most 2.9 mm provide only 0.3 mm per side when centred. Eccentric heads, tilted seating, indentation and PA12 creep need physical inspection; CAD does not qualify bearing pressure or clamp retention.",
-        "assembly": "Centre the portal above the host, seat both feet and hand-snug both M2 clamps. Reject rocking or slip under wire loads. Slot end positions are assembly datums, not precision stops or an operating adjustment mechanism.",
+        **slot_bearing.contract(
+            HOST_SLOT_WIDTH + DIMENSION_ALLOWANCE, MINIMUM_RECEIVED_BOLT_DIAMETER
+        ),
+        "assembly": "Centre the portal above the host, seat both feet and centre each screw within 0.1 mm across its slot. Fully tighten both M2 clamps and inspect the retained head lands; reject rocking or slip under wire loads. Slot end positions are assembly datums, not precision stops or an operating adjustment mechanism.",
         "service": "Remove the carrier from the rail and support it on a bench. Support the platform, remove the two nuts from above and withdraw the screws below before lifting vertically. Balloon clearance, arbitrary tilted extraction and loose-flight operation are not claimed.",
     }
 
@@ -288,7 +286,7 @@ def registration_cells():
 
 
 def rigid_float_shape_bound(shape, *, alignment_degrees=0.0):
-    """Enclose every seated slot registration without treating slots as bores."""
+    """Enclose slot travel for collisions, including unaccepted head positions."""
     alignment = math.radians(alignment_degrees)
     aligned = shape.copy()
     aligned.rotate(V(), V(0, 0, 1), -alignment_degrees)
@@ -355,7 +353,7 @@ def rigid_float_component_bounds():
 
 
 def clamp_hardware_float_bounds():
-    """Contain loose radial fastener placement plus every seated slot pose."""
+    """Contain loose fasteners and slot poses beyond accepted clamp centring."""
     rows = []
     bottom = -TOWER_HEIGHT - DECK_THICKNESS
     # Hardware may move inside the foot bore as well as with the platform.

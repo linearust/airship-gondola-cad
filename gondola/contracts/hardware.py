@@ -98,10 +98,14 @@ for _length in (6, 8, 12):
             "envelope: head diameter 4.5 mm and head height 2 mm. Check actual "
             "head, length, 1.5 mm hex-key access and the documented joint grip. "
             + (
-                "For the two optional power-platform foot clamps, require a measured flat under-head "
+                "For the optical carrier-foot clamp and two optional power-platform foot clamps, require a measured flat under-head "
                 "bearing diameter at least 3.5 mm and thread crest diameter at least "
                 "1.8 mm; the 4.5 mm maximum head envelope alone does not establish "
-                "bearing contact. Both printed clearance holes must be at most 2.9 mm. "
+                "bearing contact. Finished carrier slots and power-foot bores must be at most 2.9 mm wide. "
+                "Centre each screw axis within 0.1 mm across its slot, fully tighten the seated "
+                "clamp, and verify at least 0.2 mm of transverse bearing land on both sides "
+                "at the head diameter. Full shank side clearance is not an accepted head position "
+                "or operating motion; inspect final centring after tightening. "
                 if _length == 8
                 else ""
             )
