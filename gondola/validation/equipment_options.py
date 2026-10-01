@@ -334,6 +334,25 @@ def _optical_option_check(
     }
 
 
+def _body_and_connector_collisions(bodies, reserves, fixed, fixed_reserves):
+    """Retain ordered collision evidence for each body and connector reserve."""
+    hits = []
+    for moving in (bodies, reserves):
+        for name, shape in moving.items():
+            obstacles = {**fixed, **fixed_reserves}
+            for group in (bodies, reserves):
+                obstacles.update(
+                    (other, target)
+                    for other, target in group.items()
+                    if group is not moving or other != name
+                )
+            hits.extend(
+                {"source": name, **hit}
+                for hit in collision_hits(shape, obstacles, tolerance=TOL)
+            )
+    return hits
+
+
 def compatibility_check(doc):
     """Screen every selected navigation/radio combination without saving CAD."""
     evidence = source_evidence(doc)
@@ -384,31 +403,7 @@ def compatibility_check(doc):
             for name, shape in wiring_reserves.reserve_shapes(navigation, radio).items()
             if name in OPTION_RESERVES and name != "NavigationDirectAntennaReserve"
         }
-        hits = []
-        for name, shape in bodies.items():
-            obstacles = {
-                **fixed,
-                **fixed_reserves,
-                **{other: target for other, target in bodies.items() if other != name},
-                **reserves,
-            }
-            hits.extend(
-                {"source": name, **hit}
-                for hit in collision_hits(shape, obstacles, tolerance=TOL)
-            )
-        for name, shape in reserves.items():
-            obstacles = {
-                **fixed,
-                **fixed_reserves,
-                **bodies,
-                **{
-                    other: target for other, target in reserves.items() if other != name
-                },
-            }
-            hits.extend(
-                {"source": name, **hit}
-                for hit in collision_hits(shape, obstacles, tolerance=TOL)
-            )
+        hits = _body_and_connector_collisions(bodies, reserves, fixed, fixed_reserves)
         buffers = named_gap_checks(
             {**fixed, **fixed_reserves, **bodies, **reserves},
             {

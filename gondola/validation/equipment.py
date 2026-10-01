@@ -455,25 +455,8 @@ def carrier_opening_checks(
     }
 
 
-def mounting_check(doc):
-    """Inspect saved supports, confirmed XY axes, free space and removal paths.
-
-    Pending device fasteners, PCB bearing planes and compressed dampers are not
-    modeled. These tests prove the printed interfaces and explicit reservations;
-    they do not claim a completed, retained equipment assembly.
-    """
-    from gondola.parts import wiring_reserves as wiring_clearances
-
-    from .equipment_options import adhesive_support_check
-
+def _carrier_support_checks(doc):
     registry = doc.DesignRegistry
-    physical_objects = (
-        list(registry.PrintedParts)
-        + list(registry.HardwareParts)
-        + list(registry.ReferenceParts)
-        + list(registry.TapeReferences)
-    )
-    physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
     support_rows = []
     expected_supports = {name: kind for kind, name in mounts.MOUNT_NAMES.items()}
     shared_reference = doc.getObject("BatteryMount")
@@ -542,15 +525,11 @@ def mounting_check(doc):
                 and centre_interface["passed"],
             }
         )
-    carriers = {
-        "ModuleFCEnvelope": doc.getObject("ElectronicsMount"),
-        "ModulePASEnvelope": doc.getObject("AccessoryMount"),
-    }
-    if any(carrier is None for carrier in carriers.values()):
-        return {"supports": support_rows, "passed": False}
+    return support_rows
+
+
+def _device_hole_checks(doc, carriers, physical_shapes_by_name, navigation_profile):
     mounting_rows = []
-    navigation_profile = get_navigation_profile()
-    radio_profile = get_radio_profile()
     device_specs = [
         (
             "ModuleFCEnvelope",
@@ -644,6 +623,12 @@ def mounting_check(doc):
                 and all(row["passed"] for row in holes),
             }
         )
+    return mounting_rows
+
+
+def _adhesive_checks(doc, physical_shapes_by_name, navigation_profile):
+    from .equipment_options import adhesive_support_check
+
     adhesive_rows = []
     adhesive_specs = [
         *(
@@ -683,6 +668,12 @@ def mounting_check(doc):
                 ),
             }
         )
+    return adhesive_rows
+
+
+def _underbody_clearance_checks(
+    carriers, physical_objects, physical_shapes_by_name, navigation_profile
+):
     free_height_rows = []
     for name, expected_gap in (
         ("ModuleFCEnvelope", mounts.FC_WIRING_CLEARANCE),
@@ -721,16 +712,11 @@ def mounting_check(doc):
             space.rotate(App.Vector(), App.Vector(0, 0, 1), mounts.FC_ROTATION_DEG)
         space.translate(App.Vector(*centre, 0))
         space = placed_shape(space, parent.getGlobalPlacement())
-        hits = [
-            {
-                "object": other.Name,
-                "intersection_mm3": intersection_volume(
-                    space, physical_shapes_by_name[other.Name]
-                ),
-            }
-            for other in physical_objects
-            if intersection_volume(space, physical_shapes_by_name[other.Name]) > TOL
-        ]
+        hits = []
+        for other in physical_objects:
+            volume = intersection_volume(space, physical_shapes_by_name[other.Name])
+            if volume > TOL:
+                hits.append({"object": other.Name, "intersection_mm3": volume})
         free_height_rows.append(
             {
                 "device": name,
@@ -740,6 +726,13 @@ def mounting_check(doc):
                 "passed": abs(gap - expected_gap) < TOL and not hits,
             }
         )
+    return free_height_rows
+
+
+def _fc_wiring_check(doc, physical_objects, physical_shapes_by_name):
+    from gondola.parts import wiring_reserves as wiring_clearances
+
+    registry = doc.DesignRegistry
     reserve = doc.getObject("FCWiringClearanceReserve")
     parent = doc.ElectronicsEquipmentModule
     wiring_report = {"passed": False, "error": "missing FC wiring corridor"}
@@ -787,6 +780,10 @@ def mounting_check(doc):
             and not hits
             and all(row["passed"] for row in axis_distances),
         }
+    return wiring_report
+
+
+def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
     service_rows = []
     for name in (
         "ModuleBatteryEnvelope",
@@ -834,10 +831,10 @@ def mounting_check(doc):
                 "passed": not hits,
             }
         )
-    evidence_matches = all(
-        json.loads(str(carrier.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE
-        for carrier in carriers.values()
-    )
+    return service_rows
+
+
+def _pending_mounting_evidence(doc, navigation_profile, radio_profile):
     pending_metadata = []
     for name, key in (
         ("ModuleFCEnvelope", "FC"),
@@ -876,6 +873,52 @@ def mounting_check(doc):
                 and connector_unverified,
             }
         )
+    return pending_metadata
+
+
+def mounting_check(doc):
+    """Inspect saved supports, confirmed XY axes, free space and removal paths.
+
+    Pending device fasteners, PCB bearing planes and compressed dampers are not
+    modeled. These tests prove the printed interfaces and explicit reservations;
+    they do not claim a completed, retained equipment assembly.
+    """
+    registry = doc.DesignRegistry
+    physical_objects = (
+        list(registry.PrintedParts)
+        + list(registry.HardwareParts)
+        + list(registry.ReferenceParts)
+        + list(registry.TapeReferences)
+    )
+    physical_shapes_by_name = {obj.Name: world_shape(obj) for obj in physical_objects}
+    support_rows = _carrier_support_checks(doc)
+    carriers = {
+        "ModuleFCEnvelope": doc.getObject("ElectronicsMount"),
+        "ModulePASEnvelope": doc.getObject("AccessoryMount"),
+    }
+    if any(carrier is None for carrier in carriers.values()):
+        return {"supports": support_rows, "passed": False}
+    navigation_profile = get_navigation_profile()
+    radio_profile = get_radio_profile()
+    mounting_rows = _device_hole_checks(
+        doc, carriers, physical_shapes_by_name, navigation_profile
+    )
+    adhesive_rows = _adhesive_checks(doc, physical_shapes_by_name, navigation_profile)
+    free_height_rows = _underbody_clearance_checks(
+        carriers, physical_objects, physical_shapes_by_name, navigation_profile
+    )
+    wiring_report = _fc_wiring_check(doc, physical_objects, physical_shapes_by_name)
+    service_rows = _device_service_checks(
+        doc, physical_objects, physical_shapes_by_name
+    )
+    evidence_matches = all(
+        json.loads(str(carrier.MountingEvidence)) == interfaces.MOUNTING_EVIDENCE
+        for carrier in carriers.values()
+    )
+    pending_metadata = _pending_mounting_evidence(
+        doc, navigation_profile, radio_profile
+    )
+    expected_supports = set(mounts.MOUNT_NAMES.values())
     registered_names = {obj.Name for obj in registry.EquipmentMounts}
     fc_installation = fc_installation_check(doc)
     return {
@@ -889,7 +932,7 @@ def mounting_check(doc):
         "native_mounting_evidence_matches_sources": evidence_matches,
         "pending_device_mounting_evidence": pending_metadata,
         "limits": "Printed XY mounting interfaces and reservations only. Purchase FC dampers and device mounting hardware after confirming PCB bearing planes, compressed damper heights and bolt/spacer lengths. Lift checks assume adhesive/retaining hardware has been released; no complete retained device mounting stack is claimed.",
-        "passed": registered_names == set(expected_supports)
+        "passed": registered_names == expected_supports
         and len(registry.EquipmentMounts) == len(expected_supports)
         and all(
             row["passed"]

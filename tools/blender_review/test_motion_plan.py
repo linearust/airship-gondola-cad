@@ -275,6 +275,12 @@ class ReviewMotionEvidence(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "gear removal paths"):
             REVIEW_MOTION.check_basis(evidence)
 
+    def test_empty_axial_allowance_evidence_is_rejected(self):
+        evidence = native_evidence()
+        evidence["saved_carrier_metal_clearances"] = []
+        with self.assertRaisesRegex(RuntimeError, "axial-travel poses"):
+            REVIEW_MOTION.check_basis(evidence)
+
     def test_changed_or_nonfinite_axial_allowance_is_rejected_in_both_directions(self):
         for direction in ("negative_mm", "positive_mm"):
             for value in (0.6, float("nan"), float("inf"), -float("inf"), None, "0.5"):

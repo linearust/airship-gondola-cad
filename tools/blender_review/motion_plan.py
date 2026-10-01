@@ -68,14 +68,15 @@ class ReviewMotionPlan:
 
     def check_basis(self, evidence):
         """Reject native evidence outside this explicitly reviewed motion plan."""
-        for row in evidence["saved_carrier_metal_clearances"]:
-            if any(
-                not _matches_number(row["axial_travel"][key], self.axial_allowance_mm)
-                for key in ("negative_mm", "positive_mm")
-            ):
-                raise RuntimeError(
-                    "Update axial-travel poses and captions for the new stops."
-                )
+        clearances = evidence["saved_carrier_metal_clearances"]
+        if not clearances or any(
+            not _matches_number(row["axial_travel"][key], self.axial_allowance_mm)
+            for row in clearances
+            for key in ("negative_mm", "positive_mm")
+        ):
+            raise RuntimeError(
+                "Update axial-travel poses and captions for the new stops."
+            )
         service = evidence["saved_servo_module_service"]
         if (
             service.get("passed") is not True
