@@ -42,6 +42,8 @@ class ServoBridgeShapeTests(unittest.TestCase):
             set(contacts),
             {
                 "full_roof_support",
+                "negative_y_beam_roof",
+                "positive_y_beam_roof",
                 "negative_y_wall",
                 "positive_y_wall",
             },
@@ -55,7 +57,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         ):
             self.assertAlmostEqual(
                 contacts[name]["actual_contact_area_mm2"],
-                58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2,
+                39.6 * 10.3 - 2 * math.pi * 1.7**2,
             )
             self.assertEqual(contacts[name]["plane_position_mm"], y)
         for side in ("Port", "Starboard"):
@@ -70,10 +72,12 @@ class ServoBridgeShapeTests(unittest.TestCase):
         self.assertEqual(len(bridge.Solids), 1)
         roof = Part.makeBox(58, 22, 2, App.Vector(-29, -11, 12.5))
         self.assertLess(abs(roof.cut(bridge).Volume), 1e-7)
-        relief = Part.makeBox(18.4, 22, 3.2, App.Vector(-9.2, -11, 2.2))
+        relief = Part.makeBox(18.4, 22, 10.3, App.Vector(-9.2, -11, 2.2))
         self.assertLess(abs(relief.common(bridge).Volume), 1e-7)
         for sign in (1, -1):
-            wall = self.opposite(Part.makeBox(58, 5, 1, App.Vector(-29, -11, 11)), sign)
+            wall = self.opposite(
+                Part.makeBox(19.8, 5, 1, App.Vector(-29, -11, 11)), sign
+            )
             self.assertLess(abs(wall.cut(bridge).Volume), 1e-7)
 
     def test_heads_and_nuts_compress_both_bridge_and_frame_legs(self):
@@ -148,7 +152,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         bridge = self.doc.ServoDriveBridge
         original = bridge.Shape.copy()
         for sign in (1, -1):
-            for kind, origin in (("missing", (-1, -11, 7)), ("blocked", (-1, -8, 4))):
+            for kind, origin in (("missing", (24, -11, 7)), ("blocked", (-1, -8, 4))):
                 try:
                     change = self.opposite(
                         Part.makeBox(2, 0.4, 1, App.Vector(*origin)), sign

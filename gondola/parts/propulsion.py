@@ -16,7 +16,6 @@ from gondola.cad import (
     create_group,
     create_printed_part,
     mirrored_y,
-    polygon_extrusion,
     set_property,
     translated_shape,
     union,
@@ -55,14 +54,13 @@ from . import (
 )
 
 V = App.Vector
-BASE_Z = 2.2
-FOOT_THICKNESS = 3.0
+BASE_Z = 1.5
+FOOT_THICKNESS = 5.0
+FOOT_BOTTOM_Z = servo_bridge.SEAT_Z - FOOT_THICKNESS
 FOOT_WIDTH = 18.0
-BEARING_POST_WIDTH = 9.6
-BEARING_POST_ROOT_HEIGHT = 5.0
-FRAME_CROSSBEAM_THICKNESS = 3.0
+BEARING_POST_WIDTH = 13.0
 RAIL_BOLT_OFFSET_X = servo_bridge.CLAMP_AXIS_X
-RAIL_CONTACT_LENGTH = 24.0
+RAIL_CONTACT_LENGTH = servo_bridge.CENTRAL_SEAT_LENGTH
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
 GUARD_OUTER_RADIUS = 25.0
@@ -167,6 +165,13 @@ def _carrier_side_shape():
     # Open complete head/nut seats without leaving thin cylindrical crescents.
     for z in (2.5, -4.5):
         body = body.cut(box(5.8, passage_length, 2, (1.3, passage_start, z)))
+    from . import nut_guides
+
+    # Add above the nut plane only; the split and both grip planes stay open.
+    guides = translated_shape(
+        nut_guides.rails_shape(5.8), x=4.2, y=CARRIER_CLAMP_BOLT_Y, z=2.5
+    )
+    body = union([body, guides])
     return _checked(body, "Integral carrier strut and split shaft clamp")
 
 
@@ -205,34 +210,20 @@ def moving_carrier_shape():
 
 def _output_support(sign):
     parts = []
-    # A plain full-width foot distributes the bearing-post loads without long
-    # lightening windows, separate ribs or narrow perimeter strips.
-    foot_length = (
-        PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5 - 20
-    )
-    foot = box(FOOT_WIDTH, foot_length, FOOT_THICKNESS, (-FOOT_WIDTH / 2, 20, BASE_Z))
-    parts.append(foot)
     for side in (-1, 1):
         y_start = (
             BEARING_GUIDE_START_Y
             if side > 0
             else -BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS
         )
-        bottom = BASE_Z + FOOT_THICKNESS
-        root_top = bottom + BEARING_POST_ROOT_HEIGHT
+        bottom = FOOT_BOTTOM_Z + FOOT_THICKNESS
         y = y_start + PIVOT_HALF_SPAN
-        # A single planar profile spreads the post into its existing foot.
-        # Above the short root flare the bearing/keeper interfaces are unchanged.
-        post = polygon_extrusion(
-            [
-                (-FOOT_WIDTH / 2, y, bottom),
-                (FOOT_WIDTH / 2, y, bottom),
-                (BEARING_POST_WIDTH / 2, y, root_top),
-                (BEARING_POST_WIDTH / 2, y, PIVOT_Z),
-                (-BEARING_POST_WIDTH / 2, y, PIVOT_Z),
-                (-BEARING_POST_WIDTH / 2, y, root_top),
-            ],
-            (0, BEARING_POST_DEPTH, 0),
+        # Straight posts match the cup width without tapered roots or steps.
+        post = box(
+            BEARING_POST_WIDTH,
+            BEARING_POST_DEPTH,
+            PIVOT_Z - bottom,
+            (-BEARING_POST_WIDTH / 2, y, bottom),
         )
         # Keep the bearing post and its root solid; no service tunnel is needed.
         cup = _bearing_cup(side * BEARING_START_Y, positive_side=side > 0)
@@ -252,29 +243,34 @@ def _output_support(sign):
 
 
 def fixed_frame_shape():
-    """One continuous U rail spine; both legs carry the shared clamp preload."""
+    """One raised transverse beam joins the posts and fitted U rail spine."""
     web_opening = rail.WEB_THICKNESS
-    wings = box(18, 70, FRAME_CROSSBEAM_THICKNESS, (-9, -35, BASE_Z)).cut(
-        box(20, web_opening, 20, (-10, -web_opening / 2, 0))
+    half_span = PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5
+    beam = box(
+        FOOT_WIDTH,
+        2 * half_span,
+        FOOT_THICKNESS,
+        (-FOOT_WIDTH / 2, -half_span, FOOT_BOTTOM_Z),
     )
     length, width = servo_bridge.CENTRAL_SEAT_LENGTH, servo_bridge.CENTRAL_SEAT_WIDTH
     spine = box(
         length, width, servo_bridge.SEAT_Z - BASE_Z, (-length / 2, -width / 2, BASE_Z)
-    ).cut(
-        box(
-            length + 2,
-            web_opening,
-            rail.WEB_TOP_Z,
-            (-length / 2 - 1, -web_opening / 2, 0),
-        )
     )
     frame = union(
         [
             spine,
-            wings,
+            beam,
             _output_support(1),
             _output_support(-1),
         ]
+    )
+    frame = frame.cut(
+        box(
+            length + 2,
+            web_opening,
+            rail.MOUNT_INNER_ROOF_Z,
+            (-length / 2 - 1, -web_opening / 2, 0),
+        )
     )
     return _checked(
         servo_bridge.cut_shared_bolt_passage(frame),
@@ -659,11 +655,11 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
                 -servo_bridge.CHEEK_CONTACT_Y - rail.WEB_THICKNESS / 2,
             ),
             (
-                "frame_rail_seating_roof",
+                "frame_rail_relieved_roof",
                 "PropulsionFixedFrame",
-                (RAIL_BOLT_OFFSET_X, 0, rail.WEB_TOP_Z - 0.01),
+                (RAIL_BOLT_OFFSET_X, 0, rail.MOUNT_INNER_ROOF_Z - 0.01),
                 (RAIL_BOLT_OFFSET_X, 0, servo_bridge.SEAT_Z + 0.01),
-                servo_bridge.SEAT_Z - rail.WEB_TOP_Z,
+                servo_bridge.SEAT_Z - rail.MOUNT_INNER_ROOF_Z,
             ),
             (
                 "frame_rail_to_central_seat_connection",
@@ -771,23 +767,20 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Integral output frame with one 58 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-17 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the frame. The removable full-U servo cap carries the recessed heads and nuts. Four solid bearing posts widen symmetrically into their existing 18 mm feet through 5 mm high planar root flares, without separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. The 58 mm footprint locally restrains rail curvature. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
+        "Integral output frame with one 58 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-17 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the frame. The removable full-U servo cap carries the recessed heads and nuts. One 18 x 5 mm transverse beam spans the frame at Z7.5..12.5, with its top aligned to the saddle seat. Four straight 13 by 6 mm posts rise from that beam and match the bearing cup width; their unsupported length to the 50 mm axes is 37.5 mm. Four bearing-keeper nut seats have 1 mm high open anti-rotation guides. No separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. The 58 mm footprint locally restrains rail curvature. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
     set_property(frame, "IntegratedRailSaddle", True, "App::PropertyBool")
-    set_property(frame, "CarriageContactZ", rail.WEB_TOP_Z, "App::PropertyLength")
+    set_property(frame, "CarriageContactZ", rail.MOUNT_BOTTOM_Z, "App::PropertyLength")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
+    set_property(frame, "FootBottomZ", FOOT_BOTTOM_Z, "App::PropertyLength")
     set_property(frame, "BearingPostWidth", BEARING_POST_WIDTH, "App::PropertyLength")
-    set_property(frame, "BearingPostRootWidth", FOOT_WIDTH, "App::PropertyLength")
-    set_property(
-        frame, "BearingPostRootHeight", BEARING_POST_ROOT_HEIGHT, "App::PropertyLength"
-    )
     set_property(
         frame,
         "FrameCrossbeamThickness",
-        FRAME_CROSSBEAM_THICKNESS,
+        FOOT_THICKNESS,
         "App::PropertyLength",
     )
     set_property(
@@ -829,7 +822,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(),
-        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; unchanged radial split, screw and nut seats permit clamp closure. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        "Integral guard, motor plate and two split Ø3.2 shaft clamps with broad Ø7.6 end flanges, 1.5mm thick. Each 10 mm-long grip joins straight broad carrier sides; the radial split and bearing planes are unchanged. Two 1 mm high open rails at each M2 nut seat restrain rotation after clearance is taken up. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
         App.Rotation(V(0, 1, 0), -90),
         sku="GearedMotorCarrier",
     )
@@ -899,7 +892,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 z=PIVOT_Z,
             ),
             "Rigid replaceable outer-ring keeper; one recessed M2x6 and ordinary "
-            "M2 nut clamp the broad frame seat, not the bearing. The existing "
+            "M2 nut clamp the broad frame seat, not the bearing. Open 1 mm nut rails on the fixed seat aid assembly without shifting the bearing plane. The existing "
             "rotor stop plane is retained. No flexure, radial squeeze or bearing "
             "preload. Centre its opening on the received bearing before tightening; "
             "the broad side guides prevent gross rotation, not precision alignment. "
@@ -997,7 +990,7 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3 mm outer sides and a 4.8 mm central web. Each nonlocating 8 by 21 mm case opening has nominal 0.5 mm side and end clearance around the body. M1.6×8 Phillips kit screws clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3.2 mm outer sides and a 5.2 mm central web. Each nonlocating 7.6 by 20.6 mm case opening has nominal 0.3 mm side and end clearance around the body. M1.6×8 Phillips kit screws clamp 5 mm printed grip plus 1 mm ears. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware
@@ -1131,6 +1124,7 @@ def _build_propulsion_side(doc, module, drive_module, prefix, sign, spec):
 
 
 def _module_metrics(printed, hardware, references, spec):
+    from .nut_guides import fit_contract as nut_guide_contract
     from .servo_coupling import metrics as coupling_metrics
 
     return {
@@ -1185,7 +1179,7 @@ def _module_metrics(printed, hardware, references, spec):
         "bearing_seats": {
             "support_centre_span_mm": 2
             * (BEARING_START_Y + bearing_retention.BEARING_WIDTH / 2),
-            "post_section_mm": [9.6, BEARING_POST_DEPTH],
+            "post_section_mm": [BEARING_POST_WIDTH, BEARING_POST_DEPTH],
             "gear_face_centre_overhang_mm": (
                 PIVOT_HALF_SPAN
                 - BEARING_START_Y
@@ -1222,10 +1216,12 @@ def _module_metrics(printed, hardware, references, spec):
             "minimum_feature_wall_mm": 1.5,
             "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
             "frame_foot_thickness_mm": FOOT_THICKNESS,
-            "frame_crossbeam_thickness_mm": FRAME_CROSSBEAM_THICKNESS,
+            "frame_foot_z_range_mm": [FOOT_BOTTOM_Z, FOOT_BOTTOM_Z + FOOT_THICKNESS],
+            "frame_crossbeam_thickness_mm": FOOT_THICKNESS,
         },
         "OEM_interfaces": PROPULSION_EVIDENCE,
         "horn_coupling": coupling_metrics(),
+        "nut_assembly_guides": nut_guide_contract(),
         "unfinished_interfaces": [
             "Measured OEM horn seating and retaining screw",
             "Actual direct horn-to-gear adapter clearance and grip",
@@ -1278,7 +1274,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "Removable paired servos on a continuous U cap with a flat 58 by 22 by 2 mm roof at Z12.5 and two 5 mm walls wrapping the frame. Only two underside reliefs, X +/-9.2 below Z5.4, clear the transverse frame beam. Two shared M3x20 pairs at X +/-17 load both cap walls, both frame legs and the rail web. Head recesses retain 3 mm stock; opposite nut pockets retain nominal 2 mm floors. Nominal fitted planes must hand-seat after coupon qualification; never tighten an unseated or warped joint into place. Servos, horn interfaces and their datums are unchanged. For bench service disconnect leads, support both modules and remove both rail pairs; slide the unit +X10 then lift Z30. Remove the small output gears, release the two driven-shaft clamps, shift PortOutputShaftNegative +Y12 and StarboardOutputShaftPositive -Y12 while supporting the rotors, then lift the servo assembly Z11 and withdraw X80. Restore shafts, clamps, gear retention and mesh alignment before operation.",
+        "Removable paired servos on a continuous U cap with a flat 58 by 22 by 2 mm roof at Z12.5 and two 5 mm walls wrapping the frame. Two straight openings at X +/-9.2 extend to the roof underside at Z12.5 for the raised 18 mm beam. The beam adds 180 mm2 of roof bearing outside the central spine; both full clamp legs remain at X +/-17. Two shared M3x20 pairs at X +/-17 load both cap walls, both frame legs and the rail web. Head recesses retain 3 mm stock; opposite nut pockets retain nominal 2 mm floors. Nominal fitted planes must hand-seat after coupon qualification; never tighten an unseated or warped joint into place. Servos, horn interfaces and their datums are unchanged. For bench service disconnect leads, support both modules and remove both rail pairs; slide the unit +X10 then lift Z30. Remove the small output gears, release the two driven-shaft clamps, shift PortOutputShaftNegative +Y12 and StarboardOutputShaftPositive -Y12 while supporting the rotors, then lift the servo assembly Z11 and withdraw X80. Restore shafts, clamps, gear retention and mesh alignment before operation.",
         sku=drive.bridge_sku,
     )
     parts = {

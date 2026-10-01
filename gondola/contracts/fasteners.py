@@ -18,7 +18,12 @@ OPTICAL_PIVOT_SCREW_LENGTH = 8.0
 HEX_NUT_AF = 4.0
 HEX_NUT_MIN_AF = 3.8
 HEX_NUT_HEIGHT = 1.6
-HEX_NUT_MIN_HEIGHT = 1.4
+HEX_NUT_MIN_HEIGHT = 1.35
+# DIN 934 dimensional comparison, not certification of the selected kit lot.
+# Its M2 minimum AF is 3.82; the accepted 3.8 minimum remains conservative.
+HEX_NUT_DIMENSION_SOURCE = (
+    "https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf"
+)
 KIT_SOURCE = "https://www.aliexpress.com/item/1005005551208735.html"
 KIT_MATERIAL = "Black steel; seller-stated screw class 10.9, nut grade unverified"
 HEAD_ENVELOPE_NOTE = (

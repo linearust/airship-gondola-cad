@@ -43,13 +43,13 @@ class JointFitCouponTests(unittest.TestCase):
         for side in ("negative", "positive"):
             self.assertAlmostEqual(
                 contacts[side + "_U_side"],
-                58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2,
+                39.6 * 10.3 - 2 * math.pi * 1.7**2,
             )
-            self.assertAlmostEqual(contacts[side + "_rail_seat"], 62.5)
+            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 143.5)
 
-    def test_wrong_rail_station_loses_full_foot_support(self):
+    def test_rail_station_beyond_supported_trim_is_rejected(self):
         shapes = self.shapes()
-        shapes["RailPairCoupon"].translate(App.Vector(3, 0, 0))
+        shapes["RailPairCoupon"].translate(App.Vector(7, 0, 0))
         self.assertFalse(joint_checks(shapes)["passed"])
 
     def test_blocked_shared_bore_is_rejected(self):
@@ -126,6 +126,53 @@ class JointFitCouponTests(unittest.TestCase):
                 export(cad, output)
             with self.assertRaisesRegex(ValueError, "new, separate"):
                 export(cad, folder)
+
+
+class JointFitCouponContactTests(unittest.TestCase):
+    """Current source geometry checks independent of deliberate fixture promotion."""
+
+    def setUp(self):
+        from gondola.parts import propulsion, rail, servo_bridge
+
+        self.doc = App.newDocument("CurrentJointContactCoupon")
+        module = self.doc.addObject("App::Part", "MainPropulsionModule")
+        module.Placement.Base = App.Vector(-17, 0, 0)
+        for name, shape in (
+            ("ContinuousRail", rail.rail_shape()),
+            ("PropulsionFixedFrame", propulsion.fixed_frame_shape()),
+            ("ServoDriveBridge", servo_bridge.bridge_shape()),
+        ):
+            obj = self.doc.addObject("Part::Feature", name)
+            if name != "ContinuousRail":
+                module.addObject(obj)
+            obj.Shape = shape
+            obj.addProperty("App::PropertyRotation", "PrintRotation")
+        self.doc.recompute()
+        self.addCleanup(lambda: App.closeDocument(self.doc.Name))
+        self.shapes = {name: shape for name, (_, shape) in extract(self.doc).items()}
+
+    def test_current_crops_retain_bilateral_bottoms_and_roof_relief(self):
+        report = joint_checks(self.shapes)
+        self.assertTrue(report["passed"], report)
+        support = report["bottom_and_wall_support"]
+        self.assertEqual(support["minimum_bottom_contact_area_mm2"], 203)
+        self.assertEqual(support["inner_roof_clearance_mm"], 0.2)
+        self.assertEqual(support["wall_overlap_length_total_mm"], 50)
+        contacts = {r["interface"]: r["area_mm2"] for r in report["contacts"]}
+        for side in ("negative", "positive"):
+            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 143.5)
+
+    def test_missing_bottom_or_blocked_roof_is_rejected(self):
+        frame = self.shapes["FrameJointCoupon"]
+        for y in (-3, 1.25):
+            changed = frame.cut(Part.makeBox(1, 1.75, 0.1, App.Vector(-28, y, 1.5)))
+            self.assertFalse(
+                joint_checks({**self.shapes, "FrameJointCoupon": changed})["passed"]
+            )
+        blocked = frame.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(15, -1.25, 10.6)))
+        self.assertFalse(
+            joint_checks({**self.shapes, "FrameJointCoupon": blocked})["passed"]
+        )
 
 
 if __name__ == "__main__":

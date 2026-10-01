@@ -29,11 +29,18 @@ class FrameRootTests(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         self.assertTrue(all(row["passed"] for row in rows), rows)
         for row in rows:
-            self.assertEqual(row["root_base_width_mm"], 18)
-            self.assertEqual(row["root_flare_height_mm"], 5)
-            self.assertLess(row["missing_root_flare_mm3"], 1e-7)
+            self.assertEqual(row["root_section_mm"], [13, 6])
+            self.assertEqual(row["root_height_range_mm"], [12.5, 27])
+            self.assertLess(row["missing_root_material_mm3"], 1e-7)
+            self.assertLess(row["unexpected_root_material_mm3"], 1e-7)
+        frame = self.doc.PropulsionFixedFrame
+        self.assertTrue(frame.Shape.isValid())
+        self.assertEqual(len(frame.Shape.Solids), 1)
+        self.assertEqual(float(frame.BearingPostWidth), 13)
+        self.assertNotIn("BearingPostRootWidth", frame.PropertiesList)
+        self.assertNotIn("BearingPostRootHeight", frame.PropertiesList)
 
-    def test_missing_root_flare_fails_even_with_the_old_core_intact(self):
+    def test_narrowing_each_straight_root_fails_with_the_old_core_intact(self):
         from gondola.validation.propulsion import bearing_post_roots_check
 
         frame = self.doc.PropulsionFixedFrame
@@ -41,15 +48,16 @@ class FrameRootTests(unittest.TestCase):
         try:
             for centre_y in (-109.75, -40.25, 40.25, 109.75):
                 with self.subTest(centre_y=centre_y):
-                    # Remove one side of each flare, outside the former post.
-                    cutter = Part.makeBox(4.2, 6, 5, App.Vector(4.8, centre_y - 3, 5.2))
-                    self.assertAlmostEqual(original.common(cutter).Volume, 63, places=6)
+                    # Remove added width while retaining the former 9.6 mm core.
+                    cutter = Part.makeBox(
+                        1.7, 6, 14.5, App.Vector(4.8, centre_y - 3, 12.5)
+                    )
+                    self.assertAlmostEqual(
+                        original.common(cutter).Volume, 147.9, places=6
+                    )
                     frame.Shape = original.cut(cutter)
                     self.doc.recompute()
                     rows = bearing_post_roots_check(self.doc)
-                    self.assertTrue(
-                        all(row["missing_root_material_mm3"] < 1e-7 for row in rows)
-                    )
                     failed = [row for row in rows if not row["passed"]]
                     self.assertEqual(len(failed), 1, rows)
                     self.assertAlmostEqual(
@@ -57,8 +65,34 @@ class FrameRootTests(unittest.TestCase):
                         centre_y,
                     )
                     self.assertAlmostEqual(
-                        failed[0]["missing_root_flare_mm3"], 63, places=6
+                        failed[0]["missing_root_material_mm3"], 147.9, places=6
                     )
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
+
+    def test_reintroduced_taper_fails_with_complete_straight_posts(self):
+        from gondola.validation.propulsion import bearing_post_roots_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            points = [
+                App.Vector(x, 106.75, z)
+                for x, z in ((-9, 12.5), (9, 12.5), (6.5, 17.5), (-6.5, 17.5))
+            ]
+            taper = Part.Face(Part.makePolygon(points + points[:1])).extrude(
+                App.Vector(0, 6, 0)
+            )
+            frame.Shape = original.fuse(taper).removeSplitter()
+            self.doc.recompute()
+            rows = bearing_post_roots_check(self.doc)
+            self.assertTrue(
+                all(row["missing_root_material_mm3"] < 1e-7 for row in rows)
+            )
+            failed = [row for row in rows if not row["passed"]]
+            self.assertEqual(len(failed), 1, rows)
+            self.assertAlmostEqual(failed[0]["unexpected_root_material_mm3"], 75)
         finally:
             frame.Shape = original
             self.doc.recompute()
@@ -77,7 +111,7 @@ class FrameRootTests(unittest.TestCase):
                 App.Vector(
                     -3.2,
                     propulsion.PIVOT_HALF_SPAN + propulsion.BEARING_GUIDE_START_Y,
-                    propulsion.BASE_Z + propulsion.FOOT_THICKNESS,
+                    propulsion.FOOT_BOTTOM_Z + propulsion.FOOT_THICKNESS,
                 ),
             )
             removed_volume = original.common(corridor).Volume
@@ -99,7 +133,7 @@ class FrameRootTests(unittest.TestCase):
             frame.Shape = original
             self.doc.recompute()
 
-    def test_long_output_feet_are_full_width_three_mm_plates(self):
+    def test_output_beam_is_raised_and_five_mm_thick(self):
         from gondola.parts import propulsion
 
         frame = self.doc.PropulsionFixedFrame.Shape
@@ -109,28 +143,52 @@ class FrameRootTests(unittest.TestCase):
             + propulsion.BEARING_SHOULDER_THICKNESS
             + 0.5
         )
-        self.assertAlmostEqual(frame.BoundBox.YMin, -outer_y, places=6)
-        self.assertAlmostEqual(frame.BoundBox.YMax, outer_y, places=6)
+        beam_section = frame.common(Part.makeBox(20, 230, 1, App.Vector(-10, -115, 8)))
+        self.assertAlmostEqual(beam_section.BoundBox.YMin, -outer_y, places=6)
+        self.assertAlmostEqual(beam_section.BoundBox.YMax, outer_y, places=6)
         for start_y in (20, -outer_y):
             with self.subTest(start_y=start_y):
                 solid_foot = Part.makeBox(
                     18,
                     outer_y - 20,
-                    3,
-                    App.Vector(-9, start_y, propulsion.BASE_Z),
+                    5,
+                    App.Vector(-9, start_y, 7.5),
                 )
                 self.assertLess(solid_foot.cut(frame).Volume, 1e-7)
 
+    def test_thinning_the_raised_beam_fails_with_all_post_roots_intact(self):
+        from gondola.validation.propulsion import bearing_post_roots_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            loss = Part.makeBox(3, 4, 1, App.Vector(-1.5, 60, 7.5))
+            frame.Shape = original.cut(loss)
+            self.doc.recompute()
+            rows = bearing_post_roots_check(self.doc)
+            self.assertTrue(
+                all(row["missing_root_material_mm3"] < 1e-7 for row in rows)
+            )
+            self.assertTrue(
+                all(row["unexpected_root_material_mm3"] < 1e-7 for row in rows)
+            )
+            self.assertTrue(all(not row["passed"] for row in rows))
+            for row in rows:
+                self.assertAlmostEqual(row["missing_shared_beam_mm3"], 12)
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
+
     def test_central_seat_is_complete_and_cannot_be_hollowed_for_side_access(self):
-        from gondola.parts import rail, servo_bridge
+        from gondola.parts import servo_bridge
 
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
         support = Part.makeBox(
             58,
             12,
-            servo_bridge.SEAT_Z - rail.WEB_TOP_Z,
-            App.Vector(-29, -6, rail.WEB_TOP_Z),
+            servo_bridge.SEAT_Z - 10.7,
+            App.Vector(-29, -6, 10.7),
         )
         contact = Part.makePlane(58, 12, App.Vector(-29, -6, servo_bridge.SEAT_Z))
         self.assertLess(support.cut(frame).Volume, 1e-7)
@@ -146,17 +204,17 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         offset = propulsion.RAIL_BOLT_OFFSET_X
         length = propulsion.RAIL_CONTACT_LENGTH
-        foot = Part.makeBox(24, 12, 10.3, App.Vector(-12, -6, 2.2))
-        foot = foot.cut(Part.makeBox(24, 2.5, 8.3, App.Vector(-12, -1.25, 2.2)))
+        foot = Part.makeBox(24, 12, 11, App.Vector(-12, -6, 1.5))
+        foot = foot.cut(Part.makeBox(24, 2.5, 9.2, App.Vector(-12, -1.25, 1.5)))
         foot = foot.cut(
             Part.makeCylinder(1.7, 14, App.Vector(0, -7, 7), App.Vector(0, 1, 0))
         )
         foot.translate(App.Vector(offset, 0, 0))
         self.assertLess(foot.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(offset - length / 2, 5.0)
+        self.assertAlmostEqual(offset - length / 2, -12.0)
         self.assertGreater(offset + length / 2, 0)
-        self.assertAlmostEqual(length, 24)
-        connection = Part.makeBox(4, 4, 10.3, App.Vector(5, -5.25, 2.2))
+        self.assertAlmostEqual(length, 58)
+        connection = Part.makeBox(4, 4, 11, App.Vector(5, -5.25, 1.5))
         self.assertLess(connection.cut(frame).Volume, 1e-7)
 
     def test_side_bore_fill_does_not_fill_the_web_passage_and_frame_lifts(self):

@@ -234,16 +234,6 @@ def _service_preflight(doc, registry, bindings):
     checked, failures = [], []
     for station, module in bindings:
         pose = module_attachment_pose(station, module)
-        if not pose["passed"]:
-            failures.append(
-                {
-                    "module": module.Name,
-                    "native_attachment_pose": pose,
-                    "error": "Invalid native rail attachment pose",
-                    "passed": False,
-                }
-            )
-            continue
         binding = mount_binding(module.Name)
         name = binding[0] if binding is not None else None
         required = (
@@ -277,8 +267,99 @@ def _service_preflight(doc, registry, bindings):
                 )
                 break
         else:
-            checked.append((module, pose, name))
+            if pose["passed"]:
+                checked.append((module, pose, name))
+            else:
+                failures.append(
+                    {
+                        "module": module.Name,
+                        "native_attachment_pose": pose,
+                        "error": "Invalid native rail attachment pose",
+                        "passed": False,
+                    }
+                )
     return checked, failures
+
+
+def _shared_trim_interval(pose):
+    """Independent intersection of both saved bolt axes with ±6mm wall travel."""
+    limits = []
+    for axis in pose["attachment_world_axes_x_mm"]:
+        matches = [
+            centre for centre in range(-136, 137, 34) if abs(axis - centre) <= 6 + TOL
+        ]
+        if len(matches) != 1:
+            raise ValueError("Shared trim axis is outside the reviewed wall range")
+        limits.append((matches[0] - 6 - axis, matches[0] + 6 - axis))
+    if len(limits) != 2:
+        raise ValueError("Shared trim requires both rail-clamp axes")
+    low, high = max(row[0] for row in limits), min(row[1] for row in limits)
+    if high - low < 12 - TOL:
+        raise ValueError("Shared clamp intervals do not give the reviewed12mm trim")
+    # The continuous58mm bottom lands must also stay inside the full-width
+    # base, X±149 before its1mm end chamfers. Outer wall pairs have less travel.
+    centre = sum(pose["attachment_world_axes_x_mm"]) / 2
+    low, high = max(low, -120 - centre), min(high, 120 - centre)
+    if low > TOL or high < -TOL:
+        raise ValueError("Shared bottom datum is outside the full-width rail base")
+    return low, high
+
+
+def _shared_screw_slide(name, shape, obstacles, low, high):
+    """Exact two-cylinder swept envelopes, without filling slot-end corners."""
+    opposite = "Opposite" in name
+    x = -17 if opposite else 17
+    reference, swept = [], []
+    for radius, y, depth in (
+        (3.0, 9.0 if opposite else -11.0, 2.0),
+        (1.5, -11.0 if opposite else -9.0, 20.0),
+    ):
+        reference.append(Part.makeCylinder(radius, depth, V(x, y, 7), V(0, 1, 0)))
+        ends = [
+            Part.makeCylinder(radius, depth, V(x + shift, y, 7), V(0, 1, 0))
+            for shift in (low, high)
+        ]
+        middle = Part.makeBox(high - low, depth, 2 * radius, V(x + low, y, 7 - radius))
+        swept.append(union([*ends, middle]))
+    outside = abs(shape.cut(union(reference)).Volume)
+    envelope = union(swept)
+    hits = {
+        name: abs(envelope.common(other).Volume)
+        for name, other in obstacles.items()
+        if envelope.BoundBox.intersect(other.BoundBox)
+    }
+    return {
+        "part": name,
+        "method": "Exact X sweep of the separate M3 head and shank cylinder envelopes",
+        "actual_shape_outside_envelope_mm3": outside,
+        "intersection_mm3": hits,
+        "passed": outside < TOL and all(value < TOL for value in hits.values()),
+    }
+
+
+def supported_propulsion_slide(shapes, obstacles, pose):
+    """Sweep every carried solid, including the loosened nominal hardware."""
+    low, high = _shared_trim_interval(pose)
+    path = [(low, 0, 0), (high, 0, 0)]
+    rows = []
+    for name, shape in sorted(shapes.items()):
+        if name in ("PropulsionFixedFrame", "ServoDriveBridge"):
+            row = _lift_path(name, shape, obstacles, 17, waypoints=path)
+        elif name in (
+            "MainPropulsionModuleRailMountScrew",
+            "MainPropulsionModuleOppositeRailMountScrew",
+        ):
+            row = _shared_screw_slide(name, shape, obstacles, low, high)
+        else:
+            row = {"part": name, **continuous_path(shape, path, obstacles)}
+        rows.append(row)
+    return {
+        "relative_x_range_mm": [low, high],
+        "travel_mm": high - low,
+        "parts": rows,
+        "scope": "Continuous nominal rigid slide across the supported interval (12mm at interior wall pairs; clipped by the full-width base at the end pairs) with all registered neighbours retained. Loosen both M3 pairs and support the assembly; disconnect/reroute leads and regenerate wiring reservations before operation. This is not a friction, preload, curved-rail or cable-motion qualification.",
+        "passed": bool(rows) and all(row["passed"] for row in rows),
+    }
 
 
 def rail_attachment_service(doc, registry, objects):
@@ -396,6 +477,13 @@ def rail_attachment_service(doc, registry, objects):
         moving = members - attachments
         fixed = {name: shape for name, shape in shapes.items() if name not in members}
         shared = module.Name == "MainPropulsionModule"
+        trim = (
+            supported_propulsion_slide(
+                {name: shapes[name] for name in members}, fixed, pose
+            )
+            if shared
+            else None
+        )
         slide = (
             10 if shared else 4 if module.Name == "ElectronicsEquipmentModule" else 0
         )
@@ -421,12 +509,14 @@ def rail_attachment_service(doc, registry, objects):
                 "removal_path_coordinate_frame": "Module local; electronics +X is world -X at its required 180-degree yaw.",
                 "unclamped_module_held_during_rail_slide": bool(slide),
                 "unclamped_propulsion_held_during_rail_slide": shared,
+                "populated_supported_trim": trim,
                 "populated_module_lift": lifts,
                 "passed": pose["passed"]
                 and len(services) == len(sites)
                 and all(row["passed"] for row in services)
                 and bool(lifts)
-                and all(row["passed"] for row in lifts),
+                and all(row["passed"] for row in lifts)
+                and (trim is None or trim["passed"]),
             }
         )
     return {

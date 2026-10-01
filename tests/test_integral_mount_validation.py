@@ -68,7 +68,7 @@ class IntegralMountValidationTests(unittest.TestCase):
             name: Part.makeBox(1, 1, 0.4, App.Vector(4, -3, 13))
             for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount")
         }
-        cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 0, 10.5))
+        cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 0, 10.8))
         for name in (
             "BatteryMount",
             "ElectronicsMount",
@@ -108,7 +108,7 @@ class IntegralMountValidationTests(unittest.TestCase):
     def test_opposite_clamp_leg_has_an_independent_saved_geometry_witness(self):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
-        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-23.5, 1.6, 5.5))
+        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-22.5, 1.6, 5.5))
         obj.Shape = original.cut(cut)
         self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
         row = next(row for row in self.checks() if row["part"] == obj.Name)
@@ -124,6 +124,23 @@ class IntegralMountValidationTests(unittest.TestCase):
                 "difference_mm3"
             ],
             0.09,
+        )
+
+    def test_spine_outside_local_clamp_zones_has_full_independent_witness(self):
+        obj = self.doc.PropulsionFixedFrame
+        original = obj.Shape.copy()
+        # Outside the two12mm local zones; the complete58mm spine still matters.
+        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-23.5, 1.6, 5.5))
+        obj.Shape = original.cut(cut)
+        self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
+        row = next(row for row in self.checks() if row["part"] == obj.Name)
+        self.assertFalse(row["passed"])
+        for site in row["attachment_sites"]:
+            self.assertLess(
+                site["independent_lower_mount_comparison"]["difference_mm3"], 1e-5
+            )
+        self.assertGreater(
+            row["independent_lower_mount_comparison"]["difference_mm3"], 0.09
         )
 
     def test_removed_bolt_load_path_is_rejected_for_every_carrier(self):

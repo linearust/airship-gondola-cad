@@ -1,31 +1,48 @@
 {
-  "revision": "BU",
+  "revision": "BW",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
   "passed": true,
   "fixture_promotion_approved": true,
-  "reviewer": "Root agent: explicit review of source diff, saved old/new geometry, native controls and metadata, independent39-gate recommendation, motion/service results, and all five changed native views.",
-  "reviewed_at_utc": "2026-10-01T00:51:19.361276+00:00",
-  "source_fingerprint": "0dc1240155200a66c90d8ffe4c344b479b3cd62cae09e3510382acaae565b082",
-  "candidate_path": "/tmp/gondola-bu-review/candidate/gondola.FCStd",
-  "candidate_sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
-  "candidate_print_layout_sha256": "35e4fa51be7d7b254426cd634219208dfcc2a35c8d25e95078d902ba9cdc34fe",
-  "old_production_path": "/tmp/gondola-bu-review/before-gondola.FCStd",
-  "old_production_sha256": "8511f583cf194e99dcf701108f7c87ab347cde4e176f1dac692e1091765ef4cd",
-  "old_fixture_path": "/tmp/gondola-bu-review/before-fixture.FCStd",
-  "old_fixture_sha256": "d908781cbe3d67c2395a7778ce841c2195da5f93dc517ae9a5fb191a17686608",
+  "reviewer": "Root agent: source diff, all97 independent saved geometry/metadata/control/service gates,148 independent rail gates, exact literal stock changes and12rendered views reviewed.",
+  "reviewed_at_utc": "2026-10-01T02:39:43.251336+00:00",
+  "source_fingerprint": "c540680041bb14926aaa796c4bc072aaa7f72a11e05bff909cc646860f92945e",
+  "candidate_path": "/tmp/gondola-bw-review/prose-candidate/gondola.FCStd",
+  "candidate_sha256": "07f766341a20754e6375b1d348c3953fec48cc83b449a6896480b62f1f30cde0",
+  "candidate_print_layout_sha256": "569a4b37c2ac62ea5aabc71b6aa6789ac933d6cc7dd34d5f583bf9c42b199805",
+  "old_production_path": "/tmp/gondola-bw-review/before-gondola.FCStd",
+  "old_production_sha256": "930a5c2eff79c59f8b7ac77e26a3fee8494ed66679ef6b1c9e99744916514030",
+  "old_fixture_path": "/tmp/gondola-bw-review/before-fixture.FCStd",
+  "old_fixture_sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
   "required_independent_audits": [
     "independent-approval.json",
-    "independent-saved-audit.json"
+    "independent-saved-audit.json",
+    "rail-candidate-audit.json",
+    "derived-geometry-audit.json"
   ],
   "evidence_artifact_sha256": {
-    "independent-approval.json": "ec4fce0d7cab12eaab676bca65772956d0fa2b96169573d4c39a6e7b6a5f54f3",
-    "independent-saved-audit.json": "ad8347ee37e649643f0205df8aae2705e4257f429ec42988bf9cb98c8d7c5ebe",
-    "independent_saved_audit.py": "dd4071b3651ed394bb47a9ed1324efae9051a2f251d329a52a66b5e7e2877ff5",
-    "write_independent_approval.py": "c0bc320dea6eea8289ff9247d1cb93b4c54711b7dd5e534d28d4d839f6bd1715",
+    "independent-approval.json": "8c2eadbba9892c4fa190e0613ece89754d75c9d7db8fe70c357fa779ddb44b18",
+    "independent-saved-audit.json": "bad64dc87a8cf6ec1a1ef6a063c111c781a0d878f91d52f04300fab29113f7ea",
+    "independent_saved_audit.py": "6f75b0b686e68e18febaa927a4cc6ff1f72f935506f931f7d21a579f763a085c",
+    "write_independent_approval.py": "21a78f5935e1600ac218c2b616b049910b4cdc3a6cab343e7145cf48da27d339",
     "audit_helpers.py": "f8888d45d65f69834a5e450f18304e9390bf33dab16cd3c00e2a33c1c0304d78",
-    "candidate-visual-review.json": "1b6a2412d04956360d0e6b63be251bde2388386cea392a55b82151044ad9ef2a",
-    "candidate-visual-hashes.json": "aede6478afec40b3143da84d01474f8b3fb0c2a96ca5b3c3c327d3c23a98a6f3",
-    "root-tests.log": "425c657595cdea6ca9cc15bc4ba4736020979816e8cdefc5769de0a9271f6241"
+    "derived-geometry-audit.json": "72e0ac2fc9f6299a2a15ed38142bcd2f3f9dd5aae0befae750f6589f9ce20c63",
+    "derived_geometry_audit.py": "7fe42863548dd724690e1fb0a697d8d3d86744bc8f8cd0c42b3d8b16739b434b",
+    "parent-controls.json": "70affb11f01145c612e507fefe25aeacf66ff93538c7eca361192b842b5bd8a6",
+    "parent_controls.py": "7c730bcedf9fd2cba0de2a86a515b45d973e9b3a0abda6de2ecf0a0a5bdf3488",
+    "rail-candidate-audit.json": "0e2074da0d795881c5b48344b659e15edc67268f237a33e874a97c60f66d117c",
+    "rail_candidate_audit.py": "0a19ef2c75ef61bafbaa75bcd48188b0a34eb47b74309edd23bbb62d21440fcf",
+    "candidate-visual-review.json": "5efd2970db52159ce10be9c086e00ccd4041a44269435ba0b82f2f6908c5fe60",
+    "test-correction-review.json": "4f99ed7650ab81dc76314907cf124bf591b4b93901d1c74dd4d2fca452d994e3",
+    "test-propulsion-before-assertion-correction.py": "7999ca3b22019af575f0a03bf221a5d124293a2d99443cfa712af203f1290849",
+    "prose-correction-review.json": "e7bbb236f9a1f2f621a91eec34a0d915d79e6c7b928ff390623cceec51d26acf",
+    "release-script-review.json": "76979024caef54caa801e136bd42124480a216b0fa128003c8dc746444cc7029",
+    "pre-prose-correction/gondola/contracts/design.py": "1c9ded2cd1f18a0fe124604d05e1cc67363ae4cc10950943b444c1b1d731d433",
+    "pre-prose-correction/gondola/parts/rail.py": "ae7fb84bf7c434c0e06cfaac80d9d1dea3db0e640786a97e8ea542cf630e5eb4",
+    "release-script-review.before-prose-fixture.json": "ad65709b32e1f8e51988d0d68983cf29c4e5b21580ab5d157dae7b016b960bbd",
+    "prose-fixture-review.json": "1d3b8f77447ca7087d7a413463b50ac486b32efa0c0bd91741a7b441a17589f8",
+    "review_prose_fixture.py": "6a674250bb274c80d3488d06b56db97a700f8ed96757edaf4cda940fe0bf34b3",
+    "patch_prose_candidate_xml.py": "7d26bb055318d320239339e18a58319ef3f4b29be43dc01841476042f0ee62f0",
+    "prose-candidate-xml-changes.json": "76c4ef180403c9d5e98723270db7f4d0fd39d348065320b3f6c20b8c8abb4425"
   },
   "evidence": {
     "archive": "references/design_checks.json.gz",
@@ -33,11 +50,28 @@
     "artifact_key": "approved_review_artifacts"
   },
   "approval_basis": [
-    "Only the integral propulsion frame changes across118 assembly shapes and13 print SKUs: four5mm-high planar post roots widen9.6mm posts into existing18mm feet. Exact504mm3 addition with no removed material or footprint change.",
-    "All other shapes, native poses, expressions, parents and registries are unchanged. Frame notes and three descriptive dimensions are the only functional object-metadata changes; regenerated provenance/UUID/timestamps are classified.",
-    "Old and new native controls pass. Saved current/future rotor envelopes, servo and carrier replacement, and all four bearing/keeper service checks pass. Purchased parts,150mm axis span,50mm axis height and separate servo/output modules are retained.",
-    "At the provisional PA12 density1.01g/cm3, printed mass increases0.50904g; purchased hardware and installed counts are unchanged. No measured stiffness/strength gain is claimed.",
-    "Five changed native views were directly inspected; seven other views are pixel-identical to the prior reviewed CAD. The strengthened-root regression includes independent removal at each of the four roots. Full frozen-input tests and release pipeline are required separately."
+    "Four straight13x6mm posts and raised18x5mm transverse beam simplify and strengthen nominal stock;150mm pivot span/50mm height, current/future motion and separate servo service retained.",
+    "Rail base5→6mm and four carrier/frame feet bottom2.2→1.5mm create actual bilateral bottom contacts.0.2mm inner roof relief avoids conflicting vertical datums; outer saddle feet stay2.2mm to clear tape.",
+    "Nine15.4mm slots retain5.3mm end stock and all flex gaps/tape wings. Shared58mmspine permits±6mm default trim; ordinary carriers±4.2mm. Endmost shared stations clipped to keep full base support.",
+    "Servo case allowance0.5→0.3mm per side/end; optical pitch bores2.6→2.2mm. Purchased rotating interfaces, equipment slots and horn adjustment retained.",
+    "Eight1mm M2 nut-guide pairs preserve bearing planes and fasteners. Positive keeper screws retained after evaluating insufficient groove stock and unqualified latch retention.",
+    "All13 changed assembly shapes have independent exact stock reconstructions; assembly inventories, poses, parents, expressions and purchased geometry retained. Two print copies rebase0.7mm to the print bed. All other metadata classified.",
+    "Modeled installed printed mass increases6.469789176473867g from originalBU; hardware unchanged. Full frozen-input release execution remains required separately."
   ],
-  "limits": "Nominal CAD/regression approval only. Printed fit, strength, stiffness, creep, fatigue and loaded retention remain unqualified."
+  "limits": "Nominal CAD regression approval only. Actual fit, stiffness, strength, creep, fatigue, adhesion, wiring and flight readiness remain unqualified.",
+  "test_assertion_correction": {
+    "review": "test-correction-review.json",
+    "scope": "After the unchanged final geometry was independently approved, two obsolete expected values in tests/test_propulsion.py were corrected to reviewed13x6mm roots and0.2mm worst-case servo gap. No generator, fixture geometry or saved candidate change; a fresh complete frozen release is required."
+  },
+  "prose_correction": {
+    "review": "prose-correction-review.json",
+    "scope": "Remove three stale numerical prose literals from two source files. No executable dimension, geometry, control, placement, fixture or test changed. Original candidate source identity above remains unchanged; the independent supplement binds the current source. Fresh complete frozen release follows."
+  },
+  "original_candidate_path": "/tmp/gondola-bw-review/candidate/gondola.FCStd",
+  "original_candidate_sha256": "973e790dfc76be1235bb85ab89f667112352272559b4c96378815cb621f55c17",
+  "metadata_correction": {
+    "review": "prose-fixture-review.json",
+    "approved_by": "Root: exact2savedstringchanges,41independent gates, all geometry/control/GUI identity reviewed.",
+    "scope": "Only TapeAttachmentContract and ReleaseStatus prose updated after original geometry approval. Original candidate and all independent geometry evidence retained."
+  }
 }

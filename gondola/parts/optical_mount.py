@@ -24,7 +24,7 @@ EAR_THICKNESS = 2.0
 UPRIGHT_WIDTH = 8.0
 GUSSET_DEPTH = 2.0
 GUSSET_TOP_Z = 7.0
-PIVOT_HOLE_DIAMETER = 2.6
+PIVOT_HOLE_DIAMETER = 2.2
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_BOTTOM_Z = 4.5
 TRAY_TOP_Z = 6.5
@@ -132,7 +132,7 @@ def mount_contract():
         "bolt_tip_beyond_nut_mm": BOLT_TIP
         - NUT_START
         - purchased_hardware.HEX_NUT_HEIGHT,
-        "assembly": "Print the integral carrier foot/post and sensor tray separately. Insert the integral tongue freely into an existing carrier middle-side slot and fully seat the foot before tightening its M2 pair; clamp the plain 2 mm pitch ears with the second pair.",
+        "assembly": "Print the integral carrier foot/post and sensor tray separately. Insert the integral tongue freely into an existing carrier middle-side slot and fully seat the foot before tightening its M2 pair; finish both 2.2 mm pitch bores for a free M2 screw before clamping the plain 2 mm ears with the second pair. Do not use screw torque to force an undersized bore.",
         "adjustment": "Centre the rail on the balloon. Support the sensor, loosen the pitch screw while holding the nut, align downward at flight trim, and hand-snug. No roll correction, self-levelling or operating play. Native limits are planning controls; actual stiffness, holding torque, vibration retention and PA12 creep remain unqualified.",
         "sensor_interface": "Continuous insulating adhesive pad for either MTF-01P or MTF-02P. OEM backside contact, retention and connector/wire fit remain unverified; no invented sensor fixing holes.",
     }

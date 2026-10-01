@@ -275,6 +275,18 @@
           "url": "https://www.ettinger.de/en/product-datasheet/4ca7065842fccd4de02bac906e3675ad/create"
         }
       ]
+    },
+    {
+      "origin": "Fastenal DIN934 product standard M.FHN.934.A4-80 revision01; selected page1 dimensions transcribed2026-10-01.",
+      "scope": "DIN934 ordinary hex-nut reference. Not measured purchased-kit dimensions, material certification, flange/locking nut compatibility or finished PA12 fit.",
+      "assets": [
+        {
+          "path": "references/fastenal_din934_dimensions_2026-10-01.json",
+          "title": "Selected ordinary hex-nut dimensional ranges, structured transcription",
+          "sha256": "35ca026899d94bf7c75d731247149c3f925c15fce71bea6e7c3c9113d5478a29",
+          "url": "https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf"
+        }
+      ]
     }
   ]
 }

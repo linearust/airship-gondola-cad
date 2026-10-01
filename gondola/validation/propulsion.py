@@ -1127,6 +1127,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
     from gondola.print_export import geometry_comparison
 
     from .rail_access import nut_capture_check, side_driver_clearance
+    from .rail_mount import paired_spine_support_check
 
     # Put the selected site into the canonical +X / negative-head-Y frame.
     shapes = {
@@ -1174,17 +1175,21 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
                 ),
             }
         )
-    crop = Part.makeBox(24, 22, 10.3, App.Vector(x - 12, -11, 2.2))
+    crop = Part.makeBox(12, 22, 11, App.Vector(x - 6, -11, 1.5))
     contact = rail.attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
-        contact_length=24,
+        contact_length=58,
+        shared_drive=True,
         screw_length=20,
         head_face_y=-9.0,
         nut_bearing_y=8.0,
         nut_outer_y=11.0,
         frame_contact_y=6.0,
         head_support=translated_shape(shapes["ServoDriveBridge"].common(crop), x=-x),
+    )
+    paired_support = paired_spine_support_check(
+        shapes["LocalRailReference"], shapes["PropulsionFixedFrame"]
     )
     screw_obstacles = retained_obstacles(shapes, {screw_name})
     withdrawal = continuous_path(screw, [(0, 0, 0), (0, -25, 0)], screw_obstacles)
@@ -1221,13 +1226,12 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "side_bolt_axis_mm": [x, z],
         "shared_servo_bridge_clamp": True,
         "shared_grip_contact_check": contact,
+        "paired_spine_support": paired_support,
         "hardware_geometry": hardware_geometry,
         "screw_length_mm": servo_bridge.SHARED_SCREW_LENGTH,
         "driver_access": driver,
-        "contact_x_range_mm": [
-            x - propulsion.RAIL_CONTACT_LENGTH / 2,
-            x + propulsion.RAIL_CONTACT_LENGTH / 2,
-        ],
+        "centred_load_zone_x_range_mm": [x - 6, x + 6],
+        "physical_spine_x_range_mm": [-29, 29],
         "bolt_withdrawal": withdrawal,
         "nut_removal_after_bolt": nut_path,
         "driver_clearance_overlap_mm3": stem_hits,
@@ -1236,6 +1240,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "seated_intersections_mm3": overlaps,
         "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared recessed M3x20 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem is an external access envelope; the blind hex pocket limits nut rotation and retains a 2 mm nominal load-bearing floor. Actual socket engagement, nut insertion, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
         "passed": contact["passed"]
+        and paired_support["passed"]
         and all(row["passed"] for row in hardware_geometry)
         and withdrawal["passed"]
         and driver["passed"]
@@ -1248,44 +1253,46 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
 
 
 def bearing_post_roots_check(doc):
-    """Independently require four solid cores and the full planar root flares."""
+    """Independently require four straight post roots and the shared beam."""
     frame = doc.getObject("PropulsionFixedFrame")
     if frame is None:
         return [{"passed": False, "error": "Missing output support frame"}]
     shape = frame.Shape.copy()
     shape.Placement = App.Placement()
+    # One uninterrupted raised beam carries all four roots into the U spine.
+    # Keep this literal witness independent of source-builder dimensions.
+    beam = Part.makeBox(18, 226.5, 5, App.Vector(-9, -113.25, 7.5)).cut(
+        Part.makeBox(20, 2.5, 10.7, App.Vector(-10, -1.25, 0))
+    )
+    missing_beam = abs(beam.cut(shape).Volume)
     rows = []
-    bottom, top = 5.2, 14.0
+    bottom, top = 12.5, 27.0
     for sign in (-1, 1):
         for local_y in (-34.75, 34.75):
             centre_y = sign * (75 + local_y)
             witness = Part.makeBox(
-                9.6,
+                13,
                 6,
                 top - bottom,
-                App.Vector(-4.8, centre_y - 3, bottom),
+                App.Vector(-6.5, centre_y - 3, bottom),
             )
             missing = abs(witness.cut(shape).Volume)
-            points = [
-                App.Vector(x, centre_y - 3, z)
-                for x, z in ((-9, 5.2), (9, 5.2), (4.8, 10.2), (-4.8, 10.2))
-            ]
-            root = Part.Face(Part.makePolygon(points + [points[0]])).extrude(
-                App.Vector(0, 6, 0)
+            former_root_envelope = Part.makeBox(
+                18, 6, top - bottom, App.Vector(-9, centre_y - 3, bottom)
             )
-            missing_flare = abs(root.cut(shape).Volume)
+            extra = abs(former_root_envelope.cut(witness).common(shape).Volume)
             rows.append(
                 {
                     "side": sign,
                     "post_local_y_mm": local_y,
-                    "root_section_mm": [9.6, 6],
+                    "root_section_mm": [13, 6],
                     "root_height_range_mm": [bottom, top],
                     "missing_root_material_mm3": missing,
-                    "root_base_width_mm": 18.0,
-                    "root_flare_height_mm": 5.0,
-                    "missing_root_flare_mm3": missing_flare,
-                    "scope": "Complete solid core and symmetric planar root flare; not a stress, stiffness or fatigue qualification.",
-                    "passed": missing < TOL and missing_flare < TOL,
+                    "unexpected_root_material_mm3": extra,
+                    "shared_beam_z_range_mm": [7.5, 12.5],
+                    "missing_shared_beam_mm3": missing_beam,
+                    "scope": "Complete raised 18x5 transverse beam and straight 13x6 roots through the cup bottom at Z27; no flared stock within the former 18 mm root envelope. Upper bearing/keeper cuts are checked separately. Not a stress, stiffness or fatigue qualification.",
+                    "passed": missing < TOL and extra < TOL and missing_beam < TOL,
                 }
             )
     return rows
@@ -1543,6 +1550,8 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
     """Prove screw release, keeper withdrawal and then inward bearing removal."""
     from gondola.parts import bearing_retention as capture
 
+    from .nut_guides import guided_nut_service_direction
+
     carrier_service = output_carrier_service_check(doc, module, prefix)
     report["output_carrier_service"].append(carrier_service)
     removed = (
@@ -1575,6 +1584,8 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
             staged[bolt_name],
             staged[nut_name],
             retained_obstacles(staged, {bolt_name, nut_name}),
+            guided_nut=True,
+            nut_lateral_direction=guided_nut_service_direction(doc, bolt_name),
         )
         direction = doc.PropulsionFixedFrame.getGlobalPlacement().Rotation.multVec(
             App.Vector(0, -side * 20, 0)
@@ -1678,6 +1689,8 @@ def _record_drive_checks(report, doc, module, physical, frame, prefix, sign):
 
 def _record_fastener_checks(report, module, physical):
     """Verify installed fastener seats, engagement and ordered access routes."""
+    from .nut_guides import guided_nut_service_direction, is_guided_nut_bolt
+
     clamp_parts = Part.makeCompound(
         [world_shape(obj) for obj in module["printed"]]
         + [
@@ -1748,7 +1761,7 @@ def _record_fastener_checks(report, module, physical):
                 {prefix + "OutputGear"}
                 | {prefix + "OutputShaft" + side for side in ("Negative", "Positive")}
             )
-            prerequisites = "Remove the output gear, carrier and both shafts; keep the bearing keeper seated while releasing the rear nut and withdrawing the bolt inward."
+            prerequisites = "Remove the output gear, carrier and both shafts; keep the bearing keeper seated and the rear nut flat between its guides. Turn and withdraw the screw inward first, then release the nut axially beyond the guide height."
             dependencies.append(
                 {
                     "check": "output_carrier_service",
@@ -1763,6 +1776,10 @@ def _record_fastener_checks(report, module, physical):
             retained,
             thread_diameter=thread_diameter,
             retain_bolt=retain_bolt,
+            guided_nut=is_guided_nut_bolt(bolt.Name),
+            nut_lateral_direction=guided_nut_service_direction(
+                module["group"].Document, bolt.Name
+            ),
         )
         kept_bolts = {bolt.Name} if retain_bolt else set()
         report["fastener_service"].append(
@@ -1986,6 +2003,9 @@ def validate(source=None, *, drive=SELECTED_DRIVE):
         report["servo_module_service"].append(servo_module_service_check(doc, module))
         report["rail_mount_clearance"].append(rail_mount_clearance_check(doc, module))
         report["bearing_post_roots"] = bearing_post_roots_check(doc)
+        from .nut_guides import installed_nut_guide_checks
+
+        report["nut_guides"] = installed_nut_guide_checks(doc)
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             _record_drive_checks(report, doc, module, physical, frame, prefix, sign)
         _record_fastener_checks(report, module, physical)

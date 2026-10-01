@@ -244,10 +244,13 @@ def fastener_service_check(
     thread_diameter=2.0,
     nut_lateral_direction=None,
     retain_bolt=False,
+    guided_nut=False,
 ):
     """Check an ordered threaded-fastener release and its head-tool approach."""
     if retain_bolt and nut_lateral_direction is not None:
         raise ValueError("A retained bolt requires axial nut disengagement")
+    if retain_bolt and guided_nut:
+        raise ValueError("A guided nut requires screw-first withdrawal")
     bore = next(
         face.Surface
         for face in nut.Faces
@@ -272,18 +275,46 @@ def fastener_service_check(
     nut_travel = thread_end - nut_start + 0.2
     bolt_travel = thread_end - thread_start + 0.2
     if nut_lateral_direction is None:
-        nut_waypoints = [(0, 0, 0), tuple(axis * nut_travel)]
+        nut_waypoints = [
+            (0, 0, 0),
+            tuple(axis * (max(1.2, nut_travel) if guided_nut else nut_travel)),
+        ]
         sequence = "Disengage the nut beyond the thread tip, then withdraw the bolt."
     else:
-        offset = axis * 0.2
+        offset = axis * (1.2 if guided_nut else 0.2)
         lateral = App.Vector(*nut_lateral_direction) * 25
         nut_waypoints = [(0, 0, 0), tuple(offset), tuple(offset + lateral)]
         sequence = "Hold the nut and withdraw the bolt first, then move the unthreaded nut 0.2 mm away from its seat and 25 mm sideways."
-    nut_path = continuous_path(nut, nut_waypoints, obstacles)
+    if guided_nut:
+        sequence = (
+            "Keep the nut flat between its guides while turning and withdrawing "
+            "the screw from the head side. With the screw fully removed, lift "
+            "the nut axially at least 1.2 mm to clear the 1 mm guides before any "
+            "sideways removal. For assembly seat the aligned hex nut flat and "
+            "turn the screw head; do not try to turn the nut between the guides."
+        )
+    released_nut = nut
+    if guided_nut:
+        # The screw is already out. Fill its bore so an exact planar exterior
+        # sweep can follow the free nut laterally, including a rotated module.
+        # An axis-aligned box around a tilted bore would invent corner stock.
+        bearing_face = next(
+            face
+            for face in nut.Faces
+            if type(face.Surface).__name__ == "Plane"
+            and face.normalAt(0, 0).dot(axis) < -0.99
+        )
+        nut_height = max(vertex.Point.dot(axis) for vertex in nut.Vertexes) - nut_start
+        released_nut = Part.Face(bearing_face.OuterWire).extrude(axis * nut_height)
+    nut_path = continuous_path(released_nut, nut_waypoints, obstacles)
     bolt_path = (
         None
         if retain_bolt
-        else continuous_path(bolt, [(0, 0, 0), tuple(axis * -bolt_travel)], obstacles)
+        else continuous_path(
+            bolt,
+            [(0, 0, 0), tuple(axis * -bolt_travel)],
+            {**obstacles, "seated_guided_nut": nut} if guided_nut else obstacles,
+        )
     )
     if retain_bolt:
         sequence = (
@@ -304,6 +335,9 @@ def fastener_service_check(
         "nut_axial_removal": nut_path,
         "bolt_axial_withdrawal": bolt_path,
         "bolt_retained_in_servo_unit": retain_bolt,
+        "screw_first_with_nut_held_in_guides": guided_nut,
+        "minimum_nut_lift_before_lateral_mm": 1.2 if guided_nut else 0.2,
+        "released_nut_bore_filled_after_screw_removal": guided_nut,
         "driver_approach_collisions": tool_hits,
         "tool_reserve_radius_mm": tool_radius,
         "nut_thread_disengagement_travel_mm": nut_travel,

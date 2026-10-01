@@ -553,7 +553,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         try:
             # Connected low foot plus a post outside the installed full orbit,
             # but inside the complete +X40 removal sweep.
-            foot = Part.makeBox(60, 4, 3, App.Vector(-8, 73, 4))
+            foot = Part.makeBox(60, 4, 3, App.Vector(-8, 73, 7.5))
             post = Part.makeBox(2, 4, 17, App.Vector(50, 73, 5))
             frame.Shape = original.fuse(foot).fuse(post)
             self.doc.recompute()
@@ -576,7 +576,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         for row in rows:
             self.assertTrue(row["passed"], row)
-            self.assertEqual(row["root_section_mm"], [9.6, 6])
+            self.assertEqual(row["root_section_mm"], [13, 6])
 
     def test_plain_posts_clear_continuous_output_rotation_and_axial_travel(self):
         from gondola.cad import belongs_to_group, world_shape
@@ -811,7 +811,20 @@ class NativeGearedDriveTests(unittest.TestCase):
         self.assertEqual(row["clamp_spacing_mm"], 34.0)
         for site in row["sites"]:
             self.assertEqual(site["side_bolt_axis_mm"], [17.0, 7.0])
-            self.assertEqual(site["contact_x_range_mm"], [5.0, 29.0])
+            self.assertEqual(site["centred_load_zone_x_range_mm"], [11.0, 23.0])
+            self.assertEqual(site["physical_spine_x_range_mm"], [-29, 29])
+            self.assertEqual(
+                site["shared_grip_contact_check"]["checked_centred_contact_length_mm"],
+                12,
+            )
+            support = site["paired_spine_support"]
+            self.assertTrue(support["passed"])
+            self.assertEqual(support["spine_extent_mm"], 58)
+            self.assertEqual(support["wall_overlap_length_total_mm"], 50)
+            self.assertTrue(
+                all(row["passed"] for row in support["bottom_datum_contacts"])
+            )
+            self.assertAlmostEqual(support["inner_roof_clearance_mm"], 0.2)
 
     def test_new_frame_obstacle_cannot_hide_from_side_rail_access(self):
         from gondola.parts import rail
@@ -1978,7 +1991,7 @@ class SelectedGearDriveTests(unittest.TestCase):
             servo_bridge.opposite(largest_case_section),
         ):
             self.assertLess(bridge.common(section).Volume, 1e-7)
-            self.assertGreaterEqual(bridge.distToShape(section)[0], 0.4 - 1e-7)
+            self.assertGreaterEqual(bridge.distToShape(section)[0], 0.2 - 1e-7)
 
     def test_fixed_mount_checks_follow_the_whole_module_placement(self):
         from gondola.validation.propulsion import (
@@ -2086,6 +2099,44 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 measurements = {
                     row["feature"]: row for row in result["actual_feature_measurements"]
                 }
+                # Literal saved-shape expectations keep the probe datums from
+                # drifting together with production constants. In particular,
+                # the raised beam is not at the central rail-foot bottom.
+                expected_sections = {
+                    "frame_foot_thickness": 5.0,
+                    "rail_straight_base_width": 6.0,
+                    "carrier_roof": 1.8,
+                    "carrier_nut_pocket_bottom_ligament": 2.55,
+                    "frame_rail_relieved_roof": 1.8,
+                    "frame_rail_to_central_seat_connection": 11.0,
+                    "port_servo_bridge_sidewall": 3.2,
+                    "starboard_servo_bridge_sidewall": 3.2,
+                    "servo_common_cradle_central_web": 5.2,
+                }
+                for feature, expected in expected_sections.items():
+                    with self.subTest(saved_section=feature):
+                        row = measurements[feature]
+                        self.assertAlmostEqual(row["nominal_expected_mm"], expected)
+                        self.assertAlmostEqual(
+                            row["measured_material_length_mm"], expected
+                        )
+                        self.assertTrue(row["passed"], row)
+                beam = measurements["frame_foot_thickness"]
+                self.assertEqual(beam["coordinate_frame"], "part local")
+                self.assertEqual(
+                    beam["sample_line_mm"], [(8, 75, 7.49), (8, 75, 12.51)]
+                )
+                from gondola.validation.manufacturing import material_length_on_line
+
+                for centre_y in (-109.75, -40.25, 40.25, 109.75):
+                    self.assertAlmostEqual(
+                        material_length_on_line(
+                            saved.PropulsionFixedFrame.Shape,
+                            (-6.51, centre_y, 24),
+                            (6.51, centre_y, 24),
+                        ),
+                        13,
+                    )
                 for feature, _, start, end, _ in propulsion.manufacturing_wall_probes(
                     drive=selected
                 ):

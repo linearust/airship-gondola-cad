@@ -1,7 +1,7 @@
 """Replaceable paired servos on a continuous U cap around the output frame.
 
 The flat roof and both sidewalls transfer load through two shared M3 clamps.
-Only the transverse frame beam needs lower-edge relief. Contact lands are a
+The raised transverse frame beam passes directly below the flat roof. Contact lands are a
 coupon-fitted interface; screws must not pull an unseated or warped cap closed.
 """
 
@@ -17,15 +17,16 @@ from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
 MOUNT_DEPTH = 5.0
-CASE_CLEARANCE = 0.5
+CASE_CLEARANCE = 0.3
 CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
 CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
-SIDE_WALL = 3.0
-CRADLE_WIDTH = CASE_WINDOW_WIDTH + 2 * SIDE_WALL
+CRADLE_WIDTH = 14.0
+SIDE_WALL = (CRADLE_WIDTH - CASE_WINDOW_WIDTH) / 2
 REAR_LEAD_ALLOWANCE = 13.9
 SEAT_Z = 12.5
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.0
-FRAME_BOTTOM_Z = 2.2
+# Outer cheeks clear tape wings; the inner frame feet seat on the rail base.
+CHEEK_BOTTOM_Z = 2.2
 CENTRAL_SEAT_LENGTH = 58.0
 CENTRAL_SEAT_WIDTH = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
 CLAMP_AXIS_X = PROPULSION_ATTACHMENT.half_spacing_mm
@@ -34,7 +35,7 @@ CHEEK_CONTACT_Y = -PROPULSION_ATTACHMENT.frame_half_width_mm
 CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
 ROOF_HALF_LENGTH = CENTRAL_SEAT_LENGTH / 2
 CROSSBEAM_RELIEF_HALF_X = 9.2
-CROSSBEAM_RELIEF_TOP_Z = 5.4
+CROSSBEAM_RELIEF_TOP_Z = SEAT_Z
 SHARED_SCREW_LENGTH = PROPULSION_ATTACHMENT.screw_length_mm
 SHAFT_SERVICE_SHIFTS = {
     "PortOutputShaftNegative": 12.0,
@@ -97,7 +98,7 @@ def cut_shared_bolt_passage(shape):
 
 
 def bridge_blank_blocks(drive=SELECTED_DRIVE):
-    """Eight stock boxes retain the U opening and the crossbeam relief for sweeps."""
+    """Six plain stock boxes retain both clamp legs and the raised beam opening."""
     blocks = [
         _cradle_blank(drive),
         box(
@@ -108,21 +109,13 @@ def bridge_blank_blocks(drive=SELECTED_DRIVE):
         ),
     ]
     for y in (CHEEK_OUTER_Y, -CHEEK_CONTACT_Y):
-        blocks.append(
-            box(
-                CENTRAL_SEAT_LENGTH,
-                CHEEK_THICKNESS,
-                SEAT_Z - CROSSBEAM_RELIEF_TOP_Z,
-                (-ROOF_HALF_LENGTH, y, CROSSBEAM_RELIEF_TOP_Z),
-            )
-        )
         for x in (-ROOF_HALF_LENGTH, CROSSBEAM_RELIEF_HALF_X):
             blocks.append(
                 box(
                     ROOF_HALF_LENGTH - CROSSBEAM_RELIEF_HALF_X,
                     CHEEK_THICKNESS,
-                    CROSSBEAM_RELIEF_TOP_Z - FRAME_BOTTOM_Z,
-                    (x, y, FRAME_BOTTOM_Z),
+                    CROSSBEAM_RELIEF_TOP_Z - CHEEK_BOTTOM_Z,
+                    (x, y, CHEEK_BOTTOM_Z),
                 )
             )
     return tuple(blocks)

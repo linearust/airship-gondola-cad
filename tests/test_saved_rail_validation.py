@@ -48,7 +48,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "RailAttachmentContract",
                 json.dumps(
                     rail.attachment_contract(
-                        24 if kind is None else 16, shared_drive=kind is None
+                        58 if kind is None else 16, shared_drive=kind is None
                     ),
                     sort_keys=True,
                 ),
@@ -115,6 +115,32 @@ class SavedRailValidationTests(unittest.TestCase):
         for value, expected in zip(actual, (-140, -70, -34, 0, 100)):
             self.assertAlmostEqual(value, expected)
 
+    def test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones(self):
+        for position in (-23, -11):
+            with self.subTest(position=position):
+                self.doc.MainPropulsionModule.Placement.Base.x = position
+                self.doc.recompute()
+                report = self.check()
+                self.assertTrue(report["passed"], report)
+                shared = [
+                    row
+                    for row in report["rails"][0]["installed_mounts"]
+                    if row["shared_servo_bridge_clamp"]
+                ]
+                self.assertEqual(len(shared), 2)
+                for row in shared:
+                    self.assertAlmostEqual(
+                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 45
+                    )
+                    self.assertEqual(
+                        row["saved_lower_mount_attachment"][
+                            "checked_centred_contact_length_mm"
+                        ],
+                        12,
+                    )
+        self.doc.MainPropulsionModule.Placement.Base.x = -10.99
+        self.assertFalse(self.check()["passed"])
+
     def test_gap_position_is_rejected_even_without_a_collision(self):
         self.doc.BatteryEquipmentModule.Placement.Base = App.Vector(85, 0, 0)
         report = self.check()
@@ -168,9 +194,10 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
             if row["module"] == "MainPropulsionModule"
         ]
-        self.assertTrue(rows[0]["passed"], rows[0])
-        self.assertFalse(rows[1]["passed"])
+        self.assertTrue(rows[0]["saved_lower_mount_attachment"]["passed"], rows[0])
         self.assertFalse(rows[1]["saved_lower_mount_attachment"]["passed"])
+        self.assertTrue(all(not row["paired_spine_support"]["passed"] for row in rows))
+        self.assertTrue(all(not row["passed"] for row in rows))
 
     def test_opposite_leg_defect_is_rejected_even_if_source_has_same_defect(self):
         frame = self.doc.PropulsionFixedFrame
@@ -286,7 +313,7 @@ class SavedRailValidationTests(unittest.TestCase):
     def test_widened_base_is_rejected_even_if_generator_has_the_same_defect(self):
         obj = self.doc.ContinuousRail
         obj.Shape = obj.Shape.fuse(
-            Part.makeBox(8, 6, 1.5, App.Vector(47, -3, 0))
+            Part.makeBox(8, 7, 1.5, App.Vector(47, -3.5, 0))
         ).removeSplitter()
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape

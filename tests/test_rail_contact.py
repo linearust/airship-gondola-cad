@@ -75,7 +75,7 @@ class RailContactTests(unittest.TestCase):
                 cross_section = Part.makeLine(
                     App.Vector(x, -4, 0.75), App.Vector(x, 4, 0.75)
                 )
-                self.assertAlmostEqual(shape.common(cross_section).Length, 5)
+                self.assertAlmostEqual(shape.common(cross_section).Length, 6)
                 thickness = Part.makeLine(App.Vector(x, 0, 0), App.Vector(x, 0, 1.5))
                 self.assertAlmostEqual(shape.common(thickness).Length, 1.5)
         self.assertTrue(
@@ -127,7 +127,7 @@ class RailContactTests(unittest.TestCase):
             rail.attachment_check(translated_shape(shape, x=-17))["passed"]
         )
 
-    def test_propulsion_foot_is_supported_by_every_identical_wall(self):
+    def test_longer_generic_foot_does_not_inherit_shared_spine_travel(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
@@ -152,21 +152,95 @@ class RailContactTests(unittest.TestCase):
         self.assertEqual(rail.supported_slot_ranges(contact_length=32), ())
         self.assertAlmostEqual(rail.mount_base_shape(length=24).BoundBox.XLength, 24)
 
+    def test_longer_slots_keep_end_ligaments_and_carrier_full_foot_limits(self):
+        from gondola.parts import rail
+        from gondola.validation.rail_mount import _independent_slot_sections
+
+        shape = rail.rail_shape()
+        slots = _independent_slot_sections(shape)
+        self.assertTrue(slots["passed"], slots)
+        self.assertEqual(slots["slot_overall_length_mm"], 15.4)
+        self.assertEqual(slots["wall_end_ligament_mm"], 5.3)
+        self.assertEqual(slots["upper_web_mm"], 1.8)
+        self.assertEqual(slots["lower_web_mm"], 3.8)
+        self.assertTrue(rail.attachment_position_check(4.2)["passed"])
+        self.assertFalse(rail.attachment_position_check(4.21)["passed"])
+        # A visibly open bolt slot does not authorize overhanging carrier feet.
+        self.assertFalse(rail.attachment_position_check(6)["passed"])
+        blocked = shape.fuse(Part.makeBox(1, 2.5, 3.4, App.Vector(5, -1.25, 5.3)))
+        self.assertFalse(_independent_slot_sections(blocked)["passed"])
+        thin_end = shape.cut(Part.makeBox(1, 2.5, 5, App.Vector(12, -1.25, 4)))
+        self.assertFalse(_independent_slot_sections(thin_end)["passed"])
+
+    def test_shared_spine_has_twelve_mm_trim_with_actual_paired_seating(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import propulsion, rail
+        from gondola.validation.rail_mount import paired_spine_support_check
+
+        frame, shape = propulsion.fixed_frame_shape(), rail.rail_shape()
+        for delta, expected in ((-6, [26, 19]), (0, [25, 25]), (6, [19, 26])):
+            station = -17 + delta
+            for axis in (station - 17, station + 17):
+                position = rail.attachment_position_check(
+                    axis, contact_length=58, shared_drive=True
+                )
+                self.assertTrue(position["passed"], position)
+                self.assertGreaterEqual(
+                    position["minimum_centred_contact_end_margin_mm"], 1
+                )
+            seats = paired_spine_support_check(
+                translated_shape(shape, x=-station), frame
+            )
+            self.assertTrue(seats["passed"], seats)
+            self.assertEqual(
+                [row["wall_overlap_length_mm"] for row in seats["wall_supports"]],
+                expected,
+            )
+            self.assertEqual(seats["minimum_bottom_contact_area_mm2"], 203)
+        for axis in (-6.01, 6.01, 17):
+            self.assertFalse(
+                rail.attachment_position_check(
+                    axis, contact_length=58, shared_drive=True
+                )["passed"]
+            )
+        for obsolete in (12, 16, 24):
+            with self.assertRaises(ValueError):
+                rail.supported_slot_ranges(contact_length=obsolete, shared_drive=True)
+
+    def test_shared_seat_outside_clamp_zone_cannot_be_omitted(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import propulsion, rail
+        from gondola.validation.rail_mount import paired_spine_support_check
+
+        frame = propulsion.fixed_frame_shape()
+        local_rail = translated_shape(rail.rail_shape(), x=11)  # +6mm propulsion trim
+        # X-28 is outside both12mm clamp zones; its lower land must still bear.
+        missing_bottom = frame.cut(Part.makeBox(1, 1.75, 0.5, App.Vector(-28, -3, 1.5)))
+        self.assertFalse(
+            paired_spine_support_check(local_rail, missing_bottom)["passed"]
+        )
+        missing_wall = local_rail.cut(
+            Part.makeBox(1, 2.5, 2, App.Vector(-29, -1.25, 9))
+        )
+        self.assertFalse(paired_spine_support_check(missing_wall, frame)["passed"])
+
     def test_u_saddle_seats_and_lifts_without_deflecting_ears(self):
         from gondola.parts import rail
 
         report = rail.attachment_check()
         self.assertTrue(report["passed"], report)
         self.assertIn("face-prism", report["continuous_vertical_removal"]["method"])
-        self.assertAlmostEqual(report["missing_full_top_contact_mm3"], 0)
+        self.assertTrue(all(row["passed"] for row in report["bottom_datum_contacts"]))
+        self.assertAlmostEqual(report["inner_roof_clearance_mm"], 0.2)
+        self.assertAlmostEqual(report["blocked_inner_roof_relief_mm3"], 0)
         self.assertAlmostEqual(report["missing_flat_side_contact_mm3"], 0)
 
-    def test_missing_clamp_leg_and_top_seat_are_rejected(self):
+    def test_missing_clamp_leg_and_bottom_land_are_rejected(self):
         from gondola.parts import rail
 
         for cut in (
             Part.makeBox(2, 2.5, 1, App.Vector(3, -1.75, 3)),
-            Part.makeBox(2, 2.5, 1, App.Vector(3, -1.25, 10.5)),
+            Part.makeBox(2, 1.75, 0.5, App.Vector(3, -3, 1.5)),
         ):
             with self.subTest(cut=cut.BoundBox):
                 self.assertFalse(
@@ -174,6 +248,37 @@ class RailContactTests(unittest.TestCase):
                         "passed"
                     ]
                 )
+
+    def test_bottom_datum_does_not_require_roof_contact(self):
+        from gondola.parts import rail
+
+        mount = rail.mount_base_shape()
+        for y in (-2.5, 2.5):
+            foot = Part.makeLine(App.Vector(3, y, 1.49), App.Vector(3, y, 1.8))
+            self.assertAlmostEqual(mount.common(foot).Length, 0.3)
+        gap = Part.makeBox(16, 2.5, 0.2, App.Vector(-8, -1.25, 10.5))
+        self.assertAlmostEqual(mount.common(gap).Volume, 0)
+        self.assertAlmostEqual(
+            mount.common(
+                Part.makeLine(App.Vector(0, 0, 10.5), App.Vector(0, 0, 12.5))
+            ).Length,
+            1.8,
+        )
+        blocked = mount.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(3, -1.25, 10.6)))
+        report = rail.attachment_check(mount=blocked)
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["blocked_inner_roof_relief_mm3"], 0)
+        for side, y in ((-1, -3), (1, 1.25)):
+            cut = Part.makeBox(2, 1.75, 0.1, App.Vector(3, y, 1.5))
+            missing = rail.attachment_check(mount=mount.cut(cut))
+            self.assertFalse(missing["passed"])
+            self.assertFalse(
+                next(
+                    row
+                    for row in missing["bottom_datum_contacts"]
+                    if row["side"] == side
+                )["passed"]
+            )
 
     def test_added_hook_fails_continuous_vertical_release(self):
         from gondola.parts import rail
@@ -258,7 +363,7 @@ class RailContactTests(unittest.TestCase):
                 self.assertAlmostEqual(ranges[0][1], 4.2)
             rail_contract = json.loads(doc.ContinuousRail.RailAttachmentContract)
             self.assertEqual(rail_contract["rail_length_mm"], 300)
-            self.assertEqual(rail_contract["free_span_minimum_width_mm"], 5)
+            self.assertEqual(rail_contract["free_span_minimum_width_mm"], 6)
             self.assertTrue(
                 rail.attachment_check(
                     doc.RailFitSample.Shape, doc.MountFitSample.Shape

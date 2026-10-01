@@ -65,7 +65,7 @@ class OpticalMountTests(unittest.TestCase):
         self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 16))
         # The raised carrier retains a local Z19 pivot. Preserve the complete
         # straight post witness while excluding its intentional clearance bore.
-        bore = Part.makeCylinder(1.3, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
+        bore = Part.makeCylinder(1.1, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
         post = Part.makeBox(8, 2, 17, App.Vector(-4, -2, 2)).cut(bore)
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
         self.assertLess(abs(bore.common(shape).Volume), 1e-5)

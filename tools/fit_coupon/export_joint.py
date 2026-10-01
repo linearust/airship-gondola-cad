@@ -70,17 +70,38 @@ def joint_checks(shapes):
     )
 
     rail, frame, saddle = (shapes[name] for name in PARTS)
+    from gondola.validation.rail_mount import paired_spine_support_check
+
     wrap = bridge_wrap_check(frame, saddle)
+    support = paired_spine_support_check(rail, frame)
     contacts = []
     # Both full side walls contact the frame, except their two bolt bores and
     # the central relief needed to pass the transverse propulsion wings.
-    side_contact = 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2
+    side_contact = 39.6 * 10.3 - 2 * math.pi * 1.7**2
     for name, first, second, axis, station, area, region in (
-        ("full_U_roof", frame, saddle, 2, 12.5, 58 * 12, None),
+        ("full_U_roof", frame, saddle, 2, 12.5, 58 * 12, (-29, -6, 0, 58, 12, 20)),
+        ("negative_beam_roof", frame, saddle, 2, 12.5, 90, (-9, -11, 0, 18, 5, 20)),
+        ("positive_beam_roof", frame, saddle, 2, 12.5, 90, (-9, 6, 0, 18, 5, 20)),
         ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
         ("positive_U_side", frame, saddle, 1, 6, side_contact, None),
-        ("positive_rail_seat", rail, frame, 2, 10.5, 62.5, (4, -14, 0, 25, 28, 20)),
-        ("negative_rail_seat", rail, frame, 2, 10.5, 62.5, (-29, -14, 0, 25, 28, 20)),
+        (
+            "negative_bottom_datum",
+            rail,
+            frame,
+            2,
+            1.5,
+            101.5,
+            (-29, -6, 0, 58, 4.75, 20),
+        ),
+        (
+            "positive_bottom_datum",
+            rail,
+            frame,
+            2,
+            1.5,
+            101.5,
+            (-29, 1.25, 0, 58, 4.75, 20),
+        ),
     ):
         if region is not None:
             x, y, z, *size = region
@@ -116,10 +137,12 @@ def joint_checks(shapes):
     ]
     return {
         "wrap": wrap,
+        "bottom_and_wall_support": support,
         "contacts": contacts,
         "M3_bores": bores,
         "pair_overlap_mm3": overlaps,
         "passed": wrap["passed"]
+        and support["passed"]
         and all(row["passed"] for row in contacts + bores)
         and all(value < TOL for value in overlaps),
     }
@@ -248,7 +271,7 @@ def export(cad, output_dir):
                 },
                 "coordinate_frame": "Saved MainPropulsionModule local frame; assembled coupon poses.",
                 "hardware": "Reuse two intended M3x20 screws and two M3 nuts; no additional hardware purchase or installed parts.",
-                "limits": "Cropped fit specimen only: simultaneous rail seating, fitted continuous-U surfaces, nut-floor support, local nut/head access and opposed closure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
+                "limits": "Cropped fit specimen only: bilateral bottom-datum rail seating with0.2mm roof relief, fitted continuous-U surfaces, nut-floor support, local nut/head access and opposed closure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
                 "source_crop_boxes": {
                     name: {"origin_mm": list(CROP_ORIGIN), "size_mm": list(spec[1])}
                     for name, spec in PARTS.items()

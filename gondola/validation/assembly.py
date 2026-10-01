@@ -681,6 +681,7 @@ def export_check(source, registry):
 
 def detailed_propulsion_evidence(doc, source):
     from .motion_clearance import carrier_metal_clearance_check
+    from .nut_guides import installed_nut_guide_checks
     from .propulsion import (
         bearing_post_roots_check,
         fixed_servo_datum_check,
@@ -762,6 +763,7 @@ def detailed_propulsion_evidence(doc, source):
         "references": list(doc.DesignRegistry.ReferenceParts),
     }
     saved_post_roots = bearing_post_roots_check(doc)
+    saved_nut_guides = installed_nut_guide_checks(doc)
     saved_bridge_joint = bridge_joint_check(doc, saved_module)
     saved_servo_service = servo_module_service_check(doc, saved_module)
     saved_carrier_clearances = [
@@ -794,6 +796,7 @@ def detailed_propulsion_evidence(doc, source):
         "saved_servo_datums": saved_datums,
         "saved_servo_mounts": saved_servo_mounts,
         "saved_bearing_post_roots": saved_post_roots,
+        "saved_nut_guides": saved_nut_guides,
         "saved_bridge_joint": saved_bridge_joint,
         "saved_servo_module_service": saved_servo_service,
         "saved_carrier_metal_clearances": saved_carrier_clearances,
@@ -810,6 +813,8 @@ def detailed_propulsion_evidence(doc, source):
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_servo_mounts)
         and all(row["passed"] for row in saved_post_roots)
+        and len(saved_nut_guides) == 8
+        and all(row["passed"] for row in saved_nut_guides)
         and saved_bridge_joint["passed"]
         and saved_servo_service["passed"]
         and all(row["passed"] for row in saved_carrier_clearances)

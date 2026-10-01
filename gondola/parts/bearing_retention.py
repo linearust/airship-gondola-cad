@@ -17,6 +17,8 @@ import Part
 
 from gondola.cad import box, translated_shape, union
 
+from . import nut_guides
+
 BEARING_RADIUS = 3.0
 BEARING_WIDTH = 2.5
 SEAT_RADIUS = 3.05
@@ -94,14 +96,19 @@ def post_clearance_tool():
 
 
 def fixed_body_shape():
-    """Rigid seat/shoulder, wide keeper guides and a solid screw seat."""
+    """Rigid seat/shoulder, keeper guides and low rails above the nut seat."""
     body = box(
         2 * BODY_HALF_WIDTH,
         KEEPER_NUT_SEAT_Y - GUIDE_START_Y,
         BODY_TOP_Z - BODY_BOTTOM_Z,
         (-BODY_HALF_WIDTH, GUIDE_START_Y, BODY_BOTTOM_Z),
     )
-    return body.cut(post_clearance_tool()).removeSplitter()
+    guides = nut_guides.rails_shape(6.0)
+    guides.Placement = App.Placement(
+        App.Vector(0, KEEPER_NUT_SEAT_Y, KEEPER_SCREW_Z),
+        App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
+    )
+    return union([body.cut(post_clearance_tool()), guides]).removeSplitter()
 
 
 def cup_shape():

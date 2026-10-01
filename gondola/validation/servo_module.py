@@ -47,8 +47,10 @@ def bridge_joint_check(doc, module):
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
     planes = (
         ("full_roof_support", 2, 12.5, 696, (-29, -6, 58, 12)),
-        ("negative_y_wall", 1, -6, 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2, None),
-        ("positive_y_wall", 1, 6, 58 * 10.3 - 18.4 * 3.2 - 2 * math.pi * 1.7**2, None),
+        ("negative_y_beam_roof", 2, 12.5, 90, (-9, -11, 18, 5)),
+        ("positive_y_beam_roof", 2, 12.5, 90, (-9, 6, 18, 5)),
+        ("negative_y_wall", 1, -6, 39.6 * 10.3 - 2 * math.pi * 1.7**2, None),
+        ("positive_y_wall", 1, 6, 39.6 * 10.3 - 2 * math.pi * 1.7**2, None),
     )
     contacts = []
     for name, axis, station, minimum, bounds in planes:
@@ -106,7 +108,7 @@ def bridge_wrap_check(frame, bridge):
     nut_cut = Part.Face(Part.makePolygon(nut_points + [nut_points[0]])).extrude(
         App.Vector(0, 3.1, 0)
     )
-    relief = Part.makeBox(18.4, 24, 3.3, App.Vector(-9.2, -12, 2.1))
+    relief = Part.makeBox(18.4, 24, 10.4, App.Vector(-9.2, -12, 2.1))
     wall = Part.makeBox(58, 5, 12.3, App.Vector(-29, -11, 2.2)).cut(relief).cut(bores)
     wall = wall.cut(
         Part.makeCylinder(3.2, 2, App.Vector(17, -11, 7), App.Vector(0, 1, 0))
@@ -162,7 +164,7 @@ def bridge_wrap_check(frame, bridge):
 def _bridge_path(shape, waypoints, obstacles, spec):
     """Exact box-prism sweeps retain the U opening and avoid tangent face artifacts.
 
-    Eight deliberately plain stock boxes cover the actual bridge, including its
+    Six deliberately plain stock boxes cover the actual bridge, including its
     cradle. The visible windows and transverse fastener bores are conservatively
     filled. Coverage and exact prescribed directions are independently required.
     """
@@ -170,12 +172,10 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     sections = (
         ((width, 5, spec.input_z_mm + 10.1 - 12.5), (-width / 2, -2.5, 12.5)),
         ((58, 22, 2), (-29, -11, 12.5)),
-        ((58, 5, 7.1), (-29, -11, 5.4)),
-        ((58, 5, 7.1), (-29, 6, 5.4)),
-        ((19.8, 5, 3.2), (-29, -11, 2.2)),
-        ((19.8, 5, 3.2), (9.2, -11, 2.2)),
-        ((19.8, 5, 3.2), (-29, 6, 2.2)),
-        ((19.8, 5, 3.2), (9.2, 6, 2.2)),
+        ((19.8, 5, 10.3), (-29, -11, 2.2)),
+        ((19.8, 5, 10.3), (9.2, -11, 2.2)),
+        ((19.8, 5, 10.3), (-29, 6, 2.2)),
+        ((19.8, 5, 10.3), (9.2, 6, 2.2)),
     )
     envelope = union(
         [Part.makeBox(*size, App.Vector(*origin)) for size, origin in sections]
@@ -207,7 +207,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
             {
                 "start_mm": list(start),
                 "end_mm": list(end),
-                "method": "continuous exact union of eight axis-aligned stock-box prisms",
+                "method": "continuous exact union of six axis-aligned stock-box prisms",
                 "intersection_mm3": hits,
                 "passed": all(v < TOL for v in hits.values()),
             }
@@ -215,7 +215,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     return {
         "obstacles": sorted(obstacles),
         "segments": rows,
-        "envelope": "Eight stock boxes with holes conservatively filled; actual bridge containment required.",
+        "envelope": "Six stock boxes with holes conservatively filled; actual bridge containment required.",
         "uncovered_bridge_volume_mm3": missing,
         "passed": missing < TOL and all(row["passed"] for row in rows),
     }

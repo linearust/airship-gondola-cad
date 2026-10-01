@@ -1,36 +1,25 @@
 {
-  "revision": "BU",
-  "change_kind": "Geometry-preserving refactor",
-  "recorded_utc": "2026-10-01T01:32:55.135398+00:00",
+  "revision": "BW",
+  "change_kind": "Seated wider rail base, simple straight frame posts, tighter fixed fits, raised support beam, longer trim and metric nut guides",
+  "recorded_utc": "2026-10-01T03:31:22.831498+00:00",
   "passed": true,
-  "scope": "Nominal CAD, native controls, motion/service and exports; no physical fit, strength or flight qualification.",
-  "predecessor_commit": "fe776834b8f89f0b65aaaca4f5c55045cc593c02",
-  "source_fingerprint": "981869ce9203aaf1e175a1cd90ff3446ffe0499cb05f5a8b6581cabb230bf127",
-  "cad_sha256": "930a5c2eff79c59f8b7ac77e26a3fee8494ed66679ef6b1c9e99744916514030",
+  "scope": "Nominal CAD, controls, service, rigid motion and export verification; no physical fit, strength or flight qualification.",
+  "predecessor_commit": "11560947da2b9611dd3779b4e375ada4d40cbc2a",
+  "source_fingerprint": "6eb345eadb2ba0a222429557f949a3454993a5e13b636e392dde69971d36c68d",
+  "cad_sha256": "6bd799f21d0e44ea1098b324ec4779a8bf204c91b2654b3b8c75be4f657ac8b7",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
-    "unchanged": true
+    "sha256": "07f766341a20754e6375b1d348c3953fec48cc83b449a6896480b62f1f30cde0",
+    "promoted_after_explicit_review": true
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "00d40e1ae5970b0e1dd9f53c8e525fdffc1fca2e03514c58b6cce62a81486c3a",
-    "unchanged": true,
+    "sha256": "e1033f06a080de898237e9bcc7a55a24a23bca304e454713a56b68fbc1776a95",
     "supporting_approval_preserved": true
-  },
-  "refactor_equivalence": {
-    "passed": true,
-    "native_documents": 4,
-    "assembly_shapes": 118,
-    "print_skus": 13,
-    "native_geometry_metadata_and_controls_unchanged": true,
-    "complete_modeled_mass_budget_unchanged": true,
-    "simulation_schema_and_values_unchanged": true,
-    "scope": "Saved-CAD modeled quantities, assumptions and unknown/null masses; no physical qualification."
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 684,
+    "testsRun": 705,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -87,13 +76,18 @@
     "present": true,
     "passed": true
   },
-  "native_cad_artifact_sha256": {
-    "gondola.FCStd": "930a5c2eff79c59f8b7ac77e26a3fee8494ed66679ef6b1c9e99744916514030",
-    "gondola_print_parts.FCStd": "b07611749681bd38ac9e6b6d238c5267c875c932840eaffeeb44da7296206e09",
-    "gondola_power_options.FCStd": "5d3e1bb96f06f9ce030283e9b2e2dfa1798e1aa0a430a259143c1af946f5fb68",
-    "gondola_attachment_detail.FCStd": "54c9715c903f38304032f9325ac185adb1a604fa5f28c0d92ffd188d8764112a"
+  "mass_change": {
+    "printed_delta_g": 6.469789176473867,
+    "hardware_delta_g": 0.0,
+    "scope": "Saved CAD modeled mass; unmeasured equipment and finished process variation remain excluded."
   },
-  "print_bundle_sha256": "e82bd6fb102fe578b8edd9d4e945b4f5899310ed30dbf9ee59f0edba8a72066d",
+  "native_cad_artifact_sha256": {
+    "gondola.FCStd": "6bd799f21d0e44ea1098b324ec4779a8bf204c91b2654b3b8c75be4f657ac8b7",
+    "gondola_print_parts.FCStd": "8ce94fe2fe96cbcd6eb4354853662f082033e66c735ba83e86946fb8b685b372",
+    "gondola_power_options.FCStd": "dd30f72bf24a12d2e9b4762cb42266d88b54985fb049c473605b707f3b811dc4",
+    "gondola_attachment_detail.FCStd": "dfd4ac7d2e6484b2985191af12854de845475562d93f2630f0d552f0c7fb0f45"
+  },
+  "print_bundle_sha256": "cbfd5d83309faee5ab049f7796b63149eb43591b307eda08a68d5bb94b52d8c7",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "a98040b2f32612317cb0451293acd89591a5d7d5284af945715431f3ffb9babb"
+  "evidence_archive_sha256": "3cddcad1076e57bf50bfb4aee0c24c80d4eb158ad9a2cb8375a6dc7561cb7d98"
 }

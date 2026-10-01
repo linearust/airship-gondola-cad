@@ -149,7 +149,7 @@ def _invalid_rail_controls(errors):
 
 
 def module_attachment_pose(station, module):
-    """Manual X translates the module; every fixed foot must retain full support."""
+    """Manual X must respect the carrier-foot or paired-spine support policy."""
     controls, errors = _rail_control_values(module)
     if errors:
         return _invalid_rail_controls(errors)
@@ -160,16 +160,22 @@ def module_attachment_pose(station, module):
     attachment_x = position + direction * offset
     attachment_axes = [position + direction * value for value in offsets]
     length = controls["RailContactLength"]
+    shared = station.attachment_pattern.shared_drive
     try:
-        attachment = rail.attachment_position_check(attachment_x, contact_length=length)
+        attachment = rail.attachment_position_check(
+            attachment_x, contact_length=length, shared_drive=shared
+        )
         attachments = [
-            rail.attachment_position_check(value, contact_length=length)
+            rail.attachment_position_check(
+                value, contact_length=length, shared_drive=shared
+            )
             for value in attachment_axes
         ]
     except ValueError as error:
         # The rail API rejects positive lengths below its supported minimum.
         # Keep this saved-document failure separate from geometry-kernel errors.
         return _invalid_rail_controls({"RailContactLength": str(error)})
+    base_support = rail.spine_base_position_check(position) if shared else None
     length_matches = abs(length - station.contact_length_mm) < TOL
     supported = bool(attachments) and all(row["passed"] for row in attachments)
     expected_offsets = station.attachment_offsets_x_mm
@@ -193,12 +199,14 @@ def module_attachment_pose(station, module):
         "rail_attachment_position": attachment,
         "attachment_offset_matches": offset_matches,
         "rail_contact_length_mm": length,
+        "shared_bottom_datum_within_base": base_support,
         "contact_length_matches": length_matches,
         "result_x_mm": module.Placement.Base.x,
         "result_y_mm": module.Placement.Base.y,
         "expected_carrier_yaw_deg": station.yaw_deg,
         "carrier_rotation_matches": rotation_matches,
         "passed": supported
+        and (base_support is None or base_support["passed"])
         and offset_matches
         and offsets_match
         and attachment["passed"]
@@ -257,7 +265,8 @@ def control_behavior(doc):
                 any(
                     low <= value + signed_offset <= high
                     for low, high in rail.supported_slot_ranges(
-                        contact_length=float(module.RailContactLength)
+                        contact_length=float(module.RailContactLength),
+                        shared_drive=station.attachment_pattern.shared_drive,
                     )
                 )
                 for signed_offset in signed_offsets

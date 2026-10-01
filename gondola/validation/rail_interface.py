@@ -10,7 +10,7 @@ MOUNT_BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
     ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 17.0, 24.0),
+    ("PropulsionFixedFrame", "MainPropulsionModule", None, 17.0, 58.0),
 )
 
 

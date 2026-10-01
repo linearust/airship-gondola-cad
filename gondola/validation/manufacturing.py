@@ -101,9 +101,9 @@ def rail_mount_wall_probes():
         (
             "carrier_roof",
             "BatteryMount",
-            (0, 0, rail.WEB_TOP_Z - e),
+            (0, 0, rail.MOUNT_INNER_ROOF_Z - e),
             (0, 0, rail.MOUNT_TOP_Z + e),
-            rail.MOUNT_TOP_Z - rail.WEB_TOP_Z,
+            rail.MOUNT_TOP_Z - rail.MOUNT_INNER_ROOF_Z,
         ),
         (
             "carrier_clamp_leg",
@@ -146,9 +146,9 @@ def rail_mount_wall_probes():
             (
                 "carrier_nut_pocket_bottom_ligament",
                 "BatteryMount",
-                (0, 4.5, 2.2 - e),
+                (0, 4.5, rail.MOUNT_BOTTOM_Z - e),
                 (0, 4.5, 4.05 + e),
-                1.85,
+                4.05 - rail.MOUNT_BOTTOM_Z,
             ),
         ]
     )
@@ -211,11 +211,11 @@ def review(doc, registry):
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (8.0, propulsion.PIVOT_HALF_SPAN, propulsion.BASE_Z - 0.01),
+            (8.0, propulsion.PIVOT_HALF_SPAN, propulsion.FOOT_BOTTOM_Z - 0.01),
             (
                 8.0,
                 propulsion.PIVOT_HALF_SPAN,
-                propulsion.BASE_Z + propulsion.FOOT_THICKNESS + 0.01,
+                propulsion.FOOT_BOTTOM_Z + propulsion.FOOT_THICKNESS + 0.01,
             ),
             propulsion.FOOT_THICKNESS,
         ),
@@ -308,7 +308,7 @@ def review(doc, registry):
             "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
             "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_mm": rail.BASE_WIDTH,
-            "scope": "The straight5mm-wide base and three wing pairs retain1.5mm nominal thickness. Nine identical26mm walls at34mm pitch retain eight8mm free spans. Each wall accepts either16mm or24mm contact feet; the latter retains only0.4mm total local trim. A50mm clamp coupon contains one complete26mm support and no inter-wall gap. Actual full-rail curvature, adhesion, lateral/torsional stability, bending strain, fatigue and one-piece supplier acceptance remain unqualified.",
+            "scope": "The straight6mm-wide base and three wing pairs retain1.5mm nominal thickness. Nine identical26mm walls at34mm pitch retain eight8mm free spans. Mount bottoms seat on the base atZ1.5, with0.2mm relief over the wall top. Ordinary16mm feet retain +/-4.2mm full-foot trim; the58mm paired propulsion spine has +/-6mm travel,12mm centred load zones and at least19mm wall seating/45mm combined. Each15.4mm slot leaves5.3mm end ligaments. A50mm clamp coupon contains one complete26mm support and no inter-wall gap. Actual full-rail curvature, adhesion, lateral/torsional stability, bending strain, fatigue and one-piece supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,
