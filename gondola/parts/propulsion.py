@@ -16,6 +16,7 @@ from gondola.cad import (
     create_group,
     create_printed_part,
     mirrored_y,
+    polygon_extrusion,
     set_property,
     translated_shape,
     union,
@@ -56,6 +57,9 @@ from . import (
 V = App.Vector
 BASE_Z = 2.2
 FOOT_THICKNESS = 3.0
+FOOT_WIDTH = 18.0
+BEARING_POST_WIDTH = 9.6
+BEARING_POST_ROOT_HEIGHT = 5.0
 FRAME_CROSSBEAM_THICKNESS = 3.0
 RAIL_BOLT_OFFSET_X = servo_bridge.CLAMP_AXIS_X
 RAIL_CONTACT_LENGTH = 24.0
@@ -206,7 +210,7 @@ def _output_support(sign):
     foot_length = (
         PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5 - 20
     )
-    foot = box(18, foot_length, FOOT_THICKNESS, (-9, 20, BASE_Z))
+    foot = box(FOOT_WIDTH, foot_length, FOOT_THICKNESS, (-FOOT_WIDTH / 2, 20, BASE_Z))
     parts.append(foot)
     for side in (-1, 1):
         y_start = (
@@ -214,11 +218,21 @@ def _output_support(sign):
             if side > 0
             else -BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS
         )
-        post = box(
-            9.6,
-            BEARING_POST_DEPTH,
-            PIVOT_Z - BASE_Z - FOOT_THICKNESS,
-            (-4.8, y_start + PIVOT_HALF_SPAN, BASE_Z + FOOT_THICKNESS),
+        bottom = BASE_Z + FOOT_THICKNESS
+        root_top = bottom + BEARING_POST_ROOT_HEIGHT
+        y = y_start + PIVOT_HALF_SPAN
+        # A single planar profile spreads the post into its existing foot.
+        # Above the short root flare the bearing/keeper interfaces are unchanged.
+        post = polygon_extrusion(
+            [
+                (-FOOT_WIDTH / 2, y, bottom),
+                (FOOT_WIDTH / 2, y, bottom),
+                (BEARING_POST_WIDTH / 2, y, root_top),
+                (BEARING_POST_WIDTH / 2, y, PIVOT_Z),
+                (-BEARING_POST_WIDTH / 2, y, PIVOT_Z),
+                (-BEARING_POST_WIDTH / 2, y, root_top),
+            ],
+            (0, BEARING_POST_DEPTH, 0),
         )
         # Keep the bearing post and its root solid; no service tunnel is needed.
         cup = _bearing_cup(side * BEARING_START_Y, positive_side=side > 0)
@@ -757,7 +771,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Integral output frame with one 58 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-17 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the frame. The removable full-U servo cap carries the recessed heads and nuts. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. The 58 mm footprint locally restrains rail curvature. Support both modules during release. Output geometry, bearings, shafts, 150 mm span and 50 mm height are unchanged; strength, fit, creep and retention remain unqualified.",
+        "Integral output frame with one 58 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-17 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the frame. The removable full-U servo cap carries the recessed heads and nuts. Four solid bearing posts widen symmetrically into their existing 18 mm feet through 5 mm high planar root flares, without separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. The 58 mm footprint locally restrains rail curvature. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -765,6 +779,11 @@ def _build_frame(doc, module, spec):
     set_property(frame, "CarriageContactZ", rail.WEB_TOP_Z, "App::PropertyLength")
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
     set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
+    set_property(frame, "BearingPostWidth", BEARING_POST_WIDTH, "App::PropertyLength")
+    set_property(frame, "BearingPostRootWidth", FOOT_WIDTH, "App::PropertyLength")
+    set_property(
+        frame, "BearingPostRootHeight", BEARING_POST_ROOT_HEIGHT, "App::PropertyLength"
+    )
     set_property(
         frame,
         "FrameCrossbeamThickness",

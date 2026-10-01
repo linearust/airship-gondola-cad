@@ -1,38 +1,41 @@
 {
-  "revision": "BT",
-  "change_kind": "Behavior-preserving refactor",
-  "recorded_utc": "2026-10-01T00:37:21.568991+00:00",
+  "revision": "BU",
+  "change_kind": "Four additive planar bearing-post root flares",
+  "recorded_utc": "2026-10-01T01:07:27.059916+00:00",
   "passed": true,
-  "scope": "Nominal CAD, motion/service, native tools and exports only; no physical, electrical or flight qualification.",
-  "predecessor_commit": "e0131e97656c4bab4fe5d74434551313ada8e1bf",
-  "source_fingerprint": "0a16697c4560db3e35340bdc17fe99ccdedcd890d70f5da56a47082aa8defd2b",
-  "cad_sha256": "8511f583cf194e99dcf701108f7c87ab347cde4e176f1dac692e1091765ef4cd",
+  "scope": "Nominal CAD, native controls, motion/service and exports; no physical fit, strength or flight qualification.",
+  "predecessor_commit": "32b30227cc4481d73570fca9cefc6310adc31875",
+  "source_fingerprint": "821cb0b7682a43be15a42f7aff0dcce9e321f0e4ef20a4254661deb5fa752b99",
+  "cad_sha256": "56ad4981423e27ddaeccd5a02b96ce9c0c4bc592d23f13efdd5e9acf3e5473c6",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "d908781cbe3d67c2395a7778ce841c2195da5f93dc517ae9a5fb191a17686608",
-    "unchanged": true
+    "sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
+    "promoted_after_explicit_review": true
   },
   "independent_design_review": {
     "path": "tests/fixtures/review.json",
-    "sha256": "770eb798ee197f5a7b1353288be033a441bb276be3e4025a33a47c38cf56f66a",
-    "unchanged": true
+    "sha256": "00d40e1ae5970b0e1dd9f53c8e525fdffc1fca2e03514c58b6cce62a81486c3a",
+    "candidate_sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
+    "independent_gate_count": 39
   },
-  "refactor_equivalence": {
+  "approved_geometry_transition": {
     "passed": true,
-    "assembly_shapes": 118,
-    "print_skus": 13,
-    "native_expressions_registry_and_interface_metadata_unchanged": true,
-    "modeled_mass_budget_unchanged": true,
-    "simulation_values_unchanged": true
+    "added_frame_volume_mm3": 504.0,
+    "removed_material_mm3": 0.0,
+    "estimated_printed_mass_delta_g": 0.50904,
+    "density_g_cm3": 1.01,
+    "all_other_budget_fields_unchanged": true,
+    "simulation_values_unchanged": true,
+    "scope": "Geometry-derived mass estimate only; not measured mass or structural qualification."
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 673,
+    "testsRun": 674,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "exact_discovery_coverage": true,
-    "production_test_tool_source_unchanged": true,
+    "frozen_input_identity": true,
     "outer_launch_exit_code": 0
   },
   "pipeline": [
@@ -80,18 +83,22 @@
     "matrix_checks": 90184,
     "discrepancy_count": 0
   },
+  "final_print_layout": {
+    "passed": true,
+    "skus": 13,
+    "approved_candidate_equivalence": true
+  },
   "optional_fit_coupon": {
     "present": true,
     "passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "8511f583cf194e99dcf701108f7c87ab347cde4e176f1dac692e1091765ef4cd",
-    "gondola_print_parts.FCStd": "334da74d1126d749a3d7873a7970a1eef412709074749e2478589d9692ee056e",
-    "gondola_power_options.FCStd": "a4ece464fbe96c1008dc38f8366af2c0a3eff26c58a8e4110e4837eb8eb5bd11",
-    "gondola_attachment_detail.FCStd": "23902a63861143ec6e44402d482b335aa70efc308a3d47cd6624e4a107f8dfbd"
+    "gondola.FCStd": "56ad4981423e27ddaeccd5a02b96ce9c0c4bc592d23f13efdd5e9acf3e5473c6",
+    "gondola_print_parts.FCStd": "8872fa11b3fe27c6ece19eabd22f4bfd63b081f2cfc84498364f6fd28981681a",
+    "gondola_power_options.FCStd": "dcd2917f86058ce7f50716928b4aa6a462c1e3d0654e0374ce1155d3ed4311bf",
+    "gondola_attachment_detail.FCStd": "c325f54b23bc1685c8d0570778526970fe0e0e5ac471a6b689ab0e7b0c4a0832"
   },
-  "print_bundle_sha256": "d1ce5117e647771cf691a6b1f3840b3be139313bc5fb0cf05e0b54e311e080e5",
+  "print_bundle_sha256": "cc23ea30fd4732df5abecc1d3b643944310ef8ded36c07f25de6b1ed85669403",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "42083ae95567da57e8dfcb815736c8a000d6776e5e6b0f43e161b04d762182da",
-  "record_scope": "Valid only for matching source, tests, tools, fixture and generated artifacts. Prior execution is not reused to qualify changed inputs."
+  "evidence_archive_sha256": "3e97b9ad1a6862e170e959a6614fd458f5dac2a9fc64f9ff79a0c57aed154345"
 }

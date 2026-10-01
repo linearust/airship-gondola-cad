@@ -1248,34 +1248,44 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
 
 
 def bearing_post_roots_check(doc):
-    """Require four full-section load paths from the feet into the bearing posts."""
+    """Independently require four solid cores and the full planar root flares."""
     frame = doc.getObject("PropulsionFixedFrame")
     if frame is None:
         return [{"passed": False, "error": "Missing output support frame"}]
     shape = frame.Shape.copy()
     shape.Placement = App.Placement()
     rows = []
-    bottom, top = propulsion.BASE_Z + propulsion.FOOT_THICKNESS, 14.0
+    bottom, top = 5.2, 14.0
     for sign in (-1, 1):
-        centre = propulsion.BEARING_GUIDE_START_Y + propulsion.BEARING_POST_DEPTH / 2
-        for local_y in (-centre, centre):
-            centre_y = sign * (propulsion.PIVOT_HALF_SPAN + local_y)
+        for local_y in (-34.75, 34.75):
+            centre_y = sign * (75 + local_y)
             witness = Part.makeBox(
                 9.6,
-                propulsion.BEARING_POST_DEPTH,
+                6,
                 top - bottom,
-                App.Vector(-4.8, centre_y - propulsion.BEARING_POST_DEPTH / 2, bottom),
+                App.Vector(-4.8, centre_y - 3, bottom),
             )
             missing = abs(witness.cut(shape).Volume)
+            points = [
+                App.Vector(x, centre_y - 3, z)
+                for x, z in ((-9, 5.2), (9, 5.2), (4.8, 10.2), (-4.8, 10.2))
+            ]
+            root = Part.Face(Part.makePolygon(points + [points[0]])).extrude(
+                App.Vector(0, 6, 0)
+            )
+            missing_flare = abs(root.cut(shape).Volume)
             rows.append(
                 {
                     "side": sign,
                     "post_local_y_mm": local_y,
-                    "root_section_mm": [9.6, propulsion.BEARING_POST_DEPTH],
+                    "root_section_mm": [9.6, 6],
                     "root_height_range_mm": [bottom, top],
                     "missing_root_material_mm3": missing,
-                    "scope": "Complete nominal root section, not a stress or fatigue qualification.",
-                    "passed": missing < TOL,
+                    "root_base_width_mm": 18.0,
+                    "root_flare_height_mm": 5.0,
+                    "missing_root_flare_mm3": missing_flare,
+                    "scope": "Complete solid core and symmetric planar root flare; not a stress, stiffness or fatigue qualification.",
+                    "passed": missing < TOL and missing_flare < TOL,
                 }
             )
     return rows

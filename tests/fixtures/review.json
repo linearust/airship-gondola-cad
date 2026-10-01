@@ -1,43 +1,31 @@
 {
-  "revision": "BT",
+  "revision": "BU",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
   "passed": true,
   "fixture_promotion_approved": true,
-  "reviewer": "Root agent: explicit review of complete old/new capture, independent literal reconstruction and native controls, service/height evidence, source diff and all candidate views; corroborated by independent joint reviewer.",
-  "reviewed_at_utc": "2026-09-30T17:09:44.837266+00:00",
-  "source_fingerprint": "9a45cff0fe4a6114d8bbe6c66ab0769df51ff3f7f4e43e2857d985cfec72627d",
-  "candidate_path": "/tmp/gondola-bt-review/final-candidate/gondola.FCStd",
-  "candidate_sha256": "d908781cbe3d67c2395a7778ce841c2195da5f93dc517ae9a5fb191a17686608",
-  "candidate_print_layout_sha256": "42540f21fba37756a4d6c15c6a2dffc2eb802b762f59e519a04143ce132e506a",
-  "old_production_path": "/tmp/gondola-bt-review/before.FCStd",
-  "old_production_sha256": "09801f73d9cc3ca5d1e8799793e24e5f62354555a08dc45351c269ceaf2b1e33",
-  "old_fixture_path": "/tmp/gondola-bt-review/before-fixture.FCStd",
-  "old_fixture_sha256": "9586b93d534b660c7814c69ca69280b65fa87c2422e2f958192c775509b27df4",
+  "reviewer": "Root agent: explicit review of source diff, saved old/new geometry, native controls and metadata, independent39-gate recommendation, motion/service results, and all five changed native views.",
+  "reviewed_at_utc": "2026-10-01T00:51:19.361276+00:00",
+  "source_fingerprint": "0dc1240155200a66c90d8ffe4c344b479b3cd62cae09e3510382acaae565b082",
+  "candidate_path": "/tmp/gondola-bu-review/candidate/gondola.FCStd",
+  "candidate_sha256": "39c2120d1c6995c11eee780a08f2eca5ee65580d42e684b07ee0ffe58a3a0d87",
+  "candidate_print_layout_sha256": "35e4fa51be7d7b254426cd634219208dfcc2a35c8d25e95078d902ba9cdc34fe",
+  "old_production_path": "/tmp/gondola-bu-review/before-gondola.FCStd",
+  "old_production_sha256": "8511f583cf194e99dcf701108f7c87ab347cde4e176f1dac692e1091765ef4cd",
+  "old_fixture_path": "/tmp/gondola-bu-review/before-fixture.FCStd",
+  "old_fixture_sha256": "d908781cbe3d67c2395a7778ce841c2195da5f93dc517ae9a5fb191a17686608",
   "required_independent_audits": [
-    "bt-independent-audit.json"
+    "independent-approval.json",
+    "independent-saved-audit.json"
   ],
   "evidence_artifact_sha256": {
-    "transition-capture.json": "07dda856df4aedd2438b671dafef891dfa49595dfac04e43a8c0ef1849ef77cf",
-    "capture_transition.py": "360ddb56c9f528c2924429116c5007240c7c4af5375e2767a2e9629188f577ce",
+    "independent-approval.json": "ec4fce0d7cab12eaab676bca65772956d0fa2b96169573d4c39a6e7b6a5f54f3",
+    "independent-saved-audit.json": "ad8347ee37e649643f0205df8aae2705e4257f429ec42988bf9cb98c8d7c5ebe",
+    "independent_saved_audit.py": "dd4071b3651ed394bb47a9ed1324efae9051a2f251d329a52a66b5e7e2877ff5",
+    "write_independent_approval.py": "c0bc320dea6eea8289ff9247d1cb93b4c54711b7dd5e534d28d4d839f6bd1715",
     "audit_helpers.py": "f8888d45d65f69834a5e450f18304e9390bf33dab16cd3c00e2a33c1c0304d78",
-    "independent-geometry.json": "3483a9505bde0badab62da8a5f36f5ee2cbc6d99eaa5191340017e865aa4e64a",
-    "independent_geometry.py": "5544ad73e8898b8b2706429223588b0bfd2e64b9c7e5480fee75060bd90710bb",
-    "equipment-height-review-final.json": "f98ae523017e4105f8d69ae33c919f7e35fccf47fe9d2006d321579aa81ad0db",
-    "equipment_height_review_final.py": "5eb69a6677abe81a551d0177f5a4341149fe844d071bff2d1f461c6f563d1046",
-    "saved-joint-service-review-final.json": "5ca2b2805aabff4639e40b3de9ffde1e5022781073091eb210f4a87df8cc5b67",
-    "saved_joint_service_review_final.py": "6ed12c685478ebb69597d32040af64108b02e4e0057c03a83a3bbe5ec1ae407f",
-    "candidate-focused-tests-final.txt": "216e3c0c46f9109ca0e95f469641e2adc01d99e261c77d1bba750745b02061e2",
-    "run_candidate_tests.py": "a1d492c5d4031f0f7cf7d22764a895cf81614439f1fe4ddabaed8e3b8177b519",
-    "native.py": "b7558b0bdb40461f0d167a56bd73977553d5a60c7bb9294184190b704c473a96",
-    "aggregate_audit.py": "f94cdc58b5b0618521ac721edcc3383ce3ff27c1a830e46b7a802e23259110ac",
-    "safety-regression-review.json": "68b120ec9ee97a6bb60b625b6a6e71df216bf0087da3b00050306bf5ada00b09",
-    "safety_regression_review.py": "21253316868f7b38e821e495839323710ccbc8c7734ef5767bdb075f74aa30b2",
-    "optical-candidate-tests.json": "5af1fcb1e7a84eae60abe5faa786c51a1bb9d47b609fe913fe99f907350f65d6",
-    "optical_candidate_tests.py": "ebf4be22b2471289e17da1503fdec69a6e1f834244f755ad35526e51ee159e01",
-    "bt-independent-audit.json": "2b04e1fa708cef50d3a378617084d71d0fa0f5b82d3f438f8a775e4faa14d25a",
-    "candidatevisual_review.json": "405a3281f0b17c55dfab5ce7cdfbf40e970b7e9cdbf30b169aed2f7dcbfd1f74",
-    "shared_clamp_visuals.py": "e54dbb10ea1138b89d1fac5552887164a6c2457a8c6fff881f2d0ce8868de39b",
-    "shared_clamp_visuals.FCMacro": "85ab2b6fbc90b45dc3d808ed61aa60c16beb2b8c66d5bc1d6572a30980912f86"
+    "candidate-visual-review.json": "1b6a2412d04956360d0e6b63be251bde2388386cea392a55b82151044ad9ef2a",
+    "candidate-visual-hashes.json": "aede6478afec40b3143da84d01474f8b3fb0c2a96ca5b3c3c327d3c23a98a6f3",
+    "root-tests.log": "425c657595cdea6ca9cc15bc4ba4736020979816e8cdefc5769de0a9271f6241"
   },
   "evidence": {
     "archive": "references/design_checks.json.gz",
@@ -45,14 +33,11 @@
     "artifact_key": "approved_review_artifacts"
   },
   "approval_basis": [
-    "118 shaped objects and13 print SKUs retained; no inventory, registry, schema or expression changes. All40 shape-comparison rows,43 property rows and32 native-pose rows classified.",
-    "Independent literal reconstruction verifies full58x12 frame U spine,58x22 servo U cap,5 mm cap walls,2 mm nominal blind nut floors,3 mm head backing and functional transverse-beam relief. Unchanged outboard frame supports and servo cradle confirmed.",
-    "Two opposed shared M3x20 clamps at34 mm pitch load both cap walls, frame legs and rail. Three ordinary carriers use M3x10 with2 mm nut floors. All5 nuts remain ordinary M3 hex; installed part/fastener counts unchanged.",
-    "Three identical carrier decks rise2 mm to17..19 while preserving8 mm FC underbody clearance and2.5 mm cap/deck separation. Optical pedestal retains its original19 mm local height; its pitch origin and sensor move2 mm with the raised carrier to worldZ38, retaining the MTF01P connector clearance throughout the pitch range.",
-    "All30 old and30 new independent native control cases pass. Legacy current-source old BS optical/control failures are retained and explained by intentional height changes, not hidden or treated as passes.",
-    "Independent228 geometry/native assertions,31 equipment-height checks,4 complete rail service routes and5 attachment sites pass. Focused30 coupon/baseline tests pass with historical inputs explicitly bound to immutable snapshots.",
-    "Rail geometry and300 mm length,150 mm tilt-axis spacing and50 mm tilt-axis height remain unchanged. Both intentionally separate propulsion/servo modules retain validated ordered removal.",
-    "After rejecting the first attempted release, corrected saved optical validation passes for both models;164 integer-pitch connector checks retain the1.5 mm gate with2.370160 mm minimum gap. Both corrected motor-lead paths pass the original8 mm FC entry capture radius; their approach now tracks endpoint.z+14. Additional26 saved optical/simulation tests pass. Four changed views were directly re-examined; the remaining8 native and3 supplemental views are pixel-identical to previously inspected views; complete U walls, recessed fasteners, nut bearing floors and open underside functional relief agree with design. Full final source-pinned release suite and export pipeline remain required."
+    "Only the integral propulsion frame changes across118 assembly shapes and13 print SKUs: four5mm-high planar post roots widen9.6mm posts into existing18mm feet. Exact504mm3 addition with no removed material or footprint change.",
+    "All other shapes, native poses, expressions, parents and registries are unchanged. Frame notes and three descriptive dimensions are the only functional object-metadata changes; regenerated provenance/UUID/timestamps are classified.",
+    "Old and new native controls pass. Saved current/future rotor envelopes, servo and carrier replacement, and all four bearing/keeper service checks pass. Purchased parts,150mm axis span,50mm axis height and separate servo/output modules are retained.",
+    "At the provisional PA12 density1.01g/cm3, printed mass increases0.50904g; purchased hardware and installed counts are unchanged. No measured stiffness/strength gain is claimed.",
+    "Five changed native views were directly inspected; seven other views are pixel-identical to the prior reviewed CAD. The strengthened-root regression includes independent removal at each of the four roots. Full frozen-input tests and release pipeline are required separately."
   ],
-  "limits": "Nominal geometry/regression approval only. No measured strength, print fit, creep, torque, adhesion or wiring qualification. Contact faces are nominal fitted planes requiring process-matched coupons and controlled finishing; never pull warped or loose rigid jaws closed. Retain at least1.5 mm after finishing nominal2 mm nut floors; actual purchased head envelopes and nut fit remain to be measured."
+  "limits": "Nominal CAD/regression approval only. Printed fit, strength, stiffness, creep, fatigue and loaded retention remain unqualified."
 }

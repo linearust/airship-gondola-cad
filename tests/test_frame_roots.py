@@ -28,6 +28,40 @@ class FrameRootTests(unittest.TestCase):
         rows = bearing_post_roots_check(self.doc)
         self.assertEqual(len(rows), 4)
         self.assertTrue(all(row["passed"] for row in rows), rows)
+        for row in rows:
+            self.assertEqual(row["root_base_width_mm"], 18)
+            self.assertEqual(row["root_flare_height_mm"], 5)
+            self.assertLess(row["missing_root_flare_mm3"], 1e-7)
+
+    def test_missing_root_flare_fails_even_with_the_old_core_intact(self):
+        from gondola.validation.propulsion import bearing_post_roots_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        try:
+            for centre_y in (-109.75, -40.25, 40.25, 109.75):
+                with self.subTest(centre_y=centre_y):
+                    # Remove one side of each flare, outside the former post.
+                    cutter = Part.makeBox(4.2, 6, 5, App.Vector(4.8, centre_y - 3, 5.2))
+                    self.assertAlmostEqual(original.common(cutter).Volume, 63, places=6)
+                    frame.Shape = original.cut(cutter)
+                    self.doc.recompute()
+                    rows = bearing_post_roots_check(self.doc)
+                    self.assertTrue(
+                        all(row["missing_root_material_mm3"] < 1e-7 for row in rows)
+                    )
+                    failed = [row for row in rows if not row["passed"]]
+                    self.assertEqual(len(failed), 1, rows)
+                    self.assertAlmostEqual(
+                        failed[0]["side"] * (75 + failed[0]["post_local_y_mm"]),
+                        centre_y,
+                    )
+                    self.assertAlmostEqual(
+                        failed[0]["missing_root_flare_mm3"], 63, places=6
+                    )
+        finally:
+            frame.Shape = original
+            self.doc.recompute()
 
     def test_reopened_low_corridor_fails_saved_geometry_root_check(self):
         from gondola.parts import propulsion
