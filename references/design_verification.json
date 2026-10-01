@@ -1,17 +1,18 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-01T13:48:16.726493+00:00",
-  "change_kind": "Geometry-preserving mounting-slot and service-path refactor",
-  "scope": "Refactoring only: slot values, CAD shapes, placement, native controls and interface metadata retained; service-report parity includes collision/coverage rejection. No new physical fit, strength or motion qualification.",
-  "predecessor_commit": "4412573083223d8d93b8f9cd15eba808761736a7",
-  "source_fingerprint": "62a28610c7bc0ed83d55bf16c2b4ddc9d4a5ea7ee9dc99633a5cf42cf6c4a66c",
-  "cad_sha256": "0bd7f1f12187dd2da6de40cc386f0bd90d32f4254de0177f9b76ef3ea717923e",
+  "recorded_utc": "2026-10-01T14:36:02.511645+00:00",
+  "change_kind": "Comprehensive nominal design audit and carrier/manufacturing/service metadata corrections",
+  "scope": "No established geometry defect found in the reviewed nominal design. Corrected U-shoe identity, FC-slot count description, slot-centre/deck-size distinction and stale service/manufacturing prose. Physical fit, actual propeller seating, OEM fasteners, gear set screws, loaded retention, wiring and flight readiness remain unqualified.",
+  "predecessor_commit": "22770d331e387a14a088191ae1f6450c7d1e1652",
+  "source_fingerprint": "b47d41882e081d6c4dec42c5c6babd0401a606d60adceefbc7146993c9dc394c",
+  "cad_sha256": "8ababfb5b1338fb340b293f70d3e43c0769531bca2daa02a9040381f838b2fbe",
   "revision": "CB",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
-    "unchanged": true,
-    "existing_review_retained": true
+    "sha256": "5ed39939508a8bfe62c8847f4205f476012917695247695ab90dad31174af627",
+    "unchanged": false,
+    "geometry_unchanged": true,
+    "metadata_only_corrections_independently_reviewed": true
   },
   "native_tests": {
     "passed": true,
@@ -60,12 +61,15 @@
     "gondola_rail_validation.json": true,
     "gondola_validation.json": true
   },
-  "saved_geometry_matches_unchanged_fixture": true,
+  "independent_design_audits_passed": {
+    "drive": true,
+    "rail": true,
+    "equipment": true
+  },
+  "saved_geometry_matches_reviewed_fixture": true,
   "installed_placements_and_kinematic_expressions_preserved": true,
   "changed_shapes": [],
-  "native_interface_metadata_unchanged": true,
-  "service_report_equivalence_passed": true,
-  "slot_record_equivalence_passed": true,
+  "native_interface_metadata_changes": "Reviewed corrections to three unchanged carrier contracts only.",
   "blender": {
     "passed": true,
     "scene_count": 6,
@@ -74,13 +78,13 @@
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "0bd7f1f12187dd2da6de40cc386f0bd90d32f4254de0177f9b76ef3ea717923e",
-    "gondola_print_parts.FCStd": "f73a3a74b52e05331aafa9319a8854a851a855d4831d0d67288f4bfaa4d2e37c",
-    "gondola_power_options.FCStd": "0283b1fd5dd70db692a7026dc789758e59305f337833bfc85d097504e9e12131",
-    "gondola_attachment_detail.FCStd": "548f98efb2d80e54e9d47e51dd1e38ff593a4facee3f36b6a9667fbae65df8b2"
+    "gondola.FCStd": "8ababfb5b1338fb340b293f70d3e43c0769531bca2daa02a9040381f838b2fbe",
+    "gondola_print_parts.FCStd": "0edc71f6f53a8cdf2095b7a7952850f02f5aa53e6e3eebd885741927122ac3e7",
+    "gondola_power_options.FCStd": "83395b8abb5a504187c56a8bcca301df84ffe863a5851843accea3ff0afa89af",
+    "gondola_attachment_detail.FCStd": "7c83e041918f180d95993c335208aff0edaa58c53c058cdd7dc2dcac6fe8b9a2"
   },
-  "print_bundle_sha256": "2e11865a8087220b53afaca7aa55080d2cbb79431cafc947263afe2bb0fc921e",
+  "print_bundle_sha256": "dca803f8ee413c25056132a9b71c7f0b9860e0b34711c47fa7788d707d42e162",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "service_refactor_verification",
-  "evidence_archive_sha256": "7a01946589d59e5a972ee515981cf18c2681356288c33bd10b1475bb0dbb7db7"
+  "evidence_record_key": "design_accuracy_verification",
+  "evidence_archive_sha256": "6e46ea9a555469be605c3860d39d1b1ea7ad55f6ea688916aa85151fb2f7720a"
 }

@@ -310,7 +310,7 @@ def review(doc, registry):
             "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
             "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_mm": rail.BASE_WIDTH,
-            "scope": "The straight base and three wing pairs retain 1.5 mm nominal thickness. Eleven identical 20 mm walls at 28 mm pitch leave ten 8 mm flex spans. Mount bottoms seat on the base, with 0.2 mm roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits. Full-foot seating, 12 mm load zones and wall-end margins are checked geometrically. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
+            "scope": "The straight base and tape-wing pairs retain the nominal thickness reported here. Mount bottoms seat on the base with inner-roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits and the current shared clamp load-zone length. Full-foot seating and shared clamp support are checked against their respective attachment contracts. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,

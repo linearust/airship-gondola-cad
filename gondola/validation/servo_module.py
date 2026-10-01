@@ -219,7 +219,7 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     return {
         "obstacles": sorted(obstacles),
         "segments": rows,
-        "envelope": "Six stock boxes with holes conservatively filled; actual bridge containment required.",
+        "envelope": "Separate stock boxes with holes conservatively filled; actual bridge containment required.",
         "uncovered_bridge_volume_mm3": missing,
         "passed": missing < TOL and all(row["passed"] for row in rows),
     }

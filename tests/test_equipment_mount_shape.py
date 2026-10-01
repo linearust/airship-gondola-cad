@@ -67,6 +67,12 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     mounts.mount_contract(kind)["shared_print_sku"],
                     "UniversalEquipmentCarrier",
                 )
+                self.assertTrue(
+                    mounts.mount_contract(kind)["integral_side_clamped_u_shoe"]
+                )
+                self.assertNotIn(
+                    "integral_side_clamped_l_foot", mounts.mount_contract(kind)
+                )
                 self.assertEqual(
                     mounts.mount_contract(kind)["stack_interface"][
                         "carrier_datum_xy_mm"

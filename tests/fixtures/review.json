@@ -1,15 +1,15 @@
 {
   "revision": "CB",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
-  "old_fixture_sha256": "7f25969b7f8be55d5b36cd581899f29d07a8d5703cb61eb8c7a0919e1e0cf905",
+  "candidate_sha256": "5ed39939508a8bfe62c8847f4205f476012917695247695ab90dad31174af627",
+  "old_fixture_sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "metric_flexure_verification",
+      "design_accuracy_verification",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "6eab09e2c6aa9d5310432ccbf7e38de00fbf12db1dc47a31bcbea40dfa6b5279"
+    "canonical_json_sha256": "f47f66cd16267315ffae749621248ccca8793e1ad61032ffda5964bb442e87ed"
   },
-  "scope": "Approval of the exact reviewed geometry transition; final CAD release checks follow separately. Physical strength, fit, curvature, retention and flight readiness remain unqualified."
+  "scope": "Independent metadata-only correction: three carrier contracts now identify their unchanged U shoes and distinguish the 54 mm slot-centre array from the 66 mm deck. All 118 shapes, placements, expressions and registry membership preserved. Full release checks follow separately; no physical qualification."
 }

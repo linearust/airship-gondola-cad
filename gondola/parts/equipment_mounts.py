@@ -144,7 +144,7 @@ def expansion_contract():
         "slot_count": len(expansion_slot_rows()),
         "fastener": "M2",
         "slot_width_mm": MOUNT_HOLE_DIAMETER,
-        "scope": "Twelve outer slots on four sides of a 54 mm square. Each side has centre-travel intervals -19 to -13, -5 to 5, and 13 to 19 mm from its midpoint. This is a project provision, not an industry PCB standard. Optional power feet use their separately reviewed positions within this array. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
+        "scope": "Twelve outer slots on four sides of a 54 mm slot-centre square within the 66 mm deck. Each side has centre-travel intervals -19 to -13, -5 to 5, and 13 to 19 mm from its midpoint. This is a project provision, not an industry PCB standard. Optional power feet use their separately reviewed positions within this array. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
     }
 
 
@@ -265,7 +265,7 @@ def mount_contract(kind):
         "deck_bottom_z_mm": DECK_BOTTOM_Z,
         "deck_thickness_mm": DECK_THICKNESS,
         "support_face_z_mm": SUPPORT_FACE_Z,
-        "integral_side_clamped_l_foot": True,
+        "integral_side_clamped_u_shoe": True,
         "deck_underside_to_rail_web_mm": DECK_BOTTOM_Z - rail.WEB_TOP_Z,
         "future_fastener_scope": "The deck_underside_to_rail_web_mm value describes vertical planning clearance only; a chosen screw head consumes part of it. Hole/slot positions alone do not select a head, nut, spacer length, board body or wiring arrangement. Check the chosen hardware against the base, board and neighboring devices; spare slot fasteners are not installed BOM items.",
         "mount_hole_centres_xy_mm": list(holes),
@@ -295,7 +295,7 @@ def build_mount(doc, parent, kind):
     name = MOUNT_NAMES[kind]
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
-        f"Centred66x66mm deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots. "
+        f"Centred66x66mm deck with {len(mounting_slots.rows())} symmetric mounting slots, including four FC slots, and one central M2 bore. "
         "One recessed transverse M3x10 screw and a nut on the opposite2mm bearing floor in an open-bottom anti-rotation recess clamp the integral U-shoe to the rail wall. "
         "The upper seat and two sides surround the rail wall; loosen the side screw to adjust within a supported rail segment. "
         f"Two short deck supports preserve the centre accessory bore, with a {DECK_BOTTOM_Z - rail.MOUNT_TOP_Z:g} mm under-deck gap; accessory head/nut height and screw-tip length must fit that space. "
