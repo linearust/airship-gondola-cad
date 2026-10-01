@@ -43,6 +43,7 @@ from .propulsion_service import (
     retained_obstacles,
     servo_bench_members,
 )
+from .rail_contact import attachment_check
 from .relative_motion import relative_motion_check
 from .servo_interface import horn_spline_contact
 from .servo_module import bridge_joint_check, servo_module_service_check
@@ -1179,7 +1180,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
             }
         )
     crop = Part.makeBox(12, 22, 11, App.Vector(x - 6, -11, 1.5))
-    contact = rail.attachment_check(
+    contact = attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
         contact_length=46,

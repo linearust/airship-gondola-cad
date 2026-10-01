@@ -423,6 +423,14 @@ def _reference(doc, parent, name, label, shape, notes, source="", clearance=Fals
 
 
 def _buy(doc, parent, name, shape, sku, notes, source, material, *, threaded=False):
+    if sku.startswith("ALI_KAILASH"):
+        thread_diameter, thread_pitch = (3.0, 0.5)
+    elif sku.startswith("M1_6"):
+        thread_diameter, thread_pitch = (1.6, 0.35)
+    elif sku.startswith("M1_4"):
+        thread_diameter, thread_pitch = (1.4, 0.3)
+    else:
+        thread_diameter, thread_pitch = (2.0, 0.4) if threaded else (None, None)
     return purchased_hardware.add_hardware(
         doc,
         parent,
@@ -433,25 +441,13 @@ def _buy(doc, parent, name, shape, sku, notes, source, material, *, threaded=Fal
         notes,
         source,
         material,
-        thread_diameter=3.0
-        if sku.startswith("ALI_KAILASH")
-        else (
-            1.6
-            if sku.startswith("M1_6")
-            else (1.4 if sku.startswith("M1_4") else (2.0 if threaded else None))
-        ),
-        thread_pitch=0.5
-        if sku.startswith("ALI_KAILASH")
-        else (
-            0.35
-            if sku.startswith("M1_6")
-            else (0.3 if sku.startswith("M1_4") else (0.4 if threaded else None))
-        ),
+        thread_diameter=thread_diameter,
+        thread_pitch=thread_pitch,
     )
 
 
 def _buy_bearing(doc, parent, name, shape, notes):
-    bearing = _buy(
+    return _buy(
         doc,
         parent,
         name,
@@ -461,7 +457,6 @@ def _buy_bearing(doc, parent, name, shape, notes):
         BEARING_SOURCE,
         "Bearing steel",
     )
-    return bearing
 
 
 def _bolt_pair(doc, parent, name, origin, direction, grip=6, servo_ear=False, length=8):
@@ -1051,7 +1046,7 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
     return drive, [gear]
 
 
-def _build_servo(doc, mount, prefix, sign):
+def _build_servo(doc, mount, prefix, sign, spec):
     """Mount the sourced vertical X06 case on its replaceable bridge cradle."""
     hardware = []
     servo = mirrored_y(servo_envelope.shape(), sign)
@@ -1073,7 +1068,12 @@ def _build_servo(doc, mount, prefix, sign):
         prefix + "Servo",
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
-        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. Both servos share one 5 mm-deep wall with 3.2 mm outer sides and a 5.2 mm central web. Each nonlocating 7.6 by 20.6 mm case opening has nominal 0.3 mm side and end clearance around the body. M1.6×8 Phillips kit screws clamp4.5mm printed grip plus1mm ears;0.5mm rear hex recesses restrain ordinary M1.6 nuts. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
+        "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. "
+        f"Both servos share one {servo_bridge.MOUNT_DEPTH:g} mm-deep wall with {servo_bridge.SIDE_WALL:g} mm outer sides "
+        f"and a {2 * spec.input_x_mm - servo_bridge.CASE_WINDOW_WIDTH:g} mm central web. "
+        f"Each nonlocating {servo_bridge.CASE_WINDOW_WIDTH:g} by {servo_bridge.CASE_WINDOW_HEIGHT:g} mm case opening "
+        f"has nominal {servo_bridge.CASE_CLEARANCE:g} mm side and end clearance around the body. "
+        "M1.6×8 Phillips kit screws clamp4.5mm printed grip plus1mm ears;0.5mm rear hex recesses restrain ordinary M1.6 nuts. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
     return [servo_ref], hardware
@@ -1098,7 +1098,7 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
         "Reverse for assembly; verify head-tool access and full nut seating.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
-    references, servo_hardware = _build_servo(doc, mount, prefix, sign)
+    references, servo_hardware = _build_servo(doc, mount, prefix, sign, spec)
     coupling = _build_coupling(doc, drive, prefix, sign)
     return {
         "printed": coupling["printed"],

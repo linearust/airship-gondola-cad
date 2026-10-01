@@ -42,9 +42,9 @@ class RailFastenerTests(unittest.TestCase):
         self.assertGreater(nut.BoundBox.ZLength, 6.3)
 
     def test_recessed_nut_has_continuous_side_release(self):
-        from gondola.parts import rail
+        from gondola.validation import rail_contact
 
-        report = rail.attachment_check()
+        report = rail_contact.attachment_check()
         self.assertTrue(report["passed"], report)
         self.assertIn("face-prism", report["continuous_nut_release"]["method"])
         self.assertAlmostEqual(report["bolt_tip_beyond_nut_mm"], 1.1)
@@ -81,6 +81,7 @@ class RailFastenerTests(unittest.TestCase):
     def test_nut_can_load_with_tape_and_all_supported_slot_endpoints(self):
         from gondola.cad import translated_shape, union
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         section = rail.rail_shape().fuse(
             union(
@@ -91,72 +92,79 @@ class RailFastenerTests(unittest.TestCase):
             for x in (low, high):
                 with self.subTest(x=x):
                     self.assertTrue(
-                        rail.attachment_check(translated_shape(section, x=-x))["passed"]
+                        rail_contact.attachment_check(translated_shape(section, x=-x))[
+                            "passed"
+                        ]
                     )
 
     def test_added_nut_side_obstacle_is_rejected(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         section = rail.rail_shape(50, (0,)).fuse(
             Part.makeBox(4, 1, 5, App.Vector(-2, 5, 4))
         )
-        report = rail.attachment_check(section)
+        report = rail_contact.attachment_check(section)
         self.assertFalse(report["passed"])
         self.assertGreater(report["continuous_nut_release"]["overlap_mm3"], 0)
 
     def test_missing_nut_bearing_land_rejected(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape().cut(
             Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, 3.24, 8.2))
         )
-        report = rail.attachment_check(mount=mount)
+        report = rail_contact.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
         self.assertGreater(report["missing_nut_support_mm3"], 0)
 
     def test_internal_nut_floor_void_cannot_pass_on_surface_contact_alone(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape().cut(
             Part.makeBox(1, 0.2, 0.3, App.Vector(-0.5, 2, 8.2))
         )
-        report = rail.attachment_check(mount=mount)
+        report = rail_contact.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
         self.assertAlmostEqual(report["missing_nut_support_mm3"], 0)
         self.assertGreater(report["missing_printed_nut_floor_mm3"], 0)
 
     def test_clearance_guard_cannot_substitute_for_fitted_far_leg(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape().cut(
             Part.makeBox(16, 0.2, 8.3, App.Vector(-8, 1.25, 2.2))
         )
-        report = rail.attachment_check(mount=mount)
+        report = rail_contact.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
         self.assertGreater(report["missing_opposite_side_contact_mm3"], 0)
 
     def test_missing_head_bearing_land_rejected(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape().cut(
             Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, -3.25, 8.2))
         )
-        report = rail.attachment_check(mount=mount)
+        report = rail_contact.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
         self.assertGreater(report["missing_head_support_mm3"], 0)
 
     def test_short_bolt_without_full_engagement_is_rejected(self):
-        from gondola.parts import rail
+        from gondola.validation import rail_contact
 
-        report = rail.attachment_check(screw_length=8)
+        report = rail_contact.attachment_check(screw_length=8)
         self.assertFalse(report["passed"])
         self.assertFalse(report["full_nominal_nut_height_engaged"])
         self.assertAlmostEqual(report["bolt_tip_beyond_nut_mm"], -0.9)
 
     def test_bare_nominal_engagement_without_end_margin_is_rejected(self):
-        from gondola.parts import rail
+        from gondola.validation import rail_contact
 
-        report = rail.attachment_check(screw_length=9)
+        report = rail_contact.attachment_check(screw_length=9)
         self.assertFalse(report["passed"])
         self.assertTrue(report["full_nominal_nut_height_engaged"])
         self.assertFalse(report["thread_projection_margin_ok"])
@@ -208,6 +216,7 @@ class RailFastenerTests(unittest.TestCase):
     def test_shared_clamp_bears_on_actual_bridge_and_engages_full_nut(self):
         from gondola.cad import translated_shape
         from gondola.parts import propulsion, rail, servo_bridge
+        from gondola.validation import rail_contact
         from gondola.validation.rail_mount import paired_spine_support_check
 
         complete_frame = propulsion.fixed_frame_shape()
@@ -225,7 +234,7 @@ class RailFastenerTests(unittest.TestCase):
             nut_outer_y=11,
             frame_contact_y=6,
         )
-        report = rail.attachment_check(**arguments)
+        report = rail_contact.attachment_check(**arguments)
         self.assertTrue(report["passed"], report)
         self.assertEqual(report["support_policy"], "paired_spine_clamp_zone")
         self.assertEqual(report["checked_centred_contact_length_mm"], 12)
@@ -242,16 +251,16 @@ class RailFastenerTests(unittest.TestCase):
         self.assertTrue(
             all(row["passed"] for row in report["frame_saddle_contact_faces"])
         )
-        short = rail.attachment_check(**{**arguments, "screw_length": 12})
+        short = rail_contact.attachment_check(**{**arguments, "screw_length": 12})
         self.assertFalse(short["passed"])
         self.assertAlmostEqual(short["bolt_tip_beyond_nut_mm"], -7.4)
-        missing = rail.attachment_check(**{**arguments, "head_support": None})
+        missing = rail_contact.attachment_check(**{**arguments, "head_support": None})
         self.assertFalse(missing["passed"])
         self.assertGreater(missing["missing_head_support_mm3"], 0)
         far_cheek_removed = bridge.cut(
             Part.makeBox(12, 5, 10.3, App.Vector(-6, 6, 2.2))
         )
-        bypassed = rail.attachment_check(
+        bypassed = rail_contact.attachment_check(
             **{**arguments, "head_support": far_cheek_removed}
         )
         self.assertFalse(bypassed["passed"])
@@ -282,12 +291,13 @@ class RailFastenerTests(unittest.TestCase):
 
     def test_no_claim_of_automatic_alignment_or_qualified_clamping(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         contract = rail.attachment_contract()
         self.assertFalse(contract["holding_force_verified"])
         self.assertFalse(contract["physical_fit_verified"])
         self.assertIn("no full-length", contract["assembly"])
-        self.assertTrue(rail.validate_mechanism()["passed"])
+        self.assertTrue(rail_contact.validate_mechanism()["passed"])
 
 
 if __name__ == "__main__":

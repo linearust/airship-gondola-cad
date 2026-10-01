@@ -33,8 +33,9 @@ class RailContactTests(unittest.TestCase):
 
     def test_eleven_walls_retain_ten_open_flex_spans(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
-        report = rail.flex_relief_check()
+        report = rail_contact.flex_relief_check()
         self.assertTrue(report["passed"], report)
         self.assertEqual(len(report["open_spans"]), 10)
         widths = [
@@ -116,15 +117,17 @@ class RailContactTests(unittest.TestCase):
 
     def test_accidental_bridge_between_walls_fails(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         bridged = rail.rail_shape().fuse(
             Part.makeBox(8, 2.5, 1, App.Vector(10, -1.25, 1.5))
         )
-        self.assertFalse(rail.flex_relief_check(bridged)["passed"])
+        self.assertFalse(rail_contact.flex_relief_check(bridged)["passed"])
 
     def test_slot_limits_retain_whole_foot_and_reject_gap_positions(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         shape = rail.rail_shape()
         self.assertEqual(len(rail.supported_slot_ranges()), 11)
@@ -137,7 +140,9 @@ class RailContactTests(unittest.TestCase):
                         report["minimum_full_foot_end_margin_mm"], 0.8 - 1e-6
                     )
                     self.assertTrue(
-                        rail.attachment_check(translated_shape(shape, x=-x))["passed"]
+                        rail_contact.attachment_check(translated_shape(shape, x=-x))[
+                            "passed"
+                        ]
                     )
             for x in (low - 0.01, high + 0.01):
                 self.assertFalse(rail.attachment_position_check(x)["passed"])
@@ -145,7 +150,7 @@ class RailContactTests(unittest.TestCase):
             self.assertFalse(rail.attachment_position_check(x)["passed"])
         # Having no collision in a gap does not imply a valid attachment.
         self.assertFalse(
-            rail.attachment_check(translated_shape(shape, x=-14))["passed"]
+            rail_contact.attachment_check(translated_shape(shape, x=-14))["passed"]
         )
 
     def test_end_wall_travel_stops_before_base_corner_chamfers(self):
@@ -162,6 +167,7 @@ class RailContactTests(unittest.TestCase):
     def test_longer_generic_foot_does_not_inherit_shared_spine_travel(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         shape = rail.rail_shape()
         ranges = rail.supported_slot_ranges(contact_length=18)
@@ -174,7 +180,7 @@ class RailContactTests(unittest.TestCase):
                     rail.attachment_position_check(x, contact_length=18)["passed"]
                 )
                 self.assertTrue(
-                    rail.attachment_check(
+                    rail_contact.attachment_check(
                         translated_shape(shape, x=-x), contact_length=18
                     )["passed"]
                 )
@@ -264,9 +270,9 @@ class RailContactTests(unittest.TestCase):
         self.assertFalse(paired_spine_support_check(missing_wall, frame)["passed"])
 
     def test_u_saddle_seats_and_lifts_without_deflecting_ears(self):
-        from gondola.parts import rail
+        from gondola.validation import rail_contact
 
-        report = rail.attachment_check()
+        report = rail_contact.attachment_check()
         self.assertTrue(report["passed"], report)
         self.assertIn("face-prism", report["continuous_vertical_removal"]["method"])
         self.assertTrue(all(row["passed"] for row in report["bottom_datum_contacts"]))
@@ -276,6 +282,7 @@ class RailContactTests(unittest.TestCase):
 
     def test_missing_clamp_leg_and_bottom_land_are_rejected(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         for cut in (
             Part.makeBox(2, 2.5, 1, App.Vector(3, -1.75, 3)),
@@ -283,13 +290,14 @@ class RailContactTests(unittest.TestCase):
         ):
             with self.subTest(cut=cut.BoundBox):
                 self.assertFalse(
-                    rail.attachment_check(mount=rail.mount_base_shape().cut(cut))[
-                        "passed"
-                    ]
+                    rail_contact.attachment_check(
+                        mount=rail.mount_base_shape().cut(cut)
+                    )["passed"]
                 )
 
     def test_bottom_datum_does_not_require_roof_contact(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape()
         for y in (-2.5, 2.5):
@@ -304,12 +312,12 @@ class RailContactTests(unittest.TestCase):
             2.8,
         )
         blocked = mount.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(3, -1.25, 9.6)))
-        report = rail.attachment_check(mount=blocked)
+        report = rail_contact.attachment_check(mount=blocked)
         self.assertFalse(report["passed"])
         self.assertGreater(report["blocked_inner_roof_relief_mm3"], 0)
         for side, y in ((-1, -3), (1, 1.25)):
             cut = Part.makeBox(2, 1.75, 0.1, App.Vector(3, y, 1.5))
-            missing = rail.attachment_check(mount=mount.cut(cut))
+            missing = rail_contact.attachment_check(mount=mount.cut(cut))
             self.assertFalse(missing["passed"])
             self.assertFalse(
                 next(
@@ -321,10 +329,11 @@ class RailContactTests(unittest.TestCase):
 
     def test_added_hook_fails_continuous_vertical_release(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         # A tongue enters the clear slot while seated but catches its ceiling.
         hook = Part.makeBox(1, 3, 0.3, App.Vector(-0.5, -1.5, 5.85))
-        report = rail.attachment_check(mount=rail.mount_base_shape().fuse(hook))
+        report = rail_contact.attachment_check(mount=rail.mount_base_shape().fuse(hook))
         self.assertFalse(report["passed"])
         self.assertGreater(report["continuous_vertical_removal"]["overlap_mm3"], 0)
 
@@ -343,6 +352,7 @@ class RailContactTests(unittest.TestCase):
 
     def test_attachment_contract_cannot_promise_an_unsupported_short_foot(self):
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         existing_mount = rail.mount_base_shape()
         queries = (
@@ -352,7 +362,7 @@ class RailContactTests(unittest.TestCase):
             lambda length: rail.attachment_contract(contact_length=length),
             lambda length: rail.mount_base_shape(length=length),
             # Supplying a shape must not bypass the dimensional contract.
-            lambda length: rail.attachment_check(
+            lambda length: rail_contact.attachment_check(
                 mount=existing_mount, contact_length=length
             ),
         )
@@ -374,6 +384,7 @@ class RailContactTests(unittest.TestCase):
     def test_tape_pairs_and_process_matched_coupons(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
+        from gondola.validation import rail_contact
 
         doc = App.newDocument("SideSlotCouponTest")
         try:
@@ -404,7 +415,7 @@ class RailContactTests(unittest.TestCase):
             self.assertEqual(rail_contract["rail_length_mm"], 300)
             self.assertEqual(rail_contract["free_span_minimum_width_mm"], 6)
             self.assertTrue(
-                rail.attachment_check(
+                rail_contact.attachment_check(
                     doc.RailFitSample.Shape, doc.MountFitSample.Shape
                 )["passed"]
             )

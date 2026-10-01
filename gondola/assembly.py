@@ -85,10 +85,11 @@ def build_assembly():
     )
     from gondola.print_export import export_print_parts
     from gondola.procurement import export_hardware_bom
+    from gondola.validation import rail_contact
 
     fingerprint = source_fingerprint()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    rail_report = rail.validate_mechanism()
+    rail_report = rail_contact.validate_mechanism()
     if not rail_report["passed"]:
         raise RuntimeError("Rail mechanism validation failed before assembly.")
     (OUTPUT_DIR / (ARTIFACT_STEM + "_rail_validation.json")).write_text(

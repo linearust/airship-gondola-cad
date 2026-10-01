@@ -10,6 +10,7 @@ from gondola.cad import placed_shape
 from gondola.parts import equipment_mounts, propulsion, rail
 from gondola.print_export import geometry_comparison
 
+from . import rail_contact
 from .evidence import comparison_passed
 from .geometry import belongs_to_group, intersection_volume, local_shape
 from .rail_interface import (
@@ -506,7 +507,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 head_support = placed_shape(
                     bridge_in_module, canonical_placement.inverse()
                 ).common(crop)
-            attachment = rail.attachment_check(
+            attachment = rail_contact.attachment_check(
                 local_rail,
                 lower,
                 contact_length=length,
@@ -618,7 +619,7 @@ def rail_check(registry, shapes):
                     "passed": margin >= -TOL and missing < TOL,
                 }
             )
-        flex = rail.flex_relief_check(actual)
+        flex = rail_contact.flex_relief_check(actual)
         wall_sections = _independent_wall_top_sections(actual)
         slot_sections = _independent_slot_sections(actual)
         mounts = _saved_mounts(registry, shapes, obj, actual)
