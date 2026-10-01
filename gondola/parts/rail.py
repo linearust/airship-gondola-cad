@@ -23,7 +23,11 @@ from gondola.cad import (
 )
 from gondola.contracts import fasteners
 from gondola.contracts.design import RAIL_BASE_THICKNESS_MM, RAIL_LENGTH_MM
-from gondola.contracts.rail_attachments import attachment_pattern
+from gondola.contracts.rail_attachments import (
+    CARRIER_ATTACHMENT,
+    PROPULSION_ATTACHMENT,
+    attachment_pattern,
+)
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
@@ -36,7 +40,7 @@ WALL_CENTRES = tuple(index * WALL_PITCH for index in range(-5, 6))
 WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
 SLOT_HEIGHT, BOLT_AXIS_Z = 3.4, 6.0
 SLOT_CENTRE_HALF_SPAN = 3.0
-SHARED_SPINE_LENGTH = 46.0
+SHARED_SPINE_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 SHARED_LOAD_ZONE_LENGTH = 12.0
 SHARED_BOLT_HALF_RANGE = 3.0
 # The 30 mm bolt pair sits 1 mm outward of the 28 mm wall-centre pair.
@@ -44,8 +48,8 @@ SHARED_BOLT_HALF_RANGE = 3.0
 SHARED_TRIM_HALF_RANGE = 2.0
 SHARED_MINIMUM_WALL_SEAT = 17.0
 SHARED_MINIMUM_TOTAL_SEAT = 37.0
-MOUNT_LENGTH, MOUNT_LEG_THICKNESS = 16.0, 4.0
-MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, 12.5
+MOUNT_LENGTH, MOUNT_LEG_THICKNESS = CARRIER_ATTACHMENT.contact_length_mm, 4.0
+MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, CARRIER_ATTACHMENT.seat_z_mm
 MOUNT_INNER_ROOF_Z = 9.7
 MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
 HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
@@ -309,6 +313,22 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     if not result.isValid() or len(result.Solids) != 1:
         raise RuntimeError("Rail must remain one valid solid")
     return result
+
+
+def cut_shared_bolt_passage(shape):
+    """Cut the common frame/saddle clamp axes without depending on either part."""
+    pattern = PROPULSION_ATTACHMENT
+    outer_y = -pattern.frame_half_width_mm - pattern.extra_cheek_mm
+    for sign in (-1, 1):
+        shape = shape.cut(
+            Part.makeCylinder(
+                SLOT_HEIGHT / 2,
+                2 * -outer_y + 2,
+                V(sign * pattern.half_spacing_mm, sign * (outer_y - 1), BOLT_AXIS_Z),
+                V(0, sign, 0),
+            )
+        )
+    return shape.removeSplitter()
 
 
 def head_recess_shape(outer_y, *, x=0, z=BOLT_AXIS_Z):

@@ -27,11 +27,11 @@ CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
 CRADLE_WIDTH = 16.0
 SIDE_WALL = (CRADLE_WIDTH - CASE_WINDOW_WIDTH) / 2
 REAR_LEAD_ALLOWANCE = 13.9
-SEAT_Z = 12.5
+SEAT_Z = PROPULSION_ATTACHMENT.seat_z_mm
 CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.5
 # Outer cheeks clear tape wings; the inner frame feet seat on the rail base.
 CHEEK_BOTTOM_Z = 2.2
-CENTRAL_SEAT_LENGTH = 46.0
+CENTRAL_SEAT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 CENTRAL_SEAT_WIDTH = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
 CLAMP_AXIS_X = PROPULSION_ATTACHMENT.half_spacing_mm
 CHEEK_THICKNESS = PROPULSION_ATTACHMENT.extra_cheek_mm
@@ -107,17 +107,7 @@ def _ear_nut_pockets(drive):
     return union(cuts)
 
 
-def cut_shared_bolt_passage(shape):
-    for sign in (-1, 1):
-        shape = shape.cut(
-            Part.makeCylinder(
-                rail.SLOT_HEIGHT / 2,
-                2 * -CHEEK_OUTER_Y + 2,
-                V(sign * CLAMP_AXIS_X, sign * (CHEEK_OUTER_Y - 1), rail.BOLT_AXIS_Z),
-                V(0, sign, 0),
-            )
-        )
-    return shape.removeSplitter()
+cut_shared_bolt_passage = rail.cut_shared_bolt_passage
 
 
 def bridge_blank_blocks(drive=SELECTED_DRIVE):

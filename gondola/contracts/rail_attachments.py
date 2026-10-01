@@ -13,11 +13,15 @@ from .fasteners import RAIL_SCREW_LENGTH
 
 @dataclass(frozen=True)
 class AttachmentPattern:
+    """Shared mechanical datums consumed by the rail, frame and removable saddle."""
+
     half_spacing_mm: float
     extra_cheek_mm: float
     screw_length_mm: float
     nut_bearing_y_mm: float
     frame_half_width_mm: float = 0.0
+    contact_length_mm: float = 16.0
+    seat_z_mm: float = 12.5
 
     @property
     def shared_drive(self):
@@ -55,7 +59,9 @@ class AttachmentPattern:
 
 
 CARRIER_ATTACHMENT = AttachmentPattern(0.0, 0.0, RAIL_SCREW_LENGTH, 3.25)
-PROPULSION_ATTACHMENT = AttachmentPattern(15.0, 5.0, 20.0, 8.0, 6.0)
+PROPULSION_ATTACHMENT = AttachmentPattern(
+    15.0, 5.0, 20.0, 8.0, 6.0, contact_length_mm=46.0
+)
 
 
 def attachment_pattern(shared_drive):

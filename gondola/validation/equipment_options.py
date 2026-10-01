@@ -37,6 +37,7 @@ from gondola.print_export import geometry_comparison
 from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape, translation_sweep
 from .optical import ANGLES, _external_field_bound
+from .optical_service import pitch_tool_shape
 from .wiring import collision_hits, measure_clearances, named_gap_checks
 
 V = App.Vector
@@ -233,6 +234,10 @@ def _optical_screens(doc):
                         "connector": registered_shape(
                             optical_sensor.connector_reserve_shape(profile)
                         ),
+                        "pitch_tool": placed_shape(
+                            optical_interface.registration_bound(pitch_tool_shape()),
+                            kit["group"].getGlobalPlacement(),
+                        ),
                     }
                 )
             optical_mount.set_pitch(temporary, 0)
@@ -272,6 +277,7 @@ def _optical_option_check(
                 **pose["physical"],
                 "OpticalField": pose["field"],
                 "OpticalConnector": pose["connector"],
+                "OpticalPitchToolAccess": pose["pitch_tool"],
             }.items():
                 hits.extend(
                     {"moving": name, **hit}

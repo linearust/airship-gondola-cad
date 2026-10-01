@@ -16,6 +16,7 @@ import Part
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
+    mounting_plate,
     optical_interface,
     optical_mount,
     optical_sensor,
@@ -26,6 +27,7 @@ from gondola.print_export import geometry_comparison
 
 from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape, translation_sweep
+from .optical_service import pitch_disassembly_check, pitch_tool_check, pitch_tool_shape
 from .wiring import RESERVES, collision_hits, measure_clearances, named_gap_checks
 
 TOL = 1e-5
@@ -411,6 +413,8 @@ def _placement_checks(doc, physical, kit, *, profile=None):
         if name not in reservations:
             reservations[name] = None
     external = {**fixed, **rotor}
+    tool_reserve = pitch_tool_shape()
+    tool_reserve.Placement = group.getGlobalPlacement()
     rows = []
     maximum_depth = -math.inf
     for pitch in ANGLES:
@@ -456,6 +460,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
         for name, shape in (
             ("body", own["ModuleMTF02PEnvelope"]),
             ("connector", connector_reserve),
+            ("pitch_tool", tool_reserve),
         ):
             local = shape.copy()
             local.Placement = inverse_group.multiply(local.Placement)
@@ -491,6 +496,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
             tolerance=TOL,
             validation_cache=validation_cache,
         )
+        pitch_tool = pitch_tool_check(group, {**external, **own, **reservations})
         inverse = doc.OpticalPitchStage.getGlobalPlacement().inverse()
         depth = max(
             inverse.multVec(point).z
@@ -513,6 +519,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 "optical_reserved_space_intrusions": optical_reserve_hits,
                 "connector_reserved_space_clearances": connector_reserve_gaps,
                 "neighbour_clearance_buffers": neighbour_gaps,
+                "pitch_clamp_tool_access": pitch_tool,
                 "assembly_registration_checks": registration_checks,
                 "body_forward_extent_mm": depth,
                 "native_rotation_matches": control_ok,
@@ -526,6 +533,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 )
                 and all(row["passed"] for row in registration_checks)
                 and control_ok
+                and pitch_tool["passed"]
                 and depth <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
             }
         )
@@ -602,7 +610,6 @@ def _seated_foot_lift_sweep(shape, distance):
 def _carrier_interface_checks(doc):
     """Saved material witnesses for seating, slot axes and clamp bearing lands."""
     from gondola.cad import box
-    from gondola.parts import mounting_plate
 
     group = doc.OpticalFlowModule
     carrier = doc.getObject(optical_interface.SUPPORTED_HOSTS[group.CarrierHostName])
@@ -763,7 +770,13 @@ def _foot_service_checks(doc, physical, kit):
             }
         )
 
-    release_z = 4.7  # 6 mm tip - 1.5 mm recessed seat + 0.2 mm clearance.
+    release_z = (
+        optical_interface.CLAMP_SCREW_LENGTH
+        - mounting_plate.THICKNESS_MM
+        - optical_interface.FOOT_NUT_SEAT_Z
+        + 0.2
+    )
+    screw_withdrawal = optical_interface.CLAMP_SCREW_LENGTH + 0.2
     for index in optical_interface.CLAMP_CENTRES:
         name = f"OpticalFootNut{index}"
         shape = remaining.pop(name)
@@ -777,11 +790,16 @@ def _foot_service_checks(doc, physical, kit):
     for index in optical_interface.CLAMP_CENTRES:
         name = f"OpticalFootBolt{index}"
         shape = remaining.pop(name)
-        path(name, shape, [(0, 0, 0), (0, 0, -8.2)], {**host_parts, **remaining})
+        path(
+            name,
+            shape,
+            [(0, 0, 0), (0, 0, -screw_withdrawal)],
+            {**host_parts, **remaining},
+        )
     for name, shape in remaining.items():
         path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
     return {
-        "scope": "Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut 4.7 mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw8.2 mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
+        "scope": f"Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut {release_z:g} mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw{screw_withdrawal:g} mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
         "paths": rows,
         "passed": all(row["passed"] for row in rows),
     }
@@ -908,7 +926,11 @@ def mtf_sensor_check(doc):
             alternatives[key]["bench_service"] = _foot_service_checks(
                 doc, physical, kit
             )
+            alternatives[key]["pitch_disassembly"] = pitch_disassembly_check(doc, kit)
             alternatives[key]["passed"] &= alternatives[key]["bench_service"]["passed"]
+            alternatives[key]["passed"] &= alternatives[key]["pitch_disassembly"][
+                "passed"
+            ]
         report["carrier_host"] = group.CarrierHostName
         report["carrier_side"] = str(group.MountSide)
         report["selected_sensor_model"] = old_model

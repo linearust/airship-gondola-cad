@@ -1,22 +1,21 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-01T11:43:13.459685+00:00",
-  "change_kind": "Located bearing and input-shaft fits, tighter OEM horn fixing, and complete carrier/slot-head checks",
-  "scope": "Nominal bearing bore changes6.1 to6.0mm; input D socket uses a centred3mm circular datum with0.05mm flat relief; horn near hole and far-slot width change1.8 to1.6mm. Carrier-trim and accepted slot-head footprint checks are added. This is a fit-prototype CAD verification, not physical fit, strength or motion qualification.",
-  "predecessor_commit": "c932b9b1627f827bd688ebbe48a83fb26211743d",
-  "source_fingerprint": "9f2efa408be4a0e1b506b09810651ee4e4b3d5936aa1972929cd28736bbb630c",
-  "cad_sha256": "14bca15ec13d438d9f18ce83e284bb9524c1cd7a1031572c4681117f4670b6bf",
+  "recorded_utc": "2026-10-01T12:21:19.613438+00:00",
+  "change_kind": "Shared frame/servo interface ownership, cohesive drive validation, and optical pitch service checks",
+  "scope": "Geometry-preserving refactor of shared rail/frame/servo interfaces and drive checks; added optical pitch tool and ordered disassembly checks. Fixture approval points to the retained exact transition. This remains nominal CAD verification, not physical qualification.",
+  "predecessor_commit": "fa78485ff8a3e0f9cadb9b30d729d90e14440d7e",
+  "source_fingerprint": "13dfec08089462a24e3e6f912909a0c37ab6ec894867f0735c36e437d549a08b",
+  "cad_sha256": "3712d56f2b8844c7fead5bf2a696cfe485fc6448447979508fee9ac1be2a9991",
   "revision": "CA",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "7f25969b7f8be55d5b36cd581899f29d07a8d5703cb61eb8c7a0919e1e0cf905",
-    "unchanged": false,
-    "previous_sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
+    "unchanged": true,
     "independently_reviewed": true
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 768,
+    "testsRun": 776,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -63,12 +62,7 @@
   },
   "saved_geometry_matches_reviewed_fixture": true,
   "native_controls_and_placements_preserved": true,
-  "changed_shapes": [
-    "BearingSeatFitSample",
-    "PortHornGearAdapter",
-    "PropulsionFixedFrame",
-    "StarboardHornGearAdapter"
-  ],
+  "changed_shapes": [],
   "blender": {
     "passed": true,
     "scene_count": 6,
@@ -77,13 +71,13 @@
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "14bca15ec13d438d9f18ce83e284bb9524c1cd7a1031572c4681117f4670b6bf",
-    "gondola_print_parts.FCStd": "6667d13e125cc87363ca19202959f91fe393b4c29d1b520b5a9579b2e524491e",
-    "gondola_power_options.FCStd": "af3b343f9a1c8a8d91a1fdcae606a2e33e2b43c2233afae955d89fd57aa4658f",
-    "gondola_attachment_detail.FCStd": "b1efc274ece5255be82dc2ff638951647f748e8b88e778a1dae7452bb3460436"
+    "gondola.FCStd": "3712d56f2b8844c7fead5bf2a696cfe485fc6448447979508fee9ac1be2a9991",
+    "gondola_print_parts.FCStd": "9432be3fec6485e27b3ca51b5fa9eb0b4fb2bd6826bb3e167b8116c8d2761ffc",
+    "gondola_power_options.FCStd": "a8633471ccc87418f6d7f26641fab4e089a221e4662e64940386fc73e75a33ce",
+    "gondola_attachment_detail.FCStd": "d09735b74dd47e899282f84e648e2cdbc065cd43fae343d863dfe60d74cfa509"
   },
-  "print_bundle_sha256": "8e10fdea79209ccfd843f608998aa3cf7fc7fb3565b4c674aea6ce49c7c11a64",
+  "print_bundle_sha256": "53be8353fcffcd3f2cf2efa7d1110ee9535c6523226ba67d8010462e6da74872",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "fit_audit_verification",
-  "evidence_archive_sha256": "351860eed6812e2b3bed291be09194c6b592fd32291d7575dad09157754e334f"
+  "evidence_record_key": "architecture_refactor_verification",
+  "evidence_archive_sha256": "684cac20160b115465ec3eeb0f9c9eaf5ad473d85e5bf79f913b47b1c25d2cf7"
 }

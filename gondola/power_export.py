@@ -142,8 +142,14 @@ def _optical_motion_bounds(optical):
     from .contracts.optical_sensors import SENSOR_PROFILES
     from .parts import optical_interface, optical_mount, optical_sensor
     from .validation.optical import _external_field_bound
+    from .validation.optical_service import pitch_tool_shape
 
-    result = {}
+    result = {
+        "OpticalPitchToolAccessBound": placed_shape(
+            optical_interface.registration_bound(pitch_tool_shape()),
+            optical.getGlobalPlacement(),
+        )
+    }
     for key, profile in SENSOR_PROFILES.items():
         result[f"{key}ContinuousOpticalFieldBound"] = _external_field_bound(
             optical, profile

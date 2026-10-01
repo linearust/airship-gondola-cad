@@ -43,6 +43,7 @@ from gondola.contracts.hardware import (
     SERVO_NUT_SOURCE,
     SERVO_SCREW_SOURCE,
 )
+from gondola.contracts.rail_attachments import PROPULSION_ATTACHMENT
 
 from . import (
     bearing_retention,
@@ -56,11 +57,11 @@ from . import (
 V = App.Vector
 BASE_Z = 1.5
 FOOT_THICKNESS = 5.0
-FOOT_BOTTOM_Z = servo_bridge.SEAT_Z - FOOT_THICKNESS
+FOOT_BOTTOM_Z = PROPULSION_ATTACHMENT.seat_z_mm - FOOT_THICKNESS
 FOOT_WIDTH = 18.0
 BEARING_POST_WIDTH = 13.0
-RAIL_BOLT_OFFSET_X = servo_bridge.CLAMP_AXIS_X
-RAIL_CONTACT_LENGTH = servo_bridge.CENTRAL_SEAT_LENGTH
+RAIL_BOLT_OFFSET_X = PROPULSION_ATTACHMENT.half_spacing_mm
+RAIL_CONTACT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
 GUARD_OUTER_RADIUS = 25.0
@@ -320,9 +321,13 @@ def fixed_frame_shape():
         FOOT_THICKNESS,
         (-FOOT_WIDTH / 2, -half_span, FOOT_BOTTOM_Z),
     )
-    length, width = servo_bridge.CENTRAL_SEAT_LENGTH, servo_bridge.CENTRAL_SEAT_WIDTH
+    length = PROPULSION_ATTACHMENT.contact_length_mm
+    width = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
     spine = box(
-        length, width, servo_bridge.SEAT_Z - BASE_Z, (-length / 2, -width / 2, BASE_Z)
+        length,
+        width,
+        PROPULSION_ATTACHMENT.seat_z_mm - BASE_Z,
+        (-length / 2, -width / 2, BASE_Z),
     )
     frame = union(
         [
@@ -341,7 +346,7 @@ def fixed_frame_shape():
         )
     )
     return _checked(
-        servo_bridge.cut_shared_bolt_passage(frame),
+        rail.cut_shared_bolt_passage(frame),
         "Common output-bearing frame with a continuous U rail spine",
     )
 
@@ -715,23 +720,27 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "frame_rail_clamp_leg",
                 "PropulsionFixedFrame",
-                (RAIL_BOLT_OFFSET_X, servo_bridge.CHEEK_CONTACT_Y - 0.01, 3.5),
+                (
+                    RAIL_BOLT_OFFSET_X,
+                    -PROPULSION_ATTACHMENT.frame_half_width_mm - 0.01,
+                    3.5,
+                ),
                 (RAIL_BOLT_OFFSET_X, -rail.WEB_THICKNESS / 2 + 0.01, 3.5),
-                -servo_bridge.CHEEK_CONTACT_Y - rail.WEB_THICKNESS / 2,
+                PROPULSION_ATTACHMENT.frame_half_width_mm - rail.WEB_THICKNESS / 2,
             ),
             (
                 "frame_rail_relieved_roof",
                 "PropulsionFixedFrame",
                 (RAIL_BOLT_OFFSET_X, 0, rail.MOUNT_INNER_ROOF_Z - 0.01),
-                (RAIL_BOLT_OFFSET_X, 0, servo_bridge.SEAT_Z + 0.01),
-                servo_bridge.SEAT_Z - rail.MOUNT_INNER_ROOF_Z,
+                (RAIL_BOLT_OFFSET_X, 0, PROPULSION_ATTACHMENT.seat_z_mm + 0.01),
+                PROPULSION_ATTACHMENT.seat_z_mm - rail.MOUNT_INNER_ROOF_Z,
             ),
             (
                 "frame_rail_to_central_seat_connection",
                 "PropulsionFixedFrame",
                 (0, -2.5, BASE_Z - 0.01),
-                (0, -2.5, servo_bridge.SEAT_Z + 0.01),
-                servo_bridge.SEAT_Z - BASE_Z,
+                (0, -2.5, PROPULSION_ATTACHMENT.seat_z_mm + 0.01),
+                PROPULSION_ATTACHMENT.seat_z_mm - BASE_Z,
             ),
             (
                 "output_bearing_outer_wall",
@@ -867,7 +876,7 @@ def _build_frame(doc, module, spec):
     set_property(
         frame,
         "CentralBridgeSeatZ",
-        servo_bridge.CONNECTOR_PLATE_BOTTOM_Z,
+        PROPULSION_ATTACHMENT.seat_z_mm,
         "App::PropertyLength",
     )
     return frame
