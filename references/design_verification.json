@@ -1,21 +1,16 @@
 {
   "revision": "BW",
-  "change_kind": "Seated wider rail base, simple straight frame posts, tighter fixed fits, raised support beam, longer trim and metric nut guides",
-  "recorded_utc": "2026-10-01T03:31:22.831498+00:00",
+  "change_kind": "Refactor rail contact checks without changing CAD or fixture",
+  "recorded_utc": "2026-10-01T03:59:22.900286+00:00",
   "passed": true,
-  "scope": "Nominal CAD, controls, service, rigid motion and export verification; no physical fit, strength or flight qualification.",
-  "predecessor_commit": "11560947da2b9611dd3779b4e375ada4d40cbc2a",
-  "source_fingerprint": "6eb345eadb2ba0a222429557f949a3454993a5e13b636e392dde69971d36c68d",
-  "cad_sha256": "6bd799f21d0e44ea1098b324ec4779a8bf204c91b2654b3b8c75be4f657ac8b7",
+  "scope": "Nominal CAD and software verification; no new physical qualification.",
+  "predecessor_commit": "244193638e7b9d25b8c35e072628362186580e2d",
+  "source_fingerprint": "6c929a05ee6de7d03f50ed96afed078704e9209ce1075929ccf9bd54e2b59777",
+  "cad_sha256": "d08995230d4600715a6dcae96ce78e97de3f60799ed74045fcea02373f7a5d8a",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "07f766341a20754e6375b1d348c3953fec48cc83b449a6896480b62f1f30cde0",
-    "promoted_after_explicit_review": true
-  },
-  "independent_design_review": {
-    "path": "tests/fixtures/review.json",
-    "sha256": "e1033f06a080de898237e9bcc7a55a24a23bca304e454713a56b68fbc1776a95",
-    "supporting_approval_preserved": true
+    "changed": false
   },
   "native_tests": {
     "passed": true,
@@ -77,17 +72,16 @@
     "passed": true
   },
   "mass_change": {
-    "printed_delta_g": 6.469789176473867,
-    "hardware_delta_g": 0.0,
-    "scope": "Saved CAD modeled mass; unmeasured equipment and finished process variation remain excluded."
+    "printed_delta_g": 0.0,
+    "hardware_delta_g": 0.0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "6bd799f21d0e44ea1098b324ec4779a8bf204c91b2654b3b8c75be4f657ac8b7",
-    "gondola_print_parts.FCStd": "8ce94fe2fe96cbcd6eb4354853662f082033e66c735ba83e86946fb8b685b372",
-    "gondola_power_options.FCStd": "dd30f72bf24a12d2e9b4762cb42266d88b54985fb049c473605b707f3b811dc4",
-    "gondola_attachment_detail.FCStd": "dfd4ac7d2e6484b2985191af12854de845475562d93f2630f0d552f0c7fb0f45"
+    "gondola.FCStd": "d08995230d4600715a6dcae96ce78e97de3f60799ed74045fcea02373f7a5d8a",
+    "gondola_print_parts.FCStd": "9f8aa32e48e1726125e1d901ddb613a48a479fcc074cc0041d0ba08fb942fbb5",
+    "gondola_power_options.FCStd": "1d03bcc319737e3c73a0f6020701f1d9ceed796789e05d7951670d0505ad20c7",
+    "gondola_attachment_detail.FCStd": "efa0e373b7b3c6db5f8e12497d1ff76c118e372922c093cb4c5012ab54b83c72"
   },
-  "print_bundle_sha256": "cbfd5d83309faee5ab049f7796b63149eb43591b307eda08a68d5bb94b52d8c7",
+  "print_bundle_sha256": "cab18e30d46540cc7d3b6a00eccfd6a02a719618765e0db5f972d54f55f07c83",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "3cddcad1076e57bf50bfb4aee0c24c80d4eb158ad9a2cb8375a6dc7561cb7d98"
+  "evidence_archive_sha256": "f516f2b8ead01dbe18162c8da53df8c23db53df4e8381988a9911c17bd03c79a"
 }

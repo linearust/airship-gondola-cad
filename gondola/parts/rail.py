@@ -742,6 +742,128 @@ def flex_relief_check(rail_section=None, length=LENGTH):
     }
 
 
+def _rail_seat_contacts(section, mount, zone_length):
+    """Probe the two bottom lands, relieved roof and opposed rail faces."""
+    # Bilateral bottom lands are the vertical datum. The inner roof deliberately
+    # clears the rail top; forcing three planes into contact overconstrains fit.
+    bottom_contacts = []
+    for side_sign in (-1, 1):
+        y = -BASE_WIDTH / 2 if side_sign < 0 else WEB_THICKNESS / 2
+        width = (BASE_WIDTH - WEB_THICKNESS) / 2
+        below = box(
+            zone_length, width, 0.01, (-zone_length / 2, y, PAD_THICKNESS - 0.01)
+        )
+        above = translated_shape(below, z=0.01)
+        missing = abs(below.cut(section).Volume) + abs(above.cut(mount).Volume)
+        bottom_contacts.append(
+            {
+                "side": side_sign,
+                "minimum_area_mm2": zone_length * width,
+                "missing_contact_mm3": missing,
+                "passed": missing < TOL,
+            }
+        )
+    roof_relief = box(
+        zone_length,
+        WEB_THICKNESS,
+        MOUNT_INNER_ROOF_Z - WEB_TOP_Z,
+        (-zone_length / 2, -WEB_THICKNESS / 2, WEB_TOP_Z),
+    )
+    blocked_roof_relief = abs(roof_relief.common(mount).Volume)
+    # Both side faces, above and below the longitudinal rail slot, must contact.
+    side = box(
+        zone_length,
+        0.01,
+        WEB_TOP_Z - MOUNT_BOTTOM_Z,
+        (-zone_length / 2, -WEB_THICKNESS / 2 - 0.01, MOUNT_BOTTOM_Z),
+    ).cut(_slot(-zone_length, zone_length))
+    missing_side = abs(side.cut(mount).Volume) + abs(
+        translated_shape(side, y=0.01).cut(section).Volume
+    )
+    opposite_side = translated_shape(side, y=WEB_THICKNESS + 0.01)
+    missing_opposite = abs(opposite_side.cut(mount).Volume) + abs(
+        translated_shape(opposite_side, y=-0.01).cut(section).Volume
+    )
+
+    return {
+        "bottom_datum_contacts": bottom_contacts,
+        "inner_roof_clearance_mm": MOUNT_INNER_ROOF_Z - WEB_TOP_Z,
+        "blocked_inner_roof_relief_mm3": blocked_roof_relief,
+        "missing_flat_side_contact_mm3": missing_side,
+        "missing_opposite_side_contact_mm3": missing_opposite,
+    }
+
+
+def _fastener_seat_contacts(
+    clamp, mount, head_support, head_face_y, nut_bearing_y, frame_contact_y
+):
+    """Probe head/nut bearing lands and both optional frame/saddle faces."""
+
+    def annulus(y, depth):
+        return Part.makeCylinder(
+            fasteners.RAIL_SCREW_HEAD_DIAMETER / 2,
+            depth,
+            V(0, y, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        ).cut(
+            Part.makeCylinder(
+                SLOT_HEIGHT / 2, depth + 0.02, V(0, y - 0.01, BOLT_AXIS_Z), V(0, 1, 0)
+            )
+        )
+
+    missing_head = abs(annulus(head_face_y, 0.01).cut(clamp).Volume)
+    nut_floor = _nut_outer(
+        fasteners.RAIL_HEX_NUT_AF,
+        NUT_FLOOR_THICKNESS,
+        bearing_y=nut_bearing_y - NUT_FLOOR_THICKNESS,
+    ).cut(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2,
+            NUT_FLOOR_THICKNESS + 0.02,
+            V(0, nut_bearing_y - NUT_FLOOR_THICKNESS - 0.01, BOLT_AXIS_Z),
+            V(0, 1, 0),
+        )
+    )
+    missing_floor = abs(nut_floor.cut(clamp).Volume)
+    nut_face = _nut_outer(
+        fasteners.RAIL_HEX_NUT_AF, 0.01, bearing_y=nut_bearing_y - 0.01
+    ).cut(
+        Part.makeCylinder(
+            SLOT_HEIGHT / 2, 0.03, V(0, nut_bearing_y - 0.02, BOLT_AXIS_Z), V(0, 1, 0)
+        )
+    )
+    missing_nut = abs(nut_face.cut(clamp).Volume)
+    nut_area = nut_face.Volume / 0.01
+    frame_faces = []
+    if frame_contact_y is not None:
+        for side_sign in (-1, 1):
+            face_y = side_sign * frame_contact_y
+            inside = annulus(face_y if side_sign < 0 else face_y - 0.01, 0.01)
+            outside = translated_shape(inside, y=side_sign * 0.01)
+            missing_frame = abs(inside.cut(mount).Volume)
+            missing_saddle = (
+                outside.Volume
+                if head_support is None
+                else abs(outside.cut(head_support).Volume)
+            )
+            frame_faces.append(
+                {
+                    "side": side_sign,
+                    "face_y_mm": face_y,
+                    "missing_frame_support_mm3": missing_frame,
+                    "missing_saddle_support_mm3": missing_saddle,
+                    "passed": max(missing_frame, missing_saddle) < TOL,
+                }
+            )
+    return {
+        "missing_head_support_mm3": missing_head,
+        "missing_nut_support_mm3": missing_nut,
+        "missing_printed_nut_floor_mm3": missing_floor,
+        "nut_bearing_area_outside_bore_mm2": nut_area,
+        "frame_saddle_contact_faces": frame_faces,
+    }
+
+
 def attachment_check(
     rail_section=None,
     mount=None,
@@ -832,103 +954,10 @@ def attachment_check(
     ).removeSplitter()
     lift, method = translation_sweep(filled_mount, (0, 0, 25))
     lift_overlap = abs(lift.common(section).Volume)
-    # Bilateral bottom lands are the vertical datum. The inner roof deliberately
-    # clears the rail top; forcing three planes into contact overconstrains fit.
-    bottom_contacts = []
-    for side_sign in (-1, 1):
-        y = -BASE_WIDTH / 2 if side_sign < 0 else WEB_THICKNESS / 2
-        width = (BASE_WIDTH - WEB_THICKNESS) / 2
-        below = box(
-            zone_length, width, 0.01, (-zone_length / 2, y, PAD_THICKNESS - 0.01)
-        )
-        above = translated_shape(below, z=0.01)
-        missing = abs(below.cut(section).Volume) + abs(above.cut(mount).Volume)
-        bottom_contacts.append(
-            {
-                "side": side_sign,
-                "minimum_area_mm2": zone_length * width,
-                "missing_contact_mm3": missing,
-                "passed": missing < TOL,
-            }
-        )
-    roof_relief = box(
-        zone_length,
-        WEB_THICKNESS,
-        MOUNT_INNER_ROOF_Z - WEB_TOP_Z,
-        (-zone_length / 2, -WEB_THICKNESS / 2, WEB_TOP_Z),
+    contacts = _rail_seat_contacts(section, mount, zone_length)
+    supports = _fastener_seat_contacts(
+        clamp, mount, head_support, head_face_y, nut_bearing_y, frame_contact_y
     )
-    blocked_roof_relief = abs(roof_relief.common(mount).Volume)
-    # Both side faces, above and below the longitudinal rail slot, must contact.
-    side = box(
-        zone_length,
-        0.01,
-        WEB_TOP_Z - MOUNT_BOTTOM_Z,
-        (-zone_length / 2, -WEB_THICKNESS / 2 - 0.01, MOUNT_BOTTOM_Z),
-    ).cut(_slot(-zone_length, zone_length))
-    missing_side = abs(side.cut(mount).Volume) + abs(
-        translated_shape(side, y=0.01).cut(section).Volume
-    )
-    opposite_side = translated_shape(side, y=WEB_THICKNESS + 0.01)
-    missing_opposite = abs(opposite_side.cut(mount).Volume) + abs(
-        translated_shape(opposite_side, y=-0.01).cut(section).Volume
-    )
-
-    def annulus(y, depth):
-        return Part.makeCylinder(
-            fasteners.RAIL_SCREW_HEAD_DIAMETER / 2,
-            depth,
-            V(0, y, BOLT_AXIS_Z),
-            V(0, 1, 0),
-        ).cut(
-            Part.makeCylinder(
-                SLOT_HEIGHT / 2, depth + 0.02, V(0, y - 0.01, BOLT_AXIS_Z), V(0, 1, 0)
-            )
-        )
-
-    missing_head = abs(annulus(head_face_y, 0.01).cut(clamp).Volume)
-    nut_floor = _nut_outer(
-        fasteners.RAIL_HEX_NUT_AF,
-        NUT_FLOOR_THICKNESS,
-        bearing_y=nut_bearing_y - NUT_FLOOR_THICKNESS,
-    ).cut(
-        Part.makeCylinder(
-            SLOT_HEIGHT / 2,
-            NUT_FLOOR_THICKNESS + 0.02,
-            V(0, nut_bearing_y - NUT_FLOOR_THICKNESS - 0.01, BOLT_AXIS_Z),
-            V(0, 1, 0),
-        )
-    )
-    missing_floor = abs(nut_floor.cut(clamp).Volume)
-    nut_face = _nut_outer(
-        fasteners.RAIL_HEX_NUT_AF, 0.01, bearing_y=nut_bearing_y - 0.01
-    ).cut(
-        Part.makeCylinder(
-            SLOT_HEIGHT / 2, 0.03, V(0, nut_bearing_y - 0.02, BOLT_AXIS_Z), V(0, 1, 0)
-        )
-    )
-    missing_nut = abs(nut_face.cut(clamp).Volume)
-    nut_area = nut_face.Volume / 0.01
-    frame_faces = []
-    if frame_contact_y is not None:
-        for side_sign in (-1, 1):
-            face_y = side_sign * frame_contact_y
-            inside = annulus(face_y if side_sign < 0 else face_y - 0.01, 0.01)
-            outside = translated_shape(inside, y=side_sign * 0.01)
-            missing_frame = abs(inside.cut(mount).Volume)
-            missing_saddle = (
-                outside.Volume
-                if head_support is None
-                else abs(outside.cut(head_support).Volume)
-            )
-            frame_faces.append(
-                {
-                    "side": side_sign,
-                    "face_y_mm": face_y,
-                    "missing_frame_support_mm3": missing_frame,
-                    "missing_saddle_support_mm3": missing_saddle,
-                    "passed": max(missing_frame, missing_saddle) < TOL,
-                }
-            )
     tip = head_face_y + screw_length
     engagement = tip - (nut_bearing_y + fasteners.RAIL_HEX_NUT_HEIGHT)
     nut_sweep, nut_method = translation_sweep(
@@ -956,20 +985,18 @@ def attachment_check(
         "seated_intersections_mm3": overlaps,
         "continuous_vertical_removal": {"method": method, "overlap_mm3": lift_overlap},
         "continuous_nut_release": {"method": nut_method, "overlap_mm3": nut_release},
-        "bottom_datum_contacts": bottom_contacts,
-        "inner_roof_clearance_mm": MOUNT_INNER_ROOF_Z - WEB_TOP_Z,
-        "blocked_inner_roof_relief_mm3": blocked_roof_relief,
-        "missing_flat_side_contact_mm3": missing_side,
-        "missing_opposite_side_contact_mm3": missing_opposite,
-        "missing_head_support_mm3": missing_head,
-        "missing_nut_support_mm3": missing_nut,
-        "missing_printed_nut_floor_mm3": missing_floor,
-        "nut_bearing_area_outside_bore_mm2": nut_area,
+        **contacts,
+        "missing_head_support_mm3": supports["missing_head_support_mm3"],
+        "missing_nut_support_mm3": supports["missing_nut_support_mm3"],
+        "missing_printed_nut_floor_mm3": supports["missing_printed_nut_floor_mm3"],
+        "nut_bearing_area_outside_bore_mm2": supports[
+            "nut_bearing_area_outside_bore_mm2"
+        ],
         "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
         "nut_bearing_y_mm": nut_bearing_y,
         "nut_pocket_outer_y_mm": nut_outer_y,
         "nominal_side_clearance_mm": 0.0,
-        "frame_saddle_contact_faces": frame_faces,
+        "frame_saddle_contact_faces": supports["frame_saddle_contact_faces"],
         "nut_30deg_rotation_stop_block_mm3": nut_rotation_stop,
         "bolt_length_mm": screw_length,
         "head_bearing_y_mm": head_face_y,
@@ -984,17 +1011,17 @@ def attachment_check(
         and lift_overlap < TOL
         and nut_release < TOL
         and max(
-            blocked_roof_relief,
-            missing_side,
-            missing_opposite,
-            missing_head,
-            missing_nut,
-            missing_floor,
+            contacts["blocked_inner_roof_relief_mm3"],
+            contacts["missing_flat_side_contact_mm3"],
+            contacts["missing_opposite_side_contact_mm3"],
+            supports["missing_head_support_mm3"],
+            supports["missing_nut_support_mm3"],
+            supports["missing_printed_nut_floor_mm3"],
         )
         < TOL
-        and all(row["passed"] for row in bottom_contacts)
-        and nut_area > 0
-        and all(row["passed"] for row in frame_faces)
+        and all(row["passed"] for row in contacts["bottom_datum_contacts"])
+        and supports["nut_bearing_area_outside_bore_mm2"] > 0
+        and all(row["passed"] for row in supports["frame_saddle_contact_faces"])
         and nut_rotation_stop > TOL
         and engagement >= fasteners.RAIL_THREAD_PITCH - TOL,
     }

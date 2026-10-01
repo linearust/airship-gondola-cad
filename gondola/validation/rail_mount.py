@@ -179,16 +179,22 @@ def _independent_wall_top_sections(shape):
     }
 
 
+def _literal_rail_slot(centre):
+    """Fresh independent slot witness, with the two caps fused in order."""
+    slot = Part.makeBox(12, 4.5, 3.4, V(centre - 6, -2.25, 5.3))
+    for offset in (-6, 6):
+        slot = slot.fuse(
+            Part.makeCylinder(1.7, 4.5, V(centre + offset, -2.25, 7), V(0, 1, 0))
+        )
+    return slot
+
+
 def _independent_slot_sections(shape):
     """Literal 15.4x3.4 mm openings, including their complete end/web stock."""
     rows = []
     for centre in range(-136, 137, 34):
         stock = Part.makeBox(26, 2.5, 9, V(centre - 13, -1.25, 1.5))
-        slot = Part.makeBox(12, 4.5, 3.4, V(centre - 6, -2.25, 5.3))
-        for offset in (-6, 6):
-            slot = slot.fuse(
-                Part.makeCylinder(1.7, 4.5, V(centre + offset, -2.25, 7), V(0, 1, 0))
-            )
+        slot = _literal_rail_slot(centre)
         actual = shape.common(stock)
         comparison = (
             geometry_comparison(actual, stock.cut(slot))
@@ -217,13 +223,8 @@ def _independent_slot_sections(shape):
     }
 
 
-def paired_spine_support_check(rail_in_module, frame):
-    """Independent full bottom datum and two supported rail-wall overlaps.
-
-    The 58 mm spine may bridge an 8 mm rail-wall gap. Both complete lower
-    lands bear on the continuous base; wall overlap and the local bolt zones
-    are checked separately. The 0.2 mm roof gap is intentional fit relief.
-    """
+def _paired_bottom_contacts(rail_in_module, frame):
+    """Require both complete lower lands on the continuous rail base."""
     bottoms = []
     for side, y in ((-1, -3), (1, 1.25)):
         below = Part.makeBox(58, 1.75, 0.01, V(-29, y, 1.49))
@@ -237,64 +238,72 @@ def paired_spine_support_check(rail_in_module, frame):
                 "passed": missing < TOL,
             }
         )
+    return bottoms
+
+
+def _paired_wall_support(rail_in_module, frame, intervals, axis):
+    """Check one bolt's wall overlap, load-zone margin and opposed side faces."""
+    matches = [(low, high) for low, high in intervals if low <= axis <= high]
+    if len(matches) != 1:
+        return {
+            "bolt_x_mm": axis,
+            "passed": False,
+            "error": "Each bolt must lie on one continuous wall",
+        }
+    first, last = matches[0]
+    low, high = max(first, -29), min(last, 29)
+    span = max(0.0, high - low)
+    end_margin = min(axis - 6 - first, last - axis - 6)
+    centre = (first + last) / 2
+    slot = _literal_rail_slot(centre)
+    faces = []
+    for side, y in ((-1, -1.25), (1, 1.24)):
+        inside = Part.makeBox(span, 0.01, 9, V(low, y, 1.5)).cut(slot)
+        outside = inside.copy()
+        outside.translate(V(0, side * 0.01, 0))
+        missing = abs(inside.cut(rail_in_module).Volume) + abs(
+            outside.cut(frame).Volume
+        )
+        faces.append(
+            {
+                "side": side,
+                "area_mm2": inside.Volume / 0.01,
+                "missing_contact_mm3": missing,
+                "passed": missing < TOL,
+            }
+        )
+    return {
+        "bolt_x_mm": axis,
+        "wall_interval_x_mm": [first, last],
+        "supported_side_interval_x_mm": [low, high],
+        "wall_overlap_length_mm": span,
+        "side_contacts": faces,
+        "centred_load_zone_length_mm": 12.0,
+        "minimum_load_zone_end_margin_mm": end_margin,
+        "passed": span >= 19 - TOL
+        and end_margin >= 1 - TOL
+        and all(face["passed"] for face in faces),
+    }
+
+
+def paired_spine_support_check(rail_in_module, frame):
+    """Independent full bottom datum and two supported rail-wall overlaps.
+
+    The 58 mm spine may bridge an 8 mm rail-wall gap. Both complete lower
+    lands bear on the continuous base; wall overlap and the local bolt zones
+    are checked separately. The 0.2 mm roof gap is intentional fit relief.
+    """
+    bottoms = _paired_bottom_contacts(rail_in_module, frame)
     relief = Part.makeBox(58, 2.5, 0.2, V(-29, -1.25, 10.5))
     blocked_relief = abs(relief.common(frame).Volume)
     line = Part.makeLine(V(-200, 0, 9.5), V(200, 0, 9.5))
     intervals = sorted(
         (e.BoundBox.XMin, e.BoundBox.XMax) for e in rail_in_module.common(line).Edges
     )
-    rows = []
-    for axis in (-17, 17):
-        matches = [(low, high) for low, high in intervals if low <= axis <= high]
-        if len(matches) != 1:
-            rows.append(
-                {
-                    "bolt_x_mm": axis,
-                    "passed": False,
-                    "error": "Each bolt must lie on one continuous wall",
-                }
-            )
-            continue
-        first, last = matches[0]
-        low, high = max(first, -29), min(last, 29)
-        span = max(0.0, high - low)
-        end_margin = min(axis - 6 - first, last - axis - 6)
-        centre = (first + last) / 2
-        slot = Part.makeBox(12, 4.5, 3.4, V(centre - 6, -2.25, 5.3))
-        for cap in (-6, 6):
-            slot = slot.fuse(
-                Part.makeCylinder(1.7, 4.5, V(centre + cap, -2.25, 7), V(0, 1, 0))
-            )
-        faces = []
-        for side, y in ((-1, -1.25), (1, 1.24)):
-            inside = Part.makeBox(span, 0.01, 9, V(low, y, 1.5)).cut(slot)
-            outside = inside.copy()
-            outside.translate(V(0, side * 0.01, 0))
-            missing = abs(inside.cut(rail_in_module).Volume) + abs(
-                outside.cut(frame).Volume
-            )
-            faces.append(
-                {
-                    "side": side,
-                    "area_mm2": inside.Volume / 0.01,
-                    "missing_contact_mm3": missing,
-                    "passed": missing < TOL,
-                }
-            )
-        rows.append(
-            {
-                "bolt_x_mm": axis,
-                "wall_interval_x_mm": [first, last],
-                "supported_side_interval_x_mm": [low, high],
-                "wall_overlap_length_mm": span,
-                "side_contacts": faces,
-                "centred_load_zone_length_mm": 12.0,
-                "minimum_load_zone_end_margin_mm": end_margin,
-                "passed": span >= 19 - TOL
-                and end_margin >= 1 - TOL
-                and all(face["passed"] for face in faces),
-            }
-        )
+    rows = [
+        _paired_wall_support(rail_in_module, frame, intervals, axis)
+        for axis in (-17, 17)
+    ]
     total = sum(row.get("wall_overlap_length_mm", 0) for row in rows)
     return {
         "spine_extent_mm": 58.0,
