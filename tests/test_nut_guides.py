@@ -118,7 +118,7 @@ class RecessedClampNutTests(unittest.TestCase):
         report = nut_guide_check(self.host, self.pose, 5.8, recessed=True)
         self.assertTrue(report["passed"], report)
         self.assertEqual(report["guide_height_mm"], 1.5)
-        box = Part.makeBox(18, 10, 8, App.Vector(-7, 21.25, -4))
+        box = Part.makeBox(19, 10, 8, App.Vector(-8, 21.25, -4))
         self.assertLess(self.host.cut(box).Volume, 1e-6)
         # A wide planar end replaces the separate raised circular stop flange.
         end = Part.makeBox(17.8, 0.1, 1, App.Vector(-6.9, 31.15, 2.9))

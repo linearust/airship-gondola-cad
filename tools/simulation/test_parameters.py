@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import FreeCAD as App
+import Part
 
 from gondola.cad import world_shape
 from gondola.config import BASELINE_FILE
@@ -17,6 +18,7 @@ from tools.simulation.export_parameters import (
     export,
     extract,
     optical_pitch_degrees,
+    printed_carrier_mass_properties,
     vector_m,
 )
 
@@ -24,6 +26,29 @@ from tools.simulation.export_parameters import (
 class UnitTests(unittest.TestCase):
     def test_si_conversion(self):
         self.assertEqual(vector_m((0, -74.9, 50)), [0, -0.0749, 0.05])
+
+    def test_uniform_print_mass_and_centroid_inertia_have_correct_si_units(self):
+        cube = Part.makeBox(10, 10, 10, App.Vector(5, -5, -5))
+        result = printed_carrier_mass_properties(cube)
+        self.assertAlmostEqual(result["mass_kg"], 0.00101)
+        self.assertEqual(result["centre_from_tilt_axis_neutral_m"], [0.01, 0, 0])
+        tensor = result["inertia_about_print_cg_neutral_kg_m2"]
+        for row in range(3):
+            for column in range(3):
+                self.assertAlmostEqual(
+                    tensor[row][column],
+                    0.00101 * 0.01**2 / 6 if row == column else 0,
+                    places=14,
+                )
+        self.assertEqual(
+            printed_carrier_mass_properties(Part.makeCompound([cube])), result
+        )
+        with self.assertRaisesRegex(ValueError, "exactly one solid"):
+            printed_carrier_mass_properties(
+                Part.makeCompound(
+                    [cube, Part.makeBox(10, 10, 10, App.Vector(25, -5, -5))]
+                )
+            )
 
 
 class SavedGeometryTests(unittest.TestCase):
@@ -44,18 +69,18 @@ class SavedGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(geo["main_pivot_span_m"], 0.150)
         self.assertEqual(geo["pivot_height_from_rail_contact_m"], 0.050)
         self.assertEqual(
-            geo["main_propulsors"]["Port"]["pivot_cad_m"], [-0.017, 0.075, 0.050]
+            geo["main_propulsors"]["Port"]["pivot_cad_m"], [0.014, 0.075, 0.050]
         )
         self.assertEqual(
-            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [-0.017, -0.075, 0.050]
+            geo["main_propulsors"]["Starboard"]["pivot_cad_m"], [0.014, -0.075, 0.050]
         )
         frame = geo["propulsion_reference_frame"]
-        self.assertEqual(frame["origin_cad_m"], [-0.017, 0, 0])
+        self.assertEqual(frame["origin_cad_m"], [0.014, 0, 0])
         self.assertEqual(
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.127, 0, 0.038])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.111, 0, 0.038])
         self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
         self.assertEqual(geo["optical_mount_side"], "PositiveX")
         self.assertNotIn("optical_rail_station_x_mm", geo)
@@ -63,12 +88,29 @@ class SavedGeometryTests(unittest.TestCase):
         for name in ("Port", "Starboard"):
             pod = self.doc.getObject(name + "Pod")
             self.assertEqual(
-                vector_m(pod.getGlobalPlacement().multVec(App.Vector(3, 0, 0))),
+                vector_m(pod.getGlobalPlacement().multVec(App.Vector(-0.6, 0, 0))),
                 geo["main_propulsors"][name]["motor_envelope_centre_cad_m"],
             )
             self.assertEqual(
-                vector_m(pod.getGlobalPlacement().multVec(App.Vector(15, 0, 0))),
-                geo["main_propulsors"][name]["propeller_envelope_centre_cad_m"],
+                vector_m(pod.getGlobalPlacement().multVec(App.Vector(-5, 0, 0))),
+                geo["main_propulsors"][name]["motor_mount_face_cad_m"],
+            )
+            rotor = result["rotating_assembly_analysis"][name]
+            self.assertEqual(
+                vector_m(pod.getGlobalPlacement().multVec(App.Vector(6.3, 0, 0))),
+                rotor["illustrative_propeller_disk_centre_cad_m"],
+            )
+            for key in (
+                "actual_hub_seating_offset_m",
+                "actual_hub_midplane_cad_m",
+                "actual_blade_axial_envelope_m",
+                "installed_rotating_mass_kg",
+                "installed_rotating_cg_from_tilt_axis_neutral_m",
+                "installed_rotating_inertia_about_cg_neutral_kg_m2",
+            ):
+                self.assertIsNone(rotor[key])
+            self.assertNotIn(
+                "propeller_envelope_centre_cad_m", geo["main_propulsors"][name]
             )
 
     def test_propulsion_frame_follows_continuous_station(self):
@@ -214,7 +256,7 @@ class SavedGeometryTests(unittest.TestCase):
                 disk = world_shape(
                     self.doc.getObject(name + "PropellerDisk")
                 ).CenterOfMass
-                self.assertLess(((disk - pivot) - 15 * axis).Length, 1e-7)
+                self.assertLess(((disk - pivot) - 6.3 * axis).Length, 1e-7)
                 for force_sign in (-1, 1):
                     force = force_sign * 2.5 * axis
                     self.assertLess(
@@ -264,7 +306,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 4)
+                self.assertEqual(snapshot["schema_version"], 5)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

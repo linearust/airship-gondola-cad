@@ -18,11 +18,14 @@ from gondola.provenance import file_sha256  # noqa: E402
 from tools.cad_snapshot import open_validated_cad, write_json_atomic  # noqa: E402
 
 PARTS = {
-    "RailPairCoupon": ("ContinuousRail", (62, 28, 12.5)),
-    "FrameJointCoupon": ("PropulsionFixedFrame", (62, 28, 12.5)),
-    "SaddleJointCoupon": ("ServoDriveBridge", (62, 28, 14.5)),
+    "RailPairCoupon": ("ContinuousRail", (50, 28, 12.5)),
+    "FrameJointCoupon": ("PropulsionFixedFrame", (50, 28, 12.5)),
+    "SaddleJointCoupon": ("ServoDriveBridge", (50, 28, 15.0)),
 }
-CROP_ORIGIN = (-31, -14, 0)
+# Retain the entire 46 mm spine and both 20 mm rail walls (at +/-14),
+# including the full 2.5 mm saddle roof. The extra millimetre beyond each
+# rail wall is coupon stock, not a change to the installed interface.
+CROP_ORIGIN = (-25, -14, 0)
 TOL = 1e-6
 
 
@@ -77,9 +80,9 @@ def joint_checks(shapes):
     contacts = []
     # Both full side walls contact the frame, except their two bolt bores and
     # the central relief needed to pass the transverse propulsion wings.
-    side_contact = 39.6 * 10.3 - 2 * math.pi * 1.7**2
+    side_contact = 27.6 * 10.3 - 2 * math.pi * 1.7**2
     for name, first, second, axis, station, area, region in (
-        ("full_U_roof", frame, saddle, 2, 12.5, 58 * 12, (-29, -6, 0, 58, 12, 20)),
+        ("full_U_roof", frame, saddle, 2, 12.5, 46 * 12, (-23, -6, 0, 46, 12, 20)),
         ("negative_beam_roof", frame, saddle, 2, 12.5, 90, (-9, -11, 0, 18, 5, 20)),
         ("positive_beam_roof", frame, saddle, 2, 12.5, 90, (-9, 6, 0, 18, 5, 20)),
         ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
@@ -90,8 +93,8 @@ def joint_checks(shapes):
             frame,
             2,
             1.5,
-            101.5,
-            (-29, -6, 0, 58, 4.75, 20),
+            80.5,
+            (-23, -6, 0, 46, 4.75, 20),
         ),
         (
             "positive_bottom_datum",
@@ -99,8 +102,8 @@ def joint_checks(shapes):
             frame,
             2,
             1.5,
-            101.5,
-            (-29, 1.25, 0, 58, 4.75, 20),
+            80.5,
+            (-23, 1.25, 0, 46, 4.75, 20),
         ),
     ):
         if region is not None:
@@ -119,14 +122,15 @@ def joint_checks(shapes):
             }
         )
     bores = []
-    for x in (-17, 17):
-        tool = Part.makeCylinder(1.5, 28, App.Vector(x, -14, 7), App.Vector(0, 1, 0))
+    for x in (-15, 15):
+        tool = Part.makeCylinder(1.5, 28, App.Vector(x, -14, 6), App.Vector(0, 1, 0))
         volumes = {
             name: abs(shape.common(tool).Volume) for name, shape in shapes.items()
         }
         bores.append(
             {
                 "axis_x_mm": x,
+                "axis_z_mm": 6.0,
                 "obstruction_mm3": volumes,
                 "passed": all(value < TOL for value in volumes.values()),
             }

@@ -110,10 +110,10 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         doc, _ = self.module()
         # The sphere's polar vertices fit the declaration; its curved equator
         # protrudes. A vertices-only envelope test would accept this change.
-        centre = App.Vector(15.5, 0, 24.5)
+        centre = App.Vector(9, 0, 24.5)
         centre.normalize()
-        centre *= GUARD_SPHERE_RADIUS_MM - 0.5
-        bulge = Part.makeSphere(1, centre, App.Vector(0, 1, 0))
+        centre *= GUARD_SPHERE_RADIUS_MM - 2
+        bulge = Part.makeSphere(3, centre, App.Vector(0, 1, 0))
         self.assertGreater(bulge.common(doc.PortMotorCarrier.Shape).Volume, 0.1)
         self.assertTrue(bulge.Vertexes)
         self.assertTrue(

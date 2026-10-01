@@ -142,7 +142,7 @@ def slot_mounting_pad_check(
     bore = Part.makeCylinder(hole_diameter / 2, thickness, origin)
     candidates = []
     for spec in mounting_slots.rows():
-        if spec["family"] != "square16_23":
+        if spec["family"] != "central_axis":
             continue
         opening = mounting_slots.shape(spec, bottom, thickness)
         if bore.cut(opening).Volume < TOL:
@@ -151,7 +151,7 @@ def slot_mounting_pad_check(
         return {
             "centre_xy_mm": list(centre),
             "matching_slot_count": len(candidates),
-            "error": "Device fastener axis must fit exactly one diagonal M2 slot",
+            "error": "Device fastener axis must fit exactly one axial M2 slot",
             "passed": False,
         }
     spec, opening = candidates[0]
@@ -283,6 +283,72 @@ def carrier_centre_mount_check(shape):
     }
 
 
+def optional_payload_pattern_checks(shape, *, bottom, thickness):
+    """Check optional published axes and bearing faces, not installed devices.
+
+    The circular faces are explicit hardware acceptance envelopes. Keeping the
+    material underneath these faces does not qualify actual fastener preload,
+    standoff height, plate strength or the occupied device installation.
+    """
+    from gondola.parts import mounting_slots
+
+    results = []
+    openings_by_family = {}
+    for spec in mounting_slots.rows():
+        if spec["family"] in ("rectangle58_49", "rectangle25_30_square30_5"):
+            openings_by_family.setdefault(spec["family"], []).append(
+                mounting_slots.shape(spec, bottom, thickness)
+            )
+    for name, profile in mounting_slots.optional_payload_profiles().items():
+        for quarter_turn in (False, True):
+            px, py = profile["pattern_mm"]
+            if quarter_turn:
+                px, py = py, px
+            for x in (-px / 2, px / 2):
+                for y in (-py / 2, py / 2):
+                    origin = App.Vector(x, y, bottom)
+                    bore = Part.makeCylinder(1.25, thickness, origin)
+                    candidates = []
+                    for opening in openings_by_family[profile["slot_family"]]:
+                        if bore.cut(opening).Volume < TOL:
+                            candidates.append(opening)
+                    if len(candidates) != 1:
+                        results.append(
+                            {
+                                "device": name,
+                                "centre_xy_mm": (x, y),
+                                "passed": False,
+                                "error": "Missing unique published mounting axis",
+                            }
+                        )
+                        continue
+                    disk = Part.makeCylinder(
+                        profile["bearing_diameter_mm"] / 2, thickness, origin
+                    )
+                    bearing = disk.cut(candidates[0])
+                    missing = abs(bearing.cut(shape).Volume)
+                    obstruction = intersection_volume(shape, bore)
+                    area = bearing.Volume / thickness
+                    results.append(
+                        {
+                            "device": name,
+                            "quarter_turn": quarter_turn,
+                            "centre_xy_mm": (x, y),
+                            "fastener_diameter_mm": 2.5,
+                            "bearing_diameter_mm": profile["bearing_diameter_mm"],
+                            "bearing_area_mm2": area,
+                            "missing_bearing_mm3": missing,
+                            "screw_obstruction_mm3": obstruction,
+                            "passed": missing < TOL and obstruction < TOL and area > 5,
+                        }
+                    )
+    return {
+        "axes": results,
+        "scope": "Optional geometric patterns and flat hardware-bearing acceptance faces only; no device, standoff or mass added to baseline. Retain the A8 manufacturer damping assembly. Electrical compatibility, occupied clearances, strength and actual seating remain unqualified.",
+        "passed": bool(results) and all(row["passed"] for row in results),
+    }
+
+
 def carrier_opening_checks(
     shape,
     *,
@@ -363,7 +429,9 @@ def carrier_opening_checks(
         )
         for centre in mounts.PAS_HOLE_CENTRES
     ]
+    payload = optional_payload_pattern_checks(shape, bottom=bottom, thickness=thickness)
     return {
+        "optional_payload_patterns": payload,
         "fixed_device_bores": fixed,
         "mounting_slots": slots,
         "fixed_bore_count": len(fixed),
@@ -376,12 +444,13 @@ def carrier_opening_checks(
         "deck_symmetry": symmetry,
         "nominal_adhesive_patches": contact,
         "pas_slot_mounts": pas,
-        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC axes retain complete bearing annuli; P-AS axes use the diagonal slots with the complete expected side-bearing material. The saved deck is a centred square with quarter-turn and X/Y mirror symmetry. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
+        "scope": "Exact full-opening and continuous rim volume checks, including rounded ends and the entire curved edges. Fixed FC axes retain complete bearing annuli; P-AS axes use the axial slots with the complete expected side-bearing material. The saved deck is a centred square with quarter-turn and X/Y mirror symmetry. These checks do not qualify loaded slot clamping, arbitrary bolt heads, adhesive strength or every position's equipment clearance.",
         "passed": single_solid
         and bool(fixed)
         and bool(slots)
         and symmetry["passed"]
         and contact["passed"]
+        and payload["passed"]
         and all(row["passed"] for row in fixed + slots + pas),
     }
 
@@ -513,8 +582,8 @@ def mounting_check(doc):
         else:
             published_hole_axes = [
                 App.Vector(
-                    x + mounts.NAVIGATION_CENTRE_XY[0],
-                    y + mounts.NAVIGATION_CENTRE_XY[1],
+                    x + mounts.PAS_CENTRE_XY[0],
+                    y + mounts.PAS_CENTRE_XY[1],
                     0,
                 )
                 for x, y in interfaces.PAS_HOLE_CENTRES
@@ -640,7 +709,7 @@ def mounting_check(doc):
         centre = (
             mounts.FC_CENTRE_XY
             if name == "ModuleFCEnvelope"
-            else layout.navigation_centre()
+            else layout.navigation_centre(navigation_profile)
         )
         space = Part.makeBox(
             dimensions[0],

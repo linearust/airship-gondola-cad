@@ -15,16 +15,26 @@ class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
         self.assertEqual(len(stations), 4)
-        self.assertEqual(stations["MainPropulsionModule"].x_mm, -17.0)
-        self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 100)
-        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -70)
+        self.assertEqual(stations["MainPropulsionModule"].x_mm, 14.0)
+        self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 84)
+        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -56)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         propulsion = stations["MainPropulsionModule"]
-        self.assertEqual(propulsion.contact_length_mm, 58)
-        self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 0)
+        self.assertEqual(propulsion.contact_length_mm, 46)
+        self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 29)
         self.assertNotIn("OpticalFlowModule", stations)
+
+    def test_shared_plate_stations_leave_room_for_the_larger_square(self):
+        # Independent plan-view witness; full solid/wiring checks follow in CAD.
+        carriers = sorted(
+            s.x_mm for s in MODULE_STATIONS if s.object_name != "MainPropulsionModule"
+        )
+        self.assertEqual(carriers, [-140, -56, 84])
+        self.assertTrue(
+            all(right - left > 66 for left, right in zip(carriers, carriers[1:]))
+        )
 
     def test_compact_rail_preserves_base_end_margin_and_manufacturing_limit(self):
         from gondola.contracts.design import (
@@ -44,7 +54,7 @@ class ModuleLayoutTests(unittest.TestCase):
             next(
                 s for s in MODULE_STATIONS if s.object_name == "MainPropulsionModule"
             ).attachment_offset_x_mm,
-            17.0,
+            15.0,
         )
 
     def test_modules_allow_only_fixed_forward_or_reverse_orientation(self):
@@ -75,24 +85,24 @@ class ModuleLayoutTests(unittest.TestCase):
             asdict(station),
             {
                 "object_name": "MainPropulsionModule",
-                "x_mm": -17.0,
+                "x_mm": 14.0,
                 "yaw_deg": 0,
-                "attachment_offset_x_mm": 17.0,
-                "contact_length_mm": 58.0,
+                "attachment_offset_x_mm": 15.0,
+                "contact_length_mm": 46.0,
             },
         )
         pattern = station.attachment_pattern
-        self.assertEqual(station.attachment_offsets_x_mm, (17.0, -17.0))
+        self.assertEqual(station.attachment_offsets_x_mm, (15.0, -15.0))
         self.assertEqual(
-            pattern.sites(17),
+            pattern.sites(15),
             (
-                {"prefix": "", "x_offset": 17, "side": 1},
-                {"prefix": "Opposite", "x_offset": -17, "side": -1},
+                {"prefix": "", "x_offset": 15, "side": 1},
+                {"prefix": "Opposite", "x_offset": -15, "side": -1},
             ),
         )
         self.assertEqual(
             (pattern.count, pattern.spacing_mm, pattern.screw_length_mm),
-            (2, 34.0, 20.0),
+            (2, 30.0, 20.0),
         )
         self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -9.0)
         ordinary = attachment_pattern(False)

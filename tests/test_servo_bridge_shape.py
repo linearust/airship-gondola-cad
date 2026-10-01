@@ -49,7 +49,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
             },
         )
         self.assertAlmostEqual(
-            contacts["full_roof_support"]["actual_contact_area_mm2"], 696
+            contacts["full_roof_support"]["actual_contact_area_mm2"], 552
         )
         for name, y in (
             ("negative_y_wall", -6),
@@ -57,26 +57,26 @@ class ServoBridgeShapeTests(unittest.TestCase):
         ):
             self.assertAlmostEqual(
                 contacts[name]["actual_contact_area_mm2"],
-                39.6 * 10.3 - 2 * math.pi * 1.7**2,
+                27.6 * 10.3 - 2 * math.pi * 1.7**2,
             )
             self.assertEqual(contacts[name]["plane_position_mm"], y)
         for side in ("Port", "Starboard"):
             for kind in ("Bolt", "Nut"):
                 self.assertIsNone(self.doc.getObject("ServoBridge" + side + kind))
         self.assertEqual(result["wrap_fit"]["nominal_fitted_side_gap_mm"], 0.0)
-        self.assertEqual(result["wrap_fit"]["clamp_axis_spacing_mm"], 34)
+        self.assertEqual(result["wrap_fit"]["clamp_axis_spacing_mm"], 30)
 
     def test_bridge_roof_is_flat_and_beam_relief_is_functional(self):
         bridge = self.doc.ServoDriveBridge.Shape
         self.assertTrue(bridge.isValid())
         self.assertEqual(len(bridge.Solids), 1)
-        roof = Part.makeBox(58, 22, 2, App.Vector(-29, -11, 12.5))
+        roof = Part.makeBox(46, 22, 2.5, App.Vector(-23, -11, 12.5))
         self.assertLess(abs(roof.cut(bridge).Volume), 1e-7)
         relief = Part.makeBox(18.4, 22, 10.3, App.Vector(-9.2, -11, 2.2))
         self.assertLess(abs(relief.common(bridge).Volume), 1e-7)
         for sign in (1, -1):
             wall = self.opposite(
-                Part.makeBox(19.8, 5, 1, App.Vector(-29, -11, 11)), sign
+                Part.makeBox(13.8, 5, 1, App.Vector(-23, -11, 11)), sign
             )
             self.assertLess(abs(wall.cut(bridge).Volume), 1e-7)
 
@@ -89,12 +89,12 @@ class ServoBridgeShapeTests(unittest.TestCase):
                 ("PropulsionFixedFrame", 1.25, 4.75),
             ):
                 stock = Part.makeCylinder(
-                    3, thickness, App.Vector(17, y, 7), App.Vector(0, 1, 0)
+                    3, thickness, App.Vector(15, y, 6), App.Vector(0, 1, 0)
                 ).cut(
                     Part.makeCylinder(
                         1.7,
                         thickness + 0.2,
-                        App.Vector(17, y - 0.1, 7),
+                        App.Vector(15, y - 0.1, 6),
                         App.Vector(0, 1, 0),
                     )
                 )
@@ -120,7 +120,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
             for sign in (1, -1):
                 try:
                     loss = self.opposite(
-                        Part.makeBox(1, 0.5, 0.3, App.Vector(16.5, y, 9.2)), sign
+                        Part.makeBox(1, 0.5, 0.3, App.Vector(14.5, y, 8.2)), sign
                     )
                     obj.Shape = original.cut(loss)
                     self.doc.recompute()
@@ -135,7 +135,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         original = frame.Shape.copy()
         try:
             frame.Shape = original.cut(
-                Part.makeBox(58, 12, 0.2, App.Vector(-29, -6, 12.4))
+                Part.makeBox(46, 12, 0.2, App.Vector(-23, -6, 12.4))
             )
             self.doc.recompute()
             result = self.joint()
@@ -152,7 +152,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         bridge = self.doc.ServoDriveBridge
         original = bridge.Shape.copy()
         for sign in (1, -1):
-            for kind, origin in (("missing", (24, -11, 7)), ("blocked", (-1, -8, 4))):
+            for kind, origin in (("missing", (21, -11, 6)), ("blocked", (-1, -8, 4))):
                 try:
                     change = self.opposite(
                         Part.makeBox(2, 0.4, 1, App.Vector(*origin)), sign
@@ -175,7 +175,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
         for sign in (1, -1):
             try:
                 loss = self.opposite(
-                    Part.makeBox(1, 0.2, 0.5, App.Vector(25, -6.1, 10)), sign
+                    Part.makeBox(1, 0.2, 0.5, App.Vector(21, -6.1, 10)), sign
                 )
                 frame.Shape = original.cut(loss)
                 self.doc.recompute()
@@ -212,7 +212,7 @@ class ServoBridgeShapeTests(unittest.TestCase):
 
         envelope = servo_bridge.bridge_blank()
         self.assertLess(abs(self.doc.ServoDriveBridge.Shape.cut(envelope).Volume), 1e-7)
-        frame_seat = Part.makeBox(58, 12, 7.1, App.Vector(-29, -6, 5.4))
+        frame_seat = Part.makeBox(46, 12, 7.1, App.Vector(-23, -6, 5.4))
         self.assertLess(abs(frame_seat.common(envelope).Volume), 1e-7)
 
     def test_ordered_service_keeps_shifted_driven_shafts_as_obstacles(self):

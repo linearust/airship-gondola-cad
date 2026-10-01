@@ -1043,10 +1043,10 @@ def servo_case_service_check(
 def frame_rail_bore_filled(frame):
     """Fill both round side bores outside the fitted rail channel for exact sweeps."""
     additions = []
-    for site in rail.attachment_sites(x_offset=17, shared_drive=True):
+    for site in rail.attachment_sites(x_offset=15, shared_drive=True):
         for start_y in (-6.0, 1.25):
             plug = Part.makeCylinder(
-                1.7, 4.75, App.Vector(0, start_y, 7), App.Vector(0, 1, 0)
+                1.7, 4.75, App.Vector(0, start_y, 6), App.Vector(0, 1, 0)
             )
             additions.append(rail.attachment_site_shape(plug, site))
     return frame.fuse(additions).removeSplitter()
@@ -1057,9 +1057,7 @@ def vertical_frame_release_check(frame, rail_shape=None):
     from gondola.parts import servo_bridge
 
     rail_shape = (
-        translated_shape(rail.rail_shape(), x=propulsion.RAIL_BOLT_OFFSET_X)
-        if rail_shape is None
-        else rail_shape
+        translated_shape(rail.rail_shape(), x=14) if rail_shape is None else rail_shape
     )
     bounds = frame.BoundBox
     split_z = servo_bridge.CONNECTOR_PLATE_BOTTOM_Z
@@ -1096,7 +1094,7 @@ def rail_mount_clearance_check(doc, module):
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
-    sites = rail.attachment_sites(x_offset=17, shared_drive=True)
+    sites = rail.attachment_sites(x_offset=15, shared_drive=True)
     expected = {}
     for site in sites:
         for suffix, shape in (
@@ -1110,7 +1108,7 @@ def rail_mount_clearance_check(doc, module):
     complete = not present or set(present) == set(expected)
     for name, shape in expected.items():
         shapes.setdefault(name, shape)
-    shapes["LocalRailReference"] = translated_shape(rail.rail_shape(), x=17)
+    shapes["LocalRailReference"] = translated_shape(rail.rail_shape(), x=14)
     rows = [
         _rail_site_clearance_check(doc, module, site, shapes, present) for site in sites
     ]
@@ -1120,7 +1118,7 @@ def rail_mount_clearance_check(doc, module):
         "expected_rail_fasteners": sorted(expected),
         "complete_saved_fastener_set": complete,
         "shared_servo_bridge_clamp": True,
-        "clamp_spacing_mm": 34.0,
+        "clamp_spacing_mm": 30.0,
         "removed_before_access": [],
         "scope": "Both opposed pairs are checked with the other pair and the entire mechanism retained. Local rigid clearance only; fitted curvature, simultaneous seating, preload and loaded stiffness require physical validation.",
         "passed": complete and all(row["passed"] for row in rows),
@@ -1139,7 +1137,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         name: (servo_bridge.opposite(shape) if site["side"] < 0 else shape.copy())
         for name, shape in shapes.items()
     }
-    x, z = 17.0, 7.0
+    x, z = 15.0, 6.0
     screw_name, nut_name = (
         module["group"].Name + site["prefix"] + suffix
         for suffix in ("RailMountScrew", "RailMountNut")
@@ -1184,7 +1182,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
     contact = rail.attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
-        contact_length=58,
+        contact_length=46,
         shared_drive=True,
         screw_length=20,
         head_face_y=-9.0,
@@ -1236,14 +1234,14 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "screw_length_mm": servo_bridge.SHARED_SCREW_LENGTH,
         "driver_access": driver,
         "centred_load_zone_x_range_mm": [x - 6, x + 6],
-        "physical_spine_x_range_mm": [-29, 29],
+        "physical_spine_x_range_mm": [-23, 23],
         "bolt_withdrawal": withdrawal,
         "nut_removal_after_bolt": nut_path,
         "driver_clearance_overlap_mm3": stem_hits,
         "nut_window_anti_rotation": capture,
         "frame_vertical_removal": lift,
         "seated_intersections_mm3": overlaps,
-        "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared recessed M3x20 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem is an external access envelope; the blind hex pocket limits nut rotation and retains a 2 mm nominal load-bearing floor. Actual socket engagement, nut insertion, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
+        "scope": "All local servo, gear, bearing and rotor hardware stays installed. The shared recessed M3x20 rail/bridge screw and nut are serviced; support the frame and bridge together throughout release. The Ø4 driver stem is an external access envelope; the downward-open hex pocket with vertical flats limits nut rotation and retains a 2 mm nominal load-bearing floor. Actual socket engagement, nut insertion, finger access, harnesses, clamp force and bending remain bench checks. Complete populated-assembly service is audited separately.",
         "passed": contact["passed"]
         and paired_support["passed"]
         and all(row["passed"] for row in hardware_geometry)
@@ -1267,7 +1265,7 @@ def bearing_post_roots_check(doc):
     # One uninterrupted raised beam carries all four roots into the U spine.
     # Keep this literal witness independent of source-builder dimensions.
     beam = Part.makeBox(18, 226.5, 5, App.Vector(-9, -113.25, 7.5)).cut(
-        Part.makeBox(20, 2.5, 10.7, App.Vector(-10, -1.25, 0))
+        Part.makeBox(20, 2.5, 9.7, App.Vector(-10, -1.25, 0))
     )
     missing_beam = abs(beam.cut(shape).Volume)
     rows = []
@@ -1877,12 +1875,12 @@ def _record_print_checks(report, module, physical):
             "guard_radial",
             "PortMotorCarrier",
             (
-                propulsion.PROPELLER_PLANE_X,
+                propulsion.GUARD_PLANE_X,
                 propulsion.PIVOT_HALF_SPAN,
                 propulsion.PIVOT_Z + 22.99,
             ),
             (
-                propulsion.PROPELLER_PLANE_X,
+                propulsion.GUARD_PLANE_X,
                 propulsion.PIVOT_HALF_SPAN,
                 propulsion.PIVOT_Z + 25.01,
             ),

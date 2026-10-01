@@ -132,32 +132,35 @@ class MountingSlotTests(unittest.TestCase):
                 )
                 self.assertFalse(changed["passed"])
 
-    def test_slot_volumes_match_capsule_and_rounded_arc_formulae(self):
+    def test_straight_capsule_volumes_and_joined_path_solids(self):
         from gondola.parts import mounting_slots
 
         rows = mounting_slots.rows()
-        self.assertEqual(len(rows), 28)
+        self.assertEqual(len(rows), 36)
         self.assertEqual(len({row["name"] for row in rows}), len(rows))
-        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 24)
-        self.assertEqual(sum(row["kind"] == "arc" for row in rows), 4)
+        self.assertEqual(sum(row["kind"] == "straight" for row in rows), 32)
+        self.assertEqual(sum(row["kind"] == "polyline" for row in rows), 4)
         for row in rows:
             for border in (0.0, 1.5):
                 radius = row["width_mm"] / 2 + border
                 if row["kind"] == "straight":
                     length = math.dist(row["start_xy_mm"], row["end_xy_mm"])
                 else:
-                    length = row["radius_mm"] * math.radians(
-                        row["end_angle_deg"] - row["start_angle_deg"]
-                    )
+                    # Corner paths must be one solid; exact constituent capsule
+                    # volumes are checked separately below for straight rows.
+                    length = None
                 shape = mounting_slots.shape(row, 7.0, 2.0, border=border)
                 with self.subTest(slot=row["name"], border=border):
                     self.assertTrue(shape.isValid())
                     self.assertEqual(len(shape.Solids), 1)
-                    self.assertAlmostEqual(
-                        shape.Volume,
-                        2 * (2 * radius * length + math.pi * radius**2),
-                        places=6,
-                    )
+                    if length is not None:
+                        self.assertAlmostEqual(
+                            shape.Volume,
+                            2 * (2 * radius * length + math.pi * radius**2),
+                            places=6,
+                        )
+                    else:
+                        self.assertGreater(shape.Volume, 2 * math.pi * radius**2)
                     self.assertAlmostEqual(shape.BoundBox.ZMin, 7)
                     self.assertAlmostEqual(shape.BoundBox.ZMax, 9)
 
@@ -172,7 +175,7 @@ class MountingSlotTests(unittest.TestCase):
         self.assertEqual(len(specs), 4)
         self.assertEqual(
             mounting_slots.contract()["central_axis_opposed_pitch_range_mm"],
-            (24.8, 26.8),
+            (23.0, 26.8),
         )
         for name, solid, bottom in (
             ("carrier", mounts.mount_shape("battery"), mounts.DECK_BOTTOM_Z),
@@ -211,12 +214,12 @@ class MountingSlotTests(unittest.TestCase):
         straight = next(
             row for row in mounting_slots.rows() if row["kind"] == "straight"
         )
-        arc = next(row for row in mounting_slots.rows() if row["kind"] == "arc")
+        path = next(row for row in mounting_slots.rows() if row["kind"] == "polyline")
         for row in (
             {**straight, "end_xy_mm": straight["start_xy_mm"]},
-            {**arc, "end_angle_deg": arc["start_angle_deg"]},
-            {**arc, "end_angle_deg": arc["start_angle_deg"] + 360},
-            {**arc, "radius_mm": 0.5},
+            {**path, "points_xy_mm": ()},
+            {**path, "points_xy_mm": path["points_xy_mm"][:2]},
+            {**path, "points_xy_mm": ((0, 0), (0, 0), (1, 0))},
             {**straight, "kind": "unknown"},
         ):
             with self.subTest(row=row), self.assertRaises(ValueError):
@@ -242,9 +245,9 @@ class MountingSlotTests(unittest.TestCase):
         specs = [
             next(row for row in mounting_slots.rows() if row["family"] == family)
             for family in (
-                "square16_23",
+                "square16_20",
                 "square40_45",
-                "square30_5",
+                "rectangle25_30_square30_5",
                 "central_axis",
                 "side",
             )
@@ -254,18 +257,15 @@ class MountingSlotTests(unittest.TestCase):
         )
         for row in specs:
             fraction = 0.413
-            if row["kind"] == "arc":
-                angle = math.radians(
-                    row["start_angle_deg"]
-                    + fraction * (row["end_angle_deg"] - row["start_angle_deg"])
-                )
-                normal = App.Vector(math.cos(angle), math.sin(angle), 0)
-                centre = normal * row["radius_mm"]
-            else:
-                start = App.Vector(*row["start_xy_mm"], 0)
-                delta = App.Vector(*row["end_xy_mm"], 0) - start
-                centre = start + delta * fraction
-                normal = App.Vector(-delta.y, delta.x, 0) / delta.Length
+            points = (
+                row["points_xy_mm"][:2]
+                if row["kind"] == "polyline"
+                else (row["start_xy_mm"], row["end_xy_mm"])
+            )
+            start = App.Vector(*points[0], 0)
+            delta = App.Vector(*points[1], 0) - start
+            centre = start + delta * fraction
+            normal = App.Vector(-delta.y, delta.x, 0) / delta.Length
             centre.z = mounts.DECK_BOTTOM_Z
             # A disk crossing both edges is joined to the existing plate: failure
             # must come from the obstructed slot, not disconnected-solid status.
@@ -302,7 +302,7 @@ class MountingSlotTests(unittest.TestCase):
         from gondola.validation.equipment_options import adhesive_support_check
 
         self.assertEqual(
-            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 328
+            sum(size[0] * size[1] for _, size in mounts.BATTERY_ADHESIVE_REGIONS), 304
         )
         support = mounts.mount_shape("accessory")
         body = equipment_envelopes.radio_envelope_shape()
@@ -355,6 +355,40 @@ class MountingSlotTests(unittest.TestCase):
                             "passed"
                         ]
                     )
+
+    def test_optional_payload_axes_and_bearing_faces_use_published_rectangles(self):
+        from gondola.parts import equipment_mounts as mounts
+        from gondola.validation.equipment import optional_payload_pattern_checks
+
+        plate = mounting_plate.shape()
+        report = optional_payload_pattern_checks(
+            plate, bottom=mounts.DECK_BOTTOM_Z, thickness=2
+        )
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(len(report["axes"]), 16)
+        carrier = mounts.mount_shape("electronics")
+        for row in report["axes"]:
+            # A2mm-tall circular acceptance head under an unloaded rail carrier
+            # clears its risers and shoe. This is not installed device clearance.
+            head = Part.makeCylinder(
+                row["bearing_diameter_mm"] / 2, 2, App.Vector(*row["centre_xy_mm"], 15)
+            )
+            self.assertLess(head.common(carrier).Volume, 1e-6)
+        # Literal published patterns independently catch a mistaken square pitch.
+        for px, py in ((58, 49), (49, 58), (25, 30), (30, 25)):
+            for x in (-px / 2, px / 2):
+                for y in (-py / 2, py / 2):
+                    screw = Part.makeCylinder(1.25, 2, App.Vector(x, y, 17))
+                    self.assertLess(screw.common(plate).Volume, 1e-6)
+        # Filling a screw path and removing a real bearing land are distinct faults.
+        plugged = plate.fuse(Part.makeCylinder(0.4, 2, App.Vector(29, 24.5, 17)))
+        self.assertFalse(
+            optional_payload_pattern_checks(plugged, bottom=17, thickness=2)["passed"]
+        )
+        notched = plate.cut(Part.makeCylinder(0.2, 2, App.Vector(31.2, 24.5, 17)))
+        self.assertFalse(
+            optional_payload_pattern_checks(notched, bottom=17, thickness=2)["passed"]
+        )
 
     def test_void_probe_cannot_omit_part_of_declared_deck_thickness(self):
         from gondola.parts import equipment_mounts as mounts

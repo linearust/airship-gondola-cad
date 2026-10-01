@@ -1,7 +1,7 @@
 """Flexible PA12 base with segmented walls and recessed M3 U mounts.
 
 Each wall slot permits local longitudinal adjustment. A fitted U mount bears
-on both sides of the wall. A blind hex pocket retains a printed nut-bearing
+on both sides of the wall. An open-bottom hex recess retains a printed nut-bearing
 floor; segment gaps retain compliance outside the supported joint footprint.
 """
 
@@ -27,22 +27,25 @@ from gondola.contracts.rail_attachments import attachment_pattern
 
 V = App.Vector
 LENGTH = RAIL_LENGTH_MM
-PAD_CENTRES = (-136.0, 0.0, 136.0)
+PAD_CENTRES = (-140.0, 0.0, 140.0)
 PAD_LENGTH, PAD_WIDTH, PAD_THICKNESS = 14.0, 32.0, RAIL_BASE_THICKNESS_MM
 BASE_WIDTH = 6.0
-WALL_LENGTH, WALL_PITCH = 26.0, 34.0
-WALL_CENTRES = tuple(index * WALL_PITCH for index in range(-4, 5))
-WEB_THICKNESS, WEB_TOP_Z = 2.5, 10.5
-SLOT_HEIGHT, BOLT_AXIS_Z = 3.4, 7.0
-SLOT_CENTRE_HALF_SPAN = 6.0
-SHARED_SPINE_LENGTH = 58.0
+WALL_LENGTH, WALL_PITCH = 20.0, 28.0
+WALL_CENTRES = tuple(index * WALL_PITCH for index in range(-5, 6))
+WEB_THICKNESS, WEB_TOP_Z = 2.5, 9.5
+SLOT_HEIGHT, BOLT_AXIS_Z = 3.4, 6.0
+SLOT_CENTRE_HALF_SPAN = 3.0
+SHARED_SPINE_LENGTH = 46.0
 SHARED_LOAD_ZONE_LENGTH = 12.0
-SHARED_TRIM_HALF_RANGE = 6.0
-SHARED_MINIMUM_WALL_SEAT = 19.0
-SHARED_MINIMUM_TOTAL_SEAT = 45.0
+SHARED_BOLT_HALF_RANGE = 3.0
+# The 30 mm bolt pair sits 1 mm outward of the 28 mm wall-centre pair.
+# Individual bolt travel and complete module travel are different quantities.
+SHARED_TRIM_HALF_RANGE = 2.0
+SHARED_MINIMUM_WALL_SEAT = 17.0
+SHARED_MINIMUM_TOTAL_SEAT = 37.0
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = 16.0, 4.0
 MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, 12.5
-MOUNT_INNER_ROOF_Z = 10.7
+MOUNT_INNER_ROOF_Z = 9.7
 MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
 HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
 HEAD_BEARING_Y = MOUNT_OUTER_Y + HEAD_RECESS_DEPTH
@@ -148,40 +151,65 @@ def attachment_windows(
     """Intersect bolt travel with the explicitly selected contact policy.
 
     Carrier feet retain their complete footprint and 0.8 mm end reserve.
-    A shared drive instead has a continuous 58 mm spine across two walls;
-    its 12 mm centred clamp zones retain 1 mm to each wall end at ±6 mm.
-    Separate saved-solid checks require19mm side-wall overlap per wall and45mm total.
+    A shared drive has a continuous 46 mm spine across two walls. Each bolt
+    may travel ±3 mm while its 12 mm load zone retains 1 mm to the wall ends.
+    The 30 mm bolt pair on 28 mm wall pitch has only ±2 mm module travel.
+    Separate saved-solid checks require17mm side-wall overlap per wall and37mm total.
     A paired module must also keep its full bottom datum inside the rail base.
     """
     contact_length = _contact_length(contact_length)
     attachment_pattern(shared_drive)
     if shared_drive and abs(contact_length - SHARED_SPINE_LENGTH) > TOL:
-        raise ValueError("Shared support requires the complete58mm spine extent")
+        raise ValueError("Shared support requires the complete46mm spine extent")
     clearance = (SLOT_HEIGHT - fasteners.RAIL_THREAD_DIAMETER) / 2
     inset = (
-        WALL_LENGTH / 2 - SHARED_TRIM_HALF_RANGE
+        WALL_LENGTH / 2 - SHARED_BOLT_HALF_RANGE
         if shared_drive
         else _slot_end_inset(contact_length) - clearance
     )
     inset = max(inset, WALL_LENGTH / 2 - SLOT_CENTRE_HALF_SPAN - clearance)
-    return tuple(
-        {
-            "wall_x_range_mm": (first, last),
-            "axis_travel_x_range_mm": (first + inset, last - inset),
-        }
-        for first, last in wall_segments(length)
-        if first + inset <= last - inset + TOL
-    )
+    # The end chamfer removes the outer edges of the bilateral bottom lands.
+    # A complete ordinary foot must stop before it; paired spines are clipped
+    # by their module-centre bound after intersecting both individual windows.
+    base_limit = length / 2 - 1.0 - contact_length / 2
+    rows = []
+    for first, last in wall_segments(length):
+        low, high = first + inset, last - inset
+        if not shared_drive:
+            low, high = max(low, -base_limit), min(high, base_limit)
+        if low > high + TOL:
+            continue
+        rows.append(
+            {
+                "wall_x_range_mm": (first, last),
+                "axis_travel_x_range_mm": (low, high),
+            }
+        )
+    return tuple(rows)
 
 
 def supported_slot_ranges(
     length=LENGTH, contact_length=MOUNT_LENGTH, *, shared_drive=False
 ):
-    """Nominal centres: full carrier foot or qualified shared-spine geometry."""
+    """Individual bolt windows with full-foot or paired-spine contact bounds."""
     return tuple(
         row["axis_travel_x_range_mm"]
         for row in attachment_windows(length, contact_length, shared_drive=shared_drive)
     )
+
+
+def shared_module_ranges(length=LENGTH):
+    """Module-centre travel from both bolt windows and complete bottom lands."""
+    windows = supported_slot_ranges(length, SHARED_SPINE_LENGTH, shared_drive=True)
+    half_spacing = attachment_pattern(True).half_spacing_mm
+    base_limit = length / 2 - 1.0 - SHARED_SPINE_LENGTH / 2
+    ranges = []
+    for first, second in zip(windows, windows[1:]):
+        low = max(first[0] + half_spacing, second[0] - half_spacing, -base_limit)
+        high = min(first[1] + half_spacing, second[1] - half_spacing, base_limit)
+        if low <= high + TOL:
+            ranges.append((low, high))
+    return tuple(ranges)
 
 
 def spine_base_position_check(x):
@@ -278,17 +306,24 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
 
 
 def head_recess_shape(outer_y, *, x=0, z=BOLT_AXIS_Z):
-    """Counterbore cutter for an M3 head, entering from the negative-Y face."""
-    return Part.makeCylinder(
+    """Head recess open downwards only; its axial bearing floor remains intact."""
+    round_top = Part.makeCylinder(
         HEAD_RECESS_DIAMETER / 2,
         HEAD_RECESS_DEPTH + 0.01,
         V(x, outer_y - 0.01, z),
         V(0, 1, 0),
     )
+    opening = box(
+        HEAD_RECESS_DIAMETER,
+        HEAD_RECESS_DEPTH + 0.01,
+        z + 1,
+        (x - HEAD_RECESS_DIAMETER / 2, outer_y - 0.01, -1),
+    )
+    return union([round_top, opening]).removeSplitter()
 
 
 def nut_pocket_shape(inner_y, outer_y, *, x=0, z=BOLT_AXIS_Z):
-    """Outside-entry hex cutter retaining a nominal 2 mm load-bearing floor."""
+    """Open-bottom hex recess with vertical flats and a 2 mm bearing floor."""
     if not all(
         isinstance(value, Real) and not isinstance(value, bool) and math.isfinite(value)
         for value in (inner_y, outer_y, x, z)
@@ -297,15 +332,22 @@ def nut_pocket_shape(inner_y, outer_y, *, x=0, z=BOLT_AXIS_Z):
     bearing_y = inner_y + NUT_FLOOR_THICKNESS
     if outer_y - bearing_y < MINIMUM_NUT_CAPTURE_DEPTH - TOL:
         raise ValueError("Nut pocket must retain at least 1.5 mm nominal recess depth")
-    return translated_shape(
+    pocket = translated_shape(
         _nut_outer(NUT_POCKET_AF, outer_y - bearing_y + 0.01, bearing_y=bearing_y),
         x=x,
         z=z - BOLT_AXIS_Z,
     )
+    opening = box(
+        NUT_POCKET_AF,
+        outer_y - bearing_y + 0.01,
+        z + 1,
+        (x - NUT_POCKET_AF / 2, bearing_y, -1),
+    )
+    return union([pocket, opening]).removeSplitter()
 
 
 def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True):
-    """Fitted carrier U seat with two loaded legs and a blind nut pocket.
+    """Fitted carrier U seat with two loaded legs and an open-bottom nut recess.
 
     The paired propulsion frame uses its own continuous U spine; its nut
     pocket belongs to the outer servo saddle, beyond both frame side faces.
@@ -391,7 +433,7 @@ def _nut_outer(across_flats, thickness, *, bearing_y=NUT_BEARING_Y):
                 bearing_y,
                 BOLT_AXIS_Z + radius * math.sin(math.radians(a)),
             )
-            for a in range(0, 360, 60)
+            for a in range(30, 390, 60)
         ],
         (0, thickness, 0),
     )
@@ -443,7 +485,7 @@ def build_attachment_hardware(doc, parent, prefix, *, x_offset=0, shared_drive=F
         ),
         (
             "RailMountNut",
-            "M3 rail hex nut | blind pocket on a printed bearing floor",
+            "M3 rail hex nut | open-bottom recess on a printed bearing floor",
             nut_shape(bearing_y=pattern.nut_bearing_y_mm),
             "M3_HEX_NUT",
         ),
@@ -533,6 +575,9 @@ def attachment_contract(
         "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(
             length, contact_length=contact_length, shared_drive=shared_drive
         ),
+        "supported_module_centre_ranges_x_mm": shared_module_ranges(length)
+        if shared_drive
+        else supported_slot_ranges(length, contact_length),
         "free_base_spans_x_mm": spans,
         "base_width_mm": BASE_WIDTH,
         "free_span_minimum_width_mm": BASE_WIDTH if spans else None,
@@ -556,7 +601,7 @@ def attachment_contract(
         "bolt_axis_z_mm": BOLT_AXIS_Z,
         "mount_contact_length_mm": contact_length,
         "contact_length_scope": (
-            "Complete58mm spine extent: both lower lands contact the continuous base; side walls bridge the rail-wall gap."
+            "Complete46mm spine extent: both lower lands contact the continuous base; side walls bridge the rail-wall gap."
             if shared_drive
             else "Complete carrier foot length; the whole footprint retains at least0.8mm to wall ends."
         ),
@@ -575,10 +620,13 @@ def attachment_contract(
         ]
         if shared_drive
         else None,
+        "shared_individual_bolt_half_range_mm": SHARED_BOLT_HALF_RANGE
+        if shared_drive
+        else None,
         "shared_usable_trim_half_range_mm": SHARED_TRIM_HALF_RANGE
         if shared_drive
         else None,
-        "mount_section": "Fitted U; two opposed rail-contact legs, bilateral bottom datum, relieved inner roof and blind nut-bearing pocket",
+        "mount_section": "Fitted U; two opposed rail-contact legs, bilateral bottom datum, relieved inner roof and open-bottom nut-bearing pocket",
         "mount_outer_y_mm": -pattern.frame_half_width_mm
         if shared_drive
         else MOUNT_OUTER_Y,
@@ -593,6 +641,8 @@ def attachment_contract(
         else FAR_LEG_OUTER_Y,
         "nut_pocket_across_flats_mm": NUT_POCKET_AF,
         "nut_capture_depth_mm": pocket_outer_y - nut_bearing_y,
+        "nut_captive_without_screw": False,
+        "recess_access": "Only the outer head/nut recesses open toward local -Z; the round through-bores and axial bearing floors remain closed. Vertical hex flats stop nut rotation. Hold a loose nut while starting the screw; the recess is not a captive-nut mechanism.",
         "carrier_side_legs_equal_thickness_mm": None
         if shared_drive
         else MOUNT_LEG_THICKNESS,
@@ -616,9 +666,9 @@ def attachment_contract(
         "shared_servo_bridge_clamp": shared_drive,
         "clamp_count": pattern.count,
         "clamp_spacing_mm": pattern.spacing_mm,
-        "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in a blind load-bearing pocket; unmeasured design envelopes",
+        "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in an open-bottom load-bearing recess; unmeasured design envelopes",
         "shared_joint_service": (
-            "Two opposed bolts34mm apart retain the servo saddle and continuous58mm frame spine on adjacent walls. Default paired trim is±6mm; the outermost wall pairs are additionally limited by the full-width base ends; each bolt retains a12mm centred load zone with at least1mm to the wall ends. At the travel extremes the spine overlaps19mm and26mm of wall (45mm total); at neutral it overlaps25mm each. Both lower legs seat on the rail base atZ1.5; the inner roof retains0.2mm nominal clearance above the wall. These are contact-geometry checks, not equal-stiffness or loaded-retention claims. Support both modules during release and seat both walls before alternating tightening. The spine locally restrains rail curvature; do not force a curved rail straight."
+            "Two opposed bolts30mm apart retain the servo saddle and continuous46mm frame spine on adjacent20mm walls at28mm pitch. Individual bolt windows are±3mm; their intersection gives±2mm module trim; the outermost wall pairs are additionally limited by the full-width base ends; each bolt retains a12mm centred load zone with at least1mm to the wall ends. At travel extremes the spine overlaps17mm and20mm of wall (37mm total); at neutral it overlaps19mm each. These shorter contacts retain complete12mm bolt load zones and1mm wall-end margins; the smaller bolt spacing increases couple forces for a given moment. Both lower legs seat on the rail base atZ1.5; the inner roof retains0.2mm nominal clearance above the wall. These are contact-geometry checks, not equal-stiffness or loaded-retention claims. Support both modules during release and seat both walls before alternating tightening. The spine locally restrains rail curvature; do not force a curved rail straight."
             if shared_drive
             else None
         ),
@@ -627,7 +677,7 @@ def attachment_contract(
             if shared_drive
             else "Carrier legs are both 4 mm; the nut sits 2 mm into its pocket and may protrude. "
         )
-        + "Fit both bottom lands and opposed U side faces before installing hardware; retain the0.2mm inner-roof relief. Insert the M3 nut from positiveY into the blind pocket until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared rail lands and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
+        + "Fit both bottom lands and opposed U side faces before installing hardware; retain the0.2mm inner-roof relief. Insert the M3 nut from positiveY into the open-bottom recess until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared rail lands and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
         "physical_acceptance": "Use a process-matched coupon and actual hardware. The nominal channel is line-to-line with the rail; this is not an as-printed slip-fit guarantee. Finish only high spots while retaining at least1.5mm nut-floor and head-floor thickness. Reject or reprint loose or warped seats; do not force a rigid gap closed with the bolt. Verify bilateral bottom and side contact without rocking, a clear relieved roof, nut seating and anti-rotation, actual socket access, full thread engagement and loaded retention. Printed creep, clamp force and fit remain unqualified.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,
@@ -646,7 +696,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Nine identical26mm walls at34mm pitch retain eight8mm flex gaps. Each3.4x15.4mm slot leaves5.3mm end ligaments. Ordinary16mm feet retain±4.2mm full-foot travel. The paired continuous58mm propulsion spine permits±6mm default trim (endmost pairs are limited by full bottom-land support) with independently checked12mm clamp zones and at least19mm side-wall overlap per wall/45mm total. Fitted opposed legs and blind nut-pocket floors carry the nominal clamp stack. Qualify actual fit, loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
+        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven identical20mm walls at28mm pitch retain ten8mm flex gaps. Each3.4x9.4mm slot leaves5.3mm end ligaments. Ordinary16mm feet retain±1.2mm full-foot travel, clipped to1mm toward each rail end to preserve the chamfered base lands. The paired continuous46mm propulsion spine uses30mm screw spacing and permits±2mm default module trim from the intersection of two±3mm individual bolt windows (endmost pairs are limited by full bottom-land support), with independently checked12mm clamp zones,1mm wall-end reserves, and at least17mm side-wall overlap per wall/37mm total. Fitted opposed legs and open-bottom recess floors carry the nominal clamp stack. Qualify actual fit, loaded curvature, lateral/torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
     )
     set_property(
         printed,
@@ -710,7 +760,7 @@ def build_coupons(doc):
             label,
             shape,
             App.Rotation(),
-            "Same26mm wall/fitted U-seat geometry as full rail. Use the actual M3x10 bolt and M3 nut; test recessed head fit, blind pocket seating, both rail-contact faces, local sliding and side tool access. Finish only high spots while retaining at least1.5mm nut/head floors. Reject or reprint a loose or warped seat; do not pull a rigid clearance gap closed with the bolt. The companion50mm rail sample has one complete support and no inter-wall gap; it does not qualify the paired servo/frame interface, loaded clamping, full rail bending, adhesion or creep.",
+            "Same20mm wall/fitted U-seat geometry as full rail. Use the actual M3x10 bolt and M3 nut; test recessed head fit, open-bottom recess seating, both rail-contact faces, local sliding and side tool access. Finish only high spots while retaining at least1.5mm nut/head floors. Reject or reprint a loose or warped seat; do not pull a rigid clearance gap closed with the bolt. The companion50mm rail sample has one complete support and no inter-wall gap; it does not qualify the paired servo/frame interface, loaded clamping, full rail bending, adhesion or creep.",
         )
         set_property(
             obj,
@@ -899,7 +949,7 @@ def attachment_check(
     if shared_drive and (
         abs(contact_length - SHARED_SPINE_LENGTH) > TOL or mount is None
     ):
-        raise ValueError("Shared attachment requires the actual58mm frame spine")
+        raise ValueError("Shared attachment requires the actual46mm frame spine")
     zone_length = SHARED_LOAD_ZONE_LENGTH if shared_drive else contact_length
     if (
         not all(
@@ -988,7 +1038,7 @@ def attachment_check(
         "support_policy": "paired_spine_clamp_zone" if shared_drive else "full_foot",
         "checked_centred_contact_length_mm": zone_length,
         "shared_support_scope": (
-            "This local check covers only the12mm centred clamp zone. The saved paired-spine check must additionally verify complete bottom lands and both side-wall overlaps of minimum19/45mm."
+            "This local check covers only the12mm centred clamp zone. The saved paired-spine check must additionally verify complete bottom lands and both side-wall overlaps of minimum17/37mm."
             if shared_drive
             else None
         ),
@@ -1048,7 +1098,7 @@ def validate_mechanism():
         "continuous_single_rail": True,
         "supported_bolt_axis_ranges_x_mm": supported_slot_ranges(),
         "tape": tape_attachment_contract(),
-        "release": "Loosen the recessed side M3 bolt and slide within the current supported slot. To change wall segment remove bolt and nut, then lift the U seat. The blind nut pocket restrains rotation while allowing straight axial removal; both fitted contact faces must seat without forcing a rigid clearance gap closed. No full-length slide or automatic calibration.",
+        "release": "Loosen the recessed side M3 bolt and slide within the current supported slot. To change wall segment remove bolt and nut, then lift the U seat. The open-bottom nut recess restrains rotation while allowing straight axial removal; both fitted contact faces must seat without forcing a rigid clearance gap closed. No full-length slide or automatic calibration.",
     }
 
 

@@ -25,17 +25,17 @@ class SavedRailValidationTests(unittest.TestCase):
         coupons = rail.build_coupons(self.doc)
         modules, prints, hardware, mounts = [], list(built["printed"]), [], []
         specs = (
-            ("BatteryMount", "BatteryEquipmentModule", "battery", 100, 0, 0),
+            ("BatteryMount", "BatteryEquipmentModule", "battery", 84, 0, 0),
             (
                 "ElectronicsMount",
                 "ElectronicsEquipmentModule",
                 "electronics",
-                -70,
+                -56,
                 180,
                 0,
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
-            ("PropulsionFixedFrame", "MainPropulsionModule", None, -17.0, 0, 17.0),
+            ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 0, 15.0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -48,7 +48,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "RailAttachmentContract",
                 json.dumps(
                     rail.attachment_contract(
-                        58 if kind is None else 16, shared_drive=kind is None
+                        46 if kind is None else 16, shared_drive=kind is None
                     ),
                     sort_keys=True,
                 ),
@@ -112,11 +112,11 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
         )
         self.assertEqual(len(actual), 5)
-        for value, expected in zip(actual, (-140, -70, -34, 0, 100)):
+        for value, expected in zip(actual, (-140, -56, -1, 29, 84)):
             self.assertAlmostEqual(value, expected)
 
     def test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones(self):
-        for position in (-23, -11):
+        for position in (12, 16):
             with self.subTest(position=position):
                 self.doc.MainPropulsionModule.Placement.Base.x = position
                 self.doc.recompute()
@@ -130,7 +130,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 self.assertEqual(len(shared), 2)
                 for row in shared:
                     self.assertAlmostEqual(
-                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 45
+                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 37
                     )
                     self.assertEqual(
                         row["saved_lower_mount_attachment"][
@@ -138,11 +138,11 @@ class SavedRailValidationTests(unittest.TestCase):
                         ],
                         12,
                     )
-        self.doc.MainPropulsionModule.Placement.Base.x = -10.99
+        self.doc.MainPropulsionModule.Placement.Base.x = 16.01
         self.assertFalse(self.check()["passed"])
 
     def test_gap_position_is_rejected_even_without_a_collision(self):
-        self.doc.BatteryEquipmentModule.Placement.Base = App.Vector(85, 0, 0)
+        self.doc.BatteryEquipmentModule.Placement.Base = App.Vector(98, 0, 0)
         report = self.check()
         self.assertFalse(report["passed"])
         row = next(
@@ -160,7 +160,7 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
             if row["module"] == "MainPropulsionModule"
         )
-        self.assertAlmostEqual(row["attachment_axis_x_mm"], 17.0)
+        self.assertAlmostEqual(row["attachment_axis_x_mm"], 15.0)
         self.assertFalse(row["passed"])
 
     def test_missing_opposite_pair_cannot_pass_as_a_single_propulsion_clamp(self):
@@ -184,7 +184,7 @@ class SavedRailValidationTests(unittest.TestCase):
 
     def test_opposite_foot_requires_its_own_complete_rail_support(self):
         obj = self.doc.ContinuousRail
-        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 9, App.Vector(-47, -1.25, 1.5)))
+        obj.Shape = obj.Shape.cut(Part.makeBox(20, 2.5, 8, App.Vector(-10, -1.25, 1.5)))
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
         ):
@@ -202,7 +202,7 @@ class SavedRailValidationTests(unittest.TestCase):
     def test_opposite_leg_defect_is_rejected_even_if_source_has_same_defect(self):
         frame = self.doc.PropulsionFixedFrame
         frame.Shape = frame.Shape.cut(
-            Part.makeBox(24, 4, 8.3, App.Vector(-29, 1.25, 2.2))
+            Part.makeBox(12, 4, 8.3, App.Vector(-21, 1.25, 2.2))
         )
         with patch(
             "gondola.validation.rail_mount.propulsion.fixed_frame_shape",
@@ -242,13 +242,13 @@ class SavedRailValidationTests(unittest.TestCase):
 
         screw = self.doc.MainPropulsionModuleRailMountScrew
         original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
-        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=17)
+        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=15)
         screw.HardwareSKU = "M3X8_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
         bridge = self.doc.ServoDriveBridge
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(16.5, -9.0, 9.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(14.5, -9.0, 8.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])
@@ -327,7 +327,7 @@ class SavedRailValidationTests(unittest.TestCase):
 
     def test_missing_unused_wall_is_rejected_independently_of_generator(self):
         obj = self.doc.ContinuousRail
-        obj.Shape = obj.Shape.cut(Part.makeBox(26, 2.5, 9, App.Vector(21, -1.25, 1.5)))
+        obj.Shape = obj.Shape.cut(Part.makeBox(20, 2.5, 8, App.Vector(102, -1.25, 1.5)))
         with patch(
             "gondola.validation.rail_mount.rail.rail_shape", return_value=obj.Shape
         ):

@@ -45,9 +45,9 @@ def _rail_hex_nut(across_flats, height, x, seat):
     radius = across_flats / math.sqrt(3)
     points = [
         V(
-            x + radius * math.cos(i * math.pi / 3),
+            x + radius * math.cos(i * math.pi / 3 + math.pi / 6),
             seat,
-            7 + radius * math.sin(i * math.pi / 3),
+            6 + radius * math.sin(i * math.pi / 3 + math.pi / 6),
         )
         for i in range(6)
     ]
@@ -73,7 +73,7 @@ def standard_nut_clearance_check(x, support, seat):
         stops = []
         for angle in (-30, 30):
             small = _rail_hex_nut(5.32, 2.15, x, seat)
-            small.rotate(V(x, seat, 7), V(0, 1, 0), angle)
+            small.rotate(V(x, seat, 6), V(0, 1, 0), angle)
             small.translate(V(dx, 0, dz))
             stops.append(abs(small.common(support).Volume))
         rows.append(
@@ -96,20 +96,20 @@ def standard_nut_clearance_check(x, support, seat):
 
 
 def nut_capture_check(x, nut, support, *, shared=False):
-    """Independent saved blind-pocket floor and anti-rotation checks."""
+    """Independent saved open-bottom recess floor and anti-rotation checks."""
     inner, seat, outer = (6.0, 8.0, 11.0) if shared else (1.25, 3.25, 5.25)
-    region = Part.makeBox(8, outer - seat, 8, V(x - 4, seat, 3))
+    region = Part.makeBox(8, outer - seat, 8, V(x - 4, seat, 2))
     pocket_wall = support.common(region)
     nominal = abs(nut.common(support).Volume)
-    floor = Part.makeCylinder(2.75, 2, V(x, inner, 7), V(0, 1, 0)).cut(
-        Part.makeCylinder(1.7, 2, V(x, inner, 7), V(0, 1, 0))
+    floor = Part.makeCylinder(2.75, 2, V(x, inner, 6), V(0, 1, 0)).cut(
+        Part.makeCylinder(1.7, 2, V(x, inner, 6), V(0, 1, 0))
     )
     missing_floor = abs(floor.cut(support).Volume)
     seated = abs(nut.BoundBox.YMin - seat) < TOL
     turns = []
     for angle in (-30, 30):
         rotated = nut.copy()
-        rotated.rotate(V(x, 0, 7), V(0, 1, 0), angle)
+        rotated.rotate(V(x, 0, 6), V(0, 1, 0), angle)
         turns.append(
             {
                 "rotation_deg": angle,
@@ -125,6 +125,7 @@ def nut_capture_check(x, nut, support, *, shared=False):
         "nut_on_expected_bearing_plane": seated,
         "rotation_limits": turns,
         "external_holding_wrench_required": False,
+        "nut_captive_without_screw": False,
         "nut_axial_clamping_surface": f"Printed 2 mm nominal floor at Y={seat:g} mm; both U sides are in the fitted compression stack.",
         "scope": "Nominal saved floor/hex geometry. Remove the bolt before withdrawing the nut in +Y. Coupon-fit and finish contact faces before tightening; no physical torque, creep or retention rating.",
         "passed": nominal < TOL
@@ -178,7 +179,7 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
         )
         lower, upper = shape.common(low_region), shape.cut(low_region)
         # Fill every transverse cylindrical face so the continuous sweep can
-        # preserve the fitted U channel. The carrier's blind nut floor adds a
+        # preserve the fitted U channel. The carrier's open-bottom recess floor adds a
         # second bore; each shared frame station has two full 4.75 mm legs.
         module_name = (
             "MainPropulsionModule"
@@ -191,7 +192,7 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             else ((-5.25, 4.0, 6.4), (1.25, 2.0, 3.4))
         )
         canonical_fills = [
-            Part.makeBox(width, depth, width, V(-width / 2, y, 7 - width / 2))
+            Part.makeBox(width, depth, width, V(-width / 2, y, 6 - width / 2))
             for y, depth, width in sections
         ]
         for site in attachment_sites(module_name, offset):
@@ -206,7 +207,7 @@ def _lift_path(name, shape, obstacles, offset, *, waypoints=None):
             # rejects an added feature outside them instead of omitting it.
             pieces = [
                 (name + "Lower", lower),
-                (name + "Deck", Part.makeBox(64, 64, 2, V(-32, -32, 17))),
+                (name + "Deck", Part.makeBox(66, 66, 2, V(-33, -33, 17))),
                 (
                     name + "SupportNegativeX",
                     Part.makeBox(5, 5, 4.5, V(-8, -2.5, 12.5)),
@@ -342,24 +343,29 @@ def _service_preflight(doc, registry, bindings):
 
 
 def _shared_trim_interval(pose):
-    """Independent intersection of both saved bolt axes with ±6mm wall travel."""
+    """Intersect ±3 mm bolt windows; a 30 mm pair on 28 mm pitch gives 4 mm."""
     limits = []
-    for axis in pose["attachment_world_axes_x_mm"]:
+    axes = sorted(pose["attachment_world_axes_x_mm"])
+    if len(axes) != 2 or abs(axes[1] - axes[0] - 30) > TOL:
+        raise ValueError("Shared trim requires two rail-clamp axes30mm apart")
+    centres = []
+    for axis in axes:
         matches = [
-            centre for centre in range(-136, 137, 34) if abs(axis - centre) <= 6 + TOL
+            centre for centre in range(-140, 141, 28) if abs(axis - centre) <= 3 + TOL
         ]
         if len(matches) != 1:
             raise ValueError("Shared trim axis is outside the reviewed wall range")
-        limits.append((matches[0] - 6 - axis, matches[0] + 6 - axis))
-    if len(limits) != 2:
-        raise ValueError("Shared trim requires both rail-clamp axes")
+        centres.append(matches[0])
+        limits.append((matches[0] - 3 - axis, matches[0] + 3 - axis))
+    if abs(centres[1] - centres[0] - 28) > TOL:
+        raise ValueError("Shared trim requires two adjacent rail walls")
     low, high = max(row[0] for row in limits), min(row[1] for row in limits)
-    if high - low < 12 - TOL:
-        raise ValueError("Shared clamp intervals do not give the reviewed12mm trim")
-    # The continuous58mm bottom lands must also stay inside the full-width
+    if abs(high - low - 4) > TOL:
+        raise ValueError("Shared clamp intervals do not give the reviewed4mm trim")
+    # The continuous46mm bottom lands must also stay inside the full-width
     # base, X±149 before its1mm end chamfers. Outer wall pairs have less travel.
-    centre = sum(pose["attachment_world_axes_x_mm"]) / 2
-    low, high = max(low, -120 - centre), min(high, 120 - centre)
+    centre = sum(axes) / 2
+    low, high = max(low, -126 - centre), min(high, 126 - centre)
     if low > TOL or high < -TOL:
         raise ValueError("Shared bottom datum is outside the full-width rail base")
     return low, high
@@ -368,18 +374,18 @@ def _shared_trim_interval(pose):
 def _shared_screw_slide(name, shape, obstacles, low, high):
     """Exact two-cylinder swept envelopes, without filling slot-end corners."""
     opposite = "Opposite" in name
-    x = -17 if opposite else 17
+    x = -15 if opposite else 15
     reference, swept = [], []
     for radius, y, depth in (
         (3.0, 9.0 if opposite else -11.0, 2.0),
         (1.5, -11.0 if opposite else -9.0, 20.0),
     ):
-        reference.append(Part.makeCylinder(radius, depth, V(x, y, 7), V(0, 1, 0)))
+        reference.append(Part.makeCylinder(radius, depth, V(x, y, 6), V(0, 1, 0)))
         ends = [
-            Part.makeCylinder(radius, depth, V(x + shift, y, 7), V(0, 1, 0))
+            Part.makeCylinder(radius, depth, V(x + shift, y, 6), V(0, 1, 0))
             for shift in (low, high)
         ]
-        middle = Part.makeBox(high - low, depth, 2 * radius, V(x + low, y, 7 - radius))
+        middle = Part.makeBox(high - low, depth, 2 * radius, V(x + low, y, 6 - radius))
         swept.append(union([*ends, middle]))
     outside = abs(shape.cut(union(reference)).Volume)
     envelope = union(swept)
@@ -404,7 +410,7 @@ def supported_propulsion_slide(shapes, obstacles, pose):
     rows = []
     for name, shape in sorted(shapes.items()):
         if name in ("PropulsionFixedFrame", "ServoDriveBridge"):
-            row = _lift_path(name, shape, obstacles, 17, waypoints=path)
+            row = _lift_path(name, shape, obstacles, 15, waypoints=path)
         elif name in (
             "MainPropulsionModuleRailMountScrew",
             "MainPropulsionModuleOppositeRailMountScrew",
@@ -417,7 +423,7 @@ def supported_propulsion_slide(shapes, obstacles, pose):
         "relative_x_range_mm": [low, high],
         "travel_mm": high - low,
         "parts": rows,
-        "scope": "Continuous nominal rigid slide across the supported interval (12mm at interior wall pairs; clipped by the full-width base at the end pairs) with all registered neighbours retained. Loosen both M3 pairs and support the assembly; disconnect/reroute leads and regenerate wiring reservations before operation. This is not a friction, preload, curved-rail or cable-motion qualification.",
+        "scope": "Continuous nominal rigid slide across the reported relative_x_range_mm, including full-width base clipping at the end pairs, with all registered neighbours retained. Loosen both M3 pairs and support the assembly; disconnect/reroute leads and regenerate wiring reservations before operation. This is not a friction, preload, curved-rail or cable-motion qualification.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }
 
@@ -583,7 +589,7 @@ def rail_attachment_service(doc, registry, objects):
         "modules": rows,
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The blind hex pocket restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels to clear the FC carrier edge, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm to clear the retained starboard horn, adapter and nut; this temporary unclamped position is not an operating setting. Battery and accessory carriers retain direct vertical lift. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The open-bottom hex recess restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm; this temporary unclamped position is not an operating setting. Battery and accessory carriers retain direct vertical lift. No covering board, battery or servo bridge removal. Support frame and bridge together when their shared propulsion clamp is loose; the lift treats them as a held assembly, not as self-retaining. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
         "passed": len(rows) == len(MODULE_STATIONS)
         and all(row["passed"] for row in rows),
     }

@@ -84,10 +84,10 @@ class EquipmentMountShapeTests(unittest.TestCase):
                         ),
                     )
                     self.assertLess(abs(contact.cut(shape).Volume), 1e-6)
-                self.assertAlmostEqual(shape.BoundBox.XMin, -32)
-                self.assertAlmostEqual(shape.BoundBox.XMax, 32)
-                self.assertAlmostEqual(shape.BoundBox.YMin, -32)
-                self.assertAlmostEqual(shape.BoundBox.YMax, 32)
+                self.assertAlmostEqual(shape.BoundBox.XMin, -33)
+                self.assertAlmostEqual(shape.BoundBox.XMax, 33)
+                self.assertAlmostEqual(shape.BoundBox.YMin, -33)
+                self.assertAlmostEqual(shape.BoundBox.YMax, 33)
 
     def test_plate_outline_is_centred_rounded_and_half_turn_symmetric(self):
         from gondola.parts import equipment_mounts as mounts
@@ -98,8 +98,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for hole in mounting_plate.cutters(mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS):
             plate = plate.fuse(hole)
         bounds = plate.BoundBox
-        self.assertAlmostEqual(bounds.XLength, 64)
-        self.assertAlmostEqual(bounds.YLength, 64)
+        self.assertAlmostEqual(bounds.XLength, 66)
+        self.assertAlmostEqual(bounds.YLength, 66)
         self.assertAlmostEqual(bounds.Center.x, 0)
         self.assertAlmostEqual(bounds.Center.y, 0)
         rotated = plate.copy()
@@ -109,14 +109,14 @@ class EquipmentMountShapeTests(unittest.TestCase):
             for y in (-1, 1):
                 self.assertFalse(
                     plate.isInside(
-                        App.Vector(x * 31.8, y * 31.8, mounts.DECK_BOTTOM_Z + 1),
+                        App.Vector(x * 32.8, y * 32.8, mounts.DECK_BOTTOM_Z + 1),
                         1e-6,
                         True,
                     )
                 )
                 self.assertTrue(
                     plate.isInside(
-                        App.Vector(x * 29, y * 31, mounts.DECK_BOTTOM_Z + 1),
+                        App.Vector(x * 30, y * 32, mounts.DECK_BOTTOM_Z + 1),
                         1e-6,
                         True,
                     )
@@ -213,8 +213,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
     def test_all_roles_keep_a_full_common_deck_and_all_shared_holes(self):
         from gondola.parts import equipment_mounts as mounts
 
-        self.assertEqual(mounts.COMMON_DECK_SIZE, (64.0, 64.0))
-        self.assertEqual(len(mounting_plate.cutters(0, 2)), 33)
+        self.assertEqual(mounts.COMMON_DECK_SIZE, (66.0, 66.0))
+        self.assertEqual(len(mounting_plate.cutters(0, 2)), 41)
         plate = mounting_plate.shape()
         for kind in mounts.MOUNT_NAMES:
             carrier_deck = mounts.mount_shape(kind).common(
@@ -279,20 +279,20 @@ class EquipmentMountShapeTests(unittest.TestCase):
         from gondola.parts import mounting_slots
 
         slot_contract = mounting_slots.contract()
-        self.assertEqual(slot_contract["square_pitch_range_mm"], (16.0, 23.0))
+        self.assertEqual(slot_contract["square_pitch_range_mm"], (16.0, 20.0))
         self.assertEqual(slot_contract["square_pitch_range_rotation_deg"], 0.0)
         self.assertEqual(
             slot_contract["outer_diagonal_square_pitch_range_mm"], (40.0, 45.0)
         )
         self.assertEqual(slot_contract["square30_5_pitch_mm"], 30.5)
-        self.assertEqual(slot_contract["square30_5_rotation_range_deg"], (-15.0, 15.0))
+        self.assertEqual(slot_contract["square30_5_rotation_range_deg"], (0.0, 0.0))
         self.assertFalse(slot_contract["x500_drop_in_compatible"])
         shape = mounts.mount_shape("electronics")
         # Interior values accompany end positions. Exact continuous openings and
         # lands are audited separately; this is not a sampled full-range proof.
-        patterns = [(pitch, 0, 2.6) for pitch in (16.0, 20.0, 21.37, 23.0)]
+        patterns = [(pitch, 0, 2.6) for pitch in (16.0, 17.37, 20.0)]
         patterns += [(pitch, 0, 2.6) for pitch in (40.0, 42.6, 45.0)]
-        patterns += [(30.5, turn, 3.6) for turn in (-15.0, -4.7, 0.0, 15.0)]
+        patterns += [(30.5, turn, 3.6) for turn in (0.0,)]
         for pitch, turn, diameter in patterns:
             for index in range(4):
                 angle = math.radians(45 + turn + index * 90)
@@ -312,7 +312,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
             self.assertNotIn("generic_fastening", mounts.mount_contract(kind))
             contract = mounts.common_plate_contract()
             self.assertEqual(contract["fixed_bore_count"], 5)
-            self.assertEqual(contract["slot_count"], 28)
+            self.assertEqual(contract["slot_count"], 36)
 
     def test_m2_slot_screws_clear_base_and_rail_over_the_whole_straight_path(self):
         from gondola.contracts import fasteners
@@ -450,7 +450,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
         for sign in (-1, 1):
             access = Part.makeCylinder(
-                2, 60, App.Vector(0, sign * 6, 7.0), App.Vector(0, sign, 0)
+                2, 60, App.Vector(0, sign * 6, 6.0), App.Vector(0, sign, 0)
             )
             self.assertLess(access.common(devices.radio_envelope_shape()).Volume, 1e-6)
 
@@ -474,12 +474,8 @@ class EquipmentMountShapeTests(unittest.TestCase):
         for actual, expected in zip(
             mounts.PAS_HOLE_CENTRES, interfaces.PAS_HOLE_CENTRES
         ):
-            self.assertAlmostEqual(
-                actual[0] - mounts.NAVIGATION_CENTRE_XY[0], expected[0]
-            )
-            self.assertAlmostEqual(
-                actual[1] - mounts.NAVIGATION_CENTRE_XY[1], expected[1]
-            )
+            self.assertAlmostEqual(actual[0] - mounts.PAS_CENTRE_XY[0], expected[0])
+            self.assertAlmostEqual(actual[1] - mounts.PAS_CENTRE_XY[1], expected[1])
 
     def test_side_slots_keep_their_explicit_nonstandard_travel(self):
         from gondola.parts import equipment_mounts as mounts
@@ -494,7 +490,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     point[axis] = side * 27.0
                     point[1 - axis] = interval * 13.0
                     end = point.copy()
-                    end[1 - axis] = interval * 23.0
+                    end[1 - axis] = interval * 19.0
                     expected.add(tuple(sorted((tuple(point), tuple(end)))))
                 point = [0.0, 0.0]
                 point[axis] = side * 27.0
@@ -531,7 +527,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         original = mounts.mount_shape("battery")
         report = carrier_opening_checks(original)
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 28))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 36))
         for centre in mounts.COMMON_FIXED_HOLE_CENTRES:
             with self.subTest(centre=centre):
                 obstruction = Part.makeCylinder(

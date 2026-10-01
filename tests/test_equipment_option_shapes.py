@@ -14,6 +14,20 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentOptionShapeTests(unittest.TestCase):
+    def test_navigation_holes_move_without_displacing_taped_gps_alternatives(self):
+        from gondola.parts import equipment_layout as layout
+
+        pas = options.get_navigation_profile("PAS")
+        self.assertEqual(layout.navigation_centre(pas), (0.0, 9.3))
+        self.assertEqual(
+            layout.navigation_hole_centres(pas), ((-11.5, 0.0), (11.5, 0.0))
+        )
+        for key in ("MGA01", "MGF10A"):
+            self.assertEqual(
+                layout.navigation_centre(options.get_navigation_profile(key)),
+                (0.0, -2.2),
+            )
+
     def test_gps_is_supported_over_adhesive_pad_not_offset_pas_hole_row(self):
         from gondola.parts import equipment_envelopes as envelopes
         from gondola.parts import equipment_layout as layout
@@ -27,8 +41,8 @@ class EquipmentOptionShapeTests(unittest.TestCase):
             self.assertTrue(body.isValid())
             self.assertEqual(len(body.Solids), 1)
             bounds = body.BoundBox
-            self.assertAlmostEqual(bounds.Center.x, mounts.NAVIGATION_CENTRE_XY[0])
-            self.assertAlmostEqual(bounds.Center.y, mounts.NAVIGATION_CENTRE_XY[1])
+            self.assertAlmostEqual(bounds.Center.x, mounts.GPS_CENTRE_XY[0])
+            self.assertAlmostEqual(bounds.Center.y, mounts.GPS_CENTRE_XY[1])
             self.assertAlmostEqual(
                 bounds.ZMin - mounts.SUPPORT_FACE_Z, mounts.ADHESIVE_ALLOWANCE
             )

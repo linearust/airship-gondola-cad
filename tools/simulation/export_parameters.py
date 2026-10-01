@@ -50,6 +50,31 @@ def optical_pitch_degrees(stage):
     return round(angle, 9)
 
 
+def printed_carrier_mass_properties(shape):
+    """Uniform PA12 estimate for this print alone, about its own centroid."""
+    from gondola.mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
+
+    if len(shape.Solids) != 1:
+        raise ValueError("Printed carrier inertia requires exactly one solid.")
+    solid = shape.Solids[0]
+    density = DENSITIES_G_CM3["PA12"]
+    inertia = solid.MatrixOfInertia
+    # FreeCAD's geometric inertia has units mm^5. Convert density g/cm^3 to
+    # kg/mm^3 (1e-6), then the squared distance mm^2 to m^2 (another 1e-6).
+    factor = density * 1e-12
+    return {
+        "density_kg_m3": density * 1000,
+        "density_source": PA12_DENSITY_SOURCE,
+        "mass_kg": solid.Volume * density * 1e-6,
+        "centre_from_tilt_axis_neutral_m": vector_m(solid.CenterOfMass),
+        "inertia_about_print_cg_neutral_kg_m2": [
+            [getattr(inertia, f"A{row}{column}") * factor for column in (1, 2, 3)]
+            for row in (1, 2, 3)
+        ],
+        "scope": "Uniform-density CAD estimate of the printed motor carrier only; excludes motor, propeller, shafts, gears, fasteners and wires. Not installed rotating-assembly CG or inertia. Axes are the pod's neutral local axes; inertia is about this print's own CG.",
+    }
+
+
 def extract(doc):
     import FreeCAD as App
 
@@ -74,9 +99,16 @@ def extract(doc):
     ):
         raise ValueError("Rail datum changed; review the exported frame definition.")
     propulsion = {}
+    rotating_assemblies = {}
     for prefix in ("Port", "Starboard"):
         pod = doc.getObject(prefix + "Pod")
         motor = doc.getObject(prefix + "Motor")
+        carrier = doc.getObject(prefix + "MotorCarrier")
+        propeller = doc.getObject(prefix + "PropellerDisk")
+        try:
+            rotor_contract = json.loads(motor.RotorGeometryContract)
+        except (AttributeError, TypeError, ValueError) as error:
+            raise ValueError("Missing saved motor/propeller datum contract.") from error
         if abs(float(pod.Tilt)) > 1e-8:
             raise ValueError("Export requires the validated neutral motor pose.")
         if direction(motor, (1, 0, 0)) != [1, 0, 0] or direction(pod, (0, 1, 0)) != [
@@ -91,12 +123,28 @@ def extract(doc):
             "cad_label_not_verified_vehicle_side": True,
             "pivot_cad_m": point(pod),
             "motor_envelope_centre_cad_m": vector_m(world_shape(motor).CenterOfMass),
-            "propeller_envelope_centre_cad_m": vector_m(
-                world_shape(doc.getObject(prefix + "PropellerDisk")).CenterOfMass
+            "motor_mount_face_cad_m": vector_m(
+                pod.getGlobalPlacement().multVec(
+                    App.Vector(float(carrier.MotorMountFaceX), 0, 0)
+                )
             ),
             "neutral_geometric_axis_cad": direction(motor, (1, 0, 0)),
             "positive_tilt_axis_cad": direction(pod, (0, 1, 0)),
             "positive_thrust_sign": None,
+        }
+        rotating_assemblies[prefix] = {
+            "hardware_geometry_basis": rotor_contract,
+            "illustrative_propeller_disk_centre_cad_m": vector_m(
+                world_shape(propeller).CenterOfMass
+            ),
+            "actual_hub_seating_offset_m": None,
+            "actual_hub_midplane_cad_m": None,
+            "actual_blade_axial_envelope_m": None,
+            "installed_rotating_mass_kg": None,
+            "installed_rotating_cg_from_tilt_axis_neutral_m": None,
+            "installed_rotating_inertia_about_cg_neutral_kg_m2": None,
+            "printed_carrier_estimate": printed_carrier_mass_properties(carrier.Shape),
+            "scope": "Actual hardware properties remain unknown. Hub midpoint relative to tilt axis is 0.0063+s metres using nominal motor dimensions; s is signed seating offset, not assumed zero for physical analysis. The displayed clearance disk uses illustrative s=0 and hub thickness as axial extent; it does not establish blade swept volume or aerodynamic centre.",
         }
     module_ids = (
         "MainPropulsionModule",
@@ -204,6 +252,7 @@ def extract(doc):
             "aft_yaw_motor_axis_vehicle": None,
             "scope": "Fins and aft yaw installation are outside gondola CAD. A bare-hull aerodynamic approximation does not remove physically installed items from mass/CG/inertia. Null means unknown, never zero.",
         },
+        "rotating_assembly_analysis": rotating_assemblies,
     }
 
 
@@ -217,7 +266,7 @@ def export(cad, output):
         },
     ) as snapshot:
         result = {
-            "schema_version": 4,
+            "schema_version": 5,
             "units": {
                 "length": "m",
                 "mass": "kg",

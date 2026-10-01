@@ -134,7 +134,7 @@ def direct_antenna_reserve_shape(profile=None):
     if antenna is None:
         return None
     length, width, height = profile.size_mm
-    x, y = layout.navigation_centre()
+    x, y = layout.navigation_centre(profile)
     size = (length + antenna.diameter_mm, width + antenna.diameter_mm)
     return _box(
         (*size, height + antenna.length_mm),
@@ -163,7 +163,7 @@ def reserve_shapes(navigation_profile=None, radio_profile=None):
         radio_height + CONNECTOR_TOP_MARGIN_MM,
     )
     radio_lane_y = -radio_width / 2 - CONNECTOR_SIDE_MARGIN_MM
-    navigation_x, navigation_y = layout.navigation_centre()
+    navigation_x, navigation_y = layout.navigation_centre(navigation_profile)
     navigation_width = navigation_profile.connector_band_width_mm
     xt30_x, xt30_y, xt30_z = XT30_BODY_ALLOCATION_MM
     xt30_cx, xt30_cy = XT30_ALLOCATION_CENTRE_XY_MM

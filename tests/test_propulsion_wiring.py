@@ -92,7 +92,7 @@ class PropulsionWiringTests(unittest.TestCase):
 
         propulsion = self.propulsion.getGlobalPlacement()
         electronics = self.electronics.getGlobalPlacement()
-        self.assertEqual(propulsion.Base.x, -17)
+        self.assertEqual(propulsion.Base.x, 14)
         fc = world_shape(self.fc_reserve)
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, propulsion, electronics)
@@ -272,7 +272,7 @@ class PropulsionWiringTests(unittest.TestCase):
         for sign in (-1, 1):
             points = self.wiring.route_points(sign, prop, electronics)
             # Preserve the deliberately bad waypoint 16 mm ahead of the FC
-            # after moving that module onto the new 20 mm rail station grid.
+            # after changing the module station.
             fc_local_x = prop.inverse().multVec(electronics.Base).x
             points[1] = (fc_local_x + 16.0, sign * 20.0, 34.0)
             with patch.object(self.wiring, "route_points", return_value=points):

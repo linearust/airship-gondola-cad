@@ -34,28 +34,29 @@ class JointFitCouponTests(unittest.TestCase):
         self.assertEqual(set(shapes), set(PARTS))
         self.assertTrue(joint_checks(shapes)["passed"])
         self.assertEqual(len(shapes["RailPairCoupon"].Solids), 1)
-        self.assertAlmostEqual(shapes["RailPairCoupon"].BoundBox.XLength, 62)
+        self.assertAlmostEqual(shapes["RailPairCoupon"].BoundBox.XLength, 50)
+        self.assertAlmostEqual(shapes["SaddleJointCoupon"].BoundBox.ZMax, 15)
         contacts = {
             row["interface"]: row["area_mm2"]
             for row in joint_checks(shapes)["contacts"]
         }
-        self.assertAlmostEqual(contacts["full_U_roof"], 696)
+        self.assertAlmostEqual(contacts["full_U_roof"], 552)
         for side in ("negative", "positive"):
             self.assertAlmostEqual(
                 contacts[side + "_U_side"],
-                39.6 * 10.3 - 2 * math.pi * 1.7**2,
+                27.6 * 10.3 - 2 * math.pi * 1.7**2,
             )
-            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 143.5)
+            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 122.5)
 
     def test_rail_station_beyond_supported_trim_is_rejected(self):
         shapes = self.shapes()
-        shapes["RailPairCoupon"].translate(App.Vector(7, 0, 0))
+        shapes["RailPairCoupon"].translate(App.Vector(3, 0, 0))
         self.assertFalse(joint_checks(shapes)["passed"])
 
     def test_blocked_shared_bore_is_rejected(self):
         shapes = self.shapes()
         obstruction = Part.makeCylinder(
-            1.7, 5, App.Vector(17, -11, 7), App.Vector(0, 1, 0)
+            1.7, 5, App.Vector(15, -11, 6), App.Vector(0, 1, 0)
         )
         shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].fuse(obstruction)
         self.assertFalse(joint_checks(shapes)["passed"])
@@ -67,7 +68,7 @@ class JointFitCouponTests(unittest.TestCase):
                 floor = Part.makeCylinder(
                     2.7,
                     2,
-                    App.Vector(sign * 17, sign * 6, 7),
+                    App.Vector(sign * 15, sign * 6, 6),
                     App.Vector(0, sign, 0),
                 )
                 shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].cut(floor)
@@ -82,7 +83,7 @@ class JointFitCouponTests(unittest.TestCase):
 
     def test_removed_continuous_side_wall_is_rejected(self):
         shapes = self.shapes()
-        missing = Part.makeBox(4, 5, 4, App.Vector(23, 6, 3))
+        missing = Part.makeBox(4, 5, 4, App.Vector(19, 6, 3))
         shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].cut(missing)
         self.assertFalse(joint_checks(shapes)["passed"])
 
@@ -136,7 +137,7 @@ class JointFitCouponContactTests(unittest.TestCase):
 
         self.doc = App.newDocument("CurrentJointContactCoupon")
         module = self.doc.addObject("App::Part", "MainPropulsionModule")
-        module.Placement.Base = App.Vector(-17, 0, 0)
+        module.Placement.Base = App.Vector(14, 0, 0)
         for name, shape in (
             ("ContinuousRail", rail.rail_shape()),
             ("PropulsionFixedFrame", propulsion.fixed_frame_shape()),
@@ -155,24 +156,35 @@ class JointFitCouponContactTests(unittest.TestCase):
         report = joint_checks(self.shapes)
         self.assertTrue(report["passed"], report)
         support = report["bottom_and_wall_support"]
-        self.assertEqual(support["minimum_bottom_contact_area_mm2"], 203)
+        self.assertEqual(support["minimum_bottom_contact_area_mm2"], 161)
         self.assertEqual(support["inner_roof_clearance_mm"], 0.2)
-        self.assertEqual(support["wall_overlap_length_total_mm"], 50)
+        self.assertEqual(support["wall_overlap_length_total_mm"], 38)
         contacts = {r["interface"]: r["area_mm2"] for r in report["contacts"]}
         for side in ("negative", "positive"):
-            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 143.5)
+            self.assertAlmostEqual(contacts[side + "_bottom_datum"], 122.5)
+        self.assertAlmostEqual(contacts["full_U_roof"], 552)
+        for bore in report["M3_bores"]:
+            self.assertEqual(abs(bore["axis_x_mm"]), 15)
+            self.assertEqual(bore["axis_z_mm"], 6)
 
     def test_missing_bottom_or_blocked_roof_is_rejected(self):
         frame = self.shapes["FrameJointCoupon"]
         for y in (-3, 1.25):
-            changed = frame.cut(Part.makeBox(1, 1.75, 0.1, App.Vector(-28, y, 1.5)))
+            changed = frame.cut(Part.makeBox(1, 1.75, 0.1, App.Vector(-22, y, 1.5)))
             self.assertFalse(
                 joint_checks({**self.shapes, "FrameJointCoupon": changed})["passed"]
             )
-        blocked = frame.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(15, -1.25, 10.6)))
+        blocked = frame.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(15, -1.25, 9.6)))
         self.assertFalse(
             joint_checks({**self.shapes, "FrameJointCoupon": blocked})["passed"]
         )
+
+    def test_cropped_saddle_must_keep_its_full_roof_thickness(self):
+        saddle = self.shapes["SaddleJointCoupon"]
+        shortened = saddle.common(Part.makeBox(50, 28, 14.5, App.Vector(-25, -14, 0)))
+        result = joint_checks({**self.shapes, "SaddleJointCoupon": shortened})
+        self.assertFalse(result["passed"])
+        self.assertGreater(result["wrap"]["missing_roof_mm3"], 500)
 
 
 if __name__ == "__main__":

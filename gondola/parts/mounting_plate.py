@@ -15,7 +15,7 @@ from gondola.contracts.equipment_interfaces import FC_HOLE_PITCH
 from . import mounting_slots
 
 V = App.Vector
-SIZE_MM = (64.0, 64.0)
+SIZE_MM = (66.0, 66.0)
 THICKNESS_MM = 2.0
 CORNER_RADIUS_MM = 3.0
 CARRIER_BOTTOM_Z = 17.0

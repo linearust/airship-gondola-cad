@@ -7,8 +7,10 @@ from gondola.contracts.equipment_options import get_navigation_profile
 from . import equipment_mounts as mounts
 
 
-def navigation_centre():
-    return mounts.NAVIGATION_CENTRE_XY
+def navigation_centre(profile=None):
+    """Locate bolt-mounted P-AS independently of tape-mounted GPS alternatives."""
+    profile = profile or get_navigation_profile()
+    return mounts.PAS_CENTRE_XY if profile.key == "PAS" else mounts.GPS_CENTRE_XY
 
 
 def navigation_bottom(profile=None):
@@ -23,7 +25,7 @@ def navigation_bottom(profile=None):
 
 def navigation_hole_centres(profile=None):
     profile = profile or get_navigation_profile()
-    cx, cy = navigation_centre()
+    cx, cy = navigation_centre(profile)
     return tuple((cx + x, cy + y) for x, y in profile.mounting_hole_centres_mm)
 
 

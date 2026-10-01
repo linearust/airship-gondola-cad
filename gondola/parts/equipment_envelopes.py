@@ -49,7 +49,7 @@ def navigation_envelope_shape(profile=None):
     """One selected device; only the confirmed P-AS mounting axes are cut."""
     profile = profile or get_navigation_profile()
     length, width, height = profile.size_mm
-    x, y = layout.navigation_centre()
+    x, y = layout.navigation_centre(profile)
     bottom = layout.navigation_bottom(profile)
     shape = Part.makeBox(
         length, width, height, V(x - length / 2, y - width / 2, bottom)

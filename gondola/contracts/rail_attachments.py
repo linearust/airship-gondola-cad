@@ -55,7 +55,7 @@ class AttachmentPattern:
 
 
 CARRIER_ATTACHMENT = AttachmentPattern(0.0, 0.0, RAIL_SCREW_LENGTH, 3.25)
-PROPULSION_ATTACHMENT = AttachmentPattern(17.0, 5.0, 20.0, 8.0, 6.0)
+PROPULSION_ATTACHMENT = AttachmentPattern(15.0, 5.0, 20.0, 8.0, 6.0)
 
 
 def attachment_pattern(shared_drive):

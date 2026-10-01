@@ -11,6 +11,36 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class RailFastenerTests(unittest.TestCase):
+    def test_open_bottom_recesses_retain_closed_throats_and_axial_floors(self):
+        from gondola.parts import rail, servo_bridge
+
+        for mount, x, head_y, nut_y, floor_y, bottom in (
+            (rail.mount_base_shape(), 0, -5.25, 3.25, 1.25, 1.5),
+            (servo_bridge.bridge_shape(), 15, -11, 8, 6, 2.2),
+        ):
+            with self.subTest(x=x):
+                # Full-width mouths open only in the shallow outside recesses.
+                for width, depth, y in ((6.4, 1.9, head_y), (5.9, 1.9, nut_y)):
+                    mouth = Part.makeBox(
+                        width,
+                        depth,
+                        4.2 - bottom,
+                        App.Vector(x - width / 2, y, bottom),
+                    )
+                    self.assertLess(abs(mouth.common(mount).Volume), 1e-7)
+                # The M3 through-hole remains bounded below in both load floors.
+                for y in (head_y + 2, floor_y):
+                    floor = Part.makeBox(
+                        3.4,
+                        2,
+                        4.2 - bottom,
+                        App.Vector(x - 1.7, y, bottom),
+                    )
+                    self.assertLess(abs(floor.cut(mount).Volume), 1e-7)
+        nut = rail.nut_shape()
+        self.assertAlmostEqual(nut.BoundBox.XLength, 5.5)
+        self.assertGreater(nut.BoundBox.ZLength, 6.3)
+
     def test_recessed_nut_has_continuous_side_release(self):
         from gondola.parts import rail
 
@@ -78,7 +108,7 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.parts import rail
 
         mount = rail.mount_base_shape().cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, 3.24, 9.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, 3.24, 8.2))
         )
         report = rail.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
@@ -88,7 +118,7 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.parts import rail
 
         mount = rail.mount_base_shape().cut(
-            Part.makeBox(1, 0.2, 0.3, App.Vector(-0.5, 2, 9.2))
+            Part.makeBox(1, 0.2, 0.3, App.Vector(-0.5, 2, 8.2))
         )
         report = rail.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
@@ -109,7 +139,7 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.parts import rail
 
         mount = rail.mount_base_shape().cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, -3.25, 9.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(-0.5, -3.25, 8.2))
         )
         report = rail.attachment_check(mount=mount)
         self.assertFalse(report["passed"])
@@ -141,7 +171,7 @@ class RailFastenerTests(unittest.TestCase):
         self.assertAlmostEqual(bounds.ZLength, 6.0)
         self.assertAlmostEqual(bounds.YMin, -5.25)
         self.assertAlmostEqual(bounds.YMax, 6.75)
-        self.assertAlmostEqual(bounds.ZMin, 4.0)
+        self.assertAlmostEqual(bounds.ZMin, 3.0)
 
     def test_hardware_skus_and_propulsion_offset(self):
         from gondola.parts import rail
@@ -151,7 +181,7 @@ class RailFastenerTests(unittest.TestCase):
             group = doc.addObject("App::Part", "Host")
             for prefix, offset, shared, expected_sku in (
                 ("FC", 0, False, "M3X10_BUTTON_HEAD"),
-                ("Propulsion", 17.0, True, "M3X20_BUTTON_HEAD"),
+                ("Propulsion", 15.0, True, "M3X20_BUTTON_HEAD"),
             ):
                 hardware = rail.build_attachment_hardware(
                     doc, group, prefix, x_offset=offset, shared_drive=shared
@@ -159,7 +189,7 @@ class RailFastenerTests(unittest.TestCase):
                 self.assertEqual(len(hardware), 4 if shared else 2)
                 screw, nut = hardware[:2]
                 if shared:
-                    self.assertAlmostEqual(hardware[2].Shape.BoundBox.Center.x, -17)
+                    self.assertAlmostEqual(hardware[2].Shape.BoundBox.Center.x, -15)
                     self.assertAlmostEqual(hardware[3].Shape.BoundBox.YMin, -10.4)
                 self.assertEqual(screw.HardwareSKU, expected_sku)
                 self.assertEqual(nut.HardwareSKU, "M3_HEX_NUT")
@@ -181,13 +211,13 @@ class RailFastenerTests(unittest.TestCase):
         from gondola.validation.rail_mount import paired_spine_support_check
 
         complete_frame = propulsion.fixed_frame_shape()
-        crop = Part.makeBox(12, 22, 11, App.Vector(11, -11, 1.5))
-        frame = translated_shape(complete_frame.common(crop), x=-17)
-        bridge = translated_shape(servo_bridge.bridge_shape().common(crop), x=-17)
+        crop = Part.makeBox(12, 22, 11, App.Vector(9, -11, 1.5))
+        frame = translated_shape(complete_frame.common(crop), x=-15)
+        bridge = translated_shape(servo_bridge.bridge_shape().common(crop), x=-15)
         arguments = dict(
             mount=frame,
             head_support=bridge,
-            contact_length=58,
+            contact_length=46,
             shared_drive=True,
             screw_length=20,
             head_face_y=-9,
@@ -200,10 +230,10 @@ class RailFastenerTests(unittest.TestCase):
         self.assertEqual(report["support_policy"], "paired_spine_clamp_zone")
         self.assertEqual(report["checked_centred_contact_length_mm"], 12)
         support = paired_spine_support_check(
-            translated_shape(rail.rail_shape(), x=17), complete_frame
+            translated_shape(rail.rail_shape(), x=14), complete_frame
         )
         self.assertTrue(support["passed"], support)
-        self.assertEqual(support["wall_overlap_length_total_mm"], 50)
+        self.assertEqual(support["wall_overlap_length_total_mm"], 38)
         self.assertAlmostEqual(report["printed_grip_mm"], 17)
         self.assertAlmostEqual(report["bolt_tip_beyond_nut_mm"], 0.6)
         self.assertAlmostEqual(report["missing_head_support_mm3"], 0)
@@ -232,17 +262,17 @@ class RailFastenerTests(unittest.TestCase):
     def test_shared_clamp_declares_distinct_hardware_and_service_scope(self):
         from gondola.parts import rail
 
-        contract = rail.attachment_contract(58, shared_drive=True)
+        contract = rail.attachment_contract(46, shared_drive=True)
         self.assertEqual(contract["bolt_length_mm"], 20)
         self.assertEqual(contract["head_bearing_y_mm"], -9)
         self.assertEqual(contract["nut_bearing_y_mm"], 8)
         self.assertEqual(contract["printed_grip_mm"], 17)
         self.assertTrue(contract["shared_servo_bridge_clamp"])
-        self.assertEqual(contract["mount_contact_length_mm"], 58)
+        self.assertEqual(contract["mount_contact_length_mm"], 46)
         self.assertEqual(contract["centred_load_zone_length_mm"], 12)
-        self.assertEqual(contract["shared_minimum_wall_seat_length_mm"], 19)
-        self.assertEqual(contract["shared_minimum_total_seat_length_mm"], 45)
-        self.assertEqual(contract["shared_usable_trim_half_range_mm"], 6)
+        self.assertEqual(contract["shared_minimum_wall_seat_length_mm"], 17)
+        self.assertEqual(contract["shared_minimum_total_seat_length_mm"], 37)
+        self.assertEqual(contract["shared_usable_trim_half_range_mm"], 2)
         self.assertIn("Support both", contract["shared_joint_service"])
         screw = rail.attachment_screw_shape(20, head_face_y=-9)
         self.assertAlmostEqual(screw.BoundBox.YMin, -11)

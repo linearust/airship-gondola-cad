@@ -1,20 +1,20 @@
 {
-  "revision": "BY",
-  "change_kind": "Symmetric carriers, snug locating joints, freely fitted recessed nuts and 15mm reinforced motor supports",
-  "recorded_utc": "2026-10-01T07:06:21.827564+00:00",
+  "revision": "BZ",
+  "change_kind": "Shorter lower rail joints, reinforced servo bridge, expanded carrier slots and source-corrected motor datums",
   "passed": true,
-  "scope": "Nominal CAD and software verification; no new physical qualification.",
-  "predecessor_commit": "4071add64dab1870d519f674d11ec20b352b9eb6",
-  "source_fingerprint": "06a258495e57a58da4c6bdb9d5159b01c54fd56e7caded355b45ec40fa1779fa",
-  "cad_sha256": "739f08adc7bd52b73c25da103e30371b43a4ccea8180f1685b9277d37b76b56f",
+  "recorded_utc": "2026-10-01T09:17:10.627234+00:00",
+  "scope": "Nominal CAD/software verification only. As-printed fit, loaded strength and actual propeller installation remain unqualified.",
+  "predecessor_commit": "bae512a4fff467cf87ba25b01b7b80cdc9e91a4e",
+  "source_fingerprint": "991d1a6bdc9df6cd6fbc63175e3d989b6256b6e81bb451a9cdf3166af356b038",
+  "cad_sha256": "79bfbeace02ec72f8bf6e2dbbf00ca1aea4f04fb2ad87d29656b238cb85128b1",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "1b08a44f377e0b7b44955cd3cdaf4da1a6f6a54539f7a416f8f5a2ea9d980d8a",
+    "sha256": "129ab278579f78285cb02a508c38b946396be7ee1016571621e2ae9674dfab9d",
     "promoted_after_explicit_review": true
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 729,
+    "testsRun": 740,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -72,30 +72,16 @@
     "passed": true
   },
   "mass_change": {
-    "printed_delta_g": 0.539757781810934,
-    "hardware_delta_g": 0.0,
-    "scope": "Nominal modeled mass; finished weights and unmeasured equipment remain unqualified."
+    "current_printed_g": -1.7597756401467848,
+    "current_hardware_g": 0.0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "739f08adc7bd52b73c25da103e30371b43a4ccea8180f1685b9277d37b76b56f",
-    "gondola_print_parts.FCStd": "e8f72e195c9d39ea48ffb5803b74f2b9dd0167cf51cb5e1af06af0eac29c76b4",
-    "gondola_power_options.FCStd": "c6c2e77db0d23a54413f55d1b66930d29b8ed2c396b6e551a94e48295b1810ba",
-    "gondola_attachment_detail.FCStd": "cbc45c26f341cf56cee5d118eddfe28822ed0b682a6e3d76db8110803c2db55d"
+    "gondola.FCStd": "79bfbeace02ec72f8bf6e2dbbf00ca1aea4f04fb2ad87d29656b238cb85128b1",
+    "gondola_print_parts.FCStd": "daae37ffb23d8cfe35f3b4be4b105419b6de2a8b1e2a0412265cbb5c788ca822",
+    "gondola_power_options.FCStd": "1d0956c27e8d501a619928dccae9e7810a5744a89ac9024e4fd65286e666837e",
+    "gondola_attachment_detail.FCStd": "6dc7b63ff89417a52729809d639f0b79b263e4d1cdded507cd2e60ad2225ea51"
   },
-  "print_bundle_sha256": "a3977289eca46fbde9edca6706279dc1799c1a8a04af4e631567c2997fe974d7",
+  "print_bundle_sha256": "fc97088f65dcf83125408793f8a6019b965000bbce2976a037821b5c1f1786e1",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_archive_sha256": "a5e7b016155069c4a071ac490e5c68df65fc1acd0ae9792e1f5d51e0f9d755e6",
-  "execution_freeze_binding": {
-    "pipeline": {
-      "path": "freeze.json",
-      "sha256": "7d547dfff5b9fca01a4a33e2e24dbf9fcca3ec81506519632953e882ec7415e3"
-    },
-    "final_native_tests": {
-      "path": "final-freeze.json",
-      "sha256": "2bf4b2ca7a233fe166ae9420e3d74a608342cf7ffbadb64a91973d6e63bd9ada"
-    },
-    "production_source_fixture_and_pipeline_script_unchanged": true,
-    "pipeline_reused_after_test_witness_only_correction": true,
-    "scope": "Only two test witness origins changed, with unchanged assertions. Final tests rerun completely; pipeline uses its original execution freeze."
-  }
+  "evidence_archive_sha256": "b7f9d0e6a87aa50645644d80e99d2a15c81ca973d1ee3c9028e69ec9ce5597b7"
 }

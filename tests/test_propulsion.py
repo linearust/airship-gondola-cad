@@ -516,11 +516,11 @@ class NativeGearedDriveTests(unittest.TestCase):
         from gondola.parts import propulsion
 
         carrier = self.doc.PortMotorCarrier.Shape
-        current_prop = propulsion.cylinder(20, 5, (12.5, 0, 0), (1, 0, 0))
-        future_prop = propulsion.cylinder(25, 5, (12.5, 0, 0), (1, 0, 0))
+        current_prop = propulsion.cylinder(20, 5, (3.8, 0, 0), (1, 0, 0))
+        future_prop = propulsion.cylinder(25, 5, (3.8, 0, 0), (1, 0, 0))
         self.assertLess(carrier.common(current_prop).Volume, 1e-7)
         self.assertGreater(carrier.common(future_prop).Volume, 100)
-        guard = carrier.common(Part.makeBox(1.8, 2, 5, App.Vector(14.1, -1, 21)))
+        guard = carrier.common(Part.makeBox(1.8, 2, 5, App.Vector(8.1, -1, 21)))
         self.assertAlmostEqual(guard.BoundBox.ZMax, 25, places=6)
         self.assertGreater(guard.BoundBox.ZMin, 22.97)
 
@@ -808,19 +808,19 @@ class NativeGearedDriveTests(unittest.TestCase):
                 all(name in site["retained_during_access"] for site in row["sites"])
             )
         self.assertEqual(len(row["sites"]), 2)
-        self.assertEqual(row["clamp_spacing_mm"], 34.0)
+        self.assertEqual(row["clamp_spacing_mm"], 30.0)
         for site in row["sites"]:
-            self.assertEqual(site["side_bolt_axis_mm"], [17.0, 7.0])
-            self.assertEqual(site["centred_load_zone_x_range_mm"], [11.0, 23.0])
-            self.assertEqual(site["physical_spine_x_range_mm"], [-29, 29])
+            self.assertEqual(site["side_bolt_axis_mm"], [15.0, 6.0])
+            self.assertEqual(site["centred_load_zone_x_range_mm"], [9.0, 21.0])
+            self.assertEqual(site["physical_spine_x_range_mm"], [-23, 23])
             self.assertEqual(
                 site["shared_grip_contact_check"]["checked_centred_contact_length_mm"],
                 12,
             )
             support = site["paired_spine_support"]
             self.assertTrue(support["passed"])
-            self.assertEqual(support["spine_extent_mm"], 58)
-            self.assertEqual(support["wall_overlap_length_total_mm"], 50)
+            self.assertEqual(support["spine_extent_mm"], 46)
+            self.assertEqual(support["wall_overlap_length_total_mm"], 38)
             self.assertTrue(
                 all(row["passed"] for row in support["bottom_datum_contacts"])
             )
@@ -1111,7 +1111,13 @@ class NativeGearedDriveTests(unittest.TestCase):
         obstacle = self.doc.addObject("Part::Feature", "CarrierServiceObstacle")
         self.module["group"].addObject(obstacle)
         obstacle.Shape = Part.makeBox(
-            0.4, 0.4, 0.4, App.Vector(19.8, PIVOT_HALF_SPAN + 23.3, PIVOT_Z - 0.2)
+            # Inside the translated clamp wall, above its deliberately open
+            # split; the eliminated forward struts no longer occupy the old
+            # X19.8/Z0 witness after an 8 mm extraction translation.
+            0.4,
+            0.4,
+            0.4,
+            App.Vector(18.8, PIVOT_HALF_SPAN + 23.3, PIVOT_Z + 0.8),
         )
         modified = {**self.module, "references": self.module["references"] + [obstacle]}
         try:
@@ -2105,12 +2111,12 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 expected_sections = {
                     "frame_foot_thickness": 5.0,
                     "rail_straight_base_width": 6.0,
-                    "carrier_roof": 1.8,
-                    "carrier_nut_pocket_bottom_ligament": 2.55,
-                    "frame_rail_relieved_roof": 1.8,
+                    "carrier_roof": 2.8,
+                    "carrier_nut_pocket_bottom_opening": 0,
+                    "frame_rail_relieved_roof": 2.8,
                     "frame_rail_to_central_seat_connection": 11.0,
-                    "port_servo_bridge_sidewall": 3.2,
-                    "starboard_servo_bridge_sidewall": 3.2,
+                    "port_servo_bridge_sidewall": 4.2,
+                    "starboard_servo_bridge_sidewall": 4.2,
                     "servo_common_cradle_central_web": 5.2,
                 }
                 for feature, expected in expected_sections.items():
@@ -2156,9 +2162,9 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                     self.assertTrue(row["passed"], row)
                 assessment = result["equipment_mount_assessment"]
                 self.assertEqual(
-                    assessment["fc_support_deck_size_mm"], [64.0, 64.0, 2.0]
+                    assessment["fc_support_deck_size_mm"], [66.0, 66.0, 2.0]
                 )
-                self.assertEqual(assessment["accessory_deck_size_mm"], (64.0, 64.0))
+                self.assertEqual(assessment["accessory_deck_size_mm"], (66.0, 66.0))
                 self.assertTrue(result["passed"], result)
                 # Exercise the actual release evidence generator against saved
                 # geometry. A synthetic report sized from the contract cannot

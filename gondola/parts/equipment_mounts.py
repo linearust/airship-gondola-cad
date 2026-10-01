@@ -27,22 +27,22 @@ COMMON_DECK_SIZE = mounting_plate.SIZE_MM
 # Two short straight supports leave the centre accessory bore open below the deck.
 SUPPORT_X_RANGES_MM = ((-8.0, -3.0), (3.0, 8.0))
 SUPPORT_Y_RANGE_MM = (-2.5, 2.5)
-NAVIGATION_CENTRE_XY = (0.0, -2.2)
+PAS_CENTRE_XY = (0.0, 9.3)
+GPS_CENTRE_XY = (0.0, -2.2)
 PAS_HOLE_CENTRES = tuple(
-    (x + NAVIGATION_CENTRE_XY[0], y + NAVIGATION_CENTRE_XY[1])
-    for x, y in interfaces.PAS_HOLE_CENTRES
+    (x + PAS_CENTRE_XY[0], y + PAS_CENTRE_XY[1]) for x, y in interfaces.PAS_HOLE_CENTRES
 )
 COMMON_FIXED_HOLE_CENTRES = mounting_plate.FIXED_HOLE_CENTRES
 # Keep diagonal stack-foot hardware accessible.
-RADIO_CENTRE_XY = (26.0, -11.0)
+RADIO_CENTRE_XY = (26.0, -17.0)
 RADIO_YAW_DEG = 90.0
 GPS_ADHESIVE_REGIONS = (
     ((0.0, -6.5), (12.0, 5.0)),
     ((0.0, 6.5), (12.0, 5.0)),
 )
 RADIO_ADHESIVE_REGIONS = (
-    ((23.0, -7.5), (4.0, 15.0)),
-    ((30.0, -11.0), (3.0, 20.0)),
+    ((23.0, -12.0), (5.0, 12.0)),
+    ((30.5, -13.5), (4.0, 15.0)),
 )
 ACCESSORY_DECK_SIZE = COMMON_DECK_SIZE
 ACCESSORY_DECK_CENTRE_XY = (0.0, 0.0)
@@ -54,10 +54,10 @@ MOUNT_NAMES = {
     "accessory": "AccessoryMount",
 }
 # Keep continuous contact regions clear of every device bore and spare slot.
-# Four uninterrupted patches preserve 328 mm² around the centre bore.
+# Four uninterrupted patches preserve 304 mm² around the centre bore.
 BATTERY_ADHESIVE_REGIONS = (
-    ((0.0, -7.5), (12.0, 7.0)),
-    ((0.0, 7.5), (12.0, 7.0)),
+    ((0.0, -7.0), (12.0, 6.0)),
+    ((0.0, 7.0), (12.0, 6.0)),
     ((0.0, -22.5), (16.0, 5.0)),
     ((0.0, 22.5), (16.0, 5.0)),
 )
@@ -144,7 +144,7 @@ def expansion_contract():
         "slot_count": len(expansion_slot_rows()),
         "fastener": "M2",
         "slot_width_mm": MOUNT_HOLE_DIAMETER,
-        "scope": "Twelve outer slots on four sides of a 54 mm square. Each side has three ten-mm centre-travel intervals: -23 to -13, -5 to 5, and 13 to 23 mm from its midpoint. This is a project provision, not an industry PCB standard. Optional power feet use their separately reviewed positions within this array. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
+        "scope": "Twelve outer slots on four sides of a 54 mm square. Each side has centre-travel intervals -19 to -13, -5 to 5, and 13 to 19 mm from its midpoint. This is a project provision, not an industry PCB standard. Optional power feet use their separately reviewed positions within this array. Installed bodies and hardware can obstruct a chosen position. No arbitrary extension load, head fit, tightening torque or spacer height is qualified by a slot alone.",
     }
 
 
@@ -172,7 +172,7 @@ def common_plate_contract():
         "fixed_fc_bore_count": len(FC_HOLE_CENTRES),
         "centre_through_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One rounded square plate with five 2.6 mm fixed bores and 28 shared inner-diagonal, outer-diagonal, arc, central-radial and side slots. Four central radial M2 slots provide opposing centre spacings 24.8 through 26.8 mm while preserving fixed FC bearing pads and the declared adhesive patches. This added paired-hole range is a geometric allowance, not a selected device's standard interface. The deck pattern has quarter-turn and X/Y mirror symmetry; the integral U-shaped rail shoe is directional. Three rail carriers are identical prints. The optional power deck uses the same plate template. P-AS uses two 23 mm diagonal-slot endpoints with the declared negative-Y offset. Patterns are alternative uses, not permission to populate overlapping devices simultaneously.",
+        "scope": "One66mm rounded-square plate with five2.6mm fixed bores and36 shared slots. FC fixed bearing pads and optical side-middle slots remain. P-AS uses the23mm opposed axial endpoints with its declared positive-Y offset. The deck has quarter-turn and X/Y mirror symmetry; its U rail shoe is directional. Three installed carriers share one print and the optional power deck shares its plate template. Optional Pi5/A8 provisions are alternative mounting patterns, not populated-device, fastener, electrical, strength or simultaneous-installation qualification.",
     }
 
 
@@ -249,9 +249,9 @@ def mount_contract(kind):
         ],
     }
     scope = {
-        "battery": "Universal carrier in battery role. Four declared continuous adhesive regions retain 328 mm2 clear of the centre bore and other openings. The common outer slots support separately screened optional power feet, as on the other carriers.",
+        "battery": "Universal carrier in battery role. Four declared continuous adhesive regions retain 304 mm2 clear of the centre bore and other openings. The common outer slots support separately screened optional power feet, as on the other carriers.",
         "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
-        "accessory": "Universal navigation carrier. P-AS axes and mutually exclusive GPS alternatives share the local (0,-2.2) datum. The Mini body is centred at (26,-11) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 4 x 15 mm at (23,-7.5) and 3 x 20 mm at (30,-11), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the new middle slot open, without moving the body or connector reserves. The body overhangs the square plate edge and clears optional portal service reserves. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform. The optical foot can use an existing middle side slot; occupied host/side and power combinations need their composed clearance checks.",
+        "accessory": "Universal navigation carrier. P-AS uses local centre(0,+9.3); mutually exclusive GPS alternatives retain centre(0,-2.2) and their adhesive support. The Mini body is centred at (26,-17) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 5 x 12 mm at (23,-12) and 4 x 15 mm at (30.5,-13.5), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the middle slot open. The relocated body and unchanged-size connector reserves clear the optional portal hardware registration and service bounds. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform. The optical foot can use an existing middle side slot; occupied host/side and power combinations need their composed clearance checks.",
     }
     return {
         "kind": kind,
@@ -284,7 +284,7 @@ def mount_contract(kind):
         "fc_wiring_corridor_width_mm": FC_WIRING_CORRIDOR_WIDTH,
         "fc_wiring_corridor_centre_y_mm": FC_WIRING_CORRIDOR_CENTRE_Y,
         "pas_service_clearance_mm": PAS_SERVICE_CLEARANCE,
-        "hole_interface_scope": "Four fixed FC bores preserve the 25.5 mm pattern and complete bearing annuli. The P-AS's published two axes lie at endpoints of two shared 23 mm diagonal slots after the declared navigation shift. M2 openings are 2.6 mm wide; this is our clearance choice, not the OEM hole diameter. Slot seats have continuous side lands, not full circular annuli. No printed threads or device posts.",
+        "hole_interface_scope": "Four fixed FC bores preserve the 25.5 mm pattern and complete bearing annuli. The P-AS's published two axes lie at endpoints of two opposed axial slots at23mm spacing after the declared navigation shift. M2 openings are 2.6 mm wide; this is our clearance choice, not the OEM hole diameter. Slot seats have continuous side lands, not full circular annuli. No printed threads or device posts.",
         "unresolved_mounting_stack": "Use purchased M2 hardware and OEM FC silicone dampers. Actual PCB bearing planes, damper compression, spacer and bolt lengths remain pending; these purchased parts are not generated at invented elevations.",
         "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }
@@ -295,8 +295,8 @@ def build_mount(doc, parent, kind):
     name = MOUNT_NAMES[kind]
     notes = (
         "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
-        f"Centred 64 x 64 mm deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots. "
-        "One recessed transverse M3x10 screw and a nut on the opposite 2 mm blind-pocket floor clamp the integral U-shoe to the rail wall. "
+        f"Centred66x66mm deck, four FC bores and {len(mounting_slots.rows())} symmetric mounting slots. "
+        "One recessed transverse M3x10 screw and a nut on the opposite2mm bearing floor in an open-bottom anti-rotation recess clamp the integral U-shoe to the rail wall. "
         "The upper seat and two sides surround the rail wall; loosen the side screw to adjust within a supported rail segment. "
         f"Two short deck supports preserve the centre accessory bore, with a {DECK_BOTTOM_Z - rail.MOUNT_TOP_Z:g} mm under-deck gap; accessory head/nut height and screw-tip length must fit that space. "
         "Keep the declared adhesive regions and underside slot head paths clear. "

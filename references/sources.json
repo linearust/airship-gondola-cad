@@ -287,6 +287,24 @@
           "url": "https://www.fastenal.com/content/product_specifications/M.FHN.934.A4-80.01.pdf"
         }
       ]
+    },
+    {
+      "origin": "Official Raspberry Pi drawing and SIYI manual obtained during the 2026-10-01 compatibility review.",
+      "scope": "Optional mounting-pattern evidence only, not selected installed payloads. Pi drawing explicitly provides reference dimensions rather than production tolerances. A8 image is a rendered manual mounting page. Preserve OEM damping and verify delivered hardware and installed loading.",
+      "assets": [
+        {
+          "path": "references/manufacturer/raspberry_pi5_mechanical_drawing.pdf",
+          "title": "Raspberry Pi 5 manufacturer reference drawing",
+          "url": "https://datasheets.raspberrypi.com/rpi5/raspberry-pi-5-mechanical-drawing.pdf",
+          "sha256": "5dd680d6c1f5e7aa9c7b020695e315d04aac862df82ff01d4e9041cd0668d7f2"
+        },
+        {
+          "path": "references/manufacturer/siyi_a8_mini_mounting.png",
+          "title": "SIYI A8 mini user manual v1.10 mounting diagram, printed page 19",
+          "url": "https://res.siyi.biz/oss/other/2026/06/15/A8_mini_User_Manual_v1_10_563cde30.pdf",
+          "sha256": "08929aaee51fcc0e1ef81ce20ee34cb4604a999f10447236461546121c32913a"
+        }
+      ]
     }
   ]
 }

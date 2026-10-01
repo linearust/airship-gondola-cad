@@ -30,9 +30,9 @@ HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
 TOWER_HEIGHT = 32.0
 STACK_TOP_Z = HOST_SUPPORT_Z + TOWER_HEIGHT
 FOOT_THICKNESS = 2.0
-FOOT_WIDTH = 13.0
-FOOT_LENGTH = 9.0
-FOOT_INBOARD_Y = 4.0
+FOOT_WIDTH = 16.0
+FOOT_LENGTH = 10.0
+FOOT_INBOARD_Y = 5.0
 FOOT_INBOARD_CHAMFER = 5.0
 FIXED_LEG_INNER = -1.4
 FIXED_LEG_THICKNESS = 2.0
@@ -90,7 +90,7 @@ def clamp_fit_contract():
         "minimum_received_screw_crest_diameter_mm": MINIMUM_RECEIVED_BOLT_DIAMETER,
         "combined_axis_clearance_from_slot_centreline_mm": COMBINED_AXIS_CLEARANCE,
         "host_slot_centre_travel_mm": HOST_SLOT_TRAVEL,
-        "nominal_position": "Opposed slot outer endpoints at (+27,+23) and (-27,-23) mm",
+        "nominal_position": "Opposed slot outer endpoints at (+27,+19) and (-27,-19) mm",
         "registration_scope": "Both foot axes must simultaneously fit the opposed carrier slots. Full slot travel plus printed clearance is enclosed by the continuous XY/yaw bound; this is not a circular-host-hole locating joint. Feet seat before tightening, with no operating axial gap.",
         "printed_grip_mm": DECK_THICKNESS + FOOT_THICKNESS,
         "screw_length_mm": CLAMP_SCREW_LENGTH,
@@ -131,7 +131,7 @@ def interface_contract(host_name=None):
         "tower_foot_inward_corner_chamfer_mm": FOOT_INBOARD_CHAMFER,
         "fixed_load_leg_section_mm": [FIXED_LEG_THICKNESS, LEG_WIDTH],
         "top_beam_section_mm": [TOP_BEAM_THICKNESS, LEG_WIDTH],
-        "tower_attachment": "Two integral 13 x 9 x 2 mm feet seat within the 64 mm square carrier. An inward 5 mm corner relief retains the complete diagonal leg root while avoiding unnecessary inboard material. Two existing-kit M2x8 screws pass upward through the common outer slots and circular foot bores; ordinary M2 hex nuts sit above. No dedicated host holes, washers, ears or locating pieces.",
+        "tower_attachment": "Two integral 16 x 10 x 2 mm feet seat within the 66 mm square carrier. An inward 5 mm corner relief retains the complete diagonal leg root while avoiding unnecessary inboard material. Two existing-kit M2x8 screws pass upward through the common outer slots and circular foot bores; ordinary M2 hex nuts sit above. No dedicated host holes, washers, ears or locating pieces.",
         "portal_top_beam_bottom_z_mm": STACK_TOP_Z,
         "power_deck_bottom_z_mm": STACK_TOP_Z + TOP_BEAM_THICKNESS - DECK_THICKNESS,
         "mechanical_hosts": dict(MECHANICAL_HOSTS),
@@ -180,8 +180,8 @@ def foot_outline_shape(index, *, bottom=-TOWER_HEIGHT, thickness=FOOT_THICKNESS)
     """One rectangular foot with an inward corner cut for inboard clearance."""
     x, y = ANCHOR_CENTRES[index]
     direction = math.copysign(1, x)
-    centre_x = x + direction * 2.5
-    centre_y = y + direction * 0.5
+    centre_x = x + direction * 4.0
+    centre_y = y
     shape = box(
         FOOT_WIDTH,
         FOOT_LENGTH,

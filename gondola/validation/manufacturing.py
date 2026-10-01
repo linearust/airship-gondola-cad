@@ -4,6 +4,8 @@ These geometric screens preserve explicit fit, fatigue and supplier-acceptance
 limits; they are not structural or process qualification.
 """
 
+from math import sqrt
+
 import FreeCAD as App
 import Part
 
@@ -67,7 +69,7 @@ def material_length_on_line(shape, a, b):
 
 
 def rail_mount_wall_probes():
-    """Native sections of the web, U saddle, recessed head and blind hex nut pocket."""
+    """Native sections of the web, U saddle and downward-open outer recesses."""
     e = 0.01
     probes = [
         (
@@ -108,8 +110,8 @@ def rail_mount_wall_probes():
         (
             "carrier_clamp_leg",
             "BatteryMount",
-            (0, rail.MOUNT_OUTER_Y - e, 3),
-            (0, -rail.WEB_THICKNESS / 2 + e, 3),
+            (4, rail.MOUNT_OUTER_Y - e, 3),
+            (4, -rail.WEB_THICKNESS / 2 + e, 3),
             rail.MOUNT_LEG_THICKNESS,
         ),
     ]
@@ -118,37 +120,37 @@ def rail_mount_wall_probes():
             (
                 "carrier_head_recess_floor",
                 "BatteryMount",
-                (2.5, -3.25 - e, 7),
-                (2.5, -1.25 + e, 7),
+                (2.5, -3.25 - e, 6),
+                (2.5, -1.25 + e, 6),
                 2.0,
             ),
             (
                 "carrier_positive_clamp_leg",
                 "BatteryMount",
-                (0, 1.25 - e, 3),
-                (0, 5.25 + e, 3),
+                (4, 1.25 - e, 3),
+                (4, 5.25 + e, 3),
                 4.0,
             ),
             (
                 "carrier_nut_pocket_floor",
                 "BatteryMount",
-                (2.5, 1.25 - e, 7),
-                (2.5, 3.25 + e, 7),
+                (2.5, 1.25 - e, 6),
+                (2.5, 3.25 + e, 6),
                 2.0,
             ),
             (
                 "carrier_nut_pocket_top_ligament",
                 "BatteryMount",
-                (0, 4.5, 9.95 - e),
+                (0, 4.5, 6 + 5.9 / sqrt(3) - e),
                 (0, 4.5, 12.5 + e),
-                2.55,
+                12.5 - 6 - 5.9 / sqrt(3),
             ),
             (
-                "carrier_nut_pocket_bottom_ligament",
+                "carrier_nut_pocket_bottom_opening",
                 "BatteryMount",
                 (0, 4.5, rail.MOUNT_BOTTOM_Z - e),
                 (0, 4.5, 4.05 + e),
-                4.05 - rail.MOUNT_BOTTOM_Z,
+                0.0,
             ),
         ]
     )
@@ -186,7 +188,7 @@ def review(doc, registry):
             }
         )
     analytic = rail_mount_wall_probes() + [
-        ("guard_radial_wall", "PortMotorCarrier", (15, 0, 22.99), (15, 0, 25.01), 2.0),
+        ("guard_radial_wall", "PortMotorCarrier", (9, 0, 22.99), (9, 0, 25.01), 2.0),
         (
             "battery_mount_deck_thickness",
             "BatteryMount",
@@ -308,13 +310,13 @@ def review(doc, registry):
             "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
             "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_mm": rail.BASE_WIDTH,
-            "scope": "The straight6mm-wide base and three wing pairs retain1.5mm nominal thickness. Nine identical26mm walls at34mm pitch retain eight8mm free spans. Mount bottoms seat on the base atZ1.5, with0.2mm relief over the wall top. Ordinary16mm feet retain +/-4.2mm full-foot trim; the58mm paired propulsion spine has +/-6mm travel,12mm centred load zones and at least19mm wall seating/45mm combined. Each15.4mm slot leaves5.3mm end ligaments. A50mm clamp coupon contains one complete26mm support and no inter-wall gap. Actual full-rail curvature, adhesion, lateral/torsional stability, bending strain, fatigue and one-piece supplier acceptance remain unqualified.",
+            "scope": "The straight base and three wing pairs retain 1.5 mm nominal thickness. Eleven identical 20 mm walls at 28 mm pitch leave ten 8 mm flex spans. Mount bottoms seat on the base, with 0.2 mm roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits. Full-foot seating, 12 mm load zones and wall-end margins are checked geometrically. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,
         "actual_feature_measurements": measurements,
         "wall_screen_limits": "Sampled opposed planar faces and explicit line probes only. Fillet/taper/cylindrical transitions are not exhaustively certified as a global minimum-wall field. No strength or fatigue qualification.",
-        "powder_removal": "Wall slots, U saddles, externally open blind hex nut pockets, open head counterbores, support arms and journals remain accessible for depowdering before hardware installation. Rail nut pockets restrain rotation and retain their 2 mm nominal bearing floors; other nut recesses follow their respective interface contracts. No sealed hollow print is claimed.",
+        "powder_removal": "Wall slots, U saddles, downward-open outer nut/head recesses, support arms and journals remain accessible before hardware installation. Rail nut pockets restrain rotation and retain 2 mm nominal bearing floors; they are not captive before bolt insertion. Other recesses follow their respective interface contracts. No sealed hollow print is claimed.",
         "tolerance": {
             "dimensional_percent": 0.3,
             "minimum_absolute_mm": 0.3,

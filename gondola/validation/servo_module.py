@@ -46,11 +46,11 @@ def bridge_joint_check(doc, module):
         return {"missing_parts": missing, "passed": False}
     frame, bridge = shapes["PropulsionFixedFrame"], shapes["ServoDriveBridge"]
     planes = (
-        ("full_roof_support", 2, 12.5, 696, (-29, -6, 58, 12)),
+        ("full_roof_support", 2, 12.5, 552, (-23, -6, 46, 12)),
         ("negative_y_beam_roof", 2, 12.5, 90, (-9, -11, 18, 5)),
         ("positive_y_beam_roof", 2, 12.5, 90, (-9, 6, 18, 5)),
-        ("negative_y_wall", 1, -6, 39.6 * 10.3 - 2 * math.pi * 1.7**2, None),
-        ("positive_y_wall", 1, 6, 39.6 * 10.3 - 2 * math.pi * 1.7**2, None),
+        ("negative_y_wall", 1, -6, 27.6 * 10.3 - 2 * math.pi * 1.7**2, None),
+        ("positive_y_wall", 1, 6, 27.6 * 10.3 - 2 * math.pi * 1.7**2, None),
     )
     contacts = []
     for name, axis, station, minimum, bounds in planes:
@@ -80,7 +80,7 @@ def bridge_joint_check(doc, module):
         "frame_bridge_intersection_mm3": overlap,
         "expected_bridge_sku": spec.bridge_sku,
         "actual_bridge_sku": doc.ServoDriveBridge.PrintSKU,
-        "scope": "The continuous roof seats in Z and both U walls seat in Y. Two shared M3x20 pairs at X +/-17 load both cap walls, both frame legs and the rail. These are nominal fitted contact planes, not spring jaws or guaranteed as-printed fits. Coupon-finish and hand-seat the complete stack before tightening; reject warp rather than pulling it closed. Nominal geometry establishes no strength, automatic centering, preload or creep resistance.",
+        "scope": "The continuous roof seats in Z and both U walls seat in Y. Two shared M3x20 pairs at X +/-15 load both cap walls, both frame legs and the rail. These are nominal fitted contact planes, not spring jaws or guaranteed as-printed fits. Coupon-finish and hand-seat the complete stack before tightening; reject warp rather than pulling it closed. Nominal geometry establishes no strength, automatic centering, preload or creep resistance.",
         "passed": overlap < TOL
         and wrap["passed"]
         and all(row["passed"] for row in contacts)
@@ -92,27 +92,30 @@ def bridge_wrap_check(frame, bridge):
     """Literal complete U walls and head/nut floors, independent of builders."""
     bores = union(
         [
-            Part.makeCylinder(1.7, 24, App.Vector(x, -12, 7), App.Vector(0, 1, 0))
-            for x in (-17, 17)
+            Part.makeCylinder(1.7, 24, App.Vector(x, -12, 6), App.Vector(0, 1, 0))
+            for x in (-15, 15)
         ]
     )
     nut_radius = 5.9 / math.sqrt(3)
     nut_points = [
         App.Vector(
-            -17 + nut_radius * math.cos(math.radians(a)),
+            -15 + nut_radius * math.cos(math.radians(a)),
             -11.1,
-            7 + nut_radius * math.sin(math.radians(a)),
+            6 + nut_radius * math.sin(math.radians(a)),
         )
-        for a in range(0, 360, 60)
+        for a in range(30, 390, 60)
     ]
     nut_cut = Part.Face(Part.makePolygon(nut_points + [nut_points[0]])).extrude(
         App.Vector(0, 3.1, 0)
     )
+    nut_cut = nut_cut.fuse(Part.makeBox(5.9, 3.1, 7, App.Vector(-17.95, -11.1, -1)))
     relief = Part.makeBox(18.4, 24, 10.4, App.Vector(-9.2, -12, 2.1))
-    wall = Part.makeBox(58, 5, 12.3, App.Vector(-29, -11, 2.2)).cut(relief).cut(bores)
-    wall = wall.cut(
-        Part.makeCylinder(3.2, 2, App.Vector(17, -11, 7), App.Vector(0, 1, 0))
-    ).cut(nut_cut)
+    wall = Part.makeBox(46, 5, 12.8, App.Vector(-23, -11, 2.2)).cut(relief).cut(bores)
+    wall = (
+        wall.cut(Part.makeCylinder(3.2, 2, App.Vector(15, -11, 6), App.Vector(0, 1, 0)))
+        .cut(Part.makeBox(6.4, 2, 7, App.Vector(11.8, -11, -1)))
+        .cut(nut_cut)
+    )
     rows = []
     for sign in (1, -1):
 
@@ -131,7 +134,7 @@ def bridge_wrap_check(frame, bridge):
             ("frame_nut_leg", frame, 1.25, 4.75),
         ):
             land = Part.makeCylinder(
-                3, thickness, App.Vector(17, y, 7), App.Vector(0, 1, 0)
+                3, thickness, App.Vector(15, y, 6), App.Vector(0, 1, 0)
             ).cut(bores)
             values["missing_" + label + "_mm3"] = abs(turn(land).cut(target).Volume)
         rows.append(
@@ -142,7 +145,7 @@ def bridge_wrap_check(frame, bridge):
             }
         )
     roof_missing = abs(
-        Part.makeBox(58, 22, 2, App.Vector(-29, -11, 12.5)).cut(bridge).Volume
+        Part.makeBox(46, 22, 2.5, App.Vector(-23, -11, 12.5)).cut(bridge).Volume
     )
     relief_obstruction = abs(bridge.common(relief).Volume)
     return {
@@ -153,7 +156,7 @@ def bridge_wrap_check(frame, bridge):
         "nominal_sidewall_mm": 5.0,
         "head_bearing_floor_mm": 3.0,
         "nut_bearing_floor_mm": 2.0,
-        "clamp_axis_spacing_mm": 34.0,
+        "clamp_axis_spacing_mm": 30.0,
         "passed": len(rows) == 2
         and all(row["passed"] for row in rows)
         and roof_missing < TOL
@@ -171,11 +174,11 @@ def _bridge_path(shape, waypoints, obstacles, spec):
     width = servo_bridge.bulkhead_width(spec)
     sections = (
         ((width, 5, spec.input_z_mm + 10.2 - 12.5), (-width / 2, -2.5, 12.5)),
-        ((58, 22, 2), (-29, -11, 12.5)),
-        ((19.8, 5, 10.3), (-29, -11, 2.2)),
-        ((19.8, 5, 10.3), (9.2, -11, 2.2)),
-        ((19.8, 5, 10.3), (-29, 6, 2.2)),
-        ((19.8, 5, 10.3), (9.2, 6, 2.2)),
+        ((46, 22, 2.5), (-23, -11, 12.5)),
+        ((13.8, 5, 10.3), (-23, -11, 2.2)),
+        ((13.8, 5, 10.3), (9.2, -11, 2.2)),
+        ((13.8, 5, 10.3), (-23, 6, 2.2)),
+        ((13.8, 5, 10.3), (9.2, 6, 2.2)),
     )
     envelope = union(
         [Part.makeBox(*size, App.Vector(*origin)) for size, origin in sections]

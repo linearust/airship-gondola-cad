@@ -29,13 +29,16 @@ class RailManufacturingTests(unittest.TestCase):
             with self.subTest(feature=feature):
                 actual = material_length_on_line(self.shapes[name], start, end)
                 self.assertAlmostEqual(actual, expected, places=6)
-                self.assertGreaterEqual(actual, 1.5 - 1e-6)
+                if feature == "carrier_nut_pocket_bottom_opening":
+                    self.assertEqual(expected, 0)
+                else:
+                    self.assertGreaterEqual(actual, 1.5 - 1e-6)
 
     def test_enlarging_slot_reduces_top_ligament(self):
         from gondola.validation.manufacturing import material_length_on_line
 
         _, name, start, end, expected = self.probes["rail_slot_top_ligament"]
-        cut = Part.makeBox(2, 4, 0.3, App.Vector(-1, -2, 8.6))
+        cut = Part.makeBox(2, 4, 0.3, App.Vector(-1, -2, 7.6))
         actual = material_length_on_line(self.shapes[name].cut(cut), start, end)
         self.assertAlmostEqual(expected - actual, 0.2, places=6)
 
@@ -43,25 +46,22 @@ class RailManufacturingTests(unittest.TestCase):
         from gondola.validation.manufacturing import material_length_on_line
 
         _, name, start, end, expected = self.probes["carrier_clamp_leg"]
-        cut = Part.makeBox(2, 0.2, 1, App.Vector(-1, -5.25, 2.5))
+        cut = Part.makeBox(2, 0.2, 1, App.Vector(3, -5.25, 2.5))
         actual = material_length_on_line(self.shapes[name].cut(cut), start, end)
         self.assertAlmostEqual(expected - actual, 0.2, places=6)
 
-    def test_both_bearing_floors_and_pocket_ligaments_are_real_material(self):
+    def test_both_bearing_floors_and_top_pocket_ligament_are_real_material(self):
         from gondola.validation.manufacturing import material_length_on_line
 
         cuts = {
             "carrier_nut_pocket_floor": Part.makeBox(
-                1, 0.2, 1, App.Vector(2, 1.25, 6.5)
+                1, 0.2, 1, App.Vector(2, 1.25, 5.5)
             ),
             "carrier_head_recess_floor": Part.makeBox(
-                1, 0.2, 1, App.Vector(2, -3.25, 6.5)
-            ),
-            "carrier_nut_pocket_bottom_ligament": Part.makeBox(
-                1, 1, 0.2, App.Vector(-0.5, 4.0, 3.85)
+                1, 0.2, 1, App.Vector(2, -3.25, 5.5)
             ),
             "carrier_nut_pocket_top_ligament": Part.makeBox(
-                1, 1, 0.2, App.Vector(-0.5, 4.0, 9.95)
+                1, 1, 0.2, App.Vector(-0.5, 4.0, 9.6)
             ),
         }
         for feature, cut in cuts.items():
@@ -69,6 +69,15 @@ class RailManufacturingTests(unittest.TestCase):
                 _, name, start, end, expected = self.probes[feature]
                 actual = material_length_on_line(self.shapes[name].cut(cut), start, end)
                 self.assertAlmostEqual(expected - actual, 0.2, places=6)
+
+    def test_reintroduced_lower_pocket_lip_is_detected_as_an_obstruction(self):
+        from gondola.validation.manufacturing import material_length_on_line
+
+        _, name, start, end, expected = self.probes["carrier_nut_pocket_bottom_opening"]
+        lip = Part.makeBox(1, 1, 0.2, App.Vector(-0.5, 4, 3.5))
+        actual = material_length_on_line(self.shapes[name].fuse(lip), start, end)
+        self.assertEqual(expected, 0)
+        self.assertAlmostEqual(actual, 0.2, places=6)
 
 
 if __name__ == "__main__":

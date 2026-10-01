@@ -1,6 +1,6 @@
-"""Symmetric shared device slots and direct support-foot attachment array.
+"""Symmetric shared square/rectangular slots and support-foot attachments.
 
-Square pitch coverage and rotation are geometric allowances, not qualification
+Pattern coverage and quarter-turn alternatives are geometric provisions, not qualification
 of an arbitrary board, fastener, standoff or occupied installation.
 """
 
@@ -13,17 +13,17 @@ from gondola.cad import box, union
 
 V = App.Vector
 MINIMUM_LAND = 1.5
-SMALL_PITCH_RANGE = (16.0, 23.0)
+SMALL_PITCH_RANGE = (16.0, 20.0)
 SMALL_PATTERN_ROTATION = 0.0
 OUTER_DIAGONAL_PITCH_RANGE = (40.0, 45.0)
 LARGE_PITCH = 30.5
-LARGE_ROTATION_RANGE = (-15.0, 15.0)
+LARGE_ROTATION_RANGE = (0.0, 0.0)
 SIDE_X = 27.0
-SIDE_Y_RANGE = (13.0, 23.0)
+SIDE_Y_RANGE = (13.0, 19.0)
 SIDE_MIDDLE_Y_RANGE = (-5.0, 5.0)
 # Limited radial travel avoids the central adhesive strips and complete fixed
 # FC bearing pads, keeping their support despite the additional openings.
-CENTRAL_AXIS_RADIUS_RANGE = (12.4, 13.4)
+CENTRAL_AXIS_RADIUS_RANGE = (11.5, 13.4)
 
 
 def _radial_point(radius, angle):
@@ -38,9 +38,9 @@ def rows():
         angle = SMALL_PATTERN_ROTATION - 45 + 90 * index
         result.append(
             {
-                "name": f"square16_23_{index}",
+                "name": f"square16_20_{index}",
                 "kind": "straight",
-                "family": "square16_23",
+                "family": "square16_20",
                 "width_mm": 2.6,
                 "fastener": "M2",
                 "start_xy_mm": _radial_point(
@@ -64,18 +64,39 @@ def rows():
                 ),
             }
         )
+        quarter_turn = math.radians(90 * index)
+
+        def rotate(point):
+            x, y = point
+            return (
+                x * math.cos(quarter_turn) - y * math.sin(quarter_turn),
+                x * math.sin(quarter_turn) + y * math.cos(quarter_turn),
+            )
+
         result.append(
             {
-                "name": f"square30_5_{index}",
-                "kind": "arc",
-                "family": "square30_5",
+                "name": f"rectangle25_30_square30_5_{index}",
+                "kind": "polyline",
+                "family": "rectangle25_30_square30_5",
                 "width_mm": 3.6,
-                "fastener": "M3",
-                "radius_mm": LARGE_PITCH / math.sqrt(2),
-                "start_angle_deg": 45 + LARGE_ROTATION_RANGE[0] + 90 * index,
-                "end_angle_deg": 45 + LARGE_ROTATION_RANGE[1] + 90 * index,
+                "fastener": "M2.5 or M3 with reviewed broad bearing hardware",
+                "points_xy_mm": tuple(
+                    rotate(point) for point in ((12.5, 15), (15.25, 15.25), (15, 12.5))
+                ),
             }
         )
+        for sign in (-1, 1):
+            result.append(
+                {
+                    "name": f"rectangle58_49_{index}_{sign}",
+                    "kind": "straight",
+                    "family": "rectangle58_49",
+                    "width_mm": 3.2,
+                    "fastener": "M2.5 with reviewed broad bearing hardware",
+                    "start_xy_mm": rotate((29, sign * 23.5)),
+                    "end_xy_mm": rotate((29, sign * 25.5)),
+                }
+            )
     for index in range(4):
         result.append(
             {
@@ -116,12 +137,27 @@ def rows():
 
 
 def shape(row, bottom, depth, *, border=0.0):
-    """Exact capsule or rounded annular sector, including a continuous offset."""
+    """Exact capsule or joined capsule path, including continuous offset."""
     radius = row["width_mm"] / 2 + border
     if radius <= 0 or depth <= 0 or border < 0:
         raise ValueError(
             "Mounting slot requires positive width/depth and nonnegative border"
         )
+    if row["kind"] == "polyline":
+        points = row["points_xy_mm"]
+        if len(points) < 3:
+            raise ValueError("Polyline slot requires at least three points")
+        return union(
+            [
+                shape(
+                    {**row, "kind": "straight", "start_xy_mm": start, "end_xy_mm": end},
+                    bottom,
+                    depth,
+                    border=border,
+                )
+                for start, end in zip(points, points[1:])
+            ]
+        ).removeSplitter()
     if row["kind"] == "straight":
         start = V(*row["start_xy_mm"], bottom)
         end = V(*row["end_xy_mm"], bottom)
@@ -132,24 +168,6 @@ def shape(row, bottom, depth, *, border=0.0):
         middle.rotate(V(), V(0, 0, 1), math.degrees(math.atan2(delta.y, delta.x)))
         middle.translate(start)
         ends = (start, end)
-    elif row["kind"] == "arc":
-        centre_radius = row["radius_mm"]
-        start, end = row["start_angle_deg"], row["end_angle_deg"]
-        if centre_radius <= radius or not 0 < end - start < 180:
-            raise ValueError(
-                "Arc slot requires positive inner radius and a short open arc"
-            )
-        middle = Part.makeCylinder(
-            centre_radius + radius, depth, V(0, 0, bottom), V(0, 0, 1), end - start
-        ).cut(
-            Part.makeCylinder(
-                centre_radius - radius, depth, V(0, 0, bottom), V(0, 0, 1), end - start
-            )
-        )
-        middle.rotate(V(), V(0, 0, 1), start)
-        ends = tuple(
-            V(*_radial_point(centre_radius, angle), bottom) for angle in (start, end)
-        )
     else:
         raise ValueError("Unknown mounting slot kind: " + str(row["kind"]))
     return union(
@@ -185,16 +203,49 @@ def contract():
                 "pitch_mm": 20.0,
                 "fastener": "M2",
                 "source": "https://www.speedybee.com/speedybee-f405-mini-bls-35a-20x20-stack/",
-                "evidence": "Manufacturer lists a 20 x 20 mm pattern and M2/M3 screw or grommet compatibility. This slot family supports the M2 option; 16 through 23 mm pitches are geometric adjustment coverage, not another selected manufacturer's interface.",
+                "evidence": "Manufacturer lists a 20 x 20 mm pattern and M2/M3 screw or grommet compatibility. This slot family supports the M2 option; 16 through 20 mm pitches are geometric adjustment coverage, not another selected manufacturer's interface.",
             },
             {
                 "pitch_mm": 30.5,
                 "fastener": "M3",
                 "source": "https://www.mateksys.com/?portfolio=f405-std",
-                "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs. Slot width and angular travel are this project's printed clearance choices.",
+                "evidence": "Manufacturer lists a 30.5 mm mounting pattern and supplied M3 vibration standoffs. Slot width and the shared rectangular/square corner path are this project's printed clearance choices; no full angular travel is claimed.",
             },
         ],
         "x500_drop_in_compatible": False,
         "reference": "references/dense_mount_review.md",
-        "scope": "Project mounting array with quarter-turn and X/Y mirror symmetry. Four inner M2 diagonal slots cover square pitches 16 through 23 mm; the shifted P-AS uses two endpoints of the 23 mm pattern. Four outer M2 diagonal slots cover square pitches 40 through 45 mm. Four M3 arcs accept a 30.5 mm square rotated +/-15 degrees. Four central radial M2 slots on the X/Y axes give opposing centre spacings 24.8 through 26.8 mm, including 25, 25.4 and 26 mm, while preserving the fixed FC bearing pads and declared adhesive patches. This added paired-hole range is a geometric provision, not a selected device or industry-standard qualification. Twelve outer M2 slots lie on a 54 mm square: each side has centre-travel intervals -23 through -13, -5 through 5, and 13 through 23 mm from its midpoint. These slots also receive optional power feet; there are no separate structural clamp bores. FC 25.5 mm holes remain fixed on a 45-degree heading. This is not a universal industry breadboard or a drop-in X500 interface. Positions are alternative uses, not simultaneous arbitrary devices. Check installed head/nut support, standoffs and access; do not place the selected small M2 heads on M3-width slots without a separately reviewed bearing interface. New central-slot hardware has bench access with the carrier removed from the rail; occupied equipment and wiring must be checked for the chosen installation. No added baseline washers.",
+        "optional_payloads": optional_payload_profiles(),
+        "scope": "Project array, not a universal industry breadboard or drop-in X500 interface. Four inner M2 diagonal slots accept square pitches16..20mm; four outer diagonals accept40..45mm. Four short corner paths accept a30.5mm M3 square and a25x30mm M2.5 rectangle in either quarter-turn orientation; the former +/-15deg arc coverage is not retained. Eight outer M2.5 slots accept58x49mm rectangles in either quarter-turn orientation. Four axial M2 slots provide opposed spacing23..26.8mm, including the repositioned P-AS pair. Twelve side M2 slots on a54mm square preserve the optical foot at each side midpoint and accept reviewed power feet at(+27,+19)/(-27,-19). The fixed25.5mm FC pattern retains full bearing pads. Patterns are alternative uses, not simultaneous-device clearance or load qualification. Wider slots require separately reviewed bearing hardware; default small M2 heads must not bridge them. Bench-service and occupied-device checks remain mandatory.",
+    }
+
+
+def optional_payload_profiles():
+    """Published patterns plus explicit geometric fastener acceptance envelopes.
+
+    Profiles are provisions only; they do not add hardware, equipment mass or an
+    installed device to the baseline. Bearing dimensions below are design choices.
+    """
+    return {
+        "RaspberryPi5": {
+            "pattern_mm": (58.0, 49.0),
+            "published_hole_diameter_mm": 2.7,
+            "fastener": "M2.5",
+            "slot_family": "rectangle58_49",
+            "bearing_diameter_mm": 5.5,
+            "bearing_type": "Flat circular standoff/washer face; verify supplied hardware",
+            "source": "https://datasheets.raspberrypi.com/rpi5/raspberry-pi-5-mechanical-drawing.pdf",
+            "retained_source": "references/manufacturer/raspberry_pi5_mechanical_drawing.pdf",
+            "scope": "Manufacturer reference drawing, not production tolerance data. PCB85x56mm extends beyond this carrier when its hole pattern is centred. Standoff height, underside components, cooling and connector access are not qualified.",
+        },
+        "SIYIA8Mini": {
+            "pattern_mm": (25.0, 30.0),
+            "published_hole_diameter_mm": 2.7,
+            "fastener": "M2.5",
+            "slot_family": "rectangle25_30_square30_5",
+            "bearing_diameter_mm": 7.0,
+            "bearing_type": "Flat circular load-spreading face; verify selected washer/standoff",
+            "source": "https://res.siyi.biz/oss/other/2026/06/15/A8_mini_User_Manual_v1_10_563cde30.pdf",
+            "retained_source": "references/manufacturer/siyi_a8_mini_mounting.png",
+            "scope": "Mount the original vibration-isolated assembly. Pattern support does not qualify the95g published payload, full gimbal sweep, optical field or rail strength. Published11..25.2V input is incompatible with direct2S/8V. No baseline installation or screw length is selected.",
+        },
     }

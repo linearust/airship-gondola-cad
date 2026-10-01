@@ -45,7 +45,7 @@ class PowerMountTests(unittest.TestCase):
             centre_hole_diameter=mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         )
         self.assertTrue(report["passed"], report)
-        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 28))
+        self.assertEqual((report["fixed_bore_count"], report["slot_count"]), (5, 36))
         # The new centre bore leaves surrounding board support intact. No
         # dedicated cable-tie slots are required for straps around the outline.
         for x, y in ((0, 3), (0, -23), (0, 23), (0, -29), (0, 29)):
@@ -62,7 +62,7 @@ class PowerMountTests(unittest.TestCase):
         original = p.platform_shape()
         # The diagonal beam crosses this arc. Reintroduce only material below
         # the deck, leaving the entire declared two-mm deck opening intact.
-        row = next(row for row in mounting_slots.rows() if row["kind"] == "arc")
+        row = next(row for row in mounting_slots.rows() if row["kind"] == "polyline")
         floor = mounting_slots.shape(row, 0, 0.5).common(stack_interface.tower_shape())
         self.assertGreater(floor.Volume, 0.1)
         changed = original.fuse(floor).removeSplitter()
@@ -118,6 +118,66 @@ class PowerMountTests(unittest.TestCase):
                 self.assertNotIn("TetherDepartureReserve", reserves)
         with self.assertRaises(ValueError):
             p.local_shapes("BATTERY", packaging="PORTAL")
+
+    def test_accessory_portal_registration_preserves_complete_radio_connector_lanes(
+        self,
+    ):
+        from gondola.parts import equipment_envelopes, wiring_reserves
+        from gondola.power_export import _registration_bounds
+
+        # Independent carrier-frame witnesses:24x18.2x5.8mm radio below Z16,
+        # rotated90deg at(26,-17). Preserve each complete15mm withdrawal lane
+        # with2mm side/top allowance, rather than cutting a pocket around a bolt.
+        expected = {
+            "ModuleRadioEnvelope": Part.makeBox(
+                18.2, 24, 5.8, App.Vector(16.9, -29, 10.2)
+            ),
+            "RadioNegativeXConnectorReserve": Part.makeBox(
+                22.2, 15, 7.8, App.Vector(14.9, -44, 8.2)
+            ),
+            "RadioPositiveXConnectorReserve": Part.makeBox(
+                22.2, 15, 7.8, App.Vector(14.9, -5, 8.2)
+            ),
+        }
+        generated = {
+            "ModuleRadioEnvelope": equipment_envelopes.radio_envelope_shape(),
+            **{
+                name: shape
+                for name, shape in wiring_reserves.reserve_shapes().items()
+                if name in expected
+            },
+        }
+        self.assertEqual(set(generated), set(expected))
+        for name, witness in expected.items():
+            with self.subTest(part=name):
+                self.assertLess(generated[name].cut(witness).Volume, 1e-6)
+                self.assertLess(witness.cut(generated[name]).Volume, 1e-6)
+
+        for plan in ("TETHER_BEC_SVPDB", "BATTERY_SVPDB"):
+            bounds = _registration_bounds(plan)
+            self.assertTrue({"PowerFootBolt0", "PowerFootBolt1"} <= set(bounds))
+            placed = {}
+            for name, bound in bounds.items():
+                placed[name] = bound.copy()
+                # Carrier top Z19 + integral32mm portal height.
+                placed[name].translate(App.Vector(0, 0, 51))
+            for name, bound in placed.items():
+                for device, witness in expected.items():
+                    with self.subTest(plan=plan, component=name, device=device):
+                        self.assertLess(bound.common(witness).Volume, 1e-6)
+
+            # The previousY=-11 layout leaves the whole positive-end connector
+            # lane inside the conservative foot-bolt registration region. Keep
+            # this rejected case so an empty or shortened bound cannot pass.
+            old_lane = expected["RadioPositiveXConnectorReserve"].copy()
+            old_lane.translate(App.Vector(0, 6, 0))
+            old_overlap = sum(
+                bound.common(old_lane).Volume
+                for name, bound in placed.items()
+                if name.startswith("PowerFootBolt")
+            )
+            with self.subTest(plan=plan, mutation="previous radio position"):
+                self.assertGreater(old_overlap, 0.01)
 
     def test_host_translation_and_attached_optical_module(self):
         from gondola.parts import optical_interface
@@ -177,7 +237,7 @@ class PowerMountTests(unittest.TestCase):
             )
             for x, y in stack_interface.CLAMP_CENTRES:
                 point = pose.multVec(App.Vector(x, y, 0))
-                low, high = (13, 23) if y > 0 else (-23, -13)
+                low, high = (13, 19) if y > 0 else (-19, -13)
                 closest_y = max(low, min(high, point.y))
                 self.assertLessEqual(
                     math.hypot(point.x - x, point.y - closest_y), allowance
@@ -213,8 +273,21 @@ class PowerMountTests(unittest.TestCase):
                     abs(foot.BoundBox.YMin),
                     abs(foot.BoundBox.YMax),
                 ),
-                32,
+                33,
             )
+
+    def test_repositioned_power_feet_support_complete_leg_roots(self):
+        from gondola.parts import stack_interface as s
+
+        self.assertEqual(s.ANCHOR_CENTRES, ((-20.0, -20.0), (20.0, 20.0)))
+        self.assertEqual(s.CLAMP_CENTRES, ((-27.0, -19.0), (27.0, 19.0)))
+        # Independent thin sections at the base of each2x8mm diagonal leg.
+        for index, angle in enumerate((225, 45)):
+            root = Part.makeBox(
+                2, 8, 0.1, App.Vector(math.hypot(20, 20) - 1.4, -4, -32)
+            )
+            root.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
+            self.assertLess(root.cut(s.foot_shape(index)).Volume, 1e-6)
 
     def test_power_attachment_rejects_missing_host_seat_and_blocked_slot(self):
         from gondola.parts import equipment_mounts, power_mount
@@ -225,7 +298,7 @@ class PowerMountTests(unittest.TestCase):
         self.assertTrue(power_mount.attachment_check(carrier)["passed"])
         changed = carrier.cut(
             Part.makeBox(
-                3, 3, 2, App.Vector(28, 24, -s.TOWER_HEIGHT - s.DECK_THICKNESS)
+                3, 3, 2, App.Vector(28, 21, -s.TOWER_HEIGHT - s.DECK_THICKNESS)
             )
         )
         self.assertFalse(power_mount.attachment_check(changed)["passed"])
@@ -233,7 +306,7 @@ class PowerMountTests(unittest.TestCase):
             Part.makeCylinder(
                 0.6,
                 s.DECK_THICKNESS,
-                App.Vector(27, 23, -s.TOWER_HEIGHT - s.DECK_THICKNESS),
+                App.Vector(27, 19, -s.TOWER_HEIGHT - s.DECK_THICKNESS),
             )
         )
         self.assertFalse(power_mount.attachment_check(changed)["passed"])

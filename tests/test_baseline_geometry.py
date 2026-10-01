@@ -153,14 +153,14 @@ class ModuleControlMappingTests(unittest.TestCase):
         from gondola.validation.baseline import module_attachment_pose
 
         for yaw in (0, 180):
-            station = ModuleStation("Test", -70, yaw)
+            station = ModuleStation("Test", -56, yaw)
             module = SimpleNamespace(
                 RailAttachmentOffsetX=0,
                 RailAttachmentOffsetsX=[0],
                 RailContactLength=16,
-                RailPositionX=-70,
+                RailPositionX=-56,
                 Placement=App.Placement(
-                    App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
+                    App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
                 ),
             )
             self.assertTrue(module_attachment_pose(station, module)["passed"])
@@ -178,9 +178,9 @@ class ModuleControlMappingTests(unittest.TestCase):
                 setattr(module, attribute, original)
             original = module.Placement.copy()
             for vector, angle in (
-                (App.Vector(-70, 0.1, 0), yaw),
-                (App.Vector(-70, 0, 0.1), yaw),
-                (App.Vector(-70, 0, 0), 180 - yaw),
+                (App.Vector(-56, 0.1, 0), yaw),
+                (App.Vector(-56, 0, 0.1), yaw),
+                (App.Vector(-56, 0, 0), 180 - yaw),
             ):
                 module.Placement = App.Placement(
                     vector, App.Rotation(App.Vector(0, 0, 1), angle)
@@ -196,30 +196,30 @@ class ModuleControlMappingTests(unittest.TestCase):
             row for row in MODULE_STATIONS if row.object_name == "MainPropulsionModule"
         )
         module = SimpleNamespace(
-            RailAttachmentOffsetX=17,
-            RailAttachmentOffsetsX=[17, -17],
-            RailContactLength=58,
-            RailPositionX=-17,
-            Placement=App.Placement(App.Vector(-17, 0, 0), App.Rotation()),
+            RailAttachmentOffsetX=15,
+            RailAttachmentOffsetsX=[15, -15],
+            RailContactLength=46,
+            RailPositionX=14,
+            Placement=App.Placement(App.Vector(14, 0, 0), App.Rotation()),
         )
         self.assertTrue(module_attachment_pose(station, module)["passed"])
-        for position in (-23, -11, -120, 120):
+        for position in (12, 16, -126, 126):
             module.RailPositionX = position
             module.Placement.Base.x = position
             self.assertTrue(module_attachment_pose(station, module)["passed"])
-        for position in (-23.01, -10.99, -120.01, 120.01):
+        for position in (11.99, 16.01, -126.01, 126.01):
             module.RailPositionX = position
             module.Placement.Base.x = position
             self.assertFalse(module_attachment_pose(station, module)["passed"])
-        module.RailPositionX = -17
-        module.Placement.Base.x = -17
-        module.RailAttachmentOffsetsX = [17]
+        module.RailPositionX = 14
+        module.Placement.Base.x = 14
+        module.RailAttachmentOffsetsX = [15]
         missing = module_attachment_pose(station, module)
         self.assertFalse(missing["passed"])
         self.assertFalse(missing["attachment_offsets_match"])
-        module.RailAttachmentOffsetsX = [17, -17]
-        module.RailPositionX = -153
-        module.Placement.Base = App.Vector(-153, 0, 0)
+        module.RailAttachmentOffsetsX = [15, -15]
+        module.RailPositionX = -155
+        module.Placement.Base = App.Vector(-155, 0, 0)
         edge = module_attachment_pose(station, module)
         self.assertTrue(edge["rail_attachment_positions"][0]["passed"])
         self.assertFalse(edge["rail_attachment_positions"][1]["passed"])
@@ -322,8 +322,8 @@ class SavedRailControlFailureTests(unittest.TestCase):
             ("RailPositionX", float("inf")),
             ("RailAttachmentOffsetX", float("nan")),
             ("RailAttachmentOffsetX", float("-inf")),
-            ("RailAttachmentOffsetsX", [17, float("nan")]),
-            ("RailAttachmentOffsetsX", [17, float("inf")]),
+            ("RailAttachmentOffsetsX", [15, float("nan")]),
+            ("RailAttachmentOffsetsX", [15, float("inf")]),
             ("RailContactLength", float("nan")),
         )
         for name, value in cases:
@@ -346,7 +346,7 @@ class SavedRailControlFailureTests(unittest.TestCase):
     def test_saved_malformed_offset_list_returns_a_named_failure(self):
         self.module.removeProperty("RailAttachmentOffsetsX")
         self.module.addProperty("App::PropertyString", "RailAttachmentOffsetsX")
-        self.module.RailAttachmentOffsetsX = "17, -17"
+        self.module.RailAttachmentOffsetsX = "15, -15"
         self.assert_control_failure("RailAttachmentOffsetsX")
 
 

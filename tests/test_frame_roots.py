@@ -185,18 +185,18 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
         support = Part.makeBox(
-            58,
+            46,
             12,
-            servo_bridge.SEAT_Z - 10.7,
-            App.Vector(-29, -6, 10.7),
+            servo_bridge.SEAT_Z - 9.7,
+            App.Vector(-23, -6, 9.7),
         )
-        contact = Part.makePlane(58, 12, App.Vector(-29, -6, servo_bridge.SEAT_Z))
+        contact = Part.makePlane(46, 12, App.Vector(-23, -6, servo_bridge.SEAT_Z))
         self.assertLess(support.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(contact.common(frame).Area, 696, places=5)
-        self.assertAlmostEqual(contact.common(bridge).Area, 696, places=5)
+        self.assertAlmostEqual(contact.common(frame).Area, 552, places=5)
+        self.assertAlmostEqual(contact.common(bridge).Area, 552, places=5)
         self.assertLess(frame.common(bridge).Volume, 1e-7)
 
-    def test_standard_side_foot_has_broad_overlap_with_central_support(
+    def test_both_twelve_mm_load_zones_have_complete_stock_and_two_mm_end_reserve(
         self,
     ):
         from gondola.parts import propulsion
@@ -204,21 +204,23 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         offset = propulsion.RAIL_BOLT_OFFSET_X
         length = propulsion.RAIL_CONTACT_LENGTH
-        foot = Part.makeBox(24, 12, 11, App.Vector(-12, -6, 1.5))
-        foot = foot.cut(Part.makeBox(24, 2.5, 9.2, App.Vector(-12, -1.25, 1.5)))
+        foot = Part.makeBox(12, 12, 11, App.Vector(-6, -6, 1.5))
+        foot = foot.cut(Part.makeBox(12, 2.5, 8.2, App.Vector(-6, -1.25, 1.5)))
         foot = foot.cut(
-            Part.makeCylinder(1.7, 14, App.Vector(0, -7, 7), App.Vector(0, 1, 0))
+            Part.makeCylinder(1.7, 14, App.Vector(0, -7, 6), App.Vector(0, 1, 0))
         )
-        foot.translate(App.Vector(offset, 0, 0))
-        self.assertLess(foot.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(offset - length / 2, -12.0)
-        self.assertGreater(offset + length / 2, 0)
-        self.assertAlmostEqual(length, 58)
+        for side in (-1, 1):
+            seated = foot.copy()
+            seated.translate(App.Vector(side * offset, 0, 0))
+            self.assertLess(seated.cut(frame).Volume, 1e-7)
+        self.assertAlmostEqual(offset, 15)
+        self.assertAlmostEqual(length / 2 - offset - 6, 2)
+        self.assertAlmostEqual(length, 46)
         connection = Part.makeBox(4, 4, 11, App.Vector(5, -5.25, 1.5))
         self.assertLess(connection.cut(frame).Volume, 1e-7)
 
     def test_side_bore_fill_does_not_fill_the_web_passage_and_frame_lifts(self):
-        from gondola.parts import propulsion, rail
+        from gondola.parts import rail
         from gondola.validation.propulsion import (
             frame_rail_bore_filled,
             vertical_frame_release_check,
@@ -227,7 +229,7 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         filled = frame_rail_bore_filled(frame)
         rail_shape = rail.rail_shape()
-        rail_shape.translate(App.Vector(propulsion.RAIL_BOLT_OFFSET_X, 0, 0))
+        rail_shape.translate(App.Vector(14, 0, 0))
         self.assertLess(frame.cut(filled).Volume, 1e-7)
         self.assertLess(filled.common(rail_shape).Volume, 1e-7)
         result = vertical_frame_release_check(frame, rail_shape)
@@ -243,10 +245,10 @@ class FrameRootTests(unittest.TestCase):
 
         bridge = self.doc.ServoDriveBridge.Shape
         centre = Part.makeBox(
-            26.8,
+            28.8,
             5,
-            2,
-            App.Vector(-13.4, -2.5, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
+            2.5,
+            App.Vector(-14.4, -2.5, servo_bridge.CONNECTOR_PLATE_BOTTOM_Z),
         )
         self.assertLess(centre.cut(bridge).Volume, 1e-7)
         self.assertEqual(len(bridge.Solids), 1)

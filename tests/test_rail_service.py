@@ -17,18 +17,18 @@ class RailServiceTests(unittest.TestCase):
         from gondola.validation.rail_access import supported_propulsion_slide
 
         shape = Part.makeBox(1, 1, 1)
-        pose = {"attachment_world_axes_x_mm": [-34, 0]}
+        pose = {"attachment_world_axes_x_mm": [-29, 1]}
         result = supported_propulsion_slide({"CarriedPart": shape}, {}, pose)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["relative_x_range_mm"], [-6, 6])
-        self.assertEqual(result["travel_mm"], 12)
+        self.assertEqual(result["relative_x_range_mm"], [-2, 2])
+        self.assertEqual(result["travel_mm"], 4)
         blocked = supported_propulsion_slide(
             {"CarriedPart": shape},
-            {"MidpathObstacle": Part.makeBox(0.2, 1, 1, App.Vector(3, 0, 0))},
+            {"MidpathObstacle": Part.makeBox(0.2, 1, 1, App.Vector(1, 0, 0))},
             pose,
         )
         self.assertFalse(blocked["passed"])
-        for axes in ([-34], [-34, 0.1], [-34, 17]):
+        for axes in ([-29], [-29, 1.1], [-29, 14]):
             with self.subTest(axes=axes), self.assertRaises(ValueError):
                 supported_propulsion_slide(
                     {"CarriedPart": shape}, {}, {"attachment_world_axes_x_mm": axes}
@@ -38,12 +38,12 @@ class RailServiceTests(unittest.TestCase):
         from gondola.validation.rail_access import _shared_trim_interval
 
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [102, 136]}), (-6, 1)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [111, 141]}), (-2, 0)
         )
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [-136, -102]}), (-1, 6)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [-141, -111]}), (0, 2)
         )
-        for axes in ((103.01, 137.01), (-137.01, -103.01)):
+        for axes in ((111.01, 141.01), (-141.01, -111.01)):
             with self.assertRaises(ValueError):
                 _shared_trim_interval({"attachment_world_axes_x_mm": axes})
 
@@ -54,16 +54,16 @@ class RailServiceTests(unittest.TestCase):
         from gondola.parts import rail
         from gondola.validation.rail_access import _shared_screw_slide
 
-        screw = translated_shape(rail.attachment_screw_shape(20, head_face_y=-9), x=17)
-        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=17)}
+        screw = translated_shape(rail.attachment_screw_shape(20, head_face_y=-9), x=15)
+        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=14)}
         name = "MainPropulsionModuleRailMountScrew"
-        good = _shared_screw_slide(name, screw, obstacles, -6, 6)
+        good = _shared_screw_slide(name, screw, obstacles, -2, 2)
         self.assertTrue(good["passed"], good)
-        extra = screw.fuse(Part.makeBox(1, 1, 1, App.Vector(17, 0, 8.4)))
-        self.assertFalse(_shared_screw_slide(name, extra, obstacles, -6, 6)["passed"])
+        extra = screw.fuse(Part.makeBox(1, 1, 1, App.Vector(15, 0, 7.4)))
+        self.assertFalse(_shared_screw_slide(name, extra, obstacles, -2, 2)["passed"])
         # A narrow obstruction between endpoints is still intersected.
-        obstacles["Block"] = Part.makeBox(0.1, 0.1, 0.1, App.Vector(20, -5, 7))
-        self.assertFalse(_shared_screw_slide(name, screw, obstacles, -6, 6)["passed"])
+        obstacles["Block"] = Part.makeBox(0.1, 0.1, 0.1, App.Vector(16, -5, 6))
+        self.assertFalse(_shared_screw_slide(name, screw, obstacles, -2, 2)["passed"])
 
     def test_low_reference_part_does_not_acquire_a_phantom_clamp_bore_fill(self):
         from gondola.parts import rail
@@ -98,7 +98,7 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertFalse(report["passed"])
 
-    def test_blind_hex_pocket_supports_and_restrains_nut_without_wrench(self):
+    def test_open_bottom_hex_recess_supports_and_restrains_nut_without_wrench(self):
         from gondola.parts import rail
         from gondola.validation.rail_access import nut_capture_check
 
@@ -121,7 +121,7 @@ class RailServiceTests(unittest.TestCase):
         obstacles = {"Rail": rail.rail_shape(), "Mount": rail.mount_base_shape()}
         path = [(0, 0, 0), (0, 4, 0)]
         self.assertTrue(continuous_path(nut, path, obstacles)["passed"])
-        obstacles["Block"] = Part.makeBox(0.3, 0.1, 0.3, App.Vector(2, 5, 7))
+        obstacles["Block"] = Part.makeBox(0.3, 0.1, 0.3, App.Vector(2, 5, 6))
         self.assertFalse(continuous_path(nut, path, obstacles)["passed"])
 
     def test_populated_u_saddle_lifts_over_the_rail_without_flexing(self):
@@ -149,8 +149,8 @@ class RailServiceTests(unittest.TestCase):
         result = _lift_path(
             "PropulsionFixedFrame",
             propulsion.fixed_frame_shape(),
-            {"Rail": translated_shape(rail.rail_shape(), x=17)},
-            17,
+            {"Rail": translated_shape(rail.rail_shape(), x=14)},
+            15,
             waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
         )
         self.assertTrue(result["passed"], result)
@@ -205,12 +205,12 @@ class RailServiceTests(unittest.TestCase):
         doc = App.newDocument("TwoPointRailService")
         self.addCleanup(lambda: App.closeDocument(doc.Name))
         module = doc.addObject("App::Part", station.object_name)
-        module.Placement.Base = App.Vector(-17, 0, 0)
+        module.Placement.Base = App.Vector(station.x_mm, 0, 0)
         for name, value, kind in (
-            ("RailPositionX", -17, "App::PropertyDistance"),
-            ("RailAttachmentOffsetX", 17, "App::PropertyDistance"),
-            ("RailAttachmentOffsetsX", [17, -17], "App::PropertyFloatList"),
-            ("RailContactLength", 58, "App::PropertyLength"),
+            ("RailPositionX", station.x_mm, "App::PropertyDistance"),
+            ("RailAttachmentOffsetX", 15, "App::PropertyDistance"),
+            ("RailAttachmentOffsetsX", [15, -15], "App::PropertyFloatList"),
+            ("RailContactLength", 46, "App::PropertyLength"),
         ):
             set_property(module, name, value, kind)
         printed = []
@@ -225,7 +225,7 @@ class RailServiceTests(unittest.TestCase):
                 parent.addObject(obj)
             printed.append(obj)
         hardware = rail.build_attachment_hardware(
-            doc, module, module.Name, x_offset=17, shared_drive=True
+            doc, module, module.Name, x_offset=15, shared_drive=True
         )
         registry = doc.addObject("App::FeaturePython", "DesignRegistry")
         for name, objects in (
@@ -390,7 +390,7 @@ class RailServiceTests(unittest.TestCase):
                 self.assertEqual(row["error"], "Invalid required rail mount")
                 self.assertEqual(row["required_mount"]["object"], "ServoDriveBridge")
 
-    def test_populated_propulsion_slides_clear_of_fc_carrier_before_lifting(self):
+    def test_populated_propulsion_retains_clearance_to_relocated_fc_carrier(self):
         from gondola.cad import placed_shape, world_shape
         from gondola.parts import equipment_mounts
         from gondola.validation.rail_access import _lift_path
@@ -399,7 +399,7 @@ class RailServiceTests(unittest.TestCase):
         neighbour = doc.addObject("Part::Feature", "ElectronicsMount")
         neighbour.Shape = equipment_mounts.mount_shape("electronics")
         neighbour.Placement = App.Placement(
-            App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+            App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
         )
         doc.DesignRegistry.PrintedParts = list(doc.DesignRegistry.PrintedParts) + [
             neighbour
@@ -408,9 +408,9 @@ class RailServiceTests(unittest.TestCase):
         inverse = doc.MainPropulsionModule.getGlobalPlacement().inverse()
         obstacles = {neighbour.Name: placed_shape(world_shape(neighbour), inverse)}
         direct = _lift_path(
-            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 17
+            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 15
         )
-        self.assertFalse(direct["passed"], direct)
+        self.assertTrue(direct["passed"], direct)
         report = check()
         self.assertTrue(report["passed"], report)
         row = report["modules"][0]
@@ -427,7 +427,7 @@ class RailServiceTests(unittest.TestCase):
         self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
         self.assertEqual(len(bridge["regions"]), 6)
         self.assertTrue(row["populated_supported_trim"]["passed"])
-        self.assertEqual(row["populated_supported_trim"]["travel_mm"], 12)
+        self.assertEqual(row["populated_supported_trim"]["travel_mm"], 4)
 
     def test_bridge_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
         from gondola.parts import servo_bridge
@@ -440,7 +440,7 @@ class RailServiceTests(unittest.TestCase):
             "ServoDriveBridge",
             bridge,
             {},
-            17,
+            15,
             waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
         )
         self.assertFalse(report["passed"])
@@ -463,7 +463,7 @@ class RailServiceTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertGreater(report["shape_outside_service_envelope_mm3"], 0.5)
 
-    def test_populated_fc_carrier_slides_away_from_retained_starboard_adapter(self):
+    def test_relocated_fc_carrier_clears_retained_starboard_adapter(self):
         from gondola.cad import placed_shape, set_property, world_shape
         from gondola.contracts.drive import SELECTED_DRIVE
         from gondola.parts import equipment_mounts, rail, servo_coupling
@@ -472,10 +472,10 @@ class RailServiceTests(unittest.TestCase):
         doc, check = self.source_propulsion_service()
         module = doc.addObject("App::Part", "ElectronicsEquipmentModule")
         module.Placement = App.Placement(
-            App.Vector(-70, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+            App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
         )
         for name, value, kind in (
-            ("RailPositionX", -70, "App::PropertyDistance"),
+            ("RailPositionX", -56, "App::PropertyDistance"),
             ("RailAttachmentOffsetX", 0, "App::PropertyDistance"),
             ("RailAttachmentOffsetsX", [0], "App::PropertyFloatList"),
             ("RailContactLength", 16, "App::PropertyLength"),
@@ -503,11 +503,11 @@ class RailServiceTests(unittest.TestCase):
         inverse = module.getGlobalPlacement().inverse()
         retained = {adapter.Name: placed_shape(world_shape(adapter), inverse)}
         direct = _lift_path(carrier.Name, carrier.Shape, retained, 0)
-        self.assertFalse(direct["passed"], direct)
+        self.assertTrue(direct["passed"], direct)
         literal_at_twenty = carrier.Shape.copy()
         literal_at_twenty.translate(App.Vector(0, 0, 20))
-        self.assertGreater(
-            abs(literal_at_twenty.common(retained[adapter.Name]).Volume), 1
+        self.assertLess(
+            abs(literal_at_twenty.common(retained[adapter.Name]).Volume), 1e-7
         )
         result = check()
         self.assertTrue(result["passed"], result)
@@ -532,7 +532,7 @@ class RailServiceTests(unittest.TestCase):
     def test_opposite_side_driver_path_cannot_be_inferred_from_first_side(self):
         doc, check = self.source_propulsion_service()
         block = doc.addObject("Part::Feature", "OppositeDriverObstacle")
-        block.Shape = Part.makeBox(1, 1, 1, App.Vector(-34.5, 20, 6.5))
+        block.Shape = Part.makeBox(1, 1, 1, App.Vector(-1.5, 20, 5.5))
         doc.DesignRegistry.ReferenceParts = [block]
         doc.recompute()
         report = check()
