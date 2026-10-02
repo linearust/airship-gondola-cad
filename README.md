@@ -61,7 +61,9 @@ python3 tools/blender_review/run.py --render-stills
 python3 tools/simulation/export_parameters.py
 ```
 
-`build/` is generated/ignored. Preview saves CAD, so it precedes file-bound checks.
+`build/` is generated/ignored. Superseded review/quote packages are disposable,
+not design requirements; retain source evidence and reviewed fixtures.
+Preview saves CAD, so it precedes file-bound checks.
 Inspect assembly, print layout and affected views. For `gondola`, `--output-dir PATH`
 precedes the subcommand; keep output/source paths consistent across tools. Export manifest-listed
 parts, distinguish optional power parts, and retain hash-bound verification.
