@@ -71,7 +71,65 @@ class RelativeRotationCertificateTests(unittest.TestCase):
         )
         result = _certify_pair(self.moving(), other)
         self.assertFalse(result["passed"], result)
-        self.assertIn("Independent axes", result["error"])
+        # Synchronized poses retain the original180-degree separation, but
+        # independently chosen angles can place both solids at the same point.
+        self.assertIn("output_angles_deg", result)
+        self.assertNotEqual(
+            result["output_angles_deg"]["Port"],
+            result["output_angles_deg"]["Starboard"],
+        )
+        self.assertGreater(result["intersection_mm3"], 0)
+        for angle in (-180, -90, 0, 90, 180):
+            bodies = [part["shape"].copy() for part in (self.moving(), other)]
+            for body in bodies:
+                body.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
+            self.assertGreater(bodies[0].distToShape(bodies[1])[0], 5)
+
+    def test_independent_limited_arcs_can_clear_when_full_orbits_overlap(self):
+        from gondola.validation.relative_motion import _certify_pair, _part
+
+        first = self.moving()
+        first["rate"] = -1 / 3
+        second = _part(
+            Part.makeBox(1, 1, 1, App.Vector(-5, -0.5, -0.5)),
+            "other",
+            group="StarboardInputDrive",
+            prefix="Starboard",
+            axis=(-1, 0, 0),
+            rate=-1 / 3,
+        )
+        self.assertAlmostEqual(first["envelope"].distToShape(second["envelope"])[0], 0)
+        result = _certify_pair(first, second)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["method"], "adaptive independent rotation distance")
+        self.assertEqual(
+            result["part_angle_domains_deg"], {"moving": [-60, 60], "other": [-60, 60]}
+        )
+        self.assertGreater(result["guaranteed_gap_mm"], 0.1)
+        self.assertGreater(result["certified_rectangles"], 1)
+        # Expanding both to full output rotation creates an off-diagonal
+        # collision; the same broad cylinders must not be treated as proof.
+        first["rate"] = second["rate"] = 1
+        self.assertFalse(_certify_pair(first, second)["passed"])
+
+    def test_independent_rectangle_depth_and_work_limits_fail_closed(self):
+        from gondola.validation.relative_motion import _certify_pair, _part
+
+        first = self.moving()
+        first["rate"] = -1 / 3
+        second = _part(
+            Part.makeBox(1, 1, 1, App.Vector(-4, -0.5, -0.5)),
+            "other",
+            group="StarboardInputDrive",
+            prefix="Starboard",
+            rate=-1 / 3,
+        )
+        for budget in ({"max_depth": 0}, {"max_evaluations": 1}):
+            with self.subTest(budget=budget):
+                result = _certify_pair(first, second, **budget)
+                self.assertFalse(result["passed"], result)
+                self.assertIn("unresolved_output_ranges_deg", result)
+                self.assertLessEqual(result["evaluations"], 1)
 
     def test_unfinished_interval_fails_closed(self):
         from gondola.validation.relative_motion import _certify_pair, _part
@@ -403,7 +461,7 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_moved_bearing_is_not_exempted_by_its_name(self):
-        bearing = self.doc.PortOutputBearingNegative
+        bearing = self.doc.PortOutputBearingInboard
         original = App.Placement(bearing.Placement)
         try:
             bearing.Placement.Base.x += 0.5

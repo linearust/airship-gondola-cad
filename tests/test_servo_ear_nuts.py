@@ -42,15 +42,15 @@ class ServoEarNutTests(unittest.TestCase):
     def test_minimum_standard_nut_cannot_be_ignored_when_nominal_nut_still_stops(self):
         from gondola.validation.servo_ear_nuts import _hex, servo_ear_nut_check
 
-        bridge = self.doc.ServoDriveBridge
-        original = bridge.Shape.copy()
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
         mount = self.doc.PortServoMount.Placement.Base
         # AF3.5 still blocks a nominal AF3.2 nut, but clears every orientation
         # of a centred minimum AF3.02 nut (corner diameter approximately3.487).
         enlarged = _hex(3.5, -2.5, 0.5, 7)
         enlarged.translate(mount)
         try:
-            bridge.Shape = original.cut(enlarged)
+            frame.Shape = original.cut(enlarged)
             result = servo_ear_nut_check(self.doc, "Port")
             self.assertFalse(result["passed"])
             upper = result["cases"][1]
@@ -64,17 +64,17 @@ class ServoEarNutTests(unittest.TestCase):
             centred = upper["nut_size_range"]["minimum_nut_rotation_stops"][:2]
             self.assertTrue(all(not row["passed"] for row in centred))
         finally:
-            bridge.Shape = original
+            frame.Shape = original
 
     def test_maximum_nut_requires_a_clear_approach_not_only_clear_installed_shape(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check
 
-        bridge = self.doc.ServoDriveBridge
-        original = bridge.Shape.copy()
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
         mount = self.doc.PortServoMount.Placement.Base
         obstruction = Part.makeBox(0.2, 0.2, 0.2, mount + App.Vector(1.3, -4, 7.3))
         try:
-            bridge.Shape = original.fuse(obstruction)
+            frame.Shape = original.fuse(obstruction)
             result = servo_ear_nut_check(self.doc, "Port")
             self.assertFalse(result["passed"])
             upper = result["cases"][1]
@@ -82,44 +82,44 @@ class ServoEarNutTests(unittest.TestCase):
             fit = upper["nut_size_range"]["maximum_nut_free_insertion"][0]
             self.assertGreater(fit["maximum_nut_insertion_removal_overlap_mm3"], 0.001)
         finally:
-            bridge.Shape = original
+            frame.Shape = original
 
     def test_missing_internal_floor_fails_even_with_the_nut_seat_intact(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check
 
-        bridge = self.doc.ServoDriveBridge
-        original = bridge.Shape.copy()
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
         mount = self.doc.PortServoMount.Placement.Base
         defect = Part.makeBox(0.2, 0.3, 0.2, mount + App.Vector(1.3, 0, 6.9))
         self.assertAlmostEqual(original.common(defect).Volume, 0.012)
         try:
-            bridge.Shape = original.cut(defect)
+            frame.Shape = original.cut(defect)
             result = servo_ear_nut_check(self.doc, "Port")
             self.assertFalse(result["passed"])
             upper = result["cases"][1]
             self.assertAlmostEqual(upper["missing_seat_mm3"], 0)
             self.assertAlmostEqual(upper["missing_floor_mm3"], 0.012)
         finally:
-            bridge.Shape = original
+            frame.Shape = original
 
     def test_round_recess_cannot_replace_the_hex_rotation_stop(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check
 
-        bridge = self.doc.ServoDriveBridge
-        original = bridge.Shape.copy()
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
         mount = self.doc.PortServoMount.Placement.Base
         defect = Part.makeCylinder(
             2.3, 0.5, mount + App.Vector(0, -2.5, 7), App.Vector(0, 1, 0)
         )
         try:
-            bridge.Shape = original.cut(defect)
+            frame.Shape = original.cut(defect)
             result = servo_ear_nut_check(self.doc, "Port")
             self.assertFalse(result["passed"])
             upper = result["cases"][1]
             self.assertAlmostEqual(upper["missing_floor_mm3"], 0)
             self.assertAlmostEqual(upper["nut_30deg_rotation_block_mm3"], 0)
         finally:
-            bridge.Shape = original
+            frame.Shape = original
 
     def test_nut_must_reach_the_recessed_bearing_plane(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check
@@ -139,38 +139,36 @@ class ServoEarNutTests(unittest.TestCase):
     def test_thin_outer_pocket_rim_is_rejected(self):
         from gondola.validation.servo_ear_nuts import servo_ear_nut_check
 
-        bridge = self.doc.ServoDriveBridge
-        original = bridge.Shape.copy()
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
         mount = self.doc.PortServoMount.Placement.Base
         defect = Part.makeBox(3.4, 0.5, 0.2, mount + App.Vector(-1.7, -2.5, 10))
         self.assertAlmostEqual(original.common(defect).Volume, 0.34)
         try:
-            bridge.Shape = original.cut(defect)
+            frame.Shape = original.cut(defect)
             result = servo_ear_nut_check(self.doc, "Port")
             self.assertFalse(result["passed"])
             upper = result["cases"][1]
             self.assertAlmostEqual(upper["missing_outer_rim_mm3"], 0.34)
             self.assertAlmostEqual(upper["missing_floor_mm3"], 0)
         finally:
-            bridge.Shape = original
+            frame.Shape = original
 
     def test_both_pairs_release_screw_first_with_the_complete_horn_unit_retained(self):
         from gondola.validation.propulsion_service import (
             fastener_service_check,
             module_service_shapes,
             retained_obstacles,
-            servo_bench_members,
         )
 
         shapes, missing = module_service_shapes(self.doc, self.module)
         self.assertEqual(missing, [])
-        members = servo_bench_members(self.doc, shapes)
         for prefix in ("Port", "Starboard"):
-            removed = {prefix + "DriverGear", prefix + "InputShaft"}
+            removed = {"PortOutputGear", "StarboardOutputGear"}
             for side in ("Lower", "Upper"):
                 name = prefix + "ServoEar" + side
                 pair = {name + "Bolt", name + "Nut"}
-                obstacles = retained_obstacles(shapes, removed | pair, members=members)
+                obstacles = retained_obstacles(shapes, removed | pair)
                 result = fastener_service_check(
                     shapes[name + "Bolt"],
                     shapes[name + "Nut"],
@@ -186,7 +184,14 @@ class ServoEarNutTests(unittest.TestCase):
                     result["minimum_nut_lift_before_lateral_mm"], 0.7
                 )
                 self.assertAlmostEqual(result["bolt_withdrawal_travel_mm"], 8.2)
-                self.assertIn(prefix + "HornGearAdapter", obstacles)
+                for retained in (
+                    "PropulsionFixedFrame",
+                    prefix + "BearingCap",
+                    prefix + "HornGearAdapter",
+                    prefix + "DriverGear",
+                    prefix + "InputShaft",
+                ):
+                    self.assertIn(retained, obstacles)
                 removed.update(pair)
 
 

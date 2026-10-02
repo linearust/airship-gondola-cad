@@ -209,7 +209,7 @@ def camera_and_lighting(scene, specification):
         # The oblique underside view exposes the gear mesh and horn together.
         direction = Vector((1.4, -1.5, -1.3)).normalized()
     elif scene.name.startswith("04 "):
-        # Preserve a large screen-space component of axial bearing travel.
+        # Preserve a large screen-space component of permitted axial carrier travel.
         direction = Vector((1.5, -0.7, 0.55)).normalized()
     elif scene.name.startswith("05 "):
         # Approach from outside the battery end, not through the propulsion.

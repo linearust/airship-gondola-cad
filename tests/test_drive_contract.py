@@ -35,7 +35,13 @@ class DriveContractTests(unittest.TestCase):
         self.assertEqual(drive.driver.hub_extension_mm, 5)
         self.assertEqual(drive.output.hub_extension_mm, 5)
         self.assertEqual(drive.frame_sku, "PropulsionFixedFrame")
-        self.assertEqual(drive.bridge_sku, "ServoDriveBridge48T")
+        self.assertFalse(hasattr(drive, "bridge_sku"))
+        self.assertNotIn("servo_bridge_print_sku", drive.contract())
+        self.assertEqual(drive.contract()["drive_inward_offset_mm"], 8)
+        self.assertEqual(
+            drive.contract()["fixed_support_topology"],
+            "integrated servo seats and paired inboard output bearings",
+        )
 
     def test_source_gaps_are_not_filled_from_the_other_gear(self):
         self.assertIsNone(SELECTED_DRIVE.driver.set_screw_axis_from_hub_end_mm)

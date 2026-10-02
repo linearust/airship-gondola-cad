@@ -1,4 +1,4 @@
-"""Regressions for continuous carrier/metal clearance and physical axial stops."""
+"""Continuous motion and actual opposing stops for the inboard-supported rotors."""
 
 import unittest
 
@@ -11,41 +11,30 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class CarrierMotionClearanceTests(unittest.TestCase):
-    def module(self, configuration=None):
-        from gondola.contracts.drive import SELECTED_DRIVE
+    def module(self):
         from gondola.parts.propulsion import build_propulsion_module
 
         doc = App.newDocument("CarrierMotionClearance")
         self.addCleanup(App.closeDocument, doc.Name)
-        module = build_propulsion_module(doc, configuration or SELECTED_DRIVE)
-        return doc, module
+        return doc, build_propulsion_module(doc)
 
-    def test_selected_drive_both_sides_keep_the_reserve_after_axial_play(self):
-        from gondola.contracts.drive import DRIVE_CONFIGURATIONS
+    def test_both_sides_keep_reserve_and_half_mm_opposed_stops(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
-        for configuration in DRIVE_CONFIGURATIONS.values():
-            doc, _ = self.module(configuration)
-            doc.PortPod.Tilt = 123.4
-            doc.StarboardPod.Tilt = -77.2
-            doc.recompute()
-            for prefix in ("Port", "Starboard"):
-                with self.subTest(configuration=configuration.key, side=prefix):
-                    result = carrier_metal_clearance_check(doc, prefix)
-                    self.assertTrue(result["passed"], result)
-                    # Accurate OCCT bounds carry ~1e-7 mm edge padding; compare
-                    # derived travel at CAD precision, preserving nominal play.
-                    self.assertAlmostEqual(
-                        result["axial_travel"]["negative_mm"], 0.5, places=6
-                    )
-                    self.assertAlmostEqual(
-                        result["axial_travel"]["positive_mm"], 0.5, places=6
-                    )
-                    self.assertGreater(result["minimum_clearance_lower_bound_mm"], 1.64)
-                    self.assertEqual(len(result["fixed_hardware"]), 8)
-                    self.assertEqual(len(result["envelope"]["containment"]), 8)
+        doc, _ = self.module()
+        doc.PortPod.Tilt = 123.4
+        doc.StarboardPod.Tilt = -77.2
+        doc.recompute()
+        for prefix in ("Port", "Starboard"):
+            result = carrier_metal_clearance_check(doc, prefix)
+            self.assertTrue(result["passed"], result)
+            self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5, places=6)
+            self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5, places=6)
+            self.assertGreaterEqual(result["minimum_clearance_lower_bound_mm"], 1.5)
+            self.assertEqual(len(result["fixed_hardware"]), 8)
+            self.assertEqual(len(result["envelope"]["containment"]), 6)
 
-    def test_arbitrary_parent_rotation_and_current_tilt_preserve_the_proof(self):
+    def test_parent_transform_and_tilt_preserve_the_proof(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, module = self.module()
@@ -60,176 +49,128 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         )
         doc.PortPod.Tilt = -139.2
         doc.recompute()
-        transformed = carrier_metal_clearance_check(doc, "Port")
-        self.assertTrue(transformed["passed"], transformed)
+        result = carrier_metal_clearance_check(doc, "Port")
+        self.assertTrue(result["passed"], result)
         self.assertAlmostEqual(
-            transformed["minimum_clearance_lower_bound_mm"],
+            result["minimum_clearance_lower_bound_mm"],
             original["minimum_clearance_lower_bound_mm"],
             places=6,
         )
 
-    def test_rigid_keeper_preserves_a_complete_all_angle_stop(self):
+    def test_gear_and_carrier_contacts_bound_opposite_directions(self):
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         doc, _ = self.module()
         for prefix in ("Port", "Starboard"):
             result = carrier_axial_travel(doc, prefix)
             self.assertTrue(result["passed"], result)
-            for stop in result["stops"]:
-                self.assertLess(stop["frame_uncovered_witness_area_mm2"], 1e-7)
+            self.assertEqual(
+                {r["moving_stop_part"] for r in result["stops"]},
+                {prefix + "MotorCarrier", prefix + "OutputGear"},
+            )
+            for row in result["stops"]:
                 self.assertGreaterEqual(
-                    stop["all_angles_contact_lower_bound_mm2"],
-                    0.25 * stop["witness_area_mm2"],
+                    row["all_angles_contact_lower_bound_mm2"],
+                    0.25 * row["witness_area_mm2"] - 1e-7,
                 )
-                self.assertAlmostEqual(stop["travel_mm"], 0.5, places=6)
 
-    def test_a_small_remaining_stop_sector_cannot_claim_all_angle_contact(self):
-        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
+    def test_removing_all_housing_stop_lands_is_rejected(self):
         from gondola.validation.motion_clearance import carrier_axial_travel
 
         doc, _ = self.module()
-        frame = doc.PropulsionFixedFrame
-        # Keep one quarter of the annular stop, including real neutral contact,
-        # while removing the other sectors through every possible cup face.
-        remove_right = Part.makeBox(
-            8, 10, 16, App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.4, PIVOT_Z - 8)
+        cutter = Part.makeCylinder(
+            4.7, 20.2, App.Vector(0, 23.9, 50), App.Vector(0, 1, 0)
         )
-        remove_upper_left = Part.makeBox(
-            8, 10, 8, App.Vector(-8, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.4, PIVOT_Z)
-        )
-        cutter = remove_right.fuse(remove_upper_left)
-        frame.Shape = frame.Shape.cut(cutter)
-        keeper = doc.PortOutputBearingKeeperPositive
-        keeper.Shape = keeper.Shape.cut(cutter)
+        for obj in (doc.PropulsionFixedFrame, doc.PortBearingCap):
+            obj.Shape = obj.Shape.cut(cutter)
         doc.recompute()
         result = carrier_axial_travel(doc, "Port")
         self.assertFalse(result["passed"], result)
-        self.assertTrue(result["stops"][0]["passed"], result)
-        self.assertFalse(result["stops"][1]["passed"], result)
+        self.assertIsNone(result["maximum_mm"])
 
-    def test_curved_protrusion_cannot_hide_between_its_inside_vertices(self):
+    def test_small_remaining_stop_sector_does_not_meet_contact_lower_bound(self):
+        from gondola.validation.motion_clearance import carrier_axial_travel
+
+        doc, _ = self.module()
+        # Retain only a narrow lower-left cap of each annular stop.
+        cutter = Part.makeBox(10, 21, 20, App.Vector(-1.5, 23.5, 40)).fuse(
+            Part.makeBox(10, 21, 12, App.Vector(-10, 23.5, 48))
+        )
+        for obj in (doc.PropulsionFixedFrame, doc.PortBearingCap):
+            obj.Shape = obj.Shape.cut(cutter)
+        doc.recompute()
+        self.assertFalse(carrier_axial_travel(doc, "Port")["passed"])
+
+    def test_extra_stop_travel_is_measured_and_reaches_journal_flat(self):
+        from gondola.validation.motion_clearance import carrier_axial_travel
+        from gondola.validation.propulsion import output_bearing_stack_check
+
+        doc, _ = self.module()
+        cutter = Part.makeCylinder(
+            4.7, 1.2, App.Vector(0, 42.9, 50), App.Vector(0, 1, 0)
+        )
+        for obj in (doc.PropulsionFixedFrame, doc.PortBearingCap):
+            obj.Shape = obj.Shape.cut(cutter)
+        doc.recompute()
+        result = carrier_axial_travel(doc, "Port")
+        self.assertTrue(result["passed"], result)
+        self.assertGreater(result["negative_mm"], 0.5)
+        self.assertFalse(output_bearing_stack_check(doc, "Port", "Outboard")["passed"])
+
+    def test_curved_protrusion_cannot_hide_between_inside_vertices(self):
         from gondola.validation.motion_clearance import (
             GUARD_SPHERE_RADIUS_MM,
             carrier_metal_clearance_check,
         )
 
         doc, _ = self.module()
-        # The sphere's polar vertices fit the declaration; its curved equator
-        # protrudes. A vertices-only envelope test would accept this change.
         centre = App.Vector(9, 0, 24.5)
         centre.normalize()
         centre *= GUARD_SPHERE_RADIUS_MM - 2
         bulge = Part.makeSphere(3, centre, App.Vector(0, 1, 0))
         self.assertGreater(bulge.common(doc.PortMotorCarrier.Shape).Volume, 0.1)
-        self.assertTrue(bulge.Vertexes)
         self.assertTrue(
-            all(
-                vertex.Point.Length < GUARD_SPHERE_RADIUS_MM
-                for vertex in bulge.Vertexes
-            )
+            all(v.Point.Length < GUARD_SPHERE_RADIUS_MM for v in bulge.Vertexes)
         )
         doc.PortMotorCarrier.Shape = doc.PortMotorCarrier.Shape.fuse(bulge)
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
         self.assertFalse(result["passed"])
-        carrier = result["envelope"]["containment"][0]
-        self.assertGreater(carrier["outside_envelope_mm3"], 0.01)
+        self.assertGreater(
+            result["envelope"]["containment"][0]["outside_envelope_mm3"], 0.01
+        )
 
-    def test_a_mount_nut_moved_into_the_motion_reserve_is_rejected(self):
+    def test_fixed_nut_in_motion_reserve_is_rejected(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
-        nut = doc.PortServoEarLowerNut
+        nut = doc.PortBearingCapPositiveNut
         position = nut.Placement
-        pivot = doc.PortPod.Placement.Base
-        # Put the real fixed nut beside the rotating guard, inside its required
-        # reserve. A nearer architecture cannot reuse the old large gap.
         position.Base = (
             nut.getParentGeoFeatureGroup()
             .getGlobalPlacement()
             .inverse()
-            .multVec(pivot + App.Vector(10, 25, 0))
+            .multVec(doc.PortPod.Placement.Base + App.Vector(10, 25, 0))
         )
         nut.Placement = position
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
         self.assertFalse(result["passed"])
-        row = next(
-            item for item in result["fixed_hardware"] if item["fixed"] == nut.Name
-        )
+        row = next(r for r in result["fixed_hardware"] if r["fixed"] == nut.Name)
         self.assertLess(row["continuous_clearance_lower_bound_mm"], 1.5)
 
-    def test_removing_a_physical_stop_is_not_hidden_by_the_frame_bounds(self):
-        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
-        from gondola.validation.motion_clearance import carrier_axial_travel
-
-        doc, _ = self.module()
-        frame = doc.PropulsionFixedFrame
-        cutter = Part.makeCylinder(
-            3.7,
-            10,
-            App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y, PIVOT_Z),
-            App.Vector(0, 1, 0),
-        )
-        frame.Shape = frame.Shape.cut(cutter)
-        keeper = doc.PortOutputBearingKeeperPositive
-        keeper.Shape = keeper.Shape.cut(cutter)
-        doc.recompute()
-        result = carrier_axial_travel(doc, "Port")
-        self.assertFalse(result["passed"], result)
-        self.assertIsNone(result["maximum_mm"])
-
-    def test_extra_stop_travel_consumes_clearance_even_without_nominal_collision(self):
-        from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
+    def test_shifted_jack_hardware_must_fit_rotating_envelope(self):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
-        frame = doc.PropulsionFixedFrame
-        cutter = Part.makeCylinder(
-            4.7,
-            1,
-            App.Vector(0, PIVOT_HALF_SPAN + CARRIER_END_Y + 0.5, PIVOT_Z),
-            App.Vector(0, 1, 0),
-        )
-        frame.Shape = frame.Shape.cut(cutter)
-        keeper = doc.PortOutputBearingKeeperPositive
-        keeper.Shape = keeper.Shape.cut(cutter)
-        doc.recompute()
-        result = carrier_metal_clearance_check(doc, "Port")
-        self.assertTrue(result["axial_travel"]["passed"], result)
-        self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 1.5, places=6)
-        self.assertFalse(result["passed"])
-        from gondola.validation.propulsion import output_bearing_stack_check
-
-        # Removing the positive stop reduces the positive face clearance only.
-        # The opposite bearing and its intact keeper remain independently safe.
-        positive = output_bearing_stack_check(doc, "Port", "Positive")
-        negative = output_bearing_stack_check(doc, "Port", "Negative")
-        self.assertFalse(positive["passed"], positive)
-        self.assertAlmostEqual(
-            positive["minimum_carrier_to_bearing_face_gap_mm"], 0.5, places=6
-        )
-        self.assertTrue(negative["passed"], negative)
-        self.assertAlmostEqual(
-            negative["minimum_carrier_to_bearing_face_gap_mm"], 1.5, places=6
-        )
-        self.assertTrue(negative["capture_geometry"]["passed"], negative)
-
-    def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):
-        from gondola.validation.motion_clearance import carrier_metal_clearance_check
-
-        doc, _ = self.module()
-        nut = doc.PortOutputClampPositiveNut
-        position = nut.Placement
-        position.Base.x += 20
-        nut.Placement = position
+        doc.PortOutputClampNegativeNut.Placement.Base.x += 20
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
         self.assertFalse(result["passed"])
         row = next(
-            item
-            for item in result["envelope"]["containment"]
-            if item["object"] == nut.Name
+            r
+            for r in result["envelope"]["containment"]
+            if r["object"] == "PortOutputClampNegativeNut"
         )
         self.assertGreater(row["outside_envelope_mm3"], 1)
 

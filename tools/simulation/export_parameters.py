@@ -75,6 +75,91 @@ def printed_carrier_mass_properties(shape):
     }
 
 
+def output_support_geometry(doc, prefix):
+    """Describe the saved fixed inboard pair and sole rotating output shaft."""
+    from gondola.cad import belongs_to_group, world_shape
+
+    names = {
+        "Inboard": prefix + "OutputBearingInboard",
+        "Outboard": prefix + "OutputBearingOutboard",
+    }
+    shaft_name = prefix + (
+        "OutputShaftNegative" if prefix == "Port" else "OutputShaftPositive"
+    )
+    obsolete_shaft = prefix + (
+        "OutputShaftPositive" if prefix == "Port" else "OutputShaftNegative"
+    )
+    assembly = doc.getObject(prefix + "Assembly")
+    pod = doc.getObject(prefix + "Pod")
+    frame = doc.getObject("PropulsionFixedFrame")
+    cap = doc.getObject(prefix + "BearingCap")
+    shaft = doc.getObject(shaft_name)
+    bearings = {key: doc.getObject(name) for key, name in names.items()}
+    installed_bearings = {
+        obj.Name
+        for obj in doc.Objects
+        if obj.Name.startswith(prefix)
+        and getattr(obj, "HardwareSKU", "") == "BEARING_3X6X2_5"
+    }
+    if (
+        any(
+            obj is None
+            for obj in (assembly, pod, frame, cap, shaft, *bearings.values())
+        )
+        or doc.getObject("ServoDriveBridge") is not None
+        or doc.getObject(obsolete_shaft) is not None
+        or installed_bearings != set(names.values())
+        or shaft.getParentGeoFeatureGroup() != pod
+        or frame.getParentGeoFeatureGroup() != assembly.getParentGeoFeatureGroup()
+        or not belongs_to_group(cap, assembly)
+        or belongs_to_group(cap, pod)
+        or any(
+            not belongs_to_group(obj, assembly) or belongs_to_group(obj, pod)
+            for obj in bearings.values()
+        )
+    ):
+        raise ValueError(
+            "Output support topology changed; review the exported assembly."
+        )
+    bearing_shapes = {key: world_shape(obj) for key, obj in bearings.items()}
+    if any(len(shape.Solids) != 1 for shape in bearing_shapes.values()):
+        raise ValueError("Output bearing geometry must contain one nominal solid each.")
+    centres = {
+        key: shape.Solids[0].CenterOfMass for key, shape in bearing_shapes.items()
+    }
+    local = {
+        key: pod.getGlobalPlacement().inverse().multVec(centre)
+        for key, centre in centres.items()
+    }
+    sign = 1 if prefix == "Port" else -1
+    if (
+        any(abs(point.x) > 1e-6 or abs(point.z) > 1e-6 for point in local.values())
+        or not sign * local["Inboard"].y < sign * local["Outboard"].y < 0
+    ):
+        raise ValueError(
+            "Both output bearings must remain coaxial and inboard of the rotor."
+        )
+    return {
+        "arrangement": "two_fixed_inboard_bearings_open_outer_side",
+        "integrated_fixed_frame": frame.Name,
+        "fixed_bearing_cap": cap.Name,
+        "bearings": {
+            key: {
+                "object": names[key],
+                "centre_cad_m": vector_m(centres[key]),
+                "centre_from_tilt_axis_neutral_m": vector_m(local[key]),
+                "fixed_during_tilt": True,
+            }
+            for key in names
+        },
+        "bearing_centre_spacing_m": (centres["Outboard"] - centres["Inboard"]).Length
+        / 1000,
+        "output_shaft": {"object": shaft.Name, "rotating_parent": pod.Name},
+        "idler_shafts": [],
+        "scope": "Saved nominal support topology and bearing solid centroids. The outer side has no second shaft or support frame. This does not establish bearing clearance, shaft bending stiffness, installed alignment or load capacity.",
+    }
+
+
 def extract(doc):
     import FreeCAD as App
 
@@ -133,6 +218,7 @@ def extract(doc):
             "positive_thrust_sign": None,
         }
         rotating_assemblies[prefix] = {
+            "support_geometry": output_support_geometry(doc, prefix),
             "hardware_geometry_basis": rotor_contract,
             "illustrative_propeller_disk_centre_cad_m": vector_m(
                 world_shape(propeller).CenterOfMass
@@ -266,7 +352,7 @@ def export(cad, output):
         },
     ) as snapshot:
         result = {
-            "schema_version": 5,
+            "schema_version": 6,
             "units": {
                 "length": "m",
                 "mass": "kg",

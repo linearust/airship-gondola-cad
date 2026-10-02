@@ -695,7 +695,7 @@ def detailed_propulsion_evidence(doc, source):
         servo_mount_check,
     )
     from .relative_motion import relative_motion_check
-    from .servo_module import bridge_joint_check, servo_module_service_check
+    from .servo_module import integrated_frame_check, servo_service_preparation_check
 
     configuration = drive_for_document(doc)
     path = source.parent / (source.stem + "_propulsion_validation.json")
@@ -770,8 +770,8 @@ def detailed_propulsion_evidence(doc, source):
     }
     saved_post_roots = bearing_post_roots_check(doc)
     saved_nut_guides = installed_nut_guide_checks(doc)
-    saved_bridge_joint = bridge_joint_check(doc, saved_module)
-    saved_servo_service = servo_module_service_check(doc, saved_module)
+    saved_integrated_frame = integrated_frame_check(doc, saved_module)
+    saved_servo_service = servo_service_preparation_check(doc, saved_module)
     saved_carrier_clearances = [
         carrier_metal_clearance_check(doc, prefix) for prefix in ("Port", "Starboard")
     ]
@@ -803,8 +803,8 @@ def detailed_propulsion_evidence(doc, source):
         "saved_servo_mounts": saved_servo_mounts,
         "saved_bearing_post_roots": saved_post_roots,
         "saved_nut_guides": saved_nut_guides,
-        "saved_bridge_joint": saved_bridge_joint,
-        "saved_servo_module_service": saved_servo_service,
+        "saved_integrated_frame": saved_integrated_frame,
+        "saved_servo_service_preparation": saved_servo_service,
         "saved_carrier_metal_clearances": saved_carrier_clearances,
         "saved_gear_engagement": saved_gear_engagement,
         "saved_relative_motion": saved_relative_motion,
@@ -814,14 +814,14 @@ def detailed_propulsion_evidence(doc, source):
         "local_checks": evidence,
         "required_evidence_inventory": evidence_check["inventory"],
         "local_evidence_row_failures": evidence_check["row_failures"],
-        "scope": "Recomputed geared-drive mesh including axial travel, bearings, split output shafts, continuous nominal cross-motion separation, carrier/metal reserves and ordered service paths. Functional contacts are classified separately. Sample fits, loaded retention, unmodeled set-screw/OEM hardware and cable travel remain physical qualification requirements.",
+        "scope": "Recomputed geared-drive mesh including axial travel, paired inboard bearings and continuous output shafts, continuous nominal cross-motion separation, carrier/metal reserves and ordered service paths. Functional contacts are classified separately. Sample fits, loaded retention, unmodeled set-screw/OEM hardware and cable travel remain physical qualification requirements.",
         "passed": evidence_ok
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_servo_mounts)
         and all(row["passed"] for row in saved_post_roots)
-        and len(saved_nut_guides) == 8
+        and len(saved_nut_guides) == PROPULSION_EVIDENCE_COUNTS["nut_guides"]
         and all(row["passed"] for row in saved_nut_guides)
-        and saved_bridge_joint["passed"]
+        and saved_integrated_frame["passed"]
         and saved_servo_service["passed"]
         and all(row["passed"] for row in saved_carrier_clearances)
         and all(row["passed"] for row in saved_gear_engagement)

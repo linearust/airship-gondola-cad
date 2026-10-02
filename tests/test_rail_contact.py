@@ -1,4 +1,4 @@
-"""Native side-slot rail geometry, local crowned seats and segmented adjustment limits."""
+"""Native side-slot rail geometry, local wall-top seats and segmented adjustment limits."""
 
 import json
 import math
@@ -153,7 +153,7 @@ class RailContactTests(unittest.TestCase):
             rail_contact.attachment_check(translated_shape(shape, x=-14))["passed"]
         )
 
-    def test_end_wall_travel_stops_before_base_corner_chamfers(self):
+    def test_end_wall_travel_preserves_top_overlap_and_local_side_contacts(self):
         from gondola.parts import rail
 
         ranges = rail.supported_slot_ranges()
@@ -224,7 +224,7 @@ class RailContactTests(unittest.TestCase):
 
         frame, shape = propulsion.fixed_frame_shape(), rail.rail_shape()
         self.assertEqual(
-            rail.supported_slot_ranges(300, 38, shared_drive=True)[5], (-3, 3)
+            rail.supported_slot_ranges(300, 44, shared_drive=True)[5], (-3, 3)
         )
         ranges = rail.shared_module_ranges()
         self.assertEqual(len(ranges), 10)
@@ -235,7 +235,7 @@ class RailContactTests(unittest.TestCase):
             station = -14 + delta
             for axis in (station - 14, station + 14):
                 position = rail.attachment_position_check(
-                    axis, contact_length=38, shared_drive=True
+                    axis, contact_length=44, shared_drive=True
                 )
                 self.assertTrue(position["passed"], position)
                 self.assertGreaterEqual(
@@ -250,14 +250,14 @@ class RailContactTests(unittest.TestCase):
         for axis in (-3.01, 3.01, 14):
             self.assertFalse(
                 rail.attachment_position_check(
-                    axis, contact_length=38, shared_drive=True
+                    axis, contact_length=44, shared_drive=True
                 )["passed"]
             )
         for obsolete in (12, 16, 24, 40):
             with self.assertRaises(ValueError):
                 rail.supported_slot_ranges(contact_length=obsolete, shared_drive=True)
 
-    def test_each_local_crown_and_contact_zone_is_required(self):
+    def test_each_local_roof_and_contact_zone_is_required(self):
         from gondola.cad import translated_shape
         from gondola.parts import propulsion, rail
         from gondola.validation.rail_mount import paired_spine_support_check
@@ -265,11 +265,11 @@ class RailContactTests(unittest.TestCase):
         frame = propulsion.fixed_frame_shape()
         local_rail = translated_shape(rail.rail_shape(), x=14)
         for axis in (-14, 14):
-            missing_crown = frame.cut(
-                Part.makeBox(0.5, 1, 0.4, App.Vector(axis - 0.25, -3, 1.5))
+            missing_roof = frame.cut(
+                Part.makeBox(0.5, 2.5, 0.1, App.Vector(axis - 0.25, -1.25, 9.5))
             )
             self.assertFalse(
-                paired_spine_support_check(local_rail, missing_crown)["passed"]
+                paired_spine_support_check(local_rail, missing_roof)["passed"]
             )
             missing_wall = local_rail.cut(
                 Part.makeBox(1, 2.5, 2, App.Vector(axis - 0.5, -1.25, 8))

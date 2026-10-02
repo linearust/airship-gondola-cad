@@ -24,7 +24,7 @@ EXPECTED_SCENE_NAMES = (
     "03 Gear and horn",
     "04 Axial allowance",
     "05 Optical carrier pitch",
-    "06 Servo module removal",
+    "06 Rotor removal",
 )
 
 

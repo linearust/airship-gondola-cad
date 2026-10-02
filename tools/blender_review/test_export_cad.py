@@ -222,19 +222,21 @@ class ExportContractTests(unittest.TestCase):
                 objects[prefix + "HornGearClamp" + position + "Nut"] = SimpleNamespace(
                     HardwareSKU="M1_HEX_NUT"
                 )
+        for name in (
+            "PropulsionFixedFrame",
+            "PortOutputBearingInboard",
+            "PortOutputBearingOutboard",
+            "StarboardOutputBearingInboard",
+            "StarboardOutputBearingOutboard",
+            "PortBearingCap",
+            "StarboardBearingCap",
+            "PortOutputShaftNegative",
+            "StarboardOutputShaftPositive",
+        ):
+            objects[name] = SimpleNamespace(Name=name)
         report = {
             "gear_configuration": "48_16",
             "local_propulsion_evidence": native_evidence(),
-            "module_service": {
-                "passed": True,
-                "modules": [
-                    {
-                        "module": "MainPropulsionModule",
-                        "passed": True,
-                        "shared_servo_bridge_clamp": True,
-                    }
-                ],
-            },
         }
         return SimpleNamespace(getObject=objects.get), objects, report
 
@@ -359,28 +361,35 @@ class ExportContractTests(unittest.TestCase):
 
     def test_changed_motion_cannot_reuse_presentation_poses(self):
         doc, _, report = self.basis()
-        report["local_propulsion_evidence"]["saved_servo_module_service"]["part_paths"][
-            0
-        ]["waypoints_mm"][2][0] = 90
-        with self.assertRaisesRegex(RuntimeError, "removal paths"):
+        report["local_propulsion_evidence"]["saved_carrier_metal_clearances"][0][
+            "axial_travel"
+        ]["positive_mm"] = 0.6
+        with self.assertRaisesRegex(RuntimeError, "axial-travel poses"):
             check_review_basis(doc, report)
 
-    def test_off_rail_bench_requires_validated_shared_joint_release(self):
-        for whole, row in ((False, True), (True, False)):
-            doc, _, report = self.basis()
-            report["module_service"]["passed"] = whole
-            report["module_service"]["modules"][0]["passed"] = row
-            with self.assertRaisesRegex(
-                RuntimeError, "checked shared-clamp rail release"
-            ):
-                check_review_basis(doc, report)
-        for replacement in ({}, {"passed": True, "modules": []}):
-            doc, _, report = self.basis()
-            report["module_service"] = replacement
-            with self.assertRaisesRegex(
-                RuntimeError, "checked shared-clamp rail release"
-            ):
-                check_review_basis(doc, report)
+    def test_missing_new_supports_and_returned_saddle_or_idler_are_rejected(self):
+        for name in (
+            "PropulsionFixedFrame",
+            "PortOutputBearingInboard",
+            "StarboardOutputBearingOutboard",
+            "PortBearingCap",
+            "StarboardOutputShaftPositive",
+        ):
+            with self.subTest(missing=name):
+                doc, objects, report = self.basis()
+                del objects[name]
+                with self.assertRaisesRegex(RuntimeError, "inboard support topology"):
+                    check_review_basis(doc, report)
+        for name in (
+            "ServoDriveBridge",
+            "PortOutputShaftPositive",
+            "StarboardOutputShaftNegative",
+        ):
+            with self.subTest(obsolete=name):
+                doc, objects, report = self.basis()
+                objects[name] = SimpleNamespace(Name=name)
+                with self.assertRaisesRegex(RuntimeError, "inboard support topology"):
+                    check_review_basis(doc, report)
 
     def test_fit_samples_and_clearance_proxies_cannot_enter_installed_review(self):
         body, coupon, reserve = [

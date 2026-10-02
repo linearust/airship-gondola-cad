@@ -386,9 +386,11 @@ class ServoCouplingTests(unittest.TestCase):
         from gondola.parts import servo_coupling as c
 
         main, shaft = c.adapter_shape(), c.driver_shaft_shape()
-        self.assertAlmostEqual(shaft.BoundBox.YLength, 18)
-        self.assertAlmostEqual(shaft.BoundBox.ZMin, -1)
-        self.assertAlmostEqual(shaft.BoundBox.YMax, c.GEAR_START_Y + 10)
+        self.assertAlmostEqual(shaft.BoundBox.YLength, 20)
+        unclocked = shaft.copy()
+        unclocked.rotate(App.Vector(), App.Vector(0, 1, 0), -c.SHAFT_CLAMP_CLOCK_DEG)
+        self.assertAlmostEqual(unclocked.BoundBox.XMin, -1)
+        self.assertAlmostEqual(shaft.BoundBox.YMax, c.GEAR_START_Y + 12)
         displaced = shaft.copy()
         displaced.translate(App.Vector(0, -0.01, 0))
         self.assertGreater(displaced.common(main).Volume, 0.01)
@@ -474,7 +476,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
                     self.doc.recompute()
                     result = direct_adapter_fit_check(self.doc, prefix)
                     self.assertTrue(result["passed"], result)
-                    self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 2)
+                    self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 4)
             finally:
                 pod.Tilt = original
                 self.doc.recompute()
@@ -521,11 +523,11 @@ class InputShaftEvidenceTests(unittest.TestCase):
         original = shaft.Shape.copy()
         try:
             # Keep the entire socket and selected gear journal, but remove the
-            # two-millimetre projection beyond the gear's front face.
+            # four-millimetre projection beyond the gear's front face.
             shaft.Shape = original.cut(
                 Part.makeBox(
                     6,
-                    3,
+                    5,
                     6,
                     App.Vector(
                         -3,
@@ -565,7 +567,9 @@ class InputShaftEvidenceTests(unittest.TestCase):
         screw = self.doc.PortInputShaftClampBolt
         original = App.Placement(screw.Placement)
         try:
-            screw.Placement.Base += App.Vector(0, 0, -0.3)
+            from gondola.parts import servo_coupling as c
+
+            screw.Placement.Base += c.shaft_frame_point(-0.3, 0, 0)
             self.doc.recompute()
             result = input_shaft_retention_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
@@ -582,7 +586,9 @@ class InputShaftEvidenceTests(unittest.TestCase):
         try:
             for displacement in (-0.1, -0.2):
                 nut.Placement = App.Placement(original)
-                nut.Placement.Base += App.Vector(0, 0, displacement)
+                from gondola.parts import servo_coupling as c
+
+                nut.Placement.Base += c.shaft_frame_point(displacement, 0, 0)
                 self.doc.recompute()
                 result = input_shaft_retention_check(self.doc, "Port")
                 self.assertFalse(result["passed"], result)
@@ -701,7 +707,7 @@ class InputShaftEvidenceTests(unittest.TestCase):
             0.2,
             App.Vector(
                 SELECTED_DRIVE.input_x_mm + 30,
-                coupling.HORN_BOTTOM_Y + coupling.BODY_BACK_Y + 3.5,
+                coupling.HORN_BOTTOM_Y + coupling.BODY_BACK_Y + 3.5 - 8,
                 SELECTED_DRIVE.input_z_mm + 2.0,
             ),
         )

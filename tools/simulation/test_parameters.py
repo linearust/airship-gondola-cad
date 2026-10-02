@@ -18,6 +18,7 @@ from tools.simulation.export_parameters import (
     export,
     extract,
     optical_pitch_degrees,
+    output_support_geometry,
     printed_carrier_mass_properties,
     vector_m,
 )
@@ -49,6 +50,144 @@ class UnitTests(unittest.TestCase):
                     [cube, Part.makeBox(10, 10, 10, App.Vector(25, -5, -5))]
                 )
             )
+
+
+class SupportTopologyTests(unittest.TestCase):
+    def setUp(self):
+        self.doc = App.newDocument("SimulationSupportTopology")
+        self.addCleanup(App.closeDocument, self.doc.Name)
+        root = self.doc.addObject("App::Part", "MainPropulsionModule")
+        root.Placement.Base.x = 14
+        frame = self.doc.addObject("Part::Feature", "PropulsionFixedFrame")
+        root.addObject(frame)
+        for prefix, sign, shaft_suffix in (
+            ("Port", 1, "Negative"),
+            ("Starboard", -1, "Positive"),
+        ):
+            assembly = self.doc.addObject("App::Part", prefix + "Assembly")
+            root.addObject(assembly)
+            pod = self.doc.addObject("App::Part", prefix + "Pod")
+            assembly.addObject(pod)
+            pod.Placement.Base = App.Vector(0, sign * 75, 50)
+            for label, y in (("Inboard", 28), ("Outboard", 41)):
+                obj = self.doc.addObject(
+                    "Part::Feature", prefix + "OutputBearing" + label
+                )
+                assembly.addObject(obj)
+                obj.Shape = Part.makeCylinder(
+                    3, 2.5, App.Vector(0, -1.25, 0), App.Vector(0, 1, 0)
+                ).cut(
+                    Part.makeCylinder(
+                        1.5, 2.5, App.Vector(0, -1.25, 0), App.Vector(0, 1, 0)
+                    )
+                )
+                obj.Placement.Base = App.Vector(0, sign * y, 50)
+                obj.addProperty("App::PropertyString", "HardwareSKU")
+                obj.HardwareSKU = "BEARING_3X6X2_5"
+            cap = self.doc.addObject("Part::Feature", prefix + "BearingCap")
+            assembly.addObject(cap)
+            shaft = self.doc.addObject(
+                "Part::Feature", prefix + "OutputShaft" + shaft_suffix
+            )
+            pod.addObject(shaft)
+        self.doc.recompute()
+
+    def test_literal_inboard_pair_and_only_driven_shaft_are_exported(self):
+        for prefix, sign, shaft_suffix in (
+            ("Port", 1, "Negative"),
+            ("Starboard", -1, "Positive"),
+        ):
+            with self.subTest(side=prefix):
+                support = output_support_geometry(self.doc, prefix)
+                self.assertEqual(
+                    support["integrated_fixed_frame"], "PropulsionFixedFrame"
+                )
+                self.assertEqual(support["fixed_bearing_cap"], prefix + "BearingCap")
+                self.assertEqual(
+                    support["output_shaft"],
+                    {
+                        "object": prefix + "OutputShaft" + shaft_suffix,
+                        "rotating_parent": prefix + "Pod",
+                    },
+                )
+                self.assertEqual(support["idler_shafts"], [])
+                self.assertAlmostEqual(support["bearing_centre_spacing_m"], 0.013)
+                for label, position, offset in (
+                    ("Inboard", 0.028, -0.047),
+                    ("Outboard", 0.041, -0.034),
+                ):
+                    bearing = support["bearings"][label]
+                    self.assertEqual(
+                        bearing["centre_cad_m"], [0.014, sign * position, 0.05]
+                    )
+                    self.assertEqual(
+                        bearing["centre_from_tilt_axis_neutral_m"],
+                        [0, sign * offset, 0],
+                    )
+                    self.assertTrue(bearing["fixed_during_tilt"])
+
+    def test_fixed_parts_cannot_move_with_the_rotor(self):
+        for name in (
+            "PortOutputBearingInboard",
+            "PortBearingCap",
+            "PropulsionFixedFrame",
+        ):
+            with self.subTest(part=name):
+                obj = self.doc.getObject(name)
+                parent = obj.getParentGeoFeatureGroup()
+                try:
+                    self.doc.PortPod.addObject(obj)
+                    with self.assertRaisesRegex(ValueError, "topology changed"):
+                        output_support_geometry(self.doc, "Port")
+                finally:
+                    parent.addObject(obj)
+
+    def test_common_global_transform_preserves_relative_support_geometry(self):
+        expected = output_support_geometry(self.doc, "Port")
+        self.doc.MainPropulsionModule.Placement = App.Placement(
+            App.Vector(71, -39, 26), App.Rotation(App.Vector(2, -3, 5), 37)
+        )
+        self.doc.recompute()
+        actual = output_support_geometry(self.doc, "Port")
+        self.assertAlmostEqual(actual["bearing_centre_spacing_m"], 0.013)
+        for label in ("Inboard", "Outboard"):
+            self.assertEqual(
+                actual["bearings"][label]["centre_from_tilt_axis_neutral_m"],
+                expected["bearings"][label]["centre_from_tilt_axis_neutral_m"],
+            )
+            self.assertNotEqual(
+                actual["bearings"][label]["centre_cad_m"],
+                expected["bearings"][label]["centre_cad_m"],
+            )
+
+    def test_outboard_or_noncoaxial_bearing_cannot_claim_inboard_support(self):
+        bearing = self.doc.PortOutputBearingOutboard
+        for point in (
+            App.Vector(0, 80, 50),
+            App.Vector(1, 41, 50),
+            App.Vector(0, 41, 51),
+        ):
+            with self.subTest(position=point):
+                bearing.Placement.Base = point
+                with self.assertRaisesRegex(ValueError, "coaxial and inboard"):
+                    output_support_geometry(self.doc, "Port")
+
+    def test_extra_bearing_or_returned_idler_and_saddle_are_rejected(self):
+        for name in (
+            "PortOutputShaftPositive",
+            "ServoDriveBridge",
+            "PortUnexpectedBearing",
+        ):
+            with self.subTest(part=name):
+                obj = self.doc.addObject("Part::Feature", name)
+                if name.endswith("Bearing"):
+                    obj.addProperty("App::PropertyString", "HardwareSKU")
+                    obj.HardwareSKU = "BEARING_3X6X2_5"
+                try:
+                    with self.assertRaisesRegex(ValueError, "topology changed"):
+                        output_support_geometry(self.doc, "Port")
+                finally:
+                    self.doc.removeObject(obj.Name)
 
 
 class SavedGeometryTests(unittest.TestCase):
@@ -96,6 +235,12 @@ class SavedGeometryTests(unittest.TestCase):
                 geo["main_propulsors"][name]["motor_mount_face_cad_m"],
             )
             rotor = result["rotating_assembly_analysis"][name]
+            support = rotor["support_geometry"]
+            self.assertEqual(
+                support["arrangement"], "two_fixed_inboard_bearings_open_outer_side"
+            )
+            self.assertAlmostEqual(support["bearing_centre_spacing_m"], 0.013)
+            self.assertEqual(support["idler_shafts"], [])
             self.assertEqual(
                 vector_m(pod.getGlobalPlacement().multVec(App.Vector(6.3, 0, 0))),
                 rotor["illustrative_propeller_disk_centre_cad_m"],
@@ -131,7 +276,8 @@ class SavedGeometryTests(unittest.TestCase):
             self.assertEqual(restored, geo["main_propulsors"][name]["pivot_cad_m"])
 
     def test_asymmetric_pivot_height_is_rejected(self):
-        self.doc.PortPod.Placement.Base.z += 1
+        # Keep this side's fixed bearings coaxial while breaking pair alignment.
+        self.doc.PortAssembly.Placement.Base.z += 1
         self.doc.recompute()
         with self.assertRaisesRegex(ValueError, "Pivot alignment changed"):
             extract(self.doc)
@@ -306,7 +452,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 5)
+                self.assertEqual(snapshot["schema_version"], 6)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

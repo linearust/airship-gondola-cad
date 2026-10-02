@@ -15,7 +15,7 @@ except ImportError:
 class SavedRailValidationTests(unittest.TestCase):
     def setUp(self):
         from gondola.cad import set_property
-        from gondola.parts import equipment_mounts, propulsion, rail, servo_bridge
+        from gondola.parts import equipment_mounts, propulsion, rail
 
         self.doc = App.newDocument("SavedSideSlotRailTest")
         self.root = self.doc.addObject("App::Part", "Root")
@@ -48,7 +48,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "RailAttachmentContract",
                 json.dumps(
                     rail.attachment_contract(
-                        38 if kind is None else 16, shared_drive=kind is None
+                        44 if kind is None else 16, shared_drive=kind is None
                     ),
                     sort_keys=True,
                 ),
@@ -65,11 +65,6 @@ class SavedRailValidationTests(unittest.TestCase):
                     self.doc, module, parent, x_offset=offset, shared_drive=kind is None
                 )
             )
-            if kind is None:
-                bridge = self.doc.addObject("Part::Feature", "ServoDriveBridge")
-                module.addObject(bridge)
-                bridge.Shape = servo_bridge.bridge_shape()
-                prints.append(bridge)
             modules.append(module)
             prints.append(obj)
             if kind:
@@ -125,12 +120,12 @@ class SavedRailValidationTests(unittest.TestCase):
                 shared = [
                     row
                     for row in report["rails"][0]["installed_mounts"]
-                    if row["shared_servo_bridge_clamp"]
+                    if row["paired_propulsion_clamp"]
                 ]
                 self.assertEqual(len(shared), 2)
                 for row in shared:
                     self.assertAlmostEqual(
-                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 20
+                        row["paired_spine_support"]["top_bearing_area_total_mm2"], 70
                     )
                     self.assertEqual(
                         row["saved_lower_mount_attachment"][
@@ -236,19 +231,19 @@ class SavedRailValidationTests(unittest.TestCase):
         obj.HardwareSKU = "M2X6_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
 
-    def test_shared_joint_rejects_old_short_screw_and_missing_bridge_head_land(self):
+    def test_shared_joint_rejects_short_screw_and_missing_frame_head_land(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
 
         screw = self.doc.MainPropulsionModuleRailMountScrew
         original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
-        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=14)
+        screw.Shape = translated_shape(rail.attachment_screw_shape(8), x=14)
         screw.HardwareSKU = "M3X8_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
-        bridge = self.doc.ServoDriveBridge
+        bridge = self.doc.PropulsionFixedFrame
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(13.5, -9.0, 8.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(13.5, -3.25, 8.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])

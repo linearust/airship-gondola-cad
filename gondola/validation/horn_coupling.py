@@ -14,15 +14,22 @@ from gondola.contracts import servo_horns
 from gondola.contracts.drive import drive_for_document
 from gondola.parts import servo_coupling as coupling
 
+from .geometry import certify_translation_clearance
 from .propulsion_service import (
     continuous_path,
+    driver_service_segment_check,
     fastener_service_check,
-    input_service_path,
     module_service_shapes,
     retained_obstacles,
-    servo_bench_members,
+    servo_lateral_service_check,
 )
-from .servo_module import servo_module_service_check
+from .servo_module import (
+    driver_gear_service_waypoints,
+    input_jack_backoff_vector,
+    input_shaft_service_waypoints,
+    servo_service_preparation_check,
+    servo_unit_service_waypoints,
+)
 
 TOL = 1e-5
 V = App.Vector
@@ -359,29 +366,116 @@ def horn_registration_check(doc, prefix):
     }
 
 
+def input_stub_grip_stock_check(shape, prefix):
+    """Independent3.8mm tip witness with the selected0.5mm flat at240degrees."""
+    if prefix not in ("Port", "Starboard"):
+        raise ValueError("Unknown servo side")
+    required = Part.makeCylinder(1.5, 3.8, V(), V(0, 1, 0)).cut(
+        Part.makeBox(2, 4, 6, V(-3, -0.1, -3))
+    )
+    required.rotate(V(), V(0, 1, 0), 240)
+    required.translate(V(16, 22.7, 50))
+    if prefix == "Starboard":
+        required.rotate(V(), V(0, 0, 1), 180)
+    missing = abs(required.cut(shape).Volume)
+    return {
+        "required_tip_length_mm": 3.8,
+        "missing_grip_stock_mm3": missing,
+        "scope": "Literal end stock from0.2mm beyond the gear face to the20mm stub tip. The full-length filed flat raises the lower extent toZ48.57496 on Port; the lower jaw closing envelope reaches48.6. This checks nominal stock and access, not friction or grip force.",
+        "passed": missing < TOL,
+    }
+
+
 def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
-    """KST sequence keeps its reverse screws in the horn during bridge removal."""
+    """Remove shaft and loose driver before axial servo/horn/adapter withdrawal."""
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"passed": False, "missing_parts": missing, "pod": prefix}
     sign = 1 if prefix == "Port" else -1
     if module_release is None:
-        module_release = servo_module_service_check(doc, module)
-    bench = servo_bench_members(doc, shapes)
-    shapes = {n: shapes[n] for n in bench}
-    driver = prefix + "DriverGear"
-    driver_path = continuous_path(
-        shapes[driver],
-        [(0, 0, 0), (0, sign * 35, 0)],
-        retained_obstacles(shapes, {driver}),
+        module_release = servo_service_preparation_check(doc, module)
+    removed = set(module_release.get("removed_parts", ()))
+    driver, shaft = prefix + "DriverGear", prefix + "InputShaft"
+    jack = prefix + "InputShaftClampBolt"
+    backoff = input_jack_backoff_vector(prefix)
+    jack_path = continuous_path(
+        shapes[jack],
+        [(0, 0, 0), backoff],
+        retained_obstacles(shapes, removed | {jack}),
     )
-    shaft = prefix + "InputShaft"
+    # A small actual radial release is modeled, rather than assuming that an
+    # exactly tangent screw tip permits withdrawal under its installed preload.
+    shapes[jack] = shapes[jack].copy()
+    shapes[jack].translate(V(*backoff))
+    local_to_module = (
+        module["group"]
+        .getGlobalPlacement()
+        .inverse()
+        .multiply(coupling_frame(doc, prefix))
+    )
+    tool = Part.makeCylinder(
+        1,
+        15,
+        coupling.shaft_frame_point(-9.1, coupling.SHAFT_CLAMP_Y, 0),
+        coupling.shaft_frame_point(-1, 0, 0),
+    )
+    tool.Placement = local_to_module.multiply(tool.Placement)
+    tool_obstacles = retained_obstacles(shapes, removed | {jack})
+    tool_hits = {
+        name: abs(tool.common(obstacle).Volume)
+        for name, obstacle in tool_obstacles.items()
+    }
+    jack_release = {
+        "bolt": jack,
+        "backoff_mm": 0.2,
+        "backoff_vector_mm": list(backoff),
+        "bolt_release": jack_path,
+        "tool_radius_mm": 1.0,
+        "tool_length_mm": 15.0,
+        "tool_intersections_mm3": tool_hits,
+        "scope": "A2mm-diameter by15mm radial approach envelope reaches the input M2 jack. Back off its screw0.2mm along its axis; the nut remains seated. Actual hex-key engagement and turning room remain tool checks.",
+        "passed": jack_path["passed"] and all(v < TOL for v in tool_hits.values()),
+    }
+    shaft_points = input_shaft_service_waypoints(prefix)
     shaft_path = continuous_path(
-        shapes[shaft],
-        [(0, 0, 0), (0, sign * 20, 0)],
-        retained_obstacles(shapes, {driver, shaft}),
+        shapes[shaft], shaft_points, retained_obstacles(shapes, removed | {shaft})
     )
-    removed = {driver, shaft}
+    shaft_path["waypoints_mm"] = shaft_points
+    jaws = Part.makeCompound(
+        [
+            Part.makeBox(15, 3.8, 1.6, V(14.5, 22.7, 47)),
+            Part.makeBox(15, 3.8, 1.5, V(14.5, 22.7, 51.5)),
+        ]
+    )
+    if sign < 0:
+        jaws.rotate(V(), V(0, 0, 1), 180)
+    grip_obstacles = retained_obstacles(shapes, removed | {shaft})
+    grip_entry = continuous_path(jaws, [(sign * 60, 0, 0), (0, 0, 0)], grip_obstacles)
+    grip_pull = continuous_path(jaws, shaft_points, grip_obstacles)
+    grip_stock = input_stub_grip_stock_check(shapes[shaft], prefix)
+    shaft_grip = {
+        "jaw_box_mm": [[15, 3.8, 1.6], [15, 3.8, 1.5]],
+        "lower_jaw_closure_allowance_mm": 0.1,
+        "shaft_tip_projection_mm": 4.0,
+        "jaw_contact_axial_length_mm": 3.8,
+        "tip_stock": grip_stock,
+        "side_entry": grip_entry,
+        "shaft_pull": grip_pull,
+        "scope": "Two side-entry fine-plier jaws grip the exposed4mm shaft tip, inset0.2mm from the gear face. Support the driver while releasing both set screws. Pull18mm axially, then move outwardX60; a long coaxial puller is not covered. Actual plier dimensions and non-damaging grip remain physical checks.",
+        "passed": grip_entry["passed"] and grip_pull["passed"] and grip_stock["passed"],
+    }
+    removed.add(shaft)
+    driver_points = driver_gear_service_waypoints(prefix)
+    driver_path = driver_service_segment_check(
+        shapes[driver],
+        driver_points[0],
+        driver_points[1],
+        retained_obstacles(shapes, removed | {driver}),
+        drive_for_document(doc),
+        sign,
+    )
+    driver_path["waypoints_mm"] = driver_points
+    removed.add(driver)
     ear_rows = []
     for side in ("Lower", "Upper"):
         name = prefix + "ServoEar" + side
@@ -401,8 +495,8 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         )
         removed.update(pair)
     moving = {
-        prefix + s
-        for s in (
+        prefix + suffix
+        for suffix in (
             "Servo",
             "ServoHorn",
             "HornGearAdapter",
@@ -415,24 +509,36 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         )
     }
     fixed = retained_obstacles(shapes, removed | moving)
-    points = [(0, 0, 0), (0, sign * 12.5, 0), (sign * 40, sign * 12.5, 0)]
-    spec = drive_for_document(doc)
+    points = servo_unit_service_waypoints(prefix)
     paths = []
-    for n in sorted(moving):
-        if n.endswith("HornGearAdapter"):
-            b = shapes[n].BoundBox
-            envelope = Part.makeBox(
-                b.XLength, b.YLength, b.ZLength, V(b.XMin, b.YMin, b.ZMin)
-            )
-            path = continuous_path(envelope, points, fixed)
-            path["scope"] = (
-                "Conservative full adapter box; horn and servo move with it."
-            )
-        else:
-            path = input_service_path(n, shapes[n], points, fixed, spec, sign)
-        paths.append({"part": n, "waypoints_mm": points, **path})
-    # Off the bridge and at neutral horn orientation, a published external-hex
-    # nutdriver envelope must reach each rear head without other retained parts.
+    for name in sorted(moving):
+        segments = []
+        for start, end in zip(points, points[1:]):
+            if name.endswith("Servo"):
+                checked = servo_lateral_service_check(shapes[name], start, end, fixed)
+            elif name.endswith("HornGearAdapter"):
+                placed = shapes[name].copy()
+                placed.translate(V(*start))
+                certificate = certify_translation_clearance(
+                    placed, tuple(b - a for a, b in zip(start, end)), fixed
+                )
+                checked = {
+                    "obstacles": sorted(fixed),
+                    "segments": [certificate],
+                    "passed": certificate["passed"],
+                }
+            else:
+                checked = continuous_path(shapes[name], [start, end], fixed)
+            segments.append({"start_mm": list(start), "end_mm": list(end), **checked})
+        path = {
+            "obstacles": sorted(fixed),
+            "segments": segments,
+            "passed": all(row["passed"] for row in segments),
+        }
+        paths.append({"part": name, "waypoints_mm": points, **path})
+    # The horn joints remain assembled until the remaining unit is off-frame.
+    bench = moving
+    # On the detached unit, preserve the stock horn and rear M1 screws.
     inverse = coupling_frame(doc, prefix).inverse()
     profile = servo_horns.profile(str(doc.getObject(prefix + "ServoHorn").HornProfile))
     local_names = {
@@ -570,6 +676,8 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     )
     passed = (
         module_release["passed"]
+        and jack_release["passed"]
+        and shaft_grip["passed"]
         and driver_path["passed"]
         and shaft_path["passed"]
         and adapter_route["passed"]
@@ -577,23 +685,25 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     )
     return {
         "pod": prefix,
-        "service_mode": "preassembled_servo_unit",
-        "module_removal_passed": module_release["passed"],
-        "required_prior_check": "servo_module_service",
+        "service_mode": "shaft_first_compact_frame",
+        "preparation_passed": module_release["passed"],
+        "required_prior_check": "servo_service_preparation",
         "driver_gear_removal": driver_path,
         "input_stub_removal": shaft_path,
+        "input_jack_release": jack_release,
+        "input_stub_grip_tool": shaft_grip,
         "ear_fastener_release": ear_rows,
         "part_paths": paths,
         "moving_parts": sorted(moving),
         "retained_parts": sorted(fixed),
         "bench_members": sorted(bench),
-        "rear_holding_tool_off_bridge": holding,
+        "rear_holding_tool_off_frame": holding,
         "adapter_clamp_release": {
             "fasteners": fasteners,
             "passed": all(r["passed"] for r in fasteners),
         },
-        "adapter_release_off_bridge": adapter_route,
-        "scope": "KST only: remove paired module and selected driver/stub, then withdraw each M1.6 ear screw and lift its nut out of the shallow cradle pocket. Withdraw the complete servo/horn/adapter unit with the ear hardware removed. Off the bridge, turn the rear horn screws to release the pocket-held front nuts. Retain the horn screws in the supplied arm until the adapter clears their tips. At neutral horn orientation, a<=5.7mm OD x60mm rear hex nutdriver and fine pliers are explicit envelopes; actual tools/trough fit remain checks. The optional centre opening is not part of this two-bolt service configuration. Reverse for assembly, fitting OEM spline screw before adapter. Full shaft-stop floor retained.",
+        "adapter_release_off_frame": adapter_route,
+        "scope": "KST only, neutral and unpowered, leads disconnected: remove both small output gears. Support the48T driver, release its unmodeled set screw and back off the input M2 jack0.2mm. Grip the4mm exposed tip of the20mm stub with the checked side-entry jaws; pull18mm forwardY then60mm outwardX. Do not substitute a long coaxial puller. Remove the loose driver60mm outwardX. Withdraw the two M1.6 ear screws and lift their nuts from the shallow pockets. Keep the OEM horn and both M1 joints assembled: move the servo/horn/adapter14mm forwardY through the7.4x20.4 window, then60mm outwardX; mirror X/Y for Starboard. Only on the detached unit turn rear M1 screws to release the front nuts; keep screws in the horn until the adapter clears their tips. A<=5.7mm OD x60mm rear hex nutdriver and fine pliers are off-frame envelopes. Actual gear set-screw access, tool grip and delivered fits remain physical checks. The optional centre opening is outside this two-bolt configuration. Reverse for assembly, fitting the OEM spline screw before the adapter; insert the shaft and tighten both shaft/gear clamps after the servo is seated. Finish tight printed windows, never force case compression. Full shaft-stop floor retained; no physical retention or stiffness rating.",
         "passed": passed,
     }
 
@@ -649,7 +759,7 @@ def profile_compatibility_checks():
                             overlaps.append(
                                 {"angle_deg": angle, "part": name, "volume_mm3": volume}
                             )
-                module_release = servo_module_service_check(doc, module)
+                module_release = servo_service_preparation_check(doc, module)
                 service = [
                     assembled_servo_service_check(
                         doc, module, p, module_release=module_release

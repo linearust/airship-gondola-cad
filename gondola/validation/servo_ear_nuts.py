@@ -77,7 +77,7 @@ def _nut_size_range_check(bridge, z):
 
 def servo_ear_nut_check(doc, prefix):
     """Measure both installed nuts in their servo-axis frame, including parents."""
-    names = ["ServoDriveBridge", prefix + "ServoMount"] + [
+    names = ["PropulsionFixedFrame", prefix + "ServoMount"] + [
         prefix + "ServoEar" + side + "Nut" for side in ("Lower", "Upper")
     ]
     missing = [name for name in names if doc.getObject(name) is None]
@@ -91,7 +91,7 @@ def servo_ear_nut_check(doc, prefix):
         shape.Placement = inverse.multiply(shape.Placement)
         return mirrored_y(shape, -1) if prefix == "Starboard" else shape
 
-    bridge = local("ServoDriveBridge")
+    bridge = local("PropulsionFixedFrame")
     rows = []
     for side, z, opening in (("Lower", -17.0, 1), ("Upper", 7.0, -1)):
         nut = local(prefix + "ServoEar" + side + "Nut")

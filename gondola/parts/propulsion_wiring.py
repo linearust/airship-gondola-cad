@@ -122,7 +122,7 @@ def route_contract(sign, propulsion_placement, electronics_placement):
         "free_loop_workspace_axial_depth_mm": WORKSPACE_DEPTH_MM,
         "moving_attachment_candidate": {
             "object": prefix + "MotorCarrier",
-            "region": "Existing broad rear crossbar toward the shaft axis; avoid motor screws, split clamps and the propeller opening.",
+            "region": "Existing broad rear crossbar toward the shaft axis; avoid motor screws, keyed shaft sockets, their jack screws and the propeller opening.",
             "qualification": "Tie, tie head, wire exit and full moving cable geometry are unmodeled. The crossbar is a candidate attachment member, not a verified tie location.",
         },
         "fixed_attachment_candidate": {
@@ -130,7 +130,7 @@ def route_contract(sign, propulsion_placement, electronics_placement):
             "region": "Existing carrier edge before FC entry; wrap the plate without obstructing the eight-mm underbody corridor, standard holes or board damping.",
             "qualification": "This candidate fixes the FC end to the stationary electronics carrier. It does not claim a separate proven tie on the propulsion frame. Retain slack between independently sliding modules; actual tie fit and load path need a bench check.",
         },
-        "servo_leads": "Servo bodies remain fixed. Retain rear case exit allowance and a service loop before the FC; disconnect their leads before removing the deliberately separate servo bridge. No connector or full servo cable route is modeled.",
+        "servo_leads": "Servo bodies remain fixed. Retain rear case exit allowance and a service loop before the FC; disconnect their leads before withdrawing either servo from the integral frame. No connector or full servo cable route is modeled.",
         "bounded_output_range_deg": [-180, 180],
         "endpoint_wrap_permitted": False,
         "complete_connected_harness_modeled": False,

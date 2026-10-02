@@ -132,7 +132,7 @@ class CarrierTrimTests(unittest.TestCase):
             report = rail_attachment_service(doc, registry, objects)
             self.assertTrue(report["passed"], report)
             carriers = [
-                row for row in report["modules"] if not row["shared_servo_bridge_clamp"]
+                row for row in report["modules"] if not row["paired_propulsion_clamp"]
             ]
             self.assertEqual(len(carriers), 3)
             for carrier in carriers:

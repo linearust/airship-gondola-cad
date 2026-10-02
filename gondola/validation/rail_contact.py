@@ -50,21 +50,19 @@ def flex_relief_check(rail_section=None, length=rail.LENGTH):
 
 
 def _rail_seat_contacts(section, mount, zone_length, shared_drive):
-    """Independent ordinary top seats or paired crowned base seats."""
+    """Independent wall-top seats for every local shoe."""
     from gondola.validation.rail_curvature import local_seat_check
 
     return local_seat_check(section, mount, zone_length, shared=shared_drive)
 
 
 def _vertical_removal_sweep(shape, travel=25):
-    """Exact upward sweep when every curved boundary is a trailing crown.
+    """Exact upward sweep of filled standard shoes with planar boundaries.
 
-    Lower R4.5 crown surfaces face away from upward travel and add no new
-    swept volume. Only the upward-facing planar boundaries need extrusion.
-    Reject an unfamiliar surface instead of replacing the open U by a box.
+    Cylinders parallel to upward travel add no swept stock. Any unsupported
+    curved boundary fails closed instead of replacing the fitted U by a box.
     """
     pieces = [shape]
-    trailing_crowns = 0
     for face in shape.Faces:
         surface = face.Surface
         kind = type(surface).__name__
@@ -72,23 +70,8 @@ def _vertical_removal_sweep(shape, travel=25):
             if face.normalAt(0, 0).z > 1e-12:
                 pieces.append(face.extrude(V(0, 0, travel)))
             continue
-        if kind == "Cylinder":
-            if surface.Axis.cross(V(0, 0, 1)).Length < 1e-12:
-                continue
-            u0, u1, v0, v1 = face.ParameterRange
-            trailing = all(
-                face.normalAt(u0 + (u1 - u0) * f, (v0 + v1) / 2).z <= 1e-10
-                for f in (0, 0.25, 0.5, 0.75, 1)
-            )
-            if (
-                abs(surface.Radius - 4.5) < rail.TOL
-                and abs(surface.Center.z - 6) < rail.TOL
-                and surface.Axis.cross(V(0, 1, 0)).Length < 1e-12
-                and face.BoundBox.ZMax <= 6 + rail.TOL
-                and trailing
-            ):
-                trailing_crowns += 1
-                continue
+        if kind == "Cylinder" and surface.Axis.cross(V(0, 0, 1)).Length < 1e-12:
+            continue
         raise ValueError("Vertical removal contains an unsupported curved boundary")
     sweep = union(pieces).removeSplitter()
     end = translated_shape(shape, z=travel)
@@ -99,15 +82,11 @@ def _vertical_removal_sweep(shape, travel=25):
         or abs(end.cut(sweep).Volume) > rail.TOL
     ):
         raise ValueError("Vertical removal envelope does not contain its endpoints")
-    return sweep, "continuous upward planar-face sweep" + (
-        " with trailing circular crowns" if trailing_crowns else ""
-    )
+    return sweep, "continuous upward planar-face sweep"
 
 
-def _fastener_seat_contacts(
-    clamp, mount, head_support, head_face_y, nut_bearing_y, frame_contact_y
-):
-    """Probe head/nut bearing lands and both optional frame/saddle faces."""
+def _fastener_seat_contacts(clamp, head_face_y, nut_bearing_y):
+    """Probe both head/nut bearing lands and the complete two-millimetre nut floor."""
 
     def annulus(y, depth):
         return Part.makeCylinder(
@@ -150,33 +129,11 @@ def _fastener_seat_contacts(
     )
     missing_nut = abs(nut_face.cut(clamp).Volume)
     nut_area = nut_face.Volume / 0.01
-    frame_faces = []
-    if frame_contact_y is not None:
-        for side_sign in (-1, 1):
-            face_y = side_sign * frame_contact_y
-            inside = annulus(face_y if side_sign < 0 else face_y - 0.01, 0.01)
-            outside = translated_shape(inside, y=side_sign * 0.01)
-            missing_frame = abs(inside.cut(mount).Volume)
-            missing_saddle = (
-                outside.Volume
-                if head_support is None
-                else abs(outside.cut(head_support).Volume)
-            )
-            frame_faces.append(
-                {
-                    "side": side_sign,
-                    "face_y_mm": face_y,
-                    "missing_frame_support_mm3": missing_frame,
-                    "missing_saddle_support_mm3": missing_saddle,
-                    "passed": max(missing_frame, missing_saddle) < rail.TOL,
-                }
-            )
     return {
         "missing_head_support_mm3": missing_head,
         "missing_nut_support_mm3": missing_nut,
         "missing_printed_nut_floor_mm3": missing_floor,
         "nut_bearing_area_outside_bore_mm2": nut_area,
-        "frame_saddle_contact_faces": frame_faces,
     }
 
 
@@ -187,16 +144,14 @@ def attachment_check(
     screw_length=rail.SCREW_LENGTH,
     contact_length=rail.MOUNT_LENGTH,
     head_face_y=rail.HEAD_BEARING_Y,
-    head_support=None,
     nut_bearing_y=rail.NUT_BEARING_Y,
     nut_outer_y=rail.FAR_LEG_OUTER_Y,
-    frame_contact_y=None,
     shared_drive=False,
 ):
     """Nominal fitted load stack and local release, not physical clamp strength.
 
-    Shared checks supply both saddle cheeks in head_support, nut seat8/outer11,
-    and frame_contact_y6. Independent saved validators also check actual parts.
+    Shared checks consume one canonical shoe cropped from the paired frame.
+    Its interface and fastener stack are identical to an ordinary carrier.
     """
     from gondola.validation.geometry import translation_sweep
 
@@ -205,7 +160,7 @@ def attachment_check(
     if shared_drive and (
         abs(contact_length - rail.SHARED_SPINE_LENGTH) > rail.TOL or mount is None
     ):
-        raise ValueError("Shared attachment requires the actual38mm frame spine")
+        raise ValueError("Shared attachment requires the actual44mm paired frame")
     zone_length = 10.0
     if (
         not all(
@@ -217,11 +172,9 @@ def attachment_check(
         or nut_outer_y < nut_bearing_y + rail.MINIMUM_NUT_CAPTURE_DEPTH - rail.TOL
     ):
         raise ValueError("Nut pocket must retain at least 1.5 mm nominal recess depth")
-    if frame_contact_y is not None:
-        frame_contact_y = rail._positive(frame_contact_y, "Frame contact half-width")
     section = rail.rail_shape(50, (0,)) if rail_section is None else rail_section
     mount = rail.mount_base_shape(length=contact_length) if mount is None else mount
-    clamp = mount if head_support is None else union([mount, head_support])
+    clamp = mount
     screw = rail.attachment_screw_shape(screw_length, head_face_y=head_face_y)
     nut = rail.nut_shape(bearing_y=nut_bearing_y)
     overlaps = {
@@ -279,9 +232,7 @@ def attachment_check(
     lift, method = _vertical_removal_sweep(filled_mount)
     lift_overlap = abs(lift.common(section).Volume)
     contacts = _rail_seat_contacts(section, mount, zone_length, shared_drive)
-    supports = _fastener_seat_contacts(
-        clamp, mount, head_support, head_face_y, nut_bearing_y, frame_contact_y
-    )
+    supports = _fastener_seat_contacts(clamp, head_face_y, nut_bearing_y)
     tip = head_face_y + screw_length
     engagement = tip - (nut_bearing_y + fasteners.RAIL_HEX_NUT_HEIGHT)
     nut_sweep, nut_method = translation_sweep(
@@ -299,12 +250,12 @@ def attachment_check(
     turned_nut.rotate(V(0, 0, rail.BOLT_AXIS_Z), V(0, 1, 0), 30)
     nut_rotation_stop = abs(turned_nut.common(clamp).Volume)
     return {
-        "support_policy": "paired_local_bearing"
+        "support_policy": "paired_wall_top_bearing"
         if shared_drive
         else "wall_top_bearing",
         "checked_centred_contact_length_mm": zone_length,
         "shared_support_scope": (
-            "This check covers one 10 mm local clamp zone and its crowned seats. The saved paired check independently verifies both stations; no continuous flat bottom contact is intended."
+            "This check covers one16mm roof and its10mm local clamp zone. The saved paired check verifies both roofs on coplanar walls throughout±3mm trim."
             if shared_drive
             else None
         ),
@@ -323,18 +274,16 @@ def attachment_check(
         "nut_pocket_outer_y_mm": nut_outer_y,
         "nut_capture_depth_mm": nut_outer_y - nut_bearing_y,
         "nominal_side_clearance_mm": 0.0,
-        "frame_saddle_contact_faces": supports["frame_saddle_contact_faces"],
         "nut_30deg_rotation_stop_block_mm3": nut_rotation_stop,
         "bolt_length_mm": screw_length,
         "head_bearing_y_mm": head_face_y,
         "printed_grip_mm": nut_bearing_y - head_face_y,
-        "shared_head_support_supplied": head_support is not None,
         "bolt_tip_beyond_nut_mm": engagement,
         "full_nominal_nut_height_engaged": engagement >= -rail.TOL,
         "minimum_thread_projection_mm": fasteners.RAIL_THREAD_PITCH,
         "thread_projection_margin_ok": engagement
         >= fasteners.RAIL_THREAD_PITCH - rail.TOL,
-        "scope": "Ordinary carriers use a flat wall-top datum with lower legs clear; paired propulsion retains crowned base seats. Both use local side contacts and a printed nut-bearing floor. Shared checks include both frame/saddle annuli. Nominal contact does not establish as-printed fit, torque, friction, creep, curvature, strength or whole-module tool access.",
+        "scope": "All shoes use a flat wall-top datum, clear lower legs, fitted local side contacts and identical printed fastener floors. The rigid paired frame requires coplanar wall tops. Nominal contact does not establish as-printed fit, torque, friction, creep, curvature, strength or whole-module tool access.",
         "passed": max(overlaps.values()) < rail.TOL
         and lift_overlap < rail.TOL
         and nut_release < rail.TOL
@@ -347,7 +296,6 @@ def attachment_check(
         < rail.TOL
         and all(row["passed"] for row in contacts["bottom_datum_contacts"])
         and supports["nut_bearing_area_outside_bore_mm2"] > 0
-        and all(row["passed"] for row in supports["frame_saddle_contact_faces"])
         and nut_rotation_stop > rail.TOL
         and engagement >= fasteners.RAIL_THREAD_PITCH - rail.TOL,
     }

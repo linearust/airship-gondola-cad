@@ -223,7 +223,7 @@ PROPULSION_EVIDENCE = {
         "nominal_diameter_mm": 3.0,
         "stock_lengths_mm": [100.0, 200.0],
         "diameter_tolerance": "Unspecified",
-        "scope": "User selected nominal-3mm 304 rod options in 100/200mm stock lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. Output journals remain round with only the specified local gear-end flat; input stubs have the specified full-length flat. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
+        "scope": "User selected nominal-3mm 304 rod options in 100/200mm stock lengths. This is not a precision h5 shaft or a factory-flat order. Cut square, deburr and check straightness, bearing fit and gear-bore fit before completing the batch. Output bearing journals remain round between the separate specified gear-end and carrier-end flats; input stubs have the specified full-length flat. If fit is inadequate, substitute a measured precision nominal-3mm shaft; do not force the stock through bearings or infer a supplier tolerance.",
     },
     "selected_bearing": {
         "sources": [BEARING_SOURCE],
@@ -231,7 +231,7 @@ PROPULSION_EVIDENCE = {
         "bore_outside_width_mm": [3.0, 6.0, 2.5],
         "manufacturer": "Unverified generic seller part",
         "measured_mass_g": None,
-        "scope": "User confirms the purchased original-final-cart 3x6x2.5mm option is retained for this iteration, four bearings total. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearing against the fixed seat, rear shoulder, removable front keeper and shaft before assembly. No replacement or flanged bearing is selected.",
+        "scope": "User confirms the purchased original-final-cart 3x6x2.5mm option is retained for this iteration, four bearings total. Seller identity does not establish NSK/ISC manufacture, a tolerance class, mass, race-land dimensions or shield clearances. Use the retained ISC data only as the design reference below; verify the received bearings against both split seats, their outer-ring shoulders, the common cap and its hard seating lands, and the round shaft journals before assembly. No replacement or flanged bearing is selected.",
     },
     "MR63ZZ_design_reference": {
         "sources": [BEARING_REFERENCE_SOURCE, BEARING_FIT_SOURCE],
@@ -245,7 +245,7 @@ PROPULSION_EVIDENCE = {
         "inner_ring_abutment_outer_diameter_max_mm": 3.7,
         "housing_abutment_opening_diameter_min_mm": 5.4,
         "abutment_fillet_max_mm": 0.1,
-        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the purchased generic bearing. Rear-shoulder/front-keeper outer-ring contact and shield-clearance targets use this reference pending physical verification. The keeper screw seats on the frame without intended bearing preload. Keep hubs off shields and outer rings; check radial fit, free rotation and axial capture with the received lot.",
+        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the purchased generic bearing. Split-housing outer-ring shoulder contact and shield-clearance targets use this reference pending physical verification. The common cap closes onto hard frame lands under its two screws, without intended bearing or shield preload. Keep hubs off shields and outer rings; check radial fit, free rotation and axial capture with the received lot.",
     },
 }
 

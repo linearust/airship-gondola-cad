@@ -16,6 +16,15 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeHardwareProcurementTests(unittest.TestCase):
+    def test_two_flat_output_rod_keeps_round_bearing_journals(self):
+        row = procurement_spec("SS304_CUT3_L42_FLAT5_GRIP11_A0")
+        self.assertIn("42 mm length", row["requirements"])
+        self.assertIn("second0.5mm-deep flat over the final11mm", row["requirements"])
+        self.assertIn("intervening bearing-journal interval round", row["requirements"])
+        for bad in ("SS304_CUT3_L16_FLAT5_GRIP11_A0", "SS304_CUT3_L42_FLAT5_GRIP0_A0"):
+            with self.subTest(sku=bad), self.assertRaises(ValueError):
+                procurement_spec(bad)
+
     def test_incomplete_known_spec_is_not_silently_treated_as_unknown(self):
         from gondola.parts import purchased_hardware
 
@@ -35,7 +44,7 @@ class NativeHardwareProcurementTests(unittest.TestCase):
         self.addCleanup(App.closeDocument, doc.Name)
         for index, (code, detail) in enumerate(
             (
-                ("SS304_CUT3_L18_FLAT18_A0", "length 18 mm, starting 0 mm"),
+                ("SS304_CUT3_L20_FLAT20_A0", "length 20 mm, starting 0 mm"),
                 ("SS304_CUT3_L34_FLAT5_A0", "length 5 mm, starting 0 mm"),
                 ("SS304_CUT3_L14", "Leave the rod round"),
             )
@@ -56,24 +65,25 @@ class NativeHardwareProcurementTests(unittest.TestCase):
 
 
 class HardwareSpecificationTests(unittest.TestCase):
-    def test_m3_rail_stock_has_separate_specs_and_preserves_remaining_m2_inventory(
+    def test_five_m3_rail_joints_share_one_spec_and_preserve_remaining_m2_inventory(
         self,
     ):
         from gondola.contracts.design import HARDWARE_MATERIALS
         from gondola.procurement import hardware_material_code
 
         expected = {
-            "M3X10_BUTTON_HEAD": 3,
-            "M3X20_BUTTON_HEAD": 2,
+            "M3X10_BUTTON_HEAD": 5,
             "M3_HEX_NUT": 5,
-            "M2X8_BUTTON_HEAD": 6,
-            "M2X6_BUTTON_HEAD": 6,
-            "M2_HEX_NUT": 12,
+            "M2X8_BUTTON_HEAD": 2,
+            "M2X10_BUTTON_HEAD": 4,
+            "M2X12_BUTTON_HEAD": 2,
+            "M2X6_BUTTON_HEAD": 2,
+            "M2_HEX_NUT": 10,
         }
+        self.assertNotIn("M3X20_BUTTON_HEAD", PURCHASED_HARDWARE_QUANTITIES)
         for code, quantity in expected.items():
             self.assertEqual(PURCHASED_HARDWARE_QUANTITIES[code], quantity)
-        self.assertNotIn("M2X12_BUTTON_HEAD", PURCHASED_HARDWARE_QUANTITIES)
-        for code in ("M3X10_BUTTON_HEAD", "M3X20_BUTTON_HEAD", "M3_HEX_NUT"):
+        for code in ("M3X10_BUTTON_HEAD", "M3_HEX_NUT"):
             spec = procurement_spec(code)
             self.assertEqual(spec["candidate_url"], "")
             self.assertIn("owned", spec["evidence_notes"])
@@ -85,12 +95,12 @@ class HardwareSpecificationTests(unittest.TestCase):
             procurement_spec("M3X10_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
-            "17 mm effective grip",
-            procurement_spec("M3X20_BUTTON_HEAD")["requirements"],
+            "6.5 mm effective grip",
+            procurement_spec("M3X10_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
-            "0.6 mm tip projection",
-            procurement_spec("M3X20_BUTTON_HEAD")["requirements"],
+            "1.1 mm tip projection",
+            procurement_spec("M3X10_BUTTON_HEAD")["requirements"],
         )
         self.assertIn(
             "5.9 mm across-flats hex pocket",
@@ -197,7 +207,7 @@ class HardwareSpecificationTests(unittest.TestCase):
     def test_full_length_input_flat_is_valid_and_old_finished_shaft_is_not_selected(
         self,
     ):
-        stub = procurement_spec("SS304_CUT3_L18_FLAT18_A0")
+        stub = procurement_spec("SS304_CUT3_L20_FLAT20_A0")
         self.assertIn("nominal depth 0.5 mm", stub["requirements"])
         self.assertIn("no bearing journal", stub["requirements"])
         with self.assertRaises(KeyError):

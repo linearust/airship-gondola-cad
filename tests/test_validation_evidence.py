@@ -132,14 +132,17 @@ class PropulsionEvidenceTests(unittest.TestCase):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["inventory"]["rail_mount_clearance"]["expected"], 1)
-        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 16)
-        self.assertEqual(result["inventory"]["geometry"]["expected"], 10)
-        self.assertEqual(result["inventory"]["bridge_joint"]["expected"], 1)
-        self.assertEqual(result["inventory"]["servo_module_service"]["expected"], 1)
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 12)
+        self.assertEqual(result["inventory"]["geometry"]["expected"], 7)
+        self.assertEqual(result["inventory"]["functional_wall_probes"]["expected"], 11)
+        self.assertEqual(result["inventory"]["integrated_frame"]["expected"], 1)
+        self.assertEqual(
+            result["inventory"]["servo_service_preparation"]["expected"], 1
+        )
         self.assertEqual(result["inventory"]["input_drive_service"]["expected"], 2)
         self.assertEqual(result["inventory"]["servo_case_service"]["expected"], 2)
         self.assertNotIn("spacer_service", result["inventory"])
-        self.assertEqual(result["inventory"]["bearing_post_roots"]["expected"], 4)
+        self.assertEqual(result["inventory"]["bearing_post_roots"]["expected"], 2)
 
     def test_missing_row_cannot_reduce_its_own_required_count(self):
         for key, count in PROPULSION_EVIDENCE_COUNTS.items():

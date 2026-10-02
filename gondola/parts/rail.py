@@ -43,23 +43,15 @@ SLOT_CENTRE_HALF_SPAN = 3.0
 SHARED_SPINE_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 LOCAL_CONTACT_LENGTH = 10.0
 WALL_END_ROOT_RADIUS, WALL_SIDE_ROOT_RADIUS = 1.0, 0.5
-SEAT_CROWN_RADIUS = BOLT_AXIS_Z - PAD_THICKNESS
-# Match the R0.5 root's outer tangencies while retaining 1.5 mm beneath
-# both recessed fastener floors. A wider relief thins those crown walls.
-ROOT_RELIEF_WIDTH, ROOT_RELIEF_TOP_Z = 3.5, 2.6
-RELIEVED_CHANNEL_WIDTH = 3.0
 LOCAL_TILT_SCREEN_DEGREES = 2.0
 SHARED_LOAD_ZONE_LENGTH = 10.0
 SHARED_BOLT_HALF_RANGE = 3.0
 # Matching bolt and wall pitches lets both local stations travel together.
 SHARED_TRIM_HALF_RANGE = 3.0
-SHARED_MINIMUM_WALL_SEAT = LOCAL_CONTACT_LENGTH
-SHARED_MINIMUM_TOTAL_SEAT = 2 * LOCAL_CONTACT_LENGTH
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = CARRIER_ATTACHMENT.contact_length_mm, 4.0
-MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, CARRIER_ATTACHMENT.seat_z_mm
-MOUNT_INNER_ROOF_Z = 10.2
-# The paired frame retains its crowned base seats and relieved roof. Ordinary
-# carriers instead seat on one wall top and follow that wall's local attitude.
+MOUNT_TOP_Z = CARRIER_ATTACHMENT.seat_z_mm
+# Every shoe uses the same wall-top seat and clear lower legs. A rigid frame
+# joining two shoes holds those two rail walls in a common seating plane.
 CARRIER_LEG_BOTTOM_Z, CARRIER_INNER_ROOF_Z = 2.5, 9.5
 MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
 HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
@@ -164,53 +156,38 @@ def base_shape(length=LENGTH):
     return plate_shape(0, length, BASE_WIDTH, chamfer=BASE_END_CHAMFER_MM)
 
 
-def _full_width_base_centre_limit(length, contact_length):
-    """Conservative full crown footprint before the base end corner cuts."""
-    _contact_length(contact_length)
-    return length / 2 - BASE_END_CHAMFER_MM - SEAT_CROWN_RADIUS
-
-
 def attachment_windows(
     length=LENGTH, contact_length=MOUNT_LENGTH, *, shared_drive=False
 ):
-    """Intersect nominal slot adjustment with local contact support.
+    """Slot adjustment with ten-millimetre side contact and wall-top seating.
 
-    Each bolt retains a 10 mm cheek zone and 1 mm wall-end reserve. Upper
-    carrier/bridge material may overhang the wall. Ordinary roofs bear on
-    the wall top; paired crowns additionally require base support. The slot's
-    additional 0.2 mm radial clearance is for fit, not intended travel.
+    A sixteen-millimetre shoe roof retains at least fourteen millimetres of
+    wall-top overlap through the intended ±3 mm trim. Upper structure may
+    overhang a wall or rail end. The extra 0.2 mm radial slot clearance is
+    for fit, not intended travel.
     """
     contact_length = _contact_length(contact_length)
-    attachment_pattern(shared_drive)
-    if shared_drive and abs(contact_length - SHARED_SPINE_LENGTH) > TOL:
-        raise ValueError("Shared support requires the complete38mm spine extent")
+    pattern = attachment_pattern(shared_drive)
+    if shared_drive and abs(contact_length - pattern.contact_length_mm) > TOL:
+        raise ValueError("Paired support requires the complete44mm shoe extent")
     inset = max(
         _slot_end_inset(contact_length),
         WALL_LENGTH / 2 - SLOT_CENTRE_HALF_SPAN,
     )
-    base_limit = (
-        _full_width_base_centre_limit(length, contact_length) if shared_drive else None
+    return tuple(
+        {
+            "wall_x_range_mm": (first, last),
+            "axis_travel_x_range_mm": (first + inset, last - inset),
+        }
+        for first, last in wall_segments(length)
+        if first + inset <= last - inset + TOL
     )
-    rows = []
-    for first, last in wall_segments(length):
-        low, high = first + inset, last - inset
-        if base_limit is not None:
-            low, high = max(low, -base_limit), min(high, base_limit)
-        if low > high + TOL:
-            continue
-        rows.append(
-            {
-                "wall_x_range_mm": (first, last),
-                "axis_travel_x_range_mm": (low, high),
-            }
-        )
-    return tuple(rows)
 
 
 def supported_slot_ranges(
     length=LENGTH, contact_length=MOUNT_LENGTH, *, shared_drive=False
 ):
-    """Individual bolt windows with local cheeks and the applicable seat bounds."""
+    """Individual bolt windows for the common local shoe interface."""
     return tuple(
         row["axis_travel_x_range_mm"]
         for row in attachment_windows(length, contact_length, shared_drive=shared_drive)
@@ -218,33 +195,28 @@ def supported_slot_ranges(
 
 
 def shared_module_ranges(length=LENGTH):
-    """Module-centre travel from both bolt windows and local crowned feet."""
+    """Paired module travel with both shoes supported on adjacent walls."""
     windows = supported_slot_ranges(length, SHARED_SPINE_LENGTH, shared_drive=True)
-    half_spacing = attachment_pattern(True).half_spacing_mm
-    base_limit = (
-        _full_width_base_centre_limit(length, SHARED_SPINE_LENGTH) - half_spacing
-    )
+    half_spacing = PROPULSION_ATTACHMENT.half_spacing_mm
     ranges = []
     for first, second in zip(windows, windows[1:]):
-        low = max(first[0] + half_spacing, second[0] - half_spacing, -base_limit)
-        high = min(first[1] + half_spacing, second[1] - half_spacing, base_limit)
+        low = max(first[0] + half_spacing, second[0] - half_spacing)
+        high = min(first[1] + half_spacing, second[1] - half_spacing)
         if low <= high + TOL:
             ranges.append((low, high))
     return tuple(ranges)
 
 
-def spine_base_position_check(x):
-    """Both local crown footprints stop before the rail's end chamfers."""
-    limit = (
-        _full_width_base_centre_limit(LENGTH, SHARED_SPINE_LENGTH)
-        - PROPULSION_ATTACHMENT.half_spacing_mm
-    )
+def paired_attachment_position_check(x):
+    """Both bolt axes remain in supported slots; roofs may overhang the ends."""
     valid = not isinstance(x, bool) and isinstance(x, Real) and math.isfinite(x)
+    ranges = shared_module_ranges()
     return {
         "module_x_mm": x,
-        "full_width_base_centre_limits_mm": [-limit, limit],
-        "local_crown_base_centre_limits_mm": [-limit, limit],
-        "passed": bool(valid and abs(x) <= limit + TOL),
+        "supported_module_centre_ranges_x_mm": ranges,
+        "passed": bool(
+            valid and any(low - TOL <= x <= high + TOL for low, high in ranges)
+        ),
     }
 
 
@@ -263,9 +235,7 @@ def attachment_position_check(
                 "x_mm": x,
                 **row,
                 "contact_length_mm": contact_length,
-                "support_policy": "local_bearing"
-                if shared_drive
-                else "wall_top_bearing",
+                "support_policy": "wall_top_bearing",
                 "centred_load_zone_length_mm": zone,
                 "minimum_centred_contact_end_margin_mm": margin,
                 "passed": True,
@@ -383,94 +353,10 @@ def rail_shape(length=LENGTH, pads=PAD_CENTRES):
     return result
 
 
-def seat_relief_shape(length, stations=(0,), *, outer_half_width=6.0, local_legs=False):
-    """Cutter for a symmetric U with local cheeks and circular lower seats.
-
-    The lower profile is the underside of a radius-4.5 cylinder about each
-    transverse bolt axis. Its contact tangent follows a locally rotated base;
-    this geometric construction is not a physical curvature qualification.
-    ``local_legs`` retains a carrier's upper roof while removing all lower
-    cheek stock outside its ten-millimetre station band. Shared frames retain
-    structural stock above the bolt plane with a widened, non-bearing channel.
-    """
-    length = _positive(length, "Seat relief length")
-    outer_half_width = _positive(outer_half_width, "Seat relief half width")
-    stations = _stations(stations, length, LOCAL_CONTACT_LENGTH, "Seat stations")
-    if not stations:
-        raise ValueError("Seat relief requires at least one local station")
-    if not isinstance(local_legs, bool):
-        raise ValueError("Local-leg selection must be a boolean")
-    low_z = -1.0
-    width = 2 * (outer_half_width + 1)
-    y_start = -width / 2
-    full_x, x_start = length + 2, -length / 2 - 1
-    bands = union(
-        [
-            box(
-                LOCAL_CONTACT_LENGTH,
-                width,
-                MOUNT_INNER_ROOF_Z - low_z,
-                (station - LOCAL_CONTACT_LENGTH / 2, y_start, low_z),
-            )
-            for station in stations
-        ]
-    )
-    crowns = union(
-        [
-            Part.makeCylinder(
-                SEAT_CROWN_RADIUS,
-                width,
-                V(station, y_start, BOLT_AXIS_Z),
-                V(0, 1, 0),
-            )
-            for station in stations
-        ]
-    )
-    lower_relief = box(
-        full_x, width, BOLT_AXIS_Z - low_z, (x_start, y_start, low_z)
-    ).cut(crowns)
-    channel = box(
-        full_x,
-        WEB_THICKNESS,
-        MOUNT_INNER_ROOF_Z - low_z,
-        (x_start, -WEB_THICKNESS / 2, low_z),
-    )
-    root_relief = box(
-        full_x,
-        ROOT_RELIEF_WIDTH,
-        ROOT_RELIEF_TOP_Z - low_z,
-        (x_start, -ROOT_RELIEF_WIDTH / 2, low_z),
-    )
-    outside_width = width if local_legs else RELIEVED_CHANNEL_WIDTH
-    outside_relief = box(
-        full_x,
-        outside_width,
-        MOUNT_INNER_ROOF_Z - low_z,
-        (x_start, -outside_width / 2, low_z),
-    ).cut(bands)
-    return union([lower_relief, channel, root_relief, outside_relief]).removeSplitter()
-
-
-def cut_seat_relief(
-    shape, length, stations=(0,), *, outer_half_width=None, local_legs=False
-):
-    """Apply the common rail-seat profile to a carrier or propulsion frame."""
-    if outer_half_width is None:
-        outer_half_width = max(abs(shape.BoundBox.YMin), abs(shape.BoundBox.YMax))
-    return shape.cut(
-        seat_relief_shape(
-            length,
-            stations,
-            outer_half_width=outer_half_width,
-            local_legs=local_legs,
-        )
-    ).removeSplitter()
-
-
 def cut_shared_bolt_passage(shape):
-    """Cut the common frame/saddle clamp axes without depending on either part."""
+    """Cut the integrated-frame clamp axes without depending on either part."""
     pattern = PROPULSION_ATTACHMENT
-    outer_y = -pattern.frame_half_width_mm - pattern.extra_cheek_mm
+    outer_y = MOUNT_OUTER_Y
     for sign in (-1, 1):
         shape = shape.cut(
             Part.makeCylinder(
@@ -529,7 +415,7 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True
 
     The 16 mm roof overlaps at least 14 mm of one 18 mm wall through ±3 mm
     trim. Ten-millimetre cheeks retain the fitted side faces and M3 floors.
-    The paired propulsion frame keeps its independent crowned-seat profile.
+    The propulsion frame uses two exact copies of this same interface.
     """
     top_z = _positive(top_z, "Mount top")
     length = _contact_length(length)
@@ -574,6 +460,19 @@ def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True
     if not result.isValid() or len(result.Solids) != 1:
         raise RuntimeError("Rail mount must remain one valid solid")
     return result
+
+
+def attachment_shoe_shapes(top_z=MOUNT_TOP_Z, *, shared_drive=False):
+    """Exact ordinary shoes at each station, ready to fuse into upper structure.
+
+    Paired shoes have a forty-four-millimetre overall roof extent, with a
+    twelve-millimetre gap between roofs. Joining them rigidly constrains both
+    wall-top datums to be coplanar; no independent wall-tilt freedom is implied.
+    """
+    pattern = attachment_pattern(shared_drive)
+    shoe = mount_base_shape(top_z, length=pattern.shoe_length_mm)
+    sites = pattern.sites(pattern.half_spacing_mm)
+    return tuple(attachment_site_shape(shoe, site) for site in sites)
 
 
 def attachment_screw_shape(screw_length=SCREW_LENGTH, *, head_face_y=HEAD_BEARING_Y):
@@ -734,20 +633,20 @@ def tape_attachment_contract():
 def attachment_contract(
     contact_length=MOUNT_LENGTH, *, length=LENGTH, shared_drive=False
 ):
+    """One shoe interface, used singly or as a rigid pair on adjacent walls."""
     length = _positive(length, "Rail length")
     _contact_length(contact_length)
-    spans = flex_spans(length)
     pattern = attachment_pattern(shared_drive)
-    screw_length = pattern.screw_length_mm
+    spans = flex_spans(length)
+    roof_length = pattern.shoe_length_mm if shared_drive else contact_length
+    overlap = min(
+        roof_length,
+        WALL_LENGTH,
+        (roof_length + WALL_LENGTH) / 2 - SLOT_CENTRE_HALF_SPAN,
+    )
     head_face_y = pattern.head_bearing_y(MOUNT_OUTER_Y, HEAD_RECESS_DEPTH)
     nut_bearing_y = pattern.nut_bearing_y_mm
-    pocket_inner_y = pattern.frame_half_width_mm if shared_drive else FAR_LEG_INNER_Y
-    pocket_outer_y = (
-        pattern.frame_half_width_mm + pattern.extra_cheek_mm
-        if shared_drive
-        else FAR_LEG_OUTER_Y
-    )
-    contract = {
+    return {
         "rail_length_mm": length,
         "wall_count": len(wall_segments(length)),
         "wall_segments_x_mm": wall_segments(length),
@@ -763,15 +662,21 @@ def attachment_contract(
         "base_width_mm": BASE_WIDTH,
         "free_span_minimum_width_mm": BASE_WIDTH if spans else None,
         "free_span_profile": (
-            "Straight6x1.5mm base between the R1 end-root tangencies; the nominal10mm wall gap contains8mm of unthickened base. No qualified bend radius."
+            "Straight6x1.5mm base between R1 end-root tangencies; each10mm wall gap contains8mm of unthickened base. A rigid paired mount holds its two walls coplanar; bending remains outside that supported pair. No qualified bend radius."
             if spans
             else "No free span in this rail section; clamp fit only."
         ),
         "web_thickness_mm": WEB_THICKNESS,
         "web_top_z_mm": WEB_TOP_Z,
-        "mount_bottom_datum_z_mm": MOUNT_BOTTOM_Z,
-        "mount_inner_roof_z_mm": MOUNT_INNER_ROOF_Z,
-        "nominal_inner_roof_clearance_mm": MOUNT_INNER_ROOF_Z - WEB_TOP_Z,
+        "mount_bottom_datum_z_mm": None,
+        "lower_leg_bottom_z_mm": CARRIER_LEG_BOTTOM_Z,
+        "base_clearance_mm": CARRIER_LEG_BOTTOM_Z - PAD_THICKNESS,
+        "mount_inner_roof_z_mm": CARRIER_INNER_ROOF_Z,
+        "nominal_inner_roof_clearance_mm": 0.0,
+        "top_bearing_z_mm": CARRIER_INNER_ROOF_Z,
+        "top_bearing_roof_length_mm": roof_length,
+        "minimum_top_bearing_overlap_mm": overlap,
+        "top_bearing_width_mm": WEB_THICKNESS,
         "minimum_base_mm": PAD_THICKNESS,
         "slot_height_mm": SLOT_HEIGHT,
         "slot_cap_centre_span_mm": 2 * SLOT_CENTRE_HALF_SPAN,
@@ -785,126 +690,77 @@ def attachment_contract(
         "bolt_axis_z_mm": BOLT_AXIS_Z,
         "mount_contact_length_mm": contact_length,
         "contact_length_scope": (
-            "Complete38mm upper structural spine extent; only two10mm local cheek bands and two bilateral crowned lower seats contact the rail."
+            "Two identical16mm carrier roofs28mm apart give44mm overall extent, with a12mm gap between roofs. Each roof seats on14..16mm of its wall top through intended±3mm trim; each shoe has10mm cheeks."
             if shared_drive
-            else "Complete16mm upper carrier roof extent; only the central10mm cheek band and bilateral crowned lower seats contact the rail."
+            else "The16mm carrier roof seats on14..16mm of one wall top through intended±3mm trim; its10mm cheeks retain the opposed clamp faces."
         ),
-        "support_policy": "local_bearing",
+        "support_policy": "wall_top_bearing",
         "centred_load_zone_length_mm": LOCAL_CONTACT_LENGTH,
         "minimum_local_cheek_wall_end_margin_mm": SLOT_END_SUPPORT_RESERVE,
-        "lower_seat_crown_radius_mm": SEAT_CROWN_RADIUS,
-        "lower_seat_crown_axis_z_mm": BOLT_AXIS_Z,
-        "root_relief_width_mm": ROOT_RELIEF_WIDTH,
-        "root_relief_top_z_mm": ROOT_RELIEF_TOP_Z,
-        "outside_station_channel_width_mm": RELIEVED_CHANNEL_WIDTH,
-        "local_wall_tilt_screen_degrees": LOCAL_TILT_SCREEN_DEGREES,
-        "local_wall_tilt_screen_scope": "Saved-solid geometry at prescribed local wall rotations about the bolt Y axis, including intended slot adjustment. A sampled geometric screen, not a minimum bend radius, loaded retention or physical curvature qualification.",
-        "shared_minimum_wall_seat_length_mm": SHARED_MINIMUM_WALL_SEAT
+        "local_wall_tilt_screen_degrees": None
         if shared_drive
-        else None,
-        "shared_minimum_total_seat_length_mm": SHARED_MINIMUM_TOTAL_SEAT
-        if shared_drive
-        else None,
-        "shared_full_width_base_centre_limits_mm": spine_base_position_check(0)[
-            "full_width_base_centre_limits_mm"
-        ]
-        if shared_drive
-        else None,
+        else LOCAL_TILT_SCREEN_DEGREES,
+        "local_wall_tilt_screen_scope": (
+            "The rigid paired frame requires both wall-top datums to be coplanar. No independent local-wall tilt screen or fixed-deck curvature freedom is claimed. Fit the rail to the common seating plane before clamping; bend outside the supported pair."
+            if shared_drive
+            else "Carrier and local wall rotate together about Y at the stated sample angles. The carrier follows the wall attitude; this is a sampled rigid local fit screen, not independent fixed-deck clearance or loaded-curvature qualification."
+        ),
+        "shared_minimum_wall_seat_length_mm": overlap if shared_drive else None,
+        "shared_minimum_total_seat_length_mm": 2 * overlap if shared_drive else None,
         "shared_individual_bolt_half_range_mm": SHARED_BOLT_HALF_RANGE
         if shared_drive
         else None,
         "shared_usable_trim_half_range_mm": SHARED_TRIM_HALF_RANGE
         if shared_drive
         else None,
-        "mount_section": "Symmetric structural U with opposed10mm local rail-contact cheeks, bilateral R4.5 lower crowns about the bolt axis, relieved roots/roof and open-bottom nut-bearing pocket",
-        "mount_outer_y_mm": -pattern.frame_half_width_mm
-        if shared_drive
-        else MOUNT_OUTER_Y,
+        "mount_section": "Symmetric U with a flat Z9.5 wall-top datum,16mm roof, two10mm local cheeks and flat lower edges atZ2.5; no lower base contact.",
+        "mount_outer_y_mm": MOUNT_OUTER_Y,
         "head_recess_diameter_mm": HEAD_RECESS_DIAMETER,
         "head_recess_depth_mm": HEAD_RECESS_DEPTH,
         "ordinary_head_bearing_floor_mm": MOUNT_LEG_THICKNESS - HEAD_RECESS_DEPTH,
         "fitted_channel_width_mm": WEB_THICKNESS,
         "nominal_side_clearance_mm": 0.0,
         "far_leg_inner_y_mm": FAR_LEG_INNER_Y,
-        "far_leg_outer_y_mm": pattern.frame_half_width_mm
-        if shared_drive
-        else FAR_LEG_OUTER_Y,
+        "far_leg_outer_y_mm": FAR_LEG_OUTER_Y,
         "nut_pocket_across_flats_mm": NUT_POCKET_AF,
-        "nut_capture_depth_mm": pocket_outer_y - nut_bearing_y,
+        "nut_capture_depth_mm": FAR_LEG_OUTER_Y - nut_bearing_y,
         "nut_captive_without_screw": False,
-        "recess_access": "Only the outer head/nut recesses open toward local -Z; the round through-bores and axial bearing floors remain closed. Vertical hex flats stop nut rotation. Hold a loose nut while starting the screw; the recess is not a captive-nut mechanism.",
-        "carrier_side_legs_equal_thickness_mm": None
-        if shared_drive
-        else MOUNT_LEG_THICKNESS,
-        "nut_pocket_inner_y_mm": pocket_inner_y,
-        "nut_pocket_outer_y_mm": pocket_outer_y,
+        "recess_access": "Head and nut recesses open toward local-Z; round through-bores and axial bearing floors remain closed. Vertical hex flats restrain nut rotation. Hold the nut while starting the screw; it is not axially captive.",
+        "carrier_side_legs_equal_thickness_mm": MOUNT_LEG_THICKNESS,
+        "nut_pocket_inner_y_mm": FAR_LEG_INNER_Y,
+        "nut_pocket_outer_y_mm": FAR_LEG_OUTER_Y,
         "nut_floor_nominal_mm": NUT_FLOOR_THICKNESS,
         "minimum_finished_nut_floor_mm": 1.5,
         "nut_bearing_y_mm": nut_bearing_y,
-        "nut_bearing_scope": (
-            "Nut bears on the far servo-saddle cheek floor. The nominal compression path crosses both saddle cheeks, both fitted frame legs and the rail web."
-            if shared_drive
-            else "Nut bears on the far U-leg floor. Both fitted legs contact the rail; no clearance guard is bypassed by direct nut-to-rail bearing."
-        ),
-        "bolt_length_mm": screw_length,
+        "nut_bearing_scope": "The nut bears on the far U-leg floor. Both fitted legs contact the rail; compression crosses both printed floors and the rail web.",
+        "bolt_length_mm": pattern.screw_length_mm,
         "head_bearing_y_mm": head_face_y,
         "printed_grip_mm": nut_bearing_y - head_face_y,
         "bolt_tip_beyond_nut_mm": head_face_y
-        + screw_length
+        + pattern.screw_length_mm
         - nut_bearing_y
         - fasteners.RAIL_HEX_NUT_HEIGHT,
-        "shared_servo_bridge_clamp": shared_drive,
+        "paired_propulsion_clamp": shared_drive,
         "clamp_count": pattern.count,
         "clamp_spacing_mm": pattern.spacing_mm,
-        "fastener": f"M3x{screw_length:g} recessed button-head bolt and M3 hex nut in an open-bottom load-bearing recess; unmeasured design envelopes",
+        "fastener": "M3x10 recessed button-head bolt and M3 hex nut in an open-bottom load-bearing recess; unmeasured design envelopes",
         "shared_joint_service": (
-            "Two opposed bolts28mm apart retain the servo saddle and38mm frame spine on adjacent18mm walls at28mm pitch. Matching pitches permit±3mm module trim, including the endmost wall pairs. Each bolt retains a10mm local cheek zone and at least1mm wall-end reserve. Each lower seat is crowned R4.5 about its bolt axis; all lower stock outside those crowns is relieved toZ6. The inner roof has0.7mm nominal clearance, the rail channel widens outside the local cheek zones and both lower corners clear the root fillets. Support both modules during release and seat the local contacts before alternating tightening. The rigid upper spine still couples the stations; a±2degree local wall-tilt geometry screen does not establish arbitrary curved-rail fit, stiffness or retention."
+            "Two identical carrier shoes28mm apart retain the integrated frame on adjacent18mm rail walls. Both flat roofs and all fitted side faces must seat together before alternating tightening. Matching pitches permit±3mm trim, including endmost wall pairs; the roofs may overhang. Support the complete propulsion assembly, remove both hardware pairs and lift it off to change wall pairs. The rigid frame requires coplanar wall tops and deliberately limits bending within that pair."
             if shared_drive
             else None
         ),
         "assembly": (
-            "Shared saddle cheeks are both 5 mm; the nut sits in a 3 mm-deep pocket. "
+            "Seat both shoe roofs fully on coplanar wall tops and all local side faces before installing the two M3x10 pairs. The opposite station is half-turned about Z. Alternate tightening only after both shoes are hand-seated. "
             if shared_drive
-            else "Carrier legs are both 4 mm; the nut sits 2 mm into its pocket and may protrude. "
+            else "Seat the roof fully on the wall top and both local side faces before installing the M3x10 pair. The carrier follows its wall's local pitch. "
         )
-        + "Fit bilateral crowned lower seats and opposed local U side faces before installing hardware; keep the roof/root relief clear. Insert the M3 nut from positiveY into the open-bottom recess until it contacts the printed floor; insert the bolt from negativeY. The opposite shared station is half-turned about Z. Both shared local seats and both servo/frame side faces must seat before alternating tightening. Loosen to slide only inside supported wall intervals. Moving between segments needs hardware removal and lift-off; no full-length continuous adjustment or self-centering mechanism.",
-        "physical_acceptance": "Use a process-matched coupon and actual hardware. The local channel is line-to-line with the rail; this is not an as-printed slip-fit guarantee. Finish only high spots while retaining at least1.5mm nut-floor and head-floor thickness. Reject or reprint loose or warped seats; do not force a rigid gap closed with the bolt. Verify bilateral crown and local side contact, free roof/root relief, nut seating and anti-rotation, actual socket access, full thread engagement and loaded retention. Rounded seats have nominal line contact and may concentrate pressure; printed creep, clamp force, contact deformation and fit remain unqualified.",
+        + "Both legs are4mm thick with2mm head/nut floors. Check free lower-leg clearance and open-bottom recess access; do not tighten an unseated or warped joint into place. Loosen for intended±3mm trim and reseat before tightening. Remove bolts and nuts before lifting between wall segments.",
+        "load_path_scope": "Flat top bearing geometrically opposes fore-aft rocking about Y. Compression reaches each wall through its1.8mm upper slot ligament; top bearing is only2.5mm wide. Fitted side cheeks and clamp friction remain essential for roll about X, pull-away loads and retained adjustment. No stronger wall or all-axis stiffness improvement is established.",
+        "physical_acceptance": "Use a process-matched coupon and actual hardware. The top and side datums are nominal contact fits with no intended operating gap. Hand-seat them together, preserve at least1.5mm finished fastener floors and reject a warped or loose fit. Verify lower-leg clearance, top seating, nut restraint, tool access, thread engagement and retained attitude under load. Top-slot-ligament deflection, contact pressure, friction, creep and physical curvature remain unqualified.",
         "as_printed_fit_guaranteed": False,
         "physical_fit_verified": False,
         "holding_force_verified": False,
     }
-
-    if not shared_drive:
-        contract.update(
-            {
-                "mount_bottom_datum_z_mm": None,
-                "lower_leg_bottom_z_mm": CARRIER_LEG_BOTTOM_Z,
-                "base_clearance_mm": CARRIER_LEG_BOTTOM_Z - PAD_THICKNESS,
-                "mount_inner_roof_z_mm": CARRIER_INNER_ROOF_Z,
-                "nominal_inner_roof_clearance_mm": 0.0,
-                "top_bearing_z_mm": CARRIER_INNER_ROOF_Z,
-                "top_bearing_roof_length_mm": contact_length,
-                "minimum_top_bearing_overlap_mm": min(
-                    contact_length,
-                    WALL_LENGTH,
-                    (contact_length + WALL_LENGTH) / 2 - SLOT_CENTRE_HALF_SPAN,
-                ),
-                "top_bearing_width_mm": WEB_THICKNESS,
-                "contact_length_scope": "Upper carrier roof seats on one wall top; the production16mm roof retains14..16mm nominal top overlap through intended±3mm trim. Ten-millimetre local cheeks retain the opposed clamp faces. The lower legs stop atZ2.5,1mm above the base and0.5mm above the long-side root fillets.",
-                "support_policy": "wall_top_bearing",
-                "lower_seat_crown_radius_mm": None,
-                "lower_seat_crown_axis_z_mm": None,
-                "root_relief_width_mm": None,
-                "root_relief_top_z_mm": None,
-                "outside_station_channel_width_mm": None,
-                "local_wall_tilt_screen_scope": "Carrier and its local wall rotate together about Y at the stated sample angles. The carrier follows the wall attitude; no independent fixed-deck angular clearance is claimed. This is a sampled rigid local fit screen, not loaded curvature or retention qualification.",
-                "mount_section": "Symmetric U with a flat Z9.5 wall-top datum,16mm roof, two10mm local cheeks and flat lower edges atZ2.5; no lower base contact.",
-                "assembly": "Seat the roof fully on the wall top and both local side faces before installing the M3x10 pair. The carrier follows the wall's local pitch. Check free lower-leg clearance,2mm head/nut floors and the open-bottom nut pocket; do not tighten an unseated or warped joint into place. Loosen for intended±3mm trim and reseat before tightening. Remove bolt and nut before lifting between wall segments.",
-                "load_path_scope": "Flat top bearing geometrically opposes fore-aft rocking about Y. Compression reaches the wall through its1.8mm upper slot ligament; top bearing is only2.5mm wide. Fitted side cheeks and clamp friction remain essential for roll about X, pull-away loads and retained adjustment. Neither a stronger wall nor all-axis stiffness improvement is established.",
-                "physical_acceptance": "Use a process-matched coupon and actual hardware. The top and side datums are nominal contact fits with no intended operating gap. Hand-seat them together, preserve at least1.5mm finished fastener floors and reject a warped or loose fit. Verify lower-leg clearance, top seating, nut restraint, tool access, thread engagement and retained attitude under load. Top-slot-ligament deflection, contact pressure, friction, creep and physical curvature remain unqualified.",
-            }
-        )
-    return contract
 
 
 def build_rail(doc):
@@ -918,7 +774,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven18mm walls at28mm pitch have R1 end roots and R0.5 side roots; each10mm wall gap retains8mm of unthickened base. Each3.4x9.4mm slot leaves4.3mm end ligaments. Ordinary16mm carrier roofs seat on the wall tops atZ9.5 with10mm local cheeks and lower edges atZ2.5, clear of the base. The38mm paired propulsion spine retains bilateral R4.5 lower crowns, root relief and0.7mm roof clearance. Matching28mm paired bolt spacing permits±3mm intended trim for every carrier and wall pair, including end stations; local cheeks retain at least1mm wall-end reserve. The upper structure may overhang a wall. A prescribed±2degree local wall-tilt geometry screen is not physical curvature qualification. Qualify contact pressure, fit, loaded curvature, torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
+        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven18mm walls at28mm pitch have R1 end roots and R0.5 side roots; each10mm wall gap retains8mm of unthickened base. Each3.4x9.4mm slot leaves4.3mm end ligaments. Identical16mm carrier shoes seat on the wall tops atZ9.5 with10mm local cheeks and lower edges atZ2.5, clear of the base. The propulsion frame uses two such shoes28mm apart, giving44mm overall roof extent and requiring their wall-top datums to be coplanar. Matching28mm paired bolt spacing permits±3mm intended trim for every carrier and wall pair, including end stations; local cheeks retain at least1mm wall-end reserve. The upper structure may overhang a wall. An ordinary carrier can follow its local wall attitude; the paired frame holds two walls coplanar, with rail bending outside that supported pair. Neither condition qualifies physical curvature. Qualify contact pressure, fit, loaded curvature, torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
     )
     set_property(
         printed,

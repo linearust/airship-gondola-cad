@@ -256,7 +256,9 @@ def fixed_servo_datum_check(doc, prefix):
         return {"passed": False, "error": "Missing fixed servo mount datum"}
     configuration = drive_for_document(doc)
     sign = 1 if prefix == "Port" else -1
-    expected = App.Vector(sign * configuration.input_x_mm, 0, configuration.input_z_mm)
+    expected = App.Vector(
+        sign * configuration.input_x_mm, -sign * 8.0, configuration.input_z_mm
+    )
     actual = (
         doc.MainPropulsionModule.getGlobalPlacement()
         .inverse()
@@ -269,7 +271,6 @@ def fixed_servo_datum_check(doc, prefix):
         if str(path).lstrip(".").startswith("Placement")
     ]
     frame_sku = getattr(doc.PropulsionFixedFrame, "PrintSKU", None)
-    bridge_sku = getattr(doc.ServoDriveBridge, "PrintSKU", None)
     return {
         "pod": prefix,
         "gear_configuration": configuration.key,
@@ -279,13 +280,11 @@ def fixed_servo_datum_check(doc, prefix):
         "placement_expressions": expressions,
         "expected_frame_sku": configuration.frame_sku,
         "actual_frame_sku": frame_sku,
-        "expected_bridge_sku": configuration.bridge_sku,
-        "actual_bridge_sku": bridge_sku,
-        "scope": "Actual servo axis relative to the complete propulsion module, including the removable bridge's parent placement. A ratio-specific bridge seats on the common output frame; no adjustment slots. Physical printed seating and mesh remain unqualified.",
+        "scope": "Actual servo axis relative to the complete propulsion module, including every parent. The integrated support offsets each servo 8mm inboard; no separate printed bridge or adjustment slots. Physical fit and mesh remain unqualified.",
         "passed": error < TOL
         and actual.Rotation.isSame(App.Rotation(), 1e-7)
         and not expressions
         and "MeshClearance" not in mount.PropertiesList
         and frame_sku == configuration.frame_sku
-        and bridge_sku == configuration.bridge_sku,
+        and doc.getObject("ServoDriveBridge") is None,
     }

@@ -198,11 +198,16 @@ class ModuleControlMappingTests(unittest.TestCase):
         module = SimpleNamespace(
             RailAttachmentOffsetX=14,
             RailAttachmentOffsetsX=[14, -14],
-            RailContactLength=38,
+            RailContactLength=44,
             RailPositionX=14,
             Placement=App.Placement(App.Vector(14, 0, 0), App.Rotation()),
         )
         self.assertTrue(module_attachment_pose(station, module)["passed"])
+        module.RailContactLength = 38
+        stale = module_attachment_pose(station, module)
+        self.assertFalse(stale["passed"])
+        self.assertIn("RailContactLength", stale["invalid_controls"])
+        module.RailContactLength = 44
         for position in (11, 17, -129, 129):
             module.RailPositionX = position
             module.Placement.Base.x = position

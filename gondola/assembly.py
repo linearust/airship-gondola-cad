@@ -187,7 +187,7 @@ def build_assembly():
         )
     for obj in propulsion_module["printed"]:
         if "MotorCarrier" in obj.Name:
-            set_print_sku(obj, "MotorCarrier")
+            set_print_sku(obj, obj.Name)
     reference_parts, clearance_volumes = build_equipment(
         doc, battery_module, electronics_module, accessory_module
     )

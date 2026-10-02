@@ -23,6 +23,7 @@ from gondola.cad import (
 from gondola.contracts.design import DESIGN_REVISION, HARDWARE_MATERIALS
 from gondola.contracts.drive import (
     DRIVE_CONFIGURATIONS,
+    DRIVE_INWARD_OFFSET_MM,
     GEARS,
     MODULE_MM,
     PIVOT_SPAN_MM,
@@ -55,23 +56,21 @@ from . import (
 )
 
 V = App.Vector
-BASE_Z = 1.5
 FOOT_THICKNESS = 5.0
-FOOT_BOTTOM_Z = PROPULSION_ATTACHMENT.seat_z_mm - FOOT_THICKNESS
+FOOT_BOTTOM_Z = 24.5
 FOOT_WIDTH = 18.0
-BEARING_POST_WIDTH = 13.0
+BEARING_POST_WIDTH = 18.0
 BEARING_ROOT_RADIUS = 1.5
-BEAM_EDGE_RADIUS = 0.5
 RAIL_BOLT_OFFSET_X = PROPULSION_ATTACHMENT.half_spacing_mm
 RAIL_CONTACT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 PIVOT_Z = PIVOT_Z_MM
 PIVOT_HALF_SPAN = PIVOT_SPAN_MM / 2
-GUARD_OUTER_RADIUS = 25.0
+GUARD_OUTER_RADIUS = 26.0
 GUARD_INNER_RADIUS = 23.0
 # Space for a later replacement rotor, not a fitted 50 mm propeller option.
 # The current nominal guard remains specific to the 40 mm prop.
 FUTURE_ROTOR_PROPELLER_DIAMETER = 50.0
-FUTURE_ROTOR_HALF_WIDTH = 30.0
+FUTURE_ROTOR_HALF_WIDTH = 29.0
 FUTURE_ROTOR_ORBIT_RADIUS = 34.0
 MOTOR_NOMINAL_DIAMETER = 13.5
 MOTOR_DIAMETER = 13.6
@@ -93,11 +92,14 @@ PROPELLER_PLANE_X = (
 )
 MOTOR_PLATE_THICKNESS = 3.0
 MOTOR_PLATE_BACK_X = MOTOR_MOUNT_FACE_X - MOTOR_PLATE_THICKNESS
-GUARD_DEPTH = 2.0
-# Independent printed guard datum: X8..10 clears the existing clamp head/nut
-# service envelopes without new connector blocks or long tool pockets. Physical
-# blade coverage still depends on unverified seating and blade axial geometry.
-GUARD_PLANE_X = 9.0
+GUARD_DEPTH = 3.0
+# Keep the rear face at X8 and the front flush with the root at X11. The 3x3
+# ring and 12mm-high front fan add stock without closing the jack-nut exit.
+# Physical blade coverage still needs verified seating and blade geometry.
+GUARD_PLANE_X = 9.5
+GUARD_ROOT_FAN_HEIGHT = 12.0
+GUARD_RETURN_HEIGHT = 8.0
+GUARD_RETURN_ROOT_RADIUS = 1.0
 CARRIER_SIDE_THICKNESS = 8.0
 CARRIER_SIDE_FRONT_X = 11.0
 CARRIER_SIDE_LENGTH = CARRIER_SIDE_FRONT_X - MOTOR_PLATE_BACK_X
@@ -105,7 +107,9 @@ MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102
 PROP_SOURCE = "https://www.gemfanhobby.com/40mm-1610-pc-2-blade.html"
 CREALLO_SOURCE = "https://creallo.com/ko/guide/design-spec-guide"
 GEAR_MODULE = MODULE_MM
-GEAR_HUB_START_Y = servo_coupling.HORN_BOTTOM_Y + servo_coupling.GEAR_START_Y
+GEAR_HUB_START_Y = (
+    servo_coupling.HORN_BOTTOM_Y + servo_coupling.GEAR_START_Y - DRIVE_INWARD_OFFSET_MM
+)
 GEAR_FACE_START_Y = GEAR_HUB_START_Y + SELECTED_DRIVE.driver.hub_extension_mm
 GEAR_END_Y = GEAR_FACE_START_Y + SELECTED_DRIVE.driver.face_width_mm
 
@@ -122,27 +126,23 @@ def gear_axial_span(teeth):
     )
 
 
-BEARING_START_Y = 33.75
+BEARING_CENTRES_ABS_Y = (28.0, 41.0)
+BEARING_START_Y = BEARING_CENTRES_ABS_Y[0] - bearing_retention.BEARING_WIDTH / 2
 BEARING_WINDOW_DIAMETER = bearing_retention.SHIELD_OPENING_DIAMETER
-BEARING_GUIDE_START_Y = BEARING_START_Y + bearing_retention.GUIDE_START_Y
-BEARING_SHOULDER_Y = BEARING_START_Y + bearing_retention.SHOULDER_START_Y
+BEARING_GUIDE_START_Y = BEARING_CENTRES_ABS_Y[0] + bearing_retention.BODY_FRONT_Y
+BEARING_SHOULDER_Y = BEARING_CENTRES_ABS_Y[-1] + bearing_retention.SEAT_WIDTH / 2
 BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
-BEARING_POST_DEPTH = (
-    BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS - BEARING_GUIDE_START_Y
-)
-CARRIER_END_Y = 31.25
-CARRIER_CLAMP_START_Y = 21.25
+BEARING_POST_DEPTH = bearing_retention.BODY_REAR_Y - bearing_retention.BODY_FRONT_Y
+CARRIER_END_Y = 30.5
+CARRIER_CLAMP_START_Y = 20.5
 CARRIER_CLAMP_LENGTH = CARRIER_END_Y - CARRIER_CLAMP_START_Y
 CARRIER_CLAMP_BOLT_Y = (CARRIER_CLAMP_START_Y + CARRIER_END_Y) / 2
-CARRIER_NUT_RECESS_DEPTH = CARRIER_SIDE_THICKNESS / 2 - 2.5
 CARRIER_NUT_POCKET_AF = 4.25
-SHAFT_ASSEMBLY_RETRACTION = 12.0
-SHAFT_FINAL_WITHDRAWAL = 20.0
 OUTPUT_SHAFT_INNER_Y = 20.0
-OUTPUT_DRIVEN_SHAFT_LENGTH = 34.0
-OUTPUT_IDLE_SHAFT_LENGTH = 20.0
+OUTPUT_DRIVEN_SHAFT_LENGTH = 42.0
 OUTPUT_SHAFT_FLAT_LENGTH = 5.0
 OUTPUT_SHAFT_SWEEP_HALF_LENGTH = OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
+
 NUT_SKU = "M2_HEX_NUT"
 BEARING_SKU = "BEARING_3X6X2_5"
 
@@ -164,29 +164,40 @@ def bearing_shape():
     return cylinder(3, 2.5, (0, 0, 0)).cut(cylinder(1.5, 2.5, (0, 0, 0)))
 
 
-def _bearing_cup(start_y, *, positive_side=True):
-    """Fixed round seat and shoulder; canonical bearing occupies Y0..2.5."""
-    body = bearing_retention.cup_shape()
-    if not positive_side:
-        body = mirrored_y(body, -1)
-    return translated_shape(body, y=start_y)
+CARRIER_JACK_HEAD_X = 13.0
+CARRIER_JACK_NUT_SEAT_X = 8.0
+CARRIER_JACK_LENGTH = 12.0
+CARRIER_SHAFT_FLAT_X = 1.0
+CARRIER_SOCKET_FLAT_CLEARANCE = 0.05
+OUTPUT_CARRIER_FLAT_LENGTH = 11.0
 
 
 def _carrier_clamp_cuts():
-    """Positive-Y clamp tools, applied after all carrier/guard unions."""
-    passage_start = CARRIER_CLAMP_START_Y - 0.25
-    passage_length = CARRIER_CLAMP_LENGTH + 0.5
-    pocket = translated_shape(
-        purchased_hardware.hex_prism(CARRIER_NUT_POCKET_AF, 2, z=2.5),
-        x=4.2,
-        y=CARRIER_CLAMP_BOLT_Y,
+    """Positive-Y keyed socket and top-entry ordinary-nut jack screw."""
+    start = OUTPUT_SHAFT_INNER_Y - 0.1
+    length = CARRIER_END_Y + 0.25 - start
+    bore = cylinder(1.5, length, (0, start, 0)).cut(
+        box(
+            3,
+            length + 0.2,
+            4,
+            (CARRIER_SHAFT_FLAT_X + CARRIER_SOCKET_FLAT_CLEARANCE, start - 0.1, -2),
+        )
+    )
+    pocket = purchased_hardware.hex_prism(CARRIER_NUT_POCKET_AF, 1.8)
+    pocket.Placement = App.Placement(
+        V(6.2, CARRIER_CLAMP_BOLT_Y, 0), App.Rotation(V(0, 0, 1), V(1, 0, 0))
     )
     return (
-        cylinder(1.6, passage_length, (0, passage_start, 0)),
-        box(CARRIER_SIDE_FRONT_X + 1, passage_length, 0.8, (0, passage_start, -0.4)),
-        cylinder(1.1, 8, (4.2, CARRIER_CLAMP_BOLT_Y, -4), (0, 0, 1)),
-        cylinder(2.9, 2, (4.2, CARRIER_CLAMP_BOLT_Y, -4.5), (0, 0, 1)),
+        bore,
         pocket,
+        box(
+            1.8,
+            CARRIER_NUT_POCKET_AF,
+            4.1,
+            (6.2, CARRIER_CLAMP_BOLT_Y - CARRIER_NUT_POCKET_AF / 2, 0),
+        ),
+        cylinder(1.1, 12.2, (0.9, CARRIER_CLAMP_BOLT_Y, 0), (1, 0, 0)),
     )
 
 
@@ -200,43 +211,50 @@ def _carrier_side_blank():
 
 
 def _carrier_side_shape():
-    """Isolated clamp for hardware insertion/service checks."""
     body = _carrier_side_blank()
     for tool in _carrier_clamp_cuts():
         body = body.cut(tool)
-    return _checked(body, "Integral carrier side and split shaft clamp")
+    return _checked(body, "Keyed carrier root and radial jack")
 
 
-def moving_carrier_shape():
+def moving_carrier_shape(sign=1):
+    """Inboard keyed rotor with a rear bridge and far-side guard return arm."""
     rear = union(
         [
             cylinder(8.2, MOTOR_PLATE_THICKNESS, (MOTOR_PLATE_BACK_X, 0, 0), (1, 0, 0)),
             box(
                 MOTOR_PLATE_THICKNESS,
-                2 * CARRIER_END_Y,
+                CARRIER_END_Y + GUARD_OUTER_RADIUS,
                 CARRIER_SIDE_THICKNESS,
                 (MOTOR_PLATE_BACK_X, -CARRIER_END_Y, -CARRIER_SIDE_THICKNESS / 2),
             ),
         ]
     )
     passage_x = MOTOR_PLATE_BACK_X - 0.5
-    passage_length = MOTOR_PLATE_THICKNESS + 1
-    rear = rear.cut(cylinder(2.2, passage_length, (passage_x, 0, 0), (1, 0, 0)))
-    # Known three-hole pitch is implemented as open radial slots, removing the
-    # former0.2mm central ligament. OEM screw depth/head seat remain unverified.
+    rear = rear.cut(
+        cylinder(2.2, MOTOR_PLATE_THICKNESS + 1, (passage_x, 0, 0), (1, 0, 0))
+    )
     for angle in (0, 120, 240):
         slot = union(
             [
-                box(passage_length, 3.3, 1.8, (passage_x, 0, -0.9)),
-                cylinder(0.9, passage_length, (passage_x, 3.3, 0), (1, 0, 0)),
+                box(MOTOR_PLATE_THICKNESS + 1, 3.3, 1.8, (passage_x, 0, -0.9)),
+                cylinder(
+                    0.9, MOTOR_PLATE_THICKNESS + 1, (passage_x, 3.3, 0), (1, 0, 0)
+                ),
             ]
         )
         slot.rotate(V(), V(1, 0, 0), angle)
         rear = rear.cut(slot)
-    parts = [rear]
-    side_shape = _carrier_side_blank()
-    for side in (-1, 1):
-        parts.append(mirrored_y(side_shape, side))
+    web = Part.Face(
+        Part.makePolygon(
+            [
+                V(-5, -CARRIER_CLAMP_START_Y, -4),
+                V(3, -CARRIER_CLAMP_START_Y, -4),
+                V(-5, -8.2, -4),
+                V(-5, -CARRIER_CLAMP_START_Y, -4),
+            ]
+        )
+    ).extrude(V(0, 0, 8))
     guard_start = GUARD_PLANE_X - GUARD_DEPTH / 2
     guard = cylinder(
         GUARD_OUTER_RADIUS, GUARD_DEPTH, (guard_start, 0, 0), (1, 0, 0)
@@ -245,36 +263,57 @@ def moving_carrier_shape():
             GUARD_INNER_RADIUS, GUARD_DEPTH + 2, (guard_start - 1, 0, 0), (1, 0, 0)
         )
     )
-    # The nominal guard joins the existing side blocks directly. No forward
-    # connector boxes are needed. Its two side interruptions preserve the clamp
-    # splits; an added guard must never refill these functional openings.
-    parts.append(guard)
-    body = union(parts)
-    for side in (-1, 1):
-        for tool in _carrier_clamp_cuts():
-            body = body.cut(mirrored_y(tool, side))
+    fan = box(
+        GUARD_DEPTH,
+        CARRIER_CLAMP_LENGTH,
+        GUARD_ROOT_FAN_HEIGHT,
+        (guard_start, -CARRIER_END_Y, -GUARD_ROOT_FAN_HEIGHT / 2),
+    ).cut(
+        cylinder(
+            GUARD_INNER_RADIUS, GUARD_DEPTH + 2, (guard_start - 1, 0, 0), (1, 0, 0)
+        )
+    )
+    outer_return = box(
+        CARRIER_SIDE_LENGTH,
+        GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
+        GUARD_RETURN_HEIGHT,
+        (MOTOR_PLATE_BACK_X, GUARD_INNER_RADIUS, -GUARD_RETURN_HEIGHT / 2),
+    )
+    body = union(
+        [rear, mirrored_y(_carrier_side_blank(), -1), web, guard, fan, outer_return]
+    )
+    for tool in _carrier_clamp_cuts():
+        body = body.cut(mirrored_y(tool, -1))
     from .edge_blends import fillet_selected, near
 
     body = body.removeSplitter()
-    # Add stock at the two transverse-beam/shaft-clamp L roots. Motor seating,
-    # shaft bores, clamp splits, head lands and nut pockets remain unchanged.
     body = fillet_selected(
         body,
         1.0,
         lambda e, b: (
+            near(b.XMin, 3)
+            and near(b.XLength, 0)
+            and near(b.YMin, -CARRIER_CLAMP_START_Y)
+            and near(b.YLength, 0)
+            and near(b.ZLength, 8)
+        ),
+        1,
+        "Carrier triangular root",
+    )
+    body = fillet_selected(
+        body,
+        GUARD_RETURN_ROOT_RADIUS,
+        lambda e, b: (
             near(b.XMin, MOTOR_MOUNT_FACE_X)
             and near(b.XLength, 0)
-            and near(abs(b.YMin), CARRIER_CLAMP_START_Y)
+            and near(b.YMin, GUARD_INNER_RADIUS)
             and near(b.YLength, 0)
-            and near(b.ZLength, CARRIER_SIDE_THICKNESS)
+            and near(b.ZLength, GUARD_RETURN_HEIGHT)
         ),
-        2,
-        "Motor carrier L roots",
+        1,
+        "Guard outer return rear root",
     )
-    for x, label in (
-        (MOTOR_PLATE_BACK_X, "rear beam"),
-        (CARRIER_SIDE_FRONT_X, "front clamps"),
-    ):
+    for x, label in ((MOTOR_PLATE_BACK_X, "rear web"),):
         body = fillet_selected(
             body,
             0.5,
@@ -282,13 +321,14 @@ def moving_carrier_shape():
                 near(b.XMin, x)
                 and near(b.XLength, 0)
                 and near(b.ZLength, 0)
-                and near(abs(b.ZMin), CARRIER_SIDE_THICKNESS / 2)
-                and b.YLength > CARRIER_CLAMP_LENGTH - 0.01
+                and near(abs(b.ZMin), 4)
+                and b.YLength > 9.9
+                and b.YMax < 0
             ),
-            4,
-            "Motor carrier exposed " + label,
+            2,
+            "Carrier " + label,
         )
-    return _checked(body, "Motor carrier with split shaft clamps")
+    return _checked(mirrored_y(body, sign), "Braced-guard keyed motor carrier")
 
 
 def rotor_geometry_contract():
@@ -309,106 +349,40 @@ def rotor_geometry_contract():
         "preview_clearance_disk_thickness_mm": PROPELLER_ENVELOPE_THICKNESS,
         "actual_blade_axial_envelope_mm": None,
         "guard_design_midplane_from_tilt_axis_mm": GUARD_PLANE_X,
+        "guard_axial_range_mm": [8.0, 11.0],
+        "guard_inner_outer_radius_mm": [23.0, 26.0],
+        "guard_root_fan_height_mm": GUARD_ROOT_FAN_HEIGHT,
+        "guard_outer_return": {
+            "rear_bridge_x_mm": [-8.0, -5.0],
+            "return_x_mm": [-8.0, 11.0],
+            "return_outboard_distance_mm": [23.0, 26.0],
+            "height_mm": GUARD_RETURN_HEIGHT,
+            "rear_root_radius_mm": GUARD_RETURN_ROOT_RADIUS,
+            "scope": "An integral rear bridge and outer return support the opposite ring sector. The bridge is behind the motor face; the forward return is outside the nominalR23 opening. No outboard shaft or fixed bearing is added.",
+        },
         "physical_propeller_clearance_verified": False,
-        "scope": "Motor mounting face and guard plane are printed design datums. Body/shaft lengths are supplier nominal dimensions, not measurements. Preview uses s=0 and a 40 by 5 mm disk; hub thickness does not prove blade swept volume. Guard X8..10 clears the known clamp service envelopes, but coverage of the real blades is unverified. Confirm actual hub seating, rear clip, screws and complete blade sweep before releasing this motor carrier for fabrication. Nominal motion checks do not close these interfaces. Other printed parts are not made unverified by this propeller-specific uncertainty.",
+        "scope": "Motor mounting face and guard plane are printed design datums. Body/shaft lengths are supplier nominal dimensions, not measurements. Preview uses s=0 and a 40 by 5 mm disk; hub thickness does not prove blade swept volume. The3x3 ring atX8..11 and12mm-high front root fan retain the known clamp service openings; extra stock is not strength qualification. Coverage of the real blades is unverified. Confirm actual hub seating, rear clip, screws and complete blade sweep before releasing this motor carrier for fabrication. Nominal motion checks do not close these interfaces. Other printed parts are not made unverified by this propeller-specific uncertainty.",
     }
 
 
 def _output_support(sign):
-    parts = []
-    for side in (-1, 1):
-        y_start = (
-            BEARING_GUIDE_START_Y
-            if side > 0
-            else -BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS
-        )
-        bottom = FOOT_BOTTOM_Z + FOOT_THICKNESS
-        y = y_start + PIVOT_HALF_SPAN
-        # Straight post cores match the cups; root blends are added after union.
-        post = box(
-            BEARING_POST_WIDTH,
-            BEARING_POST_DEPTH,
-            PIVOT_Z - bottom,
-            (-BEARING_POST_WIDTH / 2, y, bottom),
-        )
-        # Keep the bearing post and its root solid; no service tunnel is needed.
-        cup = _bearing_cup(side * BEARING_START_Y, positive_side=side > 0)
-        cup = translated_shape(cup, y=PIVOT_HALF_SPAN, z=PIVOT_Z)
-        relief = mirrored_y(bearing_retention.post_clearance_tool(), side)
-        post = post.cut(
-            translated_shape(
-                relief, y=PIVOT_HALF_SPAN + side * BEARING_START_Y, z=PIVOT_Z
-            )
-        )
-        parts.extend([post, cup])
-    result = union(parts)
-    if sign < 0:
-        result = result.mirror(V(), V(1, 0, 0))
-        result = mirrored_y(result, -1)
-    return result
-
-
-def _blend_frame_edges(frame):
-    """Blend post sides/inboard ends and four exposed lower beam edges.
-
-    Keep the complete 13x6 post cores, flat mating roof and rail contact feet.
-    Powder-bed orientation does not require a split or a support-only chamfer.
-    """
-    root_edges = []
-    for edge in frame.Edges:
-        points = [vertex.Point for vertex in edge.Vertexes]
-        if (
-            len(points) == 2
-            and abs(edge.Length - BEARING_POST_DEPTH) < 1e-7
-            and all(
-                abs(abs(p.x) - BEARING_POST_WIDTH / 2) < 1e-7
-                and abs(p.z - FOOT_BOTTOM_Z - FOOT_THICKNESS) < 1e-7
-                for p in points
-            )
-        ):
-            root_edges.append(edge)
-    if len(root_edges) != 8:
-        raise RuntimeError("Frame must expose eight longitudinal bearing-post roots")
-    frame = frame.makeFillet(BEARING_ROOT_RADIUS, root_edges).removeSplitter()
-    outer_edges = []
-    for edge in frame.Edges:
-        points = [vertex.Point for vertex in edge.Vertexes]
-        if (
-            len(points) == 2
-            and edge.Length > PIVOT_HALF_SPAN
-            and all(
-                abs(abs(p.x) - FOOT_WIDTH / 2) < 1e-7
-                and abs(p.z - FOOT_BOTTOM_Z) < 1e-7
-                for p in points
-            )
-        ):
-            outer_edges.append(edge)
-    if len(outer_edges) != 4:
-        raise RuntimeError("Frame must expose four lower outer beam edges")
-    frame = frame.makeFillet(BEAM_EDGE_RADIUS, outer_edges).removeSplitter()
-    from .edge_blends import fillet_selected, near
-
-    # The two outermost post ends have only 0.5 mm of beam overhang. Keep
-    # those ends intact; six inboard ends have room for additive R0.5 roots.
-    outer_post_end = PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS
-    return fillet_selected(
-        frame,
-        0.5,
-        lambda e, b: (
-            near(b.ZMin, FOOT_BOTTOM_Z + FOOT_THICKNESS)
-            and near(b.ZLength, 0)
-            and near(b.YLength, 0)
-            and near(b.XLength, BEARING_POST_WIDTH)
-            and abs(b.YMin) < outer_post_end - 0.01
-        ),
-        6,
-        "Inboard bearing-post end roots",
+    """One short rectangular web supports both seats in each bearing housing."""
+    bed = translated_shape(
+        bearing_retention.lower_housing_shape(), y=BEARING_CENTRES_ABS_Y[0], z=PIVOT_Z
     )
+    beam_top = FOOT_BOTTOM_Z + FOOT_THICKNESS
+    post = box(
+        BEARING_POST_WIDTH,
+        BEARING_POST_DEPTH,
+        PIVOT_Z + bearing_retention.BODY_BOTTOM_Z - beam_top,
+        (-BEARING_POST_WIDTH / 2, BEARING_GUIDE_START_Y, beam_top),
+    )
+    return mirrored_y(union([bed, post]), sign)
 
 
 def fixed_frame_shape():
-    """One raised transverse beam joins the posts and fitted U rail spine."""
-    half_span = PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5
+    """Standard rail shoes, raised crossbeam and two short bearing webs."""
+    half_span = BEARING_CENTRES_ABS_Y[0] + bearing_retention.BODY_REAR_Y
     beam = box(
         FOOT_WIDTH,
         2 * half_span,
@@ -416,34 +390,42 @@ def fixed_frame_shape():
         (-FOOT_WIDTH / 2, -half_span, FOOT_BOTTOM_Z),
     )
     length = PROPULSION_ATTACHMENT.contact_length_mm
-    width = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
-    spine = box(
+    shoe_top = PROPULSION_ATTACHMENT.seat_z_mm
+    width = rail.FAR_LEG_OUTER_Y - rail.MOUNT_OUTER_Y
+    pedestal = box(
         length,
         width,
-        PROPULSION_ATTACHMENT.seat_z_mm - BASE_Z,
-        (-length / 2, -width / 2, BASE_Z),
+        FOOT_BOTTOM_Z - shoe_top,
+        (-length / 2, -width / 2, shoe_top),
     )
-    frame = union(
+    body = union(
         [
-            spine,
             beam,
+            pedestal,
+            *rail.attachment_shoe_shapes(shared_drive=True),
             _output_support(1),
             _output_support(-1),
+            servo_bridge.integrated_cradle_shape(),
         ]
-    )
-    frame = rail.cut_seat_relief(
-        frame,
-        length=length,
-        stations=(
-            -PROPULSION_ATTACHMENT.half_spacing_mm,
-            PROPULSION_ATTACHMENT.half_spacing_mm,
+    ).removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    # Each broad web is flush with the housing and beam side/end faces.
+    # Only its inward load-transfer corner needs a root blend.
+    body = fillet_selected(
+        body,
+        BEARING_ROOT_RADIUS,
+        lambda e, b: (
+            near(b.ZMin, FOOT_BOTTOM_Z + FOOT_THICKNESS)
+            and near(b.ZLength, 0)
+            and near(b.YLength, 0)
+            and near(abs(b.YMin), BEARING_GUIDE_START_Y)
+            and near(b.XLength, BEARING_POST_WIDTH)
         ),
-        outer_half_width=width / 2,
+        2,
+        "Short bearing web inward roots",
     )
-    return _checked(
-        _blend_frame_edges(rail.cut_shared_bolt_passage(frame)),
-        "Common output-bearing frame with a continuous U rail spine",
-    )
+    return _checked(body, "Integrated servo and inboard-bearing frame")
 
 
 def gear_shape(teeth, phase_degrees=0):
@@ -625,22 +607,20 @@ def build_fit_coupons(doc):
     group = create_group(
         doc,
         "BearingFitCoupons",
-        "Print first | rigid bearing seat and removable keeper",
+        "Print first | paired split bearing seats and keyed cap",
     )
     cup = _print(
         doc,
         group,
         "BearingSeatFitSample",
         bearing_retention.coupon_shape(),
-        "Production fixed bearing cup on a handling foot, used with the separate keeper. "
-        "Use the same PA12 process, finish and orientation as the frame. "
-        "Qualify actual outer-ring contact, no shield rubbing, endplay, free "
-        "rotation and ordinary screw/keeper removal before full printing. "
-        "Centre the keeper aperture on the received bearing before tightening. "
-        "The nominal diameter-6 bore has no radial allowance: finish for hand "
-        "insertion without rocking and reprint an oversized seat. No spacer "
-        "or press-fit retention is assumed. Raw printing does not guarantee "
-        "this located fit or the nominal 0.5 mm axial allowance.",
+        "Production paired lower bearing housing on a handling foot, used with the keyed cap. "
+        "Use the same PA12 process, finish and orientation as the frame. Fit two actual "
+        "3x6x2.5 bearings and qualify both outer-ring seats, shield clearance, free rotation "
+        "and removal. The nominal diameter-6 split seats and side keys are finish-to-fit: "
+        "reject radial rocking or an oversized seat, and never use screw preload to force "
+        "the cap into alignment. Nominal bearing axial allowance is 0.5 mm total. "
+        "Hard cap/body lands must meet without loading bearings or shields.",
         rotation=App.Rotation(V(0, 0, 1), 45),
     )
     keeper = _print(
@@ -648,11 +628,12 @@ def build_fit_coupons(doc):
         group,
         "BearingKeeperFitSample",
         bearing_retention.keeper_shape(),
-        "Production keeper coupon. Assemble with the cup, actual bearing and "
-        "one owned M2x6/ordinary M2 nut. The recessed head clamps the lower "
-        "frame seat; it must not preload the bearing. Match process/finish and "
-        "orientation to the production keeper. Verify centering, shield clearance "
-        "at both axial limits, free rotation and screw retention.",
+        "Production shared cap coupon. Assemble with the paired housing, two actual "
+        "bearings and two owned M2x10 screws with ordinary M2 nuts. Both locating keys "
+        "and hard seating lands must engage before tightening. The screw heads seat "
+        "on the cap; the two side-entry nuts bear against the lower body's 2.5 mm floors. "
+        "Match process and finish to the production cap, then verify concentricity, "
+        "shield clearance at both axial limits, free rotation and screw retention.",
         sku="BearingKeeperFitSample",
     )
     return {"group": group, "printed": [cup, keeper]}
@@ -781,203 +762,66 @@ def _build_coupling(doc, parent, prefix, sign):
 
 
 def manufacturing_wall_probes(drive=SELECTED_DRIVE):
-    x, z = drive.input_x_mm, drive.input_z_mm
-    y = servo_envelope.ear_seat_y() - servo_bridge.MOUNT_DEPTH / 2
-    return (
-        [
-            (
-                f"{prefix}_bearing_post_{suffix}",
-                "PropulsionFixedFrame",
-                (0, sign * (PIVOT_HALF_SPAN + local_y - 0.01), 24),
-                (0, sign * (PIVOT_HALF_SPAN + local_y + BEARING_POST_DEPTH + 0.01), 24),
-                BEARING_POST_DEPTH,
-            )
-            for sign, prefix in ((1, "port"), (-1, "starboard"))
-            for local_y, suffix in (
-                (-BEARING_SHOULDER_Y - BEARING_SHOULDER_THICKNESS, "inner"),
-                (BEARING_GUIDE_START_Y, "outer"),
-            )
-        ]
-        + [
-            (
-                f"{prefix}_servo_bridge_sidewall",
-                "ServoDriveBridge",
-                (sign * (x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01), y, z),
-                (sign * (x + servo_bridge.CRADLE_WIDTH / 2 + 0.01), y, z),
-                servo_bridge.SIDE_WALL,
-            )
-            for prefix, sign in (("port", 1), ("starboard", -1))
-        ]
-        + [
-            (
-                "frame_rail_clamp_leg",
-                "PropulsionFixedFrame",
-                (
-                    RAIL_BOLT_OFFSET_X,
-                    -PROPULSION_ATTACHMENT.frame_half_width_mm - 0.01,
-                    3.5,
-                ),
-                (RAIL_BOLT_OFFSET_X, -rail.WEB_THICKNESS / 2 + 0.01, 3.5),
-                PROPULSION_ATTACHMENT.frame_half_width_mm - rail.WEB_THICKNESS / 2,
-            ),
-            (
-                "frame_rail_relieved_roof",
-                "PropulsionFixedFrame",
-                (RAIL_BOLT_OFFSET_X, 0, rail.MOUNT_INNER_ROOF_Z - 0.01),
-                (RAIL_BOLT_OFFSET_X, 0, PROPULSION_ATTACHMENT.seat_z_mm + 0.01),
-                PROPULSION_ATTACHMENT.seat_z_mm - rail.MOUNT_INNER_ROOF_Z,
-            ),
-            (
-                "frame_rail_to_central_seat_connection",
-                "PropulsionFixedFrame",
-                (0, -2.5, rail.BOLT_AXIS_Z - 0.01),
-                (0, -2.5, PROPULSION_ATTACHMENT.seat_z_mm + 0.01),
-                PROPULSION_ATTACHMENT.seat_z_mm - rail.BOLT_AXIS_Z,
-            ),
-            (
-                "output_bearing_outer_wall",
-                "PropulsionFixedFrame",
-                (
-                    -bearing_retention.BODY_HALF_WIDTH - 0.01,
-                    PIVOT_HALF_SPAN + BEARING_START_Y + 1.5,
-                    PIVOT_Z,
-                ),
-                (
-                    -bearing_retention.SEAT_RADIUS + 0.01,
-                    PIVOT_HALF_SPAN + BEARING_START_Y + 1.5,
-                    PIVOT_Z,
-                ),
-                bearing_retention.BODY_HALF_WIDTH - bearing_retention.SEAT_RADIUS,
-            ),
-            (
-                "bearing_integral_outer_shoulder",
-                "PropulsionFixedFrame",
-                (-2.9, PIVOT_HALF_SPAN + BEARING_SHOULDER_Y - 0.01, PIVOT_Z),
-                (
-                    -2.9,
-                    PIVOT_HALF_SPAN
-                    + BEARING_SHOULDER_Y
-                    + BEARING_SHOULDER_THICKNESS
-                    + 0.01,
-                    PIVOT_Z,
-                ),
-                1.5,
-            ),
-            (
-                "servo_common_cradle_negative_outer_wall",
-                "ServoDriveBridge",
-                (-x - servo_bridge.CRADLE_WIDTH / 2 - 0.01, y, z - 5),
-                (-x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
-                servo_bridge.SIDE_WALL,
-            ),
-            (
-                "servo_common_cradle_positive_outer_wall",
-                "ServoDriveBridge",
-                (x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
-                (x + servo_bridge.CRADLE_WIDTH / 2 + 0.01, y, z - 5),
-                servo_bridge.SIDE_WALL,
-            ),
-            (
-                "servo_common_cradle_central_web",
-                "ServoDriveBridge",
-                (-x + servo_bridge.CASE_WINDOW_WIDTH / 2 - 0.01, y, z - 5),
-                (x - servo_bridge.CASE_WINDOW_WIDTH / 2 + 0.01, y, z - 5),
-                2 * x - servo_bridge.CASE_WINDOW_WIDTH,
-            ),
-            (
-                "servo_cradle_upper_wall",
-                "ServoDriveBridge",
-                (x, y, z + 8.09),
-                (x, y, z + 10.21),
-                2.1,
-            ),
-            (
-                "servo_bridge_shared_cheek",
-                "ServoDriveBridge",
-                (18, servo_bridge.CHEEK_OUTER_Y - 0.01, 10.5),
-                (18, servo_bridge.CHEEK_CONTACT_Y + 0.01, 10.5),
-                servo_bridge.CHEEK_THICKNESS,
-            ),
-            (
-                "servo_bridge_opposite_cheek",
-                "ServoDriveBridge",
-                (-18, 5.99, 10.5),
-                (-18, 11.01, 10.5),
-                5.0,
-            ),
-            (
-                "servo_bridge_positive_nut_floor",
-                "ServoDriveBridge",
-                (14, 5.99, 8.2),
-                (14, 8.01, 8.2),
-                2.0,
-            ),
-            (
-                "servo_bridge_negative_nut_floor",
-                "ServoDriveBridge",
-                (-14, -8.01, 8.2),
-                (-14, -5.99, 8.2),
-                2.0,
-            ),
-            (
-                "servo_bridge_connector_plate",
-                "ServoDriveBridge",
-                (18, 0, servo_bridge.SEAT_Z - 0.01),
-                (
-                    18,
-                    0,
-                    servo_bridge.SEAT_Z + servo_bridge.CONNECTOR_PLATE_THICKNESS + 0.01,
-                ),
-                servo_bridge.CONNECTOR_PLATE_THICKNESS,
-            ),
-        ]
-    )
+    """Named independent measurements for the integrated support and keyed root."""
+    return [
+        (
+            "frame_crossbeam",
+            "PropulsionFixedFrame",
+            (0, 20, 24.49),
+            (0, 20, 29.51),
+            5.0,
+        ),
+        (
+            "integrated_saddle_roof",
+            "PropulsionFixedFrame",
+            (14, 0, 9.49),
+            (14, 0, 12.5),
+            3.0,
+        ),
+        ("bearing_cap_roof", "PortBearingCap", (0, 28, 52.99), (0, 28, 54.51), 1.5),
+        (
+            "bearing_cap_nut_floor",
+            "PropulsionFixedFrame",
+            (5.5, 35.8, 47.49),
+            (5.5, 35.8, 50.01),
+            2.5,
+        ),
+    ]
 
 
 def _build_frame(doc, module, spec):
-    """Keep the supported output mechanism independent of the servo selection."""
     frame = _print(
         doc,
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Integral output frame with one 38 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-14 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the rail-spine legs. The removable full-U servo cap carries the recessed heads and nuts. One 18 x 5 mm transverse beam spans the frame at Z7.5..12.5, with its top aligned to the saddle seat. Four full 13 by 6 mm post cores rise from that beam to the Z50 bearing axes; paired R1.5 root blends soften the X-side transitions without thinning the posts. The exposed lower beam edges use R0.5, while the mating roof stays flat. Four bearing-keeper nut seats use0.5mm-deep hex recesses with2mm supporting floors. No separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. Two10mm local side-contact zones use R4.5 lower crowns about the clamp axes, a Z10.2 relieved roof and root clearance; the intervening channel is widened. Nominal line contact is not a stiffness or creep qualification. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
+        "One integral PA12 support with two standard carrier U shoes atX±14 and M3x10 rail pairs. Both shoes seat atZ9.5; their rail walls must be coplanar. A raised5mm crossbeam atZ24.5..29.5 ends flush with two18x19mm bearing webs. Only broad R1.5 bearing-web roots are blended. Each servo has its own compact closed planar frame with3mm side walls and a16.7x5x5 local foot overlapping the main beam by3mm; no broad lower plate or upper inter-servo tie. Input axesX±16/Z50 keep16mm mesh distance; output axes remain150mm apart atZ50. The7.4x20.4 window has0.2mm nominal clearance per case face; fastened ears locate and clamp the servo. Remove both small gears, loosen the input jack/driver screw, withdraw its20mm stubY18 thenX60, and remove the loose driverX60 before releasing the ear pairs and withdrawing servo/horn/adapterY14 thenX60. Mirror X/Y on Starboard. Keep OEM horn and M1 joints assembled until off-frame. Finish tight windows without forcing case compression. Each bearing pair uses a common keyed cap on hard lands. Finish nominalØ6 seats to fit;0.5mm bearing float and±0.5mm rotor stops are independent. No cap preload on bearings/shields. Physical fit, retention, stiffness and strength remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
+    for key, value in (
+        ("FootThickness", FOOT_THICKNESS),
+        ("FootBottomZ", FOOT_BOTTOM_Z),
+        ("BearingPostWidth", BEARING_POST_WIDTH),
+        ("FrameCrossbeamThickness", FOOT_THICKNESS),
+        ("RailBoltOffsetX", RAIL_BOLT_OFFSET_X),
+        ("RailContactLength", RAIL_CONTACT_LENGTH),
+        ("RailBoltAxisZ", rail.BOLT_AXIS_Z),
+        ("CentralBridgeSeatZ", PROPULSION_ATTACHMENT.seat_z_mm),
+    ):
+        set_property(frame, key, value, "App::PropertyLength")
     set_property(frame, "IntegratedRailSaddle", True, "App::PropertyBool")
-    set_property(frame, "CarriageContactZ", rail.MOUNT_BOTTOM_Z, "App::PropertyLength")
+    set_property(frame, "IntegratedServoSupport", True, "App::PropertyBool")
+    set_property(
+        frame, "CarriageContactZ", rail.CARRIER_INNER_ROOF_Z, "App::PropertyLength"
+    )
     set_property(frame, "RailCenterY", 0, "App::PropertyLength")
-    set_property(frame, "FootThickness", FOOT_THICKNESS, "App::PropertyLength")
-    set_property(frame, "FootBottomZ", FOOT_BOTTOM_Z, "App::PropertyLength")
-    set_property(frame, "BearingPostWidth", BEARING_POST_WIDTH, "App::PropertyLength")
-    set_property(
-        frame,
-        "FrameCrossbeamThickness",
-        FOOT_THICKNESS,
-        "App::PropertyLength",
-    )
-    set_property(
-        frame,
-        "RailBoltOffsetX",
-        RAIL_BOLT_OFFSET_X,
-        "App::PropertyLength",
-    )
-    set_property(frame, "RailContactLength", RAIL_CONTACT_LENGTH, "App::PropertyLength")
-    set_property(frame, "RailBoltAxisZ", rail.BOLT_AXIS_Z, "App::PropertyLength")
-    set_property(
-        frame,
-        "CentralBridgeSeatZ",
-        PROPULSION_ATTACHMENT.seat_z_mm,
-        "App::PropertyLength",
-    )
     return frame
 
 
 def _build_output_pod(doc, assembly, prefix, sign, spec):
-    """Build one rotating carrier and its fixed bearings in native object order."""
     printed, hardware = [], []
-    pod = create_group(doc, prefix + "Pod", prefix + " motor/guard and output gear")
+    pod = create_group(doc, prefix + "Pod", prefix + " braced rotor and output gear")
     assembly.addObject(pod)
     pod.Placement.Base = V(0, sign * PIVOT_HALF_SPAN, PIVOT_Z)
     pod.Placement.Rotation = App.Rotation(V(0, 1, 0), 1)
@@ -989,26 +833,35 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
     set_property(
         pod,
         "Notes",
-        f"Bounded output -180..180 degrees, no endpoint wrap. Input servo moves oppositely by 1/{spec.ratio:g}. Verify actual servo travel, wire loops, backlash and endpoints before operation.",
+        "Bounded±180deg output, no endpoint wrap. Check actual loaded travel and moving wires.",
     )
     carrier = _print(
         doc,
         pod,
         prefix + "MotorCarrier",
-        moving_carrier_shape(),
-        "Integral nominal guard,3mm motor plate/crossbar and two rectangular19x10x8mm shaft-clamp sides. Motor mounting face is X=-5mm. The guard joins these blocks directly, with two small side interruptions preserving the clamp splits; all clamp openings are cut after union. No forward connector blocks. Flat end faces replace the separate circular stop flanges; the 3.2mm bores, radial splits and bearing planes are unchanged. Each M2 nut sits in a1.5mm-deep hex recess in the flat top, with2.1mm stock between its seat and the split. Existing M2x8 screws retain their5mm grip. Guard plane is X=9mm, clearing the existing clamp head/nut service envelopes; the illustrative propeller disk is centred at X=6.3mm for the explicitly assumed s=0 hub seating. Actual seating and blade swept volume are unknown; nominal clearance does not qualify this carrier for fabrication. The two bearing centres are 70 mm apart, and the gear face centre is 11 mm from the inner bearing centre. Two separate Ø3 shafts stop before the motor. M2x8 clamps provide frictional torque and axial grip; strength, creep and slip require tests. Nominal 0.5 mm carrier/frame end clearance provides low-load rubbing stops. Rigid keepers capture each bearing independently of the shaft and carrier. Install bearings and centre/secure their keepers, retract output shafts 12 mm, insert the carrier transversely, then advance and clamp shafts. The broad carrier/frame stops limit rotor travel to nominal ±0.5 mm without pressing a bearing shield. Three 1.8 mm open radial motor slots follow M1.4/PCD6.6. Actual OEM screw length, usable depth, head footprint, rear-clip clearance and finished axial fits remain unverified.",
+        moving_carrier_shape(sign),
+        "The rotor remains supported by its inboard shaft and bearings only. One10mm nominalØ3 D socket,0.5mm shaft flat and radialM2x12 jack provide keyed torque transfer and axial grip. The nut enters from the top and reacts against a3mm outer wall; the screw head floats2mm outside the root, its tip seats on the flat. Do not apply clamp torque as though the head seated. An8mm-thick triangular web joins the3mm motor plate to the solid root. The3x3mm guard has a23mm inner radius and12mm-high inboard fan. A3x8mm rear bridge and outer return arm support the opposite ring sector, behind the motor face and outside the nominal propeller disk; the return has oneR1 rear root. No outboard shaft, fixed bearing or extra hardware is added. Jack access remains open. The inner root face and output-gear web bracket stationary thrust lands with±0.5mm rotor travel independently of bearing shields. Nominal40mm guard geometry does not establish real blade seating, protection or strength; fabrication remains on hold pending installation evidence.",
         App.Rotation(V(0, 1, 0), -90),
-        sku="GearedMotorCarrier",
+        sku=prefix + "MotorCarrier",
     )
-    set_property(
-        carrier, "MotorPlateThickness", MOTOR_PLATE_THICKNESS, "App::PropertyLength"
-    )
-    set_property(
-        carrier, "MotorMountFaceX", MOTOR_MOUNT_FACE_X, "App::PropertyDistance"
-    )
-    set_property(
-        carrier, "TiltAxisToPropellerPlane", PROPELLER_PLANE_X, "App::PropertyLength"
-    )
+    for key, value in (
+        ("MotorPlateThickness", MOTOR_PLATE_THICKNESS),
+        ("MotorMountFaceX", MOTOR_MOUNT_FACE_X),
+        ("TiltAxisToPropellerPlane", PROPELLER_PLANE_X),
+        ("GuardRadialWall", GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS),
+        ("GuardAxialThickness", GUARD_DEPTH),
+        ("GuardRootFanHeight", GUARD_ROOT_FAN_HEIGHT),
+        ("GuardReturnHeight", GUARD_RETURN_HEIGHT),
+        ("GuardReturnRootRadius", GUARD_RETURN_ROOT_RADIUS),
+    ):
+        set_property(
+            carrier,
+            key,
+            value,
+            "App::PropertyDistance"
+            if key == "MotorMountFaceX"
+            else "App::PropertyLength",
+        )
     set_property(
         carrier, "RotorGeometryContract", json.dumps(rotor_geometry_contract())
     )
@@ -1016,106 +869,99 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         carrier, "PhysicalPropellerClearanceVerified", False, "App::PropertyBool"
     )
     printed.append(carrier)
-    for side, suffix in ((-1, "Negative"), (1, "Positive")):
-        driven = side == -sign
-        length = OUTPUT_DRIVEN_SHAFT_LENGTH if driven else OUTPUT_IDLE_SHAFT_LENGTH
-        low, high = OUTPUT_SHAFT_INNER_Y, OUTPUT_SHAFT_INNER_Y + length
-        shaft = cylinder(1.5, high - low, (0, low, 0))
-        if driven:
-            shaft = shaft.cut(
-                box(
-                    2,
-                    OUTPUT_SHAFT_FLAT_LENGTH,
-                    4,
-                    (1, high - OUTPUT_SHAFT_FLAT_LENGTH, -2),
-                )
-            )
-        shaft = mirrored_y(shaft, side)
-        sku = (
-            f"SS304_CUT3_L{length:g}_FLAT{OUTPUT_SHAFT_FLAT_LENGTH:g}_A0"
-            if driven
-            else f"SS304_CUT3_L{length:g}"
+    side = -sign
+    suffix = "Negative" if side < 0 else "Positive"
+    low, high = OUTPUT_SHAFT_INNER_Y, OUTPUT_SHAFT_INNER_Y + OUTPUT_DRIVEN_SHAFT_LENGTH
+    shaft = cylinder(1.5, OUTPUT_DRIVEN_SHAFT_LENGTH, (0, low, 0))
+    for start, length in (
+        (high - OUTPUT_SHAFT_FLAT_LENGTH, OUTPUT_SHAFT_FLAT_LENGTH),
+        (low, OUTPUT_CARRIER_FLAT_LENGTH),
+    ):
+        shaft = shaft.cut(box(2, length, 4, (1, start, -2)))
+    shaft = mirrored_y(shaft, side)
+    hardware.append(
+        _buy(
+            doc,
+            pod,
+            prefix + "OutputShaft" + suffix,
+            shaft,
+            "SS304_CUT3_L42_FLAT5_GRIP11_A0",
+            "OneØ3x42 driven rod per rotor; no idler or through-motor shaft. File separate0.5mm-deep flats:5mm at the gear end and11mm at the carrier end, with full round journals through both bearings. Key the10mm carrier socket with its jack screw and the bought gear with its set screw. Actual fits, flats and grip require checks.",
+            SHAFT_SOURCE,
+            "304 stainless steel (seller claim)",
         )
+    )
+    jack_pair = _bolt_pair(
+        doc,
+        pod,
+        prefix + "OutputClamp" + suffix,
+        (CARRIER_JACK_HEAD_X, side * CARRIER_CLAMP_BOLT_Y, 0),
+        (-1, 0, 0),
+        grip=5,
+        length=12,
+    )
+    for item in jack_pair:
+        set_property(
+            item,
+            "Notes",
+            "M2x12 radial jack screw with an ordinary M2 nut in the top-entry pocket. "
+            "The 5 mm head-to-nut bearing-plane spacing includes a 2 mm air gap "
+            "outside the carrier and a 3 mm printed nut-reaction wall; it is not "
+            "a 5 mm clamped stack. The screw tip bears on the shaft flat while "
+            "the head remains floating. Never tighten to seat the head against "
+            "the carrier. Qualify actual nut fit, tip contact and axial retention "
+            "without crushing the printed wall or damaging the shaft flat.",
+        )
+    hardware.extend(jack_pair)
+    for label, y in zip(("Inboard", "Outboard"), BEARING_CENTRES_ABS_Y):
+        bearing = translated_shape(bearing_shape(), y=y - 1.25, z=PIVOT_Z)
         hardware.append(
-            _buy(
+            _buy_bearing(
                 doc,
-                pod,
-                prefix + "OutputShaft" + suffix,
-                shaft,
-                sku,
-                "Cut the selected nominal Ø3 mm 304 rod to length and deburr. Use two 34 mm driven stubs and two 20 mm idlers; separate stubs leave the motor bay clear. Driven stub has a locally prepared 0.5 mm deep flat on the final 5 mm at the gear end, entirely outside the bearing journal. Its tip projects 0.5 mm beyond the inner gear-hub face. Clock the flat toward the M3 screw after tooth phasing. The symmetric supports retain the 150 mm motor-axis spacing with 11 mm gear overhang and space on both sides of the rotor; check loaded mesh alignment, bearing/post and carrier/clamp compliance before running. Diameter tolerance, straightness, clamp slip and actual fit remain sample checks; replace with a matching nominal Ø3 precision shaft if needed.",
-                SHAFT_SOURCE,
-                "304 stainless steel (seller claim)",
+                assembly,
+                prefix + "OutputBearing" + label,
+                mirrored_y(bearing, sign),
+                "Owned generic3x6x2.5 bearing in a3mm-wide split seat;0.25mm nominal float each way. Hard cap lands and locating keys must seat without radial compression or shield preload. Check actual ring lands, shields and fitted concentricity.",
             )
         )
-        hardware.extend(
-            _bolt_pair(
-                doc,
-                pod,
-                prefix + "OutputClamp" + suffix,
-                (4.2, side * CARRIER_CLAMP_BOLT_Y, -2.5),
-                (0, 0, 1),
-                grip=5,
-            )
-        )
-        # All bearing geometry is fixed; each shaft rotates with the pod.
-        bearing_start = sign * PIVOT_HALF_SPAN + min(
-            side * BEARING_START_Y, side * BEARING_SHOULDER_Y
-        )
-        bearing = _buy_bearing(
+    cap = translated_shape(
+        bearing_retention.cap_shape(), y=BEARING_CENTRES_ABS_Y[0], z=PIVOT_Z
+    )
+    printed.append(
+        _print(
             doc,
             assembly,
-            prefix + "OutputBearing" + suffix,
-            translated_shape(bearing_shape(), y=bearing_start, z=PIVOT_Z),
-            "Selected generic 3×6×2.5 bearing, annular clearance envelope; brand, internal axial play, race lands, shields and fits need inspection. The integral outer shoulder and rigid removable keeper act only on the outer-ring region. Nominal inward float is 0.5 mm; the continuous fixed guide supports the complete 2.5 mm bearing width at either limit. Finish the seat and qualify actual outer-ring land, shield opening, keeper alignment/retention and internal play; no shield contact or preload is intended. Purchase is user-confirmed; these nominal boundary dimensions do not establish delivered tolerances.",
+            prefix + "BearingCap",
+            mirrored_y(cap, sign),
+            "One rigid cap retains both inboard bearings. Two1.5mm side keys positively register the cap; finish both halves together to the actual bearings and never use bolt preload to remove radial play. TwoM2x10 screws seat on hard cap/body lands, with7mm grip,1.6mm nuts and1.4mm nominal tip projection. Remove screws/nuts and lift cap+Z; support rotor and remove shaft before lifting bearings. No bearing shields carry cap or rotor-stop load.",
+            rotation=App.Rotation(V(0, 0, 1), 0 if sign > 0 else 180),
+            sku="PairedBearingCap",
         )
-        hardware.append(bearing)
-        keeper_name = prefix + "OutputBearingKeeper" + suffix
-        keeper = _print(
-            doc,
-            assembly,
-            keeper_name,
-            translated_shape(
-                mirrored_y(bearing_retention.keeper_shape(), side),
-                y=sign * PIVOT_HALF_SPAN + side * BEARING_START_Y,
-                z=PIVOT_Z,
-            ),
-            "Rigid replaceable outer-ring keeper with a symmetric3.5mm backing extending to5mm below the axis; one recessed M2x6 and ordinary "
-            "M2 nut clamp the broad frame seat, not the bearing. A0.5mm-deep hex nut recess in the fixed seat leaves2mm supporting stock without shifting the bearing plane. The existing "
-            "rotor stop plane is retained. No flexure, radial squeeze or bearing "
-            "preload. Centre its opening on the received bearing before tightening; "
-            "the broad side guides prevent gross rotation, not precision alignment. "
-            "Check actual ring lands, shield clearance and free rotation at both "
-            "axial limits. Remove carrier/shafts before screw, keeper and bearing service.",
-            rotation=App.Rotation(V(0, 0, 1), 180) if side < 0 else App.Rotation(),
-            sku="OutputBearingKeeper",
-        )
-        printed.append(keeper)
+    )
+    for label, x in zip(("Negative", "Positive"), bearing_retention.CAP_BOLT_X):
         hardware.extend(
             _bolt_pair(
                 doc,
                 assembly,
-                keeper_name,
+                prefix + "BearingCap" + label,
                 (
-                    0,
-                    sign * PIVOT_HALF_SPAN
-                    + side * (BEARING_START_Y + bearing_retention.KEEPER_SCREW_SEAT_Y),
-                    PIVOT_Z + bearing_retention.KEEPER_SCREW_Z,
+                    x,
+                    sign * (BEARING_CENTRES_ABS_Y[0] + bearing_retention.CAP_BOLT_Y),
+                    PIVOT_Z + bearing_retention.CAP_SCREW_SEAT_Z,
                 ),
-                (0, side, 0),
-                grip=bearing_retention.KEEPER_NUT_SEAT_Y
-                - bearing_retention.KEEPER_SCREW_SEAT_Y,
-                length=bearing_retention.KEEPER_SCREW_LENGTH,
+                (0, 0, -1),
+                grip=7,
+                length=10,
             )
         )
-
     driver_angle = math.degrees(
         math.atan2(PIVOT_Z - spec.input_z_mm, -sign * spec.input_x_mm)
     )
     output_angle = driver_angle + 180 + 180 / spec.output.teeth
-    output_gear = gear_shape(spec.output.teeth, output_angle)
-    output_gear = mirrored_y(output_gear, sign)
-    output_gear = translated_shape(output_gear, y=-sign * PIVOT_HALF_SPAN)
+    output_gear = translated_shape(
+        mirrored_y(gear_shape(spec.output.teeth, output_angle), sign),
+        y=-sign * PIVOT_HALF_SPAN,
+    )
     hardware.append(
         _buy(
             doc,
@@ -1123,7 +969,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             prefix + "OutputGear",
             output_gear,
             spec.output.sku,
-            "Selected seller 16T m0.5/20° gear, nominal Ø3 bore, 5 mm face, 10 mm overall and Ø6.5 hub. M3 screw axis is 2.5 mm from the hub end. Copper-alloy identity, bore tolerance, screw length and actual torque remain unverified. Tooth shape is a nominal reference, not manufacturing data.",
+            "Bought16T m0.5 gear withØ3 bore and5mm face; set screw bears on prepared flat. Its outer face bears only on the separate frame thrust land after0.5mm axial travel, never a bearing shield. Confirm actual solid web, set-screw retention and rubbing behavior; no qualified thrust capacity is claimed.",
             spec.output.item_url,
             "Copper alloy (seller claim)",
         )
@@ -1148,7 +994,12 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
         doc,
         drive,
         prefix + "DriverGear",
-        mirrored_y(gear_shape(spec.driver.teeth, driver_angle), sign),
+        mirrored_y(
+            translated_shape(
+                gear_shape(spec.driver.teeth, driver_angle), y=DRIVE_INWARD_OFFSET_MM
+            ),
+            sign,
+        ),
         spec.driver.sku,
         f"Selected seller {spec.driver.teeth}T m0.5/20° gear, nominal Ø3 H8 bore, face 3, overall 8, hub Ø12. Stock X06 horn, open clamping adapter and a short Ø3 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at {spec.ratio:g} times input. Nominal tooth reference only.",
         spec.driver.item_url,
@@ -1158,7 +1009,7 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
 
 
 def _build_servo(doc, mount, prefix, sign, spec):
-    """Mount the sourced vertical X06 case on its replaceable bridge cradle."""
+    """Mount the sourced vertical X06 case in its closed integral frame."""
     hardware = []
     servo = mirrored_y(servo_envelope.shape(), sign)
     for hole_z, suffix in zip(servo_envelope.EAR_CENTRES_Z, ("Lower", "Upper")):
@@ -1180,10 +1031,8 @@ def _build_servo(doc, mount, prefix, sign, spec):
         "KST X06 V6.0 vertical case 20×7×16.6; 6 g",
         servo,
         "Official case envelope, rotated 90 degrees about the output axis so the body extends downward. Output axis is 5 mm from the case end; sourced ear axes are Ø2 on 24 mm pitch. "
-        f"Both servos share one {servo_bridge.MOUNT_DEPTH:g} mm-deep wall with {servo_bridge.SIDE_WALL:g} mm outer sides "
-        f"and a {2 * spec.input_x_mm - servo_bridge.CASE_WINDOW_WIDTH:g} mm central web. "
-        f"Each nonlocating {servo_bridge.CASE_WINDOW_WIDTH:g} by {servo_bridge.CASE_WINDOW_HEIGHT:g} mm case opening "
-        f"has nominal {servo_bridge.CASE_CLEARANCE:g} mm side and end clearance around the body. "
+        f"Each servo has an integral {servo_bridge.MOUNT_DEPTH:g} mm-deep closed frame with3mm inboard/outboard walls. "
+        f"All four case faces have nominal {servo_bridge.CASE_CLEARANCE:g} mm clearance in the{servo_bridge.CASE_WINDOW_WIDTH:g}x{servo_bridge.CASE_WINDOW_HEIGHT:g}mm window. Ear joints locate and clamp the servo. Finish a tight print rather than force case compression. Remove input stub and driver before axial servo withdrawal. "
         "M1.6×8 Phillips kit screws clamp4.5mm printed grip plus1mm ears;0.5mm rear hex recesses restrain ordinary M1.6 nuts. Ear transverse outline remains a conservative 7 mm envelope. Smooth Ø3.90×2.7 spline envelope does not claim tooth detail. Actual case fit, horn seating, OEM retaining screw, wiring exit and loaded travel require physical confirmation. Direct gearing transfers mesh load to the servo output bearings; allowable radial load is unpublished.",
         X06_DATASHEET_SOURCE,
     )
@@ -1195,18 +1044,16 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
     mount = create_group(
         doc,
         prefix + "ServoMount",
-        prefix + " servo and direct drive on removable bridge",
+        prefix + " servo and direct drive in closed integral frame",
     )
     assembly.addObject(mount)
-    mount.Placement.Base = V(sign * spec.input_x_mm, 0, spec.input_z_mm)
+    mount.Placement.Base = V(
+        sign * spec.input_x_mm, -sign * DRIVE_INWARD_OFFSET_MM, spec.input_z_mm
+    )
     set_property(
         mount,
         "ServiceSequence",
-        "First remove both output gears and the paired servo/input module. On the "
-        "bench remove the selected driver gear and input stub, turn and withdraw "
-        "the ear screws while their rear nuts remain in the shallow pockets, "
-        "then remove the nuts and withdraw the servo/horn/adapter unit. "
-        "Reverse for assembly; verify head-tool access and full nut seating.",
+        "Set the input to neutral and disconnect leads. Remove both output gears, support the large driver, release its set screw and back off the input M2 jack0.2mm. Using side-entry pliers on the4mm exposed tip, withdraw the20mm stubY18 thenX60. Remove the loose driverX60. Release the selected ear screws/nuts, then withdraw servo/horn/adapterY14 andX60; mirror X/Y for Starboard. OEM horn and M1 joints remain assembled until off-frame. Actual gear set-screw access and plier grip remain checks. Reverse, seat the ears before fitting driver/stub, tighten clamps and recheck mesh. The fixed frame and output bearings remain installed.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
     references, servo_hardware = _build_servo(doc, mount, prefix, sign, spec)
@@ -1312,7 +1159,7 @@ def _build_sweep_reserve(doc, assembly, prefix, sign):
         prefix + "SweepBound",
         "Conservative complete output rotation reserve",
         bound,
-        f"Current motor/guard/carrier radius30 overY±{CARRIER_END_Y:g}, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Also reserves a replacement-rotor full-turn cylinder radius34 overY±30.5, including nominal ±0.5 axial travel. This allows space to design a future 50 mm propeller rotor, not compatibility of the present 40 mm guard or struts. Excludes the separately validated gear mesh and input mechanism; full bound is used against external vehicle equipment.",
+        f"Current motor/guard/carrier radius30 overY±{CARRIER_END_Y:g}, output clamps/bolts/shafts/gears radius10 overY±{OUTPUT_SHAFT_SWEEP_HALF_LENGTH:g}. Also reserves a replacement-rotor full-turn cylinder radius34 overY±29.5, including nominal ±0.5 axial travel. This allows space to design a future 50 mm propeller rotor, not compatibility of the present 40 mm guard or struts. Excludes the separately validated gear mesh and input mechanism; full bound is used against external vehicle equipment.",
         clearance=True,
     )
 
@@ -1341,7 +1188,6 @@ def _build_propulsion_side(doc, module, drive_module, prefix, sign, spec):
 
 
 def _module_metrics(printed, hardware, references, spec):
-    from .nut_guides import fit_contract as nut_guide_contract
     from .servo_coupling import metrics as coupling_metrics
 
     return {
@@ -1352,12 +1198,12 @@ def _module_metrics(printed, hardware, references, spec):
         "independent_native_tilt": True,
         "single_rail_center_y_mm": 0,
         "integrated_rail_saddle": True,
+        "integrated_servo_support": True,
         "printed_part_count": len(printed),
         "purchased_mechanism_hardware_count": len(hardware),
         "device_reference_count": len(references),
         "main_pivot_centers_mm": [
-            [0, PIVOT_HALF_SPAN, PIVOT_Z],
-            [0, -PIVOT_HALF_SPAN, PIVOT_Z],
+            [0, sign * PIVOT_HALF_SPAN, PIVOT_Z] for sign in (1, -1)
         ],
         "gear_drive": {
             "configuration": spec.key,
@@ -1374,97 +1220,92 @@ def _module_metrics(printed, hardware, references, spec):
             "output_axial_span_mm": list(gear_axial_span(spec.output.teeth)),
             "input_axis_abs_x_mm": spec.input_x_mm,
             "input_axis_z_mm": spec.input_z_mm,
+            "inward_offset_mm": DRIVE_INWARD_OFFSET_MM,
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
-            "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Unmodified stock-horn drives on a removable continuous U cap with a 38 by 12 mm frame seat and two shared M3x20 clamps at 28 mm pitch. Both cap walls and both frame legs carry preload; coupon-fit the nominal mating planes before tightening. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
+            "input_mount": "Two compact closed planar frames with3mm side walls,7.4x20.4 case windows and two16.7x5x5 feet into the main beam. No broad lower plate or central upper tie. Nominal case clearance0.2mm per face; ear joints locate and clamp without case compression. Remove both output gears, release input jack/driver screw, withdraw20mm stubY18 thenX60, remove loose driverX60, release ear pairs, then withdraw servo/horn/adapterY14 thenX60. Mirror X/Y for Starboard. OEM horn/M1 joints stay assembled until off-frame. No separate bridge or closure hardware. TwoM3 rail pairs retain the whole frame.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
-            "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
+            "limits": "Bounded motion; physical travel, fit, stiffness and grip remain unqualified.",
         },
         "shaft_topology": {
-            "output_stub_count": 4,
+            "output_stub_count": 2,
             "output_driven_length_mm": OUTPUT_DRIVEN_SHAFT_LENGTH,
-            "output_idle_length_mm": OUTPUT_IDLE_SHAFT_LENGTH,
+            "output_idle_count": 0,
             "carrier_grip_length_mm": CARRIER_CLAMP_LENGTH,
-            "assembly_retraction_mm": SHAFT_ASSEMBLY_RETRACTION,
-            "staged_final_withdrawal_mm": SHAFT_FINAL_WITHDRAWAL,
+            "carrier_flat_length_mm": OUTPUT_CARRIER_FLAT_LENGTH,
+            "gear_flat_length_mm": OUTPUT_SHAFT_FLAT_LENGTH,
             "input_count": 2,
             "input_length_mm": servo_coupling.SHAFT_LENGTH,
             "through_shaft_allowed": False,
-            "reason": "A through-shaft crosses the motor. Separate stubs leave the motor bay clear.",
+            "reason": "One inboard driven shaft per rotor spans both bearings; no idler or through-motor shaft.",
+            "service": "Remove output gear, disconnect leads and withdraw supported rotor with its shaft locked outwardY60. Service jack/shaft off frame. Never withdraw one shaft through the opposing installed rotor.",
         },
         "bearing_seats": {
-            "support_centre_span_mm": 2
-            * (BEARING_START_Y + bearing_retention.BEARING_WIDTH / 2),
-            "post_section_mm": [BEARING_POST_WIDTH, BEARING_POST_DEPTH],
-            "gear_face_centre_overhang_mm": (
-                PIVOT_HALF_SPAN
-                - BEARING_START_Y
-                - bearing_retention.BEARING_WIDTH / 2
-                - sum(gear_axial_span(spec.output.teeth)[1:]) / 2
-            ),
+            "support_centre_span_mm": BEARING_CENTRES_ABS_Y[1]
+            - BEARING_CENTRES_ABS_Y[0],
+            "centres_abs_y_mm": list(BEARING_CENTRES_ABS_Y),
             "count": 4,
             "dimensions_mm": [3, 6, 2.5],
-            "nominal_bore_mm": 2 * bearing_retention.SEAT_RADIUS,
+            "nominal_bore_mm": 6.0,
             "outer_shoulder_opening_mm": BEARING_WINDOW_DIAMETER,
-            "outer_shoulder_thickness_mm": BEARING_SHOULDER_THICKNESS,
-            "rigid_guide_length_mm": bearing_retention.BEARING_WIDTH
-            - bearing_retention.KEEPER_STOP_Y,
-            "retention": "Integral outer shoulder and one rigid removable keeper per bearing, fixed by a recessed M2x6/ordinary M2 nut against the frame. No bought spacers, radial clamp or spring arms.",
-            "nominal_maximum_bearing_inward_float_mm": -bearing_retention.KEEPER_STOP_Y,
-            "complete_circumferential_guide_width_mm": bearing_retention.BEARING_WIDTH
-            - bearing_retention.KEEPER_STOP_Y,
-            "minimum_complete_guide_overlap_mm": bearing_retention.BEARING_WIDTH,
-            "keeper_screw_length_mm": bearing_retention.KEEPER_SCREW_LENGTH,
-            "finishing": "Print the production cup and keeper coupons first. Finish and measure the nominal diameter-6 contact seat for hand insertion without rocking; reprint an oversized seat. Centre the keeper aperture on the actual bearing, then check both axial limits for shield clearance/free rotation and retention. Broad guide clearance is not automatic precision centring. No designed radial allowance or interference absorbs PA12 variation. Never force the bearing or use keeper torque to remove radial play.",
-            "running_axial_clearance_mm": 0.5,
-            "assembly": "Insert bearings from the empty carrier bay, centre the keepers and secure each M2x6/nut against the frame seat. Remove the output gear, loosen carrier clamps and retract output shafts 12 mm. Insert the carrier transversely, then advance shafts and clamp. Bearing service requires removal of the carrier/shafts, then the keeper screw/nut and keeper. The paired servo module stays installed.",
+            "outer_shoulder_thickness_mm": 1.5,
+            "rigid_guide_length_mm": bearing_retention.SEAT_WIDTH,
+            "complete_circumferential_guide_width_mm": bearing_retention.SEAT_WIDTH,
+            "minimum_complete_guide_overlap_mm": 2.5,
+            "nominal_bearing_axial_float_mm": 0.5,
+            "retention": "Two split seats per rotor; one positively keyed rigid cap with twoM2x10 pairs seats on hard frame lands, not bearings. Independent shoulders retain outer rings; separate carrier/gear thrust lands bound rotor translation.",
+            "cap_screw_length_mm": 10,
+            "cap_count": 2,
+            "finishing": "Coupon-match both split seats and locating side keys to actual bearings. Reject radial shake or cap mismatch rather than tightening it away. Verify shield lands and no preload at both bearing-float limits.",
+            "rotor_stop_clearance_each_direction_mm": 0.5,
+            "rotor_total_axial_travel_mm": 1.0,
+            "assembly": "With rotor/shaft removed, lower both bearings into the open seats, place the keyed cap and seat its two screws/nuts on hard lands. Insert rotor/shaft inward from its own open outer side, install output gear and qualify both axial stops. Bearing service reverses this order.",
         },
         "replacement_rotor_space": {
             "future_propeller_reference_diameter_mm": FUTURE_ROTOR_PROPELLER_DIAMETER,
             "bulk_half_width_mm": FUTURE_ROTOR_HALF_WIDTH,
             "full_rotation_radius_mm": FUTURE_ROTOR_ORBIT_RADIUS,
             "included_axial_travel_each_way_mm": 0.5,
-            "scope": "Space allowance for a redesigned replacement rotor only. Its bulk must fit |Y|<=30 mm and radius34 about the tilt axis through every angle; retain the separate shaft/clamp stop interfaces. The current nominal 40 mm guard does not accept a 50 mm propeller. Future guard, motor, hub, fastening, wiring, thrust, balance and load capacity require selection and revalidation. Existing two-bearing support and 150 by 50 mm main-axis datums remain unchanged.",
+            "scope": "Reservation for a future redesigned rotor, not qualification of the present40mm guard. New blade seating, guard, root, wiring and loaded clearances require design and checks.",
         },
         "process_design_reference": {
             "source": CREALLO_SOURCE,
             "process": "PA12 SLS/MJF",
             "minimum_feature_wall_mm": 1.5,
-            "guard_radial_wall_mm": GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS,
+            "guard_radial_wall_mm": 3,
+            "guard_axial_thickness_mm": 3,
+            "guard_root_fan_height_mm": 12,
+            "guard_return_section_mm": [3, 8],
+            "guard_return_root_radius_mm": 1,
             "frame_foot_thickness_mm": FOOT_THICKNESS,
             "frame_foot_z_range_mm": [FOOT_BOTTOM_Z, FOOT_BOTTOM_Z + FOOT_THICKNESS],
             "frame_crossbeam_thickness_mm": FOOT_THICKNESS,
             "bearing_post_root_radius_mm": BEARING_ROOT_RADIUS,
-            "frame_lower_exterior_radius_mm": BEAM_EDGE_RADIUS,
-            "servo_cradle_root_radius_mm": servo_bridge.CRADLE_ROOT_RADIUS,
+            "frame_lower_exterior_radius_mm": 0.0,
+            "servo_cradle_root_radius_mm": 0.0,
         },
         "OEM_interfaces": PROPULSION_EVIDENCE,
         "horn_coupling": coupling_metrics(),
-        "nut_assembly_guides": nut_guide_contract(),
         "carrier_nut_pockets": {
-            "depth_mm": CARRIER_NUT_RECESS_DEPTH,
             "across_flats_mm": CARRIER_NUT_POCKET_AF,
-            "seat_to_split_wall_mm": 2.1,
-            "axis_float_radius_mm": 0.1,
+            "axial_depth_mm": 1.8,
+            "outer_wall_mm": 3.0,
+            "top_open": True,
             "nut_axially_captive": False,
             "physical_fit_verified": False,
-            "scope": "Ordinary M2 nuts; flat19x10x8mm clamp block. Qualify nut chamfers, free seating, torque restraint and split-clamp grip with the production print and actual hardware.",
+            "scope": "Top-entry radial jack nut; bolt head does not seat on PA12. Qualify tip/flat contact and loaded retention.",
         },
         "rotor_geometry": rotor_geometry_contract(),
         "motor_plate_thickness_mm": MOTOR_PLATE_THICKNESS,
         "motor_mount_face_x_mm": MOTOR_MOUNT_FACE_X,
         "motor_envelope_centre_x_mm": MOTOR_MOUNT_FACE_X + MOTOR_LENGTH / 2,
         "unfinished_interfaces": [
-            "Measured OEM horn seating and retaining screw",
-            "Actual direct horn-to-gear adapter clearance and grip",
-            "Servo output-bearing deflection under direct gear mesh load",
-            "Printed bridge seating, cradle fit and retained gear center distance",
-            "Motor rear clip, seat and M1.4 usable depth",
-            "Actual propeller seating and full blade swept volume; current guard is a provisional s=0 design",
-            "Printed bearing fits, actual outer-ring lands, shield clearance and releasable outer-ring capture",
-            "Shaft/gear/clamp torque and axial grip",
-            "KST loaded travel, backlash and wire loops",
+            "Actual propeller seating/blade sweep",
+            "PA12 split-seat/key fits",
+            "Gear thrust-web land and set-screw retention",
+            "Shaft flats and jack grip",
+            "Moving-wire routing",
+            "Loaded horn/gear/carrier/frame performance",
         ],
         "printed_parts": [
             {
@@ -1487,7 +1328,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
     module = create_group(
         doc,
         "MainPropulsionModule",
-        f"Independent KST X06 {drive.driver.teeth}:{drive.output.teeth} gear drives | four output stubs",
+        f"Integrated KST X06 {drive.driver.teeth}:{drive.output.teeth} drives | two inboard shafts",
     )
     set_property(module, "GearConfiguration", drive.key, group="Drive")
     set_property(
@@ -1500,19 +1341,13 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
     module.setEditorMode("DriveContract", 1)
     frame = _build_frame(doc, module, drive)
     drive_module = create_group(
-        doc, "ServoDriveModule", "Replaceable paired servo and input-gear module"
+        doc,
+        "ServoDriveModule",
+        "Fixed grouping of individually removable servo/input units",
     )
     module.addObject(drive_module)
-    bridge = _print(
-        doc,
-        drive_module,
-        "ServoDriveBridge",
-        servo_bridge.bridge_shape(drive),
-        "Removable paired servos on a continuous U cap with a flat 38 by 22 by 2.5 mm roof at Z12.5 and two 5 mm walls wrapping the frame. Two straight openings at X +/-9.2 extend to the roof underside at Z12.5 for the raised 18 mm beam. The beam adds 180 mm2 of roof bearing outside the central spine; both full clamp legs remain at X +/-14. Two shared M3x20 pairs at X +/-14 load both cap walls, both frame legs and the rail web. Head recesses retain 3 mm stock; opposite nut pockets retain nominal 2 mm floors. Both outer recesses open downward; head pockets additionally open toward their nearest X end only through the outer2mm depth. Nut anti-rotation walls and inner round shank bores retain their bearing faces. Nut flats are vertical. Nominal fitted planes must hand-seat after coupon qualification; never tighten an unseated or warped joint into place. The cradle has R1 root transitions; exterior corners retain the complete shallow nut-pocket rims. Post cores, servo ear seats, horn interfaces and their datums remain unchanged. For bench service disconnect leads, support both modules and remove both rail pairs; slide the unit +X10 then lift Z30. Remove the small output gears, release the two driven-shaft clamps, shift PortOutputShaftNegative +Y12 and StarboardOutputShaftPositive -Y12 while supporting the rotors, then lift the servo assembly Z11 and withdraw X80. Restore shafts, clamps, gear retention and mesh alignment before operation.",
-        sku=drive.bridge_sku,
-    )
     parts = {
-        "printed": [frame, bridge],
+        "printed": [frame],
         "hardware": [],
         "references": [],
         "clearances": [],

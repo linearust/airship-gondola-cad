@@ -68,7 +68,7 @@ class IntegralMountValidationTests(unittest.TestCase):
             name: Part.makeBox(1, 1, 0.4, App.Vector(4, -0.5, 13))
             for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount")
         }
-        cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 40, 20))
+        cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 40, 35))
         for name in (
             "BatteryMount",
             "ElectronicsMount",
@@ -126,13 +126,13 @@ class IntegralMountValidationTests(unittest.TestCase):
             0.09,
         )
 
-    def test_spine_outside_local_clamp_zones_has_full_independent_witness(self):
+    def test_material_added_between_shoes_cannot_hide_outside_local_witnesses(self):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
-        # Between the local clamp zones, inside the complete38mm spine.
-        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-8.5, 1.6, 7.5))
-        obj.Shape = original.cut(cut)
-        self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
+        # The12mm gap between the two16mm roofs must remain open belowZ12.5.
+        added = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-0.25, 1.6, 7.5))
+        obj.Shape = original.fuse(added)
+        self.assertGreater(obj.Shape.Volume - original.Volume, 0.09)
         row = next(row for row in self.checks() if row["part"] == obj.Name)
         self.assertFalse(row["passed"])
         for site in row["attachment_sites"]:

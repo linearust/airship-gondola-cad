@@ -133,6 +133,109 @@ def _part(shape, name, *, group="Fixed", prefix="", axis=(0, 0, 0), rate=0.0):
     )
 
 
+def _certify_independent_pair(first, second, *, max_depth, max_evaluations):
+    """Cover the Cartesian product of two independent output-angle domains.
+
+    At a rectangle midpoint each solid's Hausdorff displacement is bounded by
+    the maximum chord swept by its bounding radius over its own half interval.
+    Distance between solids can decrease by at most the sum of those bounds.
+    Only a positive lower bound certifies a rectangle; midpoint samples alone
+    never certify it. Bisection covers both closed children, including endpoints.
+    Native input rates map each output domain to its actual limited input arc.
+    """
+    import FreeCAD as App
+
+    parts = (first, second)
+    result = {"parts": [part["name"] for part in parts]}
+    pending = [(((-180.0, 180.0), (-180.0, 180.0)), 0)]
+    count, rectangles = 0, 0
+    lower, minimum = math.inf, math.inf
+    while pending:
+        ranges, depth = pending.pop()
+        if count >= max_evaluations:
+            return dict(
+                result,
+                passed=False,
+                method="uncertified independent rotation rectangle",
+                unresolved_output_ranges_deg={
+                    part["prefix"]: list(bounds) for part, bounds in zip(parts, ranges)
+                },
+                evaluations=count,
+                sampled_minimum_gap_mm=minimum,
+                reason="evaluation budget exhausted",
+            )
+        midpoints = [(start + end) / 2 for start, end in ranges]
+        shapes, displacements = [], []
+        for part, midpoint, (start, end) in zip(parts, midpoints, ranges):
+            shape = part["shape"].copy()
+            if part["rate"]:
+                shape.rotate(
+                    App.Vector(*part["axis"]),
+                    App.Vector(0, 1, 0),
+                    part["rate"] * midpoint,
+                )
+            shapes.append(shape)
+            half_angle = abs(part["rate"]) * math.radians((end - start) / 2)
+            displacements.append(
+                2 * part["radius"] * math.sin(min(math.pi, half_angle) / 2)
+            )
+        distance = shapes[0].distToShape(shapes[1])[0]
+        count += 1
+        minimum = min(minimum, distance)
+        if distance <= MINIMUM_GAP_MM + TOL:
+            return dict(
+                result,
+                passed=False,
+                method="insufficient nominal clearance",
+                output_angles_deg={
+                    part["prefix"]: value for part, value in zip(parts, midpoints)
+                },
+                gap_mm=distance,
+                intersection_mm3=intersection_volume(*shapes),
+                evaluations=count,
+            )
+        bound = distance - sum(displacements)
+        if bound > MINIMUM_GAP_MM + TOL:
+            lower = min(lower, bound)
+            rectangles += 1
+        elif depth >= max_depth:
+            return dict(
+                result,
+                passed=False,
+                method="uncertified independent rotation rectangle",
+                unresolved_output_ranges_deg={
+                    part["prefix"]: list(bounds) for part, bounds in zip(parts, ranges)
+                },
+                evaluations=count,
+                sampled_minimum_gap_mm=minimum,
+                reason="subdivision depth exhausted",
+            )
+        else:
+            # Bisect the coordinate with the larger possible physical motion;
+            # never couple the independent angles or discard either child.
+            coordinate = max(range(2), key=displacements.__getitem__)
+            start, end = ranges[coordinate]
+            midpoint = midpoints[coordinate]
+            for interval in ((midpoint, end), (start, midpoint)):
+                child = list(ranges)
+                child[coordinate] = interval
+                pending.append((tuple(child), depth + 1))
+    return dict(
+        result,
+        passed=True,
+        method="adaptive independent rotation distance",
+        output_domains_deg={part["prefix"]: [-180, 180] for part in parts},
+        part_angle_domains_deg={
+            part["name"]: sorted([-180 * part["rate"], 180 * part["rate"]])
+            for part in parts
+        },
+        guaranteed_gap_mm=lower,
+        sampled_minimum_gap_mm=minimum,
+        certified_rectangles=rectangles,
+        evaluations=count,
+    )
+
+
 def _certify_pair(first, second, *, max_depth=18, max_evaluations=2048):
     """Positive lower bounds cover closed intervals; contact/work limits fail."""
     import FreeCAD as App
@@ -166,10 +269,8 @@ def _certify_pair(first, second, *, max_depth=18, max_evaluations=2048):
             evaluations=1,
         )
     if first["prefix"] and second["prefix"] and first["prefix"] != second["prefix"]:
-        return dict(
-            result,
-            passed=False,
-            error="Independent axes have overlapping full-orbit envelopes; synchronized samples cannot certify them.",
+        return _certify_independent_pair(
+            first, second, max_depth=max_depth, max_evaluations=max_evaluations
         )
 
     pending, count, intervals = [(-180.0, 180.0, 0)], 0, 0
@@ -285,7 +386,7 @@ def _functional_pairs(parts, spec):
     for prefix in ("Port", "Starboard"):
         definitions = [
             (
-                "OutputShaft" + side,
+                "OutputShaft" + ("Negative" if prefix == "Port" else "Positive"),
                 "OutputBearing" + side,
                 "Pod",
                 "Fixed",
@@ -293,7 +394,7 @@ def _functional_pairs(parts, spec):
                 1.5,
                 "output bearing support",
             )
-            for side in ("Negative", "Positive")
+            for side in ("Inboard", "Outboard")
         ] + [
             (
                 "ServoHorn",
@@ -396,7 +497,7 @@ def relative_motion_check(doc, module):
     result = {
         "minimum_nominal_gap_mm": MINIMUM_GAP_MM,
         "angle_domain_deg": [-180, 180],
-        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Horn/spline contact is excluded only within the sourced spline projection; each remaining case and both ears receive a separate continuous clearance check. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
+        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Horn/spline contact is excluded only within the sourced spline projection; each remaining case and both ears receive a separate continuous clearance check. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Opposite sides are independent: overlapping full-orbit envelopes fall back to certified two-angle rectangles with the native input/output rates, never synchronized-only samples. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
     }
     try:
         spec = drive_for_document(doc)

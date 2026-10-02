@@ -34,7 +34,7 @@ class RailServiceTests(unittest.TestCase):
                     {"CarriedPart": shape}, {}, {"attachment_world_axes_x_mm": axes}
                 )
 
-    def test_end_pair_trim_preserves_both_local_crowns_on_the_base(self):
+    def test_end_pair_trim_preserves_both_wall_top_shoes(self):
         from gondola.validation.rail_access import _shared_trim_interval
 
         self.assertEqual(
@@ -54,7 +54,9 @@ class RailServiceTests(unittest.TestCase):
         from gondola.parts import rail
         from gondola.validation.rail_access import _shared_screw_slide
 
-        screw = translated_shape(rail.attachment_screw_shape(20, head_face_y=-9), x=14)
+        screw = translated_shape(
+            rail.attachment_screw_shape(10, head_face_y=-3.25), x=14
+        )
         obstacles = {"Rail": translated_shape(rail.rail_shape(), x=14)}
         name = "MainPropulsionModuleRailMountScrew"
         good = _shared_screw_slide(name, screw, obstacles, -3, 3)
@@ -155,11 +157,17 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertTrue(result["passed"], result)
         self.assertLess(result["shape_outside_service_envelope_mm3"], 1e-5)
-        lower = next(
-            row for row in result["regions"] if row["region"].endswith("LowerSpine")
+        lower = [row for row in result["regions"] if "Shoe" in row["region"]]
+        self.assertEqual(
+            {row["region"] for row in lower},
+            {"PropulsionFixedFrameShoe-14", "PropulsionFixedFrameShoe14"},
         )
         self.assertTrue(
-            all("face-prism" in segment["method"] for segment in lower["segments"])
+            all(
+                "face-prism" in segment["method"]
+                for row in lower
+                for segment in row["segments"]
+            )
         )
 
     def test_missing_neighbour_duplicate_or_lookalike_cannot_pass_inventory(self):
@@ -196,7 +204,7 @@ class RailServiceTests(unittest.TestCase):
         """Real two-foot geometry, isolated from unrelated equipment in this test."""
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import propulsion, rail, servo_bridge
+        from gondola.parts import propulsion, rail
         from gondola.validation import baseline, rail_access
 
         station = next(
@@ -210,14 +218,13 @@ class RailServiceTests(unittest.TestCase):
             ("RailPositionX", station.x_mm, "App::PropertyDistance"),
             ("RailAttachmentOffsetX", 14, "App::PropertyDistance"),
             ("RailAttachmentOffsetsX", [14, -14], "App::PropertyFloatList"),
-            ("RailContactLength", 38, "App::PropertyLength"),
+            ("RailContactLength", 44, "App::PropertyLength"),
         ):
             set_property(module, name, value, kind)
         printed = []
         for name, shape, parent in (
             ("ContinuousRail", rail.rail_shape(), None),
             ("PropulsionFixedFrame", propulsion.fixed_frame_shape(), module),
-            ("ServoDriveBridge", servo_bridge.bridge_shape(), module),
         ):
             obj = doc.addObject("Part::Feature", name)
             obj.Shape = shape
@@ -363,7 +370,7 @@ class RailServiceTests(unittest.TestCase):
         for defect in ("missing", "unregistered", "wrong_parent", "empty_shape"):
             with self.subTest(defect=defect):
                 doc, check = self.source_propulsion_service()
-                bridge = doc.ServoDriveBridge
+                bridge = doc.PropulsionFixedFrame
                 if defect == "missing":
                     doc.removeObject(bridge.Name)
                 elif defect == "unregistered":
@@ -388,7 +395,9 @@ class RailServiceTests(unittest.TestCase):
                 self.assertFalse(report["passed"])
                 row = report["modules"][0]
                 self.assertEqual(row["error"], "Invalid required rail mount")
-                self.assertEqual(row["required_mount"]["object"], "ServoDriveBridge")
+                self.assertEqual(
+                    row["required_mount"]["object"], "PropulsionFixedFrame"
+                )
 
     def test_populated_propulsion_retains_clearance_to_relocated_fc_carrier(self):
         from gondola.cad import placed_shape, world_shape
@@ -408,7 +417,7 @@ class RailServiceTests(unittest.TestCase):
         inverse = doc.MainPropulsionModule.getGlobalPlacement().inverse()
         obstacles = {neighbour.Name: placed_shape(world_shape(neighbour), inverse)}
         direct = _lift_path(
-            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 14
+            "PropulsionFixedFrame", doc.PropulsionFixedFrame.Shape, obstacles, 14
         )
         self.assertTrue(direct["passed"], direct)
         report = check()
@@ -422,29 +431,36 @@ class RailServiceTests(unittest.TestCase):
         bridge = next(
             part
             for part in row["populated_module_lift"]
-            if part["part"] == "ServoDriveBridge"
+            if part["part"] == "PropulsionFixedFrame"
         )
-        self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
-        self.assertEqual(len(bridge["regions"]), 7)
+        self.assertLess(bridge["shape_outside_service_envelope_mm3"], 1e-5)
+        self.assertEqual(
+            {region["region"] for region in bridge["regions"]},
+            {
+                "PropulsionFixedFrameShoe-14",
+                "PropulsionFixedFrameShoe14",
+                "PropulsionFixedFrameUpper",
+            },
+        )
         self.assertTrue(row["populated_supported_trim"]["passed"])
         self.assertEqual(row["populated_supported_trim"]["travel_mm"], 6)
 
     def test_bridge_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
-        from gondola.parts import servo_bridge
+        from gondola.parts import propulsion
         from gondola.validation.rail_access import _lift_path
 
-        bridge = servo_bridge.bridge_shape().fuse(
-            Part.makeBox(1, 1, 1, App.Vector(29.5, -1, 14))
+        bridge = propulsion.fixed_frame_shape().fuse(
+            Part.makeBox(1, 1, 1, App.Vector(19.5, 7, 10))
         )
         report = _lift_path(
-            "ServoDriveBridge",
+            "PropulsionFixedFrame",
             bridge,
             {},
             14,
             waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
         )
         self.assertFalse(report["passed"])
-        self.assertGreater(report["bridge_outside_stock_mm3"], 0.7)
+        self.assertGreater(report["shape_outside_service_envelope_mm3"], 0.7)
 
     def test_carrier_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
         from gondola.parts import equipment_mounts

@@ -92,68 +92,46 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
 
 
 def _literal_protected_mount(length=16, *, shared=False, bolt_positions=(0,)):
-    """Independent fitted U stock; shared frame carries no nut recess."""
-    low, high = (-6.0, 6.0) if shared else (-5.25, 5.25)
+    """Independent exact standard shoe(s), including both fastener floors."""
     if shared:
-        result = Part.makeBox(length, high - low, 11, V(-length / 2, low, 1.5))
-        result = result.cut(
-            Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
-        )
-        result = result.cut(
-            Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
-        )
-        cylinders = [
-            Part.makeCylinder(4.5, high - low + 2, V(x, low - 1, 6), V(0, 1, 0))
-            for x in bolt_positions
-        ]
-        crowns = cylinders[0]
-        for cylinder in cylinders[1:]:
-            crowns = crowns.fuse(cylinder)
-        lower = Part.makeBox(
-            length + 2, high - low + 2, 7, V(-length / 2 - 1, low - 1, -1)
-        )
-        result = result.cut(lower.cut(crowns))
-        outside_width = 3.0 if shared else high - low + 2
-        outside = Part.makeBox(
-            length + 2, outside_width, 11.2, V(-length / 2 - 1, -outside_width / 2, -1)
-        )
-        for x in bolt_positions:
-            outside = outside.cut(
-                Part.makeBox(10, high - low + 2, 11.2, V(x - 5, low - 1, -1))
+        if length != 44 or tuple(bolt_positions) != (-14, 14):
+            raise ValueError(
+                "Paired lower witness requires44mm and the two±14mm stations"
             )
-        result = result.cut(outside)
-    else:
-        result = Part.makeBox(10, 4, 10, V(-5, -5.25, 2.5))
-        result = result.fuse(Part.makeBox(10, 4, 10, V(-5, 1.25, 2.5)))
-        result = result.fuse(Part.makeBox(length, 10.5, 3, V(-length / 2, -5.25, 9.5)))
-    if not shared:
-        radius = 5.9 / math.sqrt(3)
-        vertices = [
-            V(
-                radius * math.cos(math.radians(a)),
-                3.25,
-                6 + radius * math.sin(math.radians(a)),
-            )
-            for a in range(30, 390, 60)
-        ]
-        pocket = Part.Face(Part.makePolygon(vertices + vertices[:1])).extrude(
-            V(0, 3.8, 0)
+        shoe = _literal_protected_mount()
+        result = []
+        for x in (-14, 14):
+            part = shoe.copy()
+            if x < 0:
+                part.rotate(V(), V(0, 0, 1), 180)
+            part.translate(V(x, 0, 0))
+            result.append(part)
+        return Part.makeCompound(result)
+    result = Part.makeBox(10, 4, 10, V(-5, -5.25, 2.5))
+    result = result.fuse(Part.makeBox(10, 4, 10, V(-5, 1.25, 2.5)))
+    result = result.fuse(Part.makeBox(length, 10.5, 3, V(-length / 2, -5.25, 9.5)))
+    radius = 5.9 / math.sqrt(3)
+    vertices = [
+        V(
+            radius * math.cos(math.radians(a)),
+            3.25,
+            6 + radius * math.sin(math.radians(a)),
         )
-        result = result.cut(pocket).cut(
-            Part.makeCylinder(3.2, 2.1, V(0, -5.35, 6), V(0, 1, 0))
-        )
-        result = result.cut(Part.makeBox(5.9, 3.8, 7, V(-2.95, 3.25, -1)))
-        result = result.cut(Part.makeBox(6.4, 2.1, 7, V(-3.2, -5.35, -1)))
-    for x in bolt_positions:
-        result = result.cut(
-            Part.makeCylinder(1.7, high - low + 2, V(x, low - 1, 6), V(0, 1, 0))
-        )
+        for a in range(30, 390, 60)
+    ]
+    pocket = Part.Face(Part.makePolygon(vertices + vertices[:1])).extrude(V(0, 3.8, 0))
+    result = result.cut(pocket).cut(
+        Part.makeCylinder(3.2, 2.1, V(0, -5.35, 6), V(0, 1, 0))
+    )
+    result = result.cut(Part.makeBox(5.9, 3.8, 7, V(-2.95, 3.25, -1)))
+    result = result.cut(Part.makeBox(6.4, 2.1, 7, V(-3.2, -5.35, -1)))
+    result = result.cut(Part.makeCylinder(1.7, 12.5, V(0, -6.25, 6), V(0, 1, 0)))
     return result.removeSplitter()
 
 
 def _lower_crop(offset=0, length=16, *, shared=False):
-    low, width = (-6.0, 12.0) if shared else (-5.25, 10.5)
-    return Part.makeBox(length, width, 11, V(offset - length / 2, low, 1.5))
+    # All contact stock lies below12.5; the common pedestal begins at that plane.
+    return Part.makeBox(length, 10.5, 12.5, V(offset - length / 2, -5.25, 0))
 
 
 def _literal_plate(x, length, width, chamfer):
@@ -264,20 +242,6 @@ def _independent_slot_sections(shape):
     }
 
 
-def _paired_bottom_contacts(rail_in_module, frame):
-    """Require the actual circular lower profile at both bolt stations."""
-    rows = []
-    for axis in (-14, 14):
-        local_rail, local_frame = rail_in_module.copy(), frame.copy()
-        local_rail.translate(V(-axis, 0, 0))
-        local_frame.translate(V(-axis, 0, 0))
-        for row in local_seat_check(local_rail, local_frame, shared=True)[
-            "bottom_datum_contacts"
-        ]:
-            rows.append({"bolt_x_mm": axis, **row})
-    return rows
-
-
 def _paired_wall_support(rail_in_module, frame, intervals, axis):
     """Require each ten-millimetre local bearing region on its own wall."""
     matches = [(low, high) for low, high in intervals if low <= axis <= high]
@@ -310,10 +274,20 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
 
 
 def paired_spine_support_check(rail_in_module, frame):
-    """Independent paired local seats, without a continuous flat-foot rule."""
-    bottoms = _paired_bottom_contacts(rail_in_module, frame)
-    relief = Part.makeBox(38, 2.5, 0.7, V(-19, -1.25, 9.5))
-    blocked_relief = abs(relief.common(frame).Volume)
+    """Literal paired top contacts and coplanar seating throughout intended trim."""
+    # Higher frame stock cannot meet either the rail or the contact witnesses.
+    # Keep the entire XY extent (including unexpected protrusions), and retain
+    # extra height if the supplied rail has any unexpected upward obstruction.
+    bounds = frame.BoundBox
+    ceiling = max(12.5, rail_in_module.BoundBox.ZMax)
+    frame = frame.common(
+        Part.makeBox(
+            bounds.XLength + 2,
+            bounds.YLength + 2,
+            ceiling - min(0, bounds.ZMin) + 1,
+            V(bounds.XMin - 1, bounds.YMin - 1, min(0, bounds.ZMin) - 1),
+        )
+    )
     line = Part.makeLine(V(-200, 0, 8.5), V(200, 0, 8.5))
     intervals = sorted(
         (e.BoundBox.XMin, e.BoundBox.XMax) for e in rail_in_module.common(line).Edges
@@ -327,24 +301,46 @@ def paired_spine_support_check(rail_in_module, frame):
         all(pair_intervals)
         and abs(pair_intervals[1][0] - pair_intervals[0][1] - 10) < TOL
     )
+    trim_rows = []
+    if adjacent:
+        nominal_shift = sum(pair_intervals[0]) / 2 + 14
+        for offset in (-3, 0, 3):
+            delta = nominal_shift + offset
+            moved = frame.copy()
+            moved.translate(V(delta, 0, 0))
+            seats = [
+                _paired_wall_support(rail_in_module, moved, intervals, axis + delta)
+                for axis in (-14, 14)
+            ]
+            overlap = abs(moved.common(rail_in_module).Volume)
+            trim_rows.append(
+                {
+                    "offset_from_wall_centres_mm": offset,
+                    "wall_supports": seats,
+                    "rail_intersection_mm3": overlap,
+                    "passed": all(row["passed"] for row in seats) and overlap < TOL,
+                }
+            )
     return {
-        "spine_extent_mm": 38.0,
+        "shoe_pair_extent_mm": 44.0,
         "bolt_spacing_mm": 28.0,
-        "bottom_datum_z_mm": 1.5,
-        "bottom_datum_contacts": bottoms,
-        "flat_bottom_contact_area_claimed": False,
-        "inner_roof_clearance_mm": 0.7,
-        "blocked_inner_roof_relief_mm3": blocked_relief,
-        "wall_overlap_length_total_mm": sum(
-            row.get("wall_overlap_length_mm", 0) for row in rows
-        ),
+        "top_bearing_z_mm": 9.5,
+        "lower_leg_bottom_z_mm": 2.5,
+        "nominal_base_clearance_mm": 1.0,
         "wall_supports": rows,
+        "top_bearing_area_total_mm2": sum(
+            row.get("local_seat_geometry", {})
+            .get("top_bearing", {})
+            .get("nominal_area_mm2", 0)
+            for row in rows
+        ),
         "adjacent_standard_walls": adjacent,
-        "scope": "Two independent 10 mm cheek zones and R4.5 lower crowns on 28 mm centres within a 38 mm body. Each local zone retains at least 1 mm to an 18 mm wall end over design trim ±3 mm. The rigid paired frame still couples both wall stations; this check makes no free-curvature, contact-pressure, stiffness or strength claim.",
-        "passed": len(rows) == 2
-        and adjacent
-        and all(row["passed"] for row in rows + bottoms)
-        and blocked_relief < TOL
+        "coplanar_trim_cases": trim_rows,
+        "independent_wall_tilt_claimed": False,
+        "scope": "Two identical16mm wall-top shoes with10mm cheeks on28mm centres. Both roofs must seat on coplanar walls. Each retains14..16mm top overlap and at least1mm cheek-to-wall-end reserve through±3mm trim. Bending remains outside the rigidly supported wall pair; no independent wall-angle freedom or physical stiffness, retention or strength is qualified.",
+        "passed": adjacent
+        and len(trim_rows) == 3
+        and all(row["passed"] for row in rows + trim_rows)
         and rows[0].get("wall_interval_x_mm") != rows[1].get("wall_interval_x_mm"),
     }
 
@@ -371,16 +367,14 @@ def saved_integral_mount_checks(doc, registry):
         )
         complete = geometry_comparison(actual, source)
         sites = attachment_sites(parent_name, offset)
-        zone_length = 10.0
+        zone_length = 16.0
         crops = [
-            placed_shape(
-                _lower_crop(0, zone_length, shared=kind is None), site_placement(site)
-            )
+            placed_shape(_lower_crop(0, zone_length), site_placement(site))
             for site in sites
         ]
         literals = [
             placed_shape(
-                _literal_protected_mount(zone_length, shared=kind is None),
+                _literal_protected_mount(zone_length),
                 site_placement(site),
             )
             for site in sites
@@ -490,38 +484,19 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             canonical_part = placed_shape(
                 local_shape(part), canonical_placement.inverse()
             )
-            zone_length = 10.0
-            lower = canonical_part.common(
-                _lower_crop(0, zone_length if shared else 16, shared=shared)
-            )
+            lower = canonical_part.common(_lower_crop(0, 16))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
-            screw_length, head_face_y = (20.0, -9.0) if shared else (10.0, -3.25)
-            head_support = None
-            if shared:
-                bridge = registry.Document.getObject("ServoDriveBridge")
-                if (
-                    bridge is None
-                    or bridge.Name not in shapes
-                    or not belongs_to_group(bridge, module)
-                    or list(registry.PrintedParts).count(bridge) != 1
-                ):
-                    rows.append(
-                        {
-                            "module": module.Name,
-                            "passed": False,
-                            "error": "Missing registered shared-clamp servo bridge",
-                        }
-                    )
-                    continue
-                bridge_in_module = placed_shape(
-                    shapes[bridge.Name], module.getGlobalPlacement().inverse()
+            screw_length, head_face_y = 10.0, -3.25
+            angular = (
+                {
+                    "applicable": False,
+                    "passed": bool(paired_support["passed"]),
+                    "scope": "Paired shoes require coplanar wall tops; the paired seating and trim check replaces independent wall tilt.",
+                }
+                if shared
+                else angular_clearance_check(
+                    local_rail, canonical_part, follow_wall=True
                 )
-                crop = Part.makeBox(zone_length, 22, 11, V(-zone_length / 2, -11, 1.5))
-                head_support = placed_shape(
-                    bridge_in_module, canonical_placement.inverse()
-                ).common(crop)
-            angular = angular_clearance_check(
-                local_rail, canonical_part, follow_wall=not shared
             )
             attachment = rail_contact.attachment_check(
                 local_rail,
@@ -529,10 +504,8 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 contact_length=length,
                 screw_length=screw_length,
                 head_face_y=head_face_y,
-                head_support=head_support,
-                nut_bearing_y=8.0 if shared else 3.25,
-                nut_outer_y=11.0 if shared else 5.25,
-                frame_contact_y=6.0 if shared else None,
+                nut_bearing_y=3.25,
+                nut_outer_y=5.25,
                 shared_drive=shared,
             )
             hardware_rows = []
@@ -544,7 +517,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 ),
                 (
                     "RailMountNut",
-                    rail.nut_shape(bearing_y=8.0 if shared else 3.25),
+                    rail.nut_shape(bearing_y=3.25),
                     "M3_HEX_NUT",
                 ),
             ):
@@ -589,7 +562,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     "attachment_prefix": site["prefix"],
                     "attachment_local_x_mm": site["x_offset"],
                     "attachment_side": site["side"],
-                    "shared_servo_bridge_clamp": shared,
+                    "paired_propulsion_clamp": shared,
                     "attachment_axis_x_mm": position.x,
                     "supported_slot_position": position_check,
                     "centred_yz": centred,

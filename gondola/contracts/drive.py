@@ -1,11 +1,10 @@
-"""Selected purchased gears on a replaceable paired servo bridge.
+"""Selected purchased gears on an integrated servo/output-bearing frame.
 
 Select a complete configuration before building. A saved CAD property is an
 identity record, not a live gear-ratio knob: changing it cannot change teeth.
 """
 
 import json
-import math
 from dataclasses import asdict, dataclass
 from types import MappingProxyType
 
@@ -14,8 +13,8 @@ PRESSURE_ANGLE_DEG = 20.0
 # Repeatable system-identification datums: actual CAD dimensions, not rounding.
 PIVOT_SPAN_MM = 150.0
 PIVOT_Z_MM = 50.0
-RADIAL_X = 0.4
-RADIAL_Z = -math.sqrt(1 - RADIAL_X**2)
+# Axial relocation toward the vehicle centre; gear ratio/centre distance unchanged.
+DRIVE_INWARD_OFFSET_MM = 8.0
 
 
 @dataclass(frozen=True)
@@ -91,19 +90,15 @@ class DriveSpec:
 
     @property
     def input_x_mm(self):
-        return RADIAL_X * self.center_distance_mm
+        return self.center_distance_mm
 
     @property
     def input_z_mm(self):
-        return PIVOT_Z_MM + RADIAL_Z * self.center_distance_mm
+        return PIVOT_Z_MM
 
     @property
     def frame_sku(self):
         return "PropulsionFixedFrame"
-
-    @property
-    def bridge_sku(self):
-        return f"ServoDriveBridge{self.driver.teeth}T"
 
     def contract(self):
         return {
@@ -117,9 +112,10 @@ class DriveSpec:
             ),
             "angle_ratio": -self.ratio,
             "nominal_center_mm": self.center_distance_mm,
+            "drive_inward_offset_mm": DRIVE_INWARD_OFFSET_MM,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
             "fixed_frame_print_sku": self.frame_sku,
-            "servo_bridge_print_sku": self.bridge_sku,
+            "fixed_support_topology": "integrated servo seats and paired inboard output bearings",
         }
 
 

@@ -28,24 +28,14 @@ class JointFitCouponTests(unittest.TestCase):
     def shapes(self):
         return {name: shape for name, (_, shape) in extract(self.doc).items()}
 
-    def test_three_crops_preserve_joint_and_source(self):
+    def test_two_crops_preserve_joint_and_source(self):
         shapes = self.shapes()
         self.assertEqual(set(shapes), set(PARTS))
         self.assertTrue(joint_checks(shapes)["passed"])
         self.assertEqual(len(shapes["RailPairCoupon"].Solids), 1)
         self.assertAlmostEqual(shapes["RailPairCoupon"].BoundBox.XLength, 50)
-        self.assertAlmostEqual(shapes["SaddleJointCoupon"].BoundBox.ZMax, 15)
-        contacts = {
-            row["interface"]: row["area_mm2"]
-            for row in joint_checks(shapes)["contacts"]
-        }
-        self.assertAlmostEqual(contacts["full_U_roof"], 456)
-        for side in ("negative", "positive"):
-            self.assertAlmostEqual(
-                contacts[side + "_U_side"],
-                168.28443935032965,
-            )
-            self.assertNotIn(side + "_bottom_datum", contacts)
+        self.assertAlmostEqual(shapes["FrameJointCoupon"].BoundBox.ZMax, 15)
+        self.assertLess(joint_checks(shapes)["missing_roof_core_mm3"], 1e-6)
 
     def test_rail_station_beyond_supported_trim_is_rejected(self):
         shapes = self.shapes()
@@ -55,9 +45,9 @@ class JointFitCouponTests(unittest.TestCase):
     def test_blocked_shared_bore_is_rejected(self):
         shapes = self.shapes()
         obstruction = Part.makeCylinder(
-            1.7, 5, App.Vector(14, -11, 6), App.Vector(0, 1, 0)
+            1.7, 5, App.Vector(14, -5.25, 6), App.Vector(0, 1, 0)
         )
-        shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].fuse(obstruction)
+        shapes["FrameJointCoupon"] = shapes["FrameJointCoupon"].fuse(obstruction)
         self.assertFalse(joint_checks(shapes)["passed"])
 
     def test_missing_nut_bearing_floor_is_rejected_on_both_sides(self):
@@ -67,27 +57,18 @@ class JointFitCouponTests(unittest.TestCase):
                 floor = Part.makeCylinder(
                     2.7,
                     2,
-                    App.Vector(sign * 14, sign * 6, 6),
+                    App.Vector(sign * 14, sign * 1.25, 6),
                     App.Vector(0, sign, 0),
                 )
-                shapes["SaddleJointCoupon"] = shapes["SaddleJointCoupon"].cut(floor)
+                shapes["FrameJointCoupon"] = shapes["FrameJointCoupon"].cut(floor)
                 self.assertFalse(joint_checks(shapes)["passed"])
 
     def test_interfering_fitted_U_is_rejected_without_bolt_forcing(self):
         shapes = self.shapes()
-        shapes["SaddleJointCoupon"].translate(App.Vector(0, 0.1, 0))
+        shapes["FrameJointCoupon"].translate(App.Vector(0, 0.1, 0))
         report = joint_checks(shapes)
         self.assertFalse(report["passed"])
-        self.assertGreater(report["pair_overlap_mm3"][1], 1)
-
-    def test_removed_continuous_side_wall_is_rejected(self):
-        shapes = self.shapes()
-        missing = Part.makeBox(1, 5, 2, App.Vector(18, 6, 10))
-        original = shapes["SaddleJointCoupon"]
-        changed = original.cut(missing)
-        self.assertAlmostEqual(original.Volume - changed.Volume, 10)
-        shapes["SaddleJointCoupon"] = changed
-        self.assertFalse(joint_checks(shapes)["passed"])
+        self.assertGreater(report["pair_overlap_mm3"][0], 1)
 
     def test_export_is_separate_read_only_and_round_tripped(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -113,10 +94,10 @@ class JointFitCouponTests(unittest.TestCase):
                 export(cad, output)
             manifest = json.loads((output / "manifest.json").read_text())
             self.assertTrue(manifest["passed"])
-            self.assertEqual(len(manifest["parts"]), 3)
-            self.assertEqual(len(manifest["artifacts"]), 7)
+            self.assertEqual(len(manifest["parts"]), 2)
+            self.assertEqual(len(manifest["artifacts"]), 5)
             self.assertEqual(manifest["basis"]["cad_sha256"], digest)
-            self.assertIn("M3x20", manifest["hardware"])
+            self.assertIn("M3x10", manifest["hardware"])
             self.assertIn("never use the bolts to force", manifest["limits"])
             for row in manifest["parts"]:
                 self.assertEqual(row["installed_quantity"], 0)
@@ -135,7 +116,7 @@ class JointFitCouponContactTests(unittest.TestCase):
     """Current source geometry checks independent of deliberate fixture promotion."""
 
     def setUp(self):
-        from gondola.parts import propulsion, rail, servo_bridge
+        from gondola.parts import propulsion, rail
 
         self.doc = App.newDocument("CurrentJointContactCoupon")
         module = self.doc.addObject("App::Part", "MainPropulsionModule")
@@ -143,7 +124,6 @@ class JointFitCouponContactTests(unittest.TestCase):
         for name, shape in (
             ("ContinuousRail", rail.rail_shape()),
             ("PropulsionFixedFrame", propulsion.fixed_frame_shape()),
-            ("ServoDriveBridge", servo_bridge.bridge_shape()),
         ):
             obj = self.doc.addObject("Part::Feature", name)
             if name != "ContinuousRail":
@@ -154,80 +134,57 @@ class JointFitCouponContactTests(unittest.TestCase):
         self.addCleanup(lambda: App.closeDocument(self.doc.Name))
         self.shapes = {name: shape for name, (_, shape) in extract(self.doc).items()}
 
-    def test_current_crops_retain_four_crowns_and_roof_relief(self):
+    def test_current_crops_retain_paired_standard_top_seats(self):
         report = joint_checks(self.shapes)
         self.assertTrue(report["passed"], report)
         support = report["bottom_and_wall_support"]
-        self.assertFalse(support["flat_bottom_contact_area_claimed"])
-        self.assertEqual(support["inner_roof_clearance_mm"], 0.7)
-        self.assertEqual(support["wall_overlap_length_total_mm"], 20)
-        crowns = support["bottom_datum_contacts"]
-        self.assertEqual(
-            {(r["bolt_x_mm"], r["side"]) for r in crowns},
-            {(-14, -1), (-14, 1), (14, -1), (14, 1)},
-        )
-        self.assertTrue(
-            all(r["passed"] and not r["flat_contact_area_claimed"] for r in crowns)
-        )
-        contacts = {r["interface"]: r["area_mm2"] for r in report["contacts"]}
-        for side in ("negative", "positive"):
-            self.assertNotIn(side + "_bottom_datum", contacts)
-        self.assertAlmostEqual(contacts["full_U_roof"], 456)
+        self.assertFalse(support["independent_wall_tilt_claimed"])
+        self.assertEqual(support["top_bearing_z_mm"], 9.5)
+        self.assertEqual(support["nominal_base_clearance_mm"], 1)
+        self.assertAlmostEqual(support["top_bearing_area_total_mm2"], 80)
         for bore in report["M3_bores"]:
             self.assertEqual(abs(bore["axis_x_mm"]), 14)
             self.assertEqual(bore["axis_z_mm"], 6)
 
-    def test_missing_crown_or_blocked_roof_is_rejected(self):
+    def test_missing_top_seat_or_blocked_fit_is_rejected(self):
         frame = self.shapes["FrameJointCoupon"]
         for axis in (-14, 14):
-            for y in (-3, 1.75):
-                with self.subTest(axis=axis, y=y):
-                    cut = Part.makeBox(0.5, 1.25, 0.2, App.Vector(axis - 0.25, y, 1.5))
-                    changed = frame.cut(cut)
-                    self.assertGreater(frame.Volume - changed.Volume, 0.1)
-                    report = joint_checks({**self.shapes, "FrameJointCoupon": changed})
-                    self.assertFalse(report["passed"])
-                    crowns = report["bottom_and_wall_support"]["bottom_datum_contacts"]
-                    self.assertTrue(
-                        any(r["missing_crown_stock_mm3"] > 0.1 for r in crowns)
+            with self.subTest(axis=axis):
+                cut = Part.makeBox(0.5, 2.5, 0.2, App.Vector(axis - 0.25, -1.25, 9.5))
+                changed = frame.cut(cut)
+                self.assertGreater(frame.Volume - changed.Volume, 0.2)
+                report = joint_checks({**self.shapes, "FrameJointCoupon": changed})
+                self.assertFalse(report["passed"])
+                self.assertTrue(
+                    any(
+                        row["local_seat_geometry"]["top_bearing"][
+                            "missing_roof_stock_mm3"
+                        ]
+                        > 0.01
+                        for row in report["bottom_and_wall_support"]["wall_supports"]
                     )
-        blocked = frame.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(13, -1.25, 9.8)))
+                )
+        blocked = frame.fuse(Part.makeBox(2, 2.5, 0.2, App.Vector(13, -1.25, 9.4)))
         report = joint_checks({**self.shapes, "FrameJointCoupon": blocked})
         self.assertFalse(report["passed"])
-        self.assertGreater(
-            report["bottom_and_wall_support"]["blocked_inner_roof_relief_mm3"], 0.49
-        )
+        self.assertGreater(report["pair_overlap_mm3"][0], 0.49)
 
-    def test_supported_trim_keeps_actual_crowned_seats_at_both_extremes(self):
+    def test_supported_trim_keeps_both_standard_seats(self):
         for shift in (-3, 3):
             rail = self.shapes["RailPairCoupon"].copy()
             rail.translate(App.Vector(shift, 0, 0))
             report = joint_checks({**self.shapes, "RailPairCoupon": rail})
             self.assertTrue(report["passed"], report)
-            self.assertTrue(
-                all(
-                    r["passed"]
-                    for r in report["bottom_and_wall_support"]["bottom_datum_contacts"]
-                )
+            self.assertAlmostEqual(
+                report["bottom_and_wall_support"]["top_bearing_area_total_mm2"], 70
             )
 
-    def test_cropped_saddle_must_keep_its_full_roof_thickness(self):
-        saddle = self.shapes["SaddleJointCoupon"]
-        shortened = saddle.common(Part.makeBox(50, 28, 14.5, App.Vector(-25, -14, 0)))
-        result = joint_checks({**self.shapes, "SaddleJointCoupon": shortened})
+    def test_cropped_frame_must_keep_its_roof_core(self):
+        frame = self.shapes["FrameJointCoupon"]
+        shortened = frame.common(Part.makeBox(50, 28, 14, App.Vector(-25, -14, 0)))
+        result = joint_checks({**self.shapes, "FrameJointCoupon": shortened})
         self.assertFalse(result["passed"])
-        # Independent literal roof: only its four outer top edges have R0.5.
-        # The removed top half-millimetre equals the rounded 2.5 mm roof volume
-        # minus its unchanged rectangular lower 2 mm, including corner blends.
-        roof = Part.makeBox(38, 22, 2.5, App.Vector(-19, -11, 12.5))
-        top_edges = [
-            edge
-            for edge in roof.Edges
-            if all(abs(vertex.Point.z - 15) < 1e-7 for vertex in edge.Vertexes)
-        ]
-        self.assertEqual(len(top_edges), 4)
-        expected_missing = roof.makeFillet(0.5, top_edges).Volume - 38 * 22 * 2
-        self.assertAlmostEqual(result["wrap"]["missing_roof_mm3"], expected_missing)
+        self.assertGreater(result["missing_roof_core_mm3"], 1)
 
 
 if __name__ == "__main__":

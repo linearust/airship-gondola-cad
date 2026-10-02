@@ -1,18 +1,19 @@
-"""Replaceable paired servos on a continuous U cap around the output frame.
+"""Two compact closed servo frames with local feet into the fixed frame beam.
 
-The flat roof and both sidewalls transfer load through two shared M3 clamps.
-The raised transverse frame beam passes directly below the flat roof. Contact lands are a
-coupon-fitted interface; screws must not pull an unseated or warped cap closed.
+The case window has nominal clearance on all four faces. The two ear fasteners
+locate the installed servo. Remove the input shaft and loose driver before
+withdrawing the servo axially; no separate upper link or closure is required.
+Nominal closed sections do not establish stiffness or a strength rating.
 """
 
 import FreeCAD as App
 import Part
 
 from gondola.cad import box, mirrored_y, union
-from gondola.contracts.drive import SELECTED_DRIVE
+from gondola.contracts.drive import DRIVE_INWARD_OFFSET_MM, SELECTED_DRIVE
 from gondola.contracts.rail_attachments import PROPULSION_ATTACHMENT
 
-from . import rail, servo_envelope
+from . import servo_envelope
 from .servo_envelope import case_front_y as case_front_y
 
 V = App.Vector
@@ -21,40 +22,22 @@ EAR_NUT_POCKET_AF = 3.4
 EAR_NUT_POCKET_DEPTH = 0.5
 EAR_NUT_GRIP = MOUNT_DEPTH + servo_envelope.EAR_THICKNESS - EAR_NUT_POCKET_DEPTH
 CRADLE_TOP_FROM_AXIS = 10.2
-CASE_CLEARANCE = 0.3
+CASE_CLEARANCE = 0.2
 CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
 CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
-CRADLE_WIDTH = 16.0
-SIDE_WALL = (CRADLE_WIDTH - CASE_WINDOW_WIDTH) / 2
+CRADLE_WEB_THICKNESS = 3.0
+CRADLE_FLOOR_Z = 29.5
+LOWER_FOOT_THICKNESS = 5.0
+LOWER_FOOT_INBOARD_X = 6.0
+REAR_LEAD_DEPARTURE = 1.8
 REAR_LEAD_ALLOWANCE = 13.9
-SEAT_Z = PROPULSION_ATTACHMENT.seat_z_mm
-CONNECTOR_PLATE_BOTTOM_Z, CONNECTOR_PLATE_THICKNESS = SEAT_Z, 2.5
-CRADLE_ROOT_RADIUS = 1.0
-# Outer cheeks clear tape wings; the inner frame feet seat on the rail base.
-CHEEK_BOTTOM_Z = 2.2
-CENTRAL_SEAT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
-CENTRAL_SEAT_WIDTH = 2 * PROPULSION_ATTACHMENT.frame_half_width_mm
-CLAMP_AXIS_X = PROPULSION_ATTACHMENT.half_spacing_mm
-CHEEK_THICKNESS = PROPULSION_ATTACHMENT.extra_cheek_mm
-CHEEK_CONTACT_Y = -PROPULSION_ATTACHMENT.frame_half_width_mm
-CHEEK_OUTER_Y = CHEEK_CONTACT_Y - CHEEK_THICKNESS
-ROOF_HALF_LENGTH = CENTRAL_SEAT_LENGTH / 2
-CROSSBEAM_RELIEF_HALF_X = 9.2
-CROSSBEAM_RELIEF_TOP_Z = SEAT_Z
+# Rail service validators use these contract-owned datums.
+CONNECTOR_PLATE_BOTTOM_Z = PROPULSION_ATTACHMENT.seat_z_mm
 SHARED_SCREW_LENGTH = PROPULSION_ATTACHMENT.screw_length_mm
-SHAFT_SERVICE_SHIFTS = {
-    "PortOutputShaftNegative": 12.0,
-    "StarboardOutputShaftPositive": -12.0,
-}
-SERVICE_WAYPOINTS = ((0, 0, 0), (0, 0, 11.0), (80, 0, 11.0))
 
 
 def opposite(shape):
     return mirrored_y(shape.mirror(V(), V(1, 0, 0)), -1)
-
-
-def bulkhead_width(drive=SELECTED_DRIVE):
-    return 2 * drive.input_x_mm + CRADLE_WIDTH
 
 
 def _ear_clearance(drive):
@@ -79,21 +62,8 @@ def _ear_clearance(drive):
     return union(cuts)
 
 
-def _cradle_blank(drive):
-    y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
-    if abs(y + MOUNT_DEPTH / 2) > 1e-7:
-        raise ValueError("Paired servo ears must share the central mounting wall")
-    width = bulkhead_width(drive)
-    return box(
-        width,
-        MOUNT_DEPTH,
-        drive.input_z_mm + CRADLE_TOP_FROM_AXIS - SEAT_Z,
-        (-width / 2, y, SEAT_Z),
-    )
-
-
 def _ear_nut_pockets(drive):
-    """Shallow rear hex seats keep the open ear passages and 4.5mm wall floor."""
+    """Rear hex seats preserve window-connected ear slots and4.5mm floors."""
     from .purchased_hardware import hex_prism
 
     rear = servo_envelope.ear_seat_y() - MOUNT_DEPTH
@@ -108,137 +78,51 @@ def _ear_nut_pockets(drive):
     return union(cuts)
 
 
-cut_shared_bolt_passage = rail.cut_shared_bolt_passage
+def integrated_cradle_shape(drive=SELECTED_DRIVE):
+    """Compact closed walls; local feet join the main beam in the final frame.
 
-
-def _bridge_core_blocks(drive):
-    """Plain stock before root blending, retaining the raised beam opening."""
-    blocks = [
-        _cradle_blank(drive),
-        box(
-            2 * ROOF_HALF_LENGTH,
-            -2 * CHEEK_OUTER_Y,
-            CONNECTOR_PLATE_THICKNESS,
-            (-ROOF_HALF_LENGTH, CHEEK_OUTER_Y, SEAT_Z),
-        ),
-    ]
-    for y in (CHEEK_OUTER_Y, -CHEEK_CONTACT_Y):
-        for x in (-ROOF_HALF_LENGTH, CROSSBEAM_RELIEF_HALF_X):
-            blocks.append(
-                box(
-                    ROOF_HALF_LENGTH - CROSSBEAM_RELIEF_HALF_X,
-                    CHEEK_THICKNESS,
-                    CROSSBEAM_RELIEF_TOP_Z - CHEEK_BOTTOM_Z,
-                    (x, y, CHEEK_BOTTOM_Z),
-                )
-            )
-    return tuple(blocks)
-
-
-def bridge_blank_blocks(drive=SELECTED_DRIVE):
-    """Seven conservative boxes enclose the cradle, root blends and both U legs."""
-    width = bulkhead_width(drive)
-    radius = CRADLE_ROOT_RADIUS
-    root = box(
-        width + 2 * radius,
-        MOUNT_DEPTH + 2 * radius,
-        radius,
-        (
-            -width / 2 - radius,
-            -MOUNT_DEPTH / 2 - radius,
-            SEAT_Z + CONNECTOR_PLATE_THICKNESS,
-        ),
-    )
-    return (*_bridge_core_blocks(drive), root)
-
-
-def bridge_blank(drive=SELECTED_DRIVE):
-    """Blended stock with servo windows and clamp passages filled."""
-    body = union(_bridge_core_blocks(drive)).removeSplitter()
-    width = bulkhead_width(drive)
-    root_z = SEAT_Z + CONNECTOR_PLATE_THICKNESS
-    edges = []
-    for edge in body.Edges:
-        points = [vertex.Point for vertex in edge.Vertexes]
-        if len(points) != 2 or not all(abs(p.z - root_z) < 1e-7 for p in points):
-            continue
-        if any(
-            all(abs(p[axis] - position) < 1e-7 for p in points)
-            for axis, position in (
-                (0, -width / 2),
-                (0, width / 2),
-                (1, -MOUNT_DEPTH / 2),
-                (1, MOUNT_DEPTH / 2),
-            )
-        ):
-            edges.append(edge)
-    if len(edges) != 4:
-        raise RuntimeError("Servo cradle must expose four root edges")
-    return body.makeFillet(CRADLE_ROOT_RADIUS, edges).removeSplitter()
-
-
-def bridge_shape(drive=SELECTED_DRIVE):
+    Remove both output gears, withdraw the input stub and loose driver, then
+    release the ear pairs. The servo/horn/adapter moves forwardY14 and outwardX.
+    Finish tight printed windows; never force the case or clamp it in compression.
+    """
     x, z = drive.input_x_mm, drive.input_z_mm
-    y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
+    window_inner_x = x - servo_envelope.CASE_WIDTH / 2 - CASE_CLEARANCE
+    inboard_x = window_inner_x - CRADLE_WEB_THICKNESS
+    outer_x = window_inner_x + CASE_WINDOW_WIDTH + CRADLE_WEB_THICKNESS
+    rear_y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
+    body = box(
+        outer_x - inboard_x,
+        MOUNT_DEPTH,
+        z + CRADLE_TOP_FROM_AXIS - CRADLE_FLOOR_Z,
+        (inboard_x, rear_y, CRADLE_FLOOR_Z),
+    )
     window = box(
         CASE_WINDOW_WIDTH,
         MOUNT_DEPTH + 2,
         CASE_WINDOW_HEIGHT,
         (
-            x - CASE_WINDOW_WIDTH / 2,
-            y - 1,
+            window_inner_x,
+            rear_y - 1,
             z + servo_envelope.CASE_CENTRE_Z - CASE_WINDOW_HEIGHT / 2,
         ),
     )
-    bridge = bridge_blank(drive).cut(window).cut(opposite(window))
-    void = _ear_clearance(drive)
-    bridge = cut_shared_bolt_passage(bridge.cut(void).cut(opposite(void)))
-    pockets = _ear_nut_pockets(drive)
-    bridge = bridge.cut(pockets).cut(opposite(pockets))
-    head_cut = rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
-    # Open only the outer head-pocket depth at the nearest saddle end.
-    # The complete inner head-bearing floor and opposite nut flats remain.
-    head_cut = head_cut.fuse(
-        box(
-            ROOF_HALF_LENGTH - CLAMP_AXIS_X + 1,
-            rail.HEAD_RECESS_DEPTH,
-            rail.BOLT_AXIS_Z + rail.HEAD_RECESS_DIAMETER / 2 - CHEEK_BOTTOM_Z,
-            (CLAMP_AXIS_X, CHEEK_OUTER_Y, CHEEK_BOTTOM_Z),
+    body = body.cut(window).cut(_ear_clearance(drive)).cut(_ear_nut_pockets(drive))
+    body.translate(V(0, -DRIVE_INWARD_OFFSET_MM, 0))
+    lower = box(
+        outer_x - LOWER_FOOT_INBOARD_X,
+        MOUNT_DEPTH,
+        LOWER_FOOT_THICKNESS,
+        (
+            LOWER_FOOT_INBOARD_X,
+            rear_y - DRIVE_INWARD_OFFSET_MM,
+            CRADLE_FLOOR_Z - LOWER_FOOT_THICKNESS,
+        ),
+    )
+    one = union([body, lower])
+    result = union([one, opposite(one)])
+    result = result.removeSplitter()
+    if not result.isValid() or len(result.Solids) != 2:
+        raise RuntimeError(
+            "Servo supports must form two valid solids before beam union"
         )
-    )
-    nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
-    for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):
-        bridge = bridge.cut(cutter)
-    from .edge_blends import fillet_selected, near
-
-    bridge = bridge.removeSplitter()
-    roof_top = CONNECTOR_PLATE_BOTTOM_Z + CONNECTOR_PLATE_THICKNESS
-    bridge = fillet_selected(
-        bridge,
-        0.5,
-        lambda e, b: (
-            near(b.ZMin, roof_top)
-            and near(b.ZLength, 0)
-            and (
-                (near(b.XLength, 0) and near(abs(b.XMin), ROOF_HALF_LENGTH))
-                or (near(b.YLength, 0) and near(abs(b.YMin), -CHEEK_OUTER_Y))
-            )
-        ),
-        4,
-        "Servo bridge upper outer roof rim",
-    )
-    # Select only the four outer cradle corners, not window or nut-pocket
-    # edges. The complete mating underside and shallow nut floors stay flat.
-    return fillet_selected(
-        bridge,
-        0.5,
-        lambda e, b: (
-            near(b.XLength, 0)
-            and near(b.YLength, 0)
-            and near(abs(b.XMin), bulkhead_width(drive) / 2)
-            and near(abs(b.YMin), MOUNT_DEPTH / 2)
-            and b.ZLength > 20
-        ),
-        4,
-        "Servo bridge outer cradle corners",
-    )
+    return result

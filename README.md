@@ -68,7 +68,7 @@ Inspect assembly, print layout and affected views. For `gondola`, `--output-dir 
 precedes the subcommand; keep output/source paths consistent across tools. Export manifest-listed
 parts, distinguish optional power parts, and retain hash-bound verification.
 
-Optional paired rail/frame/saddle fit specimen: after validation, run
+Optional paired rail/integrated-frame fit specimen: after validation, run
 `python3 tools/fit_coupon/export_joint.py --output-dir PATH` with a new directory.
 It crops saved production geometry; it is outside the installed BOM/print bundle
 and tests local fit, not whole-frame strength or complete-assembly tool access.

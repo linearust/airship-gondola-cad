@@ -54,7 +54,7 @@ PROCUREMENT_SPECS = {
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
         "candidate_url": BEARING_SOURCE,
-        "requirements": "Keep the four purchased generic miniature bearings, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm, on the two output axes; no replacement bearing purchase. Check actual shields, race lands, fixed-seat fit, free rotation and endplay with the rear shoulder and removable front keeper. The keeper's M2 screw clamps its frame seat, not the bearing. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
+        "requirements": "Keep the four purchased generic miniature bearings, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm, on the two output axes; no replacement bearing purchase. Check actual shields, race lands, fixed-seat fit, free rotation and endplay with the split housing, outer-ring shoulders and removable cap. The two M2x10 screws seat each cap on hard frame lands, not on the bearing. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
         "evidence_notes": "The user confirms purchase of the original-final-cart 3x6x2.5mm option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the outer-ring contact clearance: housing opening at least 5.4 mm. Verify those contacts on the received generic part; the printed diameter5.6 openings are design values, not proof of shield clearance. ISC's 0.27 g is comparison data, not this seller's measured mass.",
     },
     "KST_X06_STOCK_HALF_ARM_1": {
@@ -78,18 +78,18 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel ordinary hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.35-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The five rail joints use separate M3 hardware. No washers. Rotor and optical joints use recessed nut seats; bearing keepers use shallow recessed pockets, and the input-shaft clamps retain their existing nut pockets. Trial actual nut chamfers, flank engagement, seating and removal in each finished feature. General PA12 tolerance alone does not guarantee fit or torque restraint. Check usable thread engagement before tightening. Optional power-portal foot nuts still need a holding tool. No flange, locknut or thin-nut substitution is qualified.",
+        "requirements": "Selected M2 x 0.4 black-steel ordinary hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.35-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The five rail joints use separate M3 hardware. No washers. Rotor and optical joints use recessed nut seats; bearing caps use accessible ordinary hex-nut seats, and the input-shaft clamps retain their existing nut pockets. Trial actual nut chamfers, flank engagement, seating and removal in each finished feature. General PA12 tolerance alone does not guarantee fit or torque restraint. Check usable thread engagement before tightening. Optional power-portal foot nuts still need a holding tool. No flange, locknut or thin-nut substitution is qualified.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. The Fastenal DIN934 dimensional reference lists M2 AF3.82-4.0 and height1.35-1.6 mm; the accepted minimum AF3.8 is conservative. These are CAD acceptance dimensions, not a measured supplier drawing or strength-class certification of the selected lot.",
     },
     "M3_HEX_NUT": {
         "search_query": "M3 0.5 hex nut 5.5mm AF 2.4mm A2 stainless",
         "candidate_url": "",
-        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed shared propulsion/servo-saddle rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The opposite U leg has a 5.9 mm across-flats hex pocket with a 2 mm nominal floor; ordinary carrier legs are symmetric 4 mm stock with 2 mm recess depth, so the nut is partly exposed; the nut bears on printed stock, not the rail. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
+        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed integrated-propulsion rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The opposite U leg has a 5.9 mm across-flats hex pocket with a 2 mm nominal floor; ordinary carrier legs are symmetric 4 mm stock with 2 mm recess depth, so the nut is partly exposed; the nut bears on printed stock, not the rail. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
         "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex pocket is externally accessible for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
     },
 }
 
-for _length in (6, 8, 12):
+for _length in (6, 8, 10, 12):
     PROCUREMENT_SPECS[f"M2X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M2x{_length} black steel button head hex socket screw",
         "candidate_url": FASTENER_KIT_SOURCE,
@@ -115,7 +115,7 @@ for _length in (6, 8, 12):
             "not OEM motor or horn screws."
         ),
         "evidence_notes": (
-            "Kit image identifies a button head and assorted lengths including6/8/12mm, with a "
+            "Kit image identifies a button head and assorted lengths including6/8/10/12mm, with a "
             "1.5 mm hex key. Head envelopes are deliberate design allowances, "
             "not seller-dimensioned maxima or an ISO conformity claim. The "
             "seller's 10.9 statement is unverified for the received lot. "
@@ -123,23 +123,16 @@ for _length in (6, 8, 12):
         ),
     }
 
-for _length in (10, 20):
+for _length in (10,):
     PROCUREMENT_SPECS[f"M3X{_length}_BUTTON_HEAD"] = {
         "search_query": f"M3x{_length} button head hex socket screw A2 stainless",
         "candidate_url": "",
         "requirements": (
             f"M3 x 0.5 screw with {_length} mm under-head length for "
-            + (
-                "the three equipment-carrier rail joints. A 2 mm recessed head floor, "
-                "2.5 mm rail web and 2 mm nut floor give 6.5 mm effective grip. "
-                "A nominal 2.4 mm nut leaves 1.1 mm tip projection. "
-                if _length == 10
-                else "either shared propulsion/servo-saddle rail joint. The fitted "
-                "U saddle has 5 mm walls around a 12 mm frame. A 2 mm head recess "
-                "and 2 mm opposite nut floor give 17 mm effective grip. A nominal "
-                "2.4 mm nut leaves 0.6 mm tip projection. Support both modules "
-                "before releasing either shared clamp. "
-            )
+            + "all five standard carrier-shoe rail joints, including both propulsion stations. "
+            "A 2 mm recessed head floor, 2.5 mm rail web and 2 mm nut floor give "
+            "6.5 mm effective grip. A nominal 2.4 mm nut leaves 1.1 mm tip projection. "
+            "Support the complete propulsion assembly before releasing either paired clamp. "
             + "Design acceptance envelope: head diameter at most 6 mm and "
             "head height at most 2 mm. These limits are not a supplier drawing "
             "or a standard button-head conformity claim. Verify a flat bearing "
@@ -195,7 +188,7 @@ for _gear in GEARS.values():
 
 def _shaft_dimensions(sku):
     """Decode cut lengths and optional hand-prepared flats on selected rod."""
-    match = re.fullmatch(r"SS304_CUT3_L(\d+)(?:_FLAT(\d+)_A(\d+))?", sku)
+    match = re.fullmatch(r"SS304_CUT3_L(\d+)(?:_FLAT(\d+)(?:_GRIP(\d+))?_A(\d+))?", sku)
     if match is None:
         if sku.startswith("SS304_CUT3_"):
             raise ValueError("Invalid nominal-3mm cut-rod preparation key")
@@ -204,19 +197,26 @@ def _shaft_dimensions(sku):
     if not 1 <= length <= 200:
         raise ValueError("Cut length must be 1 to 200 mm for selected rod stock")
     flat_length = int(match.group(2)) if match.group(2) is not None else None
-    offset = int(match.group(3)) if match.group(3) is not None else None
+    grip_length = int(match.group(3)) if match.group(3) is not None else None
+    offset = int(match.group(4)) if match.group(4) is not None else None
     if flat_length is not None and not (
         1 <= flat_length <= length and offset + flat_length <= length
     ):
         raise ValueError("Local flat must have positive length and fit within shaft")
-    return length, flat_length, offset
+    if grip_length is not None and not (
+        1 <= grip_length < length - offset - flat_length
+    ):
+        raise ValueError(
+            "Opposite-end flats must leave a round bearing-journal interval"
+        )
+    return length, flat_length, offset, grip_length
 
 
 def procurement_spec(sku, *, allow_unknown=False):
     """Return a fresh purchase/preparation contract; invalid known keys raise."""
     shaft = _shaft_dimensions(sku)
     if shaft is not None:
-        length, flat_length, offset = shaft
+        length, flat_length, offset, grip_length = shaft
         flat_requirement = (
             "Leave the rod round; no flat is specified. "
             if flat_length is None
@@ -229,6 +229,13 @@ def procurement_spec(sku, *, allow_unknown=False):
                 "set screw with the flat; tooth-to-screw clocking is not specified. "
             )
         )
+        if grip_length is not None:
+            flat_requirement += (
+                f"Prepare a second0.5mm-deep flat over the final{grip_length}mm "
+                "from the opposite motor-grip end, on the same side of the rod. "
+                "Leave the entire intervening bearing-journal interval round. "
+                "The flats key torque; gear and carrier jack screws provide axial grip. "
+            )
         spec = {
             "search_query": "304 stainless round rod 3mm 100mm 200mm",
             "candidate_url": SHAFT_SOURCE,

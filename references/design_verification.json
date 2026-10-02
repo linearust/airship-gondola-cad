@@ -1,55 +1,78 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-02T06:29:35.008089+00:00",
-  "revision": "CD",
-  "change_kind": "Selective edge blends, top-bearing carrier shoes and unmodified OEM horn with M1 hardware",
-  "scope": "Nominal CAD fit prototype: protected root/outer blends; ordinary carrier roofs seat on one rail wall with1mm base clearance and follow its local pitch. Shared propulsion crowns remain. OEM horn unchanged; two default M1x6 external-hex bolt/nut joints and optional middle opening. Actual M1 slip fit, head/nut dimensions, owned length and material remain unverified. Optional middle hardware is not installed or qualified. Straight-rail intended travel +/-3mm; local angular screening is sampled. Motor carrier fabrication remains on hold pending actual motor/propeller installation evidence; physical fit,strength,creep,adhesion,wiring and flight readiness remain unqualified.",
-  "predecessor_commit": "6d6c70559075a779364630578ef325f764440224",
-  "source_fingerprint": "590003a963e695faa575eabbfcd5955827af488a98d1132a7f15d1348bec4bf6",
-  "cad_sha256": "b6498e73f051d2f04c5996ca0a6193f8841233df4dec517c2dcd9473b7946feb",
+  "recorded_utc": "2026-10-02T10:02:01.036014+00:00",
+  "revision": "CE",
+  "change_kind": "Integrated inboard-supported open-ended propulsion with standardized rail shoes, raised beam, individually closed servo frames and two-point guard supports",
+  "scope": "Nominal CAD geometry and ordered service only. Two purchased bearings per rotor remain inboard; individual snug servo frames use shaft-first and loose-gear removal before axial and outward servo service; ear joints clamp the servos, and the nominal0.2mm-per-face window allowance needs finished-part fitting. Identical paired rail shoes require coplanar wall tops, with bending outside the rigid pair. Physical fit, strength, fatigue, creep, adhesion, moving wires and loaded retention remain unqualified. Motor-carrier fabrication remains on hold pending actual motor/propeller installation evidence.",
+  "predecessor_commit": "f728876fde7e7871c4ceb31dc1a3e466663f83b0",
+  "source_fingerprint": "f2a0b7af385db31bf7201370ef72ff277e92c10a708a5435bef01454f85d838f",
+  "cad_sha256": "f21d54e287b7870d28abd638965feafed7abdd8738a5ff6e6e0683702aa04b42",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "1a746039cafbb4c27de3beb0f62fae5b3513de028ce1061eef30b59bb0c9a99c",
-    "unchanged": false,
+    "sha256": "4a83a7f038d982d33bf47328f752045b59c4970dd0d01a6383c2923914bd9e5e",
     "independently_reviewed": true
   },
   "native_tests": {
-    "passed": true,
-    "testsRun": 809,
+    "testsRun": 818,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "exact_discovery_coverage": true,
-    "frozen_input_identity": true
+    "frozen_input_identity": true,
+    "exit_codes": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "changed_inputs": [],
+    "started_utc": "2026-10-02T09:33:53.897085+00:00",
+    "completed_utc": "2026-10-02T10:01:22.353967+00:00",
+    "elapsed_seconds": 1648.4568836770195,
+    "passed": true
   },
   "pipeline": [
     {
       "name": "build",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 27.464901926985476,
+      "log_sha256": "173246af9f6a2250a84f8fa0cc7ba311e96dec2a52d973f1c9713f886d538f5b"
     },
     {
       "name": "preview",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 45.574860572000034,
+      "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 16.40450153197162,
+      "log_sha256": "fb135566d6ff85bb6ecbe70500ada136db57ef2d386ebd33dc99eabf8a27d826"
     },
     {
       "name": "validate",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 913.0385682909982,
+      "log_sha256": "f6554241919e3d82db607e774ed4ee95da98655b5e1ec4a368a4c582c45e8439"
     },
     {
       "name": "bundle",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 0.36619650898501277,
+      "log_sha256": "06c70d716236281ddf165be82a0dedcc2f727e405473e403710a9a285bd15081"
     },
     {
       "name": "blender",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 18.47051716898568,
+      "log_sha256": "b0501045a714b42567724b9bad2b4d805c3dda9b9cce9c69aea8d106d223708b"
     },
     {
       "name": "simulation",
-      "exit_code": 0
+      "exit_code": 0,
+      "elapsed_seconds": 0.6983968789863866,
+      "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
   "validation_passed": {
@@ -61,52 +84,23 @@
     "gondola_validation.json": true
   },
   "saved_geometry_matches_reviewed_fixture": true,
-  "changed_shapes": [
-    "PropulsionFixedFrame",
-    "ServoDriveBridge",
-    "PortMotorCarrier",
-    "PortOutputBearingKeeperNegative",
-    "PortOutputBearingKeeperPositive",
-    "PortServoHorn",
-    "PortHornGearAdapter",
-    "PortHornGearClampNearBolt",
-    "PortHornGearClampNearNut",
-    "PortHornGearClampFarBolt",
-    "PortHornGearClampFarNut",
-    "StarboardMotorCarrier",
-    "StarboardOutputBearingKeeperNegative",
-    "StarboardOutputBearingKeeperPositive",
-    "StarboardServoHorn",
-    "StarboardHornGearAdapter",
-    "StarboardHornGearClampNearBolt",
-    "StarboardHornGearClampNearNut",
-    "StarboardHornGearClampFarBolt",
-    "StarboardHornGearClampFarNut",
-    "OpticalMountBase",
-    "OpticalSensorTray",
-    "BatteryMount",
-    "ElectronicsMount",
-    "AccessoryMount",
-    "MountFitSample",
-    "BearingKeeperFitSample"
-  ],
-  "installed_print_volume_change_mm3": 257.18943910206144,
-  "installed_print_volume_change_percent": 0.3027123948706341,
   "blender": {
     "passed": true,
     "scene_count": 6,
-    "sampled_frames": 1229,
-    "matrix_checks": 90184,
+    "sampled_frames": 1181,
+    "matrix_checks": 78703,
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "b6498e73f051d2f04c5996ca0a6193f8841233df4dec517c2dcd9473b7946feb",
-    "gondola_print_parts.FCStd": "28fe67f424efe5dfa3a5ffb785b24d1be75accfe6ee9118bb937302307104f84",
-    "gondola_power_options.FCStd": "2ad92398e5f32a055eb66b574c5c47d1a1dd56150d73fd486770fb96d5a73052",
-    "gondola_attachment_detail.FCStd": "5916ecee427f07adb2c505528933f8796b583d7092a947fad16781d86c16484d"
+    "gondola_attachment_detail.FCStd": "7d348f5418c9474ad3b8c81941dd4f8b47cd61e92c8e7143a36498aca0c3d54f",
+    "gondola_power_options.FCStd": "609c1482fb08503753e2f55fe309df5ff4cc80f1807c59ea6b3db917d6d7d592",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "8f50b7e4b8292b2725a941fc2a9a988b0abed7ac69c21e2f07f2d0b43cb113b1",
+    "gondola_print_parts.FCStd": "170a4c8d59f5fa6267a9cae929a2f2d1ba409cdc02e629efc434ae523aab379a",
+    "gondola.FCStd": "f21d54e287b7870d28abd638965feafed7abdd8738a5ff6e6e0683702aa04b42"
   },
-  "print_bundle_sha256": "9bb54321d1e756a07a4cb3e8f637e8643df4ba90e38503b6fa5ec2772e9ba2d2",
+  "print_bundle_sha256": "4b37fd31d03e34e63a494597ed8f5aa951f5a096b9828bb7736e35159b0b03aa",
+  "simulation_parameters_sha256": "c4e0d28738ff4d963b1f20879b2a62c3e945f8b06977387d2928b2e4a34872f0",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "cd_contact_and_horn_revision",
-  "evidence_archive_sha256": "3a5cf512af1ac5fe5ee5e85c4c4612464d45c5d435bf45b38375a9b5eb1683a8"
+  "evidence_record_key": "ce_integrated_inboard_support_revision",
+  "evidence_archive_sha256": "a7277634780d19534d2393d7ebc33eb7d3373babd19f6ec3fe135c9ed61590f5"
 }

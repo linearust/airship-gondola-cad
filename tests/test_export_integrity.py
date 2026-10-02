@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from gondola import parts as parts_package
 from gondola import procurement
 
 try:
@@ -36,6 +37,7 @@ class ExportIntegrityTests(unittest.TestCase):
             "Part": Mock(),
             "MeshPart": Mock(),
             "gondola.parts.equipment_envelopes": Mock(),
+            "gondola.parts.equipment_layout": Mock(),
             "gondola.parts.optical_sensor": Mock(),
             "gondola.parts.stack_interface": Mock(),
             "gondola.validation.optical": Mock(),
@@ -109,6 +111,17 @@ class ExportIntegrityTests(unittest.TestCase):
 
     def export(self):
         return procurement.export_hardware_bom(self.hardware, self.output, "gondola")
+
+    @unittest.skipIf(NativeApp is None, "Requires the FreeCAD Python runtime")
+    def test_mocked_equipment_import_preserves_native_radio_layout(self):
+        # The package exists before setUp's module mocks, as it does in native
+        # discovery. A real layout imported under those mocks would survive as
+        # a package attribute even after patch.dict restores sys.modules.
+        from gondola.parts import equipment_layout
+
+        self.assertIs(parts_package.equipment_layout, equipment_layout)
+        self.assertIs(equipment_layout.App, NativeApp)
+        self.assertIsInstance(equipment_layout.radio_placement(), NativeApp.Placement)
 
     def test_mixed_native_evidence_stays_in_one_valid_purchase_group(self):
         bom = self.export()

@@ -27,123 +27,175 @@ def _matches_number(actual, target, tolerance=1e-8):
     )
 
 
-def _matches_vector(actual, target):
-    return (
-        isinstance(actual, (list, tuple))
-        and len(actual) == 3
-        and all(_matches_number(a, b) for a, b in zip(actual, target))
-    )
+def rotor_members(prefix):
+    suffix = "Negative" if prefix == "Port" else "Positive"
+    return {
+        prefix + name
+        for name in (
+            "MotorCarrier",
+            "Motor",
+            "Shaft",
+            "PropellerDisk",
+            "OutputShaft" + suffix,
+            "OutputClamp" + suffix + "Bolt",
+            "OutputClamp" + suffix + "Nut",
+        )
+    }
+
+
+def _path_matches(path, waypoints, retained):
+    segments = path.get("segments", [])
+    if path.get("passed") is not True or len(segments) != len(waypoints) - 1:
+        return False
+    if not retained.issubset(path.get("obstacles", [])):
+        return False
+    for segment, start, end in zip(segments, waypoints, waypoints[1:]):
+        if segment.get("passed") is not True:
+            return False
+        for key, expected in (("start_mm", start), ("end_mm", end)):
+            actual = segment.get(key)
+            if (
+                not isinstance(actual, (list, tuple))
+                or len(actual) != 3
+                or not all(_matches_number(a, b) for a, b in zip(actual, expected))
+            ):
+                return False
+        hits = segment.get("intersection_mm3", {})
+        if not retained.issubset(hits) or any(
+            not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or abs(value) >= 1e-7
+            for value in hits.values()
+        ):
+            return False
+    return True
 
 
 @dataclass(frozen=True)
 class ReviewMotionPlan:
     axial_allowance_mm: float = 0.5
-    gear_withdrawal_mm: float = 35
-    shaft_staging_mm: float = 12
-    module_lift_mm: float = 11
-    module_slide_mm: float = 80
-    # Each side stage is (native prefix, direction sign, first frame).
-    gear_stages: tuple = (("Port", 1, 13), ("Starboard", -1, 61))
-    gear_duration: int = 35
-    shaft_staging_frames: tuple = (109, 132)
-    staged_shafts: tuple = (
-        ("PortOutputShaftNegative", 1),
-        ("StarboardOutputShaftPositive", -1),
-    )
-    loosened_carrier_clamps: tuple = (
-        "PortOutputClampNegative",
-        "StarboardOutputClampPositive",
-    )
-    module_lift_frames: tuple = (133, 156)
-    module_slide_frames: tuple = (157, 216)
-    removal_frames: int = 241
-    shared_rail_fasteners: tuple = (
-        "MainPropulsionModuleOppositeRailMountNut",
-        "MainPropulsionModuleOppositeRailMountScrew",
-        "MainPropulsionModuleRailMountNut",
-        "MainPropulsionModuleRailMountScrew",
-    )
     # Frame and signed multiple of the permitted carrier travel.
     axial_steps: tuple = ((1, 0), (49, 1), (97, -1), (145, 0), (193, 1), (241, 0))
+    rotor_service_frames: int = 193
 
     def check_basis(self, evidence):
-        """Reject native evidence outside this explicitly reviewed motion plan."""
-        clearances = evidence["saved_carrier_metal_clearances"]
-        # Saved stop bounds can include ~1e-7 mm OCCT edge padding. Allow CAD
-        # precision only here; nominal poses and service-vector checks stay fixed.
-        if not clearances or any(
-            not _matches_number(
-                row["axial_travel"][key], self.axial_allowance_mm, tolerance=1e-6
+        """Require both saved carrier proofs before illustrating axial play."""
+        clearances = evidence.get("saved_carrier_metal_clearances", [])
+        if (
+            not isinstance(clearances, list)
+            or len(clearances) != 2
+            or {row.get("pod") for row in clearances} != {"Port", "Starboard"}
+            or any(
+                row.get("passed") is not True
+                or row.get("axial_travel", {}).get("passed") is not True
+                or any(
+                    not _matches_number(
+                        row.get("axial_travel", {}).get(key),
+                        self.axial_allowance_mm,
+                        # OCCT stop bounds include ~1e-7 mm numerical padding.
+                        tolerance=1e-6,
+                    )
+                    for key in ("negative_mm", "positive_mm")
+                )
+                for row in clearances
             )
-            for row in clearances
-            for key in ("negative_mm", "positive_mm")
         ):
             raise RuntimeError(
                 "Update axial-travel poses and captions for the new stops."
             )
-        service = evidence["saved_servo_module_service"]
-        if (
-            service.get("passed") is not True
-            or service.get("shared_rail_fasteners_removed_before_bench")
-            != list(self.shared_rail_fasteners)
-            or service.get("released_fasteners") != []
-            or service.get("loosened_carrier_clamps")
-            != list(self.loosened_carrier_clamps)
-        ):
-            raise RuntimeError(
-                "Update the review for changed shared rail clamp / off-rail bench prerequisites."
-            )
-        waypoints = [
-            [0, 0, 0],
-            [0, 0, self.module_lift_mm],
-            [self.module_slide_mm, 0, self.module_lift_mm],
-        ]
-        if not service["part_paths"] or any(
-            row["waypoints_mm"] != waypoints for row in service["part_paths"]
-        ):
-            raise RuntimeError(
-                "Update the review for changed servo-module removal paths."
-            )
-        shafts = service.get("shaft_staging", [])
-        if len(shafts) != len(self.staged_shafts):
-            raise RuntimeError("Update the review for changed shaft removal paths.")
-        for row, (name, sign), clamp in zip(
-            shafts, self.staged_shafts, self.loosened_carrier_clamps, strict=True
-        ):
-            offset = [0, sign * self.shaft_staging_mm, 0]
+
+    def check_rotor_service_basis(self, evidence):
+        rows = evidence.get("local_checks", {}).get("output_carrier_service", [])
+        if len(rows) != 2 or {row.get("pod") for row in rows} != {"Port", "Starboard"}:
+            raise RuntimeError("Missing complete rotor-removal evidence.")
+        for row in rows:
+            prefix = row["pod"]
+            sign = 1 if prefix == "Port" else -1
+            other = "Starboard" if prefix == "Port" else "Port"
+            moving = rotor_members(prefix)
+            gear = prefix + "OutputGear"
+            retained = {
+                "PropulsionFixedFrame",
+                prefix + "BearingCap",
+                prefix + "OutputBearingInboard",
+                prefix + "OutputBearingOutboard",
+                prefix + "Servo",
+                prefix + "DriverGear",
+                prefix + "HornGearAdapter",
+                other + "OutputGear",
+                *rotor_members(other),
+            }
+            paths = row.get("carrier_removal", [])
+            expected_gear = [
+                (0, 0, 0),
+                (0, -sign * 11, 0),
+                (0, -sign * 11, 20),
+                (30, -sign * 11, 20),
+            ]
             if (
-                row.get("part") != name
-                or row.get("loosened_clamp") != clamp
-                or not _matches_vector(row.get("staged_offset_mm"), offset)
-                or len(row.get("segments", [])) != 1
-                or not _matches_vector(row["segments"][0].get("start_mm"), [0, 0, 0])
-                or not _matches_vector(row["segments"][0].get("end_mm"), offset)
-            ):
-                raise RuntimeError("Update the review for changed shaft removal paths.")
-        gears = service["output_gear_removal"]
-        if len(gears) != len(self.gear_stages):
-            raise RuntimeError("Update the review for changed gear removal paths.")
-        for gear, (prefix, sign, _) in zip(gears, self.gear_stages, strict=True):
-            if (
-                gear.get("part") != prefix + "OutputGear"
-                or len(gear["segments"]) != 1
-                or not _matches_vector(gear["segments"][0]["start_mm"], [0, 0, 0])
-                or not _matches_vector(
-                    gear["segments"][0]["end_mm"],
-                    [0, -sign * self.gear_withdrawal_mm, 0],
+                row.get("passed") is not True
+                or set(row.get("moving_parts", [])) != moving
+                or set(row.get("removed_parts", [])) != moving | {gear}
+                or row.get("removed_output_gear") != gear
+                or row.get("shaft_moves_with_carrier")
+                != prefix
+                + ("OutputShaftNegative" if sign > 0 else "OutputShaftPositive")
+                or not retained.issubset(row.get("retained_parts", []))
+                or not _path_matches(
+                    row.get("output_gear_removal", {}), expected_gear, retained | moving
+                )
+                or len(paths) != len(moving)
+                or {path.get("part") for path in paths} != moving
+                or any(
+                    not _path_matches(path, [(0, 0, 0), (0, sign * 60, 0)], retained)
+                    for path in paths
                 )
             ):
-                raise RuntimeError("Update the review for changed gear removal paths.")
+                raise RuntimeError(
+                    "Update rotor-removal poses for changed native service evidence."
+                )
 
-    def bench_parts(self, propulsion_names):
-        """Hide both released shared pairs before the explicitly off-rail scene."""
-        names = list(propulsion_names)
-        if not set(self.shared_rail_fasteners) <= set(names) or any(
-            name.startswith("ServoBridge") and name.endswith(("Bolt", "Nut"))
-            for name in names
+    def check_rotor_members(self, pod_names):
+        if set(pod_names) != {"Port", "Starboard"} or any(
+            set(names) != rotor_members(prefix) | {prefix + "OutputGear"}
+            for prefix, names in pod_names.items()
         ):
-            raise RuntimeError("Expected the shared rail clamp before bench filtering.")
-        return [name for name in names if name not in self.shared_rail_fasteners]
+            raise RuntimeError(
+                "Update rotor-removal poses for changed saved pod membership."
+            )
+
+    def rotor_service_pose(self, frame):
+        # Output gear clears the shaft, rises, then moves aside. Only after it
+        # has left does the complete locked rotor/shaft move outward.
+        gear_offset = (
+            30 * ramp(frame, 73, 97),
+            -11 * ramp(frame, 25, 49),
+            20 * ramp(frame, 49, 73),
+        )
+        offsets = {"PortOutputGear": gear_offset}
+        offsets.update(
+            {name: (0, 60 * ramp(frame, 121, 169), 0) for name in rotor_members("Port")}
+        )
+        return offsets, {"PortOutputGear"} if frame > 97 else set()
+
+    def rotor_service_markers(self):
+        return [
+            (1, "Unpowered bench: leads freed; rotor supported"),
+            (25, "Release gear set screw; withdraw output gear"),
+            (49, "Gear clears shaft; lift and move aside"),
+            (97, "Output gear removed"),
+            (121, "Withdraw rotor with its shaft still clamped"),
+            (169, "Rotor clear; both bearings and cap remain installed"),
+        ]
+
+    def rotor_service_description(self):
+        return (
+            "Unpowered bench sequence with leads freed and rotor supported. Release the bought output gear set screw, "
+            "withdraw the gear 11mm inward, lift20mm and move30mm aside. Then withdraw the complete Port rotor and "
+            "its locked output shaft60mm outward through both inboard bearings. The jack clamp, bearing cap, fixed frame, "
+            "servos and opposite rotor stay assembled. Gear set screw, hands, wires and physical fitted friction are not simulated. "
+            "No servo saddle withdrawal or separate shaft staging is shown."
+        )
 
     def axial_shift(self, frame):
         return curve(
@@ -166,71 +218,9 @@ class ReviewMotionPlan:
 
     def axial_description(self):
         return (
-            f"Carrier and shafts move +/-{self.axial_allowance_mm:g} mm toward integral frame stops; "
+            f"Carrier and its single output shaft move +/-{self.axial_allowance_mm:g} mm between the inboard housing stop lands; "
             "NOT bearing internal play. Bearings stay fixed in this prescribed pose; no spacer is installed. "
             "No friction, bearing-capture deformation, retention or load simulation."
-        )
-
-    def removal_pose(self, frame, drive_names):
-        offsets, hidden = {}, set()
-        for prefix, sign, start in self.gear_stages:
-            name = prefix + "OutputGear"
-            offsets[name] = (
-                0,
-                -sign
-                * self.gear_withdrawal_mm
-                * ramp(frame, start, start + self.gear_duration),
-                0,
-            )
-            if frame > start + self.gear_duration:
-                hidden.add(name)
-        for name, sign in self.staged_shafts:
-            offsets[name] = (
-                0,
-                sign * self.shaft_staging_mm * ramp(frame, *self.shaft_staging_frames),
-                0,
-            )
-        shift = (
-            self.module_slide_mm * ramp(frame, *self.module_slide_frames),
-            0,
-            self.module_lift_mm * ramp(frame, *self.module_lift_frames),
-        )
-        offsets.update({name: shift for name in drive_names})
-        return offsets, hidden
-
-    def removal_markers(self):
-        return (
-            [(1, "Off-rail bench / both rail clamps removed / support both parts")]
-            + [(start, f"Remove {prefix} 16T") for prefix, _, start in self.gear_stages]
-            + [
-                (
-                    self.shaft_staging_frames[0],
-                    f"Stage driven stubs outward {self.shaft_staging_mm:g} mm / hold rotors",
-                ),
-                (self.module_lift_frames[0], f"Lift module {self.module_lift_mm:g} mm"),
-                (
-                    self.module_slide_frames[0],
-                    f"Slide module +X {self.module_slide_mm:g} mm",
-                ),
-                (
-                    self.module_slide_frames[1] + 1,
-                    "Module removed; output supports retained",
-                ),
-            ]
-        )
-
-    def removal_description(self):
-        return (
-            "UNPOWERED OFF-RAIL BENCH ONLY: disconnect leads, remove both shared M3x20 rail screw/nut pairs "
-            "and slide the complete propulsion assembly +X10 mm, then lift it +Z30 mm from the rail "
-            "while supporting frame and bridge together. "
-            "Those prerequisites are checked separately and are not animated here; the common clamp and "
-            "surrounding rail equipment are absent throughout this scene. Release gear set screws, then "
-            "sequentially remove both 16T gears. Loosen the two driven-stub carrier clamps and hold the rotors; "
-            f"stage Port negative stub +Y and Starboard positive stub -Y by {self.shaft_staging_mm:g} mm. "
-            "The staged shafts remain visible and bearings/keepers stay installed. "
-            f"Lift the bridge {self.module_lift_mm:g} mm and slide +X {self.module_slide_mm:g} mm. "
-            "Playback repeats by resetting the bench state, not by a verified reassembly operation."
         )
 
 

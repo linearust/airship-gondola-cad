@@ -10,15 +10,16 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "gear_rotation": 2,
         "fixed_servo_datum": 2,
         "servo_mounts": 2,
-        "bridge_joint": 1,
-        "servo_module_service": 1,
+        "integrated_frame": 1,
+        "servo_service_preparation": 1,
         "direct_adapter_fit": 2,
         "input_shaft_retention": 2,
+        "carrier_shaft_retention": 2,
         "bearing_stacks": 4,
-        "bearing_post_roots": 4,
-        "nut_guides": 8,
-        "output_stub_clearance": 4,
-        "shaft_service": 4,
+        "bearing_post_roots": 2,
+        "nut_guides": 6,
+        "output_stub_clearance": 2,
+        "shaft_service": 2,
         "bearing_service": 4,
         "output_carrier_service": 2,
         "gear_service": 4,
@@ -30,15 +31,15 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_drive_service": 2,
         "servo_case_service": 2,
         "rail_mount_clearance": 1,
-        # Eight seated M2 propulsion joints, four M1.6 servo-ear joints and
+        # Four seated M2 bearing-cap joints, four M1.6 servo-ear joints and
         # four M1 horn joints with front nuts.
         # Rail screws are outside this module. The two radial input-stub jack
         # clamps stay assembled during service and use input_shaft_retention;
         # their deliberately unseated heads are not bearing-face stacks.
-        "fastener_stacks": 16,
-        "fastener_service": 16,
-        "functional_wall_probes": 23,  # Posts, cradle, opposed cheeks, U guides and rail seat.
-        "geometry": 10,  # Frame, bridge, two carriers, two adapters and four keepers.
+        "fastener_stacks": 12,
+        "fastener_service": 12,
+        "functional_wall_probes": 11,  # Beam, shoe roof, cap roof/floor, five guard sections and two adapter walls.
+        "geometry": 7,  # Integrated frame, two carriers, two adapters and two bearing caps.
     }
 )
 

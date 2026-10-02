@@ -1,7 +1,7 @@
 """Render an existing review scene to MP4 without saving or changing the blend.
 
 Use Blender's Python runtime after ``--``. All frames are rendered at the saved
-24 fps, so the review's duration and removal visibility sequence are preserved.
+24 fps, so the review's duration and prescribed visibility sequence are preserved.
 """
 
 import argparse

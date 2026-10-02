@@ -188,7 +188,23 @@ def review(doc, registry):
             }
         )
     analytic = rail_mount_wall_probes() + [
-        ("guard_radial_wall", "PortMotorCarrier", (9, 0, 22.99), (9, 0, 25.01), 2.0),
+        (
+            "guard_radial_wall",
+            "PortMotorCarrier",
+            (9.5, 0, 22.99),
+            (9.5, 0, 26.01),
+            3.0,
+        ),
+        (
+            "guard_axial_wall",
+            "PortMotorCarrier",
+            (7.99, 0, 24.5),
+            (11.01, 0, 24.5),
+            3.0,
+        ),
+        ("guard_root_fan", "PortMotorCarrier", (7.99, -29, 5), (11.01, -29, 5), 3.0),
+        ("guard_rear_bridge", "PortMotorCarrier", (-8.01, 16, 0), (-4.99, 16, 0), 3.0),
+        ("guard_outer_return", "PortMotorCarrier", (2, 22.99, 0), (2, 26.01, 0), 3.0),
         (
             "battery_mount_deck_thickness",
             "BatteryMount",
@@ -213,10 +229,10 @@ def review(doc, registry):
         (
             "frame_foot_thickness",
             "PropulsionFixedFrame",
-            (8.0, propulsion.PIVOT_HALF_SPAN, propulsion.FOOT_BOTTOM_Z - 0.01),
+            (8.0, 20.0, propulsion.FOOT_BOTTOM_Z - 0.01),
             (
                 8.0,
-                propulsion.PIVOT_HALF_SPAN,
+                20.0,
                 propulsion.FOOT_BOTTOM_Z + propulsion.FOOT_THICKNESS + 0.01,
             ),
             propulsion.FOOT_THICKNESS,
@@ -310,7 +326,7 @@ def review(doc, registry):
             "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
             "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_mm": rail.BASE_WIDTH,
-            "scope": "The straight base and tape-wing pairs retain the nominal thickness reported here. Ordinary carrier roofs seat on the wall tops with lower legs clear of the base; the paired propulsion frame retains crowned base seats and inner-roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits and shared clamp load zones. The respective top-bearing or crowned support is checked independently; no finite flat bottom-contact area is claimed for the shared crowns. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
+            "scope": "The straight base and tape-wing pairs retain the nominal thickness reported here. Every attachment uses the same wall-top shoe with a1mm nominal gap between its lower legs and the rail base. The propulsion frame pairs these shoes28mm apart; the rigid pair requires coplanar occupied wall tops and does not independently follow local wall tilt. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits and shared clamp load zones. Top seating is checked independently. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,

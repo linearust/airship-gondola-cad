@@ -1,6 +1,8 @@
-"""Nominal capture, bearing planes and release of recessed M2 nut seats."""
+"""Side-entry cap and rotor-jack nuts retain real walls, floors and release paths."""
 
+import tempfile
 import unittest
+from pathlib import Path
 
 try:
     import FreeCAD as App
@@ -10,258 +12,143 @@ except ImportError:
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
-class ShallowNutGuideTests(unittest.TestCase):
+class SideEntryNutGuideTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import bearing_retention
+        from gondola.parts import bearing_retention, propulsion
 
-        cls.cup = bearing_retention.cup_shape()
-        cls.frames = (
+        cls.sites = [
             (
-                cls.cup,
+                bearing_retention.lower_housing_shape(),
                 App.Placement(
-                    App.Vector(0, 3.5, -18),
-                    App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
+                    App.Vector(5.5, 6.5, -2.5), App.Rotation(App.Vector(1, 0, 0), 180)
                 ),
-                6.0,
+                1,
+                2.5,
             ),
+            (
+                propulsion.moving_carrier_shape(sign=1),
+                App.Placement(
+                    App.Vector(8, -25.5, 0),
+                    App.Rotation(App.Vector(0, 0, 1), App.Vector(-1, 0, 0)),
+                ),
+                1,
+                3.0,
+            ),
+        ]
+
+    def check(self, shape, pose, direction, floor):
+        from gondola.validation.nut_guides import nut_guide_check
+
+        return nut_guide_check(
+            shape, pose, outward_sign=direction, floor_thickness=floor
         )
 
-    def test_shallow_keeper_pocket_fits_and_restrains_ordinary_nuts(self):
-        from gondola.validation.nut_guides import nut_guide_check
-
-        for host, pose, length in self.frames:
-            with self.subTest(rail_length=length):
-                self.assertTrue(host.isValid())
-                self.assertEqual(len(host.Solids), 1)
-                report = nut_guide_check(host, pose, length)
+    def test_maximum_nuts_clear_and_minimum_nuts_restrain_rotation(self):
+        for site in self.sites:
+            with self.subTest(floor=site[-1]):
+                report = self.check(*site)
                 self.assertTrue(report["passed"], report)
+                self.assertEqual(len(report["nut_fit_and_side_entry"]), 9)
                 self.assertEqual(len(report["minimum_nut_rotation_stops"]), 18)
 
-    def test_complete_recess_wall_is_required(self):
-        from gondola.validation.nut_guides import nut_guide_check
-
-        for host, pose, length in self.frames:
+    def test_either_retaining_wall_is_required(self):
+        for host, pose, direction, floor in self.sites:
             for side in (-1, 1):
                 cutter = Part.makeBox(
-                    2, 2, 0.5, App.Vector(-1, side * 2.125 - (2 if side < 0 else 0), 0)
+                    1, 0.5, 1, App.Vector(-0.5, 2.2 if side > 0 else -2.7, 0.2)
                 )
                 cutter.Placement = pose.multiply(cutter.Placement)
-                with self.subTest(rail_length=length, side=side):
-                    report = nut_guide_check(host.cut(cutter), pose, length)
-                    self.assertFalse(report["passed"], report)
-                    self.assertGreater(
-                        sum(
-                            row["missing_rail_mm3"] for row in report["rail_witnesses"]
-                        ),
-                        0.1,
-                    )
+                report = self.check(host.cut(cutter), pose, direction, floor)
+                self.assertFalse(report["passed"], report)
+                self.assertGreater(
+                    sum(x["missing_wall_mm3"] for x in report["wall_witnesses"]), 0.4
+                )
 
-    def test_clearance_loss_cannot_be_hidden_by_a_fitting_centred_nut(self):
-        from gondola.validation.nut_guides import nut_guide_check
+    def test_full_bearing_floor_cannot_be_replaced_by_a_thin_seat(self):
+        for host, pose, direction, floor in self.sites:
+            cutter = Part.makeBox(0.2, 0.2, 0.5, App.Vector(1.6, -0.1, -floor + 0.1))
+            cutter.Placement = pose.multiply(cutter.Placement)
+            report = self.check(host.cut(cutter), pose, direction, floor)
+            self.assertFalse(report["passed"], report)
+            self.assertGreater(
+                report["nut_fit_and_side_entry"][0]["missing_bearing_floor_mm3"], 0.01
+            )
 
-        host, pose, length = self.frames[0]
-        inward_wall = Part.makeBox(5.8, 0.075, 1, App.Vector(-2.9, 2.05, 0))
-        inward_wall.Placement = pose.multiply(inward_wall.Placement)
-        report = nut_guide_check(host.fuse(inward_wall), pose, length)
-        self.assertTrue(report["nut_fit_and_axial_service"][0]["passed"])
-        self.assertFalse(report["passed"], report)
+    def test_off_axis_clearance_is_checked_when_centred_nut_still_fits(self):
+        for host, pose, direction, floor in self.sites:
+            wall = Part.makeBox(1, 0.075, 1, App.Vector(-0.5, 2.05, 0.2))
+            wall.Placement = pose.multiply(wall.Placement)
+            report = self.check(host.fuse(wall), pose, direction, floor)
+            self.assertTrue(report["nut_fit_and_side_entry"][0]["passed"], report)
+            self.assertFalse(report["passed"], report)
 
-    def test_actual_seat_material_and_midpath_release_obstacles_are_required(self):
-        from gondola.validation.nut_guides import nut_guide_check
+    def test_side_exit_midpath_obstacle_is_not_hidden_by_clear_endpoints(self):
+        for host, pose, direction, floor in self.sites:
+            blocker = Part.makeBox(0.2, 0.2, 0.2, App.Vector(12, -0.1, 0.5))
+            blocker.Placement = pose.multiply(blocker.Placement)
+            report = self.check(host.fuse(blocker), pose, direction, floor)
+            self.assertFalse(report["passed"], report)
+            self.assertGreater(
+                report["nut_fit_and_side_entry"][0][
+                    "maximum_nut_side_entry_overlap_mm3"
+                ],
+                0.001,
+            )
 
-        host, pose, length = self.frames[0]
-        void = Part.makeBox(0.2, 0.2, 0.4, App.Vector(1.6, 0, -0.2))
-        void.Placement = pose.multiply(void.Placement)
-        report = nut_guide_check(host.cut(void), pose, length)
-        self.assertFalse(report["passed"], report)
-        blocker = Part.makeBox(0.2, 0.2, 0.2, App.Vector(1.6, 0, 2.1))
-        blocker.Placement = pose.multiply(blocker.Placement)
-        report = nut_guide_check(host.fuse(blocker), pose, length)
-        self.assertFalse(report["passed"], report)
+    def test_an_oversize_slot_loses_minimum_nut_antirotation(self):
+        for host, pose, direction, floor in self.sites:
+            cutter = Part.makeBox(8, 8, 1.8, App.Vector(-4, -4, 0))
+            cutter.Placement = pose.multiply(cutter.Placement)
+            report = self.check(host.cut(cutter), pose, direction, floor)
+            self.assertFalse(report["passed"], report)
+            self.assertTrue(
+                all(not x["passed"] for x in report["minimum_nut_rotation_stops"])
+            )
 
-    def test_all_eight_installed_sites_follow_their_actual_native_frames(self):
+    def test_six_actual_sites_survive_native_reopen_and_parent_motion(self):
         from gondola.parts.propulsion import build_propulsion_module
         from gondola.validation.nut_guides import installed_nut_guide_checks
 
-        doc = App.newDocument("NutGuideNativeTest")
-        try:
-            build_propulsion_module(doc)
-            doc.MainPropulsionModule.Placement = App.Placement(
-                App.Vector(7, -8, 3), App.Rotation(App.Vector(1, 0, 0), 13)
-            )
-            doc.PortPod.Tilt, doc.StarboardPod.Tilt = 37, -149
-            doc.recompute()
-            rows = installed_nut_guide_checks(doc)
-            self.assertEqual(len(rows), 8)
-            self.assertTrue(all(row["passed"] for row in rows), rows)
-            doc.removeObject("PortOutputClampNegativeNut")
-            self.assertFalse(
-                all(row["passed"] for row in installed_nut_guide_checks(doc))
-            )
-        finally:
-            App.closeDocument(doc.Name)
+        doc = App.newDocument("SideEntryNutNative")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "nuts.FCStd"
+            try:
+                build_propulsion_module(doc)
+                doc.MainPropulsionModule.Placement = App.Placement(
+                    App.Vector(7, -8, 3), App.Rotation(App.Vector(1, 0, 0), 13)
+                )
+                doc.PortPod.Tilt, doc.StarboardPod.Tilt = 37, -149
+                doc.recompute()
+                doc.saveAs(str(path))
+            finally:
+                App.closeDocument(doc.Name)
+            saved = App.openDocument(str(path), hidden=True)
+            try:
+                saved.recompute()
+                rows = installed_nut_guide_checks(saved)
+                self.assertEqual(len(rows), 6)
+                self.assertTrue(all(x["passed"] for x in rows), rows)
+                nut = saved.PortOutputClampNegativeNut
+                original = nut.Placement
+                nut.Placement.Base += App.Vector(0.1, 0, 0)
+                saved.recompute()
+                self.assertFalse(
+                    all(x["passed"] for x in installed_nut_guide_checks(saved))
+                )
+                nut.Placement = original
+                saved.removeObject("PortBearingCapNegativeNut")
+                self.assertFalse(
+                    all(x["passed"] for x in installed_nut_guide_checks(saved))
+                )
+            finally:
+                App.closeDocument(saved.Name)
 
-
-@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
-class RecessedClampNutTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from gondola.parts import propulsion
-
-        cls.host = propulsion._carrier_side_shape()
-        cls.pose = App.Placement(App.Vector(4.2, 26.25, 2.5), App.Rotation())
-
-    def test_flat_block_pocket_has_full_wall_floor_and_clearance(self):
-        from gondola.validation.nut_guides import nut_guide_check
-
-        report = nut_guide_check(self.host, self.pose, 5.8, recessed=True)
-        self.assertTrue(report["passed"], report)
-        self.assertEqual(report["guide_height_mm"], 1.5)
-        box = Part.makeBox(19, 10, 8, App.Vector(-8, 21.25, -4))
-        self.assertLess(self.host.cut(box).Volume, 1e-6)
-        # A wide planar end replaces the separate raised circular stop flange.
-        end = Part.makeBox(17.8, 0.1, 1, App.Vector(-6.9, 31.15, 2.9))
-        self.assertLess(end.cut(self.host).Volume, 1e-6)
-
-    def test_opened_hex_wall_and_missing_floor_are_rejected(self):
-        from gondola.validation.nut_guides import nut_guide_check
-
-        for cutter in (
-            Part.makeBox(1, 2, 1.5, App.Vector(-0.5, 2, 0)),
-            Part.makeBox(0.2, 0.2, 0.4, App.Vector(1.6, 0, -0.2)),
-        ):
-            cutter.Placement = self.pose.multiply(cutter.Placement)
-            report = nut_guide_check(
-                self.host.cut(cutter), self.pose, 5.8, recessed=True
-            )
-            self.assertFalse(report["passed"], report)
-
-    def test_old_lift_is_insufficient_for_deeper_pocket(self):
-        from gondola.parts import purchased_hardware
-        from gondola.validation.propulsion_service import fastener_service_check
-
-        bolt, nut = purchased_hardware.screw_shape(), purchased_hardware.hex_nut_shape()
-        bolt.translate(App.Vector(4.2, 26.25, -2.5))
-        nut.translate(App.Vector(4.2, 26.25, 2.5))
-        options = dict(nut_lateral_direction=(-1, 0, 0), guided_nut=True)
-        old = fastener_service_check(bolt, nut, {"carrier": self.host}, **options)
-        new = fastener_service_check(
-            bolt, nut, {"carrier": self.host}, capture_depth_mm=1.5, **options
-        )
-        self.assertFalse(old["passed"], old)
-        self.assertTrue(new["passed"], new)
-
-
-@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
-class GuidedNutServiceTests(unittest.TestCase):
-    def test_short_legacy_lateral_release_is_blocked_but_raised_release_is_clear(self):
-        from gondola.parts import propulsion, purchased_hardware
-        from gondola.validation.propulsion_service import fastener_service_check
-
-        bolt, nut = purchased_hardware.screw_shape(), purchased_hardware.hex_nut_shape()
-        bolt.translate(App.Vector(4.2, 26.25, -2.5))
-        nut.translate(App.Vector(4.2, 26.25, 2.5))
-        obstacles = {"carrier": propulsion._carrier_side_shape()}
-        old = fastener_service_check(
-            bolt, nut, obstacles, nut_lateral_direction=(0, 1, 0)
-        )
-        new = fastener_service_check(
-            bolt,
-            nut,
-            obstacles,
-            nut_lateral_direction=(0, 1, 0),
-            guided_nut=True,
-            capture_depth_mm=1.5,
-        )
-        self.assertFalse(old["passed"], old)
-        self.assertTrue(new["passed"], new)
-        self.assertEqual(new["minimum_nut_lift_before_lateral_mm"], 1.7)
-        self.assertTrue(new["screw_first_with_nut_held_in_guides"])
-        self.assertIn(
-            "seated_guided_nut",
-            new["bolt_axial_withdrawal"]["segments"][0]["intersection_mm3"],
-        )
-        with self.assertRaises(ValueError):
-            fastener_service_check(
-                bolt, nut, obstacles, retain_bolt=True, guided_nut=True
-            )
-
-    def test_all_eight_guided_nuts_release_in_the_complete_retained_scene(self):
-        from gondola.cad import world_shape
-        from gondola.parts.propulsion import build_propulsion_module
-        from gondola.validation.nut_guides import guided_nut_service_direction
-        from gondola.validation.propulsion_service import (
-            fastener_service_check,
-            module_service_shapes,
-        )
-
-        doc = App.newDocument("GuidedNutServiceTest")
-        try:
-            module = build_propulsion_module(doc)
-            doc.MainPropulsionModule.Placement = App.Placement(
-                App.Vector(7, -8, 3), App.Rotation(App.Vector(1, 0, 0), 13)
-            )
-            doc.recompute()
-            shapes, missing = module_service_shapes(doc, module)
-            self.assertFalse(missing)
-            shapes = {name: world_shape(doc.getObject(name)) for name in shapes}
-            for prefix in ("Port", "Starboard"):
-                for side, suffix in ((-1, "Negative"), (1, "Positive")):
-                    for joint in ("OutputClamp", "OutputBearingKeeper"):
-                        name = prefix + joint + suffix
-                        removed = {name + "Bolt", name + "Nut"}
-                        if joint == "OutputBearingKeeper":
-                            # The checked keeper service starts after its rotor,
-                            # shafts and output gear have been removed.
-                            removed.update(
-                                obj.Name for obj in doc.getObject(prefix + "Pod").Group
-                            )
-                        retained = {
-                            key: value
-                            for key, value in shapes.items()
-                            if key not in removed
-                        }
-                        # Rotor nuts leave toward the open motor-plate side;
-                        # moving them along Y instead would meet the fixed cup.
-                        lateral = guided_nut_service_direction(doc, name + "Bolt")
-                        with self.subTest(joint=name):
-                            report = fastener_service_check(
-                                shapes[name + "Bolt"],
-                                shapes[name + "Nut"],
-                                retained,
-                                nut_lateral_direction=lateral,
-                                guided_nut=True,
-                                capture_depth_mm=1.5 if joint == "OutputClamp" else 0.5,
-                            )
-                            self.assertTrue(report["passed"], report)
-        finally:
-            App.closeDocument(doc.Name)
-
-    def test_only_the_eight_named_sites_acquire_screw_first_service(self):
-        from gondola.parts import purchased_hardware
-        from gondola.validation.nut_guides import is_guided_nut_bolt
-        from gondola.validation.propulsion_service import fastener_service_check
-
-        for name in (
-            "PortServoEarLowerBolt",
-            "StarboardInputShaftClampBolt",
-            "OpticalPitchBolt",
-            "PortHornGearClampNearBolt",
-            "OtherOutputClampNegativeBolt",
-        ):
-            self.assertFalse(is_guided_nut_bolt(name), name)
-        bolt, nut = (
-            purchased_hardware.servo_screw_shape(),
-            purchased_hardware.servo_nut_shape(),
-        )
-        nut.translate(App.Vector(0, 0, 6))
-        report = fastener_service_check(
-            bolt, nut, {}, thread_diameter=1.6, retain_bolt=True
-        )
-        self.assertTrue(report["passed"], report)
-        self.assertFalse(report["screw_first_with_nut_held_in_guides"])
-        self.assertTrue(report["bolt_retained_in_servo_unit"])
+    def test_unknown_floor_or_route_cannot_silently_select_a_contract(self):
+        host, pose, _, _ = self.sites[0]
+        for direction, floor in ((0, 2.5), (1, 1.5)):
+            with self.assertRaises(ValueError):
+                self.check(host, pose, direction, floor)
 
 
 if __name__ == "__main__":

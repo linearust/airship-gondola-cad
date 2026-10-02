@@ -65,6 +65,8 @@ def color(obj, category, rail_names):
 
 def representation(obj):
     """Describe the installed proxy without substituting manufacturing stock."""
+    if getattr(obj, "Name", "") == "PropulsionFixedFrame":
+        return "Integrated fixed support with outer-open rotors, two inboard bearings per rotor and closed individual servo frames. Nominal CAD does not establish alignment, overhang stiffness or loaded retention."
     if getattr(obj, "HornProfile", "") in servo_horns.PROFILES:
         profile = servo_horns.profile(obj.HornProfile)
         return (
@@ -173,22 +175,30 @@ def check_review_basis(doc, report):
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
             raise RuntimeError("Update the review for changed native tilt limits.")
-    REVIEW_MOTION.check_basis(evidence)
-    rail_service = report.get("module_service", {})
-    shared = [
-        row
-        for row in rail_service.get("modules", [])
-        if row.get("module") == "MainPropulsionModule"
-    ]
-    if (
-        rail_service.get("passed") is not True
-        or len(shared) != 1
-        or shared[0].get("passed") is not True
-        or shared[0].get("shared_servo_bridge_clamp") is not True
+    required = {"PropulsionFixedFrame"}
+    obsolete = {"ServoDriveBridge"}
+    for prefix, driven, idler in (
+        ("Port", "Negative", "Positive"),
+        ("Starboard", "Positive", "Negative"),
+    ):
+        required.update(
+            prefix + suffix
+            for suffix in (
+                "OutputBearingInboard",
+                "OutputBearingOutboard",
+                "BearingCap",
+                "OutputShaft" + driven,
+            )
+        )
+        obsolete.add(prefix + "OutputShaft" + idler)
+    if any(doc.getObject(name) is None for name in required) or any(
+        doc.getObject(name) is not None for name in obsolete
     ):
         raise RuntimeError(
-            "The off-rail bench scene requires checked shared-clamp rail release."
+            "Update the review for changed integrated inboard support topology."
         )
+    REVIEW_MOTION.check_basis(evidence)
+    REVIEW_MOTION.check_rotor_service_basis(evidence)
 
 
 def check_optical_carrier_basis(doc):
@@ -276,9 +286,6 @@ def export(cad_path, output):
             for obj in objects
             if belongs_to_group(obj, doc.MainPropulsionModule)
         ]
-        drive_names = [
-            obj.Name for obj in objects if belongs_to_group(obj, doc.ServoDriveModule)
-        ]
         pod_names = {
             prefix: {
                 obj.Name
@@ -287,13 +294,12 @@ def export(cad_path, output):
             }
             for prefix in ("Port", "Starboard")
         }
+        REVIEW_MOTION.check_rotor_members(pod_names)
         port_detail = [name for name in propulsion if not name.startswith("Starboard")]
-        original_drive = App.Placement(doc.ServoDriveModule.Placement)
         scenes = []
 
         def reset():
             doc.PortPod.Tilt = doc.StarboardPod.Tilt = 0
-            doc.ServoDriveModule.Placement = original_drive
             optical_mount.set_pitch(doc, 0)
             doc.recompute()
 
@@ -430,7 +436,7 @@ def export(cad_path, output):
             REVIEW_MOTION.axial_description(),
             REVIEW_MOTION.axial_steps[-1][0],
             port_detail,
-            [[-18, 83, 36], [18, 100, 61]],
+            [[-8, 18, 35], [38, 57, 62]],
             REVIEW_MOTION.axial_markers(),
             endplay,
         )
@@ -463,15 +469,14 @@ def export(cad_path, output):
         )
 
         scene(
-            "06 Servo module removal",
-            "PAIRED SERVO MODULE / BENCH REMOVAL",
-            REVIEW_MOTION.removal_description()
-            + " Horns, adapters and their rear screws/front nuts stay on the servos throughout this module-removal scene.",
-            REVIEW_MOTION.removal_frames,
-            REVIEW_MOTION.bench_parts(propulsion),
-            [[-50, -111, 0], [119, 111, 90]],
-            REVIEW_MOTION.removal_markers(),
-            lambda frame: REVIEW_MOTION.removal_pose(frame, drive_names),
+            "06 Rotor removal",
+            "OPEN OUTER ROTOR / SHAFT WITHDRAWAL",
+            REVIEW_MOTION.rotor_service_description(),
+            REVIEW_MOTION.rotor_service_frames,
+            propulsion,
+            [[-25, -101, 0], [65, 160, 100]],
+            REVIEW_MOTION.rotor_service_markers(),
+            REVIEW_MOTION.rotor_service_pose,
         )
 
         result = {
@@ -486,6 +491,7 @@ def export(cad_path, output):
                 "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
                 "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry without hole enlargement are displayed, including rear M1x6 hex bolts and front M1 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
+                "service_animation_included": True,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(snapshot.report_path),
             },

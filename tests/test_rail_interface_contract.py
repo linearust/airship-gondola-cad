@@ -1,4 +1,4 @@
-"""The replaceable servo saddle cannot redefine the fixed output-frame interface."""
+"""Servo geometry cannot redefine the independent rail attachment interface."""
 
 import unittest
 from unittest.mock import patch
@@ -12,7 +12,7 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SharedRailInterfaceTests(unittest.TestCase):
-    def test_frame_geometry_metadata_and_probes_do_not_follow_bridge_implementation(
+    def test_cradle_case_allowance_does_not_redefine_the_rail_interface(
         self,
     ):
         from gondola.contracts.drive import SELECTED_DRIVE
@@ -29,21 +29,7 @@ class SharedRailInterfaceTests(unittest.TestCase):
             if row[1] == "PropulsionFixedFrame"
         ]
         replacement_parent = doc.addObject("App::Part", "Replacement")
-        with (
-            patch.multiple(
-                servo_bridge,
-                SEAT_Z=99,
-                CENTRAL_SEAT_LENGTH=123,
-                CENTRAL_SEAT_WIDTH=321,
-                CHEEK_CONTACT_Y=-30,
-                CONNECTOR_PLATE_BOTTOM_Z=80,
-            ),
-            patch.object(
-                servo_bridge,
-                "cut_shared_bolt_passage",
-                side_effect=AssertionError("Frame called replaceable saddle cutter"),
-            ),
-        ):
+        with patch.object(servo_bridge, "CASE_WINDOW_WIDTH", 7.8):
             replacement = propulsion._build_frame(
                 doc, replacement_parent, SELECTED_DRIVE
             )
@@ -53,16 +39,21 @@ class SharedRailInterfaceTests(unittest.TestCase):
                 if row[1] == "PropulsionFixedFrame"
             ]
         self.assertEqual(original_probes, replacement_probes)
-        self.assertTrue(compare_shape_objects(replacement, original)["passed"])
+        self.assertFalse(compare_shape_objects(replacement, original)["passed"])
+        # A larger servo clearance changes only the cradle. The entire rail
+        # contact stock below Z15 retains exactly the same saved geometry.
+        lower = Part.makeBox(60, 100, 15, App.Vector(-30, -50, 0))
+        first, second = original.Shape.common(lower), replacement.Shape.common(lower)
+        self.assertLess(first.cut(second).Volume + second.cut(first).Volume, 1e-7)
         for name in ("CentralBridgeSeatZ", "FootBottomZ", "RailContactLength"):
             self.assertEqual(getattr(original, name), getattr(replacement, name))
 
-    def test_legacy_bridge_cutter_keeps_the_same_closed_shared_passages(self):
-        from gondola.parts import rail, servo_bridge
+    def test_both_shoes_share_the_same_closed_m3_passages(self):
+        from gondola.parts import rail
         from gondola.print_export import geometry_comparison
 
-        stock = Part.makeBox(40, 22, 11, App.Vector(-20, -11, 1.5))
-        actual = servo_bridge.cut_shared_bolt_passage(stock)
+        stock = Part.makeBox(44, 10.5, 10, App.Vector(-22, -5.25, 2.5))
+        actual = rail.cut_shared_bolt_passage(stock)
         expected = stock
         for x in (-14, 14):
             expected = expected.cut(

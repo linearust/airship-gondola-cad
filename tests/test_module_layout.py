@@ -22,7 +22,7 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         propulsion = stations["MainPropulsionModule"]
-        self.assertEqual(propulsion.contact_length_mm, 38)
+        self.assertEqual(propulsion.contact_length_mm, 44)
         self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 28)
         self.assertNotIn("OpticalFlowModule", stations)
 
@@ -92,7 +92,7 @@ class ModuleLayoutTests(unittest.TestCase):
                 "x_mm": 14.0,
                 "yaw_deg": 0,
                 "attachment_offset_x_mm": 14.0,
-                "contact_length_mm": 38.0,
+                "contact_length_mm": 44.0,
             },
         )
         pattern = station.attachment_pattern
@@ -106,13 +106,13 @@ class ModuleLayoutTests(unittest.TestCase):
         )
         self.assertEqual(
             (pattern.count, pattern.spacing_mm, pattern.screw_length_mm),
-            (2, 28.0, 20.0),
+            (2, 28.0, 10.0),
         )
         self.assertEqual(
             tuple(station.x_mm + offset for offset in station.attachment_offsets_x_mm),
             (28.0, 0.0),
         )
-        self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -9.0)
+        self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -3.25)
         ordinary = attachment_pattern(False)
         self.assertEqual(
             (ordinary.count, ordinary.spacing_mm, ordinary.screw_length_mm),

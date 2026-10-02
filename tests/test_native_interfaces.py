@@ -37,7 +37,7 @@ class NativeInterfaceTests(unittest.TestCase):
         for actual, expected in zip(shape.Vertexes, original_vertices, strict=True):
             self.assertLess((actual.Point - expected).Length, 1e-9)
 
-    def test_complete_assembly_preserves_a_common_frame_and_removable_servo_module(
+    def test_complete_assembly_preserves_one_fixed_frame_and_open_outer_rotors(
         self,
     ):
         import tempfile
@@ -60,16 +60,10 @@ class NativeInterfaceTests(unittest.TestCase):
                 self.assertEqual(
                     doc.PropulsionFixedFrame.PrintSKU, SELECTED_DRIVE.frame_sku
                 )
-                self.assertEqual(
-                    doc.ServoDriveBridge.PrintSKU, SELECTED_DRIVE.bridge_sku
-                )
+                self.assertIsNone(doc.getObject("ServoDriveBridge"))
                 self.assertEqual(
                     doc.ServoDriveModule.getParentGeoFeatureGroup(),
                     doc.MainPropulsionModule,
-                )
-                self.assertEqual(
-                    doc.ServoDriveBridge.getParentGeoFeatureGroup(),
-                    doc.ServoDriveModule,
                 )
                 self.assertFalse(
                     belongs_to_group(doc.PropulsionFixedFrame, doc.ServoDriveModule)
@@ -101,9 +95,62 @@ class NativeInterfaceTests(unittest.TestCase):
                     list(EXCLUDED_EQUIPMENT),
                 )
                 self.assertEqual(
-                    list(doc.DesignRegistry.PrintedParts).count(doc.ServoDriveBridge), 1
+                    list(doc.DesignRegistry.PrintedParts).count(
+                        doc.PropulsionFixedFrame
+                    ),
+                    1,
                 )
                 for prefix in ("Port", "Starboard"):
+                    pod = doc.getObject(prefix + "Pod")
+                    carrier = doc.getObject(prefix + "MotorCarrier")
+                    self.assertEqual(
+                        carrier.getTypeIdOfProperty("MotorMountFaceX"),
+                        "App::PropertyDistance",
+                    )
+                    self.assertAlmostEqual(float(carrier.MotorMountFaceX), -5.0)
+                    shaft_suffix = "Negative" if prefix == "Port" else "Positive"
+                    idler_suffix = "Positive" if prefix == "Port" else "Negative"
+                    self.assertIsNone(
+                        doc.getObject(prefix + "OutputShaft" + idler_suffix)
+                    )
+                    self.assertEqual(
+                        doc.getObject(
+                            prefix + "OutputShaft" + shaft_suffix
+                        ).getParentGeoFeatureGroup(),
+                        pod,
+                    )
+                    for kind in ("Bolt", "Nut"):
+                        self.assertIsNone(
+                            doc.getObject(prefix + "OutputClamp" + idler_suffix + kind)
+                        )
+                        self.assertEqual(
+                            doc.getObject(
+                                prefix + "OutputClamp" + shaft_suffix + kind
+                            ).getParentGeoFeatureGroup(),
+                            pod,
+                        )
+                    for position in ("Negative", "Positive"):
+                        for kind in ("Bolt", "Nut"):
+                            cap_fastener = doc.getObject(
+                                prefix + "BearingCap" + position + kind
+                            )
+                            self.assertIsNotNone(cap_fastener)
+                            self.assertEqual(
+                                cap_fastener.getParentGeoFeatureGroup(),
+                                doc.getObject(prefix + "Assembly"),
+                            )
+                    for suffix in (
+                        "OutputBearingInboard",
+                        "OutputBearingOutboard",
+                        "BearingCap",
+                    ):
+                        obj = doc.getObject(prefix + suffix)
+                        self.assertIsNotNone(obj)
+                        self.assertEqual(
+                            obj.getParentGeoFeatureGroup(),
+                            doc.getObject(prefix + "Assembly"),
+                        )
+                        self.assertFalse(belongs_to_group(obj, pod))
                     self.assertEqual(
                         doc.getObject(prefix + "ServoMount").getParentGeoFeatureGroup(),
                         doc.ServoDriveModule,

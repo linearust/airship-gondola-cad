@@ -10,7 +10,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, translated_shape, union, world_shape
-from gondola.contracts.drive import FACE_WIDTH_MM, MODULE_MM
+from gondola.contracts.drive import DRIVE_INWARD_OFFSET_MM, FACE_WIDTH_MM, MODULE_MM
 from gondola.parts import propulsion
 
 from .geometry import TOL, intersection_volume, translation_sweep
@@ -36,7 +36,7 @@ def module_service_shapes(doc, module):
 
 
 def servo_bench_members(doc, shapes):
-    """Every physical part that leaves with the intentionally removable bridge."""
+    """Physical parts in the fixed grouping of individually removable inputs."""
     return {
         name
         for name in shapes
@@ -105,13 +105,130 @@ def contained_region_paths(shape, regions, waypoints, obstacles):
     }
 
 
-def driver_lateral_service_check(shape, start, end, obstacles, spec, sign):
-    """Bound the toothed disk and smaller hub separately during lateral release.
+def split_housing_vertical_service(shape, obstacles, *, bearing_centre_y=None):
+    """Certify +Z30 removal from the split housing, in positive-side coordinates.
+
+    A cap point starts at or above Z50. Moving it upward increases its radial
+    distance from the bearing axis, so its concave cylindrical void cannot
+    sweep into a bearing. A bearing point remaining below Z50 moves toward the
+    axis plane and stays inside the original diameter-6 cavity. Above Z50 its
+    entire swept stock is bounded by the independent upper rectangular prism.
+    Released fastener and shaft bores may be conservatively filled.
+    """
+    axis = App.Vector(0, 1, 0)
+    if bearing_centre_y is None:
+        reference = Part.makeBox(18, 19, 4.5, App.Vector(-9, 25, 50))
+        stop = Part.makeCylinder(4.5, 1, App.Vector(0, 24, 50), axis).common(
+            Part.makeBox(10, 1, 4.5, App.Vector(-5, 24, 50))
+        )
+        reference = reference.fuse(stop).cut(
+            Part.makeCylinder(2.8, 20, App.Vector(0, 24, 50), axis)
+        )
+        for centre in (28.0, 41.0):
+            reference = reference.cut(
+                Part.makeCylinder(3, 3, App.Vector(0, centre - 1.5, 50), axis)
+            )
+        for x in (-9.0, 6.0):
+            reference = reference.cut(Part.makeBox(3, 3, 1.5, App.Vector(x, 28, 50)))
+        swept = reference.fuse(Part.makeBox(18, 20, 30, App.Vector(-9, 24, 54.5)))
+        method = "continuous split-cap radial-monotonicity envelope"
+    else:
+        if bearing_centre_y not in (28.0, 41.0):
+            raise ValueError("Unknown split-housing bearing station")
+        reference = Part.makeCylinder(
+            3, 2.5, App.Vector(0, bearing_centre_y - 1.25, 50), axis
+        )
+        swept = reference.fuse(
+            Part.makeBox(6, 2.5, 33, App.Vector(-3, bearing_centre_y - 1.25, 50))
+        )
+        method = "continuous bearing upward half-space envelope"
+    outside = abs(shape.cut(reference).Volume)
+    end = translated_shape(shape, z=30)
+    missing_end = abs(end.cut(swept).Volume)
+    hits = {
+        name: intersection_volume(swept, obstacle)
+        for name, obstacle in obstacles.items()
+    }
+    return {
+        "obstacles": sorted(obstacles),
+        "uncovered_start_stock_mm3": outside,
+        "uncovered_end_stock_mm3": missing_end,
+        "segments": [
+            {
+                "start_mm": [0, 0, 0],
+                "end_mm": [0, 0, 30],
+                "method": method,
+                "intersection_mm3": hits,
+                "passed": all(value < TOL for value in hits.values()),
+            }
+        ],
+        "passed": outside < TOL
+        and missing_end < TOL
+        and all(value < TOL for value in hits.values()),
+    }
+
+
+def driver_full_rotation_clearance_check(shape, obstacle, placement, sign, spec):
+    """Contain the actual driver in separate coaxial hub and tooth cylinders.
+
+    Both cylinders are invariant under every angle about the input shaft. The
+    smaller hub occupies only its own five-millimetre axial band, avoiding the
+    empty corners of a full-width tooth-radius cylinder.
+    """
+    from .relative_motion import MINIMUM_GAP_MM
+    from .relative_motion import TOL as CLEARANCE_TOL
+
+    reference = Part.makeCylinder(
+        6, 5, App.Vector(0, sign * 22.5, 0), App.Vector(0, sign, 0)
+    ).fuse(
+        Part.makeCylinder(
+            12.5, 3, App.Vector(0, sign * 27.5, 0), App.Vector(0, sign, 0)
+        )
+    )
+    reference.Placement = placement.multiply(reference.Placement)
+    outside = abs(shape.cut(reference).Volume)
+    gap = reference.distToShape(obstacle)[0]
+    contract_ok = (
+        spec.driver.teeth == 48
+        and spec.driver.hub_diameter_mm == 12
+        and spec.driver.hub_extension_mm == 5
+        and spec.driver.face_width_mm == 3
+        and spec.driver.outside_diameter_mm == 25
+        and spec.driver.total_length_mm == 8
+    )
+    return {
+        "method": "containment-checked hub and tooth cylinders for every rotation angle",
+        "literal_hub_diameter_length_mm": [12, 5],
+        "literal_tooth_diameter_length_mm": [25, 3],
+        "selected_drive_contract_matches": contract_ok,
+        "outside_full_rotation_envelope_mm3": outside,
+        "guaranteed_gap_mm": gap,
+        "minimum_nominal_gap_mm": MINIMUM_GAP_MM,
+        "passed": contract_ok
+        and outside < TOL
+        and gap > MINIMUM_GAP_MM + CLEARANCE_TOL,
+    }
+
+
+def driver_service_segment_check(shape, start, end, obstacles, spec, sign):
+    """Contain every point of one pure X or Y gear translation.
 
     A single bounding box fills the empty corners around the large gear and
     falsely hits the retained small gear. These exact swept cylinders enclose
     the complete bought gear; containment of the actual CAD is checked first.
     """
+    if (
+        sign not in (-1, 1)
+        or len(start) != 3
+        or len(end) != 3
+        or not all(math.isfinite(value) for value in (*start, *end))
+    ):
+        return {"passed": False, "error": "Expected finite three-dimensional poses"}
+    dx, dy, dz = (b - a for a, b in zip(start, end))
+    lateral = abs(dx) > TOL and abs(dy) < TOL and abs(dz) < TOL
+    axial = abs(dy) > TOL and abs(dx) < TOL and abs(dz) < TOL
+    if not (lateral or axial):
+        return {"passed": False, "error": "Expected one pure X or Y translation"}
     axis = App.Vector(0, sign, 0)
     x, z = sign * spec.input_x_mm, spec.input_z_mm
     reference, swept = [], []
@@ -126,42 +243,63 @@ def driver_lateral_service_check(shape, start, end, obstacles, spec, sign):
         origin = App.Vector(x, sign * y, z)
         cylinder = Part.makeCylinder(radius, height, origin, axis)
         reference.append(cylinder)
-        first = translated_shape(cylinder, *start)
-        last = translated_shape(cylinder, *end)
-        bridge = Part.makeBox(
-            abs(end[0] - start[0]),
-            height,
-            2 * radius,
-            App.Vector(
-                x + min(start[0], end[0]),
-                min(sign * y, sign * (y + height)) + start[1],
-                z - radius + start[2],
-            ),
-        )
-        swept.append(first.fuse(last).fuse(bridge))
+        if axial:
+            # Fill the entire axial interval, including any gap between the
+            # endpoint cylinders. Endpoint union alone is not a sweep.
+            swept.append(
+                Part.makeCylinder(
+                    radius,
+                    height + abs(dy),
+                    App.Vector(
+                        x + start[0],
+                        min(sign * y, sign * (y + height)) + min(start[1], end[1]),
+                        z + start[2],
+                    ),
+                    App.Vector(0, 1, 0),
+                )
+            )
+        else:
+            first = translated_shape(cylinder, *start)
+            last = translated_shape(cylinder, *end)
+            bridge = Part.makeBox(
+                abs(dx),
+                height,
+                2 * radius,
+                App.Vector(
+                    x + min(start[0], end[0]),
+                    min(sign * y, sign * (y + height)) + start[1],
+                    z - radius + start[2],
+                ),
+            )
+            swept.append(first.fuse(last).fuse(bridge))
     envelope = reference[0].fuse(reference[1])
     outside = abs(shape.cut(envelope).Volume)
     sweep = swept[0].fuse(swept[1])
     hits = {
         name: intersection_volume(sweep, other) for name, other in obstacles.items()
     }
-    axial_invariance = start[1:] == end[1:] and abs(end[0] - start[0]) > TOL
     return {
         "obstacles": sorted(obstacles),
         "segments": [
             {
                 "start_mm": list(start),
                 "end_mm": list(end),
-                "method": "continuous tooth-disk and hub swept-cylinder union",
+                "method": "continuous tooth-disk and hub "
+                + ("full axial intervals" if axial else "swept-cylinder union"),
                 "intersection_mm3": hits,
                 "passed": all(value < TOL for value in hits.values()),
             }
         ],
         "gear_outside_reference_envelope_mm3": outside,
-        "passed": axial_invariance
-        and outside < TOL
-        and all(value < TOL for value in hits.values()),
+        "passed": outside < TOL and all(value < TOL for value in hits.values()),
     }
+
+
+def driver_lateral_service_check(shape, start, end, obstacles, spec, sign):
+    """Keep the lateral-only API explicit for callers with one X stroke."""
+    if start[1:] != end[1:]:
+        return {"passed": False, "error": "Expected a pure X translation"}
+    return driver_service_segment_check(shape, start, end, obstacles, spec, sign)
 
 
 def servo_lateral_service_check(shape, start, end, obstacles):
@@ -219,7 +357,11 @@ def adapter_service_check(shape, waypoints, obstacles, spec, sign):
     envelope.translate(App.Vector(0, coupling.HORN_BOTTOM_Y, 0))
     if sign < 0:
         envelope.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
-    envelope.translate(App.Vector(sign * spec.input_x_mm, 0, spec.input_z_mm))
+    envelope.translate(
+        App.Vector(
+            sign * spec.input_x_mm, -sign * DRIVE_INWARD_OFFSET_MM, spec.input_z_mm
+        )
+    )
     outside = abs(shape.cut(envelope).Volume)
     result = continuous_path(envelope, waypoints, obstacles)
     return {
@@ -271,6 +413,7 @@ def fastener_service_check(
     nut_lateral_direction=None,
     retain_bolt=False,
     guided_nut=False,
+    side_entry_nut=False,
     capture_depth_mm=1.0,
 ):
     """Check an ordered threaded-fastener release and its head-tool approach."""
@@ -278,6 +421,10 @@ def fastener_service_check(
         raise ValueError("A retained bolt requires axial nut disengagement")
     if retain_bolt and guided_nut:
         raise ValueError("A guided nut requires screw-first withdrawal")
+    if side_entry_nut and (retain_bolt or guided_nut or nut_lateral_direction is None):
+        raise ValueError(
+            "A side-entry nut requires a separate screw-first lateral route"
+        )
     if (
         not isinstance(capture_depth_mm, (int, float))
         or isinstance(capture_depth_mm, bool)
@@ -329,7 +476,7 @@ def fastener_service_check(
             "turn the screw head; do not try to turn the nut between the guides."
         )
     released_nut = nut
-    if guided_nut:
+    if guided_nut or side_entry_nut:
         # The screw is already out. Fill its bore so an exact planar exterior
         # sweep can follow the free nut laterally, including a rotated module.
         # An axis-aligned box around a tilted bore would invent corner stock.
@@ -348,7 +495,9 @@ def fastener_service_check(
         else continuous_path(
             bolt,
             [(0, 0, 0), tuple(axis * -bolt_travel)],
-            {**obstacles, "seated_guided_nut": nut} if guided_nut else obstacles,
+            {**obstacles, "seated_guided_nut": nut}
+            if guided_nut or side_entry_nut
+            else obstacles,
         )
     )
     if retain_bolt:
@@ -371,8 +520,9 @@ def fastener_service_check(
         "bolt_axial_withdrawal": bolt_path,
         "bolt_retained_in_servo_unit": retain_bolt,
         "screw_first_with_nut_held_in_guides": guided_nut,
+        "screw_first_side_entry_nut": side_entry_nut,
         "minimum_nut_lift_before_lateral_mm": release_lift,
-        "released_nut_bore_filled_after_screw_removal": guided_nut,
+        "released_nut_bore_filled_after_screw_removal": guided_nut or side_entry_nut,
         "driver_approach_collisions": tool_hits,
         "tool_reserve_radius_mm": tool_radius,
         "nut_thread_disengagement_travel_mm": nut_travel,

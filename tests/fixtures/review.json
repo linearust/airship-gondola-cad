@@ -1,15 +1,15 @@
 {
-  "revision": "CD",
+  "revision": "CE",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "1a746039cafbb4c27de3beb0f62fae5b3513de028ce1061eef30b59bb0c9a99c",
-  "old_fixture_sha256": "10ec2e07fe953010a6adf6f51521954a4ba9607be33ffed5d689c803e172c73d",
+  "candidate_sha256": "4a83a7f038d982d33bf47328f752045b59c4970dd0d01a6383c2923914bd9e5e",
+  "old_fixture_sha256": "1a746039cafbb4c27de3beb0f62fae5b3513de028ce1061eef30b59bb0c9a99c",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "cd_contact_and_horn_revision",
+      "ce_integrated_inboard_support_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "30454ba75a28444d49b0356805ebc6f631f5c92243087fe397a2e26a0b15af8e"
+    "canonical_json_sha256": "db33ae97a42d94a2f59ade1102645f0a58e795013d7111cfde355fd6efa87d09"
   },
-  "scope": "Independent saved geometry, placement, control and metadata review: selective root/outer blends, top-bearing ordinary rail shoes with base clearance, and unmodified OEM horn with two default M1 joints and optional middle opening. Physical fit, strength and loaded retention remain unqualified."
+  "scope": "Independent saved geometry, placement, controls and metadata transition from committed CD to integrated inboard propulsion with standard rail shoes, compact closed servo frames and local feet, shaft-first service and braced guards. Nominal geometry only; physical fit, strength and motor/propeller seating remain unqualified."
 }

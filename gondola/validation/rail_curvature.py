@@ -18,10 +18,6 @@ def _box(length, width, height, x, y, z):
     return Part.makeBox(length, width, height, V(x, y, z))
 
 
-def _crown(x=0, low_y=-7, width=14):
-    return Part.makeCylinder(4.5, width, V(x, low_y, 6), V(0, 1, 0))
-
-
 def root_stock_check(shape, centres=tuple(range(-140, 141, 28))):
     """Check the round end and side roots away from their corner intersections."""
     rows = []
@@ -66,75 +62,6 @@ def root_stock_check(shape, centres=tuple(range(-140, 141, 28))):
         "root_witnesses": rows,
         "scope": "Literal circular root profiles away from their joined corners; base stock is checked separately. No stress, peel or fatigue capacity is inferred.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
-    }
-
-
-def _crowned_seat_check(section, mount, zone_length=10):
-    """Actual bilateral crowned seats and local cheeks, without a flat-foot test."""
-    if abs(zone_length - 10) > TOL:
-        raise ValueError("The independently qualified local bearing zone is 10 mm")
-    bottoms = []
-    side_rows = []
-    bore = Part.makeCylinder(1.7, 14, V(0, -7, 6), V(0, 1, 0))
-    for sign in (-1, 1):
-        low_y = -3 if sign < 0 else 1.75
-        region = _box(10, 1.25, 4.5, -5, low_y, 1.5)
-        expected = region.common(_crown()).cut(bore)
-        actual = mount.common(region)
-        missing = abs(expected.cut(actual).Volume)
-        excess = abs(actual.cut(expected).Volume)
-        # A thin base witness supports the tangent station. Its size is a
-        # geometry probe, not an asserted contact patch or pressure estimate.
-        base = _box(0.02, 1.25, 0.01, -0.01, low_y, 1.49)
-        missing_base = abs(base.cut(section).Volume)
-        bottoms.append(
-            {
-                "side": sign,
-                "profile": "R4.5 circular crown about the M3 axis",
-                "tangent_z_mm": 1.5,
-                "flat_contact_area_claimed": False,
-                "missing_contact_mm3": missing + missing_base,
-                "missing_crown_stock_mm3": missing,
-                "excess_below_crown_mm3": excess,
-                "missing_tangent_base_support_mm3": missing_base,
-                "passed": max(missing, excess, missing_base) < TOL,
-            }
-        )
-        outside_y = -1.26 if sign < 0 else 1.25
-        face = _box(10, 0.01, 6.9, -5, outside_y, 2.6)
-        # Exclude the complete slot-height band, so the witnesses remain valid
-        # at every slot position. Both upper and lower cheek stock is retained.
-        face = face.cut(_box(12, 3, 3.4, -6, -1.5, 4.3))
-        lower = face.common(_box(12, 3, 3.4, -6, -1.5, 2.6)).common(_crown())
-        upper = face.common(_box(12, 3, 3.5, -6, -1.5, 6))
-        face = lower.fuse(upper)
-        inside = face.copy()
-        inside.translate(V(0, -sign * 0.01, 0))
-        missing_side = abs(face.cut(mount).Volume) + abs(inside.cut(section).Volume)
-        side_rows.append(
-            {
-                "side": sign,
-                "checked_local_length_mm": 10.0,
-                "witness_area_mm2": face.Volume / 0.01,
-                "missing_contact_mm3": missing_side,
-                "passed": missing_side < TOL,
-            }
-        )
-    roof = _box(10, 2.5, 0.7, -5, -1.25, 9.5)
-    root_relief = _box(10, 3.5, 1.1, -5, -1.75, 1.5)
-    blocked_roof = abs(roof.common(mount).Volume)
-    blocked_root = abs(root_relief.common(mount).Volume)
-    return {
-        "bottom_datum_contacts": bottoms,
-        "local_side_contacts": side_rows,
-        "inner_roof_clearance_mm": 0.7,
-        "blocked_inner_roof_relief_mm3": blocked_roof,
-        "blocked_root_relief_mm3": blocked_root,
-        "missing_flat_side_contact_mm3": side_rows[0]["missing_contact_mm3"],
-        "missing_opposite_side_contact_mm3": side_rows[1]["missing_contact_mm3"],
-        "scope": "Ten millimetre local cheeks and R4.5 crowned lower seats. The lower datum is a nominal tangent, with no finite flat contact area or contact pressure claimed.",
-        "passed": all(row["passed"] for row in bottoms + side_rows)
-        and max(blocked_roof, blocked_root) < TOL,
     }
 
 
@@ -189,7 +116,7 @@ def _wall_top_seat_check(section, mount, zone_length=10):
         "local_side_contacts": side_rows,
         "missing_flat_side_contact_mm3": side_rows[0]["missing_contact_mm3"],
         "missing_opposite_side_contact_mm3": side_rows[1]["missing_contact_mm3"],
-        "scope": "Ordinary16mm roof seats on14..16mm of one wall top atZ9.5, with10mm fitted cheeks and lower edges atZ2.5. Carrier attitude follows the local wall; the2.5mm-wide top seat and1.8mm upper slot ligament are not strength or roll-stiffness qualifications.",
+        "scope": "Each16mm roof seats on14..16mm of one wall top atZ9.5, with10mm fitted cheeks and lower edges atZ2.5. Carrier attitude follows the local wall; the2.5mm-wide top seat and1.8mm upper slot ligament are not strength or roll-stiffness qualifications.",
         "passed": top["passed"]
         and blocked < TOL
         and all(row["passed"] for row in side_rows),
@@ -197,9 +124,8 @@ def _wall_top_seat_check(section, mount, zone_length=10):
 
 
 def local_seat_check(section, mount, zone_length=10, *, shared=False):
-    """Select the physically different ordinary and paired mounting datums."""
-    checker = _crowned_seat_check if shared else _wall_top_seat_check
-    return checker(section, mount, zone_length)
+    """Every station uses the same wall-top shoe; pairing is checked separately."""
+    return _wall_top_seat_check(section, mount, zone_length)
 
 
 def local_wall_coupon(section):
@@ -265,7 +191,7 @@ def angular_clearance_check(
         "scope": (
             "Ordinary carrier and saved single-wall/base coupon rotate together through±2° about the local bolt. The flat top datum follows the wall attitude; this is not a fixed-deck clearance claim. "
             if follow_wall
-            else "Saved single-wall/base coupon rotates through±2° against the fixed paired-seat geometry. "
+            else "Saved single-wall/base coupon rotates through±2° against a fixed shoe, a diagnostic interference screen only. "
         )
         + "Samples are a local geometric interference screen, not a certified continuous sweep, rail bend-radius allowance, paired-frame compliance, tape peel, stiffness, fatigue or strength result.",
         "passed": bool(rows) and all(row["passed"] for row in rows),

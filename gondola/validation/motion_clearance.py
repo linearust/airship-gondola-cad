@@ -17,13 +17,13 @@ TOL = 1e-5
 MINIMUM_METAL_RESERVE_MM = 1.5
 # Declared, reviewable envelope; changes to the live carrier must still fit it.
 GUARD_SPHERE_RADIUS_MM = math.hypot(16.0, 25.0)
-RIB_CYLINDER_RADIUS_MM = math.hypot(13.0, 4.0)
+RIB_CYLINDER_RADIUS_MM = math.hypot(16.0, 4.0)
 CARRIER_HALF_WIDTH_MM = 31.25
 FORWARD_RIB_CYLINDER_RADIUS_MM = math.hypot(16.0, 4.0)
 FORWARD_RIB_HALF_WIDTH_MM = 29.25
 # This band lies on the clamp end and the retained bearing-cup stop sectors.
-STOP_WITNESS_INNER_MM = 3.25
-STOP_WITNESS_OUTER_MM = 3.55
+STOP_WITNESS_INNER_MM = 2.81
+STOP_WITNESS_OUTER_MM = 3.20
 
 
 def _in_pod_coordinates(obj, pod):
@@ -62,98 +62,96 @@ def _faces_at(faces, y):
 
 
 def carrier_axial_travel(doc, prefix):
-    """Measure both travel limits using real, rotation-independent stop faces.
+    """Measure opposing gear/housing and carrier/housing annular stops.
 
-    Both contact patches lie in one rotation-invariant annulus. Their overlap
-    at any angle is at least moving area + fixed area - annulus area. Require
-    a substantial positive bound, including fixed-frame and removable-keeper faces without
-    relying on sampled poses. This proves a nominal geometric stop, not its loaded wear,
-    strength, printed tolerance, bearing preload or friction qualification.
+    Both moving faces are on the same rotor and shaft. The split inboard
+    housing lies between them. Full-circle radial witnesses bound contact
+    through every angle without using bearing shields as thrust stops.
     """
     pod = doc.getObject(prefix + "Pod")
-    carrier_obj = doc.getObject(prefix + "MotorCarrier")
-    frame_obj = doc.getObject("PropulsionFixedFrame")
-    if any(obj is None for obj in (pod, carrier_obj, frame_obj)):
+    names = (
+        prefix + "MotorCarrier",
+        prefix + "OutputGear",
+        "PropulsionFixedFrame",
+        prefix + "BearingCap",
+    )
+    objects = [doc.getObject(name) for name in names]
+    if pod is None or any(obj is None for obj in objects):
         return {
             "pod": prefix,
             "passed": False,
-            "error": "Missing carrier or fixed frame",
+            "error": "Missing rotor axial stop component",
         }
-    carrier = _in_pod_coordinates(carrier_obj, pod)
-    frame_shapes = [_in_pod_coordinates(frame_obj, pod)]
-    for side in ("Negative", "Positive"):
-        keeper = doc.getObject(prefix + "OutputBearingKeeper" + side)
-        if keeper is None:
-            return {
-                "pod": prefix,
-                "passed": False,
-                "error": "Missing bearing keeper stop",
-            }
-        frame_shapes.append(_in_pod_coordinates(keeper, pod))
-    frame = Part.makeCompound(frame_shapes)
-    if not all(_solid(shape) for shape in (carrier, frame)):
+    shapes = [_in_pod_coordinates(obj, pod) for obj in objects]
+    if prefix == "Starboard":
+        shapes = [shape.mirror(App.Vector(), App.Vector(0, 1, 0)) for shape in shapes]
+    carrier, gear, frame, cap = shapes
+    fixed = Part.makeCompound([frame, cap])
+    if not all(_solid(shape) for shape in shapes):
         return {
             "pod": prefix,
             "passed": False,
-            "error": "Invalid carrier or frame solid",
+            "error": "Invalid rotor axial stop solid",
         }
-    carrier_faces, frame_faces = _y_faces(carrier), _y_faces(frame)
-    bounds = carrier.optimalBoundingBox(False, False)
-    stops = []
-    for sign, end in ((-1, bounds.YMin), (1, bounds.YMax)):
+    fixed_faces = _y_faces(fixed)
+    # Normalize each side so +Y points outboard. The fixed housing must lie
+    # between the gear's outer face and the carrier's inner face.
+    ends = (
+        (-1, carrier, carrier.optimalBoundingBox(False, False).YMin),
+        (1, gear, gear.optimalBoundingBox(False, False).YMax),
+    )
+    rows = []
+    for sign, moving, end in ends:
         witness = _annular_face(end)
-        end_faces = _faces_at(carrier_faces, end)
-        moving_area = end_faces.common(witness).Area
+        moving_area = _faces_at(_y_faces(moving), end).common(witness).Area
+        direction = sign if prefix == "Port" else -sign
         row = {
-            "direction": "negative" if sign < 0 else "positive",
-            "carrier_end_y_mm": end,
+            "direction": "negative" if direction < 0 else "positive",
+            "moving_stop_part": prefix + ("MotorCarrier" if sign < 0 else "OutputGear"),
+            "moving_end_y_mm": end,
             "witness_radial_band_mm": [STOP_WITNESS_INNER_MM, STOP_WITNESS_OUTER_MM],
             "witness_area_mm2": witness.Area,
-            "carrier_contact_area_mm2": moving_area,
+            "moving_contact_area_mm2": moving_area,
             "passed": False,
         }
-        # At least half the witness band must belong to an actual end face;
-        # an isolated point or a tiny remnant is not accepted as an axial stop.
         if moving_area < 0.5 * witness.Area:
-            row["error"] = "Carrier end lacks the required annular stop contact"
-            stops.append(row)
+            row["error"] = "Moving stop lacks the required annular contact"
+            rows.append(row)
             continue
-        candidate_positions = sorted(
-            {round(y, 8) for y, _ in frame_faces if sign * (y - end) >= -TOL},
+        candidates = sorted(
+            {round(y, 8) for y, _ in fixed_faces if sign * (y - end) >= -TOL},
             key=lambda y: sign * (y - end),
         )
-        for position in candidate_positions:
-            stop_witness = _annular_face(position)
-            fixed_faces = _faces_at(frame_faces, position)
-            uncovered = stop_witness.cut(fixed_faces).Area
-            fixed_area = stop_witness.Area - uncovered
-            overlap_lower_bound = moving_area + fixed_area - stop_witness.Area
-            if overlap_lower_bound < 0.25 * stop_witness.Area - TOL:
+        for position in candidates:
+            fixed_witness = _annular_face(position)
+            uncovered = fixed_witness.cut(_faces_at(fixed_faces, position)).Area
+            fixed_area = fixed_witness.Area - uncovered
+            overlap = moving_area + fixed_area - fixed_witness.Area
+            if overlap < 0.25 * witness.Area - TOL:
                 continue
             travel = sign * (position - end)
             row.update(
                 frame_stop_y_mm=position,
                 frame_uncovered_witness_area_mm2=uncovered,
                 frame_contact_area_mm2=fixed_area,
-                all_angles_contact_lower_bound_mm2=overlap_lower_bound,
-                required_contact_lower_bound_mm2=0.25 * stop_witness.Area,
+                all_angles_contact_lower_bound_mm2=overlap,
+                required_contact_lower_bound_mm2=0.25 * witness.Area,
                 travel_mm=max(0.0, travel),
                 passed=travel >= -TOL,
             )
             break
         if not row["passed"]:
-            row["error"] = (
-                "No fixed end stop with sufficient all-angle contact was found"
-            )
-        stops.append(row)
-    passed = all(row["passed"] for row in stops)
+            row["error"] = "No fixed stop with sufficient all-angle contact"
+        rows.append(row)
+    rows.sort(key=lambda row: row["direction"] != "negative")
+    passed = all(row["passed"] for row in rows)
     return {
         "pod": prefix,
-        "stops": stops,
-        "negative_mm": stops[0].get("travel_mm"),
-        "positive_mm": stops[1].get("travel_mm"),
-        "maximum_mm": max(row["travel_mm"] for row in stops) if passed else None,
-        "scope": "Actual planar carrier/frame-and-keeper end-face patches within a rotation-invariant annulus. Inclusion-exclusion area bound proves at least 25 percent of the witness area overlaps through every output rotation. Nominal geometry only; no manufacturing, friction or strength qualification.",
+        "stops": rows,
+        "negative_mm": rows[0].get("travel_mm"),
+        "positive_mm": rows[1].get("travel_mm"),
+        "maximum_mm": max(row["travel_mm"] for row in rows) if passed else None,
+        "scope": "Actual gear/housing and carrier/housing planar contacts in a rotation-invariant annulus. Inclusion-exclusion proves at least 25 percent contact at every rotor angle. Bearing shields are not stops. This requires the shaft/carrier clamp and purchased gear set screw to retain the rotating stack; CAD does not qualify their grip, preload, wear or strength.",
         "passed": passed,
     }
 
@@ -175,7 +173,7 @@ def carrier_metal_clearance_check(doc, prefix):
         for suffix in ("MotorCarrier", "Motor", "PropellerDisk", "Shaft")
     ] + [
         prefix + "OutputClamp" + side + kind
-        for side in ("Negative", "Positive")
+        for side in (("Negative",) if prefix == "Port" else ("Positive",))
         for kind in ("Bolt", "Nut")
     ]
     metal_names = [
@@ -184,7 +182,7 @@ def carrier_metal_clearance_check(doc, prefix):
         for kind in ("Bolt", "Nut")
     ]
     metal_names.extend(
-        prefix + "OutputBearingKeeper" + side + kind
+        prefix + "BearingCap" + side + kind
         for side in ("Negative", "Positive")
         for kind in ("Bolt", "Nut")
     )
@@ -232,12 +230,7 @@ def carrier_metal_clearance_check(doc, prefix):
         frame = Part.makeCompound(
             [
                 _in_pod_coordinates(doc.PropulsionFixedFrame, pod),
-                *[
-                    _in_pod_coordinates(
-                        doc.getObject(prefix + "OutputBearingKeeper" + side), pod
-                    )
-                    for side in ("Negative", "Positive")
-                ],
+                _in_pod_coordinates(doc.getObject(prefix + "BearingCap"), pod),
             ]
         )
         for name in names:
@@ -290,7 +283,7 @@ def carrier_metal_clearance_check(doc, prefix):
         "minimum_clearance_lower_bound_mm": min(
             (row["continuous_clearance_lower_bound_mm"] for row in rows), default=None
         ),
-        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier, motor, propeller and clamp BRep containment and distances to live servo-module and bearing-keeper mounting bolts/nuts. Complete orbit cylinders additionally prove no frame penetration through the measured axial travel; equality is the classified carrier/frame stop contact. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
+        "scope": "Continuous full 360-degree output rotation plus measured axial play, from live carrier, motor, propeller and clamp BRep containment and distances to live servo-module and split-bearing-cap mounting bolts/nuts. Complete orbit cylinders additionally prove no frame penetration through the measured axial travel; equality is the classified carrier/frame stop contact. The required reserve is a design margin, not a manufacturing-tolerance certification. Bearing/shaft mating, gear teeth, carrier/frame and gear/frame axial-stop contact, input drive and wiring are separate functional interfaces.",
         "passed": axial["passed"]
         and all(row["passed"] for row in containment)
         and len(frame_rows) == len(names)

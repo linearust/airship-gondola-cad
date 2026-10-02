@@ -149,7 +149,7 @@ def _invalid_rail_controls(errors):
 
 
 def module_attachment_pose(station, module):
-    """Manual X must respect the carrier-foot or paired-spine support policy."""
+    """Manual X must respect the single- or paired-shoe support policy."""
     controls, errors = _rail_control_values(module)
     if errors:
         return _invalid_rail_controls(errors)
@@ -175,7 +175,7 @@ def module_attachment_pose(station, module):
         # The rail API rejects positive lengths below its supported minimum.
         # Keep this saved-document failure separate from geometry-kernel errors.
         return _invalid_rail_controls({"RailContactLength": str(error)})
-    base_support = rail.spine_base_position_check(position) if shared else None
+    base_support = rail.paired_attachment_position_check(position) if shared else None
     length_matches = abs(length - station.contact_length_mm) < TOL
     supported = bool(attachments) and all(row["passed"] for row in attachments)
     expected_offsets = station.attachment_offsets_x_mm
@@ -199,7 +199,7 @@ def module_attachment_pose(station, module):
         "rail_attachment_position": attachment,
         "attachment_offset_matches": offset_matches,
         "rail_contact_length_mm": length,
-        "shared_bottom_datum_within_base": base_support,
+        "shared_wall_top_support": base_support,
         "contact_length_matches": length_matches,
         "result_x_mm": module.Placement.Base.x,
         "result_y_mm": module.Placement.Base.y,

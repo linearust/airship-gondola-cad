@@ -59,7 +59,7 @@ RETAINED_BOLT_RELEASE_TRAVEL = HORN_BLADE_BOTTOM + HORN_CLAMP_LENGTH - BODY_BACK
 GEAR_BORE_DIAMETER = 3.0
 SHAFT_DIAMETER = 3.0
 SHAFT_START_Y = PLATE_FRONT_Y
-SHAFT_LENGTH = 18.0
+SHAFT_LENGTH = 20.0
 SHAFT_FLAT_DEPTH = 0.5
 SHAFT_SOCKET_LENGTH = 8.0
 # The jack screw must react against a centred circular journal, rather than
@@ -71,7 +71,7 @@ SHAFT_SOCKET_FLAT_CLEARANCE = 0.05
 GEAR_START_Y = SHAFT_START_Y + SHAFT_SOCKET_LENGTH
 GEAR_LENGTH = 8.0
 SHAFT_CLAMP_Y = SHAFT_START_Y + SHAFT_SOCKET_LENGTH / 2 + 0.4
-SHAFT_CLAMP_CLOCK_DEG = -90.0
+SHAFT_CLAMP_CLOCK_DEG = 240.0
 SHAFT_SCREW_LENGTH = 6.0
 SHAFT_SCREW_HEAD_X = -7.0
 SHAFT_NUT_SEAT_X = -5.0
@@ -121,7 +121,7 @@ def _one_solid(shape, name):
 
 
 def driver_shaft_shape():
-    """Selected 304 stock cut to Ø3×18, with a full-length negative-Z flat."""
+    """Selected Ø3×20 stock with a full-length flat clocked with its jack."""
     return _one_solid(
         shaft_frame_shape(_d_section(SHAFT_START_Y, SHAFT_LENGTH)), "Driver metal shaft"
     )
@@ -315,7 +315,9 @@ def service_envelope(*, retain_screws=False):
                     z,
                 )
             )
-    front = box(8, SHAFT_SOCKET_LENGTH, 10.5, (-4, SHAFT_START_Y, -6.5))
+    front = shaft_frame_shape(
+        box(10.5, SHAFT_SOCKET_LENGTH, 8, (-6.5, SHAFT_START_Y, -4))
+    )
     envelope = union([rear, plate, front]).removeSplitter()
     if actual.cut(envelope).Volume > 1e-5:
         raise RuntimeError("Adapter service envelope must contain the installed solid")
@@ -448,10 +450,10 @@ def assembly_contract(profile=None):
             "diameter_mm": servo_horns.KST_TOOL_DIAMETER_MM,
             "length_mm": servo_horns.KST_TOOL_LENGTH_MM,
             "source": servo_horns.HEX_TOOL_DIMENSION_SOURCE,
-            "scope": "Wera2069 2.5mm example envelope; not proof of user's tool size. Check the two default end bolts with the complete servo unit off the bridge and horn in neutral arm orientation.",
+            "scope": "Wera2069 2.5mm example envelope; not proof of user's tool size. Check the two default end bolts with the complete servo unit off the frame and horn in neutral arm orientation.",
         },
         "optional_middle_scope": "The10mm opening is a candidate, not an installed third fastener or qualified alternate configuration. At3.2mm adjacent pitch, AF2.5 hexes have only0.313mm nominal corner-to-corner gap. A5.7mm driver collides with adjacent heads; simultaneous three-bolt service needs a verified thinner tool (theoretical OD<=3.513mm for ideal AF2.5 heads), full hardware checks and renewed service verification. Do not force three bolts into unmatched holes.",
-        "centre_screw_service": "Remove both output gears and paired servo/input module; remove selected driver gear and metal stub, withdraw both M1.6 ear screws and their nuts, then withdraw servo+horn+adapter. Off the bridge, set the horn to neutral, remove far front nut then near nut by turning each rear external-hex bolt with a<=5.7mm OD axial tool while keeping its head seated. The trough initially restrains the nut; after1.3mm lift use fine pliers. Remove nuts beyond the retained screw tips, then remove adapter to reach OEM centre screw. For assembly insert rear bolts into the unmodified detached horn, fit horn/OEM centre screw on free servo, fit adapter/front nuts, then align and tighten end joints. Refit complete servo unit/ear hardware, then stub and gear. Full shaft-stop floor stays intact.",
+        "centre_screw_service": "Remove both output gears to unmesh. Support the48T driver, release its set screw and back off the input M2 jack0.2mm. Grip the4mm exposed tip of the20mm stub with side-entry fine pliers; pull the stub18mm forwardY, then60mm outwardX. Remove the loose driver60mm outwardX. Withdraw the selected servo's two M1.6 ear screws and nuts, then move its servo/horn/adapter14mm forwardY and60mm outwardX; mirror X/Y for Starboard. Keep both M1 joints and OEM horn attached until off-frame. With the horn neutral on the bench, remove far front nut then near nut by turning each rear external-hex bolt with a<=5.7mm OD axial tool while keeping its head seated. The trough initially restrains the nut; after1.3mm lift use fine pliers. Remove nuts beyond the retained screw tips, then remove adapter to reach the OEM centre screw. For assembly insert rear bolts into the unmodified detached horn, fit horn/OEM centre screw on the free servo, fit adapter/front nuts, then align and tighten end joints. Reverse the compact-frame route; seat the ears before installing driver/stub and tightening their clamps. Refit output gears and check mesh. Actual tools and unmodeled gear set-screw access remain checks; no long coaxial puller is qualified. Full shaft-stop floor stays intact.",
     }
 
 
@@ -486,7 +488,8 @@ def metrics():
         "driver_shaft_diameter_mm": SHAFT_DIAMETER,
         "driver_shaft_length_mm": SHAFT_LENGTH,
         "driver_shaft_flat_depth_mm": SHAFT_FLAT_DEPTH,
-        "driver_shaft_flat_facing": "negative Z in horn-local coordinates",
+        "driver_shaft_flat_facing": "positive X / negative Z diagonal in horn-local coordinates; outward and downward on each mirrored servo",
+        "driver_shaft_flat_normal_horn_local": list(shaft_frame_point(-1, 0, 0)),
         "driver_shaft_socket_length_mm": SHAFT_SOCKET_LENGTH,
         "driver_shaft_socket_clearance_mm": SHAFT_SOCKET_CLEARANCE,
         "driver_shaft_socket_flat_clearance_mm": SHAFT_SOCKET_FLAT_CLEARANCE,
@@ -498,7 +501,7 @@ def metrics():
         "horn_long_side_walls_retained": False,
         "adapter_axial_release_travel_mm": RETAINED_BOLT_RELEASE_TRAVEL,
         "common_clamp_screws_per_side": 3,
-        "shaft_retention": "Nominal Ø3x18 mm 304 stock, full-length 0.5 mm flat, 8 mm D socket and radial M2 clamp. The nominal Ø3 circular socket locates the shaft at the horn axis under jack-screw load; only the filed-flat side has 0.05 mm relief. Coupon-match and finish for hand insertion without radial rocking; reprint an oversized socket. Full 1.5 mm stop floor; selected gear M3 screw and 2 mm end reserve retained. No input bearing. Actual concentricity, shaft fit and retention require inspection.",
+        "shaft_retention": "Nominal Ø3x20 mm 304 stock, full-length 0.5 mm flat, 8 mm D socket and radial M2 clamp. The nominal Ø3 circular socket locates the shaft at the horn axis under jack-screw load; only the filed-flat side has 0.05 mm relief. Coupon-match and finish for hand insertion without radial rocking; reprint an oversized socket. Full 1.5 mm stop floor; selected gear M3 screw and4mm exposed tip for side-entry plier service. No input bearing. Actual concentricity, shaft fit, tool grip and retention require inspection.",
         "assembly": contract["assembly_adjustment"]
         + " "
         + contract["centre_screw_service"],

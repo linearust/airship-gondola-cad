@@ -1,4 +1,4 @@
-"""Independent ordinary top seats and paired crowns retain distinct behavior."""
+"""Independent top-seat contact and paired coplanarity requirements."""
 
 import unittest
 
@@ -62,30 +62,43 @@ class LocalRailCurvatureTests(unittest.TestCase):
         self.assertEqual(report["slot_positions_mm"], [-3, 0, 3])
         self.assertEqual(len(report["poses"]), 51)
         self.assertIn("not a fixed-deck clearance claim", report["scope"])
-        fixed = angular_clearance_check(self.rail, self.mount)
+        fixed = angular_clearance_check(self.rail, self.mount, follow_wall=False)
         self.assertFalse(fixed["passed"])
         self.assertTrue(any(p["interference_mm3"] > 1e-5 for p in fixed["poses"]))
 
-    def test_paired_propulsion_retains_crowns_and_fixed_frame_clearance(self):
-        from gondola.parts import propulsion
-        from gondola.validation.rail_curvature import (
-            angular_clearance_check,
-            local_seat_check,
-        )
+    def test_paired_shoes_require_coplanarity_and_reject_independent_wall_tilt(self):
+        from gondola.cad import translated_shape, union
+        from gondola.parts import rail
+        from gondola.validation.rail_curvature import angular_clearance_check
+        from gondola.validation.rail_mount import paired_spine_support_check
 
-        frame = propulsion.fixed_frame_shape()
-        frame.translate(App.Vector(-14, 0, 0))
-        report = local_seat_check(self.rail, frame, shared=True)
+        frame = union(rail.attachment_shoe_shapes(shared_drive=True))
+        section = translated_shape(rail.rail_shape(84, ()), x=14)
+        report = paired_spine_support_check(section, frame)
         self.assertTrue(report["passed"], report)
-        self.assertTrue(
-            all(
-                not r["flat_contact_area_claimed"]
-                for r in report["bottom_datum_contacts"]
+        self.assertFalse(report["independent_wall_tilt_claimed"])
+        self.assertEqual(len(report["coplanar_trim_cases"]), 3)
+        for row in report["coplanar_trim_cases"]:
+            area = 40 if row["offset_from_wall_centres_mm"] == 0 else 35
+            for seat in row["wall_supports"]:
+                self.assertAlmostEqual(
+                    seat["local_seat_geometry"]["top_bearing"]["nominal_area_mm2"], area
+                )
+        for axis in (-14, 14):
+            damaged = frame.cut(
+                Part.makeBox(2, 2.5, 0.1, App.Vector(axis - 1, -1.25, 9.5))
             )
+            self.assertFalse(paired_spine_support_check(section, damaged)["passed"])
+        local = frame.copy()
+        local.translate(App.Vector(-14, 0, 0))
+        self.assertFalse(
+            angular_clearance_check(self.rail, local, follow_wall=False)["passed"]
         )
-        self.assertTrue(angular_clearance_check(self.rail, frame)["passed"])
-        flat = frame.fuse(Part.makeBox(10, 1.25, 0.4, App.Vector(-5, 1.75, 1.5)))
-        self.assertFalse(local_seat_check(self.rail, flat, shared=True)["passed"])
+        # A lifted wall top cannot pass as a seated coplanar pair.
+        damaged_rail = section.cut(
+            Part.makeBox(18, 2.5, 0.1, App.Vector(5, -1.25, 9.4))
+        )
+        self.assertFalse(paired_spine_support_check(damaged_rail, frame)["passed"])
 
     def test_top_seat_preserves_fastener_floors_and_exact_lift(self):
         from gondola.validation.rail_contact import attachment_check

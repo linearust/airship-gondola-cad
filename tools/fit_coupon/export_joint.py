@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Export an optional three-piece paired rail/frame/saddle fit coupon.
+"""Export an optional two-piece rail/integrated-frame fit coupon.
 
 Run with normal Python after validating the saved CAD. The destination must be
 new; no installed CAD, standard print manifest or source file is overwritten.
 """
 
 import argparse
-import math
 import sys
 import tempfile
 from pathlib import Path
@@ -19,11 +18,10 @@ from tools.cad_snapshot import open_validated_cad, write_json_atomic  # noqa: E4
 
 PARTS = {
     "RailPairCoupon": ("ContinuousRail", (50, 28, 12.5)),
-    "FrameJointCoupon": ("PropulsionFixedFrame", (50, 28, 12.5)),
-    "SaddleJointCoupon": ("ServoDriveBridge", (50, 28, 15.0)),
+    "FrameJointCoupon": ("PropulsionFixedFrame", (50, 28, 15.0)),
 }
-# Retain the entire 38 mm spine, both 18 mm rail walls at +/-14 and
-# their R1 end-root footprints, including the full 2.5 mm saddle roof.
+# Retain both standard16mm shoes on28mm centres and their44mm connecting
+# pedestal, both18mm rail walls and the R1 end-root footprints.
 # The extra millimetre beyond each root is coupon handling stock.
 CROP_ORIGIN = (-25, -14, 0)
 TOL = 1e-6
@@ -67,49 +65,34 @@ def joint_checks(shapes):
     import FreeCAD as App
     import Part
 
-    from gondola.validation.servo_module import (
-        _plane_contact_area,
-        bridge_wrap_check,
-    )
-
-    rail, frame, saddle = (shapes[name] for name in PARTS)
+    from gondola.parts.rail import attachment_nut_shape
+    from gondola.validation.rail_access import nut_capture_check
     from gondola.validation.rail_mount import paired_spine_support_check
 
-    wrap = bridge_wrap_check(frame, saddle)
+    rail, frame = (shapes[name] for name in PARTS)
     support = paired_spine_support_check(rail, frame)
-    contacts = []
-    # Side interfaces at Y±6 include the lower R4.5 crown relief. Integrate
-    # the circular segments below Z6 independently of production builders.
-    radius, height = 4.5, 3.8  # bolt axis Z6 minus saddle underside Z2.2
-    tangent = math.sqrt(radius**2 - height**2)
-    segment_loss = height * (radius - tangent) - (
-        radius**2 * math.pi / 4
-        - (tangent * height + radius**2 * math.asin(tangent / radius)) / 2
-    )
-    lower_relief_area = 4 * segment_loss + 2 * 0.8 * height
-    side_contact = 19.6 * 10.3 - 2 * math.pi * 1.7**2 - lower_relief_area
-    for name, first, second, axis, station, area, region in (
-        ("full_U_roof", frame, saddle, 2, 12.5, 38 * 12, (-19, -6, 0, 38, 12, 20)),
-        ("negative_beam_roof", frame, saddle, 2, 12.5, 90, (-9, -11, 0, 18, 5, 20)),
-        ("positive_beam_roof", frame, saddle, 2, 12.5, 90, (-9, 6, 0, 18, 5, 20)),
-        ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
-        ("positive_U_side", frame, saddle, 1, 6, side_contact, None),
-    ):
-        if region is not None:
-            x, y, z, *size = region
-            tool = Part.makeBox(*size, App.Vector(x, y, z))
-            first, second = first.common(tool), second.common(tool)
-        actual = _plane_contact_area(first, second, axis, station)
-        contacts.append(
+    floors = []
+    for sign in (-1, 1):
+        canonical = frame.copy()
+        if sign < 0:
+            canonical.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+        nut = attachment_nut_shape(shared_drive=True)
+        nut.translate(App.Vector(14, 0, 0))
+        capture = nut_capture_check(14, nut, canonical, shared=True)
+        head = Part.makeCylinder(
+            3, 2, App.Vector(14, -3.25, 6), App.Vector(0, 1, 0)
+        ).cut(Part.makeCylinder(1.7, 2, App.Vector(14, -3.25, 6), App.Vector(0, 1, 0)))
+        missing = abs(head.cut(canonical).Volume)
+        floors.append(
             {
-                "interface": name,
-                "axis": axis,
-                "plane_mm": station,
-                "area_mm2": actual,
-                "required_mm2": area,
-                "passed": abs(actual - area) < TOL,
+                "side": sign,
+                "head_floor_missing_mm3": missing,
+                "nut_capture": capture,
+                "passed": missing < TOL and capture["passed"],
             }
         )
+    roof = Part.makeBox(42, 10, 2, App.Vector(-21, -5, 12.5))
+    missing_roof = abs(roof.cut(frame).Volume)
     bores = []
     for x in (-14, 14):
         tool = Part.makeCylinder(1.5, 28, App.Vector(x, -14, 6), App.Vector(0, 1, 0))
@@ -124,19 +107,16 @@ def joint_checks(shapes):
                 "passed": all(value < TOL for value in volumes.values()),
             }
         )
-    overlaps = [
-        abs(a.common(b).Volume)
-        for a, b in ((rail, frame), (frame, saddle), (rail, saddle))
-    ]
+    overlaps = [abs(rail.common(frame).Volume)]
     return {
-        "wrap": wrap,
         "bottom_and_wall_support": support,
-        "contacts": contacts,
+        "fastener_floors": floors,
+        "missing_roof_core_mm3": missing_roof,
         "M3_bores": bores,
         "pair_overlap_mm3": overlaps,
-        "passed": wrap["passed"]
-        and support["passed"]
-        and all(row["passed"] for row in contacts + bores)
+        "passed": support["passed"]
+        and missing_roof < TOL
+        and all(row["passed"] for row in floors + bores)
         and all(value < TOL for value in overlaps),
     }
 
@@ -263,8 +243,8 @@ def export(cad, output_dir):
                     **snapshot.tool_hashes,
                 },
                 "coordinate_frame": "Saved MainPropulsionModule local frame; assembled coupon poses.",
-                "hardware": "Reuse two intended M3x20 screws and two M3 nuts; no additional hardware purchase or installed parts.",
-                "limits": "Cropped fit specimen only: four R4.5 crowned lower seats tangent to the rail base, two 10 mm local cheek zones on 28 mm centres, 0.7 mm roof relief and 3.5 mm wide root clearance up to Z2.6. The 38 mm frame and continuous-U saddle retain their fitted roof/side surfaces, nut-floor support and opposed closure. A nominal tangent has no claimed finite flat contact area or contact pressure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. The rigid paired frame still couples both wall stations; local fit does not establish free bending between them. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
+                "hardware": "Reuse two intended M3x10 screws and two M3 nuts; no additional hardware purchase or installed parts.",
+                "limits": "Cropped fit specimen only: two standard16mm carrier shoes on28mm centres with10mm cheeks, wall-top seats atZ9.5 and1mm clearance over the rail base. The44mm connecting pedestal retains both load paths and2mm head/nut floors. Both wall tops must be coplanar; bending occurs outside the rigid pair. Match each source part's production orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. Nominal contact does not qualify as-printed fit.",
                 "source_crop_boxes": {
                     name: {"origin_mm": list(CROP_ORIGIN), "size_mm": list(spec[1])}
                     for name, spec in PARTS.items()
