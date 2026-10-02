@@ -28,6 +28,24 @@ def intersection_volume(first, second):
     return abs(first.common(second).Volume)
 
 
+def planar_contact_area(first, second):
+    """Sum shared coplanar face areas without assuming a global contact plane."""
+    area = 0.0
+    for face in first.Faces:
+        if type(face.Surface).__name__ != "Plane":
+            continue
+        normal = face.normalAt(0, 0)
+        for seat in second.Faces:
+            if type(seat.Surface).__name__ != "Plane":
+                continue
+            if (
+                abs(abs(normal.dot(seat.normalAt(0, 0))) - 1) < 1e-7
+                and abs((face.CenterOfMass - seat.CenterOfMass).dot(normal)) < 1e-7
+            ):
+                area += face.common(seat).Area
+    return area
+
+
 def translation_sweep(shape, displacement):
     """Return a continuous translational envelope and its construction method.
 

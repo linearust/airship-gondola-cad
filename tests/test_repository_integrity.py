@@ -19,14 +19,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryIntegrityTests(unittest.TestCase):
-    def test_horn_and_service_checks_do_not_import_the_propulsion_coordinator(self):
-        # The coordinator calls horn checks. Their shared service primitives
-        # must remain usable without importing it back, including inside functions.
+    def test_leaf_validation_checks_do_not_import_the_propulsion_coordinator(self):
+        # Shared checks must remain usable without importing their coordinator
+        # back, including imports inside functions.
         coordinator = "gondola.validation.propulsion"
         for filename in (
             "horn_coupling.py",
             "propulsion_service.py",
             "servo_module.py",
+            "shaft_retention.py",
+            "fastener_seating.py",
+            "geometry.py",
         ):
             path = REPO_ROOT / "gondola" / "validation" / filename
             for node in ast.walk(ast.parse(path.read_text())):

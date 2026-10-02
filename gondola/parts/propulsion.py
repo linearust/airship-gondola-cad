@@ -131,11 +131,8 @@ def gear_axial_span(teeth):
 
 
 BEARING_CENTRES_ABS_Y = (28.0, 41.0)
-BEARING_START_Y = BEARING_CENTRES_ABS_Y[0] - bearing_retention.BEARING_WIDTH / 2
 BEARING_WINDOW_DIAMETER = bearing_retention.SHIELD_OPENING_DIAMETER
 BEARING_GUIDE_START_Y = BEARING_CENTRES_ABS_Y[0] + bearing_retention.BODY_FRONT_Y
-BEARING_SHOULDER_Y = BEARING_CENTRES_ABS_Y[-1] + bearing_retention.SEAT_WIDTH / 2
-BEARING_SHOULDER_THICKNESS = bearing_retention.SHOULDER_THICKNESS
 BEARING_POST_DEPTH = bearing_retention.BODY_REAR_Y - bearing_retention.BODY_FRONT_Y
 CARRIER_END_Y = 30.5
 CARRIER_CLAMP_START_Y = 20.5
@@ -1039,7 +1036,7 @@ def _build_input_drive(doc, mount, prefix, sign, driver_angle, spec):
             sign,
         ),
         spec.driver.sku,
-        f"Selected seller {spec.driver.teeth}T m0.5/20° gear, nominal Ø3 H8 bore, face 3, overall 8, hub Ø12. Stock X06 horn, open clamping adapter and a short Ø3 metal stub transmit torque; no additional input bearing. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at {spec.ratio:g} times input. Nominal tooth reference only.",
+        f"Selected seller {spec.driver.teeth}T m0.5/20° gear, nominal Ø3 H8 bore, face 3, overall 8, hub Ø12. Stock X06 horn and open clamping adapter drive a Ø3×{servo_coupling.SHAFT_LENGTH:g} metal shaft with a proximal {servo_coupling.SHAFT_FLAT_LENGTH:g} mm flat and an externally supported round bearing journal. M3 screw position/length, actual material (aluminium description conflicts with steel attribute), mass and loaded grip remain unverified. Output turns oppositely at {spec.ratio:g} times input. Nominal tooth reference only.",
         spec.driver.item_url,
         "Aluminium alloy (seller claim; steel attribute conflicts)",
     )
