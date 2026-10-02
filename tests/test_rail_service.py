@@ -17,33 +17,33 @@ class RailServiceTests(unittest.TestCase):
         from gondola.validation.rail_access import supported_propulsion_slide
 
         shape = Part.makeBox(1, 1, 1)
-        pose = {"attachment_world_axes_x_mm": [-29, 1]}
+        pose = {"attachment_world_axes_x_mm": [-28, 0]}
         result = supported_propulsion_slide({"CarriedPart": shape}, {}, pose)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["relative_x_range_mm"], [-2, 2])
-        self.assertEqual(result["travel_mm"], 4)
+        self.assertEqual(result["relative_x_range_mm"], [-3, 3])
+        self.assertEqual(result["travel_mm"], 6)
         blocked = supported_propulsion_slide(
             {"CarriedPart": shape},
             {"MidpathObstacle": Part.makeBox(0.2, 1, 1, App.Vector(1, 0, 0))},
             pose,
         )
         self.assertFalse(blocked["passed"])
-        for axes in ([-29], [-29, 1.1], [-29, 14]):
+        for axes in ([-28], [-28, 0.1], [-28, 14]):
             with self.subTest(axes=axes), self.assertRaises(ValueError):
                 supported_propulsion_slide(
                     {"CarriedPart": shape}, {}, {"attachment_world_axes_x_mm": axes}
                 )
 
-    def test_end_pair_trim_respects_complete_bottom_land_on_base(self):
+    def test_end_pair_trim_preserves_both_local_crowns_on_the_base(self):
         from gondola.validation.rail_access import _shared_trim_interval
 
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [111, 141]}), (-2, 2)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [112, 140]}), (-3, 3)
         )
         self.assertEqual(
-            _shared_trim_interval({"attachment_world_axes_x_mm": [-141, -111]}), (-2, 2)
+            _shared_trim_interval({"attachment_world_axes_x_mm": [-140, -112]}), (-3, 3)
         )
-        for axes in ((113.01, 143.01), (-143.01, -113.01)):
+        for axes in ((115.01, 143.01), (-143.01, -115.01)):
             with self.assertRaises(ValueError):
                 _shared_trim_interval({"attachment_world_axes_x_mm": axes})
 
@@ -54,16 +54,16 @@ class RailServiceTests(unittest.TestCase):
         from gondola.parts import rail
         from gondola.validation.rail_access import _shared_screw_slide
 
-        screw = translated_shape(rail.attachment_screw_shape(20, head_face_y=-9), x=15)
+        screw = translated_shape(rail.attachment_screw_shape(20, head_face_y=-9), x=14)
         obstacles = {"Rail": translated_shape(rail.rail_shape(), x=14)}
         name = "MainPropulsionModuleRailMountScrew"
-        good = _shared_screw_slide(name, screw, obstacles, -2, 2)
+        good = _shared_screw_slide(name, screw, obstacles, -3, 3)
         self.assertTrue(good["passed"], good)
-        extra = screw.fuse(Part.makeBox(1, 1, 1, App.Vector(15, 0, 7.4)))
-        self.assertFalse(_shared_screw_slide(name, extra, obstacles, -2, 2)["passed"])
+        extra = screw.fuse(Part.makeBox(1, 1, 1, App.Vector(14, 0, 7.4)))
+        self.assertFalse(_shared_screw_slide(name, extra, obstacles, -3, 3)["passed"])
         # A narrow obstruction between endpoints is still intersected.
-        obstacles["Block"] = Part.makeBox(0.1, 0.1, 0.1, App.Vector(16, -5, 6))
-        self.assertFalse(_shared_screw_slide(name, screw, obstacles, -2, 2)["passed"])
+        obstacles["Block"] = Part.makeBox(0.1, 0.1, 0.1, App.Vector(15, -5, 6))
+        self.assertFalse(_shared_screw_slide(name, screw, obstacles, -3, 3)["passed"])
 
     def test_low_reference_part_does_not_acquire_a_phantom_clamp_bore_fill(self):
         from gondola.parts import rail
@@ -150,7 +150,7 @@ class RailServiceTests(unittest.TestCase):
             "PropulsionFixedFrame",
             propulsion.fixed_frame_shape(),
             {"Rail": translated_shape(rail.rail_shape(), x=14)},
-            15,
+            14,
             waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
         )
         self.assertTrue(result["passed"], result)
@@ -208,9 +208,9 @@ class RailServiceTests(unittest.TestCase):
         module.Placement.Base = App.Vector(station.x_mm, 0, 0)
         for name, value, kind in (
             ("RailPositionX", station.x_mm, "App::PropertyDistance"),
-            ("RailAttachmentOffsetX", 15, "App::PropertyDistance"),
-            ("RailAttachmentOffsetsX", [15, -15], "App::PropertyFloatList"),
-            ("RailContactLength", 40, "App::PropertyLength"),
+            ("RailAttachmentOffsetX", 14, "App::PropertyDistance"),
+            ("RailAttachmentOffsetsX", [14, -14], "App::PropertyFloatList"),
+            ("RailContactLength", 38, "App::PropertyLength"),
         ):
             set_property(module, name, value, kind)
         printed = []
@@ -225,7 +225,7 @@ class RailServiceTests(unittest.TestCase):
                 parent.addObject(obj)
             printed.append(obj)
         hardware = rail.build_attachment_hardware(
-            doc, module, module.Name, x_offset=15, shared_drive=True
+            doc, module, module.Name, x_offset=14, shared_drive=True
         )
         registry = doc.addObject("App::FeaturePython", "DesignRegistry")
         for name, objects in (
@@ -408,7 +408,7 @@ class RailServiceTests(unittest.TestCase):
         inverse = doc.MainPropulsionModule.getGlobalPlacement().inverse()
         obstacles = {neighbour.Name: placed_shape(world_shape(neighbour), inverse)}
         direct = _lift_path(
-            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 15
+            "ServoDriveBridge", doc.ServoDriveBridge.Shape, obstacles, 14
         )
         self.assertTrue(direct["passed"], direct)
         report = check()
@@ -427,7 +427,7 @@ class RailServiceTests(unittest.TestCase):
         self.assertLess(bridge["bridge_outside_stock_mm3"], 1e-5)
         self.assertEqual(len(bridge["regions"]), 7)
         self.assertTrue(row["populated_supported_trim"]["passed"])
-        self.assertEqual(row["populated_supported_trim"]["travel_mm"], 4)
+        self.assertEqual(row["populated_supported_trim"]["travel_mm"], 6)
 
     def test_bridge_stock_sweeps_cannot_omit_an_unexpected_saved_protrusion(self):
         from gondola.parts import servo_bridge
@@ -440,7 +440,7 @@ class RailServiceTests(unittest.TestCase):
             "ServoDriveBridge",
             bridge,
             {},
-            15,
+            14,
             waypoints=[(0, 0, 0), (10, 0, 0), (10, 0, 30)],
         )
         self.assertFalse(report["passed"])

@@ -196,28 +196,28 @@ class ModuleControlMappingTests(unittest.TestCase):
             row for row in MODULE_STATIONS if row.object_name == "MainPropulsionModule"
         )
         module = SimpleNamespace(
-            RailAttachmentOffsetX=15,
-            RailAttachmentOffsetsX=[15, -15],
-            RailContactLength=40,
+            RailAttachmentOffsetX=14,
+            RailAttachmentOffsetsX=[14, -14],
+            RailContactLength=38,
             RailPositionX=14,
             Placement=App.Placement(App.Vector(14, 0, 0), App.Rotation()),
         )
         self.assertTrue(module_attachment_pose(station, module)["passed"])
-        for position in (12, 16, -128, 128):
+        for position in (11, 17, -129, 129):
             module.RailPositionX = position
             module.Placement.Base.x = position
             self.assertTrue(module_attachment_pose(station, module)["passed"])
-        for position in (11.99, 16.01, -128.01, 128.01):
+        for position in (10.99, 17.01, -129.01, 129.01):
             module.RailPositionX = position
             module.Placement.Base.x = position
             self.assertFalse(module_attachment_pose(station, module)["passed"])
         module.RailPositionX = 14
         module.Placement.Base.x = 14
-        module.RailAttachmentOffsetsX = [15]
+        module.RailAttachmentOffsetsX = [14]
         missing = module_attachment_pose(station, module)
         self.assertFalse(missing["passed"])
         self.assertFalse(missing["attachment_offsets_match"])
-        module.RailAttachmentOffsetsX = [15, -15]
+        module.RailAttachmentOffsetsX = [14, -14]
         module.RailPositionX = -155
         module.Placement.Base = App.Vector(-155, 0, 0)
         edge = module_attachment_pose(station, module)

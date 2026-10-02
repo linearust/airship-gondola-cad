@@ -1,4 +1,4 @@
-"""Native side-slot rail geometry, full contact and segmented adjustment limits."""
+"""Native side-slot rail geometry, local crowned seats and segmented adjustment limits."""
 
 import json
 import math
@@ -50,17 +50,17 @@ class RailContactTests(unittest.TestCase):
         self.assertEqual(
             actual_walls,
             [
-                (-150, -130),
-                (-122, -102),
-                (-94, -74),
-                (-66, -46),
-                (-38, -18),
-                (-10, 10),
-                (18, 38),
-                (46, 66),
-                (74, 94),
-                (102, 122),
-                (130, 150),
+                (-149, -131),
+                (-121, -103),
+                (-93, -75),
+                (-65, -47),
+                (-37, -19),
+                (-9, 9),
+                (19, 37),
+                (47, 65),
+                (75, 93),
+                (103, 121),
+                (131, 149),
             ],
         )
 
@@ -69,7 +69,7 @@ class RailContactTests(unittest.TestCase):
 
         shape = rail.rail_shape()
         intervals = rail.wall_segments()
-        self.assertEqual([b - a for a, b in intervals], [20] * 11)
+        self.assertEqual([b - a for a, b in intervals], [18] * 11)
         centres = [(a + b) / 2 for a, b in intervals]
         self.assertEqual([b - a for a, b in zip(centres, centres[1:])], [28] * 10)
         # Both free spans and wall roots retain the same straight base width.
@@ -124,7 +124,7 @@ class RailContactTests(unittest.TestCase):
         )
         self.assertFalse(rail_contact.flex_relief_check(bridged)["passed"])
 
-    def test_slot_limits_retain_whole_foot_and_reject_gap_positions(self):
+    def test_slot_limits_retain_local_contact_and_reject_gap_positions(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
         from gondola.validation import rail_contact
@@ -137,7 +137,7 @@ class RailContactTests(unittest.TestCase):
                     report = rail.attachment_position_check(x)
                     self.assertTrue(report["passed"], report)
                     self.assertGreaterEqual(
-                        report["minimum_full_foot_end_margin_mm"], 0.8 - 1e-6
+                        report["minimum_centred_contact_end_margin_mm"], 1.0 - 1e-6
                     )
                     self.assertTrue(
                         rail_contact.attachment_check(translated_shape(shape, x=-x))[
@@ -157,40 +157,46 @@ class RailContactTests(unittest.TestCase):
         from gondola.parts import rail
 
         ranges = rail.supported_slot_ranges()
-        self.assertEqual(ranges[0], (-141.0, -138.8))
-        self.assertEqual(ranges[-1], (138.8, 141.0))
-        self.assertAlmostEqual(ranges[5][0], -1.2)
-        self.assertAlmostEqual(ranges[5][1], 1.2)
-        for x in (-141.01, 141.01):
+        self.assertEqual(ranges[0], (-143.0, -137.0))
+        self.assertEqual(ranges[-1], (137.0, 143.0))
+        self.assertAlmostEqual(ranges[5][0], -3)
+        self.assertAlmostEqual(ranges[5][1], 3)
+        for x in (-143.01, 143.01):
             self.assertFalse(rail.attachment_position_check(x)["passed"])
 
-    def test_longer_generic_foot_does_not_inherit_shared_spine_travel(self):
+    def test_longer_roof_keeps_the_same_local_contact_travel(self):
         from gondola.cad import translated_shape
         from gondola.parts import rail
         from gondola.validation import rail_contact
 
         shape = rail.rail_shape()
-        ranges = rail.supported_slot_ranges(contact_length=18)
-        self.assertEqual(len(ranges), 11)
-        for (low, high), centre in zip(ranges, range(-140, 141, 28)):
-            self.assertAlmostEqual(low, max(centre - 0.2, -140))
-            self.assertAlmostEqual(high, min(centre + 0.2, 140))
-            for x in (low, centre, high):
-                self.assertTrue(
-                    rail.attachment_position_check(x, contact_length=18)["passed"]
-                )
-                self.assertTrue(
-                    rail_contact.attachment_check(
-                        translated_shape(shape, x=-x), contact_length=18
-                    )["passed"]
-                )
-            self.assertFalse(
-                rail.attachment_position_check(high + 0.01, contact_length=18)["passed"]
+        for length in (16, 18, 32):
+            ranges = rail.supported_slot_ranges(contact_length=length)
+            self.assertEqual(
+                ranges, tuple((x - 3, x + 3) for x in range(-140, 141, 28))
             )
-        self.assertEqual(rail.supported_slot_ranges(contact_length=32), ())
-        self.assertAlmostEqual(rail.mount_base_shape(length=18).BoundBox.XLength, 18)
+            for index in (0, 5, 10):
+                low, high = ranges[index]
+                for x in (low, (low + high) / 2, high):
+                    self.assertTrue(
+                        rail_contact.attachment_check(
+                            translated_shape(shape, x=-x), contact_length=length
+                        )["passed"]
+                    )
+                self.assertFalse(
+                    rail.attachment_position_check(high + 0.01, contact_length=length)[
+                        "passed"
+                    ]
+                )
+            mount = rail.mount_base_shape(length=length)
+            self.assertAlmostEqual(mount.BoundBox.XLength, length)
+            # Changing the upper roof never grows its lower bearing cheeks.
+            section = mount.common(
+                Part.makeLine(App.Vector(-20, -2.5, 8), App.Vector(20, -2.5, 8))
+            )
+            self.assertAlmostEqual(section.Length, 10)
 
-    def test_longer_slots_keep_end_ligaments_and_carrier_full_foot_limits(self):
+    def test_longer_slots_keep_end_ligaments_and_local_contact_limits(self):
         from gondola.parts import rail
         from gondola.validation.rail_mount import _independent_slot_sections
 
@@ -198,83 +204,89 @@ class RailContactTests(unittest.TestCase):
         slots = _independent_slot_sections(shape)
         self.assertTrue(slots["passed"], slots)
         self.assertEqual(slots["slot_overall_length_mm"], 9.4)
-        self.assertEqual(slots["wall_end_ligament_mm"], 5.3)
+        self.assertEqual(slots["wall_end_ligament_mm"], 4.3)
         self.assertEqual(slots["upper_web_mm"], 1.8)
         self.assertEqual(slots["lower_web_mm"], 2.8)
-        self.assertTrue(rail.attachment_position_check(1.2)["passed"])
-        self.assertFalse(rail.attachment_position_check(1.21)["passed"])
-        # A visibly open bolt slot does not authorize overhanging carrier feet.
-        self.assertFalse(rail.attachment_position_check(6)["passed"])
+        self.assertTrue(rail.attachment_position_check(3)["passed"])
+        self.assertFalse(rail.attachment_position_check(3.01)["passed"])
+        # The extra 0.2mm shank clearance at the round ends is a fit allowance.
+        # It does not extend the intended travel or its 1mm contact end reserve.
+        self.assertFalse(rail.attachment_position_check(3.1)["passed"])
         blocked = shape.fuse(Part.makeBox(1, 2.5, 3.4, App.Vector(2, -1.25, 4.3)))
         self.assertFalse(_independent_slot_sections(blocked)["passed"])
-        thin_end = shape.cut(Part.makeBox(1, 2.5, 5, App.Vector(9, -1.25, 4)))
+        thin_end = shape.cut(Part.makeBox(1, 2.5, 5, App.Vector(8, -1.25, 4)))
         self.assertFalse(_independent_slot_sections(thin_end)["passed"])
 
-    def test_shared_spine_intersects_bolt_ranges_into_four_mm_module_trim(self):
+    def test_shared_pitch_matches_walls_for_six_mm_module_trim(self):
         from gondola.cad import translated_shape
         from gondola.parts import propulsion, rail
         from gondola.validation.rail_mount import paired_spine_support_check
 
         frame, shape = propulsion.fixed_frame_shape(), rail.rail_shape()
-        bolt_ranges = rail.supported_slot_ranges(300, 40, shared_drive=True)
-        self.assertEqual(bolt_ranges[5], (-3, 3))
-        module_ranges = rail.shared_module_ranges()
-        self.assertEqual(len(module_ranges), 10)
-        self.assertEqual(module_ranges[0], (-128, -124))
-        self.assertEqual(module_ranges[-1], (124, 128))
-        self.assertEqual(module_ranges[4:6], ((-16, -12), (12, 16)))
-        for delta, expected in ((-2, [18, 14]), (0, [16, 16]), (2, [14, 18])):
+        self.assertEqual(
+            rail.supported_slot_ranges(300, 38, shared_drive=True)[5], (-3, 3)
+        )
+        ranges = rail.shared_module_ranges()
+        self.assertEqual(len(ranges), 10)
+        self.assertEqual(ranges[0], (-129, -123))
+        self.assertEqual(ranges[-1], (123, 129))
+        self.assertEqual(ranges[4:6], ((-17, -11), (11, 17)))
+        for delta in (-3, 0, 3):
             station = -14 + delta
-            for axis in (station - 15, station + 15):
+            for axis in (station - 14, station + 14):
                 position = rail.attachment_position_check(
-                    axis, contact_length=40, shared_drive=True
+                    axis, contact_length=38, shared_drive=True
                 )
                 self.assertTrue(position["passed"], position)
                 self.assertGreaterEqual(
-                    position["minimum_centred_contact_end_margin_mm"], 2
+                    position["minimum_centred_contact_end_margin_mm"], 1
                 )
             seats = paired_spine_support_check(
                 translated_shape(shape, x=-station), frame
             )
             self.assertTrue(seats["passed"], seats)
-            self.assertEqual(
-                [row["wall_overlap_length_mm"] for row in seats["wall_supports"]],
-                expected,
-            )
-            self.assertEqual(seats["minimum_bottom_contact_area_mm2"], 140)
+            self.assertEqual(len(seats["wall_supports"]), 2)
+            self.assertTrue(all(row["passed"] for row in seats["wall_supports"]))
         for axis in (-3.01, 3.01, 14):
             self.assertFalse(
                 rail.attachment_position_check(
-                    axis, contact_length=40, shared_drive=True
+                    axis, contact_length=38, shared_drive=True
                 )["passed"]
             )
-        for obsolete in (12, 16, 24):
+        for obsolete in (12, 16, 24, 40):
             with self.assertRaises(ValueError):
                 rail.supported_slot_ranges(contact_length=obsolete, shared_drive=True)
 
-    def test_shared_seat_outside_clamp_zone_cannot_be_omitted(self):
+    def test_each_local_crown_and_contact_zone_is_required(self):
         from gondola.cad import translated_shape
         from gondola.parts import propulsion, rail
         from gondola.validation.rail_mount import paired_spine_support_check
 
         frame = propulsion.fixed_frame_shape()
-        local_rail = translated_shape(rail.rail_shape(), x=12)  # +2mm propulsion trim
-        # X-8 is between the10mm clamp zones; its lower land must still bear.
-        missing_bottom = frame.cut(Part.makeBox(1, 1.75, 0.5, App.Vector(-8, -3, 1.5)))
-        self.assertFalse(
-            paired_spine_support_check(local_rail, missing_bottom)["passed"]
-        )
-        missing_wall = local_rail.cut(Part.makeBox(1, 2.5, 2, App.Vector(-8, -1.25, 8)))
-        self.assertFalse(paired_spine_support_check(missing_wall, frame)["passed"])
+        local_rail = translated_shape(rail.rail_shape(), x=14)
+        for axis in (-14, 14):
+            missing_crown = frame.cut(
+                Part.makeBox(0.5, 1, 0.4, App.Vector(axis - 0.25, -3, 1.5))
+            )
+            self.assertFalse(
+                paired_spine_support_check(local_rail, missing_crown)["passed"]
+            )
+            missing_wall = local_rail.cut(
+                Part.makeBox(1, 2.5, 2, App.Vector(axis - 0.5, -1.25, 8))
+            )
+            self.assertFalse(paired_spine_support_check(missing_wall, frame)["passed"])
 
     def test_u_saddle_seats_and_lifts_without_deflecting_ears(self):
         from gondola.validation import rail_contact
 
         report = rail_contact.attachment_check()
         self.assertTrue(report["passed"], report)
-        self.assertIn("face-prism", report["continuous_vertical_removal"]["method"])
+        self.assertEqual(
+            report["continuous_vertical_removal"]["method"],
+            "continuous upward planar-face sweep with trailing circular crowns",
+        )
         self.assertTrue(all(row["passed"] for row in report["bottom_datum_contacts"]))
-        self.assertAlmostEqual(report["inner_roof_clearance_mm"], 0.2)
+        self.assertAlmostEqual(report["inner_roof_clearance_mm"], 0.7)
         self.assertAlmostEqual(report["blocked_inner_roof_relief_mm3"], 0)
         self.assertAlmostEqual(report["missing_flat_side_contact_mm3"], 0)
 
@@ -284,7 +296,7 @@ class RailContactTests(unittest.TestCase):
 
         for cut in (
             Part.makeBox(2, 2.5, 1, App.Vector(3, -1.75, 3)),
-            Part.makeBox(2, 1.75, 0.5, App.Vector(3, -3, 1.5)),
+            Part.makeBox(0.5, 1.25, 0.3, App.Vector(-0.25, -3, 1.5)),
         ):
             with self.subTest(cut=cut.BoundBox):
                 self.assertFalse(
@@ -293,36 +305,37 @@ class RailContactTests(unittest.TestCase):
                     )["passed"]
                 )
 
-    def test_bottom_datum_does_not_require_roof_contact(self):
+    def test_circular_bottom_tangent_clears_roots_and_preserves_roof_relief(self):
         from gondola.parts import rail
         from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape()
-        for y in (-2.5, 2.5):
-            foot = Part.makeLine(App.Vector(3, y, 1.49), App.Vector(3, y, 1.8))
-            self.assertAlmostEqual(mount.common(foot).Length, 0.3)
-        gap = Part.makeBox(16, 2.5, 0.2, App.Vector(-8, -1.25, 9.5))
-        self.assertAlmostEqual(mount.common(gap).Volume, 0)
+        # Independent analytical witness: radius4.5 about X0/Z6, tangent Z1.5.
+        for x in (-3, -1, 0, 1, 3):
+            surface_z = 6 - math.sqrt(4.5**2 - x**2)
+            for y in (-2.5, 2.5):
+                ray = Part.makeLine(App.Vector(x, y, 1.0), App.Vector(x, y, 4.0))
+                section = mount.common(ray)
+                self.assertAlmostEqual(section.BoundBox.ZMin, surface_z, places=6)
+                self.assertAlmostEqual(section.Length, 4 - surface_z, places=6)
+        root_space = Part.makeBox(16, 3.5, 2.6, App.Vector(-8, -1.75, 0))
+        self.assertLess(abs(root_space.common(mount).Volume), 1e-7)
+        gap = Part.makeBox(16, 2.5, 0.7, App.Vector(-8, -1.25, 9.5))
+        self.assertLess(abs(mount.common(gap).Volume), 1e-7)
         self.assertAlmostEqual(
             mount.common(
                 Part.makeLine(App.Vector(0, 0, 9.5), App.Vector(0, 0, 12.5))
             ).Length,
-            2.8,
+            2.3,
         )
-        blocked = mount.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(3, -1.25, 9.6)))
+        blocked = mount.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(2, -1.25, 9.7)))
         report = rail_contact.attachment_check(mount=blocked)
         self.assertFalse(report["passed"])
         self.assertGreater(report["blocked_inner_roof_relief_mm3"], 0)
-        for side, y in ((-1, -3), (1, 1.25)):
-            cut = Part.makeBox(2, 1.75, 0.1, App.Vector(3, y, 1.5))
-            missing = rail_contact.attachment_check(mount=mount.cut(cut))
-            self.assertFalse(missing["passed"])
+        for y in (-3, 1.75):
+            cut = Part.makeBox(0.5, 1.25, 0.2, App.Vector(-0.25, y, 1.5))
             self.assertFalse(
-                next(
-                    row
-                    for row in missing["bottom_datum_contacts"]
-                    if row["side"] == side
-                )["passed"]
+                rail_contact.attachment_check(mount=mount.cut(cut))["passed"]
             )
 
     def test_added_hook_fails_continuous_vertical_release(self):
@@ -372,7 +385,7 @@ class RailContactTests(unittest.TestCase):
                 ):
                     query(length)
         # Both supported footprints retain the same nominal contact contract.
-        for length, expected_windows in ((16, 11), (18, 11), (24, 0)):
+        for length, expected_windows in ((16, 11), (18, 11), (24, 11)):
             contract = rail.attachment_contract(contact_length=length)
             self.assertEqual(contract["mount_contact_length_mm"], length)
             self.assertEqual(
@@ -402,13 +415,13 @@ class RailContactTests(unittest.TestCase):
             for coupon in (doc.RailFitSample, doc.MountFitSample):
                 contract = json.loads(coupon.RailAttachmentContract)
                 self.assertEqual(contract["rail_length_mm"], 50)
-                self.assertEqual(contract["wall_segments_x_mm"], [[-10, 10]])
+                self.assertEqual(contract["wall_segments_x_mm"], [[-9, 9]])
                 self.assertEqual(contract["free_base_spans_x_mm"], [])
                 self.assertIsNone(contract["free_span_minimum_width_mm"])
                 ranges = contract["supported_bolt_axis_ranges_x_mm"]
                 self.assertEqual(len(ranges), 1)
-                self.assertAlmostEqual(ranges[0][0], -1.2)
-                self.assertAlmostEqual(ranges[0][1], 1.2)
+                self.assertAlmostEqual(ranges[0][0], -3)
+                self.assertAlmostEqual(ranges[0][1], 3)
             rail_contract = json.loads(doc.ContinuousRail.RailAttachmentContract)
             self.assertEqual(rail_contract["rail_length_mm"], 300)
             self.assertEqual(rail_contract["free_span_minimum_width_mm"], 6)

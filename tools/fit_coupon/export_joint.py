@@ -22,9 +22,9 @@ PARTS = {
     "FrameJointCoupon": ("PropulsionFixedFrame", (50, 28, 12.5)),
     "SaddleJointCoupon": ("ServoDriveBridge", (50, 28, 15.0)),
 }
-# Retain the entire 40 mm spine and both 20 mm rail walls (at +/-14),
-# including the full 2.5 mm saddle roof. The extra millimetre beyond each
-# rail wall is coupon stock, not a change to the installed interface.
+# Retain the entire 38 mm spine, both 18 mm rail walls at +/-14 and
+# their R1 end-root footprints, including the full 2.5 mm saddle roof.
+# The extra millimetre beyond each root is coupon handling stock.
 CROP_ORIGIN = (-25, -14, 0)
 TOL = 1e-6
 
@@ -78,33 +78,22 @@ def joint_checks(shapes):
     wrap = bridge_wrap_check(frame, saddle)
     support = paired_spine_support_check(rail, frame)
     contacts = []
-    # Both full side walls contact the frame, except their two bolt bores and
-    # the central relief needed to pass the transverse propulsion wings.
-    side_contact = 21.6 * 10.3 - 2 * math.pi * 1.7**2
+    # Side interfaces at Y±6 include the lower R4.5 crown relief. Integrate
+    # the circular segments below Z6 independently of production builders.
+    radius, height = 4.5, 3.8  # bolt axis Z6 minus saddle underside Z2.2
+    tangent = math.sqrt(radius**2 - height**2)
+    segment_loss = height * (radius - tangent) - (
+        radius**2 * math.pi / 4
+        - (tangent * height + radius**2 * math.asin(tangent / radius)) / 2
+    )
+    lower_relief_area = 4 * segment_loss + 2 * 0.8 * height
+    side_contact = 19.6 * 10.3 - 2 * math.pi * 1.7**2 - lower_relief_area
     for name, first, second, axis, station, area, region in (
-        ("full_U_roof", frame, saddle, 2, 12.5, 40 * 12, (-20, -6, 0, 40, 12, 20)),
+        ("full_U_roof", frame, saddle, 2, 12.5, 38 * 12, (-19, -6, 0, 38, 12, 20)),
         ("negative_beam_roof", frame, saddle, 2, 12.5, 90, (-9, -11, 0, 18, 5, 20)),
         ("positive_beam_roof", frame, saddle, 2, 12.5, 90, (-9, 6, 0, 18, 5, 20)),
         ("negative_U_side", frame, saddle, 1, -6, side_contact, None),
         ("positive_U_side", frame, saddle, 1, 6, side_contact, None),
-        (
-            "negative_bottom_datum",
-            rail,
-            frame,
-            2,
-            1.5,
-            70.0,
-            (-20, -6, 0, 40, 4.75, 20),
-        ),
-        (
-            "positive_bottom_datum",
-            rail,
-            frame,
-            2,
-            1.5,
-            70.0,
-            (-20, 1.25, 0, 40, 4.75, 20),
-        ),
     ):
         if region is not None:
             x, y, z, *size = region
@@ -118,11 +107,11 @@ def joint_checks(shapes):
                 "plane_mm": station,
                 "area_mm2": actual,
                 "required_mm2": area,
-                "passed": actual >= area - TOL,
+                "passed": abs(actual - area) < TOL,
             }
         )
     bores = []
-    for x in (-15, 15):
+    for x in (-14, 14):
         tool = Part.makeCylinder(1.5, 28, App.Vector(x, -14, 6), App.Vector(0, 1, 0))
         volumes = {
             name: abs(shape.common(tool).Volume) for name, shape in shapes.items()
@@ -275,7 +264,7 @@ def export(cad, output_dir):
                 },
                 "coordinate_frame": "Saved MainPropulsionModule local frame; assembled coupon poses.",
                 "hardware": "Reuse two intended M3x20 screws and two M3 nuts; no additional hardware purchase or installed parts.",
-                "limits": "Cropped fit specimen only: bilateral bottom-datum rail seating with0.2mm roof relief, fitted continuous-U surfaces, nut-floor support, local nut/head access and opposed closure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
+                "limits": "Cropped fit specimen only: four R4.5 crowned lower seats tangent to the rail base, two 10 mm local cheek zones on 28 mm centres, 0.7 mm roof relief and 3.5 mm wide root clearance up to Z2.6. The 38 mm frame and continuous-U saddle retain their fitted roof/side surfaces, nut-floor support and opposed closure. A nominal tangent has no claimed finite flat contact area or contact pressure. Match each source part's production print orientation, material, process and finish. Trial-fit and finish mating surfaces; never use the bolts to force an interfering fit closed. Truncated stock does not reproduce whole-frame stiffness, rail curvature, adhesion, creep, fatigue or operating strength. The rigid paired frame still couples both wall stations; local fit does not establish free bending between them. Nominal contact does not qualify as-printed fit; no physical qualification is implied.",
                 "source_crop_boxes": {
                     name: {"origin_mm": list(CROP_ORIGIN), "size_mm": list(spec[1])}
                     for name, spec in PARTS.items()

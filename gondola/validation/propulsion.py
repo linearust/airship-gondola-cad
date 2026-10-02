@@ -807,7 +807,7 @@ def servo_case_service_check(
 def frame_rail_bore_filled(frame):
     """Fill both round side bores outside the fitted rail channel for exact sweeps."""
     additions = []
-    for site in rail.attachment_sites(x_offset=15, shared_drive=True):
+    for site in rail.attachment_sites(x_offset=14, shared_drive=True):
         for start_y in (-6.0, 1.25):
             plug = Part.makeCylinder(
                 1.7, 4.75, App.Vector(0, start_y, 6), App.Vector(0, 1, 0)
@@ -834,14 +834,13 @@ def vertical_frame_release_check(frame, rail_shape=None):
     conservative = frame_rail_bore_filled(frame)
     lower = conservative.common(region)
     upper = conservative.cut(region)
-    # Preserve the planar U channel: a whole bounding prism of the new rounded
-    # beam would invent material inside it. Full outboard beam stock is safe
-    # to sweep separately and conservatively fills only the R0.5 edge cuts.
-    sections = (
-        ("spine", lower.common(Part.makeBox(40, 12, 11, App.Vector(-20, -6, 1.5)))),
-        ("negative_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, -113.25, 7.5))),
-        ("positive_y_beam", Part.makeBox(18, 107.25, 5, App.Vector(-9, 6, 7.5))),
-    )
+    from .rail_access import _mount_service_regions
+
+    sections = [
+        (label, part)
+        for label, part in _mount_service_regions("PropulsionFixedFrame", frame, 14)
+        if label != "PropulsionFixedFrameUpper"
+    ]
     checked = contained_region_paths(
         lower, sections, [(0, 0, 0), (0, 0, 30)], {"Rail": rail_shape}
     )
@@ -860,7 +859,7 @@ def vertical_frame_release_check(frame, rail_shape=None):
         "original_shape_missing_from_envelope_mm3": missing,
         "side_bore_filled_volume_mm3": added,
         "maximum_side_bore_plug_volume_mm3": plug_volume,
-        "scope": "Fill only the four side screw bores within the solid U legs, then split at the servo-seat plane. Sweep the planar U spine separately from two full outboard beam stocks, conservatively filling only their R0.5 edge cuts. Complete lower-shape containment is required. Upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
+        "scope": "Fill only the four side screw bores within the solid U legs, then split at the servo-seat plane. Sweep the open U stock separately from two outboard beam stocks. The straight-rail envelope conservatively fills lower crowns toZ1.5 and beam R0.5 edge cuts while preserving roof/root relief. Complete lower-shape containment is required. Upper stock starts above the rail and moves upward. This local check does not certify adjacent equipment or a bent bonded rail.",
         "passed": path["passed"]
         and upper_gap > TOL
         and missing < TOL
@@ -873,7 +872,7 @@ def rail_mount_clearance_check(doc, module):
     shapes, missing = module_service_shapes(doc, module)
     if missing:
         return {"missing_parts": missing, "passed": False}
-    sites = rail.attachment_sites(x_offset=15, shared_drive=True)
+    sites = rail.attachment_sites(x_offset=14, shared_drive=True)
     expected = {}
     for site in sites:
         for suffix, shape in (
@@ -897,7 +896,7 @@ def rail_mount_clearance_check(doc, module):
         "expected_rail_fasteners": sorted(expected),
         "complete_saved_fastener_set": complete,
         "shared_servo_bridge_clamp": True,
-        "clamp_spacing_mm": 30.0,
+        "clamp_spacing_mm": 28.0,
         "removed_before_access": [],
         "scope": "Both opposed pairs are checked with the other pair and the entire mechanism retained. Local rigid clearance only; fitted curvature, simultaneous seating, preload and loaded stiffness require physical validation.",
         "passed": complete and all(row["passed"] for row in rows),
@@ -916,7 +915,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         name: (servo_bridge.opposite(shape) if site["side"] < 0 else shape.copy())
         for name, shape in shapes.items()
     }
-    x, z = 15.0, 6.0
+    x, z = 14.0, 6.0
     screw_name, nut_name = (
         module["group"].Name + site["prefix"] + suffix
         for suffix in ("RailMountScrew", "RailMountNut")
@@ -961,7 +960,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
     contact = attachment_check(
         translated_shape(shapes["LocalRailReference"], x=-x),
         translated_shape(shapes["PropulsionFixedFrame"].common(crop), x=-x),
-        contact_length=40,
+        contact_length=38,
         shared_drive=True,
         screw_length=20,
         head_face_y=-9.0,
@@ -1013,7 +1012,7 @@ def _rail_site_clearance_check(doc, module, site, shapes, present_fasteners):
         "screw_length_mm": servo_bridge.SHARED_SCREW_LENGTH,
         "driver_access": driver,
         "centred_load_zone_x_range_mm": [x - 5, x + 5],
-        "physical_spine_x_range_mm": [-20, 20],
+        "physical_spine_x_range_mm": [-19, 19],
         "bolt_withdrawal": withdrawal,
         "nut_removal_after_bolt": nut_path,
         "driver_clearance_overlap_mm3": stem_hits,
@@ -1051,7 +1050,7 @@ def bearing_post_roots_check(doc):
         and all(abs(v.Point.z - 7.5) < TOL for v in edge.Vertexes)
     ]
     beam = beam.makeFillet(0.5, beam_edges).cut(
-        Part.makeBox(20, 2.5, 9.7, App.Vector(-10, -1.25, 0))
+        Part.makeBox(20, 3, 10.2, App.Vector(-10, -1.5, 0))
     )
     missing_beam = abs(beam.cut(shape).Volume)
     rows = []

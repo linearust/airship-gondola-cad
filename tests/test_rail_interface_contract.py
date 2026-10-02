@@ -64,7 +64,7 @@ class SharedRailInterfaceTests(unittest.TestCase):
         stock = Part.makeBox(40, 22, 11, App.Vector(-20, -11, 1.5))
         actual = servo_bridge.cut_shared_bolt_passage(stock)
         expected = stock
-        for x in (-15, 15):
+        for x in (-14, 14):
             expected = expected.cut(
                 Part.makeCylinder(1.7, 24, App.Vector(x, -12, 6), App.Vector(0, 1, 0))
             )

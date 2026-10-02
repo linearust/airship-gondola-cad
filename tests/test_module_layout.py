@@ -22,8 +22,8 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
         propulsion = stations["MainPropulsionModule"]
-        self.assertEqual(propulsion.contact_length_mm, 40)
-        self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 29)
+        self.assertEqual(propulsion.contact_length_mm, 38)
+        self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 28)
         self.assertNotIn("OpticalFlowModule", stations)
 
     def test_shared_plate_stations_leave_room_for_the_larger_square(self):
@@ -49,12 +49,16 @@ class ModuleLayoutTests(unittest.TestCase):
         )
         self.assertEqual(RAIL_LENGTH_MM, 300)
         self.assertEqual(MAX_PRINT_PART_DIMENSION_MM, 340)
+        # The 16mm roof may overhang its wall; each radius4.5 crown remains
+        # inside the full-width base, including at the ±3mm trim endpoints.
         self.assertEqual(RAIL_LENGTH_MM / 2 - abs(accessory.x_mm) - 8, 2)
+        crown_to_chamfer = RAIL_LENGTH_MM / 2 - 1 - (abs(accessory.x_mm) + 3 + 4.5)
+        self.assertEqual(crown_to_chamfer, 1.5)
         self.assertEqual(
             next(
                 s for s in MODULE_STATIONS if s.object_name == "MainPropulsionModule"
             ).attachment_offset_x_mm,
-            15.0,
+            14.0,
         )
 
     def test_modules_allow_only_fixed_forward_or_reverse_orientation(self):
@@ -87,22 +91,26 @@ class ModuleLayoutTests(unittest.TestCase):
                 "object_name": "MainPropulsionModule",
                 "x_mm": 14.0,
                 "yaw_deg": 0,
-                "attachment_offset_x_mm": 15.0,
-                "contact_length_mm": 40.0,
+                "attachment_offset_x_mm": 14.0,
+                "contact_length_mm": 38.0,
             },
         )
         pattern = station.attachment_pattern
-        self.assertEqual(station.attachment_offsets_x_mm, (15.0, -15.0))
+        self.assertEqual(station.attachment_offsets_x_mm, (14.0, -14.0))
         self.assertEqual(
-            pattern.sites(15),
+            pattern.sites(14),
             (
-                {"prefix": "", "x_offset": 15, "side": 1},
-                {"prefix": "Opposite", "x_offset": -15, "side": -1},
+                {"prefix": "", "x_offset": 14, "side": 1},
+                {"prefix": "Opposite", "x_offset": -14, "side": -1},
             ),
         )
         self.assertEqual(
             (pattern.count, pattern.spacing_mm, pattern.screw_length_mm),
-            (2, 30.0, 20.0),
+            (2, 28.0, 20.0),
+        )
+        self.assertEqual(
+            tuple(station.x_mm + offset for offset in station.attachment_offsets_x_mm),
+            (28.0, 0.0),
         )
         self.assertEqual(pattern.head_bearing_y(-5.25, 2.0), -9.0)
         ordinary = attachment_pattern(False)

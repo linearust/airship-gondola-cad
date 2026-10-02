@@ -196,6 +196,16 @@ def bridge_shape(drive=SELECTED_DRIVE):
     pockets = _ear_nut_pockets(drive)
     bridge = bridge.cut(pockets).cut(opposite(pockets))
     head_cut = rail.head_recess_shape(CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
+    # Open only the outer head-pocket depth at the nearest saddle end.
+    # The complete inner head-bearing floor and opposite nut flats remain.
+    head_cut = head_cut.fuse(
+        box(
+            ROOF_HALF_LENGTH - CLAMP_AXIS_X + 1,
+            rail.HEAD_RECESS_DEPTH,
+            rail.BOLT_AXIS_Z + rail.HEAD_RECESS_DIAMETER / 2 - CHEEK_BOTTOM_Z,
+            (CLAMP_AXIS_X, CHEEK_OUTER_Y, CHEEK_BOTTOM_Z),
+        )
+    )
     nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):
         bridge = bridge.cut(cutter)

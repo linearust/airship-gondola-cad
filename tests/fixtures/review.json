@@ -1,15 +1,15 @@
 {
-  "revision": "CB",
+  "revision": "CC",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "5ed39939508a8bfe62c8847f4205f476012917695247695ab90dad31174af627",
-  "old_fixture_sha256": "645cd4312ab3db270cf5866ac91716ea6dac63bc85a52139b547257d14dd6fc9",
+  "candidate_sha256": "10ec2e07fe953010a6adf6f51521954a4ba9607be33ffed5d689c803e172c73d",
+  "old_fixture_sha256": "5ed39939508a8bfe62c8847f4205f476012917695247695ab90dad31174af627",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "design_accuracy_verification",
+      "cc_rail_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "f47f66cd16267315ffae749621248ccca8793e1ad61032ffda5964bb442e87ed"
+    "canonical_json_sha256": "cec5b0138ee46d64724274530dc24fc8c757f5e43cfccca3c28023bf9a50fc60"
   },
-  "scope": "Independent metadata-only correction: three carrier contracts now identify their unchanged U shoes and distinguish the 54 mm slot-centre array from the 66 mm deck. All 118 shapes, placements, expressions and registry membership preserved. Full release checks follow separately; no physical qualification."
+  "scope": "Independent saved geometry/placement/control/metadata audit approves local crowned rail seats, R1/R0.5 roots, P28/L38 shared frame/saddle and outer-depth head-pocket end openings. Other mechanical interfaces retained. Regression fixture approval does not qualify physical fit or strength."
 }

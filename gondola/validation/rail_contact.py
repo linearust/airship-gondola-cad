@@ -50,55 +50,54 @@ def flex_relief_check(rail_section=None, length=rail.LENGTH):
 
 
 def _rail_seat_contacts(section, mount, zone_length):
-    """Probe the two bottom lands, relieved roof and opposed rail faces."""
-    # Bilateral bottom lands are the vertical datum. The inner roof deliberately
-    # clears the rail top; forcing three planes into contact overconstrains fit.
-    bottom_contacts = []
-    for side_sign in (-1, 1):
-        y = -rail.BASE_WIDTH / 2 if side_sign < 0 else rail.WEB_THICKNESS / 2
-        width = (rail.BASE_WIDTH - rail.WEB_THICKNESS) / 2
-        below = box(
-            zone_length, width, 0.01, (-zone_length / 2, y, rail.PAD_THICKNESS - 0.01)
-        )
-        above = translated_shape(below, z=0.01)
-        missing = abs(below.cut(section).Volume) + abs(above.cut(mount).Volume)
-        bottom_contacts.append(
-            {
-                "side": side_sign,
-                "minimum_area_mm2": zone_length * width,
-                "missing_contact_mm3": missing,
-                "passed": missing < rail.TOL,
-            }
-        )
-    roof_relief = box(
-        zone_length,
-        rail.WEB_THICKNESS,
-        rail.MOUNT_INNER_ROOF_Z - rail.WEB_TOP_Z,
-        (-zone_length / 2, -rail.WEB_THICKNESS / 2, rail.WEB_TOP_Z),
-    )
-    blocked_roof_relief = abs(roof_relief.common(mount).Volume)
-    # Both side faces, above and below the longitudinal rail slot, must contact.
-    side = box(
-        zone_length,
-        0.01,
-        rail.WEB_TOP_Z - rail.MOUNT_BOTTOM_Z,
-        (-zone_length / 2, -rail.WEB_THICKNESS / 2 - 0.01, rail.MOUNT_BOTTOM_Z),
-    ).cut(rail._slot(-zone_length, zone_length))
-    missing_side = abs(side.cut(mount).Volume) + abs(
-        translated_shape(side, y=0.01).cut(section).Volume
-    )
-    opposite_side = translated_shape(side, y=rail.WEB_THICKNESS + 0.01)
-    missing_opposite = abs(opposite_side.cut(mount).Volume) + abs(
-        translated_shape(opposite_side, y=-0.01).cut(section).Volume
-    )
+    """Independent crowned seats, local cheeks and root/roof clearances."""
+    from gondola.validation.rail_curvature import local_seat_check
 
-    return {
-        "bottom_datum_contacts": bottom_contacts,
-        "inner_roof_clearance_mm": rail.MOUNT_INNER_ROOF_Z - rail.WEB_TOP_Z,
-        "blocked_inner_roof_relief_mm3": blocked_roof_relief,
-        "missing_flat_side_contact_mm3": missing_side,
-        "missing_opposite_side_contact_mm3": missing_opposite,
-    }
+    return local_seat_check(section, mount, zone_length)
+
+
+def _vertical_removal_sweep(shape, travel=25):
+    """Exact upward sweep when every curved boundary is a trailing crown.
+
+    Lower R4.5 crown surfaces face away from upward travel and add no new
+    swept volume. Only the upward-facing planar boundaries need extrusion.
+    Reject an unfamiliar surface instead of replacing the open U by a box.
+    """
+    pieces = [shape]
+    for face in shape.Faces:
+        surface = face.Surface
+        kind = type(surface).__name__
+        if kind == "Plane":
+            if face.normalAt(0, 0).z > 1e-12:
+                pieces.append(face.extrude(V(0, 0, travel)))
+            continue
+        if kind == "Cylinder":
+            if surface.Axis.cross(V(0, 0, 1)).Length < 1e-12:
+                continue
+            u0, u1, v0, v1 = face.ParameterRange
+            trailing = all(
+                face.normalAt(u0 + (u1 - u0) * f, (v0 + v1) / 2).z <= 1e-10
+                for f in (0, 0.25, 0.5, 0.75, 1)
+            )
+            if (
+                abs(surface.Radius - 4.5) < rail.TOL
+                and abs(surface.Center.z - 6) < rail.TOL
+                and surface.Axis.cross(V(0, 1, 0)).Length < 1e-12
+                and face.BoundBox.ZMax <= 6 + rail.TOL
+                and trailing
+            ):
+                continue
+        raise ValueError("Vertical removal contains an unsupported curved boundary")
+    sweep = union(pieces).removeSplitter()
+    end = translated_shape(shape, z=travel)
+    if (
+        not sweep.isValid()
+        or not sweep.Solids
+        or abs(shape.cut(sweep).Volume) > rail.TOL
+        or abs(end.cut(sweep).Volume) > rail.TOL
+    ):
+        raise ValueError("Vertical removal envelope does not contain its endpoints")
+    return sweep, "continuous upward planar-face sweep with trailing circular crowns"
 
 
 def _fastener_seat_contacts(
@@ -202,8 +201,8 @@ def attachment_check(
     if shared_drive and (
         abs(contact_length - rail.SHARED_SPINE_LENGTH) > rail.TOL or mount is None
     ):
-        raise ValueError("Shared attachment requires the actual40mm frame spine")
-    zone_length = rail.SHARED_LOAD_ZONE_LENGTH if shared_drive else contact_length
+        raise ValueError("Shared attachment requires the actual38mm frame spine")
+    zone_length = 10.0
     if (
         not all(
             isinstance(value, Real)
@@ -273,7 +272,7 @@ def attachment_check(
             ),
         ]
     ).removeSplitter()
-    lift, method = translation_sweep(filled_mount, (0, 0, 25))
+    lift, method = _vertical_removal_sweep(filled_mount)
     lift_overlap = abs(lift.common(section).Volume)
     contacts = _rail_seat_contacts(section, mount, zone_length)
     supports = _fastener_seat_contacts(
@@ -296,10 +295,10 @@ def attachment_check(
     turned_nut.rotate(V(0, 0, rail.BOLT_AXIS_Z), V(0, 1, 0), 30)
     nut_rotation_stop = abs(turned_nut.common(clamp).Volume)
     return {
-        "support_policy": "paired_spine_clamp_zone" if shared_drive else "full_foot",
+        "support_policy": "paired_local_bearing" if shared_drive else "local_bearing",
         "checked_centred_contact_length_mm": zone_length,
         "shared_support_scope": (
-            "This local check covers only the10mm centred clamp zone. The saved paired-spine check must additionally verify complete bottom lands and both side-wall overlaps of minimum14/32mm."
+            "This check covers one 10 mm local clamp zone and its crowned seats. The saved paired check independently verifies both stations; no continuous flat bottom contact is intended."
             if shared_drive
             else None
         ),
@@ -329,12 +328,13 @@ def attachment_check(
         "minimum_thread_projection_mm": fasteners.RAIL_THREAD_PITCH,
         "thread_projection_margin_ok": engagement
         >= fasteners.RAIL_THREAD_PITCH - rail.TOL,
-        "scope": "Nominal fitted U geometry with both rail-contact legs and a printed nut-bearing floor in the compression path. Shared saddle checks include both frame/saddle contact faces at the bolt load annulus. This is a line-to-line design, not an as-printed fit guarantee; qualify by coupon and finish high spots, rejecting loose or warped seats. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
+        "scope": "Nominal local cheek contacts, circular crowned lower seats and a printed nut-bearing floor in the compression path. Shared saddle checks include both frame/saddle contact faces at the bolt load annulus. This is a line-to-line design, not an as-printed fit guarantee; qualify by coupon and finish high spots, rejecting loose or warped seats. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
         "passed": max(overlaps.values()) < rail.TOL
         and lift_overlap < rail.TOL
         and nut_release < rail.TOL
         and max(
             contacts["blocked_inner_roof_relief_mm3"],
+            contacts["blocked_root_relief_mm3"],
             contacts["missing_flat_side_contact_mm3"],
             contacts["missing_opposite_side_contact_mm3"],
             supports["missing_head_support_mm3"],

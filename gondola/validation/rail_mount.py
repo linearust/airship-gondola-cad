@@ -13,6 +13,7 @@ from gondola.print_export import geometry_comparison
 from . import rail_contact
 from .evidence import comparison_passed
 from .geometry import belongs_to_group, intersection_volume, local_shape
+from .rail_curvature import angular_clearance_check, local_seat_check, root_stock_check
 from .rail_interface import (
     MOUNT_BINDINGS,
     attachment_sites,
@@ -93,10 +94,31 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
 def _literal_protected_mount(length=16, *, shared=False, bolt_positions=(0,)):
     """Independent fitted U stock; shared frame carries no nut recess."""
     low, high = (-6.0, 6.0) if shared else (-5.25, 5.25)
-    leg = Part.makeBox(length, -1.25 - low, 11, V(-length / 2, low, 1.5))
-    roof = Part.makeBox(length, high - low, 2.8, V(-length / 2, low, 9.7))
-    far_leg = Part.makeBox(length, high - 1.25, 11, V(-length / 2, 1.25, 1.5))
-    result = leg.fuse(roof).fuse(far_leg)
+    result = Part.makeBox(length, high - low, 11, V(-length / 2, low, 1.5))
+    result = result.cut(
+        Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
+    )
+    result = result.cut(
+        Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
+    )
+    cylinders = [
+        Part.makeCylinder(4.5, high - low + 2, V(x, low - 1, 6), V(0, 1, 0))
+        for x in bolt_positions
+    ]
+    crowns = cylinders[0]
+    for cylinder in cylinders[1:]:
+        crowns = crowns.fuse(cylinder)
+    lower = Part.makeBox(length + 2, high - low + 2, 7, V(-length / 2 - 1, low - 1, -1))
+    result = result.cut(lower.cut(crowns))
+    outside_width = 3.0 if shared else high - low + 2
+    outside = Part.makeBox(
+        length + 2, outside_width, 11.2, V(-length / 2 - 1, -outside_width / 2, -1)
+    )
+    for x in bolt_positions:
+        outside = outside.cut(
+            Part.makeBox(10, high - low + 2, 11.2, V(x - 5, low - 1, -1))
+        )
+    result = result.cut(outside)
     if not shared:
         radius = 5.9 / math.sqrt(3)
         vertices = [
@@ -158,19 +180,7 @@ def _independent_wall_top_sections(shape):
     actual = sorted(
         (edge.BoundBox.XMin, edge.BoundBox.XMax) for edge in shape.common(line).Edges
     )
-    expected = (
-        (-150, -130),
-        (-122, -102),
-        (-94, -74),
-        (-66, -46),
-        (-38, -18),
-        (-10, 10),
-        (18, 38),
-        (46, 66),
-        (74, 94),
-        (102, 122),
-        (130, 150),
-    )
+    expected = tuple((centre - 9, centre + 9) for centre in range(-140, 141, 28))
     return {
         "sample_yz_mm": [0, 8.5],
         "actual_wall_intervals_x_mm": actual,
@@ -198,7 +208,7 @@ def _independent_slot_sections(shape):
     """Literal 9.4x3.4 mm openings, including their complete end/web stock."""
     rows = []
     for centre in range(-140, 141, 28):
-        stock = Part.makeBox(20, 2.5, 8, V(centre - 10, -1.25, 1.5))
+        stock = Part.makeBox(18, 2.5, 8, V(centre - 9, -1.25, 1.5))
         slot = _literal_rail_slot(centre)
         actual = shape.common(stock)
         comparison = (
@@ -209,18 +219,37 @@ def _independent_slot_sections(shape):
                 "difference_mm3": abs(stock.cut(slot).Volume),
             }
         )
+        travel = []
+        for offset in (-3.21, -3.2, -3.0, 0.0, 3.0, 3.2, 3.21):
+            shank = Part.makeCylinder(
+                1.5, 2.5, V(centre + offset, -1.25, 6), V(0, 1, 0)
+            )
+            blocked = abs(shank.common(actual).Volume)
+            inside = abs(offset) <= 3.2
+            travel.append(
+                {
+                    "axis_offset_mm": offset,
+                    "interference_mm3": blocked,
+                    "expected_clear": inside,
+                    "passed": blocked < TOL if inside else blocked > TOL,
+                }
+            )
         rows.append(
             {
                 "wall_centre_x_mm": centre,
                 "comparison": comparison,
+                "actual_m3_slot_travel": travel,
                 "passed": "error" not in comparison
-                and comparison_passed(comparison, TOL),
+                and comparison_passed(comparison, TOL)
+                and all(row["passed"] for row in travel),
             }
         )
     return {
         "slot_cap_centre_span_mm": 6.0,
         "slot_overall_length_mm": 9.4,
-        "wall_end_ligament_mm": 5.3,
+        "wall_end_ligament_mm": 4.3,
+        "design_trim_half_range_mm": 3.0,
+        "geometric_m3_axis_half_range_mm": 3.2,
         "upper_web_mm": 1.8,
         "lower_web_mm": 2.8,
         "walls": rows,
@@ -229,25 +258,19 @@ def _independent_slot_sections(shape):
 
 
 def _paired_bottom_contacts(rail_in_module, frame):
-    """Require both complete lower lands on the continuous rail base."""
-    bottoms = []
-    for side, y in ((-1, -3), (1, 1.25)):
-        below = Part.makeBox(40, 1.75, 0.01, V(-20, y, 1.49))
-        above = Part.makeBox(40, 1.75, 0.01, V(-20, y, 1.5))
-        missing = abs(below.cut(rail_in_module).Volume) + abs(above.cut(frame).Volume)
-        bottoms.append(
-            {
-                "side": side,
-                "minimum_area_mm2": 70.0,
-                "missing_contact_mm3": missing,
-                "passed": missing < TOL,
-            }
-        )
-    return bottoms
+    """Require the actual circular lower profile at both bolt stations."""
+    rows = []
+    for axis in (-14, 14):
+        local_rail, local_frame = rail_in_module.copy(), frame.copy()
+        local_rail.translate(V(-axis, 0, 0))
+        local_frame.translate(V(-axis, 0, 0))
+        for row in local_seat_check(local_rail, local_frame)["bottom_datum_contacts"]:
+            rows.append({"bolt_x_mm": axis, **row})
+    return rows
 
 
 def _paired_wall_support(rail_in_module, frame, intervals, axis):
-    """Check one bolt's wall overlap, load-zone margin and opposed side faces."""
+    """Require each ten-millimetre local bearing region on its own wall."""
     matches = [(low, high) for low, high in intervals if low <= axis <= high]
     if len(matches) != 1:
         return {
@@ -256,52 +279,31 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
             "error": "Each bolt must lie on one continuous wall",
         }
     first, last = matches[0]
-    low, high = max(first, -20), min(last, 20)
-    span = max(0.0, high - low)
     end_margin = min(axis - 5 - first, last - axis - 5)
-    centre = (first + last) / 2
-    slot = _literal_rail_slot(centre)
-    faces = []
-    for side, y in ((-1, -1.25), (1, 1.24)):
-        inside = Part.makeBox(span, 0.01, 8, V(low, y, 1.5)).cut(slot)
-        outside = inside.copy()
-        outside.translate(V(0, side * 0.01, 0))
-        missing = abs(inside.cut(rail_in_module).Volume) + abs(
-            outside.cut(frame).Volume
-        )
-        faces.append(
-            {
-                "side": side,
-                "area_mm2": inside.Volume / 0.01,
-                "missing_contact_mm3": missing,
-                "passed": missing < TOL,
-            }
-        )
+    local_rail, local_frame = rail_in_module.copy(), frame.copy()
+    local_rail.translate(V(-axis, 0, 0))
+    local_frame.translate(V(-axis, 0, 0))
+    contacts = local_seat_check(local_rail, local_frame)
     return {
         "bolt_x_mm": axis,
         "wall_interval_x_mm": [first, last],
-        "supported_side_interval_x_mm": [low, high],
-        "wall_overlap_length_mm": span,
-        "side_contacts": faces,
+        "supported_side_interval_x_mm": [axis - 5, axis + 5],
+        "wall_overlap_length_mm": 10.0,
+        "side_contacts": contacts["local_side_contacts"],
+        "local_seat_geometry": contacts,
         "centred_load_zone_length_mm": 10.0,
         "minimum_load_zone_end_margin_mm": end_margin,
         "standard_wall_length_mm": last - first,
-        "passed": span >= 14 - TOL
-        and abs(last - first - 20) < TOL
-        and end_margin >= 2 - TOL
-        and all(face["passed"] for face in faces),
+        "passed": abs(last - first - 18) < TOL
+        and end_margin >= 1 - TOL
+        and contacts["passed"],
     }
 
 
 def paired_spine_support_check(rail_in_module, frame):
-    """Independent full bottom datum and two supported rail-wall overlaps.
-
-    The 40 mm spine may bridge an 8 mm rail-wall gap. Both complete lower
-    lands bear on the continuous base; wall overlap and the local bolt zones
-    are checked separately. The 0.2 mm roof gap is intentional fit relief.
-    """
+    """Independent paired local seats, without a continuous flat-foot rule."""
     bottoms = _paired_bottom_contacts(rail_in_module, frame)
-    relief = Part.makeBox(40, 2.5, 0.2, V(-20, -1.25, 9.5))
+    relief = Part.makeBox(38, 2.5, 0.7, V(-19, -1.25, 9.5))
     blocked_relief = abs(relief.common(frame).Volume)
     line = Part.makeLine(V(-200, 0, 8.5), V(200, 0, 8.5))
     intervals = sorted(
@@ -309,30 +311,29 @@ def paired_spine_support_check(rail_in_module, frame):
     )
     rows = [
         _paired_wall_support(rail_in_module, frame, intervals, axis)
-        for axis in (-15, 15)
+        for axis in (-14, 14)
     ]
-    total = sum(row.get("wall_overlap_length_mm", 0) for row in rows)
     pair_intervals = [row.get("wall_interval_x_mm") for row in rows]
     adjacent = (
         all(pair_intervals)
-        and abs(pair_intervals[1][0] - pair_intervals[0][1] - 8) < TOL
+        and abs(pair_intervals[1][0] - pair_intervals[0][1] - 10) < TOL
     )
     return {
-        "spine_extent_mm": 40.0,
+        "spine_extent_mm": 38.0,
+        "bolt_spacing_mm": 28.0,
         "bottom_datum_z_mm": 1.5,
         "bottom_datum_contacts": bottoms,
-        "minimum_bottom_contact_area_mm2": 140.0,
-        "inner_roof_clearance_mm": 0.2,
+        "flat_bottom_contact_area_claimed": False,
+        "inner_roof_clearance_mm": 0.7,
         "blocked_inner_roof_relief_mm3": blocked_relief,
-        "minimum_wall_overlap_length_mm": 14.0,
-        "minimum_total_wall_overlap_length_mm": 32.0,
-        "wall_overlap_length_total_mm": total,
+        "wall_overlap_length_total_mm": sum(
+            row.get("wall_overlap_length_mm", 0) for row in rows
+        ),
         "wall_supports": rows,
         "adjacent_standard_walls": adjacent,
-        "scope": "Both full40x1.75mm bottom lands seat on the continuous base; the inner roof clears the rail by0.2mm nominal. Two wall overlaps retain10mm bolt-load zones and2mm wall-end margins, at least14mm per wall/32mm total. Neutral overlaps16+16mm; travel extremes14+18mm. The shorter footprint reduces contact area; retained diameter6mm fastener-bearing faces have2mm outer longitudinal stock. The30mm bolt spacing uses±1mm outward slot positions on28mm wall pitch; independent±3mm bolt travel intersects into±2mm module trim. Nominal geometry only; no printed-fit, equal-stiffness or loaded-retention claim.",
+        "scope": "Two independent 10 mm cheek zones and R4.5 lower crowns on 28 mm centres within a 38 mm body. Each local zone retains at least 1 mm to an 18 mm wall end over design trim ±3 mm. The rigid paired frame still couples both wall stations; this check makes no free-curvature, contact-pressure, stiffness or strength claim.",
         "passed": len(rows) == 2
         and adjacent
-        and total >= 32 - TOL
         and all(row["passed"] for row in rows + bottoms)
         and blocked_relief < TOL
         and rows[0].get("wall_interval_x_mm") != rows[1].get("wall_interval_x_mm"),
@@ -361,7 +362,7 @@ def saved_integral_mount_checks(doc, registry):
         )
         complete = geometry_comparison(actual, source)
         sites = attachment_sites(parent_name, offset)
-        zone_length = 10.0 if kind is None else length
+        zone_length = 10.0
         crops = [
             placed_shape(
                 _lower_crop(0, zone_length, shared=kind is None), site_placement(site)
@@ -380,14 +381,15 @@ def saved_integral_mount_checks(doc, registry):
             geometry_comparison(actual.common(crop), literal),
             geometry_comparison(source.common(crop), literal),
         )
-        if kind is None:
-            # Full continuous spine, beyond the two local clamp zones.
-            whole_crop = _lower_crop(0, 40, shared=True)
-            whole_literal = _literal_protected_mount(
-                40, shared=True, bolt_positions=(-15, 15)
-            )
-            lower = geometry_comparison(actual.common(whole_crop), whole_literal)
-            source_lower = geometry_comparison(source.common(whole_crop), whole_literal)
+        # Compare all lower stock as well as the two local bearing zones.
+        whole_crop = _lower_crop(0, length, shared=kind is None)
+        whole_literal = _literal_protected_mount(
+            length,
+            shared=kind is None,
+            bolt_positions=(-14, 14) if kind is None else (0,),
+        )
+        lower = geometry_comparison(actual.common(whole_crop), whole_literal)
+        source_lower = geometry_comparison(source.common(whole_crop), whole_literal)
         site_checks = [
             {
                 "attachment_prefix": site["prefix"],
@@ -479,7 +481,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             canonical_part = placed_shape(
                 local_shape(part), canonical_placement.inverse()
             )
-            zone_length = 10.0 if shared else length
+            zone_length = 10.0
             lower = canonical_part.common(_lower_crop(0, zone_length, shared=shared))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             screw_length, head_face_y = (20.0, -9.0) if shared else (10.0, -3.25)
@@ -507,6 +509,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 head_support = placed_shape(
                     bridge_in_module, canonical_placement.inverse()
                 ).common(crop)
+            angular = angular_clearance_check(local_rail, canonical_part)
             attachment = rail_contact.attachment_check(
                 local_rail,
                 lower,
@@ -579,6 +582,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     "centred_yz": centred,
                     "rail_overlap_mm3": overlap,
                     "saved_lower_mount_attachment": attachment,
+                    "local_angular_clearance_screen": angular,
                     "paired_spine_support": paired_support,
                     "installed_hardware": hardware_rows,
                     "passed": belongs_to_group(part, module)
@@ -587,6 +591,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     and lower.Volume > TOL
                     and overlap < TOL
                     and attachment["passed"]
+                    and angular["passed"]
                     and (paired_support is None or paired_support["passed"])
                     and all(row["passed"] for row in hardware_rows),
                 }
@@ -622,6 +627,7 @@ def rail_check(registry, shapes):
         flex = rail_contact.flex_relief_check(actual)
         wall_sections = _independent_wall_top_sections(actual)
         slot_sections = _independent_slot_sections(actual)
+        roots = root_stock_check(actual)
         mounts = _saved_mounts(registry, shapes, obj, actual)
         tape_contract_matches = _contract_matches(
             obj, "TapeAttachmentContract", rail.tape_attachment_contract()
@@ -637,6 +643,7 @@ def rail_check(registry, shapes):
                 "open_wall_spans": flex,
                 "independent_wall_top_sections": wall_sections,
                 "independent_slot_geometry": slot_sections,
+                "independent_root_geometry": roots,
                 "tape_wings": wings,
                 "tape_attachment_contract_matches": tape_contract_matches,
                 "installed_mounts": mounts,
@@ -645,12 +652,15 @@ def rail_check(registry, shapes):
                 and len(actual.Solids) == 1
                 and comparison_passed(comparison, TOL)
                 and abs(bounds.XLength - 300) < TOL
+                and abs(bounds.ZMin) < TOL
+                and abs(bounds.ZMax - 9.5) < TOL
                 and missing_base < TOL
                 and extra_base < TOL
                 and len(mounts) == 5
                 and flex["passed"]
                 and wall_sections["passed"]
                 and slot_sections["passed"]
+                and roots["passed"]
                 and tape_contract_matches
                 and all(row["passed"] for row in wings + mounts),
             }

@@ -34,6 +34,25 @@ class RailManufacturingTests(unittest.TestCase):
                 else:
                     self.assertGreaterEqual(actual, 1.5 - 1e-6)
 
+    def test_root_relief_preserves_minimum_carrier_wall(self):
+        from gondola.validation.manufacturing import planar_wall_regions
+
+        regions = planar_wall_regions(self.shapes["BatteryMount"])
+        self.assertTrue(regions)
+        self.assertTrue(
+            all(region["material_thickness_mm"] >= 1.5 - 1e-6 for region in regions)
+        )
+
+    def test_overwide_root_relief_is_detected(self):
+        from gondola.validation.manufacturing import planar_wall_regions
+
+        oversized_relief = Part.makeBox(10, 3.8, 1.1, App.Vector(-5, -1.9, 1.5))
+        defective = self.shapes["BatteryMount"].cut(oversized_relief)
+        regions = planar_wall_regions(defective)
+        self.assertTrue(
+            any(region["material_thickness_mm"] < 1.5 - 1e-6 for region in regions)
+        )
+
     def test_enlarging_slot_reduces_top_ligament(self):
         from gondola.validation.manufacturing import material_length_on_line
 
@@ -46,7 +65,7 @@ class RailManufacturingTests(unittest.TestCase):
         from gondola.validation.manufacturing import material_length_on_line
 
         _, name, start, end, expected = self.probes["carrier_clamp_leg"]
-        cut = Part.makeBox(2, 0.2, 1, App.Vector(3, -5.25, 2.5))
+        cut = Part.makeBox(2, 0.2, 1, App.Vector(3, -5.25, 7.5))
         actual = material_length_on_line(self.shapes[name].cut(cut), start, end)
         self.assertAlmostEqual(expected - actual, 0.2, places=6)
 

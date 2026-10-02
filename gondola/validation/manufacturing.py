@@ -110,8 +110,8 @@ def rail_mount_wall_probes():
         (
             "carrier_clamp_leg",
             "BatteryMount",
-            (4, rail.MOUNT_OUTER_Y - e, 3),
-            (4, -rail.WEB_THICKNESS / 2 + e, 3),
+            (4, rail.MOUNT_OUTER_Y - e, 8),
+            (4, -rail.WEB_THICKNESS / 2 + e, 8),
             rail.MOUNT_LEG_THICKNESS,
         ),
     ]
@@ -127,8 +127,8 @@ def rail_mount_wall_probes():
             (
                 "carrier_positive_clamp_leg",
                 "BatteryMount",
-                (4, 1.25 - e, 3),
-                (4, 5.25 + e, 3),
+                (4, 1.25 - e, 8),
+                (4, 5.25 + e, 8),
                 4.0,
             ),
             (
@@ -310,7 +310,7 @@ def review(doc, registry):
             "wall_lengths_mm": [last - first for first, last in rail.wall_segments()],
             "gap_lengths_mm": [last - first for first, last in rail.flex_spans()],
             "base_width_mm": rail.BASE_WIDTH,
-            "scope": "The straight base and tape-wing pairs retain the nominal thickness reported here. Mount bottoms seat on the base with inner-roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits and the current shared clamp load-zone length. Full-foot seating and shared clamp support are checked against their respective attachment contracts. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
+            "scope": "The straight base and tape-wing pairs retain the nominal thickness reported here. Mount bottoms seat on the base with inner-roof relief. Attachment contracts distinguish individual bolt travel from paired-module travel, including end limits and the current shared clamp load-zone length. Local crowned seats and shared clamp support are checked against their respective attachment contracts; no finite flat bottom-contact area is claimed. Curvature under occupied mounts, adhesion, lateral/torsional stability, strain, fatigue and supplier acceptance remain unqualified.",
         },
         "supplier_acceptance_status": f"User-reported manufacturing review requires at least1.5mm nominal tape attachment. Current base/wings are{rail.PAD_THICKNESS:g}mm; delivered fit, full-length curvature/fatigue and one-piece acceptance remain unqualified.",
         "opposed_planar_face_screen": probes,

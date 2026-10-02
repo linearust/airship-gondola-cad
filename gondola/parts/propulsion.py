@@ -355,7 +355,6 @@ def _blend_frame_edges(frame):
 
 def fixed_frame_shape():
     """One raised transverse beam joins the posts and fitted U rail spine."""
-    web_opening = rail.WEB_THICKNESS
     half_span = PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS + 0.5
     beam = box(
         FOOT_WIDTH,
@@ -379,13 +378,14 @@ def fixed_frame_shape():
             _output_support(-1),
         ]
     )
-    frame = frame.cut(
-        box(
-            length + 2,
-            web_opening,
-            rail.MOUNT_INNER_ROOF_Z,
-            (-length / 2 - 1, -web_opening / 2, 0),
-        )
+    frame = rail.cut_seat_relief(
+        frame,
+        length=length,
+        stations=(
+            -PROPULSION_ATTACHMENT.half_spacing_mm,
+            PROPULSION_ATTACHMENT.half_spacing_mm,
+        ),
+        outer_half_width=width / 2,
     )
     return _checked(
         _blend_frame_edges(rail.cut_shared_bolt_passage(frame)),
@@ -780,9 +780,9 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "frame_rail_to_central_seat_connection",
                 "PropulsionFixedFrame",
-                (0, -2.5, BASE_Z - 0.01),
+                (0, -2.5, rail.BOLT_AXIS_Z - 0.01),
                 (0, -2.5, PROPULSION_ATTACHMENT.seat_z_mm + 0.01),
-                PROPULSION_ATTACHMENT.seat_z_mm - BASE_Z,
+                PROPULSION_ATTACHMENT.seat_z_mm - rail.BOLT_AXIS_Z,
             ),
             (
                 "output_bearing_outer_wall",
@@ -844,37 +844,37 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
             (
                 "servo_bridge_shared_cheek",
                 "ServoDriveBridge",
-                (19, servo_bridge.CHEEK_OUTER_Y - 0.01, 10.5),
-                (19, servo_bridge.CHEEK_CONTACT_Y + 0.01, 10.5),
+                (18, servo_bridge.CHEEK_OUTER_Y - 0.01, 10.5),
+                (18, servo_bridge.CHEEK_CONTACT_Y + 0.01, 10.5),
                 servo_bridge.CHEEK_THICKNESS,
             ),
             (
                 "servo_bridge_opposite_cheek",
                 "ServoDriveBridge",
-                (-19, 5.99, 10.5),
-                (-19, 11.01, 10.5),
+                (-18, 5.99, 10.5),
+                (-18, 11.01, 10.5),
                 5.0,
             ),
             (
                 "servo_bridge_positive_nut_floor",
                 "ServoDriveBridge",
-                (15, 5.99, 8.2),
-                (15, 8.01, 8.2),
+                (14, 5.99, 8.2),
+                (14, 8.01, 8.2),
                 2.0,
             ),
             (
                 "servo_bridge_negative_nut_floor",
                 "ServoDriveBridge",
-                (-15, -8.01, 8.2),
-                (-15, -5.99, 8.2),
+                (-14, -8.01, 8.2),
+                (-14, -5.99, 8.2),
                 2.0,
             ),
             (
                 "servo_bridge_connector_plate",
                 "ServoDriveBridge",
-                (19, 0, servo_bridge.SEAT_Z - 0.01),
+                (18, 0, servo_bridge.SEAT_Z - 0.01),
                 (
-                    19,
+                    18,
                     0,
                     servo_bridge.SEAT_Z + servo_bridge.CONNECTOR_PLATE_THICKNESS + 0.01,
                 ),
@@ -891,7 +891,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "Integral output frame with one 40 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-15 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the rail-spine legs. The removable full-U servo cap carries the recessed heads and nuts. One 18 x 5 mm transverse beam spans the frame at Z7.5..12.5, with its top aligned to the saddle seat. Four full 13 by 6 mm post cores rise from that beam to the Z50 bearing axes; paired R1.5 root blends soften the X-side transitions without thinning the posts. The exposed lower beam edges use R0.5, while the mating roof stays flat. Four bearing-keeper nut seats use0.5mm-deep hex recesses with2mm supporting floors. No separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. The 40 mm footprint locally restrains rail curvature. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
+        "Integral output frame with one 38 by 12 mm U rail spine, a complete flat seat at Z12.5, and two round M3 passages at X +/-14 mm. Both 4.75 mm frame legs carry shared M3x20 clamp preload through the 2.5 mm rail web; no nut pockets or clearance guards interrupt the rail-spine legs. The removable full-U servo cap carries the recessed heads and nuts. One 18 x 5 mm transverse beam spans the frame at Z7.5..12.5, with its top aligned to the saddle seat. Four full 13 by 6 mm post cores rise from that beam to the Z50 bearing axes; paired R1.5 root blends soften the X-side transitions without thinning the posts. The exposed lower beam edges use R0.5, while the mating roof stays flat. Four bearing-keeper nut seats use0.5mm-deep hex recesses with2mm supporting floors. No separate ribs or fasteners. This is a nominal fitted stack, not a spring clamp: coupon-fit all contact planes to hand-seat before tightening; finish or reprint an unsuitable fit instead of pulling gaps or warp closed. Two10mm local side-contact zones use R4.5 lower crowns about the clamp axes, a Z10.2 relieved roof and root clearance; the intervening channel is widened. Nominal line contact is not a stiffness or creep qualification. Support both modules during release. Bearing/shaft interfaces, 150 mm span and 50 mm height are retained; strength, fit, creep and retention remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -1327,7 +1327,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on a removable continuous U cap with a 40 by 12 mm frame seat and two shared M3x20 clamps at 30 mm pitch. Both cap walls and both frame legs carry preload; coupon-fit the nominal mating planes before tightening. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
+            "input_mount": "Prepared stock-horn drives on a removable continuous U cap with a 38 by 12 mm frame seat and two shared M3x20 clamps at 28 mm pitch. Both cap walls and both frame legs carry preload; coupon-fit the nominal mating planes before tightening. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },
@@ -1458,7 +1458,7 @@ def build_propulsion_module(doc, drive=SELECTED_DRIVE):
         drive_module,
         "ServoDriveBridge",
         servo_bridge.bridge_shape(drive),
-        "Removable paired servos on a continuous U cap with a flat 40 by 22 by 2.5 mm roof at Z12.5 and two 5 mm walls wrapping the frame. Two straight openings at X +/-9.2 extend to the roof underside at Z12.5 for the raised 18 mm beam. The beam adds 180 mm2 of roof bearing outside the central spine; both full clamp legs remain at X +/-15. Two shared M3x20 pairs at X +/-15 load both cap walls, both frame legs and the rail web. Head recesses retain 3 mm stock; opposite nut pockets retain nominal 2 mm floors. Both outer recesses open downward; inner round shank bores retain their bearing faces. Nut flats are vertical. Nominal fitted planes must hand-seat after coupon qualification; never tighten an unseated or warped joint into place. The cradle has R1 root transitions; exterior corners retain the complete shallow nut-pocket rims. Post cores, servo ear seats, horn interfaces and their datums remain unchanged. For bench service disconnect leads, support both modules and remove both rail pairs; slide the unit +X10 then lift Z30. Remove the small output gears, release the two driven-shaft clamps, shift PortOutputShaftNegative +Y12 and StarboardOutputShaftPositive -Y12 while supporting the rotors, then lift the servo assembly Z11 and withdraw X80. Restore shafts, clamps, gear retention and mesh alignment before operation.",
+        "Removable paired servos on a continuous U cap with a flat 38 by 22 by 2.5 mm roof at Z12.5 and two 5 mm walls wrapping the frame. Two straight openings at X +/-9.2 extend to the roof underside at Z12.5 for the raised 18 mm beam. The beam adds 180 mm2 of roof bearing outside the central spine; both full clamp legs remain at X +/-14. Two shared M3x20 pairs at X +/-14 load both cap walls, both frame legs and the rail web. Head recesses retain 3 mm stock; opposite nut pockets retain nominal 2 mm floors. Both outer recesses open downward; head pockets additionally open toward their nearest X end only through the outer2mm depth. Nut anti-rotation walls and inner round shank bores retain their bearing faces. Nut flats are vertical. Nominal fitted planes must hand-seat after coupon qualification; never tighten an unseated or warped joint into place. The cradle has R1 root transitions; exterior corners retain the complete shallow nut-pocket rims. Post cores, servo ear seats, horn interfaces and their datums remain unchanged. For bench service disconnect leads, support both modules and remove both rail pairs; slide the unit +X10 then lift Z30. Remove the small output gears, release the two driven-shaft clamps, shift PortOutputShaftNegative +Y12 and StarboardOutputShaftPositive -Y12 while supporting the rotors, then lift the servo assembly Z11 and withdraw X80. Restore shafts, clamps, gear retention and mesh alignment before operation.",
         sku=drive.bridge_sku,
     )
     parts = {

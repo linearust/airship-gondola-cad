@@ -50,7 +50,7 @@ class IntegralMountValidationTests(unittest.TestCase):
         frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
         self.assertEqual(
             [site["attachment_local_x_mm"] for site in frame["attachment_sites"]],
-            [15, -15],
+            [14, -14],
         )
         for row in rows:
             self.assertLess(row["source_comparison"]["difference_mm3"], 1e-5)
@@ -92,7 +92,7 @@ class IntegralMountValidationTests(unittest.TestCase):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
         try:
-            cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(19, -2, 5.5))
+            cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(18, -2, 7.5))
             changed = original.cut(cut)
             self.assertGreater(original.Volume - changed.Volume, 0.09)
             obj.Shape = changed
@@ -108,7 +108,7 @@ class IntegralMountValidationTests(unittest.TestCase):
     def test_opposite_clamp_leg_has_an_independent_saved_geometry_witness(self):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
-        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-19.5, 1.6, 5.5))
+        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-18.5, 1.6, 7.5))
         obj.Shape = original.cut(cut)
         self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
         row = next(row for row in self.checks() if row["part"] == obj.Name)
@@ -129,8 +129,8 @@ class IntegralMountValidationTests(unittest.TestCase):
     def test_spine_outside_local_clamp_zones_has_full_independent_witness(self):
         obj = self.doc.PropulsionFixedFrame
         original = obj.Shape.copy()
-        # Between the local clamp zones, inside the complete40mm spine.
-        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-8.5, 1.6, 5.5))
+        # Between the local clamp zones, inside the complete38mm spine.
+        cut = Part.makeBox(0.5, 0.4, 0.5, App.Vector(-8.5, 1.6, 7.5))
         obj.Shape = original.cut(cut)
         self.assertGreater(original.Volume - obj.Shape.Volume, 0.09)
         row = next(row for row in self.checks() if row["part"] == obj.Name)

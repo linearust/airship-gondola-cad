@@ -60,7 +60,7 @@ class AttachmentPattern:
 
 CARRIER_ATTACHMENT = AttachmentPattern(0.0, 0.0, RAIL_SCREW_LENGTH, 3.25)
 PROPULSION_ATTACHMENT = AttachmentPattern(
-    15.0, 5.0, 20.0, 8.0, 6.0, contact_length_mm=40.0
+    14.0, 5.0, 20.0, 8.0, 6.0, contact_length_mm=38.0
 )
 
 

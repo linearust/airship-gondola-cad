@@ -827,23 +827,23 @@ class NativeGearedDriveTests(unittest.TestCase):
                 all(name in site["retained_during_access"] for site in row["sites"])
             )
         self.assertEqual(len(row["sites"]), 2)
-        self.assertEqual(row["clamp_spacing_mm"], 30.0)
+        self.assertEqual(row["clamp_spacing_mm"], 28.0)
         for site in row["sites"]:
-            self.assertEqual(site["side_bolt_axis_mm"], [15.0, 6.0])
-            self.assertEqual(site["centred_load_zone_x_range_mm"], [10.0, 20.0])
-            self.assertEqual(site["physical_spine_x_range_mm"], [-20, 20])
+            self.assertEqual(site["side_bolt_axis_mm"], [14.0, 6.0])
+            self.assertEqual(site["centred_load_zone_x_range_mm"], [9.0, 19.0])
+            self.assertEqual(site["physical_spine_x_range_mm"], [-19, 19])
             self.assertEqual(
                 site["shared_grip_contact_check"]["checked_centred_contact_length_mm"],
                 10,
             )
             support = site["paired_spine_support"]
             self.assertTrue(support["passed"])
-            self.assertEqual(support["spine_extent_mm"], 40)
-            self.assertEqual(support["wall_overlap_length_total_mm"], 32)
+            self.assertEqual(support["spine_extent_mm"], 38)
+            self.assertEqual(support["wall_overlap_length_total_mm"], 20)
             self.assertTrue(
                 all(row["passed"] for row in support["bottom_datum_contacts"])
             )
-            self.assertAlmostEqual(support["inner_roof_clearance_mm"], 0.2)
+            self.assertAlmostEqual(support["inner_roof_clearance_mm"], 0.7)
 
     def test_new_frame_obstacle_cannot_hide_from_side_rail_access(self):
         from gondola.parts import rail
@@ -2130,10 +2130,10 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 expected_sections = {
                     "frame_foot_thickness": 5.0,
                     "rail_straight_base_width": 6.0,
-                    "carrier_roof": 2.8,
+                    "carrier_roof": 2.3,
                     "carrier_nut_pocket_bottom_opening": 0,
-                    "frame_rail_relieved_roof": 2.8,
-                    "frame_rail_to_central_seat_connection": 11.0,
+                    "frame_rail_relieved_roof": 2.3,
+                    "frame_rail_to_central_seat_connection": 6.5,
                     "port_servo_bridge_sidewall": 4.2,
                     "starboard_servo_bridge_sidewall": 4.2,
                     "servo_common_cradle_central_web": 5.2,

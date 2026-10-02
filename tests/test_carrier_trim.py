@@ -11,17 +11,17 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class CarrierTrimTests(unittest.TestCase):
-    def test_full_foot_interval_clips_base_ends_and_reverses_with_yaw(self):
+    def test_local_contact_interval_reverses_with_yaw(self):
         from gondola.validation.rail_access import _carrier_trim_interval
 
         for axis, yaw, expected in (
-            (0, 0, (-1.2, 1.2)),
-            (-140, 0, (-1, 1.2)),
-            (-140, 180, (-1.2, 1)),
-            (140, 0, (-1.2, 1)),
-            (140, 180, (-1, 1.2)),
-            (141, 0, (-2.2, 0)),
-            (-55.5, 180, (-0.7, 1.7)),
+            (0, 0, (-3, 3)),
+            (-140, 0, (-3, 3)),
+            (-140, 180, (-3, 3)),
+            (140, 0, (-3, 3)),
+            (140, 180, (-3, 3)),
+            (143, 0, (-6, 0)),
+            (-55.5, 180, (-2.5, 3.5)),
         ):
             with self.subTest(axis=axis, yaw=yaw):
                 result = _carrier_trim_interval(
@@ -32,7 +32,7 @@ class CarrierTrimTests(unittest.TestCase):
                 )
                 for actual, target in zip(result, expected):
                     self.assertAlmostEqual(actual, target)
-        for axes, yaw in (([], 0), ([0, 28], 0), ([4], 0), ([141.01], 0), ([0], 90)):
+        for axes, yaw in (([], 0), ([0, 28], 0), ([4], 0), ([143.01], 0), ([0], 90)):
             with self.subTest(axes=axes, yaw=yaw), self.assertRaises(ValueError):
                 _carrier_trim_interval(
                     {
@@ -47,7 +47,7 @@ class CarrierTrimTests(unittest.TestCase):
 
         carried = Part.makeBox(0.1, 1, 1)
         obstacle = Part.makeBox(0.1, 1, 1, App.Vector(0.4, 0, 0))
-        for dx in (-1.2, 1.2):
+        for dx in (-3, 3):
             self.assertLess(
                 translated_shape(carried, x=dx).common(obstacle).Volume, 1e-7
             )
@@ -138,9 +138,7 @@ class CarrierTrimTests(unittest.TestCase):
             for carrier in carriers:
                 trim = carrier["populated_supported_trim"]
                 self.assertTrue(trim["passed"], trim)
-                expected_travel = (
-                    2.2 if carrier["module"] == "AccessoryEquipmentModule" else 2.4
-                )
+                expected_travel = 6
                 self.assertAlmostEqual(trim["travel_mm"], expected_travel)
                 self.assertTrue(
                     any(row["part"].endswith("RailMountScrew") for row in trim["parts"])

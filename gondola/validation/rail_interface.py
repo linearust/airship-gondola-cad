@@ -10,7 +10,7 @@ MOUNT_BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
     ("ElectronicsMount", "ElectronicsEquipmentModule", "electronics", 0.0, 16.0),
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
-    ("PropulsionFixedFrame", "MainPropulsionModule", None, 15.0, 40.0),
+    ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 38.0),
 )
 
 
@@ -22,8 +22,8 @@ def attachment_sites(module_name, offset=0):
     """Require the literal second clamp rather than infer it from saved hardware."""
     if module_name == "MainPropulsionModule":
         return (
-            {"prefix": "", "x_offset": 15.0, "side": 1},
-            {"prefix": "Opposite", "x_offset": -15.0, "side": -1},
+            {"prefix": "", "x_offset": 14.0, "side": 1},
+            {"prefix": "Opposite", "x_offset": -14.0, "side": -1},
         )
     return ({"prefix": "", "x_offset": offset, "side": 1},)
 

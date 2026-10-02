@@ -147,34 +147,29 @@ def _mount_service_regions(name, shape, offset):
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         return [(name, shape)]
-    low_region = Part.makeBox(
+    # Deliberately fill the crowns back to a flat Z1.5 bottom for this
+    # straight-rail service envelope only. Preserve the open U and root relief;
+    # containment below proves no saved feature is omitted. Angular clearance
+    # uses the actual saved crowns in rail_curvature, not this filled stock.
+    shared = name == "PropulsionFixedFrame"
+    length, width = (38, 12) if shared else (10, 10.5)
+    lower = Part.makeBox(length, width, 11, V(-length / 2, -width / 2, 1.5))
+    channel = Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
+    roots = Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
+    lower = lower.cut(channel).cut(roots)
+    if not shared:
+        lower = lower.fuse(Part.makeBox(16, 10.5, 2.3, V(-8, -5.25, 10.2)))
+    upper_region = Part.makeBox(
         bounds.XLength + 2,
         bounds.YLength + 2,
-        rail.MOUNT_TOP_Z - bounds.ZMin + 1,
-        V(bounds.XMin - 1, bounds.YMin - 1, bounds.ZMin - 1),
+        bounds.ZLength + 1,
+        V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
     )
-    lower, upper = shape.common(low_region), shape.cut(low_region)
-    # Fill transverse bores without filling the fitted U channel. Each shared
-    # frame station has two full 4.75 mm legs; carriers have two different floors.
-    shared = name == "PropulsionFixedFrame"
-    module_name = "MainPropulsionModule" if shared else "Carrier"
-    sections = (
-        ((-6.0, 4.75, 3.4), (1.25, 4.75, 3.4))
-        if shared
-        else ((-5.25, 4.0, 6.4), (1.25, 2.0, 3.4))
-    )
-    canonical_fills = [
-        Part.makeBox(width, depth, width, V(-width / 2, y, 6 - width / 2))
-        for y, depth, width in sections
-    ]
-    for site in attachment_sites(module_name, offset):
-        for fill in canonical_fills:
-            lower = lower.fuse(placed_shape(fill, site_placement(site)))
-    lower = lower.removeSplitter()
+    upper = shape.common(upper_region)
     if shared:
         # A single prism around the rounded beam would fill the open U channel.
         # Keep the planar spine and both outboard beam stocks separate.
-        spine_region = Part.makeBox(40, 12, 11, V(-20, -6, 1.5))
+        spine_region = Part.makeBox(38, 12, 11, V(-19, -6, 1.5))
         return [
             (name + "LowerSpine", lower.common(spine_region)),
             (
@@ -335,11 +330,11 @@ def _service_preflight(doc, registry, bindings):
 
 
 def _shared_trim_interval(pose):
-    """Intersect ±3 mm bolt windows; a 30 mm pair on 28 mm pitch gives 4 mm."""
+    """Intersect the paired ±3 mm bolt windows on matching 28 mm pitch."""
     limits = []
     axes = sorted(pose["attachment_world_axes_x_mm"])
-    if len(axes) != 2 or abs(axes[1] - axes[0] - 30) > TOL:
-        raise ValueError("Shared trim requires two rail-clamp axes30mm apart")
+    if len(axes) != 2 or abs(axes[1] - axes[0] - 28) > TOL:
+        raise ValueError("Shared trim requires two rail-clamp axes28mm apart")
     centres = []
     for axis in axes:
         matches = [
@@ -352,14 +347,14 @@ def _shared_trim_interval(pose):
     if abs(centres[1] - centres[0] - 28) > TOL:
         raise ValueError("Shared trim requires two adjacent rail walls")
     low, high = max(row[0] for row in limits), min(row[1] for row in limits)
-    if abs(high - low - 4) > TOL:
-        raise ValueError("Shared clamp intervals do not give the reviewed4mm trim")
-    # The continuous40mm bottom lands must also stay inside the full-width
-    # base, X±149 before its1mm end chamfers. Full±2mm trim fits every wall pair.
-    centre = sum(axes) / 2
-    low, high = max(low, -129 - centre), min(high, 129 - centre)
+    if abs(high - low - 6) > TOL:
+        raise ValueError("Shared clamp intervals do not give the reviewed6mm trim")
+    # Only the R4.5 local crowns require base support, not the relieved roof.
+    # Base X±149 is full-width before its end chamfers.
+    low = max(low, -144.5 - axes[0])
+    high = min(high, 144.5 - axes[-1])
     if low > TOL or high < -TOL:
-        raise ValueError("Shared bottom datum is outside the full-width rail base")
+        raise ValueError("Shared local crown lies outside the full-width rail base")
     return low, high
 
 
@@ -398,7 +393,7 @@ def _shared_screw_slide(name, shape, obstacles, low, high):
         obstacles,
         low,
         high,
-        -15 if opposite else 15,
+        -14 if opposite else 14,
         (
             (3.0, 9.0 if opposite else -11.0, 2.0),
             (1.5, -11.0 if opposite else -9.0, 20.0),
@@ -407,23 +402,25 @@ def _shared_screw_slide(name, shape, obstacles, low, high):
 
 
 def _carrier_trim_interval(pose):
-    """Literal full-foot window, clipped at the rail ends, in module local X."""
+    """Literal local-contact window in module local X."""
     axes = pose["attachment_world_axes_x_mm"]
     if len(axes) != 1 or not math.isfinite(axes[0]):
         raise ValueError("Carrier trim requires one finite rail-clamp axis")
     axis = axes[0]
     centres = [
-        centre for centre in range(-140, 141, 28) if abs(axis - centre) <= 1.2 + TOL
+        centre for centre in range(-140, 141, 28) if abs(axis - centre) <= 3 + TOL
     ]
     if len(centres) != 1:
-        raise ValueError("Carrier trim axis is outside the reviewed full-foot range")
+        raise ValueError(
+            "Carrier trim axis is outside the reviewed local-contact range"
+        )
     yaw = pose["expected_carrier_yaw_deg"]
     if not math.isfinite(yaw) or min(abs(yaw), abs(yaw - 180)) > TOL:
         raise ValueError("Carrier trim requires the reviewed 0 or 180 degree yaw")
     direction = 1 if abs(yaw) < TOL else -1
-    # A16mm foot stops at X±149 before the1mm base end chamfers.
-    low = max(centres[0] - 1.2, -141) - axis
-    high = min(centres[0] + 1.2, 141) - axis
+    # The R4.5 crown stays on the full-width base X±149.
+    low = max(centres[0] - 3, -144.5) - axis
+    high = min(centres[0] + 3, 144.5) - axis
     if low > TOL or high < -TOL:
         raise ValueError("Carrier bottom datum is outside the full-width rail base")
     return tuple(sorted((direction * low, direction * high)))
@@ -455,7 +452,7 @@ def supported_carrier_slide(shapes, obstacles, pose):
         "travel_mm": high - low,
         "coordinate_frame": "Module local X; a 180-degree carrier yaw reverses world X.",
         "parts": rows,
-        "scope": "Continuous nominal rigid slide through the current wall's full-foot window, ordinarily±1.2mm about its centre and clipped at the base ends. All carried parts and loosened hardware move against every retained registered neighbour, rail and tape. The carrier uses separate stock regions with complete saved-shape containment. Only the saved other-module positions and stage angles are checked; disconnect/reroute leads and revalidate after relocation. No curved-rail, friction, preload, cable-motion or physical-fit qualification.",
+        "scope": "Continuous nominal rigid slide through the current wall's local-contact window,±3mm about its centre. All carried parts and loosened hardware move against every retained registered neighbour, rail and tape. The carrier uses separate stock regions with complete saved-shape containment. Only the saved other-module positions and stage angles are checked; disconnect/reroute leads and revalidate after relocation. No curved-rail, friction, preload, cable-motion or physical-fit qualification.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }
 

@@ -35,7 +35,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 0,
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
-            ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 0, 15.0),
+            ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 0, 14.0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -48,7 +48,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 "RailAttachmentContract",
                 json.dumps(
                     rail.attachment_contract(
-                        40 if kind is None else 16, shared_drive=kind is None
+                        38 if kind is None else 16, shared_drive=kind is None
                     ),
                     sort_keys=True,
                 ),
@@ -112,11 +112,11 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
         )
         self.assertEqual(len(actual), 5)
-        for value, expected in zip(actual, (-140, -56, -1, 29, 84)):
+        for value, expected in zip(actual, (-140, -56, 0, 28, 84)):
             self.assertAlmostEqual(value, expected)
 
     def test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones(self):
-        for position in (12, 16):
+        for position in (11, 17):
             with self.subTest(position=position):
                 self.doc.MainPropulsionModule.Placement.Base.x = position
                 self.doc.recompute()
@@ -130,7 +130,7 @@ class SavedRailValidationTests(unittest.TestCase):
                 self.assertEqual(len(shared), 2)
                 for row in shared:
                     self.assertAlmostEqual(
-                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 32
+                        row["paired_spine_support"]["wall_overlap_length_total_mm"], 20
                     )
                     self.assertEqual(
                         row["saved_lower_mount_attachment"][
@@ -138,7 +138,7 @@ class SavedRailValidationTests(unittest.TestCase):
                         ],
                         10,
                     )
-        self.doc.MainPropulsionModule.Placement.Base.x = 16.01
+        self.doc.MainPropulsionModule.Placement.Base.x = 17.01
         self.assertFalse(self.check()["passed"])
 
     def test_gap_position_is_rejected_even_without_a_collision(self):
@@ -160,7 +160,7 @@ class SavedRailValidationTests(unittest.TestCase):
             for row in report["rails"][0]["installed_mounts"]
             if row["module"] == "MainPropulsionModule"
         )
-        self.assertAlmostEqual(row["attachment_axis_x_mm"], 15.0)
+        self.assertAlmostEqual(row["attachment_axis_x_mm"], 14.0)
         self.assertFalse(row["passed"])
 
     def test_missing_opposite_pair_cannot_pass_as_a_single_propulsion_clamp(self):
@@ -242,13 +242,13 @@ class SavedRailValidationTests(unittest.TestCase):
 
         screw = self.doc.MainPropulsionModuleRailMountScrew
         original_shape, original_sku = screw.Shape.copy(), screw.HardwareSKU
-        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=15)
+        screw.Shape = translated_shape(rail.attachment_screw_shape(), x=14)
         screw.HardwareSKU = "M3X8_BUTTON_HEAD"
         self.assertFalse(self.check()["passed"])
         screw.Shape, screw.HardwareSKU = original_shape, original_sku
         bridge = self.doc.ServoDriveBridge
         bridge.Shape = bridge.Shape.cut(
-            Part.makeBox(1, 0.5, 0.3, App.Vector(14.5, -9.0, 8.2))
+            Part.makeBox(1, 0.5, 0.3, App.Vector(13.5, -9.0, 8.2))
         )
         report = self.check()
         self.assertFalse(report["passed"])
@@ -353,7 +353,7 @@ class SavedRailValidationTests(unittest.TestCase):
         self.assertGreater(row["missing_unbroken_base_witness_mm3"], 0.89)
         self.assertAlmostEqual(row["extra_base_material_mm3"], 0, places=6)
 
-    def test_long_propulsion_foot_cannot_claim_the_short_carrier_travel(self):
+    def test_propulsion_contract_cannot_claim_a_single_carrier_attachment(self):
         from gondola.parts import rail
 
         self.doc.MainPropulsionModule.RailAttachmentContract = json.dumps(

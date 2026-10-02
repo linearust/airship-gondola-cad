@@ -200,15 +200,15 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         bridge = self.doc.ServoDriveBridge.Shape
         support = Part.makeBox(
-            40,
+            38,
             12,
-            servo_bridge.SEAT_Z - 9.7,
-            App.Vector(-20, -6, 9.7),
+            servo_bridge.SEAT_Z - 10.2,
+            App.Vector(-19, -6, 10.2),
         )
-        contact = Part.makePlane(40, 12, App.Vector(-20, -6, servo_bridge.SEAT_Z))
+        contact = Part.makePlane(38, 12, App.Vector(-19, -6, servo_bridge.SEAT_Z))
         self.assertLess(support.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(contact.common(frame).Area, 480, places=5)
-        self.assertAlmostEqual(contact.common(bridge).Area, 480, places=5)
+        self.assertAlmostEqual(contact.common(frame).Area, 456, places=5)
+        self.assertAlmostEqual(contact.common(bridge).Area, 456, places=5)
         self.assertLess(frame.common(bridge).Volume, 1e-7)
 
     def test_ten_mm_load_zones_keep_two_mm_stock_beyond_loaded_annuli(
@@ -220,7 +220,11 @@ class FrameRootTests(unittest.TestCase):
         offset = propulsion.RAIL_BOLT_OFFSET_X
         length = propulsion.RAIL_CONTACT_LENGTH
         foot = Part.makeBox(10, 12, 11, App.Vector(-5, -6, 1.5))
-        foot = foot.cut(Part.makeBox(10, 2.5, 8.2, App.Vector(-5, -1.25, 1.5)))
+        lower = Part.makeBox(10, 12, 4.5, App.Vector(-5, -6, 1.5))
+        crown = Part.makeCylinder(4.5, 12, App.Vector(0, -6, 6), App.Vector(0, 1, 0))
+        foot = foot.cut(lower.cut(crown))
+        foot = foot.cut(Part.makeBox(10, 2.5, 8.7, App.Vector(-5, -1.25, 1.5)))
+        foot = foot.cut(Part.makeBox(10, 3.5, 1.1, App.Vector(-5, -1.75, 1.5)))
         foot = foot.cut(
             Part.makeCylinder(1.7, 14, App.Vector(0, -7, 6), App.Vector(0, 1, 0))
         )
@@ -228,10 +232,10 @@ class FrameRootTests(unittest.TestCase):
             seated = foot.copy()
             seated.translate(App.Vector(side * offset, 0, 0))
             self.assertLess(seated.cut(frame).Volume, 1e-7)
-        self.assertAlmostEqual(offset, 15)
+        self.assertAlmostEqual(offset, 14)
         self.assertAlmostEqual(length / 2 - offset - 3, 2)
-        self.assertAlmostEqual(length, 40)
-        connection = Part.makeBox(4, 4, 11, App.Vector(5, -5.25, 1.5))
+        self.assertAlmostEqual(length, 38)
+        connection = Part.makeBox(4, 4, 6.5, App.Vector(5, -5.5, 6))
         self.assertLess(connection.cut(frame).Volume, 1e-7)
 
     def test_side_bore_fill_does_not_fill_the_web_passage_and_frame_lifts(self):
