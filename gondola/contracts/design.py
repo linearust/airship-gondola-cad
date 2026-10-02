@@ -23,11 +23,11 @@ from .fasteners import KIT_MATERIAL, RAIL_FASTENER_MATERIAL
 from .optical_sensors import get_sensor_profile
 from .power_options import power_option_contract
 from .rail_attachments import module_attachment_pattern
-from .servo_horns import SELECTED_BY_SIDE
+from .servo_horns import SELECTED_BY_SIDE, preparation_note
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "CC"
+DESIGN_REVISION = "CD"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -59,7 +59,7 @@ MANUFACTURING_DECISION = {
     "qualification": "Not qualified: obtain one-piece acceptance and review rail flexures, straightness, curvature, fatigue and seated mounting fit. Use the same agreed unfilled PA12 process/material/finish and corresponding feature orientation for coupons and full parts. Verify the optical carrier foot and pitch seat for flatness, pointing stability and creep with actual fasteners.",
     "nominal_general_functional_wall_mm": 1.5,
     "nominal_rail_flexure_mm": RAIL_BASE_THICKNESS_MM,
-    "flexure_exception": "The rail base and tape wings retain the user-reported manufacturing-review minimum of 1.5 mm nominal. Eleven equal18mm walls on28mm pitch leave10mm wall gaps and8mm clear gaps between R1 end-root transitions above the continuous base. Local10mm side-contact zones and crowned lower seats retain intended +/-3mm straight-rail travel per station. Do not cut bend grooves below the 1.5 mm base minimum; compact rigid attachment footprints instead. Read the rail contract for geometry and permitted poses. Actual curvature, contact fit, adhesion, stiffness and fatigue remain unqualified.",
+    "flexure_exception": "The rail base and tape wings retain the user-reported manufacturing-review minimum of 1.5 mm nominal. Eleven equal18mm walls on28mm pitch leave10mm wall gaps and8mm clear gaps between R1 end-root transitions above the continuous base. Local10mm side-contact zones retain intended +/-3mm straight-rail travel per station. Ordinary carriers seat on the local wall top and follow its pitch; the paired propulsion frame retains crowned base contacts. Do not cut bend grooves below the 1.5 mm base minimum; compact rigid attachment footprints instead. Read the rail contract for geometry and permitted poses. Actual curvature, contact fit, adhesion, stiffness and fatigue remain unqualified.",
     "dfam_basis": "Prefer simple integral load-bearing sections and accessible through-features. Retain openings for assembly, wiring or motion; omit lightening windows that leave fragile narrow ligaments for negligible system-level benefit. SLS/MJF powder supports overhangs; do not introduce splits solely from FDM/SLA support-angle rules. Keep powder-removal access to holes and pockets. Do not add lattice infill or sealed hollow regions; avoid extra fine struts and trapped powder.",
     "sources": {
         "dimensions_and_tolerances": CREALLO_GUIDE_URL,
@@ -75,11 +75,12 @@ MANUFACTURING_DECISION = {
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
     "fc_and_accessory_carriers": "Three identical square carriers share a symmetric U-shaped rail shoe. Recesses open downwards only through their outer depth; closed bolt passages and load-bearing floors remain. Nuts insert freely and resist rotation but are not captive with the bolt removed. Preserve the FC wiring gap, source-confirmed mounting axes, optional payload slot profiles and adhesive allocations. Hole compatibility does not establish payload strength or occupied-device clearance.",
-    "rail_and_carriers": "Three tape-wing pairs and eleven slotted walls support the common carriers and a shorter paired propulsion spine. Three M3x10 pairs serve the carriers; two opposed M3x20 pairs jointly clamp the servo saddle, output frame and rail. Seat both contact faces before tightening. The paired spine spans one flexure gap; local crowns and relieved channels reduce geometric obstruction but do not establish unrestricted curvature. Travel is the intersection of the slot and local contact support ranges. The nominal straight-rail range is +/-3mm, including end stations; roofs and relieved overhangs need not be fully supported. Qualify curvature, seating and retention.",
+    "rail_and_carriers": "Three tape-wing pairs and eleven slotted walls support the common carriers and a shorter paired propulsion spine. Three M3x10 pairs serve the carriers; two opposed M3x20 pairs jointly clamp the servo saddle, output frame and rail. Ordinary carrier roofs seat on a single wall top; their lower legs clear the base. This constrains pitch about the cross-bolt axis, not every rotational load. The carrier follows the local wall pitch; do not force a level deck against a tilted wall. The paired spine spans one flexure gap; local crowns and relieved channels reduce geometric obstruction but do not establish unrestricted curvature. Travel is the intersection of the slot and local contact support ranges. The nominal straight-rail range is +/-3mm, including end stations; roofs and relieved overhangs need not be fully supported. Qualify curvature, seating and retention.",
     "servo_bridge_and_frame": "Keep paired servos and input drives replaceable. The 38 mm rectangular U saddle retains both sidewalls, a reinforced roof and rounded servo-wall roots on the unchanged raised transverse beam datum. Its 10 mm load zones preserve 2 mm beyond the nominal 6 mm fastener bearing diameter; strength equivalence to the former longer saddle is not established. Two opposed M3 pairs clamp saddle, frame and rail together. Open-bottom exterior pockets preserve closed throats and load-bearing floors. Keep the servo ear planes and gear axes fixed while reinforcing the outer vertical members. Validate ordered rail removal and servo-module withdrawal with the saved geometry; support both modules during release and disconnect leads. No physical stiffness, fit or creep qualification.",
     "bearings_and_frame": "Retain the four purchased generic 3x6x2.5 bearings for this iteration. Each rotor has two bearings at 70 mm centre spacing and 10 mm shaft grips; driven/idler rods remain 34/20 mm. A fixed round seat and integral rear shoulder locate each bearing; one identical removable front keeper per bearing uses one M2x6 screw and ordinary M2 nut. The lower3.5mm keeper backing extends symmetrically to5mm below the axis, reallocating stock from the mating frame pocket without moving capture faces. The lower single-screw load path remains; no strength improvement is quantified. Broad pocket guides prevent keeper rotation; four 0.5 mm-deep M2 hex recesses replace raised nut guides, retaining 2 mm frame floors. Keeper guide clearance is 0.1 mm per side; finish for snug seating and centre the apertures before tightening. Tighten the keeper against its frame seat, not the bearing; no radial clamp or bearing preload is intended. The nominal diameter6.0 seat has no intentional diametral play and a continuous bore across the full bearing width. Finish a production-matched coupon to the received bearing for snug insertion without preload; reprint an oversized seat rather than tightening its keeper to conceal radial rocking. The diameter5.6 keeper opening and0.5mm inward float require actual outer-ring/shield and axial-fit checks. Keeper fronts preserve the separate nominal +/-0.5mm carrier stops. Remove the carrier and shafts before bearing service; no latch deflection or two-blade release is required. No bought bearing spacers, push-on rings or replacement bearings. This is not a multiple-size housing; two bearings do not eliminate overhang bending or fit sensitivity.",
     "motor_carriers_and_frame": "Independent rotating carriers integrate the motor plate, guard and split shaft clamps. Preserve the purchased output shafts, bearings and carrier retention interfaces. The exact printed motor mounting face is X=-5 mm from the tilt axis; source motor dimensions replace the former incorrect overall-length interpretation. Physical propeller seating and blade axial sweep are unresolved. Any shown hub or disk pose is an explicitly identified reference case, not a measured installation or proven protective guard position. Keep all clamp cuts open after final unions. The current forty-millimetre propeller carrier is not a fifty-millimetre propeller carrier; the larger replacement envelope is only a space reservation.",
-    "horn_and_adapter": "One rounded, tapered adapter follows the selected manufacturer X06 stock plastic half arm 1 on both sides, retaining the root and nut-bearing lands. Preserve the supplied STEP geometry and factory hole axes; enlarge only the existing diameter-1mm holes at radii6.8/13.2mm to1.5mm for rear M1.4x8 screws and front M1.4 nuts. A near diameter1.6mm round hole limits translation; a far1.6x2.2mm radial slot accommodates hole-pitch error without leaving both joints free along the arm. The nominal diameter7mm root uses an open diameter7.3mm seat; its0.15mm radial clearance is assembly allowance, not certified concentricity. Two0.6mm-deep front nut pockets leave3mm backing; their short radial extensions retain the selected hole-pitch allowance while transverse nut float is limited to0.1mm nominal. Finish for free nut seating, verify actual chamfers and do not force a misaligned horn. Keep the purchased spline, OEM centre retaining screw, full shaft-stop floor, gear/stub planes and ordered removal. Tighten both joints before operation. Resin, mass, actual seating, runout, clamping and reversing-load strength remain unmeasured.",
+    "horn_and_adapter": preparation_note()
+    + " Keep the purchased spline, OEM centre screw, shaft-stop floor and gear/stub planes. Adapter openings and nut clearance accommodate fitting before tightening, not operating looseness. Follow the coupling contract for actual geometry and ordered service; source dimensions do not qualify strength or runout.",
     "optical_head": "Two prints provide one lockable manual pitch-Y axis. A small rectangular foot and straight pitch post attach to an existing universal carrier side slot with an integral locating tongue and one M2 pair; one more pair clamps pitch. Both optical nuts have0.5mm-deep hex recesses with1.5mm floors; the pitch nut belongs to the moving tray so it follows pitch adjustment. The tongue limits assembly yaw without extending below the deck; the screw locks the seated foot. It does not self-level or remove the need to align before tightening. No dedicated optical rail shoe or additional universal carrier is needed. Use the checked host/edge configurations and validate complete sensor, service and power clearances after relocation. Rail centring does not correct roll or actively level the sensor. Qualify foot seating, pointing retention and PA12 creep.",
 }
 
@@ -165,7 +166,7 @@ def _selected_horn_hardware():
         quantities[selected.sku] += 1
         quantities[selected.screw_sku] += 2
         if not selected.threaded:
-            quantities["M1_4_HEX_NUT_DIN934"] += 2
+            quantities["M1_HEX_NUT"] += 2
     return dict(quantities)
 
 
@@ -203,8 +204,8 @@ HARDWARE_MATERIALS = {
     "SS304_CUT3_L20": "304 stainless steel (seller claim)",
     "SS304_CUT3_L18_FLAT18_A0": "304 stainless steel (seller claim)",
     "KST_X06_STOCK_HALF_ARM_1": "Supplied horn material unverified",
-    "M1_4X8_PAN_HEAD_KIT": "304 stainless steel (seller claim)",
-    "M1_4_HEX_NUT_DIN934": "Brass (seller claim; grade unspecified)",
+    "M1X6_HEX_HEAD": "Unverified metal",
+    "M1_HEX_NUT": "Unverified metal",
 }
 
 EXPECTED_INVENTORY = {
@@ -292,7 +293,7 @@ def wiring_purchase_plan(navigation_key=None, radio_key=None, sensor_key=None):
             "XT30-family pigtail compatible with the purchased battery; compact AMASS XT30U is the dimensional reference, not confirmation of the supplied battery connector variant.",
         ],
         "seller_or_completed_harness_verified": False,
-        "stock_replacement_decision": "Use already-owned M2 and M3 metal hardware, GH1.25 connectors, selected micro-screw kit, manufacturer X06 stock plastic half arm1 on both sides, gears, nominal-3mm 304 rods and3x6x2.5 ball bearings. Five rail joints now use M3; head and nut envelopes, actual grade and fit of that stock remain unverified. A2 stainless is a design material selection, not a confirmed stock grade. The selected horn uses the manufacturer's nominal STEP geometry with only the two declared factory-hole enlargements, rear M1.4x8 screws and front M1.4 nuts; do not fabricate a replacement spline. Older metal-horn drawings are historical alternatives, not current adapter compatibility claims. No purchased bearing spacers. Optional Matek boards use insulating adhesive or straps on the vacated battery carrier or the separately screened raised platform, not invented PCB holes. Optional hardware is separate from the baseline mechanism BOM.",
+        "stock_replacement_decision": "Use owned M2/M3 hardware, GH1.25 connectors, the selected micro-screw kit for servo ears, unmodified manufacturer X06 stock half arm1 on both sides, owned M1 hex hardware for horn attachment, purchased gears, nominal3mm 304 rods and3x6x2.5 bearings. Owned M1 lengths, external-head size, metal grade and delivered fit remain unmeasured. Use declared acceptance envelopes, not assumed universal head dimensions. Do not print a replacement spline. No bearing spacers. Optional Matek boards use insulating adhesive or straps on the battery carrier or optional platform; no invented PCB holes.",
     }
 
 
@@ -385,7 +386,8 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "servo_drive",
-        "Verify the selected manufacturer X06 stock plastic half arm1 on the actual servo: spline/OEM screw seating, locating surface, flatness and runout. The supplied STEP establishes nominal geometry, not delivered tolerances, resin, mass or loaded retention. Enlarge only the existing diameter1mm holes at6.8/13.2mm to1.5mm; deburr and inspect the remaining plastic. Use two rear M1.4x8 screws/front M1.4 nuts and the near round hole/far short slot, clamped before operation. The front nuts sit in shallow recesses; use the horn coupling contract for nominal grip and tip projection, then check actual head/nut contact, engagement, protrusion and service clearance. The0.15mm radial open root-seat allowance and fixing clearances do not compensate a bent shaft or eccentric spline. The D-socket circular datum is nominallyØ3 with relief only at the flat, avoiding deliberate off-axis seating when the jack screw loads the shaft. Finish to the actual stub, then check runout and loaded grip; nominal line contact does not establish delivered concentricity. No extra input bearing is selected; external radial servo load, plastic/PA12 creep and two-way torque retention remain unqualified.",
+        preparation_note()
+        + " Verify spline/OEM screw seating, root fit, flatness and runout. The open root seat does not compensate eccentricity or a bent shaft. Finish the nominal3mm circular D-socket datum to the actual stub; check loaded grip, external servo radial load, plastic creep and reversing torque retention.",
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
@@ -456,7 +458,7 @@ def hardware_bom_scope():
         "complete_gondola_purchase_list": False,
         "excluded_unmodeled_requirements": [
             "FC mounting spacers/fasteners and dampers, plus P-AS mounting hardware only when P-AS is selected: actual PCB bearing planes, compressed damper dimensions and fastener lengths remain unverified. GPS alternatives use insulating adhesive, not additional GPS screws.",
-            "RS1102 motor mounting screws and OEM X06 horn-retaining screws: lengths, heads and actual engagement remain unverified. Two manufacturer stock plastic half arms of the same selected profile, four M1.4x8 attachment screws and four front M1.4 nuts are included with their declared preparation; older horn alternatives are outside the current inventory.",
+            "RS1102 motor screws and OEM X06 centre screws: lengths, heads and actual engagement remain unverified. Two unmodified manufacturer half arms and four M1 horn bolt/nut pairs are included; actual owned hardware must fit the declared envelope.",
             "Four M3 gear set screws: thread confirmed, exact length/tip/protrusion and inclusion not verified; procure later after measuring the actual hubs.",
             "Tape, adhesive, wiring, connectors, insulation, strain relief, antennas, capacitor and other unmodeled accessories. Optional power platform, Matek boards, ties and its M2 attachment hardware are supplied in the separate optional-power artifacts, not this baseline BOM.",
         ],

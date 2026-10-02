@@ -79,16 +79,38 @@ def base_shape():
         (x, y - EAR_THICKNESS - 1, z),
         (0, 1, 0),
     )
-    return _finished(
+    body = (
         union(
             [
                 optical_interface.foot_shape(),
                 ear,
                 post,
             ]
-        ).cut(bore),
-        "base",
+        )
+        .cut(bore)
+        .removeSplitter()
     )
+    from .edge_blends import fillet_selected, near
+
+    body = fillet_selected(
+        body,
+        0.5,
+        lambda e, b: (
+            near(b.XLength, UPRIGHT_WIDTH)
+            and near(b.YLength, 0)
+            and near(b.ZLength, 0)
+            and (
+                (
+                    near(b.ZMin, optical_interface.FOOT_THICKNESS)
+                    and (near(b.YMin, -EAR_THICKNESS) or near(b.YMin, GUSSET_DEPTH))
+                )
+                or (near(b.YMin, 0) and near(b.ZMin, GUSSET_TOP_Z))
+            )
+        ),
+        3,
+        "Optical pedestal and buttress roots",
+    )
+    return _finished(body, "base")
 
 
 def sensor_tray_shape():
@@ -106,7 +128,24 @@ def sensor_tray_shape():
     )
     recess.rotate(V(), V(1, 0, 0), -90)
     recess.translate(V(0, NUT_START, 0))
-    return _finished(union([ear, neck, pad]).cut(bore).cut(recess), "sensor tray")
+    body = union([ear, neck, pad]).cut(bore).cut(recess).removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    body = fillet_selected(
+        body,
+        0.5,
+        lambda e, b: (
+            near(b.ZMin, TRAY_BOTTOM_Z)
+            and near(b.ZLength, 0)
+            and (
+                (near(b.XLength, 0) and near(abs(b.XMin), TRAY_SIZE_MM[0] / 2))
+                or (near(b.YLength, 0) and near(abs(b.YMin), TRAY_SIZE_MM[1] / 2))
+            )
+        ),
+        4,
+        "Optical tray lower outside rim",
+    )
+    return _finished(body, "sensor tray")
 
 
 def mount_contract():

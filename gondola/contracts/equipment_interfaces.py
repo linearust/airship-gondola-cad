@@ -9,6 +9,7 @@ from copy import deepcopy
 from .drive import GEARS
 from .equipment_options import NAVIGATION_PROFILES, RADIO_PROFILES
 from .optical_sensors import SENSOR_PROFILES
+from .servo_horns import preparation_note
 
 FC_MODEL = "MicoAir743v2-AIO-45A"
 FC_LISTED_MASS_G = 10.0
@@ -156,7 +157,7 @@ PROPULSION_EVIDENCE = {
         ],
         "selected_option": "Manufacturer X06 stock plastic half arm1",
         "geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
-        "geometry_basis": "User-supplied manufacturer STEP; nominal bought geometry, with only the two declared factory-hole enlargements in the installed model.",
+        "geometry_basis": "Unmodified user-supplied manufacturer STEP; nominal geometry, not a received-part measurement.",
         "spline_teeth": 15,
         "overall_length_mm": 18.7,
         "root_diameter_mm": 7.0,
@@ -171,18 +172,19 @@ PROPULSION_EVIDENCE = {
             [13.2, 1.0],
         ],
         "selected_attachment_radii_mm": [6.8, 13.2],
-        "prepared_hole_diameter_mm": 1.5,
+        "horn_requires_drilling": False,
+        "optional_attachment_radii_mm": [10.0],
         "adapter_attachment_round_hole_x_mm": 6.8,
-        "adapter_attachment_round_hole_diameter_mm": 1.6,
+        "adapter_attachment_round_hole_diameter_mm": 1.2,
         "adapter_attachment_slot_x_mm": 13.2,
-        "adapter_attachment_slot_width_mm": 1.6,
+        "adapter_attachment_slot_width_mm": 1.2,
         "adapter_attachment_slot_centre_allowance_mm": 0.3,
         "adapter_root_seat_diameter_mm": 7.3,
         "adapter_root_radial_clearance_mm": 0.15,
         "threaded_hole_count": 0,
-        "attachment_hardware": "Two reverse M1.4x8 screws and two front M1.4 nuts per horn; no washers; retain the OEM centre screw.",
+        "attachment_hardware": preparation_note(),
         "scope": "The exact supplied spline and outside shape are retained, not fabricated as a printed replacement. The near round hole bounds displacement along the open root seat; the far short radial slot accommodates hole-pitch variation. Both joints must be clamped before operation. Older metal-horn drawings are superseded alternatives, not compatibility promises for this adapter.",
-        "unknown": "Plastic resin/density, actual mass, delivered dimensional tolerances, root concentricity, actual installed spline/centre-screw seating, head/tool fit, prepared-hole quality, clamping, creep and loaded torque retention remain unmeasured. Nominal STEP dimensions do not establish physical fit or strength.",
+        "unknown": "Plastic resin/density, actual mass, delivered dimensional tolerances, root concentricity, actual installed spline/centre-screw seating, head/tool fit, no-drill M1 slip fit, clamping, creep and loaded torque retention remain unmeasured. Nominal STEP dimensions do not establish physical fit or strength.",
     },
     "selected_gears": {
         "sources": [gear.item_url for gear in GEARS.values()],

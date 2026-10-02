@@ -49,11 +49,11 @@ def flex_relief_check(rail_section=None, length=rail.LENGTH):
     }
 
 
-def _rail_seat_contacts(section, mount, zone_length):
-    """Independent crowned seats, local cheeks and root/roof clearances."""
+def _rail_seat_contacts(section, mount, zone_length, shared_drive):
+    """Independent ordinary top seats or paired crowned base seats."""
     from gondola.validation.rail_curvature import local_seat_check
 
-    return local_seat_check(section, mount, zone_length)
+    return local_seat_check(section, mount, zone_length, shared=shared_drive)
 
 
 def _vertical_removal_sweep(shape, travel=25):
@@ -64,6 +64,7 @@ def _vertical_removal_sweep(shape, travel=25):
     Reject an unfamiliar surface instead of replacing the open U by a box.
     """
     pieces = [shape]
+    trailing_crowns = 0
     for face in shape.Faces:
         surface = face.Surface
         kind = type(surface).__name__
@@ -86,6 +87,7 @@ def _vertical_removal_sweep(shape, travel=25):
                 and face.BoundBox.ZMax <= 6 + rail.TOL
                 and trailing
             ):
+                trailing_crowns += 1
                 continue
         raise ValueError("Vertical removal contains an unsupported curved boundary")
     sweep = union(pieces).removeSplitter()
@@ -97,7 +99,9 @@ def _vertical_removal_sweep(shape, travel=25):
         or abs(end.cut(sweep).Volume) > rail.TOL
     ):
         raise ValueError("Vertical removal envelope does not contain its endpoints")
-    return sweep, "continuous upward planar-face sweep with trailing circular crowns"
+    return sweep, "continuous upward planar-face sweep" + (
+        " with trailing circular crowns" if trailing_crowns else ""
+    )
 
 
 def _fastener_seat_contacts(
@@ -274,7 +278,7 @@ def attachment_check(
     ).removeSplitter()
     lift, method = _vertical_removal_sweep(filled_mount)
     lift_overlap = abs(lift.common(section).Volume)
-    contacts = _rail_seat_contacts(section, mount, zone_length)
+    contacts = _rail_seat_contacts(section, mount, zone_length, shared_drive)
     supports = _fastener_seat_contacts(
         clamp, mount, head_support, head_face_y, nut_bearing_y, frame_contact_y
     )
@@ -295,7 +299,9 @@ def attachment_check(
     turned_nut.rotate(V(0, 0, rail.BOLT_AXIS_Z), V(0, 1, 0), 30)
     nut_rotation_stop = abs(turned_nut.common(clamp).Volume)
     return {
-        "support_policy": "paired_local_bearing" if shared_drive else "local_bearing",
+        "support_policy": "paired_local_bearing"
+        if shared_drive
+        else "wall_top_bearing",
         "checked_centred_contact_length_mm": zone_length,
         "shared_support_scope": (
             "This check covers one 10 mm local clamp zone and its crowned seats. The saved paired check independently verifies both stations; no continuous flat bottom contact is intended."
@@ -328,15 +334,12 @@ def attachment_check(
         "minimum_thread_projection_mm": fasteners.RAIL_THREAD_PITCH,
         "thread_projection_margin_ok": engagement
         >= fasteners.RAIL_THREAD_PITCH - rail.TOL,
-        "scope": "Nominal local cheek contacts, circular crowned lower seats and a printed nut-bearing floor in the compression path. Shared saddle checks include both frame/saddle contact faces at the bolt load annulus. This is a line-to-line design, not an as-printed fit guarantee; qualify by coupon and finish high spots, rejecting loose or warped seats. No qualified torque, friction, creep, curvature, physical fit or whole-module tool-access claim.",
+        "scope": "Ordinary carriers use a flat wall-top datum with lower legs clear; paired propulsion retains crowned base seats. Both use local side contacts and a printed nut-bearing floor. Shared checks include both frame/saddle annuli. Nominal contact does not establish as-printed fit, torque, friction, creep, curvature, strength or whole-module tool access.",
         "passed": max(overlaps.values()) < rail.TOL
         and lift_overlap < rail.TOL
         and nut_release < rail.TOL
+        and contacts["passed"]
         and max(
-            contacts["blocked_inner_roof_relief_mm3"],
-            contacts["blocked_root_relief_mm3"],
-            contacts["missing_flat_side_contact_mm3"],
-            contacts["missing_opposite_side_contact_mm3"],
             supports["missing_head_support_mm3"],
             supports["missing_nut_support_mm3"],
             supports["missing_printed_nut_floor_mm3"],

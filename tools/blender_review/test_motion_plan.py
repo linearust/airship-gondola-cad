@@ -232,14 +232,15 @@ class ReviewMotionEvidence(unittest.TestCase):
     def test_changed_service_endpoints_and_shaft_staging_are_rejected(self):
         for path in self.endpoint_paths():
             for axis in (0, 1, 2):
-                with self.subTest(path=path, axis=axis):
-                    evidence = native_evidence()
-                    parent = self.parent_at(
-                        evidence["saved_servo_module_service"], path
-                    )
-                    parent[path[-1]][axis] += 1
-                    with self.assertRaisesRegex(RuntimeError, "removal paths"):
-                        REVIEW_MOTION.check_basis(evidence)
+                for offset in (1e-7, 1):
+                    with self.subTest(path=path, axis=axis, offset=offset):
+                        evidence = native_evidence()
+                        parent = self.parent_at(
+                            evidence["saved_servo_module_service"], path
+                        )
+                        parent[path[-1]][axis] += offset
+                        with self.assertRaisesRegex(RuntimeError, "removal paths"):
+                            REVIEW_MOTION.check_basis(evidence)
 
     def test_failed_or_legacy_prerequisites_cannot_reuse_the_bench_scene(self):
         for key, value in (
@@ -281,9 +282,31 @@ class ReviewMotionEvidence(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "axial-travel poses"):
             REVIEW_MOTION.check_basis(evidence)
 
+    def test_axial_bound_padding_does_not_change_nominal_reviewed_poses(self):
+        for direction in ("negative_mm", "positive_mm"):
+            for padding in (-1e-7, 1e-7):
+                with self.subTest(direction=direction, padding=padding):
+                    evidence = native_evidence()
+                    evidence["saved_carrier_metal_clearances"][0]["axial_travel"][
+                        direction
+                    ] += padding
+                    REVIEW_MOTION.check_basis(evidence)
+                    self.assertEqual(REVIEW_MOTION.axial_allowance_mm, 0.5)
+                    self.assertEqual(REVIEW_MOTION.axial_shift(49), 0.5)
+                    self.assertEqual(REVIEW_MOTION.axial_shift(97), -0.5)
+
     def test_changed_or_nonfinite_axial_allowance_is_rejected_in_both_directions(self):
         for direction in ("negative_mm", "positive_mm"):
-            for value in (0.6, float("nan"), float("inf"), -float("inf"), None, "0.5"):
+            for value in (
+                0.5 - 2e-6,
+                0.5 + 2e-6,
+                0.6,
+                float("nan"),
+                float("inf"),
+                -float("inf"),
+                None,
+                "0.5",
+            ):
                 with self.subTest(direction=direction, value=value):
                     evidence = native_evidence()
                     evidence["saved_carrier_metal_clearances"][0]["axial_travel"][

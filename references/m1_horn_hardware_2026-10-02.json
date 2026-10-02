@@ -1,0 +1,109 @@
+{
+  "recorded_on": "2026-10-02",
+  "interface": "Unmodified KST X06 supplied half arm1 to printed gear adapter",
+  "user_confirmation": {
+    "owned_hardware": "M1 metric external-hex bolts and hex nuts",
+    "owned_length_mm": null,
+    "owned_head_across_flats_mm": null,
+    "owned_head_height_mm": null,
+    "owned_nut_across_flats_mm": null,
+    "owned_material": "Unverified metal",
+    "scope": "User confirms hardware type, not dimensions or material below, and asks to avoid enlarging the OEM holes. The no-drill interface below is the current design decision."
+  },
+  "primary_references": [
+    {
+      "supplier": "NBK",
+      "product": "SHNS-M1 miniature hex nut",
+      "url": "https://www.nbk1560.com/images/en/product/miniaturescrew/SHNS/SHNS_1.pdf",
+      "supported_facts": {
+        "thread": "M1",
+        "pitch_mm": 0.25,
+        "across_flats_mm": 2.5,
+        "height_mm": 0.8,
+        "stated_dimension_standard": "DIN 934"
+      },
+      "scope": "Published supplier dimensions; does not identify the user's owned nuts or establish their material."
+    },
+    {
+      "publisher": "ISO",
+      "standard": "ISO 4017:2022",
+      "url": "https://www.iso.org/standard/72585.html",
+      "supported_facts": {
+        "hexagon_head_screw_thread_range": "M1.6 to M64"
+      },
+      "scope": "M1 lies below this standard's size range; do not invent a universally standardized M1 external-hex head envelope."
+    },
+    {
+      "supplier": "Fechtner Modellbau / GHW",
+      "product": "12205, M1x4 external-hex model screw",
+      "url": "https://fechtner-modellbau.de/en/6-Kant-Modellschraube-M1-0-x-4-Messing-SW-1-6mm-Kopfhoehe/12205",
+      "supported_facts": {
+        "thread": "M1",
+        "head_across_flats_mm": 1.6,
+        "head_height_mm": 0.8,
+        "under_head_length_mm": 4
+      },
+      "scope": "Specific product fields establish that smaller M1 heads exist. The translated prose scrambles numbers; rely on labeled product fields. This is neither a selected screw nor a universal standard or ownership claim."
+    },
+    {
+      "manufacturer": "Wera",
+      "product": "2069 external-hex nutdriver, 05118112001",
+      "url": "https://www.wera.de/en-au/tools/2069-nutdriver-for-electronic-applications",
+      "supported_facts": {
+        "hex_size_mm": 2.5,
+        "blade_diameter_mm": 5.7,
+        "blade_length_mm": 60
+      },
+      "scope": "Published example tool exterior used as the default two-bolt service envelope, not a measurement of the user's tool."
+    }
+  ],
+  "design_allowances": {
+    "default_installed_bolt_radii_mm": [
+      6.8,
+      13.2
+    ],
+    "optional_uninstalled_opening_radius_mm": 10.0,
+    "selected_under_head_length_mm": 6.0,
+    "head_maximum_across_flats_mm": 2.5,
+    "head_maximum_height_mm": 1.0,
+    "head_circumscribed_diameter_mm": 2.886751345948129,
+    "nut_supported_across_flats_mm": [
+      2.4,
+      2.5
+    ],
+    "nut_maximum_height_mm": 0.8,
+    "nut_trough_flat_gap_mm": 2.6,
+    "nut_trough_depth_mm": 1.1,
+    "nut_floor_mm": 2.5,
+    "horn_thickness_mm": 2.0,
+    "nominal_stack_with_nut_mm": 5.3,
+    "nominal_M1x6_tip_projection_mm": 0.7,
+    "scope": "Bounded nominal compatibility, not accommodation of all M1 variants, manufacturing tolerances, actual fit, strength or tightening torque."
+  },
+  "horn_evidence": {
+    "path": "gondola/data/kst_x06_half_arm_1.step",
+    "sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
+    "factory_holes_radius_and_diameter_mm": [
+      [
+        4.5,
+        0.8
+      ],
+      [
+        6.8,
+        1.0
+      ],
+      [
+        10.0,
+        1.0
+      ],
+      [
+        13.2,
+        1.0
+      ]
+    ],
+    "modifications": "None; all four factory holes and the spline remain unchanged.",
+    "fit_scope": "The three outer holes equal nominal M1 major diameter and do not guarantee slip clearance. No forcing, tapping or enlarging the OEM horn. Inner diameter0.8 is not usable with M1."
+  },
+  "optional_middle_scope": "The 10mm opening is not an installed third bolt or a qualified alternate configuration. Adjacent 3.2mm bolt pitch leaves only0.313mm nominal gap between ideal AF2.5 hex corners. The default5.7mm tool clashes with adjacent installed heads; three-bolt service requires an independently verified thinner tool and renewed checking.",
+  "qualification": "Nominal source dimensions and design envelopes only. Confirm actual slip fit, hardware lengths, nut flank engagement, delivered PA12 geometry, complete assembly access, runout and load retention."
+}

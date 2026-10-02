@@ -121,6 +121,18 @@ def bridge_wrap_check(frame, bridge):
         .cut(Part.makeBox(6, 2, 7, App.Vector(14, -11, 2.2)))
         .cut(nut_cut)
     )
+    # Literal rounded roof, independent of the bridge builder. Only the top
+    # outside R0.5 rim is removed; its full 38x22 bottom plane remains required.
+    square_roof = Part.makeBox(38, 22, 2.5, App.Vector(-19, -11, 12.5))
+    top_edges = [
+        edge
+        for edge in square_roof.Edges
+        if all(abs(vertex.Point.z - 15) < TOL for vertex in edge.Vertexes)
+    ]
+    if len(top_edges) != 4:
+        raise RuntimeError("Independent bridge roof witness requires four top edges")
+    rounded_roof = square_roof.makeFillet(0.5, top_edges)
+    wall = wall.cut(square_roof.cut(rounded_roof))
     rows = []
     for sign in (1, -1):
 
@@ -149,9 +161,7 @@ def bridge_wrap_check(frame, bridge):
                 "passed": all(value < TOL for value in values.values()),
             }
         )
-    roof_missing = abs(
-        Part.makeBox(38, 22, 2.5, App.Vector(-19, -11, 12.5)).cut(bridge).Volume
-    )
+    roof_missing = abs(rounded_roof.cut(bridge).Volume)
     relief_obstruction = abs(bridge.common(relief).Volume)
     return {
         "sides": rows,

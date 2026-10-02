@@ -9,12 +9,88 @@ from unittest.mock import patch
 
 from tools.blender_review import export_cad
 from tools.blender_review.export_cad import (
+    check_mesh_placement,
     check_optical_carrier_basis,
     check_review_basis,
     representation,
     review_objects,
 )
 from tools.blender_review.test_motion_plan import native_evidence
+
+
+class MeshPlacementTests(unittest.TestCase):
+    def saved_rounded_mount(self):
+        import FreeCAD as App
+        import MeshPart
+
+        from gondola.parts import equipment_mounts
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "rounded_mount.FCStd"
+        doc = App.newDocument("RoundedMeshPlacement")
+        try:
+            root = doc.addObject("App::Part", "Root")
+            carrier = doc.addObject("App::Part", "Carrier")
+            root.addObject(carrier)
+            obj = doc.addObject("Part::Feature", "RoundedMount")
+            carrier.addObject(obj)
+            obj.Shape = equipment_mounts.mount_shape("battery")
+            obj.Placement.Base = App.Vector(13, -7, 5)
+            doc.recompute()
+            doc.saveAs(str(path))
+        finally:
+            App.closeDocument(doc.Name)
+        doc = App.openDocument(str(path), hidden=True)
+        self.addCleanup(App.closeDocument, doc.Name)
+        shape = doc.RoundedMount.Shape.copy()
+        shape.Placement = App.Placement()
+        mesh = MeshPart.meshFromShape(
+            Shape=shape,
+            LinearDeflection=0.04,
+            AngularDeflection=0.12,
+            Relative=False,
+        )
+        return doc, mesh
+
+    def test_rounded_saved_mesh_uses_trimmed_bounds_and_nested_placements(self):
+        import FreeCAD as App
+
+        from gondola.cad import world_shape
+
+        doc, mesh = self.saved_rounded_mount()
+        obj = doc.RoundedMount
+        placed = mesh.copy()
+        placed.transform(obj.getGlobalPlacement().toMatrix())
+        loose = world_shape(obj).BoundBox
+        loose_error = max(
+            abs(getattr(placed.BoundBox, key) - getattr(loose, key))
+            for key in ("XMin", "XMax", "YMin", "YMax", "ZMin", "ZMax")
+        )
+        self.assertGreater(loose_error, 0.08)
+        self.assertLess(check_mesh_placement(obj, mesh), 0.01)
+        doc.Root.Placement = App.Placement(
+            App.Vector(71, -39, 26), App.Rotation(App.Vector(2, -3, 5), 37)
+        )
+        doc.Carrier.Placement = App.Placement(
+            App.Vector(-11, 8, 17), App.Rotation(App.Vector(4, 1, -2), -23)
+        )
+        doc.recompute()
+        self.assertLess(check_mesh_placement(obj, mesh), 0.08)
+
+    def test_shifted_mesh_is_still_rejected_with_nested_parent_placement(self):
+        import FreeCAD as App
+
+        doc, mesh = self.saved_rounded_mount()
+        doc.Root.Placement = App.Placement(
+            App.Vector(71, -39, 26), App.Rotation(App.Vector(2, -3, 5), 37)
+        )
+        doc.Carrier.Placement.Base = App.Vector(-11, 8, 17)
+        doc.recompute()
+        self.assertLess(check_mesh_placement(doc.RoundedMount, mesh), 0.08)
+        mesh.transform(App.Placement(App.Vector(0.25, 0, 0), App.Rotation()).toMatrix())
+        with self.assertRaisesRegex(RuntimeError, "Mesh placement mismatch"):
+            check_mesh_placement(doc.RoundedMount, mesh)
 
 
 class ExportContractTests(unittest.TestCase):
@@ -111,8 +187,8 @@ class ExportContractTests(unittest.TestCase):
                 HornProfile="KST_X06_HALF_ARM_1",
                 ManufacturerGeometryProvided=True,
                 ManufacturerGeometrySHA256="ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
-                HornPreparationRequired=True,
-                FactoryM1_6ThreadsConfirmed=False,
+                HornPreparationRequired=False,
+                FactoryThreadedHoles=False,
                 PurchasedHornMeasured=False,
                 AxialSeatingMeasured=False,
                 HornInterfaceContract=json.dumps(
@@ -121,13 +197,17 @@ class ExportContractTests(unittest.TestCase):
                         "manufacturer_geometry_sha256": "ea9ad94160411df4c32e495eda85f75a43bcfcb379a86b113ad6e03c8aa79c81",
                         "attachment_radii_mm": [6.8, 13.2],
                         "adapter_round_hole_x_mm": 6.8,
-                        "adapter_round_hole_diameter_mm": 1.6,
-                        "adapter_slot_width_mm": 1.6,
-                        "adapter_slot_centres_x_mm": [13.2],
+                        "adapter_round_hole_diameter_mm": 1.2,
+                        "adapter_slot_width_mm": 1.2,
+                        "adapter_slot_centres_x_mm": [10.0, 13.2],
+                        "adapter_slot_centre_allowances_mm": [0.2, 0.3],
+                        "adapter_slot_overall_lengths_mm": [1.6, 1.8],
+                        "optional_middle_fastener_installed": False,
+                        "horn_requires_drilling": False,
                         "adapter_slot_centre_allowance_mm": 0.3,
-                        "adapter_slot_overall_length_mm": 2.2,
+                        "adapter_slot_overall_length_mm": 1.8,
                         "nominal_arm_thickness_mm": 2.0,
-                        "screw_length_mm": 8.0,
+                        "screw_length_mm": 6.0,
                         "nuts_per_side": 2,
                     }
                 ),
@@ -137,10 +217,10 @@ class ExportContractTests(unittest.TestCase):
             )
             for position in ("Near", "Far"):
                 objects[prefix + "HornGearClamp" + position + "Bolt"] = SimpleNamespace(
-                    HardwareSKU="M1_4X8_PAN_HEAD_KIT"
+                    HardwareSKU="M1X6_HEX_HEAD"
                 )
                 objects[prefix + "HornGearClamp" + position + "Nut"] = SimpleNamespace(
-                    HardwareSKU="M1_4_HEX_NUT_DIN934"
+                    HardwareSKU="M1_HEX_NUT"
                 )
         report = {
             "gear_configuration": "48_16",
@@ -166,10 +246,10 @@ class ExportContractTests(unittest.TestCase):
             "round-hole/slot adapter",
             representation(objects["PortHornGearAdapter"]),
         )
-        self.assertIn("rear M1.4x8", representation(objects["PortHornGearAdapter"]))
-        self.assertIn("front M1.4 nuts", representation(objects["PortHornGearAdapter"]))
-        self.assertIn("diameter 1.6 mm", representation(objects["PortHornGearAdapter"]))
-        self.assertIn("1.6 x 2.2 mm", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("rear M1x6", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("front M1 nuts", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("diameter 1.2 mm", representation(objects["PortHornGearAdapter"]))
+        self.assertIn("1.2 x 1.8 mm", representation(objects["PortHornGearAdapter"]))
         self.assertNotIn("undrilled", representation(objects["PortHornGearAdapter"]))
 
     def test_old_looser_horn_dimensions_cannot_reuse_the_review_basis(self):
@@ -203,7 +283,7 @@ class ExportContractTests(unittest.TestCase):
     def test_missing_or_changed_rear_bolts_and_front_nuts_are_rejected(self):
         for prefix in ("Port", "Starboard"):
             for position in ("Near", "Far"):
-                for kind, message in (("Bolt", "rear M1.4x8"), ("Nut", "front M1.4")):
+                for kind, message in (("Bolt", "rear M1x6"), ("Nut", "front M1")):
                     for missing in (False, True):
                         with self.subTest(
                             side=prefix, joint=position, kind=kind, missing=missing
@@ -240,8 +320,8 @@ class ExportContractTests(unittest.TestCase):
             for field, wrong in (
                 ("ManufacturerGeometryProvided", False),
                 ("ManufacturerGeometrySHA256", "0" * 64),
-                ("HornPreparationRequired", False),
-                ("FactoryM1_6ThreadsConfirmed", True),
+                ("HornPreparationRequired", True),
+                ("FactoryThreadedHoles", True),
                 ("PurchasedHornMeasured", True),
                 ("AxialSeatingMeasured", True),
             ):

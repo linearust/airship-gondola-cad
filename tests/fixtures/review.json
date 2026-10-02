@@ -1,15 +1,15 @@
 {
-  "revision": "CC",
+  "revision": "CD",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "10ec2e07fe953010a6adf6f51521954a4ba9607be33ffed5d689c803e172c73d",
-  "old_fixture_sha256": "5ed39939508a8bfe62c8847f4205f476012917695247695ab90dad31174af627",
+  "candidate_sha256": "1a746039cafbb4c27de3beb0f62fae5b3513de028ce1061eef30b59bb0c9a99c",
+  "old_fixture_sha256": "10ec2e07fe953010a6adf6f51521954a4ba9607be33ffed5d689c803e172c73d",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "cc_rail_revision",
+      "cd_contact_and_horn_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "cec5b0138ee46d64724274530dc24fc8c757f5e43cfccca3c28023bf9a50fc60"
+    "canonical_json_sha256": "30454ba75a28444d49b0356805ebc6f631f5c92243087fe397a2e26a0b15af8e"
   },
-  "scope": "Independent saved geometry/placement/control/metadata audit approves local crowned rail seats, R1/R0.5 roots, P28/L38 shared frame/saddle and outer-depth head-pocket end openings. Other mechanical interfaces retained. Regression fixture approval does not qualify physical fit or strength."
+  "scope": "Independent saved geometry, placement, control and metadata review: selective root/outer blends, top-bearing ordinary rail shoes with base clearance, and unmodified OEM horn with two default M1 joints and optional middle opening. Physical fit, strength and loaded retention remain unqualified."
 }

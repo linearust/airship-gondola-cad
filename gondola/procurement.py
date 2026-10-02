@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .config import ARTIFACT_SCHEMA_VERSION
-from .contracts.design import HARDWARE_MATERIALS, hardware_bom_scope
+from .contracts.design import hardware_bom_scope
 from .contracts.fasteners import KIT_MATERIAL
 from .contracts.hardware import PROCUREMENT_FIELDS
 from .provenance import source_fingerprint
@@ -13,7 +13,7 @@ HARDWARE_MATERIAL_CODES = {
     "A2 stainless steel": "A2",
     "304 stainless steel (seller claim)": "SS304",
     "Supplied horn material unverified": "UnverifiedHorn",
-    HARDWARE_MATERIALS["M1_4_HEX_NUT_DIN934"]: "CopperAlloy",
+    "Unverified metal": "UnverifiedMetal",
     "Nylon PA66": "PA66",
     KIT_MATERIAL: "CarbonSteel",
     "Aluminium 6061 (seller claim)": "Al6061",
@@ -118,7 +118,7 @@ def export_hardware_bom(objects, out, stem):
         "source_fingerprint": source_fingerprint(),
         "purchased_hardware_quantity": len(objects),
         "unique_purchase_spec_count": len(rows),
-        "all_threads": "The five rail attachments use M3 x0.5 screws and nuts; remaining modeled general mechanism fasteners use M2 x0.4. Four X06 ear joints use M1.6 x0.35 screws and nuts. Both selected manufacturer X06 stock plastic half arms use rear M1.4 x0.3 screws and front nuts through the two declared prepared plain holes; no plastic horn thread is assumed. Selected gears also have M3 threaded holes; four M3 set screws remain unmodeled pending actual hub and screw dimensions. Bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
+        "all_threads": "The five rail attachments use M3 x0.5 screws and nuts; remaining modeled general mechanism fasteners use M2 x0.4. Four X06 ear joints use M1.6 x0.35 screws and nuts. Both selected manufacturer X06 stock plastic half arms use rear M1 x0.25 hex bolts and front nuts through two unmodified nominalØ1 plain holes; no plastic horn thread is assumed. Selected gears also have M3 threaded holes; four M3 set screws remain unmodeled pending actual hub and screw dimensions. Bearing and shaft bores are unthreaded. Unmodeled device/OEM fasteners remain outside this list; consult their verified interfaces and unresolved mounting requirements.",
         "purchase_scope": hardware_bom_scope(),
         "color": "Gold = purchased hardware; not a material or finish specification.",
         "purchasing_status": "Selected cart variants and supplier drawings recorded; delivered dimensions, material, fit and seller lot not physically verified.",

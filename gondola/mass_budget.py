@@ -18,6 +18,7 @@ DENSITIES_G_CM3 = {
     "BearingSteel": 7.85,
     "Aluminium": 2.70,
     "UnverifiedHorn": None,
+    "UnverifiedMetal": None,
 }
 PA12_DENSITY_SOURCE = "https://creallo.com/ko/capability/material/SLS/SLSPA12"
 
@@ -153,7 +154,7 @@ def mass_budget(printed, hardware):
         "is_all_up_flight_mass": False,
         "modeled_hardware_mass_complete": not unknown_hardware,
         "complete_device_mounting_hardware_included": False,
-        "device_mounting_hardware_scope": "X06 ear screws/nuts, two selected manufacturer stock plastic horns, four rear M1.4x8 horn screws and four front M1.4 nuts are included in the modeled inventory. Selected brass nuts use the generic copper-alloy density assumption, not measured product mass. The horns retain manufacturer nominal STEP geometry with the two declared hole enlargements; resin and mass remain unknown, so no horn density or mass is assigned. FC/P-AS fastening stacks and OEM motor/horn retaining screws remain unmodeled.",
+        "device_mounting_hardware_scope": "X06 ear hardware, two unmodified OEM stock half arms, four M1 horn bolts and four M1 nuts are counted. Horn resin and owned M1 metal grade/mass are unverified; their masses remain unset. FC/P-AS stacks and OEM motor/horn retaining screws remain unmodeled.",
         "comparison_limit": "Horn resin, delivered geometry and actual mass remain unverified; manufacturer nominal STEP geometry is not a measured part or a density specification. Gear material and mass remain unverified; the 48T aluminium density and 16T generic copper-alloy density are calculation scenarios, not measured product claims. Generic bearing mass uses an annular solid envelope, not an ISC catalog mass. Compare modeled structure and mechanism hardware only; changing which parts have unknown mass can change the accounted subtotal without reducing physical mass. FC/P-AS spacers, dampers and mounting screws are not yet dimensioned or counted; add their actual mass before claiming net assembly savings.",
         "density_assumptions": {
             "PA12": {
@@ -186,6 +187,11 @@ def mass_budget(printed, hardware):
                     "Aluminium",
                     "SS304",
                 )
+            },
+            "UnverifiedMetal": {
+                "density_g_cm3": None,
+                "basis": "Owned M1 hardware has unconfirmed metal grade and mass; no density is assigned.",
+                "source": None,
             },
             "UnverifiedHorn": {
                 "density_g_cm3": None,

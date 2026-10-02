@@ -90,10 +90,13 @@ class EquipmentMountShapeTests(unittest.TestCase):
                         ),
                     )
                     self.assertLess(abs(contact.cut(shape).Volume), 1e-6)
-                self.assertAlmostEqual(shape.BoundBox.XMin, -33)
-                self.assertAlmostEqual(shape.BoundBox.XMax, 33)
-                self.assertAlmostEqual(shape.BoundBox.YMin, -33)
-                self.assertAlmostEqual(shape.BoundBox.YMax, 33)
+                bounds = shape.optimalBoundingBox(False, False)
+                self.assertAlmostEqual(bounds.XMin, -33)
+                self.assertAlmostEqual(bounds.XMax, 33)
+                self.assertAlmostEqual(bounds.YMin, -33)
+                self.assertAlmostEqual(bounds.YMax, 33)
+                envelope = Part.makeBox(66, 66, 25, App.Vector(-33, -33, -1))
+                self.assertLess(shape.cut(envelope).Volume, 1e-6)
 
     def test_plate_outline_is_centred_rounded_and_half_turn_symmetric(self):
         from gondola.parts import equipment_mounts as mounts
@@ -103,7 +106,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         plate = mounting_plate.shape()
         for hole in mounting_plate.cutters(mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS):
             plate = plate.fuse(hole)
-        bounds = plate.BoundBox
+        bounds = plate.optimalBoundingBox(False, False)
         self.assertAlmostEqual(bounds.XLength, 66)
         self.assertAlmostEqual(bounds.YLength, 66)
         self.assertAlmostEqual(bounds.Center.x, 0)
@@ -144,7 +147,14 @@ class EquipmentMountShapeTests(unittest.TestCase):
             0,
             places=6,
         )
-        self.assertAlmostEqual(actual.Volume, 2 * 5 * 5 * 4.3, places=5)
+        cores = Part.makeBox(5, 5, 4.3, App.Vector(-8, -2.5, 12.6)).fuse(
+            Part.makeBox(5, 5, 4.3, App.Vector(3, -2.5, 12.6))
+        )
+        self.assertLess(cores.cut(actual).Volume, 1e-6)
+        self.assertGreater(actual.Volume, cores.Volume)
+        # Added roots stay outside the six-mm central accessory corridor.
+        access = Part.makeBox(6, 16, 4.3, App.Vector(-3, -8, 12.6))
+        self.assertLess(access.common(actual).Volume, 1e-6)
 
     def test_two_short_supports_leave_the_spare_centre_mount_open(self):
         from gondola.parts import equipment_mounts as mounts

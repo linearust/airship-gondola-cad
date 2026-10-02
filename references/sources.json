@@ -305,6 +305,17 @@
           "sha256": "08929aaee51fcc0e1ef81ce20ee34cb4604a999f10447236461546121c32913a"
         }
       ]
+    },
+    {
+      "origin": "User M1 hardware confirmation and primary manufacturer dimensional references reviewed2026-10-02.",
+      "scope": "Unmodified OEM horn; M1 stock dimensions/material remain unknown. Reference facts and bounded CAD acceptance are distinguished.",
+      "assets": [
+        {
+          "path": "references/m1_horn_hardware_2026-10-02.json",
+          "title": "M1 horn hardware evidence and explicitly bounded design allowances",
+          "sha256": "c538002aed1eb549fe0269b8493c8cf38b04e07486b1b5dd65d45d86614de6d2"
+        }
+      ]
     }
   ]
 }

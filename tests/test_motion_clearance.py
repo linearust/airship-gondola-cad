@@ -33,8 +33,14 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                 with self.subTest(configuration=configuration.key, side=prefix):
                     result = carrier_metal_clearance_check(doc, prefix)
                     self.assertTrue(result["passed"], result)
-                    self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5)
-                    self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5)
+                    # Accurate OCCT bounds carry ~1e-7 mm edge padding; compare
+                    # derived travel at CAD precision, preserving nominal play.
+                    self.assertAlmostEqual(
+                        result["axial_travel"]["negative_mm"], 0.5, places=6
+                    )
+                    self.assertAlmostEqual(
+                        result["axial_travel"]["positive_mm"], 0.5, places=6
+                    )
                     self.assertGreater(result["minimum_clearance_lower_bound_mm"], 1.64)
                     self.assertEqual(len(result["fixed_hardware"]), 8)
                     self.assertEqual(len(result["envelope"]["containment"]), 8)
@@ -75,7 +81,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     stop["all_angles_contact_lower_bound_mm2"],
                     0.25 * stop["witness_area_mm2"],
                 )
-                self.assertAlmostEqual(stop["travel_mm"], 0.5)
+                self.assertAlmostEqual(stop["travel_mm"], 0.5, places=6)
 
     def test_a_small_remaining_stop_sector_cannot_claim_all_angle_contact(self):
         from gondola.parts.propulsion import CARRIER_END_Y, PIVOT_HALF_SPAN, PIVOT_Z
@@ -191,7 +197,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         doc.recompute()
         result = carrier_metal_clearance_check(doc, "Port")
         self.assertTrue(result["axial_travel"]["passed"], result)
-        self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 1.5)
+        self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 1.5, places=6)
         self.assertFalse(result["passed"])
         from gondola.validation.propulsion import output_bearing_stack_check
 
@@ -200,9 +206,13 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         positive = output_bearing_stack_check(doc, "Port", "Positive")
         negative = output_bearing_stack_check(doc, "Port", "Negative")
         self.assertFalse(positive["passed"], positive)
-        self.assertAlmostEqual(positive["minimum_carrier_to_bearing_face_gap_mm"], 0.5)
+        self.assertAlmostEqual(
+            positive["minimum_carrier_to_bearing_face_gap_mm"], 0.5, places=6
+        )
         self.assertTrue(negative["passed"], negative)
-        self.assertAlmostEqual(negative["minimum_carrier_to_bearing_face_gap_mm"], 1.5)
+        self.assertAlmostEqual(
+            negative["minimum_carrier_to_bearing_face_gap_mm"], 1.5, places=6
+        )
         self.assertTrue(negative["capture_geometry"]["passed"], negative)
 
     def test_shifted_clamp_hardware_must_fit_the_proven_rotating_envelope(self):

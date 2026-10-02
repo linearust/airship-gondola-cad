@@ -7,6 +7,7 @@ part numbers or received-lot certification. Native geometry lives in parts.
 import re
 from urllib.parse import quote_plus
 
+from gondola.contracts import servo_horns
 from gondola.contracts.drive import GEARS, MODULE_MM, PRESSURE_ANGLE_DEG
 from gondola.contracts.equipment_interfaces import (
     BEARING_SOURCE,
@@ -48,7 +49,7 @@ PROCUREMENT_SPECS = {
     "M1_6_HEX_NUT_DIN934": {
         "search_query": "M1.6 DIN934 304 hex nut 3.2mm 1.3mm",
         "candidate_url": SERVO_NUT_SOURCE,
-        "requirements": "Selected seller DIN 934 / ISO 4032, 304 stainless claim, M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 mounting-ear joints only, seated in shallow antirotation recesses. For service, remove the ear screws before lifting out the nuts; follow the checked screw-first sequence. These match the M1.6x8 screws. The selected X06 stock plastic horns use separate M1.4 screws and front nuts. Structural M2 joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
+        "requirements": "Selected seller DIN 934 / ISO 4032, 304 stainless claim, M1.6 x 0.35 hex nut, 3.2 mm across flats and 1.3 mm nominal height. Four X06 mounting-ear joints only, seated in shallow antirotation recesses. For service, remove the ear screws before lifting out the nuts; follow the checked screw-first sequence. These match the M1.6x8 screws. The selected X06 stock plastic horns use separate M1 hex bolts and nuts. Structural M2 joints use the selected M2 hex nuts. No washers; check actual engagement and printed support faces.",
     },
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
@@ -59,20 +60,20 @@ PROCUREMENT_SPECS = {
     "KST_X06_STOCK_HALF_ARM_1": {
         "search_query": "KST X06 stock plastic half servo arm 1",
         "candidate_url": HORN_SOURCE,
-        "requirements": "Use manufacturer X06 stock plastic half arm1 on both sides, matching the retained nominal STEP. Enlarge only the existing diameter1mm holes at radii6.8/13.2mm to1.5mm and deburr; preserve their axes and every other horn feature. Use two rear M1.4x8 screws and two front M1.4 nuts per horn, no washers. Retain the X06 OEM centre screw without assuming its thread. Assemble the horn/adapter on the free servo before inserting the complete unit into the bridge.",
-        "evidence_notes": "The user supplied the manufacturer's four-horn STEP archive. The selected half arm1 has an18.7mm overall length, diameter7mm root, diameter6.5mm rear hub,2mm blade and3.5mm overall height. Its flat front permits a plain adapter seat. The source geometry is retained in gondola/data/kst_x06_half_arm_1.step. Resin, density, actual mass, delivered tolerances, installed spline seating, concentricity and loaded retention remain unmeasured. This project SKU identifies the selected supplied shape, not a separate manufacturer order code.",
+        "requirements": servo_horns.preparation_note(),
+        "evidence_notes": "Manufacturer nominal STEP retained unchanged in gondola/data/kst_x06_half_arm_1.step; original archive and hash manifest retained. Material, actual mass, delivered tolerances, spline seating and loaded retention remain unmeasured.",
     },
-    "M1_4X8_PAN_HEAD_KIT": {
-        "search_query": "M1.4x8 Phillips screw head 2.6mm",
-        "candidate_url": SERVO_SCREW_SOURCE,
-        "requirements": "Two per selected X06 stock plastic half arm1, four total. M1.4x0.3,8mm under-head, inserted from horn rear. Require head diameter<=2.6mm,height<=1.0mm; actual assorted-kit head and flat bearing face must be checked. The screw passes through the stock horn and recessed adapter floor into the front nut; use the horn coupling contract for nominal grip and tip projection. Use the declared front nuts, no washers, and verify actual projection and service clearance. Do not substitute at the OEM spline screw.",
-        "evidence_notes": "The user's kit includes M1.4 and assorted lengths; head/drive dimensions remain unknown. Body-clear holding-tool stem<=1.5mm is a declared tool envelope, not a supplied Phillips-bit guarantee. The prepared holes are plain through-holes, not plastic threads.",
+    "M1X6_HEX_HEAD": {
+        "search_query": "M1 x 0.25 x 6 miniature external hex bolt",
+        "candidate_url": "",
+        "requirements": servo_horns.preparation_note(),
+        "evidence_notes": "User confirmed owned metric M1 hex bolts/nuts on2026-10-02, but no length, head dimensions or material. M1 defines the thread, not a universal external-head envelope; use the coupling contract's acceptance bounds. Design length is not confirmation of owned stock. No substitution at the OEM centre screw.",
     },
-    "M1_4_HEX_NUT_DIN934": {
-        "search_query": "M1.4 DIN934 nut 3mm AF 1.2mm",
-        "candidate_url": SERVO_NUT_SOURCE,
-        "requirements": "Two per selected X06 stock plastic half arm1, four total, in the adapter's shallow front antirotation recesses. Nominal M1.4x0.3,DIN934 AF3.0mm,height1.2mm. Require AF2.9..3.0,height<=1.2mm and full thread engagement. Remove the outer nut first: use the accessible rear screw to release the nut from its pocket before gripping the exposed nut with fine parallel pliers. Fit freely without forcing the horn out of alignment. No washer or plastic tapped thread is specified.",
-        "evidence_notes": "The final2026-09-29 cart selects100pcs M1.4 brass from item32977174437; retained in references/cart_selected_parts_2026-09-29.json. Seller material is brass, not304 steel; grade and received dimensions remain unverified. The separate Fastenal DIN934 dimensional reference listsAFmax3.0/min2.9,Hmax1.2/min0.95 as CAD acceptance dimensions, not certification of this seller lot.",
+    "M1_HEX_NUT": {
+        "search_query": "M1 x 0.25 miniature hex nut 2.5mm AF",
+        "candidate_url": "",
+        "requirements": servo_horns.preparation_note(),
+        "evidence_notes": "Owned M1 nut confirmed by user, actual dimensions/material not measured. Reference dimensions and design acceptance limits do not certify the owned lot. The historical cart's M1.4 brass nuts are superseded for this interface.",
     },
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",

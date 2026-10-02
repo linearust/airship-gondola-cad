@@ -253,6 +253,41 @@ def moving_carrier_shape():
     for side in (-1, 1):
         for tool in _carrier_clamp_cuts():
             body = body.cut(mirrored_y(tool, side))
+    from .edge_blends import fillet_selected, near
+
+    body = body.removeSplitter()
+    # Add stock at the two transverse-beam/shaft-clamp L roots. Motor seating,
+    # shaft bores, clamp splits, head lands and nut pockets remain unchanged.
+    body = fillet_selected(
+        body,
+        1.0,
+        lambda e, b: (
+            near(b.XMin, MOTOR_MOUNT_FACE_X)
+            and near(b.XLength, 0)
+            and near(abs(b.YMin), CARRIER_CLAMP_START_Y)
+            and near(b.YLength, 0)
+            and near(b.ZLength, CARRIER_SIDE_THICKNESS)
+        ),
+        2,
+        "Motor carrier L roots",
+    )
+    for x, label in (
+        (MOTOR_PLATE_BACK_X, "rear beam"),
+        (CARRIER_SIDE_FRONT_X, "front clamps"),
+    ):
+        body = fillet_selected(
+            body,
+            0.5,
+            lambda e, b: (
+                near(b.XMin, x)
+                and near(b.XLength, 0)
+                and near(b.ZLength, 0)
+                and near(abs(b.ZMin), CARRIER_SIDE_THICKNESS / 2)
+                and b.YLength > CARRIER_CLAMP_LENGTH - 0.01
+            ),
+            4,
+            "Motor carrier exposed " + label,
+        )
     return _checked(body, "Motor carrier with split shaft clamps")
 
 
@@ -314,7 +349,7 @@ def _output_support(sign):
 
 
 def _blend_frame_edges(frame):
-    """Round the eight post roots and four exposed lower beam edges only.
+    """Blend post sides/inboard ends and four exposed lower beam edges.
 
     Keep the complete 13x6 post cores, flat mating roof and rail contact feet.
     Powder-bed orientation does not require a split or a support-only chamfer.
@@ -350,7 +385,25 @@ def _blend_frame_edges(frame):
             outer_edges.append(edge)
     if len(outer_edges) != 4:
         raise RuntimeError("Frame must expose four lower outer beam edges")
-    return frame.makeFillet(BEAM_EDGE_RADIUS, outer_edges).removeSplitter()
+    frame = frame.makeFillet(BEAM_EDGE_RADIUS, outer_edges).removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    # The two outermost post ends have only 0.5 mm of beam overhang. Keep
+    # those ends intact; six inboard ends have room for additive R0.5 roots.
+    outer_post_end = PIVOT_HALF_SPAN + BEARING_SHOULDER_Y + BEARING_SHOULDER_THICKNESS
+    return fillet_selected(
+        frame,
+        0.5,
+        lambda e, b: (
+            near(b.ZMin, FOOT_BOTTOM_Z + FOOT_THICKNESS)
+            and near(b.ZLength, 0)
+            and near(b.YLength, 0)
+            and near(b.XLength, BEARING_POST_WIDTH)
+            and abs(b.YMin) < outer_post_end - 0.01
+        ),
+        6,
+        "Inboard bearing-post end roots",
+    )
 
 
 def fixed_frame_shape():
@@ -474,8 +527,8 @@ def _buy(doc, parent, name, shape, sku, notes, source, material, *, threaded=Fal
         thread_diameter, thread_pitch = (3.0, 0.5)
     elif sku.startswith("M1_6"):
         thread_diameter, thread_pitch = (1.6, 0.35)
-    elif sku.startswith("M1_4"):
-        thread_diameter, thread_pitch = (1.4, 0.3)
+    elif sku in {"M1X6_HEX_HEAD", "M1_HEX_NUT"}:
+        thread_diameter, thread_pitch = (1.0, 0.25)
     else:
         thread_diameter, thread_pitch = (2.0, 0.4) if threaded else (None, None)
     return purchased_hardware.add_hardware(
@@ -638,14 +691,10 @@ def _build_coupling(doc, parent, prefix, sign):
     set_property(horn, "ManufacturerGeometryProvided", True, "App::PropertyBool")
     set_property(horn, "ManufacturerGeometrySHA256", oem_servo_horn.STEP_SHA256)
     set_property(horn, "X06CompatibilityAccepted", True, "App::PropertyBool")
-    set_property(
-        horn, "FactoryM1_6ThreadsConfirmed", profile.threaded, "App::PropertyBool"
-    )
+    set_property(horn, "FactoryThreadedHoles", profile.threaded, "App::PropertyBool")
     set_property(horn, "HornProfile", profile.key)
     set_property(horn, "HornInterfaceContract", json.dumps(contract, sort_keys=True))
-    set_property(
-        horn, "HornPreparationRequired", not profile.threaded, "App::PropertyBool"
-    )
+    set_property(horn, "HornPreparationRequired", False, "App::PropertyBool")
     set_property(
         horn,
         "ManufacturingRoute",
@@ -656,7 +705,8 @@ def _build_coupling(doc, parent, prefix, sign):
         parent,
         prefix + "HornGearAdapter",
         positioned(coupling.adapter_shape()),
-        "One common adapter for the manufacturer X06 half arm 1 on both sides: open Ø7-root seat, near Ø1.6 round hole at X6.8, far 1.6 x 2.2 mm radial slot at X13.2 and flat front nut seats. The near hole bounds displacement along the open seat; the far slot accommodates pitch variation. No long head channel, separate cap or centring jig. Centre the shaft and check runout before tightening both rear M1.4x8/front-nut pairs; the openings do not permit operating movement. Actual axial seating, root fit, retention and runout require inspection. Export this installed solid.",
+        servo_horns.preparation_note(profile)
+        + " Open root register, one near round opening and two radial slots in the adapter. Keep the OEM horn unchanged. Only the two end bolts are installed in this assembly; the middle slot is an optional interface, not a qualified three-bolt assembly. Align before tightening and check runout.",
         rotation=App.Rotation(V(0, 0, 1), 180) if sign < 0 else App.Rotation(),
         sku="FactoryHoleHornGearAdapter",
     )
@@ -680,7 +730,7 @@ def _build_coupling(doc, parent, prefix, sign):
                 f"Nominal {contract['fastener_grip_mm']:g} mm printed grip. "
                 + servo_horns.preparation_note(profile)
                 + " Align before clamping; inspect useful threads, head support, length and case clearance.",
-                SERVO_SCREW_SOURCE
+                "references/m1_horn_hardware_2026-10-02.json"
                 if suffix.endswith("Bolt")
                 else servo_horns.NUT_DIMENSION_SOURCE,
                 HARDWARE_MATERIALS[sku],
@@ -1327,7 +1377,7 @@ def _module_metrics(printed, hardware, references, spec):
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
             "servo_bridge_print_sku": spec.bridge_sku,
-            "input_mount": "Prepared stock-horn drives on a removable continuous U cap with a 38 by 12 mm frame seat and two shared M3x20 clamps at 28 mm pitch. Both cap walls and both frame legs carry preload; coupon-fit the nominal mating planes before tightening. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
+            "input_mount": "Unmodified stock-horn drives on a removable continuous U cap with a 38 by 12 mm frame seat and two shared M3x20 clamps at 28 mm pitch. Both cap walls and both frame legs carry preload; coupon-fit the nominal mating planes before tightening. Support both modules and release both rail pairs before bench service; remove small gears and stage the two driven shafts by 12 mm before lifting the saddle. Only selected 48T/16T is supported; another drive requires replacement geometry and validation.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion only. Servo travel, tooth clearance, backlash, clamp slip and wire loops require physical calibration.",
         },

@@ -147,18 +147,25 @@ def _mount_service_regions(name, shape, offset):
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         return [(name, shape)]
-    # Deliberately fill the crowns back to a flat Z1.5 bottom for this
-    # straight-rail service envelope only. Preserve the open U and root relief;
-    # containment below proves no saved feature is omitted. Angular clearance
-    # uses the actual saved crowns in rail_curvature, not this filled stock.
     shared = name == "PropulsionFixedFrame"
-    length, width = (38, 12) if shared else (10, 10.5)
-    lower = Part.makeBox(length, width, 11, V(-length / 2, -width / 2, 1.5))
-    channel = Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
-    roots = Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
-    lower = lower.cut(channel).cut(roots)
-    if not shared:
-        lower = lower.fuse(Part.makeBox(16, 10.5, 2.3, V(-8, -5.25, 10.2)))
+    if shared:
+        # Fill the crowns back to a flat Z1.5 bottom only for the straight-rail
+        # service envelope. Preserve the open U and root relief; containment
+        # proves no saved feature is omitted. Angular checks use real crowns.
+        lower = Part.makeBox(38, 12, 11, V(-19, -6, 1.5))
+        channel = Part.makeBox(40, 2.5, 11.2, V(-20, -1.25, -1))
+        roots = Part.makeBox(40, 3.5, 3.6, V(-20, -1.75, -1))
+        lower = lower.cut(channel).cut(roots)
+    else:
+        # Literal top-bearing shoe stock: flat lower edges clear the base and
+        # the full 16 mm roof sits on the rail-wall top at Z9.5.
+        lower = union(
+            [
+                Part.makeBox(10, 4, 10, V(-5, -5.25, 2.5)),
+                Part.makeBox(10, 4, 10, V(-5, 1.25, 2.5)),
+                Part.makeBox(16, 10.5, 3, V(-8, -5.25, 9.5)),
+            ]
+        )
     upper_region = Part.makeBox(
         bounds.XLength + 2,
         bounds.YLength + 2,
@@ -190,6 +197,10 @@ def _mount_service_regions(name, shape, offset):
         (name + "Deck", Part.makeBox(66, 66, 2, V(-33, -33, 17))),
         (name + "SupportNegativeX", Part.makeBox(5, 5, 4.5, V(-8, -2.5, 12.5))),
         (name + "SupportPositiveX", Part.makeBox(5, 5, 4.5, V(3, -2.5, 12.5))),
+        (name + "UpperRootNegativeX", Part.makeBox(6, 7, 1, V(-9, -3.5, 16))),
+        (name + "UpperRootPositiveX", Part.makeBox(6, 7, 1, V(3, -3.5, 16))),
+        (name + "LowerRootNegativeX", Part.makeBox(5, 6, 0.5, V(-8, -3, 12.5))),
+        (name + "LowerRootPositiveX", Part.makeBox(5, 6, 0.5, V(3, -3, 12.5))),
     ]
 
 
@@ -418,11 +429,10 @@ def _carrier_trim_interval(pose):
     if not math.isfinite(yaw) or min(abs(yaw), abs(yaw - 180)) > TOL:
         raise ValueError("Carrier trim requires the reviewed 0 or 180 degree yaw")
     direction = 1 if abs(yaw) < TOL else -1
-    # The R4.5 crown stays on the full-width base X±149.
-    low = max(centres[0] - 3, -144.5) - axis
-    high = min(centres[0] + 3, 144.5) - axis
-    if low > TOL or high < -TOL:
-        raise ValueError("Carrier bottom datum is outside the full-width rail base")
+    # The 16 mm roof retains at least 14 mm of wall-top support throughout
+    # this interval, including the end walls. The legs do not bear on the base.
+    low = centres[0] - 3 - axis
+    high = centres[0] + 3 - axis
     return tuple(sorted((direction * low, direction * high)))
 
 

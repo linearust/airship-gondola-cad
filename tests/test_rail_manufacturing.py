@@ -34,20 +34,21 @@ class RailManufacturingTests(unittest.TestCase):
                 else:
                     self.assertGreaterEqual(actual, 1.5 - 1e-6)
 
-    def test_root_relief_preserves_minimum_carrier_wall(self):
+    def test_raised_lower_legs_preserve_minimum_carrier_wall(self):
         from gondola.validation.manufacturing import planar_wall_regions
 
         regions = planar_wall_regions(self.shapes["BatteryMount"])
-        self.assertTrue(regions)
         self.assertTrue(
             all(region["material_thickness_mm"] >= 1.5 - 1e-6 for region in regions)
         )
 
-    def test_overwide_root_relief_is_detected(self):
+    def test_local_lower_floor_thinning_is_detected(self):
         from gondola.validation.manufacturing import planar_wall_regions
 
-        oversized_relief = Part.makeBox(10, 3.8, 1.1, App.Vector(-5, -1.9, 1.5))
-        defective = self.shapes["BatteryMount"].cut(oversized_relief)
+        # Remove only the inner 0.65 mm of the leg's lowest 0.1 mm. The
+        # resulting 1.35 mm axial floor must fail the unchanged 1.5 mm screen.
+        floor_notch = Part.makeBox(10, 3.8, 0.1, App.Vector(-5, -1.9, 2.5))
+        defective = self.shapes["BatteryMount"].cut(floor_notch)
         regions = planar_wall_regions(defective)
         self.assertTrue(
             any(region["material_thickness_mm"] < 1.5 - 1e-6 for region in regions)

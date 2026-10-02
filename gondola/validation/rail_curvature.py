@@ -69,7 +69,7 @@ def root_stock_check(shape, centres=tuple(range(-140, 141, 28))):
     }
 
 
-def local_seat_check(section, mount, zone_length=10):
+def _crowned_seat_check(section, mount, zone_length=10):
     """Actual bilateral crowned seats and local cheeks, without a flat-foot test."""
     if abs(zone_length - 10) > TOL:
         raise ValueError("The independently qualified local bearing zone is 10 mm")
@@ -138,6 +138,70 @@ def local_seat_check(section, mount, zone_length=10):
     }
 
 
+def _wall_top_seat_check(section, mount, zone_length=10):
+    """Ordinary carrier: flat wall-top datum and lower legs clear of the base."""
+    if abs(zone_length - 10) > TOL:
+        raise ValueError("Ordinary carrier cheeks must retain their 10 mm zone")
+    line = Part.makeLine(V(-40, 0, 9.49), V(40, 0, 9.49))
+    intervals = [
+        (edge.BoundBox.XMin, edge.BoundBox.XMax)
+        for edge in section.common(line).Edges
+        if abs(edge.BoundBox.XLength - 18) < TOL
+    ]
+    choices = [
+        (max(-8, first), min(8, last))
+        for first, last in intervals
+        if min(8, last) > max(-8, first)
+    ]
+    first, last = max(choices, key=lambda row: row[1] - row[0]) if choices else (0, 0)
+    overlap = last - first
+    top = {"overlap_length_mm": overlap, "nominal_area_mm2": 2.5 * overlap}
+    if overlap > 0:
+        roof = _box(overlap, 2.5, 0.01, first, -1.25, 9.5)
+        wall = _box(overlap, 2.5, 0.01, first, -1.25, 9.49)
+        top["missing_roof_stock_mm3"] = abs(roof.cut(mount).Volume)
+        top["missing_wall_stock_mm3"] = abs(wall.cut(section).Volume)
+        top["passed"] = (
+            overlap >= 14 - TOL
+            and max(top["missing_roof_stock_mm3"], top["missing_wall_stock_mm3"]) < TOL
+        )
+    else:
+        top["passed"] = False
+    side_rows = []
+    for sign in (-1, 1):
+        y = -1.26 if sign < 0 else 1.25
+        face = _box(10, 0.01, 7, -5, y, 2.5).cut(_box(12, 3, 3.4, -6, -1.5, 4.3))
+        inside = face.copy()
+        inside.translate(V(0, -sign * 0.01, 0))
+        missing = abs(face.cut(mount).Volume) + abs(inside.cut(section).Volume)
+        side_rows.append(
+            {"side": sign, "missing_contact_mm3": missing, "passed": missing < TOL}
+        )
+    lower = _box(16, 12, 2.5, -8, -6, 0)
+    blocked = abs(lower.common(mount).Volume)
+    return {
+        "seat_type": "wall_top_bearing",
+        "top_bearing": top,
+        "bottom_datum_contacts": [],
+        "lower_leg_bottom_z_mm": 2.5,
+        "nominal_base_clearance_mm": 1.0,
+        "blocked_lower_clearance_mm3": blocked,
+        "local_side_contacts": side_rows,
+        "missing_flat_side_contact_mm3": side_rows[0]["missing_contact_mm3"],
+        "missing_opposite_side_contact_mm3": side_rows[1]["missing_contact_mm3"],
+        "scope": "Ordinary16mm roof seats on14..16mm of one wall top atZ9.5, with10mm fitted cheeks and lower edges atZ2.5. Carrier attitude follows the local wall; the2.5mm-wide top seat and1.8mm upper slot ligament are not strength or roll-stiffness qualifications.",
+        "passed": top["passed"]
+        and blocked < TOL
+        and all(row["passed"] for row in side_rows),
+    }
+
+
+def local_seat_check(section, mount, zone_length=10, *, shared=False):
+    """Select the physically different ordinary and paired mounting datums."""
+    checker = _crowned_seat_check if shared else _wall_top_seat_check
+    return checker(section, mount, zone_length)
+
+
 def local_wall_coupon(section):
     """Take a saved wall and the full 6 mm base width, centred on that wall."""
     if abs(section.BoundBox.ZMin) > TOL or abs(section.BoundBox.ZMax - 9.5) > TOL:
@@ -159,7 +223,9 @@ def local_wall_coupon(section):
     return coupon
 
 
-def angular_clearance_check(section, mount, *, slot_positions=(-3, 0, 3)):
+def angular_clearance_check(
+    section, mount, *, slot_positions=(-3, 0, 3), follow_wall=False
+):
     """Sample an explicit local angular range; report its finite sampling scope."""
     try:
         coupon = local_wall_coupon(section)
@@ -177,7 +243,10 @@ def angular_clearance_check(section, mount, *, slot_positions=(-3, 0, 3)):
             placed = coupon.copy()
             placed.translate(V(-offset, 0, 0))
             placed.rotate(V(0, 0, 6), V(0, 1, 0), angle)
-            overlap = abs(placed.common(obstacle).Volume)
+            tested_mount = obstacle.copy()
+            if follow_wall:
+                tested_mount.rotate(V(0, 0, 6), V(0, 1, 0), angle)
+            overlap = abs(placed.common(tested_mount).Volume)
             rows.append(
                 {
                     "slot_position_mm": offset,
@@ -191,7 +260,13 @@ def angular_clearance_check(section, mount, *, slot_positions=(-3, 0, 3)):
         "half_angle_deg": 2.0,
         "sample_step_deg": 0.25,
         "slot_positions_mm": list(slot_positions),
+        "carrier_follows_wall": follow_wall,
         "poses": rows,
-        "scope": "Saved single-wall/base coupon sampled through ±2° about one bolt at the stated slot positions. Samples are a local geometric interference screen, not a certified continuous sweep, rail bend-radius allowance, paired-frame compliance, tape peel, stiffness, fatigue or strength result.",
+        "scope": (
+            "Ordinary carrier and saved single-wall/base coupon rotate together through±2° about the local bolt. The flat top datum follows the wall attitude; this is not a fixed-deck clearance claim. "
+            if follow_wall
+            else "Saved single-wall/base coupon rotates through±2° against the fixed paired-seat geometry. "
+        )
+        + "Samples are a local geometric interference screen, not a certified continuous sweep, rail bend-radius allowance, paired-frame compliance, tape peel, stiffness, fatigue or strength result.",
         "passed": bool(rows) and all(row["passed"] for row in rows),
     }

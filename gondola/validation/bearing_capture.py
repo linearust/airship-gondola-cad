@@ -87,6 +87,14 @@ def keeper_backing_check(seat, keeper):
     """
     backing = box(8.8, 3.3, 8.8, (-4.4, -1.9, -13.9))
     side_paths = union([box(1.8, 3.3, 16.3, (x, -1.9, -21.4)) for x in (-4.4, 2.6)])
+    # The exterior XZ silhouette has R0.5 lower corners. Remove only the
+    # independently constructed quarter-circle waste from the path witness.
+    for sign in (-1, 1):
+        corner = box(0.5, 3.5, 0.5, (-4.5 if sign < 0 else 4, -2, -21.5))
+        round_stock = Part.makeCylinder(
+            0.5, 3.5, App.Vector(sign * 4, -2, -21), App.Vector(0, 1, 0)
+        )
+        side_paths = side_paths.cut(corner.cut(round_stock))
     frame_back = box(8.8, 2.3, 8.8, (-4.4, 1.6, -13.9))
     frame_sides = union([box(1.6, 5.8, 8.8, (x, -1.9, -13.9)) for x in (-6.4, 4.8)])
     mirrored = keeper.mirror(App.Vector(), App.Vector(1, 0, 0))
@@ -181,8 +189,25 @@ def bearing_stack_check(
     }
     # The caller verifies each carrier stop independently. Only travel toward
     # this bearing reduces the face clearance; neither stop retains the bearing.
-    carrier_end = carrier.optimalBoundingBox(False, False).YMax
-    carrier_gap = bounds.YMin - inward - carrier_end - toward_travel
+    # Even optimal bounds include a small fillet edge tolerance. Measure the
+    # actual saved solid against the bearing's near plane instead of reporting
+    # the kernel's bounding margin as reduced mechanical face clearance.
+    carrier_box = carrier.optimalBoundingBox(False, False)
+    plane_y = bounds.YMin - inward
+    plane_points = [
+        App.Vector(cx, plane_y, cz)
+        for cx, cz in (
+            (carrier_box.XMin - 1, carrier_box.ZMin - 1),
+            (carrier_box.XMax + 1, carrier_box.ZMin - 1),
+            (carrier_box.XMax + 1, carrier_box.ZMax + 1),
+            (carrier_box.XMin - 1, carrier_box.ZMax + 1),
+        )
+    ]
+    near_plane = Part.Face(Part.makePolygon(plane_points + [plane_points[0]]))
+    plane_distance = carrier.distToShape(near_plane)[0]
+    if carrier_box.YMin > plane_y:
+        plane_distance = -plane_distance
+    carrier_gap = plane_distance - toward_travel
     return {
         "stock_shape_comparison": comparison,
         "shaft_axis_error_mm": axis_error,

@@ -204,6 +204,45 @@ def _common_mount_shape():
     for hole in mounting_plate.cutters(DECK_BOTTOM_Z - 0.01, DECK_THICKNESS + 0.02):
         shape = shape.cut(hole)
     shape = shape.removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    # Preserve the entire six-mm accessory corridor between X=-3 and X=3.
+    # Upper outer roots spread into the deck; lower roots spread only in Y.
+    shape = fillet_selected(
+        shape,
+        0.5,
+        lambda e, b: (
+            near(b.ZMin, DECK_BOTTOM_Z)
+            and near(b.ZLength, 0)
+            and near(e.Length, 5)
+            and (
+                (
+                    near(b.YLength, 0)
+                    and near(abs(b.YMin), 2.5)
+                    and b.XMin >= -8.01
+                    and b.XMax <= 8.01
+                )
+                or (near(b.XLength, 0) and near(abs(b.XMin), 8) and near(b.YLength, 5))
+            )
+        ),
+        6,
+        "Equipment support upper outer roots",
+    )
+    shape = fillet_selected(
+        shape,
+        0.5,
+        lambda e, b: (
+            near(b.ZMin, rail.MOUNT_TOP_Z)
+            and near(b.ZLength, 0)
+            and near(b.YLength, 0)
+            and near(abs(b.YMin), 2.5)
+            and near(b.XLength, 5)
+            and b.XMin >= -8.01
+            and b.XMax <= 8.01
+        ),
+        4,
+        "Equipment support lower Y roots",
+    )
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Common equipment mount is not one valid solid")
     return shape

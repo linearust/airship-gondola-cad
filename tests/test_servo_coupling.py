@@ -1,4 +1,4 @@
-"""Prepared OEM horn, near registration hole, far slot and metal shaft retention."""
+"""Unmodified OEM horn, three M1 openings and external-hex fastener service."""
 
 import math
 import unittest
@@ -99,25 +99,35 @@ class ServoCouplingTests(unittest.TestCase):
         for label, x in (("Near", 6.8), ("Far", 13.2)):
             screw, screw_sku = hardware[label + "Bolt"]
             nut, nut_sku = hardware[label + "Nut"]
-            self.assertEqual(screw_sku, "M1_4X8_PAN_HEAD_KIT")
-            self.assertEqual(nut_sku, "M1_4_HEX_NUT_DIN934")
-            expected_screw = Part.makeCylinder(
-                1.3, 1.0, App.Vector(x, 0.5, 0), App.Vector(0, 1, 0)
-            ).fuse(
-                Part.makeCylinder(0.7, 8.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0))
+            self.assertEqual(screw_sku, "M1X6_HEX_HEAD")
+            self.assertEqual(nut_sku, "M1_HEX_NUT")
+            radius = 2.5 / math.sqrt(3)
+            vertices = [
+                App.Vector(
+                    x + radius * math.cos(i * math.pi / 3),
+                    0.5,
+                    radius * math.sin(i * math.pi / 3),
+                )
+                for i in range(6)
+            ]
+            expected_head = Part.Face(
+                Part.makePolygon(vertices + [vertices[0]])
+            ).extrude(App.Vector(0, 1, 0))
+            expected_screw = expected_head.fuse(
+                Part.makeCylinder(0.5, 6.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0))
             )
             self.assertLess(expected_screw.cut(screw).Volume, 1e-7)
             self.assertLess(screw.cut(expected_screw).Volume, 1e-7)
-            self.assertAlmostEqual(nut.BoundBox.YMin, 6.5, places=6)
-            self.assertAlmostEqual(nut.BoundBox.YLength, 1.2, places=6)
+            self.assertAlmostEqual(nut.BoundBox.YMin, 6.0, places=6)
+            self.assertAlmostEqual(nut.BoundBox.YLength, 0.8, places=6)
             self.assertAlmostEqual(
                 nut.Volume,
-                (math.sqrt(3) / 2 * 3.0**2 - math.pi * 0.7**2) * 1.2,
+                (math.sqrt(3) / 2 * 2.5**2 - math.pi * 0.5**2) * 0.8,
                 places=6,
             )
-            self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 1.8)
+            self.assertAlmostEqual(screw.BoundBox.YMax - nut.BoundBox.YMax, 0.7)
             self.assertGreater(_plane_contact(c.horn_shape(), screw, 1.5), 1.0)
-            self.assertGreater(_plane_contact(c.adapter_shape(), nut, 6.5), 1.0)
+            self.assertGreater(_plane_contact(c.adapter_shape(), nut, 6.0), 1.0)
 
     def test_taper_keeps_oem_face_support_and_far_nut_seat_at_slot_limits(self):
         from gondola.parts import servo_coupling as c
@@ -134,11 +144,11 @@ class ServoCouplingTests(unittest.TestCase):
         self.assertLess(face_slice.cut(blank).Volume, 1e-8)
         old_rectangle = Part.makeBox(22.5, 3.6, 10.3, App.Vector(-6.5, 3.5, -5.15))
         self.assertGreater(old_rectangle.cut(blank).Volume, 250)
-        # A circumscribed circle conservatively covers an AF3 nut at every yaw.
+        # A circumscribed circle conservatively covers an AF2.5 nut at every yaw.
         # Include the slot's complete nominal shank-centre envelope.
-        nut_radius = 3.0 / math.sqrt(3)
-        for x in (12.7, 13.2, 13.7):
-            for z in (-0.2, 0, 0.2):
+        nut_radius = 2.5 / math.sqrt(3)
+        for x in (12.8, 13.2, 13.6):
+            for z in (-0.1, 0, 0.1):
                 seat = Part.makeCylinder(
                     nut_radius, 0.01, App.Vector(x, 7.09, z), App.Vector(0, 1, 0)
                 )
@@ -151,7 +161,7 @@ class ServoCouplingTests(unittest.TestCase):
         from gondola.parts import servo_coupling as c
 
         reported = c.metrics()["adapter_axial_release_travel_mm"]
-        self.assertAlmostEqual(reported, 7.7)
+        self.assertAlmostEqual(reported, 5.7)
         released = c.adapter_shape()
         released.translate(App.Vector(0, reported, 0))
         for name, screw, _ in c.horn_hardware_shapes():
@@ -160,62 +170,50 @@ class ServoCouplingTests(unittest.TestCase):
                     released.BoundBox.YMin - screw.BoundBox.YMax, 0.2 - 1e-6
                 )
 
-    def test_only_two_selected_factory_holes_are_prepared(self):
+    def test_all_four_oem_holes_and_the_complete_source_shape_remain_unmodified(self):
         from gondola.parts import servo_coupling as c
         from gondola.parts.oem_servo_horn import normalized_shape
 
-        original, prepared = c.horn_shape(prepared=False), c.horn_shape()
         manufacturer = normalized_shape()
-        self.assertLess(original.cut(manufacturer).Volume, 1e-7)
-        self.assertLess(manufacturer.cut(original).Volume, 1e-7)
-        expected = original.copy()
-        for x in (6.8, 13.2):
-            expected = expected.cut(
-                Part.makeCylinder(0.75, 2.2, App.Vector(x, 1.4, 0), App.Vector(0, 1, 0))
-            )
-        self.assertLess(expected.cut(prepared).Volume, 1e-7)
-        self.assertLess(prepared.cut(expected).Volume, 1e-7)
+        for selected in (c.horn_shape(),):
+            self.assertLess(selected.cut(manufacturer).Volume, 1e-7)
+            self.assertLess(manufacturer.cut(selected).Volume, 1e-7)
+            self.assertAlmostEqual(selected.Volume, 202.72814863430688, places=6)
+            for x, radius in ((4.5, 0.4), (6.8, 0.5), (10.0, 0.5), (13.2, 0.5)):
+                passage = Part.makeCylinder(
+                    radius, 2, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
+                )
+                outside = Part.makeCylinder(
+                    radius + 0.1, 2, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
+                )
+                self.assertLess(selected.common(passage).Volume, 1e-7)
+                self.assertLess(outside.cut(passage).cut(selected).Volume, 1e-7)
+        # Equal nominal diameters are tangent, not a supplied clearance promise.
+        inner_m1 = Part.makeCylinder(
+            0.5, 2, App.Vector(4.5, 1.5, 0), App.Vector(0, 1, 0)
+        )
         self.assertAlmostEqual(
-            original.Volume - prepared.Volume,
-            2 * math.pi * (0.75**2 - 0.5**2) * 2.0,
-            delta=1e-6,
+            manufacturer.common(inner_m1).Volume, math.pi * (0.5**2 - 0.4**2) * 2
         )
-        for x, original_radius in ((4.5, 0.4), (6.8, 0.5), (10.0, 0.5), (13.2, 0.5)):
-            radius = 0.75 if x in (6.8, 13.2) else original_radius
-            factory_passage = Part.makeCylinder(
-                original_radius, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
-            )
-            self.assertLess(original.common(factory_passage).Volume, 1e-7)
-            passage = Part.makeCylinder(
-                radius, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
-            )
-            surrounding = Part.makeCylinder(
-                radius + 0.1, 2.0, App.Vector(x, 1.5, 0), App.Vector(0, 1, 0)
-            )
-            self.assertLess(prepared.common(passage).Volume, 1e-7)
-            self.assertAlmostEqual(
-                prepared.common(surrounding).Volume,
-                math.pi * ((radius + 0.1) ** 2 - radius**2) * 2.0,
-                places=6,
-            )
-        self.assertTrue(
-            all(set(anchors) == {"screw", "nut"} for anchors in c.fastener_positions())
-        )
+        self.assertFalse(c.assembly_contract()["horn_requires_drilling"])
+        self.assertFalse(c.assembly_contract()["optional_middle_fastener_installed"])
         self.assertFalse(hasattr(c, "centering_jig_shape"))
 
     def test_near_round_hole_and_far_slot_keep_the_web_and_bounded_clearances(self):
         from gondola.parts import servo_coupling as c
 
         adapter = c.adapter_shape()
-        for x, opening_length in ((6.8, 1.6), (13.2, 2.2)):
+        for x, opening_length in ((6.8, 1.2), (10.0, 1.6), (13.2, 1.8)):
             for start, end, material in (
-                ((x - 2, 5.3, 0), (x + 2, 5.3, 0), 4.0 - opening_length),
-                ((x, 5.3, -2), (x, 5.3, 2), 4.0 - 1.6),
+                ((x - 1.5, 5.0, 0), (x + 1.5, 5.0, 0), 3.0 - opening_length),
+                ((x, 5.0, -2), (x, 5.0, 2), 4.0 - 1.2),
             ):
                 section = Part.makeLine(App.Vector(*start), App.Vector(*end))
                 self.assertAlmostEqual(adapter.common(section).Length, material)
-        web = Part.makeBox(3.8, 3.0, 1.8, App.Vector(8.1, 3.5, -0.9))
-        self.assertLess(web.cut(adapter).Volume, 1e-7)
+        for xmin, xmax, length in ((7.4, 9.2, 1.8), (10.8, 12.3, 1.5)):
+            web = Part.makeBox(xmax - xmin, 2.5, 1.2, App.Vector(xmin, 3.5, -0.6))
+            self.assertLess(web.cut(adapter).Volume, 1e-7)
+            self.assertAlmostEqual(web.BoundBox.XLength, length)
         for name, shape, _ in c.horn_hardware_shapes():
             limit = 0.1 if name.startswith("Near") else 0.4
             for shift in (-limit, limit):
@@ -276,18 +274,18 @@ class ServoCouplingTests(unittest.TestCase):
             for offset in (-limit, 0.0, limit):
                 moved = nut.copy()
                 moved.translate(App.Vector(offset, 0, 0))
-                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.5), 1.0)
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.0), 1.0)
         for x, limit in ((6.8, 0.1), (13.2, 0.4)):
-            minimum_nut = purchased_hardware.hex_prism(2.9, 1.2).cut(
-                Part.makeCylinder(0.7, 1.4, App.Vector(0, 0, -0.1))
+            minimum_nut = purchased_hardware.hex_prism(2.4, 0.8).cut(
+                Part.makeCylinder(0.5, 1.0, App.Vector(0, 0, -0.1))
             )
             for offset in (-limit, 0.0, limit):
                 moved = minimum_nut.copy()
                 moved.Placement = App.Placement(
-                    App.Vector(x + offset, 6.5, 0),
+                    App.Vector(x + offset, 6.0, 0),
                     App.Rotation(App.Vector(0, 0, 1), App.Vector(0, 1, 0)),
                 )
-                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.5), 1.0)
+                self.assertGreaterEqual(_plane_contact(adapter, moved, 6.0), 1.0)
 
     def test_recessed_minimum_nuts_float_radially_but_cannot_spin(self):
         from gondola.parts import servo_coupling as c
@@ -299,16 +297,16 @@ class ServoCouplingTests(unittest.TestCase):
                 capture = nut_recess_check(adapter, x, allowance)
                 self.assertTrue(capture["passed"], capture)
                 # An oversized shallow round pocket preserves the floor but
-                # loses the flanks that prevent a minimum AF2.9 nut spinning.
+                # loses the flanks that prevent a minimum AF2.4 nut spinning.
                 damaged = adapter.cut(
                     Part.makeCylinder(
-                        2.5, 0.7, App.Vector(x, 6.5, 0), App.Vector(0, 1, 0)
+                        2.5, 1.2, App.Vector(x, 6.0, 0), App.Vector(0, 1, 0)
                     )
                 )
                 failed = nut_recess_check(damaged, x, allowance)
                 self.assertFalse(failed["passed"], failed)
-                self.assertEqual(failed["retained_floor_lengths_mm"], [3.0, 3.0])
-        self.assertAlmostEqual(c.assembly_contract()["fastener_grip_mm"], 3.0)
+                self.assertEqual(failed["retained_floor_lengths_mm"], [2.5, 2.5])
+        self.assertAlmostEqual(c.assembly_contract()["fastener_grip_mm"], 2.5)
 
     def test_front_nuts_release_off_bridge_while_rear_bolts_remain(self):
         from gondola.parts import servo_coupling as c
@@ -331,6 +329,58 @@ class ServoCouplingTests(unittest.TestCase):
                 self.assertTrue(result["passed"], result)
         self.assertIn("NearBolt", fixed)
         self.assertIn("FarBolt", fixed)
+
+    def test_three_opening_witness_rejects_middle_plug_and_thinned_web(self):
+        from gondola.parts import servo_coupling as c
+        from gondola.validation.horn_coupling import factory_opening_check
+
+        horn, adapter = c.horn_shape(), c.adapter_shape()
+        self.assertTrue(factory_opening_check(horn, adapter)["passed"])
+        plug = Part.makeCylinder(0.55, 2.5, App.Vector(10, 3.5, 0), App.Vector(0, 1, 0))
+        blocked = factory_opening_check(horn, adapter.fuse(plug))
+        self.assertFalse(blocked["passed"])
+        self.assertGreater(blocked["adapter_openings"][1]["blocked_mm3"], 1)
+        cut = Part.makeBox(0.2, 2.5, 1.2, App.Vector(10.8, 3.5, -0.6))
+        thinned = factory_opening_check(horn, adapter.cut(cut))
+        self.assertFalse(thinned["passed"])
+        self.assertGreater(thinned["retained_floor_webs"][1]["missing_stock_mm3"], 0.5)
+        enlarged = horn.cut(
+            Part.makeCylinder(0.55, 2, App.Vector(10, 1.5, 0), App.Vector(0, 1, 0))
+        )
+        modified = factory_opening_check(enlarged, adapter)
+        self.assertFalse(modified["passed"])
+        self.assertGreater(modified["factory_holes"][2]["missing_ring_mm3"], 0.3)
+
+    def test_external_hex_tool_fits_default_end_pair_but_not_three_bolt_candidate(self):
+        from gondola.parts import servo_coupling as c
+
+        hardware = {name: shape for name, shape, _ in c.horn_hardware_shapes()}
+        retained = {
+            "servo": self._servo_envelope(),
+            "horn": c.horn_shape(),
+            "adapter": c.adapter_shape(),
+            **hardware,
+        }
+        for label, x, clearance in (("Near", 6.8, 0.45), ("Far", 13.2, 6.85)):
+            # Full socket exterior through the head's entire engagement height,
+            # excluding only the driven bolt inside its internal socket.
+            tool = Part.makeCylinder(
+                2.85, 60, App.Vector(x, 1.5, 0), App.Vector(0, -1, 0)
+            )
+            for name, shape in retained.items():
+                if name != label + "Bolt":
+                    self.assertLess(tool.common(shape).Volume, 1e-7, name)
+            self.assertAlmostEqual(tool.distToShape(retained["servo"])[0], clearance)
+        middle_bolt = hardware["NearBolt"].copy()
+        middle_bolt.translate(App.Vector(3.2, 0, 0))
+        self.assertLess(middle_bolt.common(retained["horn"]).Volume, 1e-7)
+        self.assertLess(middle_bolt.common(retained["adapter"]).Volume, 1e-7)
+        for x in (6.8, 13.2):
+            tool = Part.makeCylinder(
+                2.85, 60, App.Vector(x, 1.5, 0), App.Vector(0, -1, 0)
+            )
+            self.assertGreater(tool.common(middle_bolt).Volume, 0.1)
+        self.assertFalse(c.assembly_contract()["optional_middle_fastener_installed"])
 
     def test_metal_stub_retains_stop_flat_and_gear_end_reserve(self):
         from gondola.parts import servo_coupling as c

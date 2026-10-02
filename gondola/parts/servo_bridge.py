@@ -209,6 +209,36 @@ def bridge_shape(drive=SELECTED_DRIVE):
     nut_cut = rail.nut_pocket_shape(-CHEEK_CONTACT_Y, -CHEEK_OUTER_Y, x=CLAMP_AXIS_X)
     for cutter in (head_cut, opposite(head_cut), nut_cut, opposite(nut_cut)):
         bridge = bridge.cut(cutter)
-    # Cosmetic corner fillets can propagate along tangent edges and trim the
-    # shallow servo-nut rims. Preserve those rims and retain only root blends.
-    return bridge.removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    bridge = bridge.removeSplitter()
+    roof_top = CONNECTOR_PLATE_BOTTOM_Z + CONNECTOR_PLATE_THICKNESS
+    bridge = fillet_selected(
+        bridge,
+        0.5,
+        lambda e, b: (
+            near(b.ZMin, roof_top)
+            and near(b.ZLength, 0)
+            and (
+                (near(b.XLength, 0) and near(abs(b.XMin), ROOF_HALF_LENGTH))
+                or (near(b.YLength, 0) and near(abs(b.YMin), -CHEEK_OUTER_Y))
+            )
+        ),
+        4,
+        "Servo bridge upper outer roof rim",
+    )
+    # Select only the four outer cradle corners, not window or nut-pocket
+    # edges. The complete mating underside and shallow nut floors stay flat.
+    return fillet_selected(
+        bridge,
+        0.5,
+        lambda e, b: (
+            near(b.XLength, 0)
+            and near(b.YLength, 0)
+            and near(abs(b.XMin), bulkhead_width(drive) / 2)
+            and near(abs(b.YMin), MOUNT_DEPTH / 2)
+            and b.ZLength > 20
+        ),
+        4,
+        "Servo bridge outer cradle corners",
+    )

@@ -16,11 +16,12 @@ class HornProfileContractsTests(unittest.TestCase):
         self.assertFalse(kst.threaded)
         self.assertEqual(kst.attachment_radii_mm, (6.8, 13.2))
         self.assertEqual(kst.holes, ((4.5, 0.8), (6.8, 1.0), (10.0, 1.0), (13.2, 1.0)))
-        self.assertEqual(kst.screw_sku, "M1_4X8_PAN_HEAD_KIT")
-        self.assertEqual(kst.screw_length_mm, 8.0)
+        self.assertEqual(kst.screw_sku, "M1X6_HEX_HEAD")
+        self.assertEqual(kst.screw_length_mm, 6.0)
         self.assertEqual(kst.blade_bottom_mm, 1.5)
         self.assertEqual(kst.arm_thickness_mm, 2.0)
-        self.assertEqual(servo_horns.PREPARED_HOLE_DIAMETER_MM, 1.5)
+        self.assertEqual(servo_horns.M1_USABLE_FACTORY_RADII_MM, (6.8, 10.0, 13.2))
+        self.assertIn("Do not drill", servo_horns.preparation_note())
 
     def test_both_sides_use_the_supplied_half_arm_and_rear_bolt_front_nut_stack(self):
         self.assertEqual(set(servo_horns.PROFILES), {"KST_X06_HALF_ARM_1"})
@@ -28,11 +29,15 @@ class HornProfileContractsTests(unittest.TestCase):
             selected = servo_horns.profile(side=side)
             self.assertEqual(selected.key, "KST_X06_HALF_ARM_1")
             self.assertEqual(selected.sku, "KST_X06_STOCK_HALF_ARM_1")
-        self.assertEqual(servo_horns.KST_SCREW_HEAD_DIAMETER_MM, 2.6)
+        self.assertAlmostEqual(
+            servo_horns.KST_SCREW_HEAD_DIAMETER_MM, 2.886751345948129
+        )
+        self.assertEqual(servo_horns.KST_SCREW_HEAD_AF_MM, 2.5)
+        self.assertEqual(servo_horns.KST_TOOL_DIAMETER_MM, 5.7)
         self.assertEqual(servo_horns.KST_SCREW_HEAD_HEIGHT_MM, 1.0)
-        self.assertEqual(servo_horns.NUT_AF_MM, 3.0)
-        self.assertEqual(servo_horns.NUT_MIN_AF_MM, 2.9)
-        self.assertEqual(servo_horns.NUT_HEIGHT_MM, 1.2)
+        self.assertEqual(servo_horns.NUT_AF_MM, 2.5)
+        self.assertEqual(servo_horns.NUT_MIN_AF_MM, 2.4)
+        self.assertEqual(servo_horns.NUT_HEIGHT_MM, 0.8)
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")

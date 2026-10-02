@@ -69,8 +69,12 @@ class ReviewMotionPlan:
     def check_basis(self, evidence):
         """Reject native evidence outside this explicitly reviewed motion plan."""
         clearances = evidence["saved_carrier_metal_clearances"]
+        # Saved stop bounds can include ~1e-7 mm OCCT edge padding. Allow CAD
+        # precision only here; nominal poses and service-vector checks stay fixed.
         if not clearances or any(
-            not _matches_number(row["axial_travel"][key], self.axial_allowance_mm)
+            not _matches_number(
+                row["axial_travel"][key], self.axial_allowance_mm, tolerance=1e-6
+            )
             for row in clearances
             for key in ("negative_mm", "positive_mm")
         ):

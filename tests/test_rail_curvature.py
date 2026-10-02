@@ -1,4 +1,4 @@
-"""Independent root/crown witnesses reject changes that defeat local relief."""
+"""Independent ordinary top seats and paired crowns retain distinct behavior."""
 
 import unittest
 
@@ -21,75 +21,82 @@ class LocalRailCurvatureTests(unittest.TestCase):
     def test_round_root_stock_is_checked_without_the_builder(self):
         from gondola.validation.rail_curvature import root_stock_check
 
-        report = root_stock_check(self.rail, (0,))
-        self.assertTrue(report["passed"], report)
+        self.assertTrue(root_stock_check(self.rail, (0,))["passed"])
         for position, size in (
             ((9, -0.5, 1.5), (1, 1, 1)),
             ((-7, 1.25, 1.5), (14, 0.5, 0.5)),
         ):
-            with self.subTest(position=position):
-                damaged = self.rail.cut(Part.makeBox(*size, App.Vector(*position)))
-                self.assertFalse(root_stock_check(damaged, (0,))["passed"])
+            damaged = self.rail.cut(Part.makeBox(*size, App.Vector(*position)))
+            self.assertFalse(root_stock_check(damaged, (0,))["passed"])
 
-    def test_crown_profile_rejects_a_flat_lower_extension(self):
+    def test_top_datum_retains_support_through_full_trim(self):
         from gondola.validation.rail_curvature import local_seat_check
 
-        report = local_seat_check(self.rail, self.mount)
+        for offset, area in ((-3, 35), (0, 40), (3, 35)):
+            section = self.rail.copy()
+            section.translate(App.Vector(-offset, 0, 0))
+            report = local_seat_check(section, self.mount)
+            self.assertTrue(report["passed"], report)
+            self.assertAlmostEqual(report["top_bearing"]["nominal_area_mm2"], area)
+            self.assertEqual(report["bottom_datum_contacts"], [])
+        damaged = self.mount.cut(Part.makeBox(2, 2.5, 0.1, App.Vector(-1, -1.25, 9.5)))
+        self.assertFalse(local_seat_check(self.rail, damaged)["passed"])
+
+    def test_lower_clearance_and_each_cheek_are_required(self):
+        from gondola.validation.rail_curvature import local_seat_check
+
+        filled = self.mount.fuse(Part.makeBox(2, 1, 1, App.Vector(-1, 2, 1.5)))
+        report = local_seat_check(self.rail, filled)
+        self.assertFalse(report["passed"])
+        self.assertGreater(report["blocked_lower_clearance_mm3"], 0)
+        for y in (-1.26, 1.25):
+            damaged = self.mount.cut(Part.makeBox(4, 0.02, 1, App.Vector(-2, y, 8)))
+            self.assertFalse(local_seat_check(self.rail, damaged)["passed"])
+
+    def test_carrier_follows_wall_and_does_not_claim_fixed_deck_clearance(self):
+        from gondola.validation.rail_curvature import angular_clearance_check
+
+        report = angular_clearance_check(self.rail, self.mount, follow_wall=True)
+        self.assertTrue(report["passed"], report)
+        self.assertTrue(report["carrier_follows_wall"])
+        self.assertEqual(report["slot_positions_mm"], [-3, 0, 3])
+        self.assertEqual(len(report["poses"]), 51)
+        self.assertIn("not a fixed-deck clearance claim", report["scope"])
+        fixed = angular_clearance_check(self.rail, self.mount)
+        self.assertFalse(fixed["passed"])
+        self.assertTrue(any(p["interference_mm3"] > 1e-5 for p in fixed["poses"]))
+
+    def test_paired_propulsion_retains_crowns_and_fixed_frame_clearance(self):
+        from gondola.parts import propulsion
+        from gondola.validation.rail_curvature import (
+            angular_clearance_check,
+            local_seat_check,
+        )
+
+        frame = propulsion.fixed_frame_shape()
+        frame.translate(App.Vector(-14, 0, 0))
+        report = local_seat_check(self.rail, frame, shared=True)
         self.assertTrue(report["passed"], report)
         self.assertTrue(
             all(
-                not row["flat_contact_area_claimed"]
-                for row in report["bottom_datum_contacts"]
+                not r["flat_contact_area_claimed"]
+                for r in report["bottom_datum_contacts"]
             )
         )
-        extension = Part.makeBox(10, 1.25, 0.4, App.Vector(-5, 1.75, 1.5))
-        flat = self.mount.fuse(extension)
-        report = local_seat_check(self.rail, flat)
-        self.assertFalse(report["passed"])
-        self.assertGreater(
-            report["bottom_datum_contacts"][1]["excess_below_crown_mm3"], 0
-        )
+        self.assertTrue(angular_clearance_check(self.rail, frame)["passed"])
+        flat = frame.fuse(Part.makeBox(10, 1.25, 0.4, App.Vector(-5, 1.75, 1.5)))
+        self.assertFalse(local_seat_check(self.rail, flat, shared=True)["passed"])
 
-    def test_root_clearance_and_each_cheek_are_independently_required(self):
-        from gondola.validation.rail_curvature import local_seat_check
-
-        filled = self.mount.fuse(Part.makeBox(2, 0.2, 0.5, App.Vector(-1, 1.3, 1.6)))
-        self.assertGreater(
-            local_seat_check(self.rail, filled)["blocked_root_relief_mm3"], 0
-        )
-        for y in (-1.26, 1.25):
-            with self.subTest(y=y):
-                damaged = self.mount.cut(Part.makeBox(4, 0.02, 1, App.Vector(-2, y, 8)))
-                self.assertFalse(local_seat_check(self.rail, damaged)["passed"])
-
-    def test_angular_screen_covers_both_trim_extremes_and_rejects_flat_feet(self):
-        from gondola.validation.rail_curvature import angular_clearance_check
-
-        report = angular_clearance_check(self.rail, self.mount)
-        self.assertTrue(report["passed"], report)
-        self.assertEqual(report["slot_positions_mm"], [-3, 0, 3])
-        self.assertEqual(len(report["poses"]), 51)
-        self.assertIn("not a certified continuous sweep", report["scope"])
-        flat = self.mount.fuse(Part.makeBox(10, 1.25, 0.4, App.Vector(-5, 1.75, 1.5)))
-        report = angular_clearance_check(self.rail, flat)
-        self.assertFalse(report["passed"])
-        self.assertTrue(
-            any(
-                row["interference_mm3"] > 1e-5
-                for row in report["poses"]
-                if abs(row["angle_deg"]) == 2
-            )
-        )
-
-    def test_crowned_attachment_preserves_fastener_floors_and_exact_lift(self):
+    def test_top_seat_preserves_fastener_floors_and_exact_lift(self):
         from gondola.validation.rail_contact import attachment_check
 
         report = attachment_check(self.rail, self.mount)
         self.assertTrue(report["passed"], report)
         self.assertLess(report["missing_head_support_mm3"], 1e-6)
         self.assertLess(report["missing_printed_nut_floor_mm3"], 1e-6)
-        self.assertIn(
-            "continuous upward", report["continuous_vertical_removal"]["method"]
+        self.assertEqual(
+            report["continuous_vertical_removal"]["method"],
+            "continuous upward planar-face sweep",
         )
         self.assertLess(report["continuous_vertical_removal"]["overlap_mm3"], 1e-6)
         damaged = self.mount.cut(Part.makeBox(2, 1, 0.5, App.Vector(-1, 2.1, 8)))

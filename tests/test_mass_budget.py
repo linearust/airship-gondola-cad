@@ -22,28 +22,25 @@ def part(name, volume_mm3, *, print_sku=None, hardware_sku=None, material=None):
 
 
 class MassBudgetTests(unittest.TestCase):
-    def test_selected_brass_kst_nuts_use_copper_alloy_estimate_not_steel(self):
+    def test_owned_m1_nuts_keep_unknown_material_mass_unset(self):
         nuts = [
             part(
-                f"HornNut{index}",
+                f"HornNut{i}",
                 7,
-                hardware_sku="M1_4_HEX_NUT_DIN934",
-                material=HARDWARE_MATERIALS["M1_4_HEX_NUT_DIN934"],
+                hardware_sku="M1_HEX_NUT",
+                material=HARDWARE_MATERIALS["M1_HEX_NUT"],
             )
-            for index in range(4)
+            for i in range(4)
         ]
         report = mass_budget([], nuts)
         row = report["hardware"][0]
-        self.assertEqual(row["material"], "CopperAlloy")
+        self.assertEqual(row["material"], "UnverifiedMetal")
         self.assertEqual(row["quantity"], 4)
-        self.assertEqual(row["density_g_cm3"], 8.5)
-        self.assertAlmostEqual(row["estimated_mass_g"], 4 * 7 / 1000 * 8.5)
-        self.assertTrue(report["modeled_hardware_mass_complete"])
+        self.assertIsNone(row["density_g_cm3"])
+        self.assertIsNone(row["estimated_mass_g"])
+        self.assertFalse(report["modeled_hardware_mass_complete"])
         self.assertEqual(report["hardware_part_count"], 4)
-        self.assertEqual(report["hardware_with_unmeasured_mass"], [])
-        self.assertIn(
-            "assumption", report["density_assumptions"]["CopperAlloy"]["basis"]
-        )
+        self.assertEqual(report["hardware_with_unmeasured_mass"][0]["quantity"], 4)
 
     def test_unverified_horns_keep_null_mass_and_do_not_hide_inventory(self):
         horns = [

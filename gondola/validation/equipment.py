@@ -190,7 +190,8 @@ def carrier_symmetry_check(shape, *, bottom, thickness):
     deck = shape.common(slab)
     if deck.isNull() or not deck.isValid() or len(deck.Solids) != 1:
         return {"passed": False, "error": "Saved deck must be one valid solid"}
-    box = deck.BoundBox
+    # Fillet patches can have loose pole bounds; measure the actual B-rep.
+    box = deck.optimalBoundingBox(False, False)
     centred_square = (
         abs(box.XLength - mounts.COMMON_DECK_SIZE[0]) < TOL
         and abs(box.YLength - mounts.COMMON_DECK_SIZE[1]) < TOL

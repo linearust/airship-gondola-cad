@@ -312,8 +312,22 @@ def base_component_proxies():
 
     x, y, z = mount.PIVOT_CENTRE
     return [
-        ("OpticalFoot", foot_shape()),
-        ("OpticalPost", mount.upright_shape()),
+        (
+            "OpticalFoot",
+            union(
+                [
+                    foot_shape(),
+                    box(8, 0.5, 0.5, (-4, -2.5, 2)),
+                    # The sloping toe's tangency also extends behind Y=2 and
+                    # above Z=2.5; enclose the complete obtuse R0.5 transition.
+                    box(8, 1, 1, (-4, 1.5, 2)),
+                ]
+            ),
+        ),
+        (
+            "OpticalPost",
+            union([mount.upright_shape(), box(8, 0.5, 1, (-4, 0, 6.5))]),
+        ),
         (
             "OpticalEar",
             box(

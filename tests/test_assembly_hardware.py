@@ -14,7 +14,7 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
 class KSTHardwareMetadataTests(unittest.TestCase):
-    def test_m14_screws_and_nuts_pass_and_wrong_thread_data_fails(self):
+    def test_m1_screws_and_nuts_pass_and_wrong_thread_data_fails(self):
         from gondola.contracts import servo_horns
         from gondola.parts import propulsion
         from gondola.procurement import export_hardware_bom
@@ -34,12 +34,12 @@ class KSTHardwareMetadataTests(unittest.TestCase):
                 hardware = [
                     obj
                     for obj in module["hardware"]
-                    if obj.HardwareSKU.startswith("M1_4")
+                    if obj.HardwareSKU in {"M1X6_HEX_HEAD", "M1_HEX_NUT"}
                 ]
                 quantities = Counter(str(obj.HardwareSKU) for obj in hardware)
                 self.assertEqual(
                     quantities,
-                    {"M1_4X8_PAN_HEAD_KIT": 4, "M1_4_HEX_NUT_DIN934": 4},
+                    {"M1X6_HEX_HEAD": 4, "M1_HEX_NUT": 4},
                 )
                 registry = doc.addObject("App::FeaturePython", "HardwareRegistry")
                 for name in (

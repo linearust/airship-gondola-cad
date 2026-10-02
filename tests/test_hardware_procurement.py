@@ -108,14 +108,15 @@ class HardwareSpecificationTests(unittest.TestCase):
         sku = "KST_X06_STOCK_HALF_ARM_1"
         for code, quantity in (
             (sku, 2),
-            ("M1_4X8_PAN_HEAD_KIT", 4),
-            ("M1_4_HEX_NUT_DIN934", 4),
+            ("M1X6_HEX_HEAD", 4),
+            ("M1_HEX_NUT", 4),
         ):
             self.assertEqual(PURCHASED_HARDWARE_QUANTITIES[code], quantity)
         evidence = PROPULSION_EVIDENCE[sku]
         self.assertEqual(evidence["selected_attachment_radii_mm"], [6.8, 13.2])
         self.assertEqual(evidence["threaded_hole_count"], 0)
-        self.assertEqual(evidence["prepared_hole_diameter_mm"], 1.5)
+        self.assertFalse(evidence["horn_requires_drilling"])
+        self.assertEqual(evidence["optional_attachment_radii_mm"], [10.0])
         self.assertEqual(
             file_sha256(REPO_ROOT / evidence["sources"][0]),
             evidence["geometry_sha256"],

@@ -1,4 +1,4 @@
-"""Manufacturer horn geometry, prepared holes and nominal coupling evidence.
+"""Unmodified manufacturer horn and external-hex M1 coupling evidence.
 
 A PASS establishes nominal geometry and limited registration, not delivered
 concentricity, installed seating, printed fit, preload, strength or gear runout.
@@ -58,11 +58,11 @@ def _plane_contact(first, second, y):
 def nut_recess_check(adapter, x, allowance):
     """Saved floor, radial float and minimum-nut turn barriers, independent of cutters."""
     rows = []
-    radial_limit = 0.2 + allowance
+    radial_limit = 0.1 + allowance
     for offset in (-radial_limit, 0.0, radial_limit):
         for transverse in (-0.1, 0.0, 0.1):
             nut = coupling._hex_along_axis(
-                2.9, 1.2, (x + offset, 6.5, transverse), (0, 1, 0)
+                2.4, 0.8, (x + offset, 6.0, transverse), (0, 1, 0)
             )
             overlap = abs(nut.common(adapter).Volume)
             turns = []
@@ -79,16 +79,76 @@ def nut_recess_check(adapter, x, allowance):
                 }
             )
     floors = []
-    for z in (-1.2, 1.2):
-        line = Part.makeLine(V(x, 3.5, z), V(x, 6.5, z))
+    for z in (-1.05, 1.05):
+        line = Part.makeLine(V(x, 3.5, z), V(x, 6.0, z))
         floors.append(adapter.common(line).Length)
     return {
-        "minimum_nut_af_mm": 2.9,
+        "minimum_nut_af_mm": 2.4,
         "centre_cases": rows,
         "retained_floor_lengths_mm": floors,
         "scope": "Nominal unchamfered minimum-nut screens, not torque or physical fit qualification. Shallow engagement must be checked against actual nut chamfers and printed flat spacing; no axial captivity.",
         "passed": all(row["passed"] for row in rows)
-        and all(abs(length - 3.0) < TOL for length in floors),
+        and all(abs(length - 2.5) < TOL for length in floors),
+    }
+
+
+def factory_opening_check(horn, adapter):
+    """Independent literal bores, retained OEM rings and printed inter-hole stock."""
+    factory = []
+    for x, radius in ((4.5, 0.4), (6.8, 0.5), (10.0, 0.5), (13.2, 0.5)):
+        bore = Part.makeCylinder(radius, 2.0, V(x, 1.5, 0), V(0, 1, 0))
+        ring = Part.makeCylinder(radius + 0.1, 2.0, V(x, 1.5, 0), V(0, 1, 0)).cut(bore)
+        blocked = abs(horn.common(bore).Volume)
+        missing = abs(ring.cut(horn).Volume)
+        factory.append(
+            {
+                "x_mm": x,
+                "diameter_mm": 2 * radius,
+                "blocked_mm3": blocked,
+                "missing_ring_mm3": missing,
+                "passed": blocked < TOL and missing < TOL,
+            }
+        )
+    openings = []
+    for x, elongation in ((6.8, 0.0), (10.0, 0.2), (13.2, 0.3)):
+        cylinders = [
+            Part.makeCylinder(0.6, 3.6, V(x + shift, 3.5, 0), V(0, 1, 0))
+            for shift in (-elongation, elongation)
+        ]
+        opening = cylinders[0].fuse(cylinders[1])
+        if elongation:
+            opening = opening.fuse(
+                Part.makeBox(2 * elongation, 3.6, 1.2, V(x - elongation, 3.5, -0.6))
+            )
+        blockage = abs(adapter.common(opening).Volume)
+        capture = nut_recess_check(adapter, x, elongation)
+        openings.append(
+            {
+                "x_mm": x,
+                "blocked_mm3": blockage,
+                "candidate_nut_capture": capture,
+                "passed": blockage < TOL and capture["passed"],
+            }
+        )
+    webs = []
+    for xmin, xmax, width in ((7.4, 9.2, 1.8), (10.8, 12.3, 1.5)):
+        stock = Part.makeBox(width, 2.5, 1.2, V(xmin, 3.5, -0.6))
+        missing = abs(stock.cut(adapter).Volume)
+        webs.append(
+            {
+                "x_range_mm": [xmin, xmax],
+                "width_mm": width,
+                "missing_stock_mm3": missing,
+                "passed": missing < TOL,
+            }
+        )
+    return {
+        "factory_holes": factory,
+        "adapter_openings": openings,
+        "retained_floor_webs": webs,
+        "inner_0_8_hole_M1_compatible": False,
+        "scope": "Literal nominal geometry only; optional middle opening is not an installed third bolt or verified three-bolt service configuration.",
+        "passed": all(r["passed"] for r in factory + openings + webs),
     }
 
 
@@ -142,6 +202,7 @@ def horn_registration_check(doc, prefix):
         shape.Placement = inverse.multiply(shape.Placement)
         shapes[suffix] = shape
     horn, adapter = shapes["ServoHorn"], shapes["HornGearAdapter"]
+    opening_check = factory_opening_check(horn, adapter)
     adapter_difference = _difference(adapter, coupling.adapter_shape())
     horn_difference = _difference(horn, coupling.horn_shape(profile))
     adapter_obj = doc.getObject(prefix + "HornGearAdapter")
@@ -158,7 +219,7 @@ def horn_registration_check(doc, prefix):
     for label, x, elongation in zip(
         ("Near", "Far"),
         profile.attachment_radii_mm,
-        coupling.HORN_ADAPTER_OPENING_ALLOWANCES,
+        coupling.HORN_INSTALLED_OPENING_ALLOWANCES,
     ):
         bolt = shapes["HornGearClamp" + label + "Bolt"]
         difference = _difference(bolt, expected_hardware[label + "Bolt"])
@@ -222,7 +283,7 @@ def horn_registration_check(doc, prefix):
                 and contact > 1
                 and rear_contact > 1
                 and overlap < TOL
-                and engagement >= 1
+                and abs(engagement - 0.8) < TOL
                 and all(r["passed"] for r in support)
                 and capture["passed"],
             }
@@ -257,8 +318,8 @@ def horn_registration_check(doc, prefix):
         bool(getattr(horn_obj, "ManufacturerGeometryProvided", False))
         and str(getattr(horn_obj, "ManufacturerGeometrySHA256", "")) == STEP_SHA256
     )
-    threads = bool(getattr(horn_obj, "FactoryM1_6ThreadsConfirmed", False))
-    preparation = bool(getattr(horn_obj, "HornPreparationRequired", False))
+    threads = bool(getattr(horn_obj, "FactoryThreadedHoles", True))
+    preparation = bool(getattr(horn_obj, "HornPreparationRequired", True))
     return {
         "pod": prefix,
         "profile": profile.key,
@@ -269,6 +330,7 @@ def horn_registration_check(doc, prefix):
         "print_export_difference_mm3": export_difference,
         "obsolete_horn_parts": obsolete,
         "joints": rows,
+        "factory_and_adapter_openings": opening_check,
         "register_directional_stops": register_rows,
         "horn_to_adapter_seating_area_mm2": seating,
         "purchased_horn_measurement_explicitly_unknown": not measured,
@@ -276,9 +338,9 @@ def horn_registration_check(doc, prefix):
         "axial_seating_explicitly_unmeasured": axial_unknown,
         "x06_compatibility_accepted": compatibility,
         "manufacturer_geometry_matches": manufacturer_matches,
-        "factory_m1_6_threads_confirmed": threads,
+        "factory_threaded_holes": threads,
         "preparation_required": preparation,
-        "scope": "Saved manufacturer half-arm geometry, prepared Ø1.5 holes and rear M1.4x8/front-nut hardware. The near round hole bounds translation; the far short slot accommodates pitch variation before clamping, not running flexibility. Nominal source shape does not qualify received seating, runout, strength or retention.",
+        "scope": "Saved unmodified manufacturer half arm, rear M1x6 external-hex bolts and front M1 nuts. Near round hole and far slot locate the two default joints; optional middle opening is not an installed fastener. Nominal source geometry does not qualify received Ø1 slip fit, seating, runout, strength or retention.",
         "passed": selection_matches
         and contract_matches
         and adapter_difference < TOL
@@ -290,7 +352,8 @@ def horn_registration_check(doc, prefix):
         and compatibility
         and manufacturer_matches
         and not threads
-        and preparation
+        and not preparation
+        and opening_check["passed"]
         and seating > 1
         and all(r["passed"] for r in rows + register_rows),
     }
@@ -368,8 +431,8 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         else:
             path = input_service_path(n, shapes[n], points, fixed, spec, sign)
         paths.append({"part": n, "waypoints_mm": points, **path})
-    # Once the servo is free of the bridge, the small rear holding stem clears
-    # the case. A standard large screwdriver is not assumed to fit this gap.
+    # Off the bridge and at neutral horn orientation, a published external-hex
+    # nutdriver envelope must reach each rear head without other retained parts.
     inverse = coupling_frame(doc, prefix).inverse()
     profile = servo_horns.profile(str(doc.getObject(prefix + "ServoHorn").HornProfile))
     local_names = {
@@ -391,18 +454,25 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     holding = []
     for x in profile.attachment_radii_mm:
         stem = Part.makeCylinder(
-            servo_horns.KST_TOOL_STEM_DIAMETER_MM / 2,
-            30,
-            V(x, profile.blade_bottom_mm - servo_horns.KST_SCREW_HEAD_HEIGHT_MM, 0),
+            servo_horns.KST_TOOL_DIAMETER_MM / 2,
+            servo_horns.KST_TOOL_LENGTH_MM,
+            V(x, profile.blade_bottom_mm, 0),
             V(0, -1, 0),
         )
+        # Full cylinder conservatively bounds the socket exterior; omit only
+        # the driven bolt occupying its internal hex socket.
+        driven = "NearBolt" if x == profile.attachment_radii_mm[0] else "FarBolt"
         hits = {
-            prefix + local_names[key]: stem.common(local[key]).Volume
-            for key in ("servo",)
+            prefix + local_names[key]: stem.common(shape).Volume
+            for key, shape in local.items()
+            if key != driven
         }
         holding.append(
             {
                 "radius_mm": x,
+                "tool_diameter_mm": servo_horns.KST_TOOL_DIAMETER_MM,
+                "tool_length_mm": servo_horns.KST_TOOL_LENGTH_MM,
+                "minimum_servo_clearance_mm": stem.distToShape(local["servo"])[0],
                 "retained_part_overlaps_mm3": hits,
                 "passed": all(volume < TOL for volume in hits.values()),
             }
@@ -435,7 +505,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         route = {
             "segments": first["segments"] + second["segments"],
             "passed": first["passed"] and second["passed"],
-            "scope": "Turn the accessible rear screw while the shallow pocket restrains its nut; lift the nut axially clear of its recess and screw tip, then use the filled outer-hex lateral release envelope.",
+            "scope": "Turn the accessible rear screw while the shared trough restrains its nut; lift the nut axially clear of its recess and screw tip, then use the filled outer-hex lateral release envelope.",
         }
         x = profile.attachment_radii_mm[0 if label == "Near" else 1]
         # The rear screw first lifts the restrained nut out of its recess;
@@ -447,9 +517,9 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
                     6,
                     0.7,
                     1,
-                    V(x - 0.5, coupling.FASTENER_SEAT_Y + plier_lift + 0.3, z),
+                    V(x - 0.5, coupling.FASTENER_SEAT_Y + plier_lift + 0.05, z),
                 )
-                for z in (-2.5, 1.5)
+                for z in (-2.25, 1.25)
             ]
         )
         collisions = {
@@ -523,7 +593,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
             "passed": all(r["passed"] for r in fasteners),
         },
         "adapter_release_off_bridge": adapter_route,
-        "scope": "KST only: remove paired module and selected driver/stub, then withdraw each M1.6 ear screw and lift its nut out of the shallow cradle pocket. Withdraw the complete servo/horn/adapter unit with the ear hardware removed. Off the bridge, turn the rear horn screws to release the pocket-held front nuts. Retain the horn screws in the supplied arm until the adapter clears their tips. A narrow <=1.5mm rear stem and fine pliers are explicit envelopes; actual tools/recess fit remain checks. Reverse for assembly, fitting OEM spline screw before adapter. Full shaft-stop floor retained.",
+        "scope": "KST only: remove paired module and selected driver/stub, then withdraw each M1.6 ear screw and lift its nut out of the shallow cradle pocket. Withdraw the complete servo/horn/adapter unit with the ear hardware removed. Off the bridge, turn the rear horn screws to release the pocket-held front nuts. Retain the horn screws in the supplied arm until the adapter clears their tips. At neutral horn orientation, a<=5.7mm OD x60mm rear hex nutdriver and fine pliers are explicit envelopes; actual tools/trough fit remain checks. The optional centre opening is not part of this two-bolt service configuration. Reverse for assembly, fitting OEM spline screw before adapter. Full shaft-stop floor retained.",
         "passed": passed,
     }
 

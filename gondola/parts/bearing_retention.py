@@ -172,6 +172,23 @@ def keeper_shape():
         ),
     ]
     shape = body.cut(union(cuts)).removeSplitter()
+    from .edge_blends import fillet_selected, near
+
+    # Rounding the XZ silhouette leaves the 1.5 mm plate and screw-floor
+    # thickness intact. Do not round either axial bearing or seating face.
+    shape = fillet_selected(
+        shape,
+        0.5,
+        lambda e, b: (
+            near(b.XLength, 0)
+            and near(b.ZLength, 0)
+            and near(abs(b.XMin), KEEPER_HALF_WIDTH)
+            and (near(b.ZMin, KEEPER_BOTTOM_Z) or near(b.ZMin, KEEPER_TOP_Z))
+            and b.YLength > 1
+        ),
+        4,
+        "Bearing keeper outer profile corners",
+    )
     if not shape.isValid() or len(shape.Solids) != 1:
         raise RuntimeError("Bearing keeper must remain one valid connected solid")
     return shape

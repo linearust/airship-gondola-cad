@@ -216,7 +216,18 @@ class JointFitCouponContactTests(unittest.TestCase):
         shortened = saddle.common(Part.makeBox(50, 28, 14.5, App.Vector(-25, -14, 0)))
         result = joint_checks({**self.shapes, "SaddleJointCoupon": shortened})
         self.assertFalse(result["passed"])
-        self.assertAlmostEqual(result["wrap"]["missing_roof_mm3"], 38 * 22 * 0.5)
+        # Independent literal roof: only its four outer top edges have R0.5.
+        # The removed top half-millimetre equals the rounded 2.5 mm roof volume
+        # minus its unchanged rectangular lower 2 mm, including corner blends.
+        roof = Part.makeBox(38, 22, 2.5, App.Vector(-19, -11, 12.5))
+        top_edges = [
+            edge
+            for edge in roof.Edges
+            if all(abs(vertex.Point.z - 15) < 1e-7 for vertex in edge.Vertexes)
+        ]
+        self.assertEqual(len(top_edges), 4)
+        expected_missing = roof.makeFillet(0.5, top_edges).Volume - 38 * 22 * 2
+        self.assertAlmostEqual(result["wrap"]["missing_roof_mm3"], expected_missing)
 
 
 if __name__ == "__main__":

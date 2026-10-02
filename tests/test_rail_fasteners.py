@@ -296,7 +296,16 @@ class RailFastenerTests(unittest.TestCase):
         contract = rail.attachment_contract()
         self.assertFalse(contract["holding_force_verified"])
         self.assertFalse(contract["physical_fit_verified"])
-        self.assertIn("no full-length", contract["assembly"])
+        self.assertEqual(contract["support_policy"], "wall_top_bearing")
+        self.assertEqual(contract["intended_bolt_half_range_mm"], 3)
+        self.assertIn(
+            "Seat the roof fully on the wall top and both local side faces",
+            contract["assembly"],
+        )
+        self.assertIn(
+            "Remove bolt and nut before lifting between wall segments",
+            contract["assembly"],
+        )
         self.assertTrue(rail_contact.validate_mechanism()["passed"])
 
 

@@ -33,6 +33,22 @@ def matrix(placement):
     return [[value.A[row * 4 + col] for col in range(4)] for row in range(4)]
 
 
+def check_mesh_placement(obj, mesh):
+    """Compare the placed local mesh to trimmed world-space BRep extrema."""
+    placed = mesh.copy()
+    placed.transform(obj.getGlobalPlacement().toMatrix())
+    # Loose OCC bounds can extend to the underlying surface beyond rounded
+    # trimmed faces. Keep the existing tessellation limit, but measure the BRep.
+    native_bounds = world_shape(obj).optimalBoundingBox(False, False)
+    error = max(
+        abs(getattr(placed.BoundBox, key) - getattr(native_bounds, key))
+        for key in ("XMin", "XMax", "YMin", "YMax", "ZMin", "ZMax")
+    )
+    if error > 0.08:
+        raise RuntimeError(f"Mesh placement mismatch: {obj.Name}: {error} mm")
+    return error
+
+
 def color(obj, category, rail_names):
     if category == "PrintedParts":
         return [0.72, 0.78, 0.8, 1] if obj.Name in rail_names else [0.31, 0.66, 0.76, 1]
@@ -53,12 +69,12 @@ def representation(obj):
         profile = servo_horns.profile(obj.HornProfile)
         return (
             profile.label
-            + ". Manufacturer nominal STEP geometry with only the declared hole preparation. "
+            + ". Unmodified manufacturer nominal STEP geometry. "
             + servo_horns.preparation_note(profile)
             + " Resin, mass, installed seating and root concentricity remain unmeasured."
         )
     if getattr(obj, "Name", "").endswith("HornGearAdapter"):
-        return "Installed round-hole/slot adapter for the OEM half arm: near diameter 1.6 mm hole at 6.8 mm, far 1.6 x 2.2 mm slot at 13.2 mm, rear M1.4x8 screws and front M1.4 nuts. The open C-shaped locating seat and near hole limit assembly movement; they do not certify received-horn concentricity or assembled runout."
+        return "Installed round-hole/slot adapter for the OEM half arm: near diameter 1.2 mm hole at 6.8 mm, optional middle 1.2 x 1.6 mm slot at 10 mm and far 1.2 x 1.8 mm slot at 13.2 mm, rear M1x6 hex bolts and front M1 nuts. The open C-shaped locating seat and near hole limit assembly movement; they do not certify received-horn concentricity or assembled runout."
     return "Saved nominal installed CAD shape."
 
 
@@ -107,8 +123,8 @@ def check_review_basis(doc, report):
             getattr(horn, "ManufacturerGeometryProvided", False) is not True
             or getattr(horn, "ManufacturerGeometrySHA256", "")
             != REVIEW_HORN_STEP_SHA256
-            or getattr(horn, "HornPreparationRequired", False) is not True
-            or getattr(horn, "FactoryM1_6ThreadsConfirmed", True) is not False
+            or getattr(horn, "HornPreparationRequired", True) is not False
+            or getattr(horn, "FactoryThreadedHoles", True) is not False
             or getattr(horn, "PurchasedHornMeasured", True) is not False
             or getattr(horn, "AxialSeatingMeasured", True) is not False
         ):
@@ -126,13 +142,17 @@ def check_review_basis(doc, report):
             "manufacturer_geometry_sha256": REVIEW_HORN_STEP_SHA256,
             "attachment_radii_mm": [6.8, 13.2],
             "adapter_round_hole_x_mm": 6.8,
-            "adapter_round_hole_diameter_mm": 1.6,
-            "adapter_slot_width_mm": 1.6,
-            "adapter_slot_centres_x_mm": [13.2],
+            "adapter_round_hole_diameter_mm": 1.2,
+            "adapter_slot_width_mm": 1.2,
+            "adapter_slot_centres_x_mm": [10.0, 13.2],
+            "adapter_slot_centre_allowances_mm": [0.2, 0.3],
+            "adapter_slot_overall_lengths_mm": [1.6, 1.8],
+            "optional_middle_fastener_installed": False,
+            "horn_requires_drilling": False,
             "adapter_slot_centre_allowance_mm": 0.3,
-            "adapter_slot_overall_length_mm": 2.2,
+            "adapter_slot_overall_length_mm": 1.8,
             "nominal_arm_thickness_mm": 2.0,
-            "screw_length_mm": 8.0,
+            "screw_length_mm": 6.0,
             "nuts_per_side": 2,
         }
         if not isinstance(contract, dict) or any(
@@ -144,14 +164,11 @@ def check_review_basis(doc, report):
         for position in ("Near", "Far"):
             bolt = doc.getObject(prefix + "HornGearClamp" + position + "Bolt")
             nut = doc.getObject(prefix + "HornGearClamp" + position + "Nut")
-            if (
-                bolt is None
-                or getattr(bolt, "HardwareSKU", "") != "M1_4X8_PAN_HEAD_KIT"
-            ):
-                raise RuntimeError("Expected both rear M1.4x8 horn attachment screws.")
-            if nut is None or getattr(nut, "HardwareSKU", "") != "M1_4_HEX_NUT_DIN934":
+            if bolt is None or getattr(bolt, "HardwareSKU", "") != "M1X6_HEX_HEAD":
+                raise RuntimeError("Expected both rear M1x6 horn attachment screws.")
+            if nut is None or getattr(nut, "HardwareSKU", "") != "M1_HEX_NUT":
                 raise RuntimeError(
-                    "Expected both front M1.4 horn nuts for the reviewed OEM profile."
+                    "Expected both front M1 horn nuts for the reviewed OEM profile."
                 )
         pod = doc.getObject(prefix + "Pod")
         if float(pod.MinimumTilt) != -180 or float(pod.MaximumTilt) != 180:
@@ -238,18 +255,8 @@ def export(cad_path, output):
                     Relative=False,
                 )
                 vertices, triangles = mesh.Topology
-                placed = mesh.copy()
-                placed.transform(obj.getGlobalPlacement().toMatrix())
-                native_bounds = world_shape(obj).BoundBox
-                error = max(
-                    abs(getattr(placed.BoundBox, key) - getattr(native_bounds, key))
-                    for key in ("XMin", "XMax", "YMin", "YMax", "ZMin", "ZMax")
-                )
+                error = check_mesh_placement(obj, mesh)
                 max_bound_error = max(max_bound_error, error)
-                if error > 0.08:
-                    raise RuntimeError(
-                        f"Mesh placement mismatch: {obj.Name}: {error} mm"
-                    )
                 parts.append(
                     {
                         "name": obj.Name,
@@ -336,7 +343,7 @@ def export(cad_path, output):
         scene(
             "01 Assembly",
             "COMPLETE ASSEMBLY",
-            "Nominal CAD assembly; propeller disks are swept envelopes. Both servos use the manufacturer stock plastic half arm 1, with two prepared factory holes and rear M1.4x8 screws/front M1.4 nuts on an adapter with one near round hole and one far slot. Resin, mass, installed seating and assembled runout remain unmeasured.",
+            "Nominal CAD assembly; propeller disks are swept envelopes. Both servos use the manufacturer stock plastic half arm 1, with unmodified factory holes and rear M1x6 hex bolts/front M1 nuts. The adapter has one near round hole and two radial slots; only the end bolts are installed. Resin, mass, installed seating and assembled runout remain unmeasured.",
             120,
             all_names,
             [[-150, -115, -2], [150, 115, 90]],
@@ -396,7 +403,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its source geometry except two prepared holes; rear M1.4x8 screws and front nuts clamp the round-hole/slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its unmodified source geometry; rear M1x6 hex bolts and front nuts clamp the round-hole/slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -477,7 +484,7 @@ def export(cad_path, output):
                 "fps": 24,
                 "part_count": len(parts),
                 "excluded_fit_samples": sorted(obj.Name for obj in registry.FitCoupons),
-                "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry with two declared hole enlargements are displayed, including rear M1.4x8 screws and front M1.4 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
+                "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry without hole enlargement are displayed, including rear M1x6 hex bolts and front M1 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(snapshot.report_path),

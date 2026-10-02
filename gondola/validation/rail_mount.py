@@ -94,31 +94,38 @@ def tape_station_alignment(rail_object, modules, tapes, shapes):
 def _literal_protected_mount(length=16, *, shared=False, bolt_positions=(0,)):
     """Independent fitted U stock; shared frame carries no nut recess."""
     low, high = (-6.0, 6.0) if shared else (-5.25, 5.25)
-    result = Part.makeBox(length, high - low, 11, V(-length / 2, low, 1.5))
-    result = result.cut(
-        Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
-    )
-    result = result.cut(
-        Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
-    )
-    cylinders = [
-        Part.makeCylinder(4.5, high - low + 2, V(x, low - 1, 6), V(0, 1, 0))
-        for x in bolt_positions
-    ]
-    crowns = cylinders[0]
-    for cylinder in cylinders[1:]:
-        crowns = crowns.fuse(cylinder)
-    lower = Part.makeBox(length + 2, high - low + 2, 7, V(-length / 2 - 1, low - 1, -1))
-    result = result.cut(lower.cut(crowns))
-    outside_width = 3.0 if shared else high - low + 2
-    outside = Part.makeBox(
-        length + 2, outside_width, 11.2, V(-length / 2 - 1, -outside_width / 2, -1)
-    )
-    for x in bolt_positions:
-        outside = outside.cut(
-            Part.makeBox(10, high - low + 2, 11.2, V(x - 5, low - 1, -1))
+    if shared:
+        result = Part.makeBox(length, high - low, 11, V(-length / 2, low, 1.5))
+        result = result.cut(
+            Part.makeBox(length + 2, 2.5, 11.2, V(-length / 2 - 1, -1.25, -1))
         )
-    result = result.cut(outside)
+        result = result.cut(
+            Part.makeBox(length + 2, 3.5, 3.6, V(-length / 2 - 1, -1.75, -1))
+        )
+        cylinders = [
+            Part.makeCylinder(4.5, high - low + 2, V(x, low - 1, 6), V(0, 1, 0))
+            for x in bolt_positions
+        ]
+        crowns = cylinders[0]
+        for cylinder in cylinders[1:]:
+            crowns = crowns.fuse(cylinder)
+        lower = Part.makeBox(
+            length + 2, high - low + 2, 7, V(-length / 2 - 1, low - 1, -1)
+        )
+        result = result.cut(lower.cut(crowns))
+        outside_width = 3.0 if shared else high - low + 2
+        outside = Part.makeBox(
+            length + 2, outside_width, 11.2, V(-length / 2 - 1, -outside_width / 2, -1)
+        )
+        for x in bolt_positions:
+            outside = outside.cut(
+                Part.makeBox(10, high - low + 2, 11.2, V(x - 5, low - 1, -1))
+            )
+        result = result.cut(outside)
+    else:
+        result = Part.makeBox(10, 4, 10, V(-5, -5.25, 2.5))
+        result = result.fuse(Part.makeBox(10, 4, 10, V(-5, 1.25, 2.5)))
+        result = result.fuse(Part.makeBox(length, 10.5, 3, V(-length / 2, -5.25, 9.5)))
     if not shared:
         radius = 5.9 / math.sqrt(3)
         vertices = [
@@ -264,7 +271,9 @@ def _paired_bottom_contacts(rail_in_module, frame):
         local_rail, local_frame = rail_in_module.copy(), frame.copy()
         local_rail.translate(V(-axis, 0, 0))
         local_frame.translate(V(-axis, 0, 0))
-        for row in local_seat_check(local_rail, local_frame)["bottom_datum_contacts"]:
+        for row in local_seat_check(local_rail, local_frame, shared=True)[
+            "bottom_datum_contacts"
+        ]:
             rows.append({"bolt_x_mm": axis, **row})
     return rows
 
@@ -283,7 +292,7 @@ def _paired_wall_support(rail_in_module, frame, intervals, axis):
     local_rail, local_frame = rail_in_module.copy(), frame.copy()
     local_rail.translate(V(-axis, 0, 0))
     local_frame.translate(V(-axis, 0, 0))
-    contacts = local_seat_check(local_rail, local_frame)
+    contacts = local_seat_check(local_rail, local_frame, shared=True)
     return {
         "bolt_x_mm": axis,
         "wall_interval_x_mm": [first, last],
@@ -482,7 +491,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 local_shape(part), canonical_placement.inverse()
             )
             zone_length = 10.0
-            lower = canonical_part.common(_lower_crop(0, zone_length, shared=shared))
+            lower = canonical_part.common(
+                _lower_crop(0, zone_length if shared else 16, shared=shared)
+            )
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             screw_length, head_face_y = (20.0, -9.0) if shared else (10.0, -3.25)
             head_support = None
@@ -509,7 +520,9 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                 head_support = placed_shape(
                     bridge_in_module, canonical_placement.inverse()
                 ).common(crop)
-            angular = angular_clearance_check(local_rail, canonical_part)
+            angular = angular_clearance_check(
+                local_rail, canonical_part, follow_wall=not shared
+            )
             attachment = rail_contact.attachment_check(
                 local_rail,
                 lower,

@@ -48,6 +48,20 @@ def shape(bottom=CARRIER_BOTTOM_Z):
         edge for edge in plate.Edges if edge.BoundBox.ZLength > THICKNESS_MM - 0.01
     ]
     plate = plate.makeFillet(CORNER_RADIUS_MM, vertical_edges)
+    from .edge_blends import fillet_selected, near
+
+    # Break only the outer rim. Both face datums, slot bearing lands and
+    # adhesive patches remain flat; the 2 mm rim retains a 1.5 mm straight band.
+    plate = fillet_selected(
+        plate,
+        0.25,
+        lambda e, b: (
+            near(b.ZLength, 0)
+            and (near(b.ZMin, bottom) or near(b.ZMin, bottom + THICKNESS_MM))
+        ),
+        16,
+        "Common plate outer rim",
+    )
     for hole in cutters(bottom - 1, THICKNESS_MM + 2):
         plate = plate.cut(hole)
     plate = plate.removeSplitter()

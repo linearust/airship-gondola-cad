@@ -58,6 +58,9 @@ SHARED_MINIMUM_TOTAL_SEAT = 2 * LOCAL_CONTACT_LENGTH
 MOUNT_LENGTH, MOUNT_LEG_THICKNESS = CARRIER_ATTACHMENT.contact_length_mm, 4.0
 MOUNT_BOTTOM_Z, MOUNT_TOP_Z = 1.5, CARRIER_ATTACHMENT.seat_z_mm
 MOUNT_INNER_ROOF_Z = 10.2
+# The paired frame retains its crowned base seats and relieved roof. Ordinary
+# carriers instead seat on one wall top and follow that wall's local attitude.
+CARRIER_LEG_BOTTOM_Z, CARRIER_INNER_ROOF_Z = 2.5, 9.5
 MOUNT_OUTER_Y = -WEB_THICKNESS / 2 - MOUNT_LEG_THICKNESS
 HEAD_RECESS_DIAMETER, HEAD_RECESS_DEPTH = 6.4, 2.0
 HEAD_BEARING_Y = MOUNT_OUTER_Y + HEAD_RECESS_DEPTH
@@ -170,11 +173,12 @@ def _full_width_base_centre_limit(length, contact_length):
 def attachment_windows(
     length=LENGTH, contact_length=MOUNT_LENGTH, *, shared_drive=False
 ):
-    """Intersect nominal slot adjustment with local cheek and crown support.
+    """Intersect nominal slot adjustment with local contact support.
 
     Each bolt retains a 10 mm cheek zone and 1 mm wall-end reserve. Upper
-    carrier/bridge material may overhang the wall. The slot's additional
-    0.2 mm radial clearance is kept for fit, not claimed as intended travel.
+    carrier/bridge material may overhang the wall. Ordinary roofs bear on
+    the wall top; paired crowns additionally require base support. The slot's
+    additional 0.2 mm radial clearance is for fit, not intended travel.
     """
     contact_length = _contact_length(contact_length)
     attachment_pattern(shared_drive)
@@ -184,11 +188,14 @@ def attachment_windows(
         _slot_end_inset(contact_length),
         WALL_LENGTH / 2 - SLOT_CENTRE_HALF_SPAN,
     )
-    base_limit = _full_width_base_centre_limit(length, contact_length)
+    base_limit = (
+        _full_width_base_centre_limit(length, contact_length) if shared_drive else None
+    )
     rows = []
     for first, last in wall_segments(length):
         low, high = first + inset, last - inset
-        low, high = max(low, -base_limit), min(high, base_limit)
+        if base_limit is not None:
+            low, high = max(low, -base_limit), min(high, base_limit)
         if low > high + TOL:
             continue
         rows.append(
@@ -203,7 +210,7 @@ def attachment_windows(
 def supported_slot_ranges(
     length=LENGTH, contact_length=MOUNT_LENGTH, *, shared_drive=False
 ):
-    """Individual bolt windows with local cheek and crowned-foot bounds."""
+    """Individual bolt windows with local cheeks and the applicable seat bounds."""
     return tuple(
         row["axis_travel_x_range_mm"]
         for row in attachment_windows(length, contact_length, shared_drive=shared_drive)
@@ -256,7 +263,9 @@ def attachment_position_check(
                 "x_mm": x,
                 **row,
                 "contact_length_mm": contact_length,
-                "support_policy": "local_bearing",
+                "support_policy": "local_bearing"
+                if shared_drive
+                else "wall_top_bearing",
                 "centred_load_zone_length_mm": zone,
                 "minimum_centred_contact_end_margin_mm": margin,
                 "passed": True,
@@ -516,41 +525,39 @@ def nut_pocket_shape(inner_y, outer_y, *, x=0, z=BOLT_AXIS_Z):
 
 
 def mount_base_shape(top_z=MOUNT_TOP_Z, *, length=MOUNT_LENGTH, recess_head=True):
-    """Fitted carrier U seat with two loaded legs and an open-bottom nut recess.
+    """Carrier U with a flat wall-top datum and lower legs clear of the base.
 
-    The paired propulsion frame uses its own continuous U spine; its nut
-    pocket belongs to the outer servo saddle, beyond both frame side faces.
+    The 16 mm roof overlaps at least 14 mm of one 18 mm wall through ±3 mm
+    trim. Ten-millimetre cheeks retain the fitted side faces and M3 floors.
+    The paired propulsion frame keeps its independent crowned-seat profile.
     """
     top_z = _positive(top_z, "Mount top")
     length = _contact_length(length)
     if not isinstance(recess_head, bool):
         raise ValueError("Recess head must be a boolean")
-    if top_z < MOUNT_INNER_ROOF_Z + PAD_THICKNESS - TOL:
+    if top_z < CARRIER_INNER_ROOF_Z + PAD_THICKNESS - TOL:
         raise ValueError("Mount roof must retain at least1.5mm")
     result = union(
         [
             box(
-                length,
+                LOCAL_CONTACT_LENGTH,
                 MOUNT_LEG_THICKNESS,
-                top_z - MOUNT_BOTTOM_Z,
-                (-length / 2, MOUNT_OUTER_Y, MOUNT_BOTTOM_Z),
+                top_z - CARRIER_LEG_BOTTOM_Z,
+                (-LOCAL_CONTACT_LENGTH / 2, MOUNT_OUTER_Y, CARRIER_LEG_BOTTOM_Z),
             ),
             box(
                 length,
                 FAR_LEG_OUTER_Y - MOUNT_OUTER_Y,
-                top_z - MOUNT_INNER_ROOF_Z,
-                (-length / 2, MOUNT_OUTER_Y, MOUNT_INNER_ROOF_Z),
+                top_z - CARRIER_INNER_ROOF_Z,
+                (-length / 2, MOUNT_OUTER_Y, CARRIER_INNER_ROOF_Z),
             ),
             box(
-                length,
+                LOCAL_CONTACT_LENGTH,
                 FAR_LEG_THICKNESS,
-                top_z - MOUNT_BOTTOM_Z,
-                (-length / 2, FAR_LEG_INNER_Y, MOUNT_BOTTOM_Z),
+                top_z - CARRIER_LEG_BOTTOM_Z,
+                (-LOCAL_CONTACT_LENGTH / 2, FAR_LEG_INNER_Y, CARRIER_LEG_BOTTOM_Z),
             ),
         ]
-    )
-    result = cut_seat_relief(
-        result, length, outer_half_width=FAR_LEG_OUTER_Y, local_legs=True
     )
     result = result.cut(
         Part.makeCylinder(
@@ -740,7 +747,7 @@ def attachment_contract(
         if shared_drive
         else FAR_LEG_OUTER_Y
     )
-    return {
+    contract = {
         "rail_length_mm": length,
         "wall_count": len(wall_segments(length)),
         "wall_segments_x_mm": wall_segments(length),
@@ -867,6 +874,38 @@ def attachment_contract(
         "holding_force_verified": False,
     }
 
+    if not shared_drive:
+        contract.update(
+            {
+                "mount_bottom_datum_z_mm": None,
+                "lower_leg_bottom_z_mm": CARRIER_LEG_BOTTOM_Z,
+                "base_clearance_mm": CARRIER_LEG_BOTTOM_Z - PAD_THICKNESS,
+                "mount_inner_roof_z_mm": CARRIER_INNER_ROOF_Z,
+                "nominal_inner_roof_clearance_mm": 0.0,
+                "top_bearing_z_mm": CARRIER_INNER_ROOF_Z,
+                "top_bearing_roof_length_mm": contact_length,
+                "minimum_top_bearing_overlap_mm": min(
+                    contact_length,
+                    WALL_LENGTH,
+                    (contact_length + WALL_LENGTH) / 2 - SLOT_CENTRE_HALF_SPAN,
+                ),
+                "top_bearing_width_mm": WEB_THICKNESS,
+                "contact_length_scope": "Upper carrier roof seats on one wall top; the production16mm roof retains14..16mm nominal top overlap through intended±3mm trim. Ten-millimetre local cheeks retain the opposed clamp faces. The lower legs stop atZ2.5,1mm above the base and0.5mm above the long-side root fillets.",
+                "support_policy": "wall_top_bearing",
+                "lower_seat_crown_radius_mm": None,
+                "lower_seat_crown_axis_z_mm": None,
+                "root_relief_width_mm": None,
+                "root_relief_top_z_mm": None,
+                "outside_station_channel_width_mm": None,
+                "local_wall_tilt_screen_scope": "Carrier and its local wall rotate together about Y at the stated sample angles. The carrier follows the wall attitude; no independent fixed-deck angular clearance is claimed. This is a sampled rigid local fit screen, not loaded curvature or retention qualification.",
+                "mount_section": "Symmetric U with a flat Z9.5 wall-top datum,16mm roof, two10mm local cheeks and flat lower edges atZ2.5; no lower base contact.",
+                "assembly": "Seat the roof fully on the wall top and both local side faces before installing the M3x10 pair. The carrier follows the wall's local pitch. Check free lower-leg clearance,2mm head/nut floors and the open-bottom nut pocket; do not tighten an unseated or warped joint into place. Loosen for intended±3mm trim and reseat before tightening. Remove bolt and nut before lifting between wall segments.",
+                "load_path_scope": "Flat top bearing geometrically opposes fore-aft rocking about Y. Compression reaches the wall through its1.8mm upper slot ligament; top bearing is only2.5mm wide. Fitted side cheeks and clamp friction remain essential for roll about X, pull-away loads and retained adjustment. Neither a stronger wall nor all-axis stiffness improvement is established.",
+                "physical_acceptance": "Use a process-matched coupon and actual hardware. The top and side datums are nominal contact fits with no intended operating gap. Hand-seat them together, preserve at least1.5mm finished fastener floors and reject a warped or loose fit. Verify lower-leg clearance, top seating, nut restraint, tool access, thread engagement and retained attitude under load. Top-slot-ligament deflection, contact pressure, friction, creep and physical curvature remain unqualified.",
+            }
+        )
+    return contract
+
 
 def build_rail(doc):
     group = create_group(
@@ -879,7 +918,7 @@ def build_rail(doc):
         f"PRINT | side-slot rail {LENGTH:g}mm",
         rail_shape(),
         App.Rotation(),
-        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven18mm walls at28mm pitch have R1 end roots and R0.5 side roots; each10mm wall gap retains8mm of unthickened base. Each3.4x9.4mm slot leaves4.3mm end ligaments. Ordinary16mm upper roofs and the38mm paired propulsion spine use10mm local cheek zones, bilateral R4.5 lower crowns about the bolt axes, root relief and0.7mm roof clearance. Matching28mm paired bolt spacing permits±3mm intended trim for every carrier and wall pair, including end stations; local cheeks retain at least1mm wall-end reserve. The upper structure may overhang a wall. A prescribed±2degree local wall-tilt geometry screen is not physical curvature qualification. Qualify contact pressure, fit, loaded curvature, torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
+        "One straight6x1.5mm PA12 strip with three tape-wing pairs. Eleven18mm walls at28mm pitch have R1 end roots and R0.5 side roots; each10mm wall gap retains8mm of unthickened base. Each3.4x9.4mm slot leaves4.3mm end ligaments. Ordinary16mm carrier roofs seat on the wall tops atZ9.5 with10mm local cheeks and lower edges atZ2.5, clear of the base. The38mm paired propulsion spine retains bilateral R4.5 lower crowns, root relief and0.7mm roof clearance. Matching28mm paired bolt spacing permits±3mm intended trim for every carrier and wall pair, including end stations; local cheeks retain at least1mm wall-end reserve. The upper structure may overhang a wall. A prescribed±2degree local wall-tilt geometry screen is not physical curvature qualification. Qualify contact pressure, fit, loaded curvature, torsional stability, friction retention, creep and adhesion; no stiffness, holding-force or strength rating.",
     )
     set_property(
         printed,
@@ -943,7 +982,7 @@ def build_coupons(doc):
             label,
             shape,
             App.Rotation(),
-            "Same18mm wall, R1 end/R0.5 side roots,10mm local U cheeks and R4.5 crowned lower seats as the full rail. Use the actual M3x10 bolt and M3 nut; test recessed head fit, open-bottom recess seating, both local rail-contact faces, sliding and side tool access. Finish only high spots while retaining at least1.5mm nut/head floors. Reject or reprint a loose or warped seat; do not pull a rigid clearance gap closed with the bolt. The companion50mm rail sample has one complete support and no inter-wall gap; it does not qualify the paired servo/frame interface, loaded clamping, full rail bending, adhesion or creep.",
+            "Same18mm wall and R1 end/R0.5 side roots as the full rail. The ordinary carrier coupon has a16mm roof bearing on the wall top atZ9.5,10mm local U cheeks and lower edges atZ2.5 clear of the base; it follows the wall attitude. Use the actual M3x10 bolt and M3 nut; test recessed head fit, open-bottom recess seating, both local rail-contact faces, sliding and side tool access. Finish only high spots while retaining at least1.5mm nut/head floors. Reject or reprint a loose or warped seat; do not pull a rigid clearance gap closed with the bolt. The companion50mm rail sample has one complete support and no inter-wall gap; it does not qualify the paired servo/frame interface, loaded clamping, full rail bending, adhesion or creep.",
         )
         set_property(
             obj,

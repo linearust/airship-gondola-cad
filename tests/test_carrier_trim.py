@@ -80,7 +80,7 @@ class CarrierTrimTests(unittest.TestCase):
         result = supported_carrier_slide(shapes, obstacles, pose)
         self.assertTrue(result["passed"], result)
         mount = next(row for row in result["parts"] if row["part"] == "AccessoryMount")
-        self.assertEqual(len(mount["regions"]), 4)
+        self.assertEqual(len(mount["regions"]), 8)
         self.assertLess(mount["shape_outside_service_envelope_mm3"], 1e-7)
         self.assertTrue(
             all(

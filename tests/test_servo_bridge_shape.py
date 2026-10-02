@@ -79,7 +79,11 @@ class ServoBridgeShapeTests(unittest.TestCase):
         bridge = self.doc.ServoDriveBridge.Shape
         self.assertTrue(bridge.isValid())
         self.assertEqual(len(bridge.Solids), 1)
-        roof = Part.makeBox(38, 22, 2.5, App.Vector(-19, -11, 12.5))
+        # Full two-mm lower roof stock and bottom seating datum survive the
+        # exposed R0.5 top rim; the upper inset stock is also uninterrupted.
+        roof = Part.makeBox(38, 22, 2, App.Vector(-19, -11, 12.5)).fuse(
+            Part.makeBox(37, 21, 0.5, App.Vector(-18.5, -10.5, 14.5))
+        )
         self.assertLess(abs(roof.cut(bridge).Volume), 1e-7)
         relief = Part.makeBox(18.4, 22, 10.3, App.Vector(-9.2, -11, 2.2))
         self.assertLess(abs(relief.common(bridge).Volume), 1e-7)

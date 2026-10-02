@@ -59,8 +59,8 @@ class HornRegistrationTests(unittest.TestCase):
                         self.assertEqual(result["profile"], "KST_X06_HALF_ARM_1")
                         self.assertTrue(result["manufacturer_geometry_matches"])
                         self.assertTrue(result["axial_seating_explicitly_unmeasured"])
-                        self.assertFalse(result["factory_m1_6_threads_confirmed"])
-                        self.assertTrue(result["preparation_required"])
+                        self.assertFalse(result["factory_threaded_holes"])
+                        self.assertFalse(result["preparation_required"])
                         self.assertEqual(len(result["joints"]), 2)
                         self.assertEqual(
                             [
@@ -211,6 +211,35 @@ class HornRegistrationTests(unittest.TestCase):
                     self.assertFalse(result["manufacturer_geometry_matches"])
                 finally:
                     setattr(obj, name, original)
+
+    def test_missing_factory_hole_or_preparation_metadata_is_rejected(self):
+        from gondola.validation.horn_coupling import horn_registration_check
+
+        obj = self.doc.PortServoHorn
+        self.assertTrue(horn_registration_check(self.doc, "Port")["passed"])
+        for name, report_key in (
+            ("FactoryThreadedHoles", "factory_threaded_holes"),
+            ("HornPreparationRequired", "preparation_required"),
+        ):
+            with self.subTest(property=name):
+                original = getattr(obj, name)
+                property_type = obj.getTypeIdOfProperty(name)
+                group = obj.getGroupOfProperty(name)
+                documentation = obj.getDocumentationOfProperty(name)
+                self.assertFalse(original)
+                try:
+                    obj.removeProperty(name)
+                    self.assertNotIn(name, obj.PropertiesList)
+                    result = horn_registration_check(self.doc, "Port")
+                    self.assertFalse(result["passed"], result)
+                    self.assertTrue(result[report_key])
+                    self.assertTrue(result["saved_contract_matches"])
+                    self.assertTrue(result["manufacturer_geometry_matches"])
+                finally:
+                    obj.addProperty(property_type, name, group, documentation)
+                    setattr(obj, name, original)
+                result = horn_registration_check(self.doc, "Port")
+                self.assertTrue(result["passed"], result)
 
 
 if __name__ == "__main__":

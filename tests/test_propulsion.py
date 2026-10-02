@@ -500,7 +500,9 @@ class NativeGearedDriveTests(unittest.TestCase):
                 self.assertAlmostEqual(result["nominal_frame_gap_mm"], 1.75)
                 for gap in result["post_face_gaps"]:
                     self.assertAlmostEqual(gap["nominal_post_face_gap_mm"], 1.75)
-                    self.assertAlmostEqual(gap["gap_at_axial_stop_mm"], 1.25)
+                    # Accurate OCCT bounds include ~1e-7 mm edge tolerance;
+                    # retain the nominal clearance, as for other CAD bounds.
+                    self.assertAlmostEqual(gap["gap_at_axial_stop_mm"], 1.25, places=6)
                 self.assertGreaterEqual(
                     min(result["all_angle_gaps_with_axial_travel_mm"].values()),
                     1.25 - 1e-7,
@@ -893,8 +895,11 @@ class NativeGearedDriveTests(unittest.TestCase):
             result = gear_engagement_check(self.doc, "Port")
             self.assertFalse(result["passed"], result)
             self.assertAlmostEqual(result["tooth_face_overlap_mm"], 2.4)
+            # Accurate-bound padding is numerical, not extra physical engagement.
             self.assertAlmostEqual(
-                result["minimum_tooth_face_overlap_under_travel_mm"], 1.9
+                result["minimum_tooth_face_overlap_under_travel_mm"],
+                1.9,
+                places=6,
             )
         finally:
             gear.Placement = original
@@ -1606,6 +1611,10 @@ class SelectedGearDriveTests(unittest.TestCase):
                     far_nut = prefix + "HornGearClampFarNut"
                     self.assertIn(far_nut, near["removed_prior_parts"])
                     self.assertNotIn(far_nut, near["retained_parts"])
+                    # Independent M1 stack: blade rear Y1.5 + 6 mm bolt gives
+                    # tip Y7.5. Nut starts at horn front Y3.5 + 2.5 mm floor;
+                    # lift its rear face 0.2 mm beyond that retained bolt tip.
+                    expected_nut_pull = (1.5 + 6.0) - (3.5 + 2.5) + 0.2
                     for joint in (far, near):
                         # Both rear bolts stay in the plastic horn while its
                         # front nuts are released in order on the clear bench.
@@ -1617,7 +1626,9 @@ class SelectedGearDriveTests(unittest.TestCase):
                         self.assertTrue(route["passed"], route)
                         self.assertEqual(len(route["segments"]), 2)
                         self.assertEqual(route["segments"][0]["start_mm"], [0, 0, 0])
-                        self.assertAlmostEqual(route["segments"][0]["end_mm"][1], 3.2)
+                        self.assertAlmostEqual(
+                            route["segments"][0]["end_mm"][1], expected_nut_pull
+                        )
                         self.assertEqual(
                             route["segments"][1]["start_mm"],
                             route["segments"][0]["end_mm"],
@@ -2130,7 +2141,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 expected_sections = {
                     "frame_foot_thickness": 5.0,
                     "rail_straight_base_width": 6.0,
-                    "carrier_roof": 2.3,
+                    "carrier_roof": 3.0,  # Z9.5 wall-top seat to Z12.5 shoe top.
                     "carrier_nut_pocket_bottom_opening": 0,
                     "frame_rail_relieved_roof": 2.3,
                     "frame_rail_to_central_seat_connection": 6.5,

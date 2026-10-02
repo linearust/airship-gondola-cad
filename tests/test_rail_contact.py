@@ -283,20 +283,20 @@ class RailContactTests(unittest.TestCase):
         self.assertTrue(report["passed"], report)
         self.assertEqual(
             report["continuous_vertical_removal"]["method"],
-            "continuous upward planar-face sweep with trailing circular crowns",
+            "continuous upward planar-face sweep",
         )
-        self.assertTrue(all(row["passed"] for row in report["bottom_datum_contacts"]))
-        self.assertAlmostEqual(report["inner_roof_clearance_mm"], 0.7)
-        self.assertAlmostEqual(report["blocked_inner_roof_relief_mm3"], 0)
+        self.assertEqual(report["bottom_datum_contacts"], [])
+        self.assertAlmostEqual(report["top_bearing"]["nominal_area_mm2"], 40)
+        self.assertAlmostEqual(report["blocked_lower_clearance_mm3"], 0)
         self.assertAlmostEqual(report["missing_flat_side_contact_mm3"], 0)
 
-    def test_missing_clamp_leg_and_bottom_land_are_rejected(self):
+    def test_missing_clamp_leg_and_top_datum_are_rejected(self):
         from gondola.parts import rail
         from gondola.validation import rail_contact
 
         for cut in (
             Part.makeBox(2, 2.5, 1, App.Vector(3, -1.75, 3)),
-            Part.makeBox(0.5, 1.25, 0.3, App.Vector(-0.25, -3, 1.5)),
+            Part.makeBox(0.5, 2.5, 0.3, App.Vector(-0.25, -1.25, 9.5)),
         ):
             with self.subTest(cut=cut.BoundBox):
                 self.assertFalse(
@@ -305,38 +305,29 @@ class RailContactTests(unittest.TestCase):
                     )["passed"]
                 )
 
-    def test_circular_bottom_tangent_clears_roots_and_preserves_roof_relief(self):
+    def test_plain_lower_legs_clear_roots_and_full_roof_bears_on_wall(self):
         from gondola.parts import rail
         from gondola.validation import rail_contact
 
         mount = rail.mount_base_shape()
-        # Independent analytical witness: radius4.5 about X0/Z6, tangent Z1.5.
         for x in (-3, -1, 0, 1, 3):
-            surface_z = 6 - math.sqrt(4.5**2 - x**2)
             for y in (-2.5, 2.5):
-                ray = Part.makeLine(App.Vector(x, y, 1.0), App.Vector(x, y, 4.0))
+                ray = Part.makeLine(App.Vector(x, y, 1), App.Vector(x, y, 4))
                 section = mount.common(ray)
-                self.assertAlmostEqual(section.BoundBox.ZMin, surface_z, places=6)
-                self.assertAlmostEqual(section.Length, 4 - surface_z, places=6)
-        root_space = Part.makeBox(16, 3.5, 2.6, App.Vector(-8, -1.75, 0))
-        self.assertLess(abs(root_space.common(mount).Volume), 1e-7)
-        gap = Part.makeBox(16, 2.5, 0.7, App.Vector(-8, -1.25, 9.5))
-        self.assertLess(abs(mount.common(gap).Volume), 1e-7)
+                self.assertAlmostEqual(section.BoundBox.ZMin, 2.5)
+                self.assertAlmostEqual(section.Length, 1.5)
+        gap = Part.makeBox(16, 12, 2.5, App.Vector(-8, -6, 0))
+        self.assertLess(abs(gap.common(mount).Volume), 1e-7)
         self.assertAlmostEqual(
             mount.common(
                 Part.makeLine(App.Vector(0, 0, 9.5), App.Vector(0, 0, 12.5))
             ).Length,
-            2.3,
+            3,
         )
-        blocked = mount.fuse(Part.makeBox(2, 2.5, 0.1, App.Vector(2, -1.25, 9.7)))
+        blocked = mount.fuse(Part.makeBox(2, 1, 0.2, App.Vector(-1, 2, 2.3)))
         report = rail_contact.attachment_check(mount=blocked)
         self.assertFalse(report["passed"])
-        self.assertGreater(report["blocked_inner_roof_relief_mm3"], 0)
-        for y in (-3, 1.75):
-            cut = Part.makeBox(0.5, 1.25, 0.2, App.Vector(-0.25, y, 1.5))
-            self.assertFalse(
-                rail_contact.attachment_check(mount=mount.cut(cut))["passed"]
-            )
+        self.assertGreater(report["blocked_lower_clearance_mm3"], 0)
 
     def test_added_hook_fails_continuous_vertical_release(self):
         from gondola.parts import rail

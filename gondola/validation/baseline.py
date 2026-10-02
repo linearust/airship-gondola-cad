@@ -624,7 +624,7 @@ def procurement_and_scope_metadata(obj):
         "PurchasedHornMeasured",
         "AxialSeatingMeasured",
         "X06CompatibilityAccepted",
-        "FactoryM1_6ThreadsConfirmed",
+        "FactoryThreadedHoles",
         "HornProfile",
         "HornPreparationRequired",
         "HornInterfaceContract",

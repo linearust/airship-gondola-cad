@@ -5,7 +5,7 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, world_shape
+from gondola.cad import belongs_to_group, union, world_shape
 from gondola.contracts import fasteners
 from gondola.parts import optical_interface, optical_mount
 
@@ -16,6 +16,25 @@ V = App.Vector
 TOL = 1e-5
 TOOL_APPROACH_LENGTH_MM = 15.0
 RELEASE_MARGIN_MM = 0.2
+
+
+def _tray_service_envelope(shape):
+    """Literal full pad/neck/ear stock, enclosing the saved rounded tray.
+
+    The pad's lower edge rounds include cylinders transverse to the Y move.
+    Filling only those outer rounds and the already released fastener holes
+    preserves the space below the pad instead of filling the whole tray box.
+    """
+    envelope = union(
+        [
+            Part.makeCylinder(4, 2, V(), V(0, 1, 0)),
+            Part.makeBox(4, 2, 4.5, V(-2, 0, 0)),
+            Part.makeBox(18, 12, 2, V(-9, -6, 4.5)),
+        ]
+    )
+    envelope.Placement = shape.Placement
+    missing = abs(shape.cut(envelope).Volume)
+    return envelope, missing
 
 
 def pitch_tool_shape():
@@ -72,7 +91,16 @@ def pitch_disassembly_check(doc, kit):
     paths = []
 
     def check_path(name, shape, delta, obstacles):
-        swept, method = translation_sweep(shape, delta)
+        sweep_input = shape
+        enclosure = None
+        if name == "TrayAssembly/OpticalSensorTray":
+            sweep_input, missing = _tray_service_envelope(shape)
+            enclosure = {
+                "kind": "literal full pad, neck and coaxial ear",
+                "uncovered_saved_stock_mm3": missing,
+                "passed": missing < TOL,
+            }
+        swept, method = translation_sweep(sweep_input, delta)
         hits = [
             {"object": other, "intersection_mm3": volume}
             for other, target in obstacles.items()
@@ -83,8 +111,9 @@ def pitch_disassembly_check(doc, kit):
                 "part": name,
                 "translation_mm": delta,
                 "method": method,
+                "conservative_enclosure": enclosure,
                 "collisions": hits,
-                "passed": not hits,
+                "passed": not hits and (enclosure is None or enclosure["passed"]),
             }
         )
 
@@ -117,5 +146,5 @@ def pitch_disassembly_check(doc, kit):
         "passed": neutral
         and bool(moving_names)
         and all(row["passed"] for row in paths),
-        "scope": "Disconnect the sensor lead, use the checked foot-removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel separates the saved bounding boxes by 0.2 mm. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
+        "scope": "Disconnect the sensor lead, use the checked foot-removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel separates the saved bounding boxes by 0.2 mm. The tray sweep uses a literal full-pad/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
     }

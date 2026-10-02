@@ -1,6 +1,8 @@
 """Pitch-tool access and ordered optical service use actual saved geometry."""
 
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 try:
@@ -87,6 +89,80 @@ class OpticalPitchServiceTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertEqual(
             [row["object"] for row in result["collisions"]], ["ToolMidpathBlocker"]
+        )
+
+    def test_current_rounded_tray_clears_before_and_after_native_save_reopen(self):
+        from gondola.cad import belongs_to_group
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import optical_mount, optical_sensor
+        from gondola.validation.optical_service import pitch_disassembly_check
+
+        # Exercise today's builders even before a new regression fixture is
+        # promoted. The prior fixture alone cannot detect a new curved face.
+        self.doc.OpticalSensorTray.Shape = optical_mount.sensor_tray_shape()
+        self.doc.OpticalMountBase.Shape = optical_mount.base_shape()
+        optical_mount.set_pitch(self.doc, 0)
+
+        def verify(doc, kit):
+            result = pitch_disassembly_check(doc, kit)
+            self.assertTrue(result["passed"], result)
+            path = next(
+                row
+                for row in result["paths"]
+                if row["part"] == "TrayAssembly/OpticalSensorTray"
+            )
+            self.assertLess(
+                path["conservative_enclosure"]["uncovered_saved_stock_mm3"], 1e-5
+            )
+            self.assertEqual(
+                path["method"], "continuous planar/coaxial-cylinder face-prism union"
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            for profile in SENSOR_PROFILES.values():
+                with self.subTest(profile=profile.key):
+                    optical_sensor.apply_profile(self.doc, profile)
+                    verify(self.doc, self.kit)
+                    path = Path(temporary) / (profile.key + ".FCStd")
+                    self.doc.saveCopy(str(path))
+                    reopened = App.openDocument(str(path), hidden=True)
+                    try:
+                        registry = reopened.DesignRegistry
+                        physical = (
+                            list(registry.PrintedParts)
+                            + list(registry.HardwareParts)
+                            + list(registry.ReferenceParts)
+                            + list(registry.TapeReferences)
+                        )
+                        kit = [
+                            obj
+                            for obj in physical
+                            if belongs_to_group(obj, reopened.OpticalFlowModule)
+                        ]
+                        verify(reopened, kit)
+                    finally:
+                        App.closeDocument(reopened.Name)
+
+    def test_tray_enclosure_rejects_added_stock_outside_its_literal_boundary(self):
+        from gondola.validation.optical_service import pitch_disassembly_check
+
+        tray = self.doc.OpticalSensorTray
+        tray.Shape = tray.Shape.fuse(
+            Part.makeBox(1.1, 1, 1, App.Vector(8.9, 0, 5.5))
+        ).removeSplitter()
+        self.assertTrue(tray.Shape.isValid())
+        self.assertEqual(len(tray.Shape.Solids), 1)
+        self.doc.recompute()
+        result = pitch_disassembly_check(self.doc, self.kit)
+        path = next(
+            row
+            for row in result["paths"]
+            if row["part"] == "TrayAssembly/OpticalSensorTray"
+        )
+        self.assertFalse(result["passed"])
+        self.assertFalse(path["passed"])
+        self.assertGreater(
+            path["conservative_enclosure"]["uncovered_saved_stock_mm3"], 0.99
         )
 
     def test_midpath_blocks_reject_each_disassembly_step_with_clear_endpoints(self):
