@@ -61,6 +61,10 @@ FOOT_BOTTOM_Z = 24.5
 FOOT_WIDTH = 18.0
 BEARING_POST_WIDTH = 18.0
 BEARING_ROOT_RADIUS = 1.5
+SERVO_PLINTH_WIDTH = 45.4
+SERVO_PLINTH_DEPTH = 21.0
+SERVO_PLINTH_BOTTOM_Z = 20.0
+SERVO_PLINTH_TOP_Z = 29.5
 RAIL_BOLT_OFFSET_X = PROPULSION_ATTACHMENT.half_spacing_mm
 RAIL_CONTACT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 PIVOT_Z = PIVOT_Z_MM
@@ -377,7 +381,10 @@ def _output_support(sign):
         PIVOT_Z + bearing_retention.BODY_BOTTOM_Z - beam_top,
         (-BEARING_POST_WIDTH / 2, BEARING_GUIDE_START_Y, beam_top),
     )
-    return mirrored_y(union([bed, post]), sign)
+    result = union([bed, post])
+    if sign < 0:
+        result.rotate(V(), V(0, 0, 1), 180)
+    return result
 
 
 def fixed_frame_shape():
@@ -402,6 +409,16 @@ def fixed_frame_shape():
         [
             beam,
             pedestal,
+            box(
+                SERVO_PLINTH_WIDTH,
+                SERVO_PLINTH_DEPTH,
+                SERVO_PLINTH_TOP_Z - SERVO_PLINTH_BOTTOM_Z,
+                (
+                    -SERVO_PLINTH_WIDTH / 2,
+                    -SERVO_PLINTH_DEPTH / 2,
+                    SERVO_PLINTH_BOTTOM_Z,
+                ),
+            ),
             *rail.attachment_shoe_shapes(shared_drive=True),
             _output_support(1),
             _output_support(-1),
@@ -607,16 +624,16 @@ def build_fit_coupons(doc):
     group = create_group(
         doc,
         "BearingFitCoupons",
-        "Print first | paired split bearing seats and keyed cap",
+        "Print first | three split bearing seats and keyed cap",
     )
     cup = _print(
         doc,
         group,
         "BearingSeatFitSample",
         bearing_retention.coupon_shape(),
-        "Production paired lower bearing housing on a handling foot, used with the keyed cap. "
-        "Use the same PA12 process, finish and orientation as the frame. Fit two actual "
-        "3x6x2.5 bearings and qualify both outer-ring seats, shield clearance, free rotation "
+        "Production shared lower bearing housing on a handling foot, used with the keyed cap. "
+        "Use the same PA12 process, finish and orientation as the frame. Fit three actual "
+        "3x6x2.5 bearings and qualify all outer-ring seats, shield clearance, free rotation "
         "and removal. The nominal diameter-6 split seats and side keys are finish-to-fit: "
         "reject radial rocking or an oversized seat, and never use screw preload to force "
         "the cap into alignment. Nominal bearing axial allowance is 0.5 mm total. "
@@ -628,10 +645,10 @@ def build_fit_coupons(doc):
         group,
         "BearingKeeperFitSample",
         bearing_retention.keeper_shape(),
-        "Production shared cap coupon. Assemble with the paired housing, two actual "
-        "bearings and two owned M2x10 screws with ordinary M2 nuts. Both locating keys "
+        "Production shared cap coupon. Assemble with the shared housing, three actual "
+        "bearings and three M2x10 screws with ordinary M2 nuts. Both locating keys "
         "and hard seating lands must engage before tightening. The screw heads seat "
-        "on the cap; the two side-entry nuts bear against the lower body's 2.5 mm floors. "
+        "on the cap; the three side-entry nuts bear against the lower body's 2.5 mm floors. "
         "Match process and finish to the production cap, then verify concentricity, "
         "shield clearance at both axial limits, free rotation and screw retention.",
         sku="BearingKeeperFitSample",
@@ -724,8 +741,8 @@ def _build_coupling(doc, parent, prefix, sign):
             parent,
             prefix + "InputShaft",
             positioned(coupling.driver_shaft_shape()),
-            f"SS304_CUT3_L{coupling.SHAFT_LENGTH:g}_FLAT{coupling.SHAFT_LENGTH:g}_A0",
-            f"Cut selected Ø3 304 stock to {coupling.SHAFT_LENGTH:g} mm, deburr, and file a {coupling.SHAFT_FLAT_DEPTH:g} mm-deep full-length flat. "
+            f"SS304_CUT3_L{coupling.SHAFT_LENGTH:g}_FLAT{coupling.SHAFT_FLAT_LENGTH:g}_A0",
+            f"Cut selected Ø3 304 stock to {coupling.SHAFT_LENGTH:g} mm, deburr, and file a {coupling.SHAFT_FLAT_DEPTH:g} mm-deep flat over only the proximal {coupling.SHAFT_FLAT_LENGTH:g} mm; leave the distal bearing journal round. "
             "The finished D socket keys torque; an M2 radial jack screw bears on the flat for axial retention. The M3 gear screw also bears on the flat. Nominal geometry is not a guarantee of stock diameter, straightness, concentricity or holding torque.",
             SHAFT_SOURCE,
             "304 stainless steel (seller claim)",
@@ -747,7 +764,7 @@ def _build_coupling(doc, parent, prefix, sign):
                 prefix + "InputShaftClamp" + ("Bolt" if kind == "screw" else "Nut"),
                 positioned(shape),
                 "M2X6_BUTTON_HEAD" if kind == "screw" else NUT_SKU,
-                "M2×6 radial jack screw through a captive kit hex nut, tip against the shaft flat. Head has nominal 0.5 mm clearance from the boss and does not seat on PA12. Nut bears against the 1.5 mm outer pocket wall. Tighten gently and verify retention without crushing or damaging the shaft flat; the full-length flat also keys the socket.",
+                "M2×6 radial jack screw through a captive kit hex nut, tip against the shaft flat. Head has nominal 0.5 mm clearance from the boss and does not seat on PA12. Nut bears against the 1.5 mm outer pocket wall. Tighten gently and verify retention without crushing or damaging the shaft flat; the proximal16mm flat also keys the socket; the distal bearing journal remains round.",
                 CLAMP_SCREW_SOURCE if kind == "screw" else HEX_NUT_SOURCE,
                 KIT_MATERIAL,
                 threaded=True,
@@ -782,8 +799,8 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "bearing_cap_nut_floor",
             "PropulsionFixedFrame",
-            (5.5, 35.8, 47.49),
-            (5.5, 35.8, 50.01),
+            (6.25, 40.8, 47.49),
+            (6.25, 40.8, 50.01),
             2.5,
         ),
     ]
@@ -795,7 +812,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "One integral PA12 support with two standard carrier U shoes atX±14 and M3x10 rail pairs. Both shoes seat atZ9.5; their rail walls must be coplanar. A raised5mm crossbeam atZ24.5..29.5 ends flush with two18x19mm bearing webs. Only broad R1.5 bearing-web roots are blended. Each servo has its own compact closed planar frame with3mm side walls and a16.7x5x5 local foot overlapping the main beam by3mm; no broad lower plate or upper inter-servo tie. Input axesX±16/Z50 keep16mm mesh distance; output axes remain150mm apart atZ50. The7.4x20.4 window has0.2mm nominal clearance per case face; fastened ears locate and clamp the servo. Remove both small gears, loosen the input jack/driver screw, withdraw its20mm stubY18 thenX60, and remove the loose driverX60 before releasing the ear pairs and withdrawing servo/horn/adapterY14 thenX60. Mirror X/Y on Starboard. Keep OEM horn and M1 joints assembled until off-frame. Finish tight windows without forcing case compression. Each bearing pair uses a common keyed cap on hard lands. Finish nominalØ6 seats to fit;0.5mm bearing float and±0.5mm rotor stops are independent. No cap preload on bearings/shields. Physical fit, retention, stiffness and strength remain unqualified.",
+        "One integral PA12 support with two standard carrier U shoes atX±14 and M3x10 rail pairs. Both shoes seat atZ9.5; their rail walls must be coplanar. A raised5mm crossbeam atZ24.5..29.5 ends flush with two18x19mm bearing webs. Only broad R1.5 bearing-web roots are blended. Each compact closed servo frame seats directly on a45.4x21x9.5 central plinth atZ20..29.5; there are no thin projecting feet or upper tie. An integral short wing adds one external input-bearing seat atX±16/|Y|33; each shared three-bearing cap has threeM2x10 joints. Input axesX±16/Z50 keep16mm mesh distance; output axes remain150mm apart atZ50. The7.4x20.4 window has0.2mm nominal clearance per case face; fastened ears locate and clamp the servo. Remove both small gears, loosen the input jack/driver screw, park the unmeshed rotor for shaft service, withdraw its35mm stubY32 thenX60, and remove the loose driverX60 before releasing the ear pairs and withdrawing servo/horn/adapterY13 thenX60. Mirror X/Y on Starboard. Keep OEM horn and M1 joints assembled until off-frame. Finish tight windows without forcing case compression. Each side uses a common keyed cap for two output bearings and one input bearing, on hard lands. Finish nominalØ6 seats to fit;0.5mm bearing float and±0.5mm rotor stops are independent. No cap preload on bearings/shields. Physical fit, retention, stiffness and strength remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -804,6 +821,8 @@ def _build_frame(doc, module, spec):
         ("FootBottomZ", FOOT_BOTTOM_Z),
         ("BearingPostWidth", BEARING_POST_WIDTH),
         ("FrameCrossbeamThickness", FOOT_THICKNESS),
+        ("ServoPlinthBottomZ", SERVO_PLINTH_BOTTOM_Z),
+        ("ServoPlinthTopZ", SERVO_PLINTH_TOP_Z),
         ("RailBoltOffsetX", RAIL_BOLT_OFFSET_X),
         ("RailContactLength", RAIL_CONTACT_LENGTH),
         ("RailBoltAxisZ", rail.BOLT_AXIS_Z),
@@ -924,29 +943,48 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
                 "Owned generic3x6x2.5 bearing in a3mm-wide split seat;0.25mm nominal float each way. Hard cap lands and locating keys must seat without radial compression or shield preload. Check actual ring lands, shields and fitted concentricity.",
             )
         )
+    input_bearing = translated_shape(
+        bearing_shape(),
+        x=spec.input_x_mm,
+        y=BEARING_CENTRES_ABS_Y[0] + bearing_retention.INPUT_BEARING_Y - 1.25,
+        z=PIVOT_Z,
+    )
+    if sign < 0:
+        input_bearing.rotate(V(), V(0, 0, 1), 180)
+    hardware.append(
+        _buy_bearing(
+            doc,
+            assembly,
+            prefix + "InputBearing",
+            input_bearing,
+            "One3x6x2.5 external input bearing; journal remains round. Shared housing/cap seats on hard lands and leaves0.5mm outer-ring axial float. Align with the actual servo axis before tightening the horn joints; verify free ±60deg rotation without axial preload. It reduces overhung gear load but does not certify concentricity, stiffness or load capacity.",
+        )
+    )
     cap = translated_shape(
         bearing_retention.cap_shape(), y=BEARING_CENTRES_ABS_Y[0], z=PIVOT_Z
     )
+    if sign < 0:
+        cap.rotate(V(), V(0, 0, 1), 180)
     printed.append(
         _print(
             doc,
             assembly,
             prefix + "BearingCap",
-            mirrored_y(cap, sign),
-            "One rigid cap retains both inboard bearings. Two1.5mm side keys positively register the cap; finish both halves together to the actual bearings and never use bolt preload to remove radial play. TwoM2x10 screws seat on hard cap/body lands, with7mm grip,1.6mm nuts and1.4mm nominal tip projection. Remove screws/nuts and lift cap+Z; support rotor and remove shaft before lifting bearings. No bearing shields carry cap or rotor-stop load.",
+            cap,
+            "One rigid cap retains two output bearings and the input bearing. Two1.5mm side keys positively register the cap; finish both halves together to the actual bearings and never use bolt preload to remove radial play. ThreeM2x10 screws, including the outer input-bearing joint, seat on hard cap/body lands, with7mm grip,1.6mm nuts and1.4mm nominal tip projection. Remove screws/nuts and lift cap+Z; support rotor and remove shaft before lifting bearings. No bearing shields carry cap or rotor-stop load.",
             rotation=App.Rotation(V(0, 0, 1), 0 if sign > 0 else 180),
-            sku="PairedBearingCap",
+            sku="SharedGearBearingCap",
         )
     )
-    for label, x in zip(("Negative", "Positive"), bearing_retention.CAP_BOLT_X):
+    for label, x, y in bearing_retention.CAP_FASTENER_STATIONS:
         hardware.extend(
             _bolt_pair(
                 doc,
                 assembly,
                 prefix + "BearingCap" + label,
                 (
-                    x,
-                    sign * (BEARING_CENTRES_ABS_Y[0] + bearing_retention.CAP_BOLT_Y),
+                    sign * x,
+                    sign * (BEARING_CENTRES_ABS_Y[0] + y),
                     PIVOT_Z + bearing_retention.CAP_SCREW_SEAT_Z,
                 ),
                 (0, 0, -1),
@@ -1053,7 +1091,7 @@ def _build_servo_drive(doc, assembly, prefix, sign, driver_angle, spec):
     set_property(
         mount,
         "ServiceSequence",
-        "Set the input to neutral and disconnect leads. Remove both output gears, support the large driver, release its set screw and back off the input M2 jack0.2mm. Using side-entry pliers on the4mm exposed tip, withdraw the20mm stubY18 thenX60. Remove the loose driverX60. Release the selected ear screws/nuts, then withdraw servo/horn/adapterY14 andX60; mirror X/Y for Starboard. OEM horn and M1 joints remain assembled until off-frame. Actual gear set-screw access and plier grip remain checks. Reverse, seat the ears before fitting driver/stub, tighten clamps and recheck mesh. The fixed frame and output bearings remain installed.",
+        "Set the input to neutral and disconnect leads. Remove both output gears, support the large driver, release its set screw and back off the input M2 jack0.2mm. Park the unmeshed output rotor90deg while keeping the input neutral. Using side-entry pliers on the4.5mm exposed round tip, withdraw the35mm stubY32 thenX60. Remove the loose driverX60. Release the selected ear screws/nuts, then withdraw servo/horn/adapterY13 andX60; mirror X/Y for Starboard. OEM horn and M1 joints remain assembled until off-frame. Actual gear set-screw access and plier grip remain checks. Reverse, seat the ears before fitting driver/stub, tighten clamps and recheck mesh. The fixed frame and output bearings remain installed.",
     )
     drive, hardware = _build_input_drive(doc, mount, prefix, sign, driver_angle, spec)
     references, servo_hardware = _build_servo(doc, mount, prefix, sign, spec)
@@ -1223,7 +1261,7 @@ def _module_metrics(printed, hardware, references, spec):
             "inward_offset_mm": DRIVE_INWARD_OFFSET_MM,
             "output_to_input_angle_ratio": -spec.ratio,
             "fixed_frame_print_sku": spec.frame_sku,
-            "input_mount": "Two compact closed planar frames with3mm side walls,7.4x20.4 case windows and two16.7x5x5 feet into the main beam. No broad lower plate or central upper tie. Nominal case clearance0.2mm per face; ear joints locate and clamp without case compression. Remove both output gears, release input jack/driver screw, withdraw20mm stubY18 thenX60, remove loose driverX60, release ear pairs, then withdraw servo/horn/adapterY14 thenX60. Mirror X/Y for Starboard. OEM horn/M1 joints stay assembled until off-frame. No separate bridge or closure hardware. TwoM3 rail pairs retain the whole frame.",
+            "input_mount": "Two compact closed planar frames with3mm side walls and7.4x20.4 case windows directly supported by the45.4x21x9.5 central upper plinth. No thin projecting feet or central upper tie. Nominal case clearance0.2mm per face; ear joints locate and clamp without case compression. Remove both output gears, release input jack/driver screw, park the unmeshed rotor90deg with the input neutral, withdraw35mm stubY32 thenX60, remove loose driverX60, release ear pairs, then withdraw servo/horn/adapterY13 thenX60. Mirror X/Y for Starboard. OEM horn/M1 joints stay assembled until off-frame. No separate bridge or closure hardware. TwoM3 rail pairs retain the whole frame.",
             "supported_configurations": list(DRIVE_CONFIGURATIONS),
             "limits": "Bounded motion; physical travel, fit, stiffness and grip remain unqualified.",
         },
@@ -1241,6 +1279,7 @@ def _module_metrics(printed, hardware, references, spec):
             "service": "Remove output gear, disconnect leads and withdraw supported rotor with its shaft locked outwardY60. Service jack/shaft off frame. Never withdraw one shaft through the opposing installed rotor.",
         },
         "bearing_seats": {
+            "scope": "Output bearings; the input pair is described separately below.",
             "support_centre_span_mm": BEARING_CENTRES_ABS_Y[1]
             - BEARING_CENTRES_ABS_Y[0],
             "centres_abs_y_mm": list(BEARING_CENTRES_ABS_Y),
@@ -1253,13 +1292,24 @@ def _module_metrics(printed, hardware, references, spec):
             "complete_circumferential_guide_width_mm": bearing_retention.SEAT_WIDTH,
             "minimum_complete_guide_overlap_mm": 2.5,
             "nominal_bearing_axial_float_mm": 0.5,
-            "retention": "Two split seats per rotor; one positively keyed rigid cap with twoM2x10 pairs seats on hard frame lands, not bearings. Independent shoulders retain outer rings; separate carrier/gear thrust lands bound rotor translation.",
+            "retention": "Two split seats per rotor; one positively keyed rigid cap shared with the input bearing with threeM2x10 pairs seats on hard frame lands, not bearings. Independent shoulders retain outer rings; separate carrier/gear thrust lands bound rotor translation.",
             "cap_screw_length_mm": 10,
             "cap_count": 2,
-            "finishing": "Coupon-match both split seats and locating side keys to actual bearings. Reject radial shake or cap mismatch rather than tightening it away. Verify shield lands and no preload at both bearing-float limits.",
+            "finishing": "Coupon-match all three split seats and locating side keys to actual bearings. Reject radial shake or cap mismatch rather than tightening it away. Verify shield lands and no preload at both bearing-float limits.",
             "rotor_stop_clearance_each_direction_mm": 0.5,
             "rotor_total_axial_travel_mm": 1.0,
-            "assembly": "With rotor/shaft removed, lower both bearings into the open seats, place the keyed cap and seat its two screws/nuts on hard lands. Insert rotor/shaft inward from its own open outer side, install output gear and qualify both axial stops. Bearing service reverses this order.",
+            "assembly": "With input unit and rotor/shaft removed, lower the two output bearings and one input bearing into the open seats. Place the keyed cap and seat its three screws/nuts on hard lands. Fit the input unit and rotor/shaft through their checked service routes, install gears and qualify both output axial stops. Align the input shaft before tightening the horn joints; never force the two supports into alignment.",
+        },
+        "input_bearing_seats": {
+            "count": 2,
+            "dimensions_mm": [3, 6, 2.5],
+            "centres_mm": [[16, 33, 50], [-16, -33, 50]],
+            "nominal_seat_diameter_mm": 6,
+            "seat_width_mm": 3,
+            "outer_ring_axial_float_mm": 0.5,
+            "shaft_length_mm": 35,
+            "proximal_flat_length_mm": 16,
+            "scope": "One external round-journal bearing supports each driver opposite its servo; common three-joint cap. Coaxiality, finished fits and loaded deflection require physical verification.",
         },
         "replacement_rotor_space": {
             "future_propeller_reference_diameter_mm": FUTURE_ROTOR_PROPELLER_DIAMETER,

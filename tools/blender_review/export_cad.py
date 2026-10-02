@@ -66,7 +66,7 @@ def color(obj, category, rail_names):
 def representation(obj):
     """Describe the installed proxy without substituting manufacturing stock."""
     if getattr(obj, "Name", "") == "PropulsionFixedFrame":
-        return "Integrated fixed support with outer-open rotors, two inboard bearings per rotor and closed individual servo frames. Nominal CAD does not establish alignment, overhang stiffness or loaded retention."
+        return "Integrated fixed support with two inboard bearings per rotor, one external input-shaft bearing per side, shared three-bearing caps and compact closed servo frames on the raised central plinth. Nominal CAD does not establish alignment, load sharing, overhang stiffness or loaded retention."
     if getattr(obj, "HornProfile", "") in servo_horns.PROFILES:
         profile = servo_horns.profile(obj.HornProfile)
         return (
@@ -186,7 +186,11 @@ def check_review_basis(doc, report):
             for suffix in (
                 "OutputBearingInboard",
                 "OutputBearingOutboard",
+                "InputBearing",
+                "InputShaft",
                 "BearingCap",
+                "BearingCapInputBolt",
+                "BearingCapInputNut",
                 "OutputShaft" + driven,
             )
         )
@@ -197,6 +201,32 @@ def check_review_basis(doc, report):
         raise RuntimeError(
             "Update the review for changed integrated inboard support topology."
         )
+    for prefix in ("Port", "Starboard"):
+        assembly = doc.getObject(prefix + "Assembly")
+        drive = doc.getObject(prefix + "InputDrive")
+        if assembly is None or drive is None:
+            raise RuntimeError("Missing fixed input-bearing review hierarchy.")
+        for suffix, sku in (
+            ("InputBearing", "BEARING_3X6X2_5"),
+            ("BearingCapInputBolt", "M2X10_BUTTON_HEAD"),
+            ("BearingCapInputNut", "M2_HEX_NUT"),
+        ):
+            obj = doc.getObject(prefix + suffix)
+            if (
+                obj.getParentGeoFeatureGroup() != assembly
+                or getattr(obj, "HardwareSKU", "") != sku
+            ):
+                raise RuntimeError(
+                    "Input bearing and cap-wing hardware must remain fixed."
+                )
+        shaft = doc.getObject(prefix + "InputShaft")
+        if (
+            shaft.getParentGeoFeatureGroup() != drive
+            or getattr(shaft, "HardwareSKU", "") != "SS304_CUT3_L35_FLAT16_A0"
+        ):
+            raise RuntimeError(
+                "Update review for changed bearing-supported input shaft."
+            )
     REVIEW_MOTION.check_basis(evidence)
     REVIEW_MOTION.check_rotor_service_basis(evidence)
 
@@ -409,7 +439,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Manufacturer stock plastic half arm 1 retains its unmodified source geometry; rear M1x6 hex bolts and front nuts clamp the round-hole/slot adapter after alignment. Installed fit remains unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Each35mm input shaft has a16mm proximal flat and a round journal through its fixed external bearing. One common cap retains that bearing and the two output bearings; three screws seat the cap on hard lands. Manufacturer stock plastic half arm 1 retains its unmodified source geometry; rear M1x6 hex bolts and front nuts clamp the round-hole/slot adapter after alignment. Installed fit and bearing load sharing remain unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],
@@ -492,6 +522,11 @@ def export(cad_path, output):
                 "installed_representation": "Installed round-hole/slot adapters and manufacturer stock plastic half-arm geometry without hole enlargement are displayed, including rear M1x6 hex bolts and front M1 nuts. Fit samples and clearance reservations are excluded. Nominal source geometry does not establish resin, mass, delivered fit or installed seating.",
                 "mesh_max_bounds_error_mm": max_bound_error,
                 "service_animation_included": True,
+                "animated_service_scope": "Output rotor and its locked output shaft only; input-shaft and servo service are not animated.",
+                "input_service_animation_included": False,
+                "checked_input_service": REVIEW_MOTION.input_service_summary(
+                    report["local_propulsion_evidence"]
+                ),
                 "scope": "Visual derivative of saved CAD; prescribed rigid motion, not a physics or collision simulation.",
                 "validation_report": str(snapshot.report_path),
             },

@@ -1,15 +1,15 @@
 {
-  "revision": "CE",
+  "revision": "CF",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "4a83a7f038d982d33bf47328f752045b59c4970dd0d01a6383c2923914bd9e5e",
-  "old_fixture_sha256": "1a746039cafbb4c27de3beb0f62fae5b3513de028ce1061eef30b59bb0c9a99c",
+  "candidate_sha256": "75a8044745951b29295a2f7447110465f5bf8368b82fca9e1cbffb017b0263f4",
+  "old_fixture_sha256": "4a83a7f038d982d33bf47328f752045b59c4970dd0d01a6383c2923914bd9e5e",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "ce_integrated_inboard_support_revision",
+      "cf_supported_input_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "db33ae97a42d94a2f59ade1102645f0a58e795013d7111cfde355fd6efa87d09"
+    "canonical_json_sha256": "0844c13afa9b2060f4a6beebc75f225199e7d8604384b50d1b9affdd8cfe3328"
   },
-  "scope": "Independent saved geometry, placement, controls and metadata transition from committed CD to integrated inboard propulsion with standard rail shoes, compact closed servo frames and local feet, shaft-first service and braced guards. Nominal geometry only; physical fit, strength and motor/propeller seating remain unqualified."
+  "scope": "Independent saved shape, placement, native controls, metadata and local wall review of the external input bearings, shared three-joint caps and direct central servo plinth. Nominal geometry only; physical coaxiality, fit, loaded stiffness and propeller seating remain unqualified."
 }

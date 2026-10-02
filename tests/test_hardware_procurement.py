@@ -44,7 +44,7 @@ class NativeHardwareProcurementTests(unittest.TestCase):
         self.addCleanup(App.closeDocument, doc.Name)
         for index, (code, detail) in enumerate(
             (
-                ("SS304_CUT3_L20_FLAT20_A0", "length 20 mm, starting 0 mm"),
+                ("SS304_CUT3_L35_FLAT16_A0", "length 16 mm, starting 0 mm"),
                 ("SS304_CUT3_L34_FLAT5_A0", "length 5 mm, starting 0 mm"),
                 ("SS304_CUT3_L14", "Leave the rod round"),
             )
@@ -75,10 +75,12 @@ class HardwareSpecificationTests(unittest.TestCase):
             "M3X10_BUTTON_HEAD": 5,
             "M3_HEX_NUT": 5,
             "M2X8_BUTTON_HEAD": 2,
-            "M2X10_BUTTON_HEAD": 4,
+            "M2X10_BUTTON_HEAD": 6,
             "M2X12_BUTTON_HEAD": 2,
             "M2X6_BUTTON_HEAD": 2,
-            "M2_HEX_NUT": 10,
+            "M2_HEX_NUT": 12,
+            "BEARING_3X6X2_5": 6,
+            "SS304_CUT3_L35_FLAT16_A0": 2,
         }
         self.assertNotIn("M3X20_BUTTON_HEAD", PURCHASED_HARDWARE_QUANTITIES)
         for code, quantity in expected.items():
@@ -204,14 +206,32 @@ class HardwareSpecificationTests(unittest.TestCase):
             "design allowances", procurement_spec("M2X8_BUTTON_HEAD")["evidence_notes"]
         )
 
-    def test_full_length_input_flat_is_valid_and_old_finished_shaft_is_not_selected(
+    def test_input_flat_preserves_distal_journal_and_old_stub_is_not_selected(
         self,
     ):
-        stub = procurement_spec("SS304_CUT3_L20_FLAT20_A0")
+        stub = procurement_spec("SS304_CUT3_L35_FLAT16_A0")
         self.assertIn("nominal depth 0.5 mm", stub["requirements"])
-        self.assertIn("no bearing journal", stub["requirements"])
+        self.assertIn("to 35 mm length", stub["requirements"])
+        self.assertIn("length 16 mm, starting 0 mm", stub["requirements"])
+        self.assertIn(
+            "Keep every input and output bearing journal round", stub["requirements"]
+        )
+        self.assertNotIn("SS304_CUT3_L20_FLAT20_A0", PURCHASED_HARDWARE_QUANTITIES)
         with self.assertRaises(KeyError):
             procurement_spec("PSFU3-24-FC5-A3")
+
+    def test_six_bearing_requirement_preserves_four_bearing_purchase_history(self):
+        from gondola.contracts.equipment_interfaces import PROPULSION_EVIDENCE
+
+        self.assertEqual(PURCHASED_HARDWARE_QUANTITIES["BEARING_3X6X2_5"], 6)
+        requirement = procurement_spec("BEARING_3X6X2_5")["requirements"]
+        self.assertIn("four previously confirmed purchased", requirement)
+        self.assertIn("two additional matching bearings or spares", requirement)
+        self.assertIn("does not record a new purchase", requirement)
+        self.assertIn(
+            "previously confirmed four purchased",
+            PROPULSION_EVIDENCE["selected_bearing"]["scope"],
+        )
 
 
 if __name__ == "__main__":

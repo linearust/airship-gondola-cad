@@ -108,7 +108,7 @@ def output_support_geometry(doc, prefix):
         )
         or doc.getObject("ServoDriveBridge") is not None
         or doc.getObject(obsolete_shaft) is not None
-        or installed_bearings != set(names.values())
+        or installed_bearings != set(names.values()) | {prefix + "InputBearing"}
         or shaft.getParentGeoFeatureGroup() != pod
         or frame.getParentGeoFeatureGroup() != assembly.getParentGeoFeatureGroup()
         or not belongs_to_group(cap, assembly)
@@ -157,6 +157,79 @@ def output_support_geometry(doc, prefix):
         "output_shaft": {"object": shaft.Name, "rotating_parent": pod.Name},
         "idler_shafts": [],
         "scope": "Saved nominal support topology and bearing solid centroids. The outer side has no second shaft or support frame. This does not establish bearing clearance, shaft bending stiffness, installed alignment or load capacity.",
+    }
+
+
+def input_support_geometry(doc, prefix):
+    """Record the fixed external input bearing separately from the output pair."""
+    import FreeCAD as App
+    import Part
+
+    from gondola.cad import world_shape
+
+    assembly = doc.getObject(prefix + "Assembly")
+    drive = doc.getObject(prefix + "InputDrive")
+    bearing = doc.getObject(prefix + "InputBearing")
+    shaft = doc.getObject(prefix + "InputShaft")
+    cap = doc.getObject(prefix + "BearingCap")
+    if (
+        any(obj is None for obj in (assembly, drive, bearing, shaft, cap))
+        or bearing.getParentGeoFeatureGroup() != assembly
+        or cap.getParentGeoFeatureGroup() != assembly
+        or shaft.getParentGeoFeatureGroup() != drive
+        or getattr(bearing, "HardwareSKU", "") != "BEARING_3X6X2_5"
+        or getattr(shaft, "HardwareSKU", "") != "SS304_CUT3_L35_FLAT16_A0"
+    ):
+        raise ValueError(
+            "Input support topology changed; review the exported assembly."
+        )
+    bearing_shape, shaft_shape = world_shape(bearing), world_shape(shaft)
+    if any(
+        not shape.isValid() or len(shape.Solids) != 1
+        for shape in (bearing_shape, shaft_shape)
+    ):
+        raise ValueError("Input support requires one valid bearing and shaft solid.")
+    centre = bearing_shape.Solids[0].CenterOfMass
+    inverse = drive.getGlobalPlacement().inverse()
+    local_centre = inverse.multVec(centre)
+    shaft_shape.Placement = inverse.multiply(shaft_shape.Placement)
+    sign = 1 if prefix == "Port" else -1
+    if (
+        abs(local_centre.x) > 1e-6
+        or abs(local_centre.z) > 1e-6
+        or sign * local_centre.y <= 0
+    ):
+        raise ValueError("Input bearing must remain coaxial and beyond the driver.")
+    bounds = shaft_shape.optimalBoundingBox(False, False)
+    journal = Part.makeCylinder(
+        1.5,
+        2.5,
+        App.Vector(0, local_centre.y - 1.25, 0),
+        App.Vector(0, 1, 0),
+    )
+    missing = abs(journal.cut(shaft_shape).Volume)
+    if abs(bounds.YLength - 35) > 1e-6 or missing > 1e-6:
+        raise ValueError(
+            "Input shaft must retain its35mm length and round bearing journal."
+        )
+    return {
+        "arrangement": "one_fixed_external_input_bearing",
+        "bearing": {
+            "object": bearing.Name,
+            "centre_cad_m": vector_m(centre),
+            "centre_from_input_axis_neutral_m": vector_m(local_centre),
+            "fixed_during_tilt": True,
+        },
+        "shared_bearing_cap": cap.Name,
+        "input_shaft": {
+            "object": shaft.Name,
+            "rotating_parent": drive.Name,
+            "preparation_sku": shaft.HardwareSKU,
+            "length_m": round(bounds.YLength / 1000, 9),
+            "proximal_flat_length_m": 0.016,
+            "round_journal_missing_mm3": missing,
+        },
+        "scope": "Saved fixed bearing centroid and literal round shaft stock through its2.5mm nominal width. The cap also retains the two output bearings. External support does not establish servo/bearing coaxiality, load sharing, shaft fit, preload or installed stiffness; the bearing remains outside the rotating input assembly.",
     }
 
 
@@ -339,6 +412,10 @@ def extract(doc):
             "scope": "Fins and aft yaw installation are outside gondola CAD. A bare-hull aerodynamic approximation does not remove physically installed items from mass/CG/inertia. Null means unknown, never zero.",
         },
         "rotating_assembly_analysis": rotating_assemblies,
+        "input_drive_support_geometry": {
+            prefix: input_support_geometry(doc, prefix)
+            for prefix in ("Port", "Starboard")
+        },
     }
 
 
@@ -352,7 +429,7 @@ def export(cad, output):
         },
     ) as snapshot:
         result = {
-            "schema_version": 6,
+            "schema_version": 7,
             "units": {
                 "length": "m",
                 "mass": "kg",

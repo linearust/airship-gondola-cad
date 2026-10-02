@@ -115,7 +115,7 @@ class DriveSpec:
             "drive_inward_offset_mm": DRIVE_INWARD_OFFSET_MM,
             "servo_endpoint_for_180_deg": 180 / self.ratio,
             "fixed_frame_print_sku": self.frame_sku,
-            "fixed_support_topology": "integrated servo seats and paired inboard output bearings",
+            "fixed_support_topology": "integrated servo seats, paired inboard output bearings and one external input bearing per side under shared caps",
         }
 
 

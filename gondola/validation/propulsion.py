@@ -76,13 +76,13 @@ def _positive_module_shapes(doc, prefix, objects):
         shape = world_shape(obj)
         shape.Placement = inverse.multiply(shape.Placement)
         if prefix == "Starboard":
-            shape = shape.mirror(App.Vector(), App.Vector(0, 1, 0))
+            shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
         shapes.append(shape)
     return shapes
 
 
 def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
-    """Check each real split-housing bearing and both cap fasteners."""
+    """Check each real split-housing bearing and all three cap fasteners."""
     shaft_suffix = "Negative" if prefix == "Port" else "Positive"
     names = [
         prefix + "OutputBearing" + suffix,
@@ -92,7 +92,7 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
     ]
     fastener_names = [
         prefix + "BearingCap" + side + kind
-        for side in ("Negative", "Positive")
+        for side in ("Negative", "Positive", "Input")
         for kind in ("Bolt", "Nut")
     ]
     objects = [doc.getObject(name) for name in names]
@@ -126,7 +126,7 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
                 clamp, world_shape(fasteners[index]), world_shape(fasteners[index + 1])
             ),
         }
-        for index in (0, 2)
+        for index in (0, 2, 4)
     ]
     return {
         "bearing": names[0],
@@ -136,6 +136,74 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
         "passed": capture["passed"]
         and seating["passed"]
         and all(row["passed"] for row in seated),
+    }
+
+
+def input_bearing_support_check(doc, prefix):
+    """Literal saved-solid proof of the new far input support and third joint."""
+    names = [
+        prefix + "InputBearing",
+        prefix + "InputShaft",
+        "PropulsionFixedFrame",
+        prefix + "BearingCap",
+    ]
+    fastener_names = [prefix + "BearingCapInput" + kind for kind in ("Bolt", "Nut")]
+    objects = [doc.getObject(name) for name in names + fastener_names]
+    if prefix not in ("Port", "Starboard") or any(obj is None for obj in objects):
+        return {"passed": False, "error": "Missing input bearing support"}
+    shapes = _positive_module_shapes(doc, prefix, objects)
+    bearing, shaft, frame, cap, bolt, nut = shapes
+    capture = split_bearing_stack_check(
+        bearing,
+        shaft,
+        frame,
+        cap,
+        centre_x=16.0,
+        centre_y=33.0,
+        negative_travel=0.0,
+        positive_travel=0.0,
+    )
+    # Broad stock must carry the new bearing into the existing bed. The cap
+    # floor is backed by the lower housing; clamp force is not bearing preload.
+    web = Part.makeBox(5, 8, 8, App.Vector(8, 29, 42))
+    missing_web = abs(web.cut(frame).Volume)
+    lands = Part.makeCompound(
+        [
+            Part.makeBox(4.5, 7, 0.1, App.Vector(8.5, 29.5, 49.9)),
+            Part.makeBox(6.5, 7, 0.1, App.Vector(19.5, 29.5, 49.9)),
+        ]
+    ).cut(Part.makeCylinder(1.11, 0.4, App.Vector(23, 33, 49.8)))
+    # The nominal nut prism cuts into the underside, not the hard Z50 lands.
+    missing_lower = abs(lands.cut(frame).Volume)
+    upper_lands = translated_shape(lands, z=0.1).cut(
+        Part.makeBox(3, 3, 2, App.Vector(6, 28, 49.8))
+    )
+    missing_upper = abs(upper_lands.cut(cap).Volume)
+    clamp = clamp_fastener_check(Part.makeCompound([frame, cap]), bolt, nut)
+    from gondola.cad import belongs_to_group
+
+    fixed_parent = doc.getObject(prefix + "Assembly")
+    fixed_bearing = (
+        fixed_parent is not None
+        and belongs_to_group(objects[0], fixed_parent)
+        and not belongs_to_group(objects[0], doc.getObject(prefix + "InputDrive"))
+    )
+    return {
+        "bearing": names[0],
+        "shaft": names[1],
+        "capture": capture,
+        "fixed_native_parent": fixed_bearing,
+        "missing_connecting_web_mm3": missing_web,
+        "missing_lower_hard_land_mm3": missing_lower,
+        "missing_cap_hard_land_mm3": missing_upper,
+        "outer_cap_joint": clamp,
+        "scope": "One external bearing supports the far side of each servo-driven gear. Literal round journal, complete outer-ring capture, short connecting web, hard lands and third M2 cap joint are required. No servo axial preload is intended; the shaft may slide through the bearing during service. Align received servo/horn/stub to the fitted bearing before final fastening and verify the whole +/-60 degree range. Nominal geometry cannot establish horn runout, shaft straightness, bearing load capacity or printed stiffness.",
+        "passed": capture["passed"]
+        and fixed_bearing
+        and missing_web < TOL
+        and missing_lower < TOL
+        and missing_upper < TOL
+        and clamp["passed"],
     }
 
 
@@ -642,7 +710,7 @@ def direct_adapter_fit_check(doc, prefix):
         "horn_registration": registration,
         "internal_pairs": rows,
         "nominal_horn_contact_area_mm2": capture,
-        "scope": "Selected bought Ø3 bore remains unchanged. The20mm metal D stub spans the full8mm driver and projects4mm beyond it for side-grip removal; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. The unmodified manufacturer X06 half arm1 uses M1 hex bolts and front nuts through the existing nominalØ1 holes at6.8/13.2mm. Physical no-drill slip fit remains unverified; do not force threads through the plastic. The adapter also offers an optional10mm slot, not a qualified three-bolt assembly. The open C register and flat face limit misalignment; the nominal STEP fixes the hole positions and root geometry, while installed seating, delivered concentricity and runout remain unmeasured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
+        "scope": "Selected bought Ø3 bore remains unchanged. The35mm metal stub has a16mm proximal flat and a round distal journal. It spans the full8mm driver and projects19mm beyond it through the external bearing; this is a metal-length reserve, not a qualified axial adjustment range or arbitrary-gear compatibility. The printed adapter stays outside the bore. The unmodified manufacturer X06 half arm1 uses M1 hex bolts and front nuts through the existing nominalØ1 holes at6.8/13.2mm. Physical no-drill slip fit remains unverified; do not force threads through the plastic. The adapter also offers an optional10mm slot, not a qualified three-bolt assembly. The open C register and flat face limit misalignment; the nominal STEP fixes the hole positions and root geometry, while installed seating, delivered concentricity and runout remain unmeasured. Finish the local register against the received horn and check final runout. Horn strength, clamp preload, stainless rod quality, gear set screw and servo radial-load capacity remain physical checks.",
         "passed": specification.bore_mm == coupling.GEAR_BORE_DIAMETER
         and specification.total_length_mm == coupling.GEAR_LENGTH
         and bore_intrusion < TOL
@@ -650,7 +718,7 @@ def direct_adapter_fit_check(doc, prefix):
         and adapter_in_gear_bore < TOL
         and gear_journal.Volume > TOL
         and missing_gear_engagement < TOL
-        and abs(projection - 4) < TOL
+        and abs(projection - 19) < TOL
         and reserve.Volume > TOL
         and missing_reserve < TOL
         and retention["passed"]
@@ -867,10 +935,9 @@ def servo_mount_check(doc, prefix):
         .inverse()
         .multiply(frame.Placement)
     )
-    foot = Part.makeBox(16.7, 5, 5, App.Vector(6, -10.5, 24.5))
-    other_foot = foot.copy()
-    other_foot.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
-    connections = {"port_foot": foot, "starboard_foot": other_foot}
+    connections = {
+        "direct_servo_plinth": Part.makeBox(45.4, 21, 9.5, App.Vector(-22.7, -10.5, 20))
+    }
     connection_losses = {
         name: abs(stock.cut(module_frame).Volume) for name, stock in connections.items()
     }
@@ -888,7 +955,7 @@ def servo_mount_check(doc, prefix):
         "outward_case_window_intrusion_mm3": window_intrusion,
         "missing_connection_stock_mm3": connection_losses,
         "unrequested_central_upper_stock_mm3": central_intrusion,
-        "scope": "Independent closed rectangular wall stock and7.4x20.4 case window, excluding literal ear slots opening into the window and shallow nut seats. Both3mm walls and two16.7x5x5 local feet are required. The feet overlap the main18mm beam by3mm. The space between the frames stays empty above the beam. Nominal case clearance is0.2mm per face; finish tight prints and never force case compression. Installed ear joints locate and clamp the servo. Closed stock does not qualify torsional stiffness or strength.",
+        "scope": "Independent closed rectangular wall stock and7.4x20.4 case window, excluding literal ear slots opening into the window and shallow nut seats. Both3mm walls seat directly on the complete45.4x21x9.5 central plinth atZ20..29.5; no narrow projecting feet carry these frames. The space between the frames stays empty above that plinth. Nominal case clearance is0.2mm per face; finish tight prints and never force case compression. Installed ear joints locate and clamp the servo. Closed stock does not qualify torsional stiffness or strength.",
         "passed": missing_stock < TOL
         and window_intrusion < TOL
         and central_intrusion < TOL
@@ -1310,8 +1377,10 @@ def bearing_post_roots_check(doc):
             root = root.mirror(App.Vector(), App.Vector(0, 1, 0))
         bed_y = 25 if sign > 0 else -44
         bed = Part.makeBox(18, 19, 3, App.Vector(-9, bed_y, 42))
-        for x in (-5.5, 5.5):
-            bed = bed.cut(Part.makeCylinder(1.1, 3, App.Vector(x, sign * 34.5, 42)))
+        for x, y_bolt in ((-5.5, 34.5), (6.25, 39.5)):
+            bed = bed.cut(
+                Part.makeCylinder(1.1, 3, App.Vector(sign * x, sign * y_bolt, 42))
+            )
         missing = abs(post.cut(shape).Volume)
         missing_blends = abs(root.cut(shape).Volume)
         missing_bed = abs(bed.cut(shape).Volume)
@@ -1502,7 +1571,9 @@ def replacement_rotor_space_check(doc, module, prefix):
     sign = 1 if prefix == "Port" else -1
     rotor_service = continuous_path(moving, [(0, 0, 0), (0, sign * 60, 0)], obstacles)
     servo_paths = []
-    future_obstacle = {"replacement_rotor_bulk": moving}
+    future_obstacle = {
+        "removed_replacement_rotor_bulk": translated_shape(moving, y=sign * 60)
+    }
     configuration = drive_for_document(doc)
     ear_paths = {}
     for name in sorted(servo_bench_members(doc, shapes)):
@@ -1570,8 +1641,8 @@ def replacement_rotor_space_check(doc, module, prefix):
     for side, grip_sign in (("Port", 1), ("Starboard", -1)):
         jaws = Part.makeCompound(
             [
-                Part.makeBox(15, 3.8, height, App.Vector(14.5, 22.7, z))
-                for z, height in ((47, 1.6), (51.5, 1.5))
+                Part.makeBox(15, 3.8, height, App.Vector(14.5, 37.7, z))
+                for z, height in ((47, 1.5), (51.5, 1.5))
             ]
         )
         if grip_sign < 0:
@@ -1581,7 +1652,7 @@ def replacement_rotor_space_check(doc, module, prefix):
             {
                 "pod": side,
                 "waypoints_mm": points,
-                "scope": "Literal side-entry jaw envelope from the checked shaft-first service route. The lower jaw includes0.1mm closure toward the clocked D-flat; actual hand tools and grip are unqualified.",
+                "scope": "Literal side-entry jaw envelope from the checked shaft-first service route. Both jaws are tangent to the round distal journal; actual hand tools and grip are unqualified.",
                 **continuous_path(jaws, points, future_obstacle),
             }
         )
@@ -1598,8 +1669,9 @@ def replacement_rotor_space_check(doc, module, prefix):
         "excluded_replacement_interface_parts": sorted(excluded),
         "rotor_bulk_removal": rotor_service,
         "servo_module_removal_past_future_bulk": servo_paths,
+        "input_service_requires_future_rotor_removal": True,
         "input_grip_tools_past_future_bulk": grip_tools,
-        "scope": "Continuous enclosing cylinder for a future replacement rotor bulk, including measured current axial stops. The inboard housing, every retained physical propulsion part, outward rotor Y60 and separate input-service stages are checked. Each input shaft moves18mm outward inY then60mm outward inX; its released driver moves60mm outward inX. After ear hardware release, the remaining servo/horn/adapter moves14mm outward inY then60mm outward inX. The future bulk is58mm wide; the separate shaft and root thrust interfaces lie outside this bulk. The present40mm guard and return arm do not accept a50mm propeller. Replacement shaft/clamp interfaces, assembly strength, future motor/propeller hardware and wiring still require design and tests; this is a space reservation only.",
+        "scope": "Continuous enclosing cylinder for a future replacement rotor bulk, including measured current axial stops. The inboard housing, every retained physical propulsion part, outward rotor Y60 and separate input-service stages are checked. The reserved generic future rotor bulk must first be removed along its verified outwardY60 route before input service. Each input shaft then moves32mm outward inY and60mm outward inX; its released driver moves60mm outward inX. After ear hardware release, the remaining servo/horn/adapter moves13mm outward inY then60mm outward inX. The future bulk is58mm wide; the separate shaft and root thrust interfaces lie outside this bulk. The present40mm guard and return arm do not accept a50mm propeller. Replacement shaft/clamp interfaces, assembly strength, future motor/propeller hardware and wiring still require design and tests; this is a space reservation only.",
         "passed": all(row["passed"] for row in gaps)
         and bool(distances)
         and min(distances.values()) >= 1.25 - TOL
@@ -1616,15 +1688,13 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
     report["output_carrier_service"].append(carrier_service)
     shapes, missing = module_service_shapes(doc, module)
     if prefix == "Starboard":
-        shapes = {
-            name: shape.mirror(App.Vector(), App.Vector(0, 1, 0))
-            for name, shape in shapes.items()
-        }
+        for shape in shapes.values():
+            shape.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
     staged = retained_obstacles(shapes, set(carrier_service.get("removed_parts", [])))
     cap_name = prefix + "BearingCap"
     pairs = [
         (cap_name + side + "Bolt", cap_name + side + "Nut")
-        for side in ("Negative", "Positive")
+        for side in ("Negative", "Positive", "Input")
     ]
     required = [cap_name, *[name for pair in pairs for name in pair]]
     missing = sorted(set(missing) | (set(required) - set(staged)))
@@ -1637,7 +1707,11 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
                 retained_obstacles(staged, {bolt, nut}),
                 side_entry_nut=True,
                 capture_depth_mm=1.8,
-                nut_lateral_direction=(-1 if "Negative" in bolt else 1, 0, 0),
+                nut_lateral_direction=(
+                    -1 if "Negative" in bolt else 1,
+                    0,
+                    0,
+                ),
             )
             release.append({"bolt": bolt, "nut": nut, **path})
             staged.pop(bolt)
@@ -1674,13 +1748,46 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
                 "passed": carrier_service["passed"]
                 and stack["passed"]
                 and not missing
-                and len(release) == 2
+                and len(release) == 3
                 and all(row["passed"] for row in release)
                 and cap_path["passed"]
                 and path["passed"],
             }
         )
         staged.pop(name, None)
+
+    input_rows = [row for row in report["input_drive_service"] if row["pod"] == prefix]
+    input_service = input_rows[0] if len(input_rows) == 1 else {"passed": False}
+    name = prefix + "InputBearing"
+    remaining = retained_obstacles(staged, set(input_service.get("removed_parts", [])))
+    path = (
+        split_housing_vertical_service(
+            remaining[name],
+            retained_obstacles(remaining, {name}),
+            bearing_centre_x=16,
+            bearing_centre_y=33,
+        )
+        if name in remaining
+        else {"passed": False, "error": "Missing input bearing"}
+    )
+    report["input_bearing_service"].append(
+        {
+            "bearing": name,
+            "required_prior_checks": ["input_drive_service", "output_carrier_service"],
+            "input_removal_passed": input_service["passed"],
+            "cap_removal": cap_path,
+            "bearing_removal": path,
+            "fastener_release": release,
+            "scope": "For bearing replacement remove the input unit using the checked parked-rotor sequence, return the unmeshed rotor to neutral along the certified reverse parking arc, then remove the output rotor/shaft. Release all three cap pairs and lift the cap, output bearings, then input bearing+Z30. No shaft is forced through a bearing shoulder; all unremoved parts remain obstacles. This is a maintenance route, not an assembly-fit guarantee.",
+            "passed": input_service["passed"]
+            and carrier_service["passed"]
+            and not missing
+            and len(release) == 3
+            and all(row["passed"] for row in release)
+            and cap_path["passed"]
+            and path["passed"],
+        }
+    )
 
 
 def _record_drive_service_checks(report, doc, prefix, sign, physical):
@@ -1713,7 +1820,7 @@ def _record_drive_service_checks(report, doc, prefix, sign, physical):
             "required_prior_check": "input_drive_service",
             "required_mechanical_stage": "input_stub_removal",
             "prior_input_shaft_removal_passed": shaft["passed"],
-            "scope": "After output-gear unmeshing, loosen the input jack and bought driver set screw, support the driver and withdraw its shaft18mm axially then60mm outward inX. Only then remove the loose driver60mm outward inX. The servo/horn/adapter, fixed frame, bearings and rotors remain installed for this stage. Actual set-screw and handling access remain physical checks.",
+            "scope": "After output-gear unmeshing, loosen the input jack and bought driver set screw, support the driver and park the unmeshed rotor90deg, withdraw its shaft32mm axially then60mm outward inX. Only then remove the loose driver60mm outward inX. The servo/horn/adapter, fixed frame, bearings and rotors remain installed for this stage. Actual set-screw and handling access remain physical checks.",
             **driver,
             "passed": service["passed"] and shaft["passed"] and driver["passed"],
         }
@@ -1742,6 +1849,7 @@ def _record_drive_service_checks(report, doc, prefix, sign, physical):
 def _record_drive_checks(report, doc, module, physical, frame, prefix, sign):
     """Collect direct input-drive and separately supported output evidence."""
     pod = doc.getObject(prefix + "Pod")
+    report["input_bearing_support"].append(input_bearing_support_check(doc, prefix))
     _record_drive_motion_checks(report, doc, module, prefix)
     _record_output_stub_checks(report, prefix, pod, physical, frame)
     _record_bearing_checks(report, doc, module, prefix, physical)
@@ -1787,7 +1895,7 @@ def _record_fastener_checks(report, module, physical):
             ]
             rows = prior[0].get("ear_fastener_release", []) if len(prior) == 1 else []
             dependency = "input_drive_service"
-            prerequisite = "Remove both small output gears. Withdraw the lower ear screw and release its shallow-pocket nut, then the upper pair. The whole servo input unit and integrated frame remain installed until both pairs are free."
+            prerequisite = "Remove both small output gears, park the selected output rotor90deg with input neutral, then remove the input shaft and loose driver by the checked routes. Withdraw the lower ear screw and release its shallow-pocket nut, then the upper pair. The remaining servo/horn/adapter and integrated frame stay installed until both pairs are free."
         else:
             prior = [
                 row
@@ -1796,7 +1904,7 @@ def _record_fastener_checks(report, module, physical):
             ]
             rows = prior[0].get("fastener_release", []) if len(prior) == 1 else []
             dependency = "bearing_service"
-            prerequisite = "Remove the selected output gear and withdraw its rotor/shaft outward. Hold each side-entry cap nut, withdraw the cap bolt upward, then move the unthreaded nut0.2mm down and outward alongX. Release the negativeX pair before the positiveX pair."
+            prerequisite = "Remove the selected output gear and withdraw its rotor/shaft outward. Hold each side-entry cap nut, withdraw the cap bolt upward, then move the unthreaded nut0.2mm down and outward alongX. Release the negativeX pair, positiveX pair, then input-wing pair. Input-bearing replacement additionally requires the checked input-unit removal and return of the unmeshed output rotor to neutral before rotor withdrawal."
         matches = [row for row in rows if row["bolt"] == bolt.Name]
         service = (
             matches[0]

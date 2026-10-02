@@ -31,7 +31,21 @@ class CarrierMotionClearanceTests(unittest.TestCase):
             self.assertAlmostEqual(result["axial_travel"]["negative_mm"], 0.5, places=6)
             self.assertAlmostEqual(result["axial_travel"]["positive_mm"], 0.5, places=6)
             self.assertGreaterEqual(result["minimum_clearance_lower_bound_mm"], 1.5)
-            self.assertEqual(len(result["fixed_hardware"]), 8)
+            self.assertEqual(
+                {row["fixed"] for row in result["fixed_hardware"]},
+                {
+                    prefix + stem + kind
+                    for stem in (
+                        "BearingCapNegative",
+                        "BearingCapPositive",
+                        "BearingCapInput",
+                        "ServoEarLower",
+                        "ServoEarUpper",
+                    )
+                    for kind in ("Bolt", "Nut")
+                },
+            )
+            self.assertEqual(len(result["fixed_hardware"]), 10)
             self.assertEqual(len(result["envelope"]["containment"]), 6)
 
     def test_parent_transform_and_tilt_preserve_the_proof(self):

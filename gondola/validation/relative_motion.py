@@ -381,7 +381,7 @@ def _horn_case_clearance(horn, servo):
 
 
 def _functional_pairs(parts, spec):
-    """Classify exactly eight intended interfaces; these are not clearance proofs."""
+    """Classify exactly ten intended interfaces; these are not clearance proofs."""
     by_name, rows, keys = {part["name"]: part for part in parts}, [], set()
     for prefix in ("Port", "Starboard"):
         definitions = [
@@ -396,6 +396,15 @@ def _functional_pairs(parts, spec):
             )
             for side in ("Inboard", "Outboard")
         ] + [
+            (
+                "InputShaft",
+                "InputBearing",
+                "InputDrive",
+                "Fixed",
+                1.5,
+                1.5,
+                "external input bearing support",
+            ),
             (
                 "ServoHorn",
                 "Servo",
@@ -478,6 +487,24 @@ def _functional_pairs(parts, spec):
                     row["classification_passed"]
                     and row["case_and_ears_clearance"]["passed"]
                 )
+            if a == "InputShaft":
+                import FreeCAD as App
+                import Part
+
+                lo, hi = second["bounds"][1]
+                journal = Part.makeCylinder(
+                    1.5,
+                    hi - lo,
+                    App.Vector(first_axis[0], lo, first_axis[2]),
+                    App.Vector(0, 1, 0),
+                )
+                row["missing_round_input_journal_mm3"] = abs(
+                    journal.cut(first["shape"]).Volume
+                )
+                row["classification_passed"] = (
+                    row["classification_passed"]
+                    and row["missing_round_input_journal_mm3"] < TOL
+                )
             rows.append(row)
     return rows, keys
 
@@ -497,7 +524,7 @@ def relative_motion_check(doc, module):
     result = {
         "minimum_nominal_gap_mm": MINIMUM_GAP_MM,
         "angle_domain_deg": [-180, 180],
-        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly eight separately classified functional interfaces. Horn/spline contact is excluded only within the sourced spline projection; each remaining case and both ears receive a separate continuous clearance check. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Opposite sides are independent: overlapping full-orbit envelopes fall back to certified two-angle rectangles with the native input/output rates, never synchronized-only samples. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
+        "scope": "Continuous nominal separation of supplied solids and registry PrintedParts, HardwareParts, ReferenceParts and TapeReferences, excluding clearance reserves and exactly ten separately classified functional interfaces. Horn/spline contact is excluded only within the sourced spline projection; each remaining case and both ears receive a separate continuous clearance check. Each input group must include its complete horn, gear, adapter, metal stub and clamp inventory. Opposite sides are independent: overlapping full-orbit envelopes fall back to certified two-angle rectangles with the native input/output rates, never synchronized-only samples. Same-group assembly contacts, jack-clamp retention, flexible wires, unmodeled gear set screws/OEM retaining screws, manufacturing tolerance, deformation and axial float are not certified here.",
     }
     try:
         spec = drive_for_document(doc)
@@ -683,7 +710,7 @@ def relative_motion_check(doc, module):
             certified_pair_count=sum(row["passed"] for row in rows),
             passed=bool(rows)
             and all(row["passed"] for row in rows)
-            and len(functional) == 8
+            and len(functional) == 10
             and all(row["classification_passed"] for row in functional),
         )
     except (AttributeError, KeyError, ValueError) as exc:

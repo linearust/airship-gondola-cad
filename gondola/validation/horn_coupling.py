@@ -27,6 +27,7 @@ from .servo_module import (
     driver_gear_service_waypoints,
     input_jack_backoff_vector,
     input_shaft_service_waypoints,
+    park_output_rotor_for_input_service,
     servo_service_preparation_check,
     servo_unit_service_waypoints,
 )
@@ -367,34 +368,40 @@ def horn_registration_check(doc, prefix):
 
 
 def input_stub_grip_stock_check(shape, prefix):
-    """Independent3.8mm tip witness with the selected0.5mm flat at240degrees."""
+    """Independent round distal journal and3.8mm accessible tip witnesses."""
     if prefix not in ("Port", "Starboard"):
         raise ValueError("Unknown servo side")
-    required = Part.makeCylinder(1.5, 3.8, V(), V(0, 1, 0)).cut(
-        Part.makeBox(2, 4, 6, V(-3, -0.1, -3))
-    )
-    required.rotate(V(), V(0, 1, 0), 240)
-    required.translate(V(16, 22.7, 50))
+    required = Part.makeCylinder(1.5, 3.8, V(16, 37.7, 50), V(0, 1, 0))
+    journal = Part.makeCylinder(1.5, 19, V(16, 22.5, 50), V(0, 1, 0))
     if prefix == "Starboard":
         required.rotate(V(), V(0, 0, 1), 180)
+        journal.rotate(V(), V(0, 0, 1), 180)
     missing = abs(required.cut(shape).Volume)
+    missing_journal = abs(journal.cut(shape).Volume)
     return {
         "required_tip_length_mm": 3.8,
         "missing_grip_stock_mm3": missing,
-        "scope": "Literal end stock from0.2mm beyond the gear face to the20mm stub tip. The full-length filed flat raises the lower extent toZ48.57496 on Port; the lower jaw closing envelope reaches48.6. This checks nominal stock and access, not friction or grip force.",
-        "passed": missing < TOL,
+        "round_journal_axial_interval_abs_y_mm": [22.5, 41.5],
+        "missing_round_journal_mm3": missing_journal,
+        "scope": "LiteralØ3 round journal from|Y|22.5..41.5, beyond the proximal16mm flat. The grip witness is|Y|37.7..41.5,0.7mm beyond the fixed support end. No flat may cross the bearing journal. Nominal stock and clearance do not qualify fit, runout or grip force; never use bearing fasteners to force a misaligned shaft/horn axis.",
+        "passed": missing < TOL and missing_journal < TOL,
     }
 
 
 def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     """Remove shaft and loose driver before axial servo/horn/adapter withdrawal."""
     shapes, missing = module_service_shapes(doc, module)
+    required_bearings = {side + "InputBearing" for side in ("Port", "Starboard")}
+    missing = sorted(set(missing) | (required_bearings - shapes.keys()))
     if missing:
         return {"passed": False, "missing_parts": missing, "pod": prefix}
     sign = 1 if prefix == "Port" else -1
     if module_release is None:
         module_release = servo_service_preparation_check(doc, module)
     removed = set(module_release.get("removed_parts", ()))
+    shapes, rotor_parking = park_output_rotor_for_input_service(
+        doc, module, prefix, shapes, removed
+    )
     driver, shaft = prefix + "DriverGear", prefix + "InputShaft"
     jack = prefix + "InputShaftClampBolt"
     backoff = input_jack_backoff_vector(prefix)
@@ -443,8 +450,8 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     shaft_path["waypoints_mm"] = shaft_points
     jaws = Part.makeCompound(
         [
-            Part.makeBox(15, 3.8, 1.6, V(14.5, 22.7, 47)),
-            Part.makeBox(15, 3.8, 1.5, V(14.5, 22.7, 51.5)),
+            Part.makeBox(15, 3.8, 1.5, V(14.5, 37.7, 47)),
+            Part.makeBox(15, 3.8, 1.5, V(14.5, 37.7, 51.5)),
         ]
     )
     if sign < 0:
@@ -454,14 +461,14 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     grip_pull = continuous_path(jaws, shaft_points, grip_obstacles)
     grip_stock = input_stub_grip_stock_check(shapes[shaft], prefix)
     shaft_grip = {
-        "jaw_box_mm": [[15, 3.8, 1.6], [15, 3.8, 1.5]],
-        "lower_jaw_closure_allowance_mm": 0.1,
-        "shaft_tip_projection_mm": 4.0,
+        "jaw_box_mm": [[15, 3.8, 1.5], [15, 3.8, 1.5]],
+        "nominal_round_tip_contact": "opposed tangent faces atZ48.5 and51.5",
+        "shaft_tip_projection_beyond_support_mm": 4.5,
         "jaw_contact_axial_length_mm": 3.8,
         "tip_stock": grip_stock,
         "side_entry": grip_entry,
         "shaft_pull": grip_pull,
-        "scope": "Two side-entry fine-plier jaws grip the exposed4mm shaft tip, inset0.2mm from the gear face. Support the driver while releasing both set screws. Pull18mm axially, then move outwardX60; a long coaxial puller is not covered. Actual plier dimensions and non-damaging grip remain physical checks.",
+        "scope": "With this output rotor parked and input neutral, two side-entry fine-plier jaws grip3.8mm of the round tip beyond the support. Support the driver while releasing both set screws. Pull32mm axially to clear the retained input bearing and housing, then move outwardX60. Actual plier dimensions and non-damaging grip remain physical checks.",
         "passed": grip_entry["passed"] and grip_pull["passed"] and grip_stock["passed"],
     }
     removed.add(shaft)
@@ -676,6 +683,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
     )
     passed = (
         module_release["passed"]
+        and rotor_parking["passed"]
         and jack_release["passed"]
         and shaft_grip["passed"]
         and driver_path["passed"]
@@ -688,6 +696,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         "service_mode": "shaft_first_compact_frame",
         "preparation_passed": module_release["passed"],
         "required_prior_check": "servo_service_preparation",
+        "output_rotor_parking": rotor_parking,
         "driver_gear_removal": driver_path,
         "input_stub_removal": shaft_path,
         "input_jack_release": jack_release,
@@ -695,6 +704,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
         "ear_fastener_release": ear_rows,
         "part_paths": paths,
         "moving_parts": sorted(moving),
+        "removed_parts": sorted(removed | moving),
         "retained_parts": sorted(fixed),
         "bench_members": sorted(bench),
         "rear_holding_tool_off_frame": holding,
@@ -703,7 +713,7 @@ def assembled_servo_service_check(doc, module, prefix, *, module_release=None):
             "passed": all(r["passed"] for r in fasteners),
         },
         "adapter_release_off_frame": adapter_route,
-        "scope": "KST only, neutral and unpowered, leads disconnected: remove both small output gears. Support the48T driver, release its unmodeled set screw and back off the input M2 jack0.2mm. Grip the4mm exposed tip of the20mm stub with the checked side-entry jaws; pull18mm forwardY then60mm outwardX. Do not substitute a long coaxial puller. Remove the loose driver60mm outwardX. Withdraw the two M1.6 ear screws and lift their nuts from the shallow pockets. Keep the OEM horn and both M1 joints assembled: move the servo/horn/adapter14mm forwardY through the7.4x20.4 window, then60mm outwardX; mirror X/Y for Starboard. Only on the detached unit turn rear M1 screws to release the front nuts; keep screws in the horn until the adapter clears their tips. A<=5.7mm OD x60mm rear hex nutdriver and fine pliers are off-frame envelopes. Actual gear set-screw access, tool grip and delivered fits remain physical checks. The optional centre opening is outside this two-bolt configuration. Reverse for assembly, fitting the OEM spline screw before the adapter; insert the shaft and tighten both shaft/gear clamps after the servo is seated. Finish tight printed windows, never force case compression. Full shaft-stop floor retained; no physical retention or stiffness rating.",
+        "scope": "KST only, unpowered and leads disconnected: remove both small output gears. Leave the input neutral and park only the selected output rotor90deg about module+Y. Support the48T driver, release its unmodeled set screw and back off the input M2 jack0.2mm. Grip3.8mm of the35mm shaft's round tip beyond the input support; pull32mm forwardY then60mm outwardX. Input bearing and cap remain fixed. Remove the loose driver60mm outwardX. Withdraw the two M1.6 ear screws and lift their nuts from the shallow pockets. Keep the OEM horn and both M1 joints assembled: move servo/horn/adapter13mm forwardY through the7.4x20.4 window, then60mm outwardX; mirror translation X/Y for Starboard. Only off-frame turn rear M1 screws to release the front nuts; retain screws until the adapter clears their tips. A<=5.7mm OD x60mm rear hex nutdriver and fine pliers are off-frame envelopes. Actual gear set-screw access, tool grip, coaxiality and horn runout remain physical checks. The optional centre opening is outside this two-bolt configuration. Reverse for assembly: fit OEM spline screw before adapter, seat the servo, insert round journal and align without forcing, then tighten shaft/gear clamps. Return rotor to neutral before refitting output gears. Finish tight windows without case compression or bearing preload. Full shaft-stop floor retained; no physical retention or stiffness rating.",
         "passed": passed,
     }
 

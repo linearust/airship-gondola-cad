@@ -129,7 +129,7 @@ class NativeInterfaceTests(unittest.TestCase):
                             ).getParentGeoFeatureGroup(),
                             pod,
                         )
-                    for position in ("Negative", "Positive"):
+                    for position in ("Negative", "Positive", "Input"):
                         for kind in ("Bolt", "Nut"):
                             cap_fastener = doc.getObject(
                                 prefix + "BearingCap" + position + kind
@@ -142,6 +142,7 @@ class NativeInterfaceTests(unittest.TestCase):
                     for suffix in (
                         "OutputBearingInboard",
                         "OutputBearingOutboard",
+                        "InputBearing",
                         "BearingCap",
                     ):
                         obj = doc.getObject(prefix + suffix)

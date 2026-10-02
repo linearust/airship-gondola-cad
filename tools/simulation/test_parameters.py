@@ -17,6 +17,7 @@ from gondola.provenance import file_sha256
 from tools.simulation.export_parameters import (
     export,
     extract,
+    input_support_geometry,
     optical_pitch_degrees,
     output_support_geometry,
     printed_carrier_mass_properties,
@@ -90,7 +91,75 @@ class SupportTopologyTests(unittest.TestCase):
                 "Part::Feature", prefix + "OutputShaft" + shaft_suffix
             )
             pod.addObject(shaft)
+            drive = self.doc.addObject("App::Part", prefix + "InputDrive")
+            root.addObject(drive)
+            drive.Placement.Base = App.Vector(sign * 16, -sign * 8, 50)
+            input_bearing = self.doc.addObject("Part::Feature", prefix + "InputBearing")
+            assembly.addObject(input_bearing)
+            input_bearing.Shape = obj.Shape.copy()
+            input_bearing.Placement.Base = App.Vector(sign * 16, sign * 33, 50)
+            input_bearing.addProperty("App::PropertyString", "HardwareSKU")
+            input_bearing.HardwareSKU = "BEARING_3X6X2_5"
+            input_shaft = self.doc.addObject("Part::Feature", prefix + "InputShaft")
+            drive.addObject(input_shaft)
+            input_shaft.Shape = Part.makeCylinder(
+                1.5, 35, App.Vector(0, sign * 14.5, 0), App.Vector(0, sign, 0)
+            ).cut(
+                Part.makeBox(2, 16, 4, App.Vector(1, 14.5 if sign > 0 else -30.5, -2))
+            )
+            input_shaft.addProperty("App::PropertyString", "HardwareSKU")
+            input_shaft.HardwareSKU = "SS304_CUT3_L35_FLAT16_A0"
         self.doc.recompute()
+
+    def test_input_bearing_stays_fixed_and_does_not_become_a_third_output_bearing(self):
+        for prefix, sign in (("Port", 1), ("Starboard", -1)):
+            output = output_support_geometry(self.doc, prefix)
+            self.assertEqual(set(output["bearings"]), {"Inboard", "Outboard"})
+            support = input_support_geometry(self.doc, prefix)
+            self.assertEqual(support["shared_bearing_cap"], prefix + "BearingCap")
+            bearing = support["bearing"]
+            self.assertEqual(bearing["object"], prefix + "InputBearing")
+            self.assertEqual(
+                bearing["centre_cad_m"],
+                [0.030 if sign > 0 else -0.002, sign * 0.033, 0.05],
+            )
+            self.assertEqual(
+                bearing["centre_from_input_axis_neutral_m"], [0, sign * 0.041, 0]
+            )
+            self.assertTrue(bearing["fixed_during_tilt"])
+            self.assertEqual(support["input_shaft"]["length_m"], 0.035)
+            self.assertEqual(support["input_shaft"]["proximal_flat_length_m"], 0.016)
+            self.assertLess(support["input_shaft"]["round_journal_missing_mm3"], 1e-7)
+
+    def test_input_bearing_cannot_rotate_with_input_or_output(self):
+        bearing = self.doc.PortInputBearing
+        parent = bearing.getParentGeoFeatureGroup()
+        for group in (self.doc.PortInputDrive, self.doc.PortPod):
+            with self.subTest(group=group.Name):
+                try:
+                    group.addObject(bearing)
+                    with self.assertRaisesRegex(ValueError, "Input support topology"):
+                        input_support_geometry(self.doc, "Port")
+                finally:
+                    parent.addObject(bearing)
+
+    def test_input_support_rejects_lost_journal_or_misaligned_bearing(self):
+        bearing, shaft = self.doc.PortInputBearing, self.doc.PortInputShaft
+        original_bearing = App.Placement(bearing.Placement)
+        original_shaft = shaft.Shape.copy()
+        try:
+            bearing.Placement.Base.x += 1
+            with self.assertRaisesRegex(ValueError, "coaxial"):
+                input_support_geometry(self.doc, "Port")
+            bearing.Placement = original_bearing
+            shaft.Shape = original_shaft.cut(
+                Part.makeBox(2, 35, 4, App.Vector(1, 14.5, -2))
+            )
+            with self.assertRaisesRegex(ValueError, "round bearing journal"):
+                input_support_geometry(self.doc, "Port")
+        finally:
+            bearing.Placement = original_bearing
+            shaft.Shape = original_shaft
 
     def test_literal_inboard_pair_and_only_driven_shaft_are_exported(self):
         for prefix, sign, shaft_suffix in (
@@ -144,11 +213,21 @@ class SupportTopologyTests(unittest.TestCase):
 
     def test_common_global_transform_preserves_relative_support_geometry(self):
         expected = output_support_geometry(self.doc, "Port")
+        expected_input = input_support_geometry(self.doc, "Port")
         self.doc.MainPropulsionModule.Placement = App.Placement(
             App.Vector(71, -39, 26), App.Rotation(App.Vector(2, -3, 5), 37)
         )
         self.doc.recompute()
         actual = output_support_geometry(self.doc, "Port")
+        actual_input = input_support_geometry(self.doc, "Port")
+        self.assertEqual(
+            actual_input["bearing"]["centre_from_input_axis_neutral_m"],
+            expected_input["bearing"]["centre_from_input_axis_neutral_m"],
+        )
+        self.assertNotEqual(
+            actual_input["bearing"]["centre_cad_m"],
+            expected_input["bearing"]["centre_cad_m"],
+        )
         self.assertAlmostEqual(actual["bearing_centre_spacing_m"], 0.013)
         for label in ("Inboard", "Outboard"):
             self.assertEqual(
@@ -188,6 +267,48 @@ class SupportTopologyTests(unittest.TestCase):
                         output_support_geometry(self.doc, "Port")
                 finally:
                     self.doc.removeObject(obj.Name)
+
+
+class NativeSupportExportTests(unittest.TestCase):
+    def test_built_and_reopened_input_support_stays_separate_from_output_pair(self):
+        from gondola.parts import propulsion
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input_support.FCStd"
+            doc = App.newDocument("NativeInputSupportExport")
+            try:
+                propulsion.build_propulsion_module(doc)
+                doc.recompute()
+                before = {
+                    prefix: input_support_geometry(doc, prefix)
+                    for prefix in ("Port", "Starboard")
+                }
+                doc.saveAs(str(path))
+            finally:
+                App.closeDocument(doc.Name)
+            doc = App.openDocument(str(path), hidden=True)
+            try:
+                for prefix, sign in (("Port", 1), ("Starboard", -1)):
+                    with self.subTest(side=prefix):
+                        result = input_support_geometry(doc, prefix)
+                        self.assertEqual(result, before[prefix])
+                        self.assertEqual(
+                            result["bearing"]["centre_cad_m"],
+                            [sign * 0.016, sign * 0.033, 0.05],
+                        )
+                        self.assertEqual(result["input_shaft"]["length_m"], 0.035)
+                        self.assertEqual(
+                            result["input_shaft"]["round_journal_missing_mm3"], 0
+                        )
+                        output = output_support_geometry(doc, prefix)
+                        self.assertEqual(
+                            set(output["bearings"]), {"Inboard", "Outboard"}
+                        )
+                        self.assertAlmostEqual(
+                            output["bearing_centre_spacing_m"], 0.013
+                        )
+            finally:
+                App.closeDocument(doc.Name)
 
 
 class SavedGeometryTests(unittest.TestCase):
@@ -241,6 +362,10 @@ class SavedGeometryTests(unittest.TestCase):
             )
             self.assertAlmostEqual(support["bearing_centre_spacing_m"], 0.013)
             self.assertEqual(support["idler_shafts"], [])
+            input_support = result["input_drive_support_geometry"][name]
+            self.assertEqual(input_support["bearing"]["object"], name + "InputBearing")
+            self.assertTrue(input_support["bearing"]["fixed_during_tilt"])
+            self.assertEqual(input_support["input_shaft"]["length_m"], 0.035)
             self.assertEqual(
                 vector_m(pod.getGlobalPlacement().multVec(App.Vector(6.3, 0, 0))),
                 rotor["illustrative_propeller_disk_centre_cad_m"],
@@ -452,7 +577,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 6)
+                self.assertEqual(snapshot["schema_version"], 7)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

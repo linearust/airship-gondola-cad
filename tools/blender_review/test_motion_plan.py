@@ -31,6 +31,12 @@ def native_evidence():
         parts = moving(prefix, side)
         retained = [
             "PropulsionFixedFrame",
+            "PortInputBearing",
+            "StarboardInputBearing",
+            "PortBearingCapInputBolt",
+            "PortBearingCapInputNut",
+            "StarboardBearingCapInputBolt",
+            "StarboardBearingCapInputNut",
             *[
                 prefix + suffix
                 for suffix in (
@@ -100,6 +106,138 @@ def native_evidence():
             for prefix in ("Port", "Starboard")
         ],
     }
+
+
+def input_service_evidence():
+    rows = []
+    fixed = ["PropulsionFixedFrame"] + [
+        side + suffix
+        for side in ("Port", "Starboard")
+        for suffix in (
+            "InputBearing",
+            "BearingCap",
+            "BearingCapInputBolt",
+            "BearingCapInputNut",
+        )
+    ]
+    for output in native_evidence()["local_checks"]["output_carrier_service"]:
+        prefix = output["pod"]
+        sign = 1 if prefix == "Port" else -1
+        remaining = [
+            prefix + suffix
+            for suffix in (
+                "Servo",
+                "ServoHorn",
+                "HornGearAdapter",
+                "HornGearClampNearBolt",
+                "HornGearClampFarBolt",
+                "HornGearClampNearNut",
+                "HornGearClampFarNut",
+                "InputShaftClampBolt",
+                "InputShaftClampNut",
+            )
+        ]
+        rows.append(
+            {
+                "pod": prefix,
+                "passed": True,
+                "preparation_passed": True,
+                "required_prior_check": "servo_service_preparation",
+                "service_mode": "shaft_first_compact_frame",
+                "output_rotor_parking": {
+                    "passed": True,
+                    "input_remains_neutral": True,
+                    "angle_deg": 90,
+                    "axis_origin_mm": [0, sign * 75, 50],
+                    "axis_direction": [0, 1, 0],
+                    "moving_parts": output["moving_parts"],
+                    "retained_parts": fixed.copy(),
+                },
+                "input_stub_removal": {
+                    "passed": True,
+                    "waypoints_mm": [
+                        (0, 0, 0),
+                        (0, sign * 32, 0),
+                        (sign * 60, sign * 32, 0),
+                    ],
+                },
+                "driver_gear_removal": {
+                    "passed": True,
+                    "waypoints_mm": [(0, 0, 0), (sign * 60, 0, 0)],
+                },
+                "moving_parts": remaining,
+                "retained_parts": fixed.copy(),
+                "part_paths": [
+                    {
+                        "part": name,
+                        "passed": True,
+                        "waypoints_mm": [
+                            (0, 0, 0),
+                            (0, sign * 13, 0),
+                            (sign * 60, sign * 13, 0),
+                        ],
+                    }
+                    for name in remaining
+                ],
+            }
+        )
+    return {"local_checks": {"input_drive_service": rows}}
+
+
+class InputServiceSummaryTests(unittest.TestCase):
+    def test_native_sequence_is_recorded_without_claiming_an_animation(self):
+        summary = REVIEW_MOTION.input_service_summary(input_service_evidence())
+        self.assertEqual(set(summary), {"Port", "Starboard"})
+        for prefix, sign in (("Port", 1), ("Starboard", -1)):
+            row = summary[prefix]
+            self.assertFalse(row["animated"])
+            self.assertTrue(row["input_remains_neutral"])
+            self.assertEqual(row["output_rotor_parking_deg"], 90)
+            self.assertEqual(
+                row["input_shaft_waypoints_mm"][-1], (sign * 60, sign * 32, 0)
+            )
+            self.assertEqual(
+                row["servo_horn_adapter_waypoints_mm"][-1], (sign * 60, sign * 13, 0)
+            )
+            self.assertIn(prefix + "InputBearing", row["fixed_support_parts"])
+
+    def test_missing_failed_or_stale_input_service_cannot_be_recorded(self):
+        for side in (0, 1):
+            for change in (
+                "missing",
+                "failed",
+                "parking",
+                "coupled_input",
+                "fixed_bearing",
+                "shaft_path",
+                "servo_path",
+                "missing_part",
+            ):
+                evidence = input_service_evidence()
+                row = evidence["local_checks"]["input_drive_service"][side]
+                if change == "missing":
+                    evidence["local_checks"]["input_drive_service"].pop()
+                elif change == "failed":
+                    row["passed"] = False
+                elif change == "parking":
+                    row["output_rotor_parking"]["angle_deg"] = 180
+                elif change == "coupled_input":
+                    row["output_rotor_parking"]["input_remains_neutral"] = False
+                elif change == "fixed_bearing":
+                    row["output_rotor_parking"]["retained_parts"].remove(
+                        row["pod"] + "InputBearing"
+                    )
+                elif change == "shaft_path":
+                    row["input_stub_removal"]["waypoints_mm"][1] = (0, 26, 0)
+                elif change == "servo_path":
+                    row["part_paths"][0]["waypoints_mm"][1] = (0, 14, 0)
+                else:
+                    row["part_paths"].pop()
+                with (
+                    self.subTest(side=side, change=change),
+                    self.assertRaisesRegex(RuntimeError, "input-service"),
+                ):
+                    REVIEW_MOTION.input_service_summary(evidence)
 
 
 class ReviewMotionBoundaries(unittest.TestCase):

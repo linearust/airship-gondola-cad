@@ -1,4 +1,4 @@
-"""Two compact closed servo frames with local feet into the fixed frame beam.
+"""Two compact closed servo frames seated directly on the central plinth.
 
 The case window has nominal clearance on all four faces. The two ear fasteners
 locate the installed servo. Remove the input shaft and loose driver before
@@ -27,8 +27,6 @@ CASE_WINDOW_WIDTH = servo_envelope.CASE_WIDTH + 2 * CASE_CLEARANCE
 CASE_WINDOW_HEIGHT = servo_envelope.CASE_LENGTH + 2 * CASE_CLEARANCE
 CRADLE_WEB_THICKNESS = 3.0
 CRADLE_FLOOR_Z = 29.5
-LOWER_FOOT_THICKNESS = 5.0
-LOWER_FOOT_INBOARD_X = 6.0
 REAR_LEAD_DEPARTURE = 1.8
 REAR_LEAD_ALLOWANCE = 13.9
 # Rail service validators use these contract-owned datums.
@@ -79,10 +77,10 @@ def _ear_nut_pockets(drive):
 
 
 def integrated_cradle_shape(drive=SELECTED_DRIVE):
-    """Compact closed walls; local feet join the main beam in the final frame.
+    """Compact closed walls directly seated on the full-width central plinth.
 
     Remove both output gears, withdraw the input stub and loose driver, then
-    release the ear pairs. The servo/horn/adapter moves forwardY14 and outwardX.
+    release the ear pairs. The servo/horn/adapter moves forwardY13 and outwardX.
     Finish tight printed windows; never force the case or clamp it in compression.
     """
     x, z = drive.input_x_mm, drive.input_z_mm
@@ -108,21 +106,10 @@ def integrated_cradle_shape(drive=SELECTED_DRIVE):
     )
     body = body.cut(window).cut(_ear_clearance(drive)).cut(_ear_nut_pockets(drive))
     body.translate(V(0, -DRIVE_INWARD_OFFSET_MM, 0))
-    lower = box(
-        outer_x - LOWER_FOOT_INBOARD_X,
-        MOUNT_DEPTH,
-        LOWER_FOOT_THICKNESS,
-        (
-            LOWER_FOOT_INBOARD_X,
-            rear_y - DRIVE_INWARD_OFFSET_MM,
-            CRADLE_FLOOR_Z - LOWER_FOOT_THICKNESS,
-        ),
-    )
-    one = union([body, lower])
-    result = union([one, opposite(one)])
+    result = union([body, opposite(body)])
     result = result.removeSplitter()
     if not result.isValid() or len(result.Solids) != 2:
         raise RuntimeError(
-            "Servo supports must form two valid solids before beam union"
+            "Servo supports must form two valid solids before central plinth union"
         )
     return result

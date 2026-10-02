@@ -78,6 +78,104 @@ class ReviewMotionPlan:
     axial_steps: tuple = ((1, 0), (49, 1), (97, -1), (145, 0), (193, 1), (241, 0))
     rotor_service_frames: int = 193
 
+    def input_service_summary(self, evidence):
+        """Retain the checked input sequence as metadata, without animating it."""
+        rows = evidence.get("local_checks", {}).get("input_drive_service", [])
+        if len(rows) != 2 or {row.get("pod") for row in rows} != {"Port", "Starboard"}:
+            raise RuntimeError("Missing complete input-service evidence.")
+        summary = {}
+        for row in rows:
+            prefix = row["pod"]
+            sign = 1 if prefix == "Port" else -1
+            parking = row.get("output_rotor_parking", {})
+            fixed = {
+                "PropulsionFixedFrame",
+                *(
+                    side + suffix
+                    for side in ("Port", "Starboard")
+                    for suffix in (
+                        "InputBearing",
+                        "BearingCap",
+                        "BearingCapInputBolt",
+                        "BearingCapInputNut",
+                    )
+                ),
+            }
+            shaft = row.get("input_stub_removal", {})
+            driver = row.get("driver_gear_removal", {})
+            paths = row.get("part_paths", [])
+            remaining = {
+                prefix + suffix
+                for suffix in (
+                    "Servo",
+                    "ServoHorn",
+                    "HornGearAdapter",
+                    "HornGearClampNearBolt",
+                    "HornGearClampFarBolt",
+                    "HornGearClampNearNut",
+                    "HornGearClampFarNut",
+                    "InputShaftClampBolt",
+                    "InputShaftClampNut",
+                )
+            }
+
+            def checked_points(path, expected):
+                points = path.get("waypoints_mm", [])
+                return (
+                    path.get("passed") is True
+                    and len(points) == len(expected)
+                    and all(
+                        isinstance(point, (list, tuple))
+                        and len(point) == 3
+                        and all(_matches_number(a, b) for a, b in zip(point, target))
+                        for point, target in zip(points, expected)
+                    )
+                )
+
+            if (
+                row.get("passed") is not True
+                or row.get("preparation_passed") is not True
+                or row.get("required_prior_check") != "servo_service_preparation"
+                or row.get("service_mode") != "shaft_first_compact_frame"
+                or parking.get("passed") is not True
+                or parking.get("input_remains_neutral") is not True
+                or not _matches_number(parking.get("angle_deg"), 90)
+                or parking.get("axis_origin_mm") != [0, sign * 75, 50]
+                or parking.get("axis_direction") != [0, 1, 0]
+                or set(parking.get("moving_parts", [])) != rotor_members(prefix)
+                or not fixed.issubset(parking.get("retained_parts", []))
+                or not fixed.issubset(row.get("retained_parts", []))
+                or not checked_points(
+                    shaft, [(0, 0, 0), (0, sign * 32, 0), (sign * 60, sign * 32, 0)]
+                )
+                or not checked_points(driver, [(0, 0, 0), (sign * 60, 0, 0)])
+                or set(row.get("moving_parts", [])) != remaining
+                or len(paths) != len(remaining)
+                or {path.get("part") for path in paths} != remaining
+                or any(
+                    not checked_points(
+                        path, [(0, 0, 0), (0, sign * 13, 0), (sign * 60, sign * 13, 0)]
+                    )
+                    for path in paths
+                )
+            ):
+                raise RuntimeError(
+                    "Update the recorded input-service sequence for changed native evidence."
+                )
+            summary[prefix] = {
+                "animated": False,
+                "required_prior_check": row["required_prior_check"],
+                "output_rotor_parking_deg": parking["angle_deg"],
+                "output_rotor_parking_axis_origin_mm": parking["axis_origin_mm"],
+                "input_remains_neutral": True,
+                "input_shaft_waypoints_mm": shaft["waypoints_mm"],
+                "loose_driver_waypoints_mm": driver["waypoints_mm"],
+                "servo_horn_adapter_waypoints_mm": paths[0]["waypoints_mm"],
+                "fixed_support_parts": sorted(fixed),
+                "scope": "Summary of passed native geometric service evidence only. Remove both output gears before output-only parking; release the shaft and gear clamps, pull the input shaft, remove the loose driver and ear hardware, then withdraw the servo/horn/adapter. Input bearing and common cap remain fixed. No input-service animation, hand-force, loaded alignment or physical fit qualification.",
+            }
+        return summary
+
     def check_basis(self, evidence):
         """Require both saved carrier proofs before illustrating axial play."""
         clearances = evidence.get("saved_carrier_metal_clearances", [])
@@ -116,6 +214,12 @@ class ReviewMotionPlan:
             gear = prefix + "OutputGear"
             retained = {
                 "PropulsionFixedFrame",
+                "PortInputBearing",
+                "StarboardInputBearing",
+                "PortBearingCapInputBolt",
+                "PortBearingCapInputNut",
+                "StarboardBearingCapInputBolt",
+                "StarboardBearingCapInputNut",
                 prefix + "BearingCap",
                 prefix + "OutputBearingInboard",
                 prefix + "OutputBearingOutboard",
@@ -192,7 +296,7 @@ class ReviewMotionPlan:
         return (
             "Unpowered bench sequence with leads freed and rotor supported. Release the bought output gear set screw, "
             "withdraw the gear 11mm inward, lift20mm and move30mm aside. Then withdraw the complete Port rotor and "
-            "its locked output shaft60mm outward through both inboard bearings. The jack clamp, bearing cap, fixed frame, "
+            "its locked output shaft60mm outward through both inboard bearings. Both input bearings and their cap-wing screws remain fixed. The jack clamp, bearing cap, fixed frame, "
             "servos and opposite rotor stay assembled. Gear set screw, hands, wires and physical fitted friction are not simulated. "
             "No servo saddle withdrawal or separate shaft staging is shown."
         )

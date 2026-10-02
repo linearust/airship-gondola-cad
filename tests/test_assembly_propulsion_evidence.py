@@ -1,4 +1,4 @@
-"""Saved-model aggregation must retain the complete six-site nut evidence."""
+"""Saved-model aggregation must retain the complete eight-site nut evidence."""
 
 import copy
 import json
@@ -16,7 +16,7 @@ except ImportError:
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedPropulsionEvidenceTests(unittest.TestCase):
-    def test_saved_aggregation_accepts_six_guides_and_rejects_bad_inventories(self):
+    def test_saved_aggregation_accepts_eight_guides_and_rejects_bad_inventories(self):
         from gondola.config import BASELINE_FILE
         from gondola.contracts.drive import drive_for_document
         from gondola.validation.assembly import detailed_propulsion_evidence
@@ -39,13 +39,15 @@ class SavedPropulsionEvidenceTests(unittest.TestCase):
                     {
                         "PortBearingCapNegativeNut",
                         "PortBearingCapPositiveNut",
+                        "PortBearingCapInputNut",
                         "PortOutputClampNegativeNut",
                         "StarboardBearingCapNegativeNut",
                         "StarboardBearingCapPositiveNut",
+                        "StarboardBearingCapInputNut",
                         "StarboardOutputClampPositiveNut",
                     },
                 )
-                self.assertEqual(len(guides), 6)
+                self.assertEqual(len(guides), 8)
                 self.assertTrue(all(row["passed"] for row in guides), guides)
 
                 # Isolate final aggregation from unrelated expensive motion
@@ -85,10 +87,10 @@ class SavedPropulsionEvidenceTests(unittest.TestCase):
                 failed = copy.deepcopy(guides)
                 failed[-1]["passed"] = False
                 cases = (
-                    ("complete six sites", guides, True),
+                    ("complete eight sites", guides, True),
                     ("missing site", guides[:-1], False),
                     ("extra site", guides + guides[-1:], False),
-                    ("legacy eight rows", guides + guides[-2:], False),
+                    ("legacy six rows", guides[:-2], False),
                     ("failed site", failed, False),
                 )
                 with ExitStack() as stack:

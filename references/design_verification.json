@@ -1,19 +1,19 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-02T10:02:01.036014+00:00",
-  "revision": "CE",
-  "change_kind": "Integrated inboard-supported open-ended propulsion with standardized rail shoes, raised beam, individually closed servo frames and two-point guard supports",
-  "scope": "Nominal CAD geometry and ordered service only. Two purchased bearings per rotor remain inboard; individual snug servo frames use shaft-first and loose-gear removal before axial and outward servo service; ear joints clamp the servos, and the nominal0.2mm-per-face window allowance needs finished-part fitting. Identical paired rail shoes require coplanar wall tops, with bending outside the rigid pair. Physical fit, strength, fatigue, creep, adhesion, moving wires and loaded retention remain unqualified. Motor-carrier fabrication remains on hold pending actual motor/propeller installation evidence.",
-  "predecessor_commit": "f728876fde7e7871c4ceb31dc1a3e466663f83b0",
-  "source_fingerprint": "f2a0b7af385db31bf7201370ef72ff277e92c10a708a5435bef01454f85d838f",
-  "cad_sha256": "f21d54e287b7870d28abd638965feafed7abdd8738a5ff6e6e0683702aa04b42",
+  "recorded_utc": "2026-10-02T17:24:09.924544+00:00",
+  "revision": "CF",
+  "change_kind": "External input bearings in shared housings and broad central servo plinth",
+  "scope": "Nominal CAD geometry and ordered service only. One external input bearing per side supplements each inboard output-bearing pair; six bearings are required, with only four historically confirmed purchased. A shared three-joint cap seats on hard lands. Each35mm input rod has a16mm proximal flat and round distal journal. The upper central plinth directly supports both closed servo frames. Servicing unmeshes gears and parks the output rotor90deg before shaftY32/X60 and servoY13/X60 removal. The nominal0.2mm-per-face servo window allowance and nominal diameter6 bearing seats require finished-part fitting and input coaxiality checks. Physical fit, strength, fatigue, creep, adhesion, moving wires and loaded retention remain unqualified. Motor-carrier fabrication remains on hold pending actual motor/propeller installation evidence.",
+  "predecessor_commit": "0fb4ca7ac4444138898f1bafbb5b5c7e35ae9550",
+  "source_fingerprint": "70d889879eb5d430539ead49dc21ffe173d17cd6cd6b54bc2ffadf5d1d31ef0b",
+  "cad_sha256": "c3b25d2f65e27cca0a47794becd073aef216540bf077b5b95b7127e4a40c995e",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "4a83a7f038d982d33bf47328f752045b59c4970dd0d01a6383c2923914bd9e5e",
+    "sha256": "75a8044745951b29295a2f7447110465f5bf8368b82fca9e1cbffb017b0263f4",
     "independently_reviewed": true
   },
   "native_tests": {
-    "testsRun": 818,
+    "testsRun": 840,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -23,55 +23,59 @@
       0,
       0,
       0,
+      0,
+      0,
+      0,
+      0,
       0
     ],
     "changed_inputs": [],
-    "started_utc": "2026-10-02T09:33:53.897085+00:00",
-    "completed_utc": "2026-10-02T10:01:22.353967+00:00",
-    "elapsed_seconds": 1648.4568836770195,
+    "started_utc": "2026-10-02T17:04:05.542111+00:00",
+    "completed_utc": "2026-10-02T17:22:39.328146+00:00",
+    "elapsed_seconds": 1113.786037154001,
     "passed": true
   },
   "pipeline": [
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 27.464901926985476,
-      "log_sha256": "173246af9f6a2250a84f8fa0cc7ba311e96dec2a52d973f1c9713f886d538f5b"
+      "elapsed_seconds": 35.62715138198109,
+      "log_sha256": "035681e2738ba209b5833f8d2dcb900aab18d7148563892ce276f8d951cad757"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 45.574860572000034,
+      "elapsed_seconds": 44.26785874800407,
       "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 16.40450153197162,
-      "log_sha256": "fb135566d6ff85bb6ecbe70500ada136db57ef2d386ebd33dc99eabf8a27d826"
+      "elapsed_seconds": 19.98448545500287,
+      "log_sha256": "2b1eec01f01809ff4f349c03369b64b9dcb612d913b0b5a509a8f4717fadc5a3"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 913.0385682909982,
+      "elapsed_seconds": 981.3027364159934,
       "log_sha256": "f6554241919e3d82db607e774ed4ee95da98655b5e1ec4a368a4c582c45e8439"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.36619650898501277,
-      "log_sha256": "06c70d716236281ddf165be82a0dedcc2f727e405473e403710a9a285bd15081"
+      "elapsed_seconds": 0.29758039000444114,
+      "log_sha256": "c5b0bf8cff4da81225ddc9338aee777b96e9fc3c7e91a808d484514d9c5730a0"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 18.47051716898568,
-      "log_sha256": "b0501045a714b42567724b9bad2b4d805c3dda9b9cce9c69aea8d106d223708b"
+      "elapsed_seconds": 14.586521994991926,
+      "log_sha256": "fb24628babcc16f5fc239fd15535bd31518557259e89cfa9887385b6a43dcbed"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.6983968789863866,
+      "elapsed_seconds": 0.5915622299944516,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -88,19 +92,19 @@
     "passed": true,
     "scene_count": 6,
     "sampled_frames": 1181,
-    "matrix_checks": 78703,
+    "matrix_checks": 84487,
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola_attachment_detail.FCStd": "7d348f5418c9474ad3b8c81941dd4f8b47cd61e92c8e7143a36498aca0c3d54f",
-    "gondola_power_options.FCStd": "609c1482fb08503753e2f55fe309df5ff4cc80f1807c59ea6b3db917d6d7d592",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "8f50b7e4b8292b2725a941fc2a9a988b0abed7ac69c21e2f07f2d0b43cb113b1",
-    "gondola_print_parts.FCStd": "170a4c8d59f5fa6267a9cae929a2f2d1ba409cdc02e629efc434ae523aab379a",
-    "gondola.FCStd": "f21d54e287b7870d28abd638965feafed7abdd8738a5ff6e6e0683702aa04b42"
+    "gondola_attachment_detail.FCStd": "d6b0b57086452e7c7acc3b58416ee327abf456dafcbe8e5ad637e1592d2f6635",
+    "gondola_power_options.FCStd": "ac6233ba50951ac9de1772e1c5d341244075c98b2d3a7f3c499a901e7d3e8a4b",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "3202a125f5a644fffde222b63ea529aeca43968231381a7e14ba2418faca00c1",
+    "gondola_print_parts.FCStd": "276f1934a5bfcb614a67fb8ef70ec5e29b9f46a281f74e29a122ea2899e46b23",
+    "gondola.FCStd": "c3b25d2f65e27cca0a47794becd073aef216540bf077b5b95b7127e4a40c995e"
   },
-  "print_bundle_sha256": "4b37fd31d03e34e63a494597ed8f5aa951f5a096b9828bb7736e35159b0b03aa",
-  "simulation_parameters_sha256": "c4e0d28738ff4d963b1f20879b2a62c3e945f8b06977387d2928b2e4a34872f0",
+  "print_bundle_sha256": "4fb32235ec4bbcce38653bcd0f65e31d5cffdb0c058239cf02778ab71fd86e94",
+  "simulation_parameters_sha256": "be6ed6c30950553f2664b994c285392d8e8c9339ead1d777cf33b06aa02464db",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "ce_integrated_inboard_support_revision",
-  "evidence_archive_sha256": "a7277634780d19534d2393d7ebc33eb7d3373babd19f6ec3fe135c9ed61590f5"
+  "evidence_record_key": "cf_supported_input_revision",
+  "evidence_archive_sha256": "895046eb9b2e3712c61b19d7b6eba06c8ea4c01317b9bf7bde1e72175052e431"
 }

@@ -181,6 +181,25 @@ class ExportContractTests(unittest.TestCase):
     def basis():
         objects = {}
         for prefix in ("Port", "Starboard"):
+            assembly = SimpleNamespace(Name=prefix + "Assembly")
+            drive = SimpleNamespace(Name=prefix + "InputDrive")
+            objects[assembly.Name] = assembly
+            objects[drive.Name] = drive
+            for suffix, sku in (
+                ("InputBearing", "BEARING_3X6X2_5"),
+                ("BearingCapInputBolt", "M2X10_BUTTON_HEAD"),
+                ("BearingCapInputNut", "M2_HEX_NUT"),
+            ):
+                objects[prefix + suffix] = SimpleNamespace(
+                    Name=prefix + suffix,
+                    HardwareSKU=sku,
+                    getParentGeoFeatureGroup=lambda parent=assembly: parent,
+                )
+            objects[prefix + "InputShaft"] = SimpleNamespace(
+                Name=prefix + "InputShaft",
+                HardwareSKU="SS304_CUT3_L35_FLAT16_A0",
+                getParentGeoFeatureGroup=lambda parent=drive: parent,
+            )
             objects[prefix + "Pod"] = SimpleNamespace(MinimumTilt=-180, MaximumTilt=180)
             objects[prefix + "ServoHorn"] = SimpleNamespace(
                 HardwareSKU="KST_X06_STOCK_HALF_ARM_1",
@@ -371,6 +390,9 @@ class ExportContractTests(unittest.TestCase):
         for name in (
             "PropulsionFixedFrame",
             "PortOutputBearingInboard",
+            "PortInputBearing",
+            "StarboardInputShaft",
+            "PortBearingCapInputBolt",
             "StarboardOutputBearingOutboard",
             "PortBearingCap",
             "StarboardOutputShaftPositive",
@@ -380,6 +402,7 @@ class ExportContractTests(unittest.TestCase):
                 del objects[name]
                 with self.assertRaisesRegex(RuntimeError, "inboard support topology"):
                     check_review_basis(doc, report)
+
         for name in (
             "ServoDriveBridge",
             "PortOutputShaftPositive",
@@ -389,6 +412,16 @@ class ExportContractTests(unittest.TestCase):
                 doc, objects, report = self.basis()
                 objects[name] = SimpleNamespace(Name=name)
                 with self.assertRaisesRegex(RuntimeError, "inboard support topology"):
+                    check_review_basis(doc, report)
+
+    def test_input_bearing_and_cap_wing_hardware_cannot_join_rotating_group(self):
+        for suffix in ("InputBearing", "BearingCapInputBolt", "BearingCapInputNut"):
+            with self.subTest(part=suffix):
+                doc, objects, report = self.basis()
+                objects["Port" + suffix].getParentGeoFeatureGroup = lambda: objects[
+                    "PortInputDrive"
+                ]
+                with self.assertRaisesRegex(RuntimeError, "must remain fixed"):
                     check_review_basis(doc, report)
 
     def test_fit_samples_and_clearance_proxies_cannot_enter_installed_review(self):

@@ -27,8 +27,8 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
                 Part.makeBox(3, length, 4, App.Vector(1, start, 48))
             )
 
-    def bearing(self, centre=28):
-        origin = App.Vector(0, centre - 1.25, 50)
+    def bearing(self, centre=28, x=0):
+        origin = App.Vector(x, centre - 1.25, 50)
         return Part.makeCylinder(3, 2.5, origin, App.Vector(0, 1, 0)).cut(
             Part.makeCylinder(1.5, 2.5, origin, App.Vector(0, 1, 0))
         )
@@ -150,14 +150,20 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
             "LowerHousing": self.lower,
             "InboardBearing": self.bearing(28),
             "OutboardBearing": self.bearing(41),
+            "InputBearing": self.bearing(33, 16),
+            "OutputShaft": self.shaft,
+            "InputShaft": Part.makeCylinder(
+                1.5, 35, App.Vector(16, 6.5, 50), App.Vector(0, 1, 0)
+            ),
         }
         result = split_housing_vertical_service(self.cap, obstacles)
         self.assertTrue(result["passed"], result)
-        for centre in (28, 41):
+        for x, centre in ((0, 28), (0, 41), (16, 33)):
             result = split_housing_vertical_service(
-                self.bearing(centre),
+                self.bearing(centre, x),
                 {"LowerHousing": self.lower},
                 bearing_centre_y=centre,
+                bearing_centre_x=x,
             )
             self.assertTrue(result["passed"], result)
 
@@ -165,22 +171,30 @@ class ServiceableBearingCaptureTests(unittest.TestCase):
         from gondola.cad import translated_shape
         from gondola.validation.propulsion_service import split_housing_vertical_service
 
-        for shape, station, point in (
-            (self.cap, None, (-8, 34, 65)),
-            (self.bearing(28), 28, (2, 27, 65)),
+        for shape, x, station, point in (
+            (self.cap, 0, None, (-8, 34, 65)),
+            (self.cap, 0, None, (25, 34, 65)),
+            (self.bearing(28), 0, 28, (2, 27, 65)),
+            (self.bearing(33, 16), 16, 33, (18, 32, 65)),
         ):
             blocker = Part.makeBox(0.2, 0.2, 0.2, App.Vector(*point))
             self.assertLess(shape.common(blocker).Volume, 1e-7)
             self.assertLess(translated_shape(shape, z=30).common(blocker).Volume, 1e-7)
+            self.assertGreater(
+                translated_shape(shape, z=15).common(blocker).Volume, 0.001
+            )
             result = split_housing_vertical_service(
-                shape, {"MidpathBlocker": blocker}, bearing_centre_y=station
+                shape,
+                {"MidpathBlocker": blocker},
+                bearing_centre_y=station,
+                bearing_centre_x=x,
             )
             self.assertFalse(result["passed"], result)
 
     def test_uncovered_cap_addition_is_not_hidden_by_the_service_proxy(self):
         from gondola.validation.propulsion_service import split_housing_vertical_service
 
-        extra = self.cap.fuse(Part.makeBox(1, 1, 1, App.Vector(8.5, 34, 52)))
+        extra = self.cap.fuse(Part.makeBox(1, 1, 1, App.Vector(26, 34, 52)))
         result = split_housing_vertical_service(extra, {})
         self.assertFalse(result["passed"], result)
         self.assertGreater(result["uncovered_start_stock_mm3"], 0.49)

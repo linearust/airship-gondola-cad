@@ -261,7 +261,14 @@ class BearingCaptureTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["bearing_endplay_each_direction_mm"], 0.25)
         self.assertTrue(result["cap_hard_seating"]["passed"])
-        self.assertEqual(len(result["cap_fasteners"]), 2)
+        self.assertEqual(
+            {row["bolt"] for row in result["cap_fasteners"]},
+            {
+                "PortBearingCapNegativeBolt",
+                "PortBearingCapPositiveBolt",
+                "PortBearingCapInputBolt",
+            },
+        )
 
     def test_missing_cap_cannot_claim_capture(self):
         self.doc.removeObject("PortBearingCap")
@@ -325,7 +332,10 @@ class BearingCaptureTests(unittest.TestCase):
                 )
 
     def test_reopened_native_stack_preserves_ordered_cap_and_bearing_service(self):
-        from gondola.validation.propulsion import _record_bearing_checks
+        from gondola.validation.propulsion import (
+            _record_bearing_checks,
+            input_drive_service_check,
+        )
         from gondola.validation.propulsion_service import module_service_shapes
 
         with tempfile.TemporaryDirectory() as directory:
@@ -353,17 +363,57 @@ class BearingCaptureTests(unittest.TestCase):
                 report = {
                     "bearing_stacks": [],
                     "bearing_service": [],
+                    "input_bearing_service": [],
+                    "input_drive_service": [
+                        input_drive_service_check(saved, module, prefix)
+                        for prefix in ("Port", "Starboard")
+                    ],
                     "output_carrier_service": [],
                 }
                 for prefix in ("Port", "Starboard"):
                     _record_bearing_checks(report, saved, module, prefix, physical)
                 self.assertEqual(len(report["bearing_service"]), 4)
+                self.assertEqual(len(report["input_bearing_service"]), 2)
                 self.assertTrue(
                     all(row["passed"] for rows in report.values() for row in rows),
                     report,
                 )
             finally:
                 App.closeDocument(saved.Name)
+
+    def test_input_bearing_lift_requires_successful_prior_input_removal(self):
+        from gondola.validation.propulsion import _record_bearing_checks
+        from gondola.validation.propulsion_service import module_service_shapes
+
+        physical, missing = module_service_shapes(self.doc, self.module)
+        self.assertFalse(missing)
+        for prefix in ("Port", "Starboard"):
+            # Removing the journal alone leaves a geometrically clear bearing
+            # lift, but is not evidence that the ordered input service passed.
+            report = {
+                "bearing_stacks": [],
+                "bearing_service": [],
+                "input_bearing_service": [],
+                "output_carrier_service": [],
+                "input_drive_service": [
+                    {
+                        "pod": prefix,
+                        "passed": False,
+                        "removed_parts": [prefix + "InputShaft"],
+                    }
+                ],
+            }
+            _record_bearing_checks(report, self.doc, self.module, prefix, physical)
+            row = report["input_bearing_service"][0]
+            self.assertTrue(row["cap_removal"]["passed"], row)
+            self.assertTrue(row["bearing_removal"]["passed"], row)
+            self.assertFalse(row["input_removal_passed"])
+            self.assertFalse(row["passed"])
+
+            report["input_drive_service"] = []
+            report["input_bearing_service"] = []
+            _record_bearing_checks(report, self.doc, self.module, prefix, physical)
+            self.assertFalse(report["input_bearing_service"][0]["passed"])
 
     def test_parent_transform_and_tilt_preserve_the_capture_proof(self):
         root = self.doc.addObject("App::Part", "MovedRoot")
@@ -503,7 +553,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                         (
                             "InputShaft",
                             "input_shaft_removal",
-                            [(0, 0, 0), (0, sign * 18, 0), (sign * 60, sign * 18, 0)],
+                            [(0, 0, 0), (0, sign * 32, 0), (sign * 60, sign * 32, 0)],
                         ),
                         (
                             "DriverGear",
@@ -513,7 +563,7 @@ class NativeGearedDriveTests(unittest.TestCase):
                         (
                             "Servo",
                             "servo_horn_adapter_removal",
-                            [(0, 0, 0), (0, sign * 14, 0), (sign * 60, sign * 14, 0)],
+                            [(0, 0, 0), (0, sign * 13, 0), (sign * 60, sign * 13, 0)],
                         ),
                     ):
                         row = paths[side + suffix]
@@ -907,7 +957,7 @@ class NativeGearedDriveTests(unittest.TestCase):
         for prefix in ("Port", "Starboard"):
             result = direct_adapter_fit_check(self.doc, prefix)
             self.assertTrue(result["passed"], result)
-            self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 4.0)
+            self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 19.0)
         gear = self.doc.PortDriverGear
         original = gear.Shape.copy()
         try:
@@ -1294,7 +1344,7 @@ class NativeGearedDriveTests(unittest.TestCase):
     def test_bought_gears_bearings_and_shafts_are_never_print_parts(self):
         hardware = self.module["hardware"]
         self.assertEqual(
-            sum(obj.HardwareSKU == "BEARING_3X6X2_5" for obj in hardware), 4
+            sum(obj.HardwareSKU == "BEARING_3X6X2_5" for obj in hardware), 6
         )
         self.assertEqual(
             sum(
@@ -1351,12 +1401,12 @@ class SelectedGearDriveTests(unittest.TestCase):
                     gear.Shape.BoundBox.YLength, spec.total_length_mm
                 )
             shaft = doc.getObject(prefix + "InputShaft")
-            self.assertEqual(shaft.HardwareSKU, "SS304_CUT3_L20_FLAT20_A0")
-            self.assertAlmostEqual(shaft.Shape.BoundBox.YLength, 20)
+            self.assertEqual(shaft.HardwareSKU, "SS304_CUT3_L35_FLAT16_A0")
+            self.assertAlmostEqual(shaft.Shape.BoundBox.YLength, 35)
             canonical_shaft = local_shape(shaft)
             canonical_shaft.rotate(App.Vector(), App.Vector(0, 1, 0), -240)
             self.assertAlmostEqual(
-                canonical_shaft.optimalBoundingBox(False, False).XLength, 2.5
+                canonical_shaft.optimalBoundingBox(False, False).XLength, 3.0
             )
             self.assertAlmostEqual(
                 canonical_shaft.optimalBoundingBox(False, False).ZLength, 3.0
@@ -1554,8 +1604,8 @@ class SelectedGearDriveTests(unittest.TestCase):
                         row["waypoints_mm"],
                         [
                             (0, 0, 0),
-                            (0, sign * 14, 0),
-                            (sign * 60, sign * 14, 0),
+                            (0, sign * 13, 0),
+                            (sign * 60, sign * 13, 0),
                         ],
                     )
                     self.assertTrue(row["passed"], row)
@@ -1572,6 +1622,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                     "input_stub_removal",
                     "input_jack_release",
                     "input_stub_grip_tool",
+                    "output_rotor_parking",
                     "adapter_release_off_frame",
                 ):
                     self.assertTrue(result[key]["passed"], result[key])
@@ -1594,8 +1645,13 @@ class SelectedGearDriveTests(unittest.TestCase):
                 self.assertEqual(result["service_mode"], "shaft_first_compact_frame")
                 self.assertEqual(
                     result["input_stub_removal"]["waypoints_mm"],
-                    [(0, 0, 0), (0, sign * 18, 0), (sign * 60, sign * 18, 0)],
+                    [(0, 0, 0), (0, sign * 32, 0), (sign * 60, sign * 32, 0)],
                 )
+                parking = result["output_rotor_parking"]
+                self.assertEqual(parking["angle_deg"], 90)
+                self.assertTrue(parking["initial_input_and_output_neutral"])
+                self.assertIn(prefix + "InputBearing", parking["retained_parts"])
+                self.assertIn(prefix + "InputBearing", result["retained_parts"])
                 self.assertEqual(
                     result["driver_gear_removal"]["waypoints_mm"],
                     [(0, 0, 0), (sign * 60, 0, 0)],
@@ -1637,6 +1693,7 @@ class SelectedGearDriveTests(unittest.TestCase):
                 for prefix in ("Port", "Starboard")
             ],
             "bearing_service": [],
+            "input_bearing_service": [],
             "bearing_stacks": [],
         }
         for prefix in ("Port", "Starboard"):
@@ -1709,7 +1766,7 @@ class SelectedGearDriveTests(unittest.TestCase):
         case = world_shape(doc.PortServo)
         centre = doc.PortServoMount.getGlobalPlacement().multVec(
             App.Vector(0, -1.1, -5)
-        ) + App.Vector(30, 14, 0)
+        ) + App.Vector(30, 13, 0)
         blocker = doc.addObject("Part::Feature", "LateralServoBlocker")
         module["group"].addObject(blocker)
         blocker.Shape = Part.makeBox(0.2, 0.2, 0.2, centre - App.Vector(0.1, 0.1, 0.1))
@@ -1717,10 +1774,10 @@ class SelectedGearDriveTests(unittest.TestCase):
         try:
             self.assertLess(case.common(blocker.Shape).Volume, 1e-7)
             self.assertLess(
-                translated_shape(case, x=60, y=14).common(blocker.Shape).Volume, 1e-7
+                translated_shape(case, x=60, y=13).common(blocker.Shape).Volume, 1e-7
             )
             self.assertGreater(
-                translated_shape(case, x=30, y=14).common(blocker.Shape).Volume, 0
+                translated_shape(case, x=30, y=13).common(blocker.Shape).Volume, 0
             )
             result = servo_case_service_check(doc, modified, "Port")
             self.assertFalse(result["passed"], result)
@@ -1752,6 +1809,9 @@ class SelectedGearDriveTests(unittest.TestCase):
             "PortHornGearAdapter",
             "PortOutputShaftNegative",
             "PortOutputBearingOutboard",
+            "PortInputBearing",
+            "PortBearingCapInputBolt",
+            "PortBearingCapInputNut",
             "PropulsionFixedFrame",
             "PortBearingCap",
             "PortServoEarLowerNut",
@@ -2132,7 +2192,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 original = frame.Shape.copy()
                 try:
                     frame.Shape = original.cut(
-                        Part.makeBox(1, 1, 0.1, App.Vector(5, 35.3, 49.5))
+                        Part.makeBox(1, 1, 0.1, App.Vector(5.75, 40.3, 49.5))
                     )
                     saved.recompute()
                     physical, missing = module_service_shapes(saved, saved_module)

@@ -54,7 +54,7 @@ PROCUREMENT_SPECS = {
     "BEARING_3X6X2_5": {
         "search_query": "3x6x2.5mm miniature ball bearing",
         "candidate_url": BEARING_SOURCE,
-        "requirements": "Keep the four purchased generic miniature bearings, nominal bore 3 mm, outside diameter 6 mm, width 2.5 mm, on the two output axes; no replacement bearing purchase. Check actual shields, race lands, fixed-seat fit, free rotation and endplay with the split housing, outer-ring shoulders and removable cap. The two M2x10 screws seat each cap on hard frame lands, not on the bearing. The servo supports its input gear through the horn coupling; no extra input bearing is selected. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
+        "requirements": "Six generic miniature bearings are required, nominal bore3mm, outside diameter6mm and width2.5mm: four on the two output axes and one external input-shaft bearing per side. Keep the four previously confirmed purchased bearings and verify two additional matching bearings or spares; this requirement does not record a new purchase. Check actual shields, race lands, fixed-seat fit, free rotation and endplay with the split housing, outer-ring shoulders and removable cap. Three M2x10 screws seat each extended three-bearing cap on hard frame lands, not on its bearings; the third screw supports the added input-bearing wing. Align each input bearing with the servo/horn axis and leave its shaft journal round. No bearing preload or quantified sharing of gear load is established. Do not load bearing shields or bridge the inner and outer rings with a shaft spacer.",
         "evidence_notes": "The user confirms purchase of the original-final-cart 3x6x2.5mm option, not NSK/ISC identity, tolerance, mass or abutment limits. Retained ISC MR63ZZ references guide the outer-ring contact clearance: housing opening at least 5.4 mm. Verify those contacts on the received generic part; the printed diameter5.6 openings are design values, not proof of shield clearance. ISC's 0.27 g is comparison data, not this seller's measured mass.",
     },
     "KST_X06_STOCK_HALF_ARM_1": {
@@ -223,9 +223,10 @@ def procurement_spec(sku, *, allow_unknown=False):
             else (
                 f"Prepare one local flat, nominal depth 0.5 mm, length "
                 f"{flat_length} mm, starting {offset} mm from the reference "
-                "end shown in CAD. A full-length flat is permitted on the "
-                "input stub because it has no bearing journal. Keep every "
-                "output-bearing journal round. Align the actual gear's radial "
+                "end shown in CAD. Keep every input and output bearing journal "
+                "round; a full-length flat is unsuitable for a bearing-supported "
+                "input shaft. Leave all stock outside the specified flat round. "
+                "Align the actual gear's radial "
                 "set screw with the flat; tooth-to-screw clocking is not specified. "
             )
         )

@@ -99,7 +99,7 @@ def nut_guide_check(host_shape, placement, *, outward_sign, floor_thickness):
 
 
 def installed_nut_guide_checks(doc):
-    """Audit four cap side slots and the two sole rotor jack pockets."""
+    """Audit six cap side slots and the two sole rotor jack pockets."""
     rows = []
     module = doc.getObject("MainPropulsionModule")
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
@@ -109,12 +109,27 @@ def installed_nut_guide_checks(doc):
                 "PropulsionFixedFrame",
                 prefix + "BearingCap" + suffix + "Nut",
                 module,
-                App.Placement(V(x, sign * 34.5, 47.5), App.Rotation(V(1, 0, 0), 180)),
-                -1 if x < 0 else 1,
+                App.Placement(
+                    V(sign * x, sign * y, 47.5), App.Rotation(V(1, 0, 0), 180)
+                ),
+                sign * (-1 if x < 0 else 1),
                 2.5,
             )
-            for x, suffix in ((-5.5, "Negative"), (5.5, "Positive"))
+            for x, y, suffix in ((-5.5, 34.5, "Negative"), (6.25, 39.5, "Positive"))
         ]
+        sites.append(
+            (
+                "input_bearing_cap",
+                "PropulsionFixedFrame",
+                prefix + "BearingCapInputNut",
+                module,
+                App.Placement(
+                    V(sign * 23, sign * 33, 47.5), App.Rotation(V(1, 0, 0), 180)
+                ),
+                sign,
+                2.5,
+            )
+        )
         sites.append(
             (
                 "rotor_jack",

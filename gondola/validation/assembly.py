@@ -692,6 +692,7 @@ def detailed_propulsion_evidence(doc, source):
         bearing_post_roots_check,
         fixed_servo_datum_check,
         gear_engagement_check,
+        input_bearing_support_check,
         servo_mount_check,
     )
     from .relative_motion import relative_motion_check
@@ -768,6 +769,9 @@ def detailed_propulsion_evidence(doc, source):
         "hardware": list(doc.DesignRegistry.HardwareParts),
         "references": list(doc.DesignRegistry.ReferenceParts),
     }
+    saved_input_supports = [
+        input_bearing_support_check(doc, side) for side in ("Port", "Starboard")
+    ]
     saved_post_roots = bearing_post_roots_check(doc)
     saved_nut_guides = installed_nut_guide_checks(doc)
     saved_integrated_frame = integrated_frame_check(doc, saved_module)
@@ -802,6 +806,7 @@ def detailed_propulsion_evidence(doc, source):
         "saved_servo_datums": saved_datums,
         "saved_servo_mounts": saved_servo_mounts,
         "saved_bearing_post_roots": saved_post_roots,
+        "saved_input_bearing_supports": saved_input_supports,
         "saved_nut_guides": saved_nut_guides,
         "saved_integrated_frame": saved_integrated_frame,
         "saved_servo_service_preparation": saved_servo_service,
@@ -819,6 +824,7 @@ def detailed_propulsion_evidence(doc, source):
         and all(row["passed"] for row in saved_datums)
         and all(row["passed"] for row in saved_servo_mounts)
         and all(row["passed"] for row in saved_post_roots)
+        and all(row["passed"] for row in saved_input_supports)
         and len(saved_nut_guides) == PROPULSION_EVIDENCE_COUNTS["nut_guides"]
         and all(row["passed"] for row in saved_nut_guides)
         and saved_integrated_frame["passed"]

@@ -105,7 +105,9 @@ def contained_region_paths(shape, regions, waypoints, obstacles):
     }
 
 
-def split_housing_vertical_service(shape, obstacles, *, bearing_centre_y=None):
+def split_housing_vertical_service(
+    shape, obstacles, *, bearing_centre_y=None, bearing_centre_x=0.0
+):
     """Certify +Z30 removal from the split housing, in positive-side coordinates.
 
     A cap point starts at or above Z50. Moving it upward increases its radial
@@ -121,6 +123,13 @@ def split_housing_vertical_service(shape, obstacles, *, bearing_centre_y=None):
         stop = Part.makeCylinder(4.5, 1, App.Vector(0, 24, 50), axis).common(
             Part.makeBox(10, 1, 4.5, App.Vector(-5, 24, 50))
         )
+        reference = reference.fuse(Part.makeBox(18.5, 8, 4.5, App.Vector(8, 29, 50)))
+        reference = reference.cut(
+            Part.makeCylinder(2.8, 8, App.Vector(16, 29, 50), axis)
+        )
+        reference = reference.cut(
+            Part.makeCylinder(3, 3, App.Vector(16, 31.5, 50), axis)
+        )
         reference = reference.fuse(stop).cut(
             Part.makeCylinder(2.8, 20, App.Vector(0, 24, 50), axis)
         )
@@ -131,15 +140,25 @@ def split_housing_vertical_service(shape, obstacles, *, bearing_centre_y=None):
         for x in (-9.0, 6.0):
             reference = reference.cut(Part.makeBox(3, 3, 1.5, App.Vector(x, 28, 50)))
         swept = reference.fuse(Part.makeBox(18, 20, 30, App.Vector(-9, 24, 54.5)))
-        method = "continuous split-cap radial-monotonicity envelope"
+        swept = swept.fuse(Part.makeBox(18.5, 8, 30, App.Vector(8, 29, 54.5)))
+        method = "continuous three-seat split-cap radial-monotonicity envelope"
     else:
-        if bearing_centre_y not in (28.0, 41.0):
+        if (bearing_centre_x, bearing_centre_y) not in (
+            (0.0, 28.0),
+            (0.0, 41.0),
+            (16.0, 33.0),
+        ):
             raise ValueError("Unknown split-housing bearing station")
         reference = Part.makeCylinder(
-            3, 2.5, App.Vector(0, bearing_centre_y - 1.25, 50), axis
+            3, 2.5, App.Vector(bearing_centre_x, bearing_centre_y - 1.25, 50), axis
         )
         swept = reference.fuse(
-            Part.makeBox(6, 2.5, 33, App.Vector(-3, bearing_centre_y - 1.25, 50))
+            Part.makeBox(
+                6,
+                2.5,
+                33,
+                App.Vector(bearing_centre_x - 3, bearing_centre_y - 1.25, 50),
+            )
         )
         method = "continuous bearing upward half-space envelope"
     outside = abs(shape.cut(reference).Volume)

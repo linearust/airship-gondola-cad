@@ -1,6 +1,6 @@
-"""Two purchased bearings in a rigid split housing and positively located cap.
+"""Two output bearings and one input bearing in a shared keyed split housing.
 
-Coordinates are relative to the inboard bearing axis. Both nominal diameter-6
+Coordinates are relative to the inboard bearing axis. All three nominal diameter-6
 seats are finish-to-fit; hard cap lands, not bearing compression, take bolt load.
 The two side keys locate the cap before tightening. Match the printed coupon to
 received bearings; nominal geometry does not establish PA12 fit or load capacity.
@@ -14,6 +14,15 @@ from gondola.cad import box, translated_shape, union
 BEARING_RADIUS = SEAT_RADIUS = 3.0
 BEARING_WIDTH = 2.5
 BEARING_CENTRES_Y = (0.0, 13.0)
+INPUT_BEARING_X = 16.0
+INPUT_BEARING_Y = 5.0
+INPUT_BODY_FRONT_Y, INPUT_BODY_REAR_Y = 1.0, 9.0
+INPUT_BODY_OUTER_X = 26.5
+CAP_FASTENER_STATIONS = (
+    ("Negative", -5.5, 6.5),
+    ("Positive", 6.25, 11.5),
+    ("Input", 23.0, INPUT_BEARING_Y),
+)
 SEAT_WIDTH = 3.0
 BEARING_AXIAL_FLOAT = SEAT_WIDTH - BEARING_WIDTH
 SHIELD_OPENING_DIAMETER = 5.6
@@ -21,8 +30,6 @@ BODY_HALF_WIDTH = 9.0
 BODY_FRONT_Y, BODY_REAR_Y = -3.0, 16.0
 BODY_BOTTOM_Z = -8.0
 CAP_BOTTOM_Z, CAP_TOP_Z = 0.0, 4.5
-CAP_BOLT_X = (-5.5, 5.5)
-CAP_BOLT_Y = 6.5
 CAP_SCREW_SEAT_Z = CAP_TOP_Z
 CAP_NUT_SEAT_Z = -2.5
 CAP_SCREW_LENGTH = 10.0
@@ -55,6 +62,18 @@ def seat_tools():
                 GEAR_STOP_Y - 0.1,
                 BODY_REAR_Y - GEAR_STOP_Y + 0.2,
             ),
+            translated_shape(
+                _cylinder(
+                    SHIELD_OPENING_DIAMETER / 2,
+                    INPUT_BODY_FRONT_Y - 0.1,
+                    INPUT_BODY_REAR_Y - INPUT_BODY_FRONT_Y + 0.2,
+                ),
+                x=INPUT_BEARING_X,
+            ),
+            translated_shape(
+                _cylinder(SEAT_RADIUS, INPUT_BEARING_Y - SEAT_WIDTH / 2, SEAT_WIDTH),
+                x=INPUT_BEARING_X,
+            ),
             *[
                 _cylinder(SEAT_RADIUS, y - SEAT_WIDTH / 2, SEAT_WIDTH)
                 for y in BEARING_CENTRES_Y
@@ -75,7 +94,10 @@ def cap_keys():
 
 def screw_tools():
     return union(
-        [Part.makeCylinder(1.1, 20, App.Vector(x, CAP_BOLT_Y, -10)) for x in CAP_BOLT_X]
+        [
+            Part.makeCylinder(1.1, 20, App.Vector(x, y, -10))
+            for _, x, y in CAP_FASTENER_STATIONS
+        ]
     )
 
 
@@ -84,7 +106,7 @@ def nut_pocket_tools():
     from .purchased_hardware import hex_prism
 
     cuts = []
-    for x in CAP_BOLT_X:
+    for label, x, y in CAP_FASTENER_STATIONS:
         cuts.append(
             translated_shape(
                 hex_prism(
@@ -93,7 +115,7 @@ def nut_pocket_tools():
                     CAP_NUT_SEAT_Z - CAP_NUT_POCKET_HEIGHT,
                 ),
                 x=x,
-                y=CAP_BOLT_Y,
+                y=y,
             )
         )
         cuts.append(
@@ -103,7 +125,7 @@ def nut_pocket_tools():
                 CAP_NUT_POCKET_HEIGHT,
                 (
                     x if x > 0 else -9.1,
-                    CAP_BOLT_Y - CAP_NUT_POCKET_AF / 2,
+                    y - CAP_NUT_POCKET_AF / 2,
                     CAP_NUT_SEAT_Z - CAP_NUT_POCKET_HEIGHT,
                 ),
             )
@@ -118,12 +140,20 @@ def _housing_stock(bottom_z):
         CAP_TOP_Z - bottom_z,
         (-BODY_HALF_WIDTH, BODY_FRONT_Y, bottom_z),
     )
+    body = body.fuse(
+        box(
+            INPUT_BODY_OUTER_X - BODY_HALF_WIDTH + 1,
+            INPUT_BODY_REAR_Y - INPUT_BODY_FRONT_Y,
+            CAP_TOP_Z - bottom_z,
+            (BODY_HALF_WIDTH - 1, INPUT_BODY_FRONT_Y, bottom_z),
+        )
+    )
     # This separate broad thrust land contacts the gear web, never a shield.
     return body.fuse(_cylinder(GEAR_STOP_OUTER_RADIUS, GEAR_STOP_Y, 1)).removeSplitter()
 
 
 def lower_housing_shape(bottom_z=BODY_BOTTOM_Z):
-    stock = _housing_stock(bottom_z).common(box(30, 30, -bottom_z, (-15, -8, bottom_z)))
+    stock = _housing_stock(bottom_z).common(box(45, 30, -bottom_z, (-15, -8, bottom_z)))
     return _checked(
         stock.fuse(cap_keys())
         .cut(seat_tools())
@@ -134,7 +164,7 @@ def lower_housing_shape(bottom_z=BODY_BOTTOM_Z):
 
 
 def cap_shape():
-    stock = _housing_stock(BODY_BOTTOM_Z).common(box(30, 30, CAP_TOP_Z, (-15, -8, 0)))
+    stock = _housing_stock(BODY_BOTTOM_Z).common(box(45, 30, CAP_TOP_Z, (-15, -8, 0)))
     return _checked(
         stock.cut(cap_keys()).cut(seat_tools()).cut(screw_tools()), "Paired bearing cap"
     )
@@ -152,7 +182,7 @@ def keeper_shape():
 
 def coupon_shape():
     return _checked(
-        cup_shape().fuse(box(22, 23, 3, (-11, -5, -11))),
+        cup_shape().fuse(box(39.5, 23, 3, (-11, -5, -11))),
         "Paired bearing housing coupon",
     )
 
@@ -165,13 +195,21 @@ def geometry_check(cup=None, keeper=None):
     bearings = [
         _cylinder(3, y - 1.25, 2.5).cut(_cylinder(1.5, y - 1.3, 2.6))
         for y in BEARING_CENTRES_Y
+    ] + [
+        translated_shape(
+            _cylinder(3, INPUT_BEARING_Y - 1.25, 2.5).cut(
+                _cylinder(1.5, INPUT_BEARING_Y - 1.3, 2.6)
+            ),
+            x=INPUT_BEARING_X,
+        )
     ]
     overlaps = [complete.common(b).Volume for b in bearings]
     seats = lower.common(cap).Volume
     result = {
         "valid_single_solid": lower.isValid() and len(lower.Solids) == 1,
         "valid_keeper_solid": cap.isValid() and len(cap.Solids) == 1,
-        "bearing_count": 2,
+        "bearing_count": 3,
+        "input_bearing_axis_x_mm": INPUT_BEARING_X,
         "bearing_centres_y_mm": list(BEARING_CENTRES_Y),
         "bearing_solid_overlap_mm3": overlaps,
         "cap_body_overlap_mm3": seats,

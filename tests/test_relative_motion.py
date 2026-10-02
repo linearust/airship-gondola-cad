@@ -408,7 +408,7 @@ class NativeRelativeMotionTests(unittest.TestCase):
             self.assertEqual(float(self.doc.StarboardPod.Tilt), -71)
             self.assertLess((root.Placement.Base - before.Base).Length, 1e-9)
             self.assertTrue(root.Placement.Rotation.isSame(before.Rotation, 1e-9))
-            self.assertEqual(len(result["functional_interfaces"]), 8)
+            self.assertEqual(len(result["functional_interfaces"]), 10)
             self.assertTrue(
                 all(
                     not row["continuous_clearance_claimed"]

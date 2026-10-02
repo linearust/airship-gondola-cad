@@ -35,7 +35,11 @@ def split_cap_seating_check(frame, cap):
         hole = Part.Face(
             Part.Wire(
                 Part.makeCircle(
-                    1.11, App.Vector(sign * 5.5, 34.5, 50), App.Vector(0, 0, 1)
+                    1.11,
+                    App.Vector(
+                        -5.5 if sign < 0 else 6.25, 34.5 if sign < 0 else 39.5, 50
+                    ),
+                    App.Vector(0, 0, 1),
                 )
             )
         )
@@ -85,8 +89,54 @@ def split_cap_seating_check(frame, cap):
     }
 
 
+def cap_nut_seat_ligament_check(frame):
+    """Measure actual pocket air and the solid ligament to the nearest seat."""
+    seats = [
+        Part.makeCylinder(3, 3, App.Vector(x, y - 1.5, 50), App.Vector(0, 1, 0))
+        for x, y in ((0, 28), (0, 41), (16, 33))
+    ]
+    rows = []
+    # Crops include each complete nut pocket and its side opening, while
+    # excluding the separate bearing cavities. Distances use actual cut stock.
+    for name, x, width, y in (
+        ("Negative", -9.5, 7, 34.5),
+        ("Positive", 2.5, 7, 39.5),
+        ("Input", 20, 7, 33),
+    ):
+        air = Part.makeBox(width, 4.25, 1.8, App.Vector(x, y - 2.125, 45.7)).cut(frame)
+        distances = [air.distToShape(seat) for seat in seats] if air.Solids else []
+        nearest = min(distances, key=lambda result: result[0]) if distances else None
+        gap = nearest[0] if nearest else 0.0
+        points = nearest[1][0] if nearest else ()
+        length = Part.makeLine(*points).common(frame).Length if gap > TOL else 0.0
+        rows.append(
+            {
+                "cap_joint": name,
+                "seat_distances_mm": [result[0] for result in distances],
+                "minimum_wall_mm": gap,
+                "shortest_wall_segment_mm": [list(point) for point in points],
+                "missing_shortest_wall_stock_mm": max(0.0, gap - length),
+                "passed": bool(distances) and gap >= 1.5 - TOL and gap - length < TOL,
+            }
+        )
+    return {
+        "minimum_required_wall_mm": 1.5,
+        "nut_pockets": rows,
+        "scope": "Three actual lower-housing nut cavities against all three literal diameter-6 bearing seats, plus continuous solid stock along each shortest ligament. This local wall screen is not a strength or bearing-preload qualification.",
+        "passed": all(row["passed"] for row in rows),
+    }
+
+
 def split_bearing_stack_check(
-    bearing, shaft, frame, cap, *, centre_y, negative_travel, positive_travel
+    bearing,
+    shaft,
+    frame,
+    cap,
+    *,
+    centre_y,
+    negative_travel,
+    positive_travel,
+    centre_x=0.0,
 ):
     """Verify one bought bearing in a split inboard housing, in +Y coordinates.
 
@@ -100,29 +150,30 @@ def split_bearing_stack_check(
         for shape in (bearing, shaft, frame, cap)
     ):
         return {"passed": False, "error": "Missing or invalid split bearing solid"}
-    if centre_y not in (28.0, 41.0):
+    if (centre_x, centre_y) not in ((0.0, 28.0), (0.0, 41.0), (16.0, 33.0)):
         return {"passed": False, "error": "Unknown inboard bearing station"}
     if any(
         value is None or not math.isfinite(value) or value < 0
         for value in (negative_travel, positive_travel)
     ):
         return {"passed": False, "error": "Unproven carrier axial stop"}
-    expected = _annulus(1.5, 3.0, centre_y - 1.25, 2.5, z=50)
+    expected = _annulus(1.5, 3.0, centre_y - 1.25, 2.5, x=centre_x, z=50)
     comparison = geometry_comparison(bearing, expected)
     support = union([frame, cap])
     low, high = centre_y - 1.5, centre_y + 1.5
-    travel = _annulus(1.5, 3.0, low, 3.0, z=50)
-    guide = _annulus(3.01, 3.3, low, 3.0, z=50)
+    travel = _annulus(1.5, 3.0, low, 3.0, x=centre_x, z=50)
+    guide = _annulus(3.01, 3.3, low, 3.0, x=centre_x, z=50)
     shoulders = [
-        _annulus(2.81, 2.99, start, 1.48, z=50) for start in (low - 1.49, high + 0.01)
+        _annulus(2.81, 2.99, start, 1.48, x=centre_x, z=50)
+        for start in (low - 1.49, high + 0.01)
     ]
     shield = Part.makeCylinder(
-        2.8, 6.0, App.Vector(0, low - 1.5, 50), App.Vector(0, 1, 0)
+        2.8, 6.0, App.Vector(centre_x, low - 1.5, 50), App.Vector(0, 1, 0)
     )
     missing_guide = abs(guide.cut(support).Volume)
     missing_shoulders = [abs(witness.cut(support).Volume) for witness in shoulders]
     bounds = shaft.optimalBoundingBox(False, False)
-    axis_error = math.hypot(bounds.Center.x, bounds.Center.z - 50)
+    axis_error = math.hypot(bounds.Center.x - centre_x, bounds.Center.z - 50)
     shaft_coverage = min(high, bounds.YMax - negative_travel) - max(
         low, bounds.YMin + positive_travel
     )
@@ -130,7 +181,8 @@ def split_bearing_stack_check(
         type(face.Surface).__name__ == "Cylinder"
         and abs(face.Surface.Radius - 1.5) < TOL
         and abs(abs(face.Surface.Axis.y) - 1) < TOL
-        and math.hypot(face.Surface.Center.x, face.Surface.Center.z - 50) < TOL
+        and math.hypot(face.Surface.Center.x - centre_x, face.Surface.Center.z - 50)
+        < TOL
         and face.BoundBox.YMin <= low - positive_travel + TOL
         and face.BoundBox.YMax >= high + negative_travel - TOL
         for face in shaft.Faces
@@ -138,7 +190,7 @@ def split_bearing_stack_check(
     journal_witness = Part.makeCylinder(
         1.5,
         3.0 + negative_travel + positive_travel,
-        App.Vector(0, low - positive_travel, 50),
+        App.Vector(centre_x, low - positive_travel, 50),
         App.Vector(0, 1, 0),
     )
     missing_journal = abs(journal_witness.cut(shaft).Volume)
@@ -150,9 +202,11 @@ def split_bearing_stack_check(
         "shield_passage_intrusion_mm3": intersection_volume(shield, support),
         "cap_frame_overlap_mm3": intersection_volume(cap, frame),
     }
+    ligaments = cap_nut_seat_ligament_check(frame)
     return {
         "stock_shape_comparison": comparison,
         "bearing_centre_y_mm": centre_y,
+        "bearing_centre_x_mm": centre_x,
         "bearing_seat_y_range_mm": [low, high],
         "bearing_endplay_each_direction_mm": 0.25,
         "shaft_axis_error_mm": axis_error,
@@ -164,9 +218,11 @@ def split_bearing_stack_check(
         "missing_outer_shoulder_mm3": missing_shoulders[1],
         "assumed_shield_diameter_mm": 5.4,
         "shield_passage_diameter_mm": 5.6,
+        "cap_nut_seat_ligaments": ligaments,
         **overlaps,
         "scope": "Actual saved 3x6x2.5 bearing, continuous diameter-6 split radial seat and two complete outer-ring shoulder witnesses. The cap seats on the fixed housing, leaving 0.5 mm total nominal bearing endplay. Shaft journal coverage includes both independent bearing float and rotor axial travel. Diameter-6 radial fit, actual ring/shield geometry, cap preload, alignment, strength and free rotation require the production coupon and received hardware; the 5.4 mm shield envelope is unmeasured.",
-        "passed": comparison["difference_mm3"] < TOL
+        "passed": ligaments["passed"]
+        and comparison["difference_mm3"] < TOL
         and axis_error < TOL
         and journal
         and shaft_coverage >= 3.0 - TOL

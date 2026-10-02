@@ -150,7 +150,10 @@ class IntegratedServoFrameTests(unittest.TestCase):
         cutters = {
             "inboard_wall": (Part.makeBox(0.5, 1, 1, App.Vector(9.3, -9, 42)), 0.5),
             "outboard_wall": (Part.makeBox(3, 5, 1, App.Vector(19.7, -10.5, 45)), 15),
-            "lower_foot": (Part.makeBox(5, 5, 1, App.Vector(17, -10.5, 25)), 25),
+            "direct_servo_plinth": (
+                Part.makeBox(5, 5, 1, App.Vector(17, -10.5, 25)),
+                25,
+            ),
         }
         try:
             for name, (cutter, volume) in cutters.items():
@@ -164,11 +167,9 @@ class IntegratedServoFrameTests(unittest.TestCase):
                         self.assertFalse(stock["passed"], stock)
                         self.assertFalse(result["passed"], result)
                         key = "missing_complete_cradle_stock_mm3"
-                        if name == "lower_foot":
+                        if name == "direct_servo_plinth":
                             self.assertAlmostEqual(
-                                stock["missing_connection_stock_mm3"][
-                                    prefix.lower() + "_foot"
-                                ],
+                                stock["missing_connection_stock_mm3"][name],
                                 volume,
                             )
                         else:
@@ -220,17 +221,35 @@ class IntegratedServoFrameTests(unittest.TestCase):
                     )["passed"]
                 )
 
-    def test_compact_feet_do_not_restore_the_broad_lower_plate(self):
+    def test_closed_cradles_bear_directly_on_the_complete_central_plinth(self):
         frame = self.doc.PropulsionFixedFrame.Shape
+        plinth = Part.makeBox(45.4, 21, 9.5, App.Vector(-22.7, -10.5, 20))
+        self.assertLess(abs(plinth.cut(frame).Volume), 1e-7)
         for sign in (1, -1):
-            unused = self.opposite(
-                Part.makeBox(13, 10, 5, App.Vector(9.2, -5, 24.5)), sign
+            seating = self.opposite(
+                Part.makeBox(13.4, 5, 0.2, App.Vector(9.3, -10.5, 29.4)), sign
             )
-            self.assertLess(abs(frame.common(unused).Volume), 1e-7)
-            foot = self.opposite(
-                Part.makeBox(16.7, 5, 5, App.Vector(6, -10.5, 24.5)), sign
+            self.assertLess(abs(seating.cut(frame).Volume), 1e-7)
+
+    def test_gap_below_cradle_is_rejected_despite_other_connected_material(self):
+        from gondola.validation.propulsion import servo_mount_check
+
+        frame = self.doc.PropulsionFixedFrame
+        original = frame.Shape.copy()
+        gap = Part.makeBox(4, 5, 0.2, App.Vector(17, -10.5, 29.3))
+        try:
+            frame.Shape = original.cut(gap)
+            self.assertEqual(len(frame.Shape.Solids), 1)
+            result = servo_mount_check(self.doc, "Port")
+            self.assertFalse(result["passed"], result)
+            self.assertAlmostEqual(
+                result["cradle_stock_and_case_window"]["missing_connection_stock_mm3"][
+                    "direct_servo_plinth"
+                ],
+                4,
             )
-            self.assertLess(abs(foot.cut(frame).Volume), 1e-7)
+        finally:
+            frame.Shape = original
 
     def test_case_size_tolerance_leaves_clearance_without_an_interference_fit(self):
         frame = self.doc.PropulsionFixedFrame.Shape
@@ -257,17 +276,20 @@ class IntegratedServoFrameTests(unittest.TestCase):
         for prefix, sign in (("Port", 1), ("Starboard", -1)):
             shaft = shapes[prefix + "InputShaft"]
             blocker = self.opposite(
-                Part.makeBox(0.5, 0.5, 0.5, App.Vector(45.75, 34.75, 49.75)), sign
+                Part.makeBox(0.5, 0.5, 0.5, App.Vector(45.75, 44.75, 49.75)), sign
             )
             points = input_shaft_service_waypoints(prefix)
             for point in points:
                 endpoint = shaft.copy()
                 endpoint.translate(App.Vector(*point))
                 self.assertLess(abs(endpoint.common(blocker).Volume), 1e-7)
+            midpoint = shaft.copy()
+            midpoint.translate(App.Vector(sign * 30, sign * 32, 0))
+            self.assertGreater(midpoint.common(blocker).Volume, 0.1)
             result = continuous_path(shaft, points, {"midway_blocker": blocker})
             self.assertFalse(result["passed"], result)
 
-    def test_short_input_shaft_cannot_claim_the_four_mm_grip_tip(self):
+    def test_short_input_shaft_cannot_claim_the_accessible_round_grip_tip(self):
         from gondola.validation.horn_coupling import input_stub_grip_stock_check
         from gondola.validation.propulsion_service import module_service_shapes
 
@@ -276,21 +298,21 @@ class IntegratedServoFrameTests(unittest.TestCase):
             shaft = shapes[prefix + "InputShaft"]
             self.assertTrue(input_stub_grip_stock_check(shaft, prefix)["passed"])
             cutter = self.opposite(
-                Part.makeBox(4, 2.1, 4, App.Vector(14, 24.5, 48)), sign
+                Part.makeBox(4, 2.1, 4, App.Vector(14, 39.5, 48)), sign
             )
             shortened = shaft.cut(cutter)
             result = input_stub_grip_stock_check(shortened, prefix)
             self.assertFalse(result["passed"], result)
             self.assertGreater(result["missing_grip_stock_mm3"], 10)
 
-    def test_plier_closing_envelope_cannot_ignore_a_thin_obstruction(self):
+    def test_side_entry_plier_envelope_cannot_ignore_a_thin_obstruction(self):
         from gondola.validation.horn_coupling import assembled_servo_service_check
 
-        blocker = self.doc.addObject("Part::Feature", "PlierClosingBlocker")
+        blocker = self.doc.addObject("Part::Feature", "PlierEntryBlocker")
         self.module["group"].addObject(blocker)
-        # Above the initial lower-jaw face48.5, below its closed limit48.6,
-        # and outside the shaft: an open-jaw-only screen would miss this.
-        blocker.Shape = Part.makeBox(0.2, 0.2, 0.03, App.Vector(20, 23, 48.55))
+        # Outside the shaft and its removal path, but within the actual lower
+        # side-entry jaw. Checking only the moving shaft would miss this.
+        blocker.Shape = Part.makeBox(0.2, 0.2, 0.03, App.Vector(20, 38, 48.2))
         modified = {**self.module, "references": self.module["references"] + [blocker]}
         try:
             result = assembled_servo_service_check(self.doc, modified, "Port")
@@ -299,6 +321,100 @@ class IntegratedServoFrameTests(unittest.TestCase):
             self.assertTrue(result["input_stub_grip_tool"]["tip_stock"]["passed"])
         finally:
             self.doc.removeObject(blocker.Name)
+
+    def test_unmeshed_rotor_parking_preserves_input_and_fixed_bearing_poses(self):
+        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.servo_module import park_output_rotor_for_input_service
+
+        shapes, missing = module_service_shapes(self.doc, self.module)
+        self.assertFalse(missing)
+        removed = {p + "OutputGear" for p in ("Port", "Starboard")}
+        for prefix in ("Port", "Starboard"):
+            original = self.doc.getObject(prefix + "InputDrive").getGlobalPlacement()
+            parked, report = park_output_rotor_for_input_service(
+                self.doc, self.module, prefix, shapes, removed
+            )
+            self.assertTrue(report["passed"], report)
+            self.assertEqual(report["angle_deg"], 90)
+            self.assertTrue(report["input_remains_neutral"])
+            self.assertNotIn(prefix + "OutputGear", report["moving_parts"])
+            self.assertIn(prefix + "InputBearing", report["retained_parts"])
+            for name in report["retained_parts"]:
+                self.assertTrue(
+                    parked[name].Placement.isSame(shapes[name].Placement, 1e-7)
+                )
+            self.assertTrue(
+                original.isSame(
+                    self.doc.getObject(prefix + "InputDrive").getGlobalPlacement(), 1e-7
+                )
+            )
+
+    def test_rotor_parking_rejects_an_obstacle_between_clear_endpoint_poses(self):
+        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.servo_module import park_output_rotor_for_input_service
+
+        shapes, _ = module_service_shapes(self.doc, self.module)
+        bolt = shapes["PortOutputClampNegativeBolt"]
+        point = App.Vector(14, 49.5, 50)
+        pivot = App.Vector(0, 75, 50)
+        point = pivot + App.Rotation(App.Vector(0, 1, 0), 45).multVec(point - pivot)
+        blocker = Part.makeBox(0.2, 0.2, 0.2, point - App.Vector(0.1, 0.1, 0.1))
+        for angle in (0, 90):
+            endpoint = bolt.copy()
+            endpoint.rotate(pivot, App.Vector(0, 1, 0), angle)
+            self.assertLess(abs(endpoint.common(blocker).Volume), 1e-7)
+        middle = bolt.copy()
+        middle.rotate(pivot, App.Vector(0, 1, 0), 45)
+        self.assertGreater(middle.common(blocker).Volume, 0.001)
+        obj = self.doc.addObject("Part::Feature", "RotorParkingBlocker")
+        self.module["group"].addObject(obj)
+        obj.Shape = blocker
+        try:
+            shapes[obj.Name] = blocker
+            _, result = park_output_rotor_for_input_service(
+                self.doc,
+                self.module,
+                "Port",
+                shapes,
+                {"PortOutputGear", "StarboardOutputGear"},
+            )
+            self.assertFalse(result["passed"], result)
+            row = next(
+                r
+                for r in result["continuous_rotation"]
+                if r["part"] == "PortOutputClampNegativeBolt"
+            )
+            self.assertGreater(row["intersection_mm3"][obj.Name], 0.001)
+        finally:
+            self.doc.removeObject(obj.Name)
+
+    def test_parking_requires_unmeshing_and_a_neutral_initial_input(self):
+        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.servo_module import park_output_rotor_for_input_service
+
+        shapes, _ = module_service_shapes(self.doc, self.module)
+        _, meshed = park_output_rotor_for_input_service(
+            self.doc, self.module, "Port", shapes, set()
+        )
+        self.assertFalse(meshed["passed"])
+        pod = self.doc.PortPod
+        original = float(pod.Tilt)
+        try:
+            pod.Tilt = 30
+            self.doc.recompute()
+            shapes, _ = module_service_shapes(self.doc, self.module)
+            _, nonneutral = park_output_rotor_for_input_service(
+                self.doc,
+                self.module,
+                "Port",
+                shapes,
+                {"PortOutputGear", "StarboardOutputGear"},
+            )
+            self.assertFalse(nonneutral["initial_input_and_output_neutral"])
+            self.assertFalse(nonneutral["passed"])
+        finally:
+            pod.Tilt = original
+            self.doc.recompute()
 
     def test_driver_service_rejects_mixed_axis_and_unstaged_axial_release(self):
         from gondola.contracts.drive import SELECTED_DRIVE

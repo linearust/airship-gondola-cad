@@ -5,7 +5,9 @@ output-bearing pairs installed; only the small gears are first unmeshed.
 """
 
 import FreeCAD as App
+import Part
 
+from gondola.cad import belongs_to_group
 from gondola.contracts.drive import drive_for_document
 
 from .geometry import TOL
@@ -23,17 +25,96 @@ def servo_unit_service_waypoints(prefix):
     sign = 1 if prefix == "Port" else -1
     return [
         (0, 0, 0),
-        (0, sign * 14, 0),
-        (sign * 60, sign * 14, 0),
+        (0, sign * 13, 0),
+        (sign * 60, sign * 13, 0),
     ]
 
 
 def input_shaft_service_waypoints(prefix):
-    """Clear the gear bore, then move outward before reaching the rotor jack."""
+    """Clear the retained input bearing/housing after parking the loose rotor."""
     if prefix not in ("Port", "Starboard"):
         raise ValueError("Unknown servo side")
     sign = 1 if prefix == "Port" else -1
-    return [(0, 0, 0), (0, sign * 18, 0), (sign * 60, sign * 18, 0)]
+    return [(0, 0, 0), (0, sign * 32, 0), (sign * 60, sign * 32, 0)]
+
+
+def input_service_rotor_parking_angle_deg(prefix):
+    """Unmeshed output-only service pose; input servo and gear stay neutral."""
+    if prefix not in ("Port", "Starboard"):
+        raise ValueError("Unknown servo side")
+    return 90.0
+
+
+def park_output_rotor_for_input_service(doc, module, prefix, shapes, removed):
+    """Certify the rotor's complete rotation envelope, then retain its parked pose.
+
+    The output gear must already be absent. Copies are transformed directly so
+    native gear-ratio expressions cannot rotate the still-installed input unit.
+    """
+    from .rotation_envelope import full_orbit_envelope
+
+    sign = 1 if prefix == "Port" else -1
+    angle = input_service_rotor_parking_angle_deg(prefix)
+    group = doc.getObject(prefix + "Pod")
+    drive = doc.getObject(prefix + "InputDrive")
+    neutral = (
+        group is not None
+        and drive is not None
+        and group.Placement.Rotation.isSame(App.Rotation(), TOL)
+        and drive.Placement.Rotation.isSame(App.Rotation(), TOL)
+    )
+    moving = {
+        name
+        for name in shapes
+        if belongs_to_group(doc.getObject(name), group) and name not in removed
+    }
+    fixed = retained_obstacles(shapes, removed | moving)
+    axis = (0, sign * 75, 50)
+    rows = []
+    for name in sorted(moving):
+        if "OutputShaft" in name:
+            envelope = Part.makeCylinder(
+                1.5, 42, App.Vector(0, sign * 13, 50), App.Vector(0, sign, 0)
+            )
+            evidence = {
+                "method": "literal coaxial round output-shaft envelope",
+                "radius_mm": 1.5,
+                "scope": "Complete42mm stock and both filed regions fit inside the unchanged round journal cylinder; contact with nominal bearing bores is retained, not excluded.",
+            }
+        else:
+            envelope, evidence = full_orbit_envelope(shapes[name], axis)
+        outside = abs(shapes[name].cut(envelope).Volume)
+        hits = {n: abs(envelope.common(s).Volume) for n, s in fixed.items()}
+        rows.append(
+            {
+                "part": name,
+                "envelope": evidence,
+                "outside_envelope_mm3": outside,
+                "intersection_mm3": hits,
+                "passed": outside < TOL and all(v < TOL for v in hits.values()),
+            }
+        )
+    parked = dict(shapes)
+    for name in moving:
+        parked[name] = shapes[name].copy()
+        parked[name].rotate(App.Vector(*axis), App.Vector(0, 1, 0), angle)
+    return parked, {
+        "pod": prefix,
+        "removed_output_gear": prefix + "OutputGear",
+        "moving_parts": sorted(moving),
+        "retained_parts": sorted(fixed),
+        "axis_origin_mm": list(axis),
+        "axis_direction": [0, 1, 0],
+        "angle_deg": angle,
+        "input_remains_neutral": True,
+        "initial_input_and_output_neutral": neutral,
+        "continuous_rotation": rows,
+        "scope": "After unmeshing, support and park only this output rotor; leave the input servo neutral. Complete all-angle envelopes certify this parking arc against every retained physical part, including input shaft/support. Bearings and caps stay fixed. Reverse the rotation only after the input shaft is reinstalled and before refitting the output gear. Flexible wires and loaded operation are unqualified.",
+        "passed": prefix + "OutputGear" in removed
+        and neutral
+        and bool(moving)
+        and all(row["passed"] for row in rows),
+    }
 
 
 def driver_gear_service_waypoints(prefix):

@@ -40,7 +40,7 @@ class DriveContractTests(unittest.TestCase):
         self.assertEqual(drive.contract()["drive_inward_offset_mm"], 8)
         self.assertEqual(
             drive.contract()["fixed_support_topology"],
-            "integrated servo seats and paired inboard output bearings",
+            "integrated servo seats, paired inboard output bearings and one external input bearing per side under shared caps",
         )
 
     def test_source_gaps_are_not_filled_from_the_other_gear(self):

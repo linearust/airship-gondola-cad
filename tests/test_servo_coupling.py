@@ -382,15 +382,21 @@ class ServoCouplingTests(unittest.TestCase):
             self.assertGreater(tool.common(middle_bolt).Volume, 0.1)
         self.assertFalse(c.assembly_contract()["optional_middle_fastener_installed"])
 
-    def test_metal_stub_retains_stop_flat_and_gear_end_reserve(self):
+    def test_metal_stub_retains_stop_and_proximal_flat_with_round_distal_journal(self):
         from gondola.parts import servo_coupling as c
 
         main, shaft = c.adapter_shape(), c.driver_shaft_shape()
-        self.assertAlmostEqual(shaft.BoundBox.YLength, 20)
+        self.assertAlmostEqual(shaft.BoundBox.YLength, 35)
         unclocked = shaft.copy()
         unclocked.rotate(App.Vector(), App.Vector(0, 1, 0), -c.SHAFT_CLAMP_CLOCK_DEG)
-        self.assertAlmostEqual(unclocked.BoundBox.XMin, -1)
-        self.assertAlmostEqual(shaft.BoundBox.YMax, c.GEAR_START_Y + 12)
+        self.assertAlmostEqual(unclocked.BoundBox.XMin, -1.5)
+        flat_section = unclocked.common(Part.makeBox(4, 16, 4, App.Vector(-2, 7.1, -2)))
+        self.assertAlmostEqual(flat_section.BoundBox.XMin, -1)
+        journal = Part.makeCylinder(
+            1.5, 19, App.Vector(0, 23.1, 0), App.Vector(0, 1, 0)
+        )
+        self.assertLess(abs(journal.cut(unclocked).Volume), 1e-7)
+        self.assertAlmostEqual(shaft.BoundBox.YMax, c.GEAR_START_Y + 27)
         displaced = shaft.copy()
         displaced.translate(App.Vector(0, -0.01, 0))
         self.assertGreater(displaced.common(main).Volume, 0.01)
@@ -464,6 +470,27 @@ class InputShaftEvidenceTests(unittest.TestCase):
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
+    def test_round_input_journal_cannot_be_replaced_by_full_length_flat(self):
+        from gondola.validation.horn_coupling import input_stub_grip_stock_check
+        from gondola.validation.propulsion_service import module_service_shapes
+
+        shapes, missing = module_service_shapes(self.doc, self.module)
+        self.assertFalse(missing)
+        for prefix, sign in (("Port", 1), ("Starboard", -1)):
+            shaft = shapes[prefix + "InputShaft"]
+            self.assertTrue(input_stub_grip_stock_check(shaft, prefix)["passed"])
+            # Extend the keyed flat only across the actual2.5mm bearing width;
+            # the tip and all existing adapter/gear flat material stay intact.
+            cutter = Part.makeBox(2, 2.5, 4, App.Vector(-3, 31.75, -2))
+            cutter.rotate(App.Vector(), App.Vector(0, 1, 0), 240)
+            cutter.translate(App.Vector(16, 0, 50))
+            if sign < 0:
+                cutter.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+            result = input_stub_grip_stock_check(shaft.cut(cutter), prefix)
+            self.assertLess(result["missing_grip_stock_mm3"], 1e-7)
+            self.assertGreater(result["missing_round_journal_mm3"], 1)
+            self.assertFalse(result["passed"], result)
+
     def test_both_mirrored_drives_retain_the_shaft_through_bounded_travel(self):
         from gondola.validation.propulsion import direct_adapter_fit_check
 
@@ -476,7 +503,9 @@ class InputShaftEvidenceTests(unittest.TestCase):
                     self.doc.recompute()
                     result = direct_adapter_fit_check(self.doc, prefix)
                     self.assertTrue(result["passed"], result)
-                    self.assertAlmostEqual(result["metal_projection_beyond_gear_mm"], 4)
+                    self.assertAlmostEqual(
+                        result["metal_projection_beyond_gear_mm"], 19
+                    )
             finally:
                 pod.Tilt = original
                 self.doc.recompute()
@@ -523,11 +552,11 @@ class InputShaftEvidenceTests(unittest.TestCase):
         original = shaft.Shape.copy()
         try:
             # Keep the entire socket and selected gear journal, but remove the
-            # four-millimetre projection beyond the gear's front face.
+            # nineteen-millimetre journal and tip beyond the gear's front face.
             shaft.Shape = original.cut(
                 Part.makeBox(
                     6,
-                    5,
+                    20,
                     6,
                     App.Vector(
                         -3,
