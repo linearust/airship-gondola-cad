@@ -19,6 +19,7 @@ from . import mounting_plate, optical_mount, purchased_hardware, rail, stack_int
 from .edge_blends import fillet_selected, near
 
 V = App.Vector
+UPPER_SUPPORT_ROOT_RADIUS_MM = 0.5
 
 
 def _cylinder(radius, length, origin):
@@ -115,6 +116,19 @@ def base_shape():
     for x, z in joint_axes().values():
         shape = shape.cut(_cylinder(spec.BORE_DIAMETER_MM / 2, 20, (x, -10, z)))
         shape = shape.cut(_nut_pocket(x, z))
+    shape = fillet_selected(
+        shape.removeSplitter(),
+        1.0,
+        lambda edge, bounds: (
+            near(bounds.ZMin, 15.5)
+            and near(bounds.ZLength, 0)
+            and near(abs(bounds.YMin), spec.CHEEK_INNER_Y_MM)
+            and near(bounds.YLength, 0)
+            and near(edge.Length, 19)
+        ),
+        2,
+        "Instrument lower inner cheek roots",
+    )
     return _finished(shape, "lower yoke")
 
 
@@ -158,6 +172,32 @@ def upper_shape():
         ),
         8,
         "Integral optical bridge post roots",
+    )
+    # Blend only the outer support/deck roots. The two inner X=±3 edges
+    # remain square to retain the complete six-mm accessory access corridor.
+    shape = fillet_selected(
+        shape,
+        UPPER_SUPPORT_ROOT_RADIUS_MM,
+        lambda edge, bounds: (
+            near(bounds.ZMin, 17)
+            and near(bounds.ZLength, 0)
+            and (
+                (
+                    near(bounds.YLength, 0)
+                    and near(abs(bounds.YMin), width / 2)
+                    and near(edge.Length, 5)
+                    and bounds.XMin >= -8.01
+                    and bounds.XMax <= 8.01
+                )
+                or (
+                    near(bounds.XLength, 0)
+                    and near(abs(bounds.XMin), 8)
+                    and near(edge.Length, width)
+                )
+            )
+        ),
+        6,
+        "Instrument upper support outer roots",
     )
     return _finished(shape, "integral FC and optical carrier")
 
@@ -225,6 +265,10 @@ def mount_contract():
         "lug_width_mm": spec.LUG_WIDTH_MM,
         "total_face_fit_reserve_mm": spec.FACE_FIT_RESERVE_MM,
         "cheek_thickness_mm": spec.CHEEK_THICKNESS_MM,
+        "root_blends_mm": {
+            "lower_inner_cheek": 1.0,
+            "upper_outer_support": UPPER_SUPPORT_ROOT_RADIUS_MM,
+        },
         "nut_pocket_af_mm": spec.NUT_POCKET_AF_MM,
         "nut_floor_mm": spec.CHEEK_THICKNESS_MM - spec.NUT_POCKET_DEPTH_MM,
         "nominal_grip_mm": spec.CHEEK_OUTER_Y_MM + spec.NUT_BEARING_Y_MM,

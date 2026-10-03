@@ -65,6 +65,7 @@ SERVO_PLINTH_WIDTH = 45.4
 SERVO_PLINTH_DEPTH = 21.0
 SERVO_PLINTH_BOTTOM_Z = 20.0
 SERVO_PLINTH_TOP_Z = 29.5
+SERVO_CRADLE_ROOT_RADIUS = 0.75
 RAIL_BOLT_OFFSET_X = PROPULSION_ATTACHMENT.half_spacing_mm
 RAIL_CONTACT_LENGTH = PROPULSION_ATTACHMENT.contact_length_mm
 PIVOT_Z = PIVOT_Z_MM
@@ -474,6 +475,32 @@ def fixed_frame_shape():
         ),
         2,
         "Input-bearing wing lower roots",
+    )
+    # Soften only the two front plinth roots. Keep the lower servo ears,
+    # their tool paths, full case windows and rear nut-seat stock unchanged.
+    # A wider case allowance may overhang the independent plinth, so select
+    # only their actual overlap instead of assuming the full cradle width.
+    cradle_inner_x, cradle_outer_x = servo_bridge.cradle_x_bounds()
+    root_inner_x = max(cradle_inner_x, -SERVO_PLINTH_WIDTH / 2)
+    root_outer_x = min(cradle_outer_x, SERVO_PLINTH_WIDTH / 2)
+    body = fillet_selected(
+        body,
+        SERVO_CRADLE_ROOT_RADIUS,
+        lambda edge, bounds: (
+            type(edge.Curve).__name__ == "Line"
+            and near(bounds.ZMin, SERVO_PLINTH_TOP_Z)
+            and near(bounds.ZLength, 0)
+            and near(bounds.YLength, 0)
+            and near(
+                abs(bounds.YMin),
+                abs(servo_envelope.ear_seat_y() - DRIVE_INWARD_OFFSET_MM),
+            )
+            and near(bounds.XLength, root_outer_x - root_inner_x)
+            and near(min(abs(bounds.XMin), abs(bounds.XMax)), root_inner_x)
+            and near(max(abs(bounds.XMin), abs(bounds.XMax)), root_outer_x)
+        ),
+        2,
+        "Servo cradle front plinth roots",
     )
     return _checked(body, "Integrated servo and inboard-bearing frame")
 
@@ -1367,7 +1394,7 @@ def _module_metrics(printed, hardware, references, spec):
             "frame_crossbeam_thickness_mm": FOOT_THICKNESS,
             "bearing_post_root_radius_mm": BEARING_ROOT_RADIUS,
             "frame_lower_exterior_radius_mm": 0.0,
-            "servo_cradle_root_radius_mm": 0.0,
+            "servo_cradle_root_radius_mm": SERVO_CRADLE_ROOT_RADIUS,
         },
         "OEM_interfaces": PROPULSION_EVIDENCE,
         "horn_coupling": coupling_metrics(),

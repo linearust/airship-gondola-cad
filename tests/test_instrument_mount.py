@@ -89,6 +89,34 @@ class InstrumentMountTests(unittest.TestCase):
         )
         self.assertFalse(negative["passed"], negative)
 
+    def test_upper_service_partition_retains_blends_without_widening_lower_lug(self):
+        from gondola.cad import union
+        from gondola.validation.instrument import _split, _upper_regions
+
+        upper = self.kit["upper"].Shape
+        regions = _upper_regions(upper)
+        self.assertEqual(len(regions), 2)
+        restored = union(regions)
+        self.assertLess(upper.cut(restored).Volume, 1e-6)
+        self.assertLess(restored.cut(upper).Volume, 1e-6)
+        self.assertAlmostEqual(regions[0].BoundBox.ZMax, 16.5)
+        self.assertLessEqual(regions[0].BoundBox.YLength, 8 + 1e-6)
+        # A literal R0.5 Y-root witness belongs entirely to the raised region.
+        root = Part.makeBox(2, 0.5, 0.5, App.Vector(4, 4, 16.5)).cut(
+            Part.makeCylinder(0.5, 2, App.Vector(4, 4.5, 16.5), App.Vector(1, 0, 0))
+        )
+        self.assertLess(root.cut(regions[1]).Volume, 1e-6)
+        self.assertLess(root.common(regions[0]).Volume, 1e-6)
+        # Deliberately dropping a0.02mm layer of actual support stock must fail.
+        with self.assertRaisesRegex(ValueError, "exceeds its decomposition"):
+            _split(
+                upper,
+                [
+                    Part.makeBox(200, 200, 100, App.Vector(-100, -100, -83.51)),
+                    Part.makeBox(200, 200, 100, App.Vector(-100, -100, 16.51)),
+                ],
+            )
+
     def test_standard_shoe_and_plate_are_exact_at_their_interface_datums(self):
         from gondola.parts import mounting_plate, rail
 

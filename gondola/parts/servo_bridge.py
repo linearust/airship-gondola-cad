@@ -74,6 +74,17 @@ def _ear_nut_pockets(drive):
     return union(cuts)
 
 
+def cradle_x_bounds(drive=SELECTED_DRIVE):
+    """Return the closed frame's inboard and outboard X limits."""
+    inboard = (
+        drive.input_x_mm
+        - servo_envelope.CASE_WIDTH / 2
+        - CASE_CLEARANCE
+        - CRADLE_WEB_THICKNESS
+    )
+    return inboard, inboard + CASE_WINDOW_WIDTH + 2 * CRADLE_WEB_THICKNESS
+
+
 def integrated_cradle_shape(drive=SELECTED_DRIVE):
     """Compact closed walls directly seated on the full-width central plinth.
 
@@ -81,10 +92,9 @@ def integrated_cradle_shape(drive=SELECTED_DRIVE):
     release the ear pairs. The servo/horn/adapter moves forwardY13 and outwardX.
     Finish tight printed windows; never force the case or clamp it in compression.
     """
-    x, z = drive.input_x_mm, drive.input_z_mm
-    window_inner_x = x - servo_envelope.CASE_WIDTH / 2 - CASE_CLEARANCE
-    inboard_x = window_inner_x - CRADLE_WEB_THICKNESS
-    outer_x = window_inner_x + CASE_WINDOW_WIDTH + CRADLE_WEB_THICKNESS
+    z = drive.input_z_mm
+    inboard_x, outer_x = cradle_x_bounds(drive)
+    window_inner_x = inboard_x + CRADLE_WEB_THICKNESS
     rear_y = servo_envelope.ear_seat_y() - MOUNT_DEPTH
     body = box(
         outer_x - inboard_x,

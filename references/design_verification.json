@@ -1,71 +1,71 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-03T11:32:40.493498+00:00",
-  "revision": "CJ",
-  "change_kind": "Behavior-preserving optical support and validation refactor",
-  "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. A distinct FC/optical upper carrier integrates the optical support and retains the standard rail interface and plate pattern. It shares the existing setup-only +/-20 degree pitch joint; no separate optical tray or foot hardware. Each keyed three-bearing cap uses two aligned M2x10 pairs. The bearing support beam is9.5mm thick. Rotor root height is8mm with small edge rounds; the necessary M2x12 shaft jack and external axial stops remain. Full-vehicle CG, actual sensor origins, installed wiring, physical fit, stiffness, creep and flight readiness remain unqualified. The motor-carrier fabrication hold remains in effect.",
-  "predecessor_commit": "c55f3193ee542474a392f1267b51a4af7ea44843",
-  "source_fingerprint": "b42286273f20a9cba3d68fff813f1c338b5953041e97a4da340abe821b87a698",
-  "cad_sha256": "0548546bcb7bdbde4c1931b6deca03689cd4350e1ee5ab88808c34ca05263b0d",
+  "recorded_utc": "2026-10-03T12:58:06.767591+00:00",
+  "revision": "CK",
+  "change_kind": "Protected servo and instrument support root blends",
+  "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. CK adds R0.75 servo cradle/plinth roots, R1 lower instrument cheek roots and R0.5 upper outer support/deck roots. Only three printed parts gain local root stock; purchased interfaces, inventory, native controls and placements are unchanged. Shared cradle bounds select actual plinth overlap under case allowance changes; the instrument service partition retains every actual solid region including the added blends. The rail, bearing seats, nut pockets, FC mounting pattern and optical adhesive pad remain unchanged. Full-vehicle CG, actual sensor origins, installed wiring, physical fit, stiffness, creep and flight readiness remain unqualified. The motor-carrier fabrication hold remains in effect.",
+  "predecessor_commit": "c6d39cb94639d81e77ace7fee3cab731ded9a1fd",
+  "source_fingerprint": "69a1c5b6c26f4278172fa5618205963793423b536507f3573d5c67a5f9bc362f",
+  "cad_sha256": "1d54b51c91109078bd9161737c39d0a15494713fb0edae09a5dd6e1835eb5b7b",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "0272eea29e3c857f17d754331de54a521d0da1e9b6c14de417b239a713b38882",
+    "sha256": "ba5f55cfe1b9f2bce67bd22c0aaeb1922d6e9bfa92a79f51b131509da9045287",
     "independently_reviewed": true,
-    "review_json_sha256": "189aa08b7e3343a6fee52072139258231c5955c70d37168e4f08128011fc16db",
-    "independent_review_canonical_sha256": "2e0231fe8caf5287cfae5de63bbdc8f403dc512c5675cb055fff92e4c791147b"
+    "review_json_sha256": "b979bde3220585cb0d070d2f8aa9a31de09777f1ca762c6b08e993315fd3f2a3",
+    "independent_review_canonical_sha256": "b794b47103be153a2f68d70a78d7f118204c8e47deed66f89b2516290453fb38"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 892,
+    "testsRun": 896,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "exact_discovery_coverage": true,
     "per_execution_inputs_frozen": true,
-    "verification_strategy": "One complete native discovery partitioned into 12 clean shards; no skipped tests or superseded failures.",
+    "verification_strategy": "One complete native discovery partitioned into 16 clean shards; no skipped tests or superseded failures.",
     "frozen_input_scope": "Python under gondola/tests/tools, root FCMacro files, source_fingerprint assets and native fixture bytes. Prose and evidence files are outside the frozen code-input claim; the retained independent fixture approval is separately bound by exact canonical JSON and native-file hashes."
   },
   "pipeline": [
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 60.242762449999645,
-      "log_sha256": "c7a4845112bcbcb11f77f53af80847fbe19f17a2f3f4c219afbbe43d0b62a6ff"
+      "elapsed_seconds": 65.89052197799901,
+      "log_sha256": "c45be54c0ce865b23af29fcc388f608b87aa682cde9c6a2ccbfd6d2079c95a6e"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 51.25583170699974,
+      "elapsed_seconds": 52.35044464300154,
       "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 25.22998134199952,
+      "elapsed_seconds": 26.24561851800172,
       "log_sha256": "1949901efbae813af48554766b1ba8c77ebb2c6dd8d510acb2f80eca5926f64e"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 1243.9146791919993,
+      "elapsed_seconds": 1233.6240625190003,
       "log_sha256": "fc64639a8965d3e62156f3626c63cc0d0a10105b9a8eb52480a42e9e58ebbd66"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.3619707699999708,
-      "log_sha256": "2536e1c5e601357d3d9e3beeb432ee1b967a376959bf9ef6c2e57956e75b1ddf"
+      "elapsed_seconds": 0.3844250530019053,
+      "log_sha256": "10d8681f3ba8239b82555dfb3d2a199e7c95a6a29348b134495c25a765d6bb9d"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 14.465426803999435,
-      "log_sha256": "7957770f05a3f6ce00d819de1ab9625ad299509505dc39fce6796f8b485561ae"
+      "elapsed_seconds": 13.74316229300166,
+      "log_sha256": "9848231571f846604e6d0e41d03a45f253a34605005bf3bf147c412134650e49"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.6565211810011533,
+      "elapsed_seconds": 0.5551728089994867,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -88,15 +88,15 @@
     "writer_freshness_binding_passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "0548546bcb7bdbde4c1931b6deca03689cd4350e1ee5ab88808c34ca05263b0d",
-    "gondola_print_parts.FCStd": "102ce6726ca3aec74e4de1f17a49faac272d0ef3291d746cbcd1d0f17e27eba6",
-    "gondola_attachment_detail.FCStd": "a8aaabad4d9e5b5b3e1bc855b15e4cfc65942d181d7882242ba395334dc79142",
-    "gondola_power_options.FCStd": "9a369eca575a64707fe1078c64fae7002016ffa0e093be04c815f21ce90177f5",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "d47aa084bc47f591853c0ccaa31caae9b1455887283ddbb452080046949511fb"
+    "gondola.FCStd": "1d54b51c91109078bd9161737c39d0a15494713fb0edae09a5dd6e1835eb5b7b",
+    "gondola_print_parts.FCStd": "21e7c385bc7e4c462fa1eb6d487e101e1496a772de803032d03d7f1fd99b0ff5",
+    "gondola_attachment_detail.FCStd": "0cd4dfba65e64222934061aa1f71aadaa7b835bb9695f86aecfdb3f8f0d8984c",
+    "gondola_power_options.FCStd": "a43299af9a30019069a2a7e93c60365587e781e486ac2e574fbdfcfcaa0dbe8c",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "b810de6ec6fa4472c29506645bef94ae0ce3a154335eca1d34f67afab714124c"
   },
-  "print_bundle_sha256": "905e8c264f036d0ee300fc9112a6ad88a0b5adc57042691719811abaf4b04671",
-  "simulation_parameters_sha256": "1949b93263bba0459225bbfb7662522410d390abc22f5eca9f3b10f43b66a428",
+  "print_bundle_sha256": "0ad72efb6c090d5f1904ed5b9320ae9cc968ff21348f857da031464e9bf04901",
+  "simulation_parameters_sha256": "cb7acaf4dfce2ca863bd1a836ba095b6e0cdecde3989632efdea9fb0ec5b5ee2",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "cj_integral_instrument_and_bearing_revision",
-  "evidence_archive_sha256": "3eb97c6dd645b74e1012a08a28b5e7c9bb3dcb8901ccf32df01af85fba66c79d"
+  "evidence_record_key": "ck_protected_root_blends",
+  "evidence_archive_sha256": "39eea79452d63cb29a69ad22666f1df82121f328734418fccc41c50c916e876d"
 }

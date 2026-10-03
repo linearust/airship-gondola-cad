@@ -150,6 +150,22 @@ def _split(shape, boxes):
     return regions
 
 
+def _upper_regions(shape):
+    # Keep every support-root blend with the raised plate. Including them in
+    # the lower lug's bounding sweep would falsely widen that whole narrow lug.
+    # _split verifies that the union retains all actual stock, including defects.
+    split_z = (
+        mounting_plate.CARRIER_BOTTOM_Z - instrument_mount.UPPER_SUPPORT_ROOT_RADIUS_MM
+    )
+    return _split(
+        shape,
+        [
+            Part.makeBox(200, 200, 100, V(-100, -100, split_z - 100)),
+            Part.makeBox(200, 200, 100, V(-100, -100, split_z)),
+        ],
+    )
+
+
 def _physical_inventory(doc, stage, module, include_installed):
     registry = doc.getObject("DesignRegistry")
     if include_installed and registry is None:
@@ -576,13 +592,7 @@ def instrument_check(doc, *, include_installed=True):
             return result
         # Partition actual solids, preserving all stock. Invariant Y separation
         # certifies the snug cheek clearance without unnecessarily tiny time steps.
-        upper_regions = _split(
-            high,
-            [
-                Part.makeBox(200, 200, 100, V(-100, -100, -83)),
-                Part.makeBox(200, 200, 100, V(-100, -100, 17)),
-            ],
-        )
+        upper_regions = _upper_regions(high)
         # First box ends at Y=-4.1, rather than overlapping the central region.
         lower_regions = _split(
             low,

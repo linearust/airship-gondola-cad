@@ -1,15 +1,15 @@
 {
-  "revision": "CJ",
+  "revision": "CK",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "0272eea29e3c857f17d754331de54a521d0da1e9b6c14de417b239a713b38882",
-  "old_fixture_sha256": "0eb95c67ceae9ee9737cfa44900e5949755f3286c1996dac74ce963a74fa8939",
+  "candidate_sha256": "ba5f55cfe1b9f2bce67bd22c0aaeb1922d6e9bfa92a79f51b131509da9045287",
+  "old_fixture_sha256": "0272eea29e3c857f17d754331de54a521d0da1e9b6c14de417b239a713b38882",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "cj_integral_instrument_and_bearing_revision",
+      "ck_protected_root_blends",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "2e0231fe8caf5287cfae5de63bbdc8f403dc512c5675cb055fff92e4c791147b"
+    "canonical_json_sha256": "b794b47103be153a2f68d70a78d7f118204c8e47deed66f89b2516290453fb38"
   },
-  "scope": "Independent literal saved-solid review of integral FC/optical carrier, two-bolt bearing caps, reinforced beam and simplified rotors. Native controls, placements, metadata and inventory reviewed. Nominal regression fixture only; physical qualification remains outstanding."
+  "scope": "Independent saved-solid review of protected servo and instrument support-root fillets; purchased interfaces, controls, placements and quantities retained. Nominal regression fixture only; physical qualification remains outstanding."
 }

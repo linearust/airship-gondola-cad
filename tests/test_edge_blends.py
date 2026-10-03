@@ -139,6 +139,66 @@ class EdgeBlendTests(unittest.TestCase):
         above_pad = Part.makeBox(18, 12, 1, App.Vector(-9, -6, 44))
         self.assertLess(above_pad.common(carrier).Volume, 1e-6)
 
+    def test_servo_cradle_roots_add_stock_without_reducing_case_window(self):
+        # Independent square-minus-circle witness, shortened before each end.
+        root = Part.makeBox(12, 0.75, 0.75, App.Vector(10, -5.5, 29.5)).cut(
+            Part.makeCylinder(
+                0.75, 12, App.Vector(10, -4.75, 30.25), App.Vector(1, 0, 0)
+            )
+        )
+        self.assertAlmostEqual(root.Volume, 12 * 0.75**2 * (1 - math.pi / 4))
+        for angle in (0, 180):
+            witness = root.copy()
+            witness.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
+            self.assertLess(witness.cut(self.frame).Volume, 1e-6)
+            for void in (
+                Part.makeBox(7.4, 5, 20.4, App.Vector(12.3, -10.5, 34.8)),
+                Part.makeCylinder(
+                    1.75, 14, App.Vector(16, -5.5, 33), App.Vector(0, 1, 0)
+                ),
+            ):
+                void.rotate(App.Vector(), App.Vector(0, 0, 1), angle)
+                self.assertLess(void.common(self.frame).Volume, 1e-6)
+
+    def test_instrument_yoke_roots_leave_the_standard_shoe_unchanged(self):
+        from gondola.parts import instrument_mount, rail
+
+        base = instrument_mount.base_shape()
+        root = Part.makeBox(17, 1, 1, App.Vector(-4, 3.1, 15.5)).cut(
+            Part.makeCylinder(1, 17, App.Vector(-4, 3.1, 16.5), App.Vector(1, 0, 0))
+        )
+        self.assertAlmostEqual(root.Volume, 17 * (1 - math.pi / 4))
+        for witness in (root, root.mirror(App.Vector(), App.Vector(0, 1, 0))):
+            self.assertLess(witness.cut(base).Volume, 1e-6)
+        crop = Part.makeBox(50, 50, 32.5, App.Vector(-25, -25, -20))
+        shoe = rail.mount_base_shape().common(crop)
+        retained = base.common(crop)
+        self.assertLess(shoe.cut(retained).Volume, 1e-6)
+        self.assertLess(retained.cut(shoe).Volume, 1e-6)
+
+    def test_instrument_deck_roots_preserve_centre_access_and_spare_relief(self):
+        from gondola.parts import instrument_mount
+
+        upper = instrument_mount.upper_shape()
+        root = Part.makeBox(4, 0.5, 0.5, App.Vector(3.5, 4, 16.5)).cut(
+            Part.makeCylinder(0.5, 4, App.Vector(3.5, 4.5, 16.5), App.Vector(1, 0, 0))
+        )
+        self.assertAlmostEqual(root.Volume, 4 * 0.5**2 * (1 - math.pi / 4))
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                witness = root.copy()
+                if sx < 0:
+                    witness = witness.mirror(App.Vector(), App.Vector(1, 0, 0))
+                if sy < 0:
+                    witness = witness.mirror(App.Vector(), App.Vector(0, 1, 0))
+                self.assertLess(witness.cut(upper).Volume, 1e-6)
+        for origin, size in (
+            ((-3, -4, 16), (6, 8, 1)),
+            ((8.8, -4.1, 14.6), (7.2, 8.2, 2.4)),
+        ):
+            void = Part.makeBox(*size, App.Vector(*origin))
+            self.assertLess(void.common(upper).Volume, 1e-6)
+
 
 if __name__ == "__main__":
     unittest.main()
