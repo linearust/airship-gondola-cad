@@ -50,6 +50,66 @@ def optical_pitch_degrees(stage):
     return round(angle, 9)
 
 
+def optical_attachment_geometry(doc):
+    """Read the native attachment mode and parent, without inferring a default."""
+    optical = doc.getObject("OpticalFlowModule")
+    stage = doc.getObject("OpticalPitchStage")
+    mode = str(getattr(optical, "OpticalAttachmentMode", ""))
+    if (
+        optical is None
+        or stage is None
+        or stage.getParentGeoFeatureGroup() != optical
+        or mode not in ("rail", "carrier")
+    ):
+        raise ValueError("Optical attachment mode or pitch parent changed.")
+    parent = optical.getParentGeoFeatureGroup()
+    host_name = side = rail_station = None
+    if mode == "rail":
+        if (
+            parent is not None
+            or "RailPositionX" not in optical.PropertiesList
+            or any(
+                name in optical.PropertiesList
+                for name in ("CarrierHostName", "MountSide")
+            )
+        ):
+            raise ValueError(
+                "Optical rail binding changed; review the native controls."
+            )
+        station = float(optical.RailPositionX)
+        origin = optical.getGlobalPlacement().Base
+        if not math.isfinite(station) or abs(origin.x - station) > 1e-7:
+            raise ValueError(
+                "Optical rail position disagrees with its native placement."
+            )
+        rail_station = round(station / 1000, 9)
+    else:
+        host_name = str(getattr(optical, "CarrierHostName", ""))
+        side = str(getattr(optical, "MountSide", ""))
+        host = doc.getObject(host_name)
+        if (
+            host_name
+            not in (
+                "BatteryEquipmentModule",
+                "ElectronicsEquipmentModule",
+                "AccessoryEquipmentModule",
+            )
+            or host is None
+            or parent != host
+            or side not in ("PositiveX", "NegativeX")
+            or "RailPositionX" in optical.PropertiesList
+        ):
+            raise ValueError("Optical carrier binding changed; review host and side.")
+    return {
+        "optical_attachment_mode": mode,
+        "optical_native_parent": parent.Name if parent is not None else None,
+        "optical_carrier_host": host_name,
+        "optical_mount_side": side,
+        "optical_rail_station_x_m": rail_station,
+        "optical_module_origin_cad_m": vector_m(optical.getGlobalPlacement().Base),
+    }
+
+
 def printed_carrier_mass_properties(shape):
     """Uniform PA12 estimate for this print alone, about its own centroid."""
     from gondola.mass_budget import DENSITIES_G_CM3, PA12_DENSITY_SOURCE
@@ -319,17 +379,9 @@ def extract(doc):
         "ModuleMTF02PEnvelope",
     )
     points = {name: row["pivot_cad_m"] for name, row in propulsion.items()}
-    optical = doc.OpticalFlowModule
-    optical_host = doc.getObject(getattr(optical, "CarrierHostName", ""))
-    optical_side = str(getattr(optical, "MountSide", ""))
-    if (
-        optical_host is None
-        or optical_host.Name not in module_ids[1:]
-        or optical.getParentGeoFeatureGroup() != optical_host
-        or optical_side not in ("PositiveX", "NegativeX")
-        or "RailPositionX" in optical.PropertiesList
-    ):
-        raise ValueError("Optical carrier binding changed; review host and side.")
+    optical_attachment = optical_attachment_geometry(doc)
+    if optical_attachment["optical_attachment_mode"] == "rail":
+        module_ids += ("OpticalFlowModule",)
     if (
         abs(points["Port"][0] - points["Starboard"][0]) > 1e-9
         or abs(points["Port"][2] - points["Starboard"][2]) > 1e-9
@@ -382,8 +434,7 @@ def extract(doc):
                 for name in centres
             },
             "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
-            "optical_carrier_host": optical_host.Name,
-            "optical_mount_side": optical_side,
+            **optical_attachment,
             "optical_pitch_deg": optical_pitch_degrees(doc.OpticalPitchStage),
             "optical_pitch_pivot_cad_m": point(doc.OpticalPitchStage),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
@@ -429,7 +480,7 @@ def export(cad, output):
         },
     ) as snapshot:
         result = {
-            "schema_version": 7,
+            "schema_version": 8,
             "units": {
                 "length": "m",
                 "mass": "kg",

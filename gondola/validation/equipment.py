@@ -840,7 +840,7 @@ def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
                 "complete_optical_mount_removed": False,
                 "temporarily_removed_head_parts": [],
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. The carrier-mounted optical foot remains an obstacle for installed device removal; remove it first if the populated configuration blocks the device path. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. Any optical mount remains an obstacle for installed device removal; remove it first if the populated configuration blocks the device path. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
                 "passed": not hits,
             }
@@ -1110,7 +1110,7 @@ def validate(source=None):
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack over the bounded -180 to +180 degree output range.",
-                "The optical foot follows its selected carrier and has a native edge orientation control. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
+                "The optical base has either its own rail station or a carrier parent with an edge orientation control. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }

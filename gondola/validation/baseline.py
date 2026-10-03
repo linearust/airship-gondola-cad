@@ -29,6 +29,7 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
+from gondola.contracts.optical_attachment import resolve_mount_mode
 from gondola.parts import rail
 from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
@@ -351,7 +352,7 @@ def control_behavior(doc):
             "Pitch",
             pitch,
             App.Vector(0, 1, 0),
-            App.Vector(*optical_mount.PIVOT_CENTRE),
+            App.Vector(*optical_mount.pivot_centre(mode=resolve_mount_mode())),
             optical,
         ),
     ):
@@ -410,55 +411,79 @@ def control_behavior(doc):
         finally:
             setattr(stage, property_name, original)
             doc.recompute()
-    # The optical head follows one carrier and can use either existing X edge.
-    # Exercise the saved enum/expression without reattaching from current source.
-    host = optical.getParentGeoFeatureGroup()
-    if (
-        host not in modules
-        or "MountSide" not in optical.PropertiesList
-        or "CarrierHostName" not in optical.PropertiesList
-        or optical.CarrierHostName != host.Name
-        or "RailPositionX" in optical.PropertiesList
-    ):
+    selected_mode = resolve_mount_mode()
+    declared_mode = str(getattr(optical, "OpticalAttachmentMode", ""))
+    if declared_mode != selected_mode:
         return {
             "cases": rows,
-            "error": "Optical carrier binding invalid",
+            "error": "Optical attachment mode differs from selection",
             "passed": False,
         }
-    from gondola.parts import mounting_plate
+    if selected_mode == "rail":
+        valid_binding = (
+            optical.getParentGeoFeatureGroup() is None
+            and optical in modules
+            and "RailPositionX" in optical.PropertiesList
+            and "MountSide" not in optical.PropertiesList
+            and "CarrierHostName" not in optical.PropertiesList
+        )
+        if not valid_binding:
+            return {
+                "cases": rows,
+                "error": "Optical rail binding invalid",
+                "passed": False,
+            }
+    else:
+        host = optical.getParentGeoFeatureGroup()
+        if (
+            host not in modules
+            or "MountSide" not in optical.PropertiesList
+            or "CarrierHostName" not in optical.PropertiesList
+            or optical.CarrierHostName != host.Name
+            or "RailPositionX" in optical.PropertiesList
+        ):
+            return {
+                "cases": rows,
+                "error": "Optical carrier binding invalid",
+                "passed": False,
+            }
+        from gondola.parts import mounting_plate
 
-    original_side = str(optical.MountSide)
-    module_placements = {module.Name: module.Placement.copy() for module in modules}
-    try:
-        for side, x, angle in (("PositiveX", 27, 0), ("NegativeX", -27, 180)):
-            optical.MountSide = side
+        original_side = str(optical.MountSide)
+        module_placements = {module.Name: module.Placement.copy() for module in modules}
+        try:
+            for side, x, angle in (("PositiveX", 27, 0), ("NegativeX", -27, 180)):
+                optical.MountSide = side
+                doc.recompute()
+                expected = App.Placement(
+                    App.Vector(x, 0, mounting_plate.CARRIER_SUPPORT_Z),
+                    App.Rotation(App.Vector(0, 0, 1), angle),
+                )
+                unchanged = all(
+                    doc.getObject(name).Placement.isSame(pose, 1e-7)
+                    for name, pose in module_placements.items()
+                )
+                parent_matches = optical.getParentGeoFeatureGroup() == host
+                local_matches = optical.Placement.isSame(expected, 1e-7)
+                rows.append(
+                    {
+                        "object": optical.Name,
+                        "property": "MountSide",
+                        "input": side,
+                        "carrier_parent_matches": parent_matches,
+                        "local_placement_matches": local_matches,
+                        "modules_unchanged": unchanged,
+                        "passed": parent_matches and local_matches and unchanged,
+                    }
+                )
+        finally:
+            optical.MountSide = original_side
             doc.recompute()
-            expected = App.Placement(
-                App.Vector(x, 0, mounting_plate.CARRIER_SUPPORT_Z),
-                App.Rotation(App.Vector(0, 0, 1), angle),
-            )
-            unchanged = all(
-                doc.getObject(name).Placement.isSame(pose, 1e-7)
-                for name, pose in module_placements.items()
-            )
-            parent_matches = optical.getParentGeoFeatureGroup() == host
-            local_matches = optical.Placement.isSame(expected, 1e-7)
-            rows.append(
-                {
-                    "object": optical.Name,
-                    "property": "MountSide",
-                    "input": side,
-                    "carrier_parent_matches": parent_matches,
-                    "local_placement_matches": local_matches,
-                    "modules_unchanged": unchanged,
-                    "passed": parent_matches and local_matches and unchanged,
-                }
-            )
-    finally:
-        optical.MountSide = original_side
-        doc.recompute()
     expected_cases = (
-        module_case_count + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 7
+        module_case_count
+        + 5 * EXPECTED_INVENTORY["tilting_propulsors"]
+        + 5
+        + (2 if selected_mode == "carrier" else 0)
     )
     return {
         "cases": rows,
@@ -599,6 +624,7 @@ def procurement_and_scope_metadata(obj):
         "MountContract",
         "ModulePlacementContract",
         "OpticalMountContract",
+        "OpticalAttachmentMode",
         "OpticalInterfaceContract",
         "OpticalFitVerified",
         "StackInterfaceContract",

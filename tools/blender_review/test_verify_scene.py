@@ -18,7 +18,7 @@ SCENE_NAMES = (
     "02 Independent tilt",
     "03 Gear and horn",
     "04 Axial allowance",
-    "05 Optical carrier pitch",
+    "05 Optical pitch",
     "06 Rotor removal",
 )
 
@@ -167,7 +167,7 @@ class SceneVerifierTests(unittest.TestCase):
             with self.subTest(change=change):
                 self.install_scenes(self.payload)
                 if change == "missing":
-                    self.bpy.data.scenes.pop("05 Optical carrier pitch")
+                    self.bpy.data.scenes.pop("05 Optical pitch")
                 else:
                     self.bpy.data.scenes["07 Legacy"] = Scene(
                         "07 Legacy", self.payload["metadata"]
@@ -180,7 +180,7 @@ class SceneVerifierTests(unittest.TestCase):
         for key in ("CADSHA256", "SourceFingerprint"):
             with self.subTest(property=key):
                 self.install_scenes(self.payload)
-                self.bpy.data.scenes["05 Optical carrier pitch"][key] = "c" * 64
+                self.bpy.data.scenes["05 Optical pitch"][key] = "c" * 64
                 report = self.verify()
                 self.assertFalse(report["passed"])
                 self.assertIn("source_metadata", report["discrepancy_kinds"])

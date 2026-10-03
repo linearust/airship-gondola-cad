@@ -179,6 +179,78 @@ class PowerMountTests(unittest.TestCase):
             with self.subTest(plan=plan, mutation="previous radio position"):
                 self.assertGreater(old_overlap, 0.01)
 
+    def test_optional_context_keeps_rail_pose_and_restores_carrier_attachment(self):
+        from gondola.cad import world_shape
+        from gondola.parts import optical_mount, power_mount, stack_interface
+        from gondola.power_export import _illustrated_optical_mount
+
+        for mode in ("carrier", "rail"):
+            with self.subTest(mode=mode):
+                doc = App.newDocument("PowerOpticalMode")
+                option = None
+                try:
+                    hosts = {
+                        name: doc.addObject("App::Part", name)
+                        for name in stack_interface.MECHANICAL_HOSTS
+                    }
+                    hosts["BatteryEquipmentModule"].Placement.Base.x = -84
+                    hosts["AccessoryEquipmentModule"].Placement.Base.x = 84
+                    kit = optical_mount.build_optical_mount(
+                        doc,
+                        hosts["BatteryEquipmentModule"] if mode == "carrier" else None,
+                        mode=mode,
+                    )
+                    optical = kit["group"]
+                    if mode == "rail":
+                        optical.addProperty("App::PropertyDistance", "RailPositionX")
+                        optical.RailPositionX = 140
+                        optical.setExpression("Placement.Base.x", "RailPositionX")
+                    doc.recompute()
+                    before_parent = optical.getParentGeoFeatureGroup()
+                    before_pose = optical.Placement.copy()
+                    before_world = world_shape(doc.OpticalMountBase)
+                    with self.assertRaisesRegex(RuntimeError, "restore test"):
+                        with _illustrated_optical_mount(doc):
+                            option = power_mount.create_option_document(doc)
+                            actual = json.loads(
+                                option.PowerOptionModule.OpticalAttachment
+                            )
+                            if mode == "rail":
+                                self.assertEqual(
+                                    actual, {"mode": "rail", "rail_position_x_mm": 140}
+                                )
+                                self.assertIsNone(optical.getParentGeoFeatureGroup())
+                                self.assertTrue(
+                                    optical.Placement.isSame(before_pose, 1e-7)
+                                )
+                            else:
+                                self.assertEqual(
+                                    actual,
+                                    {
+                                        "mode": "carrier",
+                                        "host": power_mount.DEFAULT_OPTICAL_HOST,
+                                        "side": power_mount.DEFAULT_OPTICAL_SIDE,
+                                    },
+                                )
+                                self.assertEqual(
+                                    optical.getParentGeoFeatureGroup(),
+                                    doc.getObject(power_mount.DEFAULT_OPTICAL_HOST),
+                                )
+                            self.assertNotIn(
+                                "OpticalCarrierHost",
+                                option.PowerOptionModule.PropertiesList,
+                            )
+                            raise RuntimeError("restore test")
+                    self.assertEqual(optical.getParentGeoFeatureGroup(), before_parent)
+                    self.assertTrue(optical.Placement.isSame(before_pose, 1e-7))
+                    after_world = world_shape(doc.OpticalMountBase)
+                    self.assertLess(abs(before_world.cut(after_world).Volume), 1e-6)
+                    self.assertLess(abs(after_world.cut(before_world).Volume), 1e-6)
+                finally:
+                    if option is not None:
+                        App.closeDocument(option.Name)
+                    App.closeDocument(doc.Name)
+
     def test_host_translation_and_attached_optical_module(self):
         from gondola.parts import optical_interface
         from gondola.parts import power_mount as p
@@ -190,6 +262,8 @@ class PowerMountTests(unittest.TestCase):
                 name: doc.addObject("App::Part", name) for name in s.MECHANICAL_HOSTS
             }
             optical = doc.addObject("App::Part", "OpticalFlowModule")
+            optical.addProperty("App::PropertyString", "OpticalAttachmentMode")
+            optical.OpticalAttachmentMode = "carrier"
             optical_interface.attach_to_host(optical, hosts["BatteryEquipmentModule"])
             self.assertEqual(
                 optical.getParentGeoFeatureGroup(), hosts["BatteryEquipmentModule"]
@@ -350,6 +424,8 @@ class PowerMountTests(unittest.TestCase):
                     host.addObject(obj)
                     mounts.append(obj)
                 optical = doc.addObject("App::Part", "OpticalFlowModule")
+                optical.addProperty("App::PropertyString", "OpticalAttachmentMode")
+                optical.OpticalAttachmentMode = "carrier"
                 optical_interface.attach_to_host(
                     optical, doc.BatteryEquipmentModule, "PositiveX"
                 )

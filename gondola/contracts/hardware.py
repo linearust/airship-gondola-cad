@@ -78,13 +78,13 @@ PROCUREMENT_SPECS = {
     "M2_HEX_NUT": {
         "search_query": "M2 black steel hex nut 4mm AF 1.6mm",
         "candidate_url": HEX_NUT_SOURCE,
-        "requirements": "Selected M2 x 0.4 black-steel ordinary hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.35-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The five rail joints use separate M3 hardware. No washers. Rotor and optical joints use recessed nut seats; bearing caps use accessible ordinary hex-nut seats, and the input-shaft clamps retain their existing nut pockets. Trial actual nut chamfers, flank engagement, seating and removal in each finished feature. General PA12 tolerance alone does not guarantee fit or torque restraint. Check usable thread engagement before tightening. Optional power-portal foot nuts still need a holding tool. No flange, locknut or thin-nut substitution is qualified.",
+        "requirements": "Selected M2 x 0.4 black-steel ordinary hex nut from the screw/nut kit. Nominal design envelope: 4 mm across flats and 1.6 mm height; accept measured nuts only within 3.8-4.0 mm across flats and 1.35-1.6 mm height. Shared by propulsion mechanism joints, the optical carrier foot/pitch joints and optional power feet. The selected rail joints use separate M3 hardware. No washers. Rotor and optical joints use recessed nut seats; bearing caps use accessible ordinary hex-nut seats, and the input-shaft clamps retain their existing nut pockets. Trial actual nut chamfers, flank engagement, seating and removal in each finished feature. General PA12 tolerance alone does not guarantee fit or torque restraint. Check usable thread engagement before tightening. Optional power-portal foot nuts still need a holding tool. No flange, locknut or thin-nut substitution is qualified.",
         "evidence_notes": "The selected kit establishes hex nuts, not the previous thin DIN 562 square nuts. The Fastenal DIN934 dimensional reference lists M2 AF3.82-4.0 and height1.35-1.6 mm; the accepted minimum AF3.8 is conservative. These are CAD acceptance dimensions, not a measured supplier drawing or strength-class certification of the selected lot.",
     },
     "M3_HEX_NUT": {
         "search_query": "M3 0.5 hex nut 5.5mm AF 2.4mm A2 stainless",
         "candidate_url": "",
-        "requirements": "Five ordinary M3 x 0.5 hex nuts for the three carrier rail shoes and two opposed integrated-propulsion rail joints. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The opposite U leg has a 5.9 mm across-flats hex pocket with a 2 mm nominal floor; ordinary carrier legs are symmetric 4 mm stock with 2 mm recess depth, so the nut is partly exposed; the nut bears on printed stock, not the rail. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
+        "requirements": "Ordinary M3 x 0.5 hex nuts for the three equipment shoes, two opposed integrated-propulsion shoes, and the optical shoe when rail mode is selected. Nominal design acceptance envelope: 5.5 mm across flats and 2.4 mm height. The opposite U leg has a 5.9 mm across-flats hex pocket with a 2 mm nominal floor; ordinary carrier legs are symmetric 4 mm stock with 2 mm recess depth, so the nut is partly exposed; the nut bears on printed stock, not the rail. Check actual antirotation fit, bearing contact, thread engagement and straight outward removal. No washers or printed threads. A2 stainless steel is the design material selection, not confirmation of the owned stock grade.",
         "evidence_notes": "M3 hardware is already owned, but no selected supplier drawing, received dimensions or grade certificate establishes this envelope. Verify the stock before printing and replace it if needed. The CAD hex pocket is externally accessible for insertion, withdrawal and powder removal; nominal clearance does not qualify print fit or loaded retention.",
     },
 }
@@ -110,7 +110,7 @@ for _length in (6, 8, 10, 12):
                 if _length == 8
                 else ""
             )
-            + "The five rail joints use separate M3 hardware. No washers by default; "
+            + "The selected rail joints use separate M3 hardware. No washers by default; "
             "qualify actual bearing contact, PA12 retention and creep. These are "
             "not OEM motor or horn screws."
         ),
@@ -129,7 +129,7 @@ for _length in (10,):
         "candidate_url": "",
         "requirements": (
             f"M3 x 0.5 screw with {_length} mm under-head length for "
-            + "all five standard carrier-shoe rail joints, including both propulsion stations. "
+            + "all selected standard-shoe rail joints, including both propulsion stations and the optical shoe in rail mode. "
             "A 2 mm recessed head floor, 2.5 mm rail web and 2 mm nut floor give "
             "6.5 mm effective grip. A nominal 2.4 mm nut leaves 1.1 mm tip projection. "
             "Support the complete propulsion assembly before releasing either paired clamp. "

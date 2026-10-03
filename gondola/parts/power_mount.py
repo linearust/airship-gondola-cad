@@ -310,14 +310,27 @@ def create_option_document(
     doc.Label = "Optional power platform | separate from battery baseline"
     group = create_group(doc, "PowerOptionModule", "Optional power module")
     group.Placement = pose
+    optical = main_doc.getObject("OpticalFlowModule")
+    attachment = None
+    if optical is not None:
+        mode = str(optical.OpticalAttachmentMode)
+        if mode == "rail":
+            attachment = {
+                "mode": mode,
+                "rail_position_x_mm": float(optical.RailPositionX),
+            }
+        elif mode == "carrier":
+            attachment = {
+                "mode": mode,
+                "host": str(optical.CarrierHostName),
+                "side": str(optical.MountSide),
+            }
+        else:
+            raise ValueError(f"Unsupported optical attachment mode: {mode}")
     for key, value in (
         ("PowerPlan", plan_key),
         ("PowerPackaging", packaging),
-        (
-            "OpticalCarrierHost",
-            main_doc.OpticalFlowModule.CarrierHostName,
-        ),
-        ("OpticalCarrierSide", str(main_doc.OpticalFlowModule.MountSide)),
+        ("OpticalAttachment", json.dumps(attachment, sort_keys=True)),
         (
             "PowerInstallationContract",
             json.dumps(installation_contract(plan_key, packaging), sort_keys=True),

@@ -94,6 +94,39 @@ class CarrierTrimTests(unittest.TestCase):
         )
         self.assertFalse(supported_carrier_slide(shapes, obstacles, pose)["passed"])
 
+    def test_optical_base_trim_keeps_open_channel_and_checks_all_post_stock(self):
+        from gondola.cad import translated_shape
+        from gondola.parts import optical_mount, rail
+        from gondola.validation.rail_access import supported_carrier_slide
+
+        base = optical_mount.base_shape(mode="rail")
+        pose = {"attachment_world_axes_x_mm": [140], "expected_carrier_yaw_deg": 0}
+        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=-140)}
+        shapes = {
+            "OpticalMountBase": base,
+            "OpticalFlowModuleRailMountScrew": rail.attachment_screw_shape(),
+            "OpticalFlowModuleRailMountNut": rail.nut_shape(),
+        }
+        good = supported_carrier_slide(shapes, obstacles, pose)
+        self.assertTrue(good["passed"], good)
+        row = next(row for row in good["parts"] if row["part"] == "OpticalMountBase")
+        self.assertEqual(
+            {r["region"] for r in row["regions"]},
+            {"OpticalMountBaseLower", "OpticalMountBaseUpper"},
+        )
+        self.assertLess(row["shape_outside_service_envelope_mm3"], 1e-7)
+        # A narrow branch of actual saved post stock must participate in the
+        # upper sweep; its centre-path collision is absent at both endpoints.
+        changed = base.fuse(Part.makeBox(0.1, 10, 1, App.Vector(0, -0.1, 40)))
+        obstacle = Part.makeBox(0.1, 1, 0.5, App.Vector(0.4, 8, 40.2))
+        for shift in (-3, 3):
+            self.assertLess(
+                translated_shape(changed, x=shift).common(obstacle).Volume, 1e-7
+            )
+        shapes["OpticalMountBase"] = changed
+        bad = supported_carrier_slide(shapes, {**obstacles, "Midpath": obstacle}, pose)
+        self.assertFalse(bad["passed"], bad)
+
     def test_carrier_screw_sweep_rejects_uncovered_saved_protrusion(self):
         from gondola.parts import rail
         from gondola.validation.rail_access import supported_carrier_slide
@@ -134,18 +167,37 @@ class CarrierTrimTests(unittest.TestCase):
             carriers = [
                 row for row in report["modules"] if not row["paired_propulsion_clamp"]
             ]
-            self.assertEqual(len(carriers), 3)
+            expected_mounts = {
+                "BatteryEquipmentModule": "BatteryMount",
+                "ElectronicsEquipmentModule": "ElectronicsMount",
+                "AccessoryEquipmentModule": "AccessoryMount",
+                "OpticalFlowModule": "OpticalMountBase",
+            }
+            self.assertCountEqual(
+                [carrier["module"] for carrier in carriers], expected_mounts
+            )
             for carrier in carriers:
+                module_name = carrier["module"]
                 trim = carrier["populated_supported_trim"]
                 self.assertTrue(trim["passed"], trim)
-                expected_travel = 6
-                self.assertAlmostEqual(trim["travel_mm"], expected_travel)
-                self.assertTrue(
-                    any(row["part"].endswith("RailMountScrew") for row in trim["parts"])
-                )
-                self.assertTrue(
-                    any(row["part"].endswith("RailMountNut") for row in trim["parts"])
-                )
+                self.assertEqual(len(carrier["attachment_services"]), 1)
+                self.assertEqual(trim["relative_x_range_mm"], [-3, 3])
+                self.assertAlmostEqual(trim["travel_mm"], 6)
+                carried_parts = [row["part"] for row in trim["parts"]]
+                for required in (
+                    expected_mounts[module_name],
+                    module_name + "RailMountScrew",
+                    module_name + "RailMountNut",
+                ):
+                    self.assertEqual(carried_parts.count(required), 1)
+                if module_name == "OpticalFlowModule":
+                    self.assertTrue(
+                        {
+                            "OpticalSensorTray",
+                            "OpticalPitchBolt",
+                            "OpticalPitchNut",
+                        }.issubset(carried_parts)
+                    )
         finally:
             App.closeDocument(doc.Name)
             self.assertEqual(file_sha256(BASELINE_FILE), before)

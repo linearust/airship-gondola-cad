@@ -73,6 +73,8 @@ class SavedPowerExportTests(unittest.TestCase):
                 }:
                     main.addObject("App::Part", name)
                 optical = main.addObject("App::Part", "OpticalFlowModule")
+                optical.addProperty("App::PropertyString", "OpticalAttachmentMode")
+                optical.OpticalAttachmentMode = "carrier"
                 optical_interface.attach_to_host(
                     optical, main.getObject(optical_interface.DEFAULT_HOST)
                 )
@@ -106,6 +108,21 @@ class SavedPowerExportTests(unittest.TestCase):
             self.assertTrue(initial["read_only_artifacts"])
             self.assertTrue(initial["manufacturing_source_matches"])
             self.assertTrue(initial["optional_print_inventory_matches"])
+            option = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            attachment = option.PowerOptionModule.OpticalAttachment
+            option.PowerOptionModule.OpticalAttachment = json.dumps(
+                {"mode": "rail", "rail_position_x_mm": 140}
+            )
+            option.save()
+            App.closeDocument(option.Name)
+            wrong_attachment = audit_power_options(source, out)
+            self.assertFalse(wrong_attachment["passed"])
+            self.assertFalse(wrong_attachment["optical_attachment_matches"])
+            self.assertTrue(all(wrong_attachment["native_shape_checks"].values()))
+            option = App.openDocument(str(out / ARTIFACT_NAMES[0]))
+            option.PowerOptionModule.OpticalAttachment = attachment
+            option.save()
+            App.closeDocument(option.Name)
             manufacture = App.openDocument(str(out / POWER_PLATFORM_DOCUMENT_NAME))
             self.assertTrue(manufacture.PowerPlatform.PrintPart)
             self.assertEqual(manufacture.PowerPlatform.PrintSKU, "PowerPlatform")

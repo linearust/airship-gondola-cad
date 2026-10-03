@@ -163,8 +163,24 @@ def lower_housing_shape(bottom_z=BODY_BOTTOM_Z):
 
 def cap_shape():
     stock = _housing_stock(BODY_BOTTOM_Z).common(box(45, 30, CAP_TOP_Z, (-15, -8, 0)))
-    return _checked(
+    cap = _checked(
         stock.cut(cap_keys()).cut(seat_tools()).cut(screw_tools()), "Paired bearing cap"
+    )
+    from .edge_blends import fillet_selected, near
+
+    # Round only the free upper perimeter. Keep the gear-stop front edge,
+    # all screw bores, head-bearing lands and the complete split face unchanged.
+    return fillet_selected(
+        cap,
+        0.3,
+        lambda edge, bounds: (
+            type(edge.Curve).__name__ == "Line"
+            and near(bounds.ZMin, CAP_TOP_Z)
+            and near(bounds.ZLength, 0)
+            and not (near(bounds.YMin, BODY_FRONT_Y) and near(bounds.YLength, 0))
+        ),
+        7,
+        "Bearing cap free upper perimeter",
     )
 
 

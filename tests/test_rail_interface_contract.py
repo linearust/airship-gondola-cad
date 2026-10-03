@@ -48,6 +48,35 @@ class SharedRailInterfaceTests(unittest.TestCase):
         for name in ("CentralBridgeSeatZ", "FootBottomZ", "RailContactLength"):
             self.assertEqual(getattr(original, name), getattr(replacement, name))
 
+    def test_direct_optical_base_keeps_the_complete_standard_shoe_and_open_lift_path(
+        self,
+    ):
+        from gondola.parts import optical_mount, rail
+        from gondola.validation.rail_access import _lift_path
+        from gondola.validation.rail_mount import _literal_protected_mount
+
+        base = optical_mount.base_shape(mode="rail")
+        region = Part.makeBox(16, 10.5, 12.5, App.Vector(-8, -5.25, 0))
+        expected = _literal_protected_mount()
+        actual = base.common(region)
+        self.assertLess(actual.cut(expected).Volume + expected.cut(actual).Volume, 1e-7)
+        report = _lift_path("OpticalMountBase", base, {"Rail": rail.rail_shape()}, 0)
+        self.assertTrue(report["passed"], report)
+        # A narrow obstruction inside the shoe's intermediate lift path must
+        # fail even when both placement endpoints are clear.
+        obstacle = Part.makeBox(1, 1, 1, App.Vector(-0.5, 4, 20))
+        self.assertLess(base.common(obstacle).Volume, 1e-7)
+        raised = base.copy()
+        raised.translate(App.Vector(0, 0, 30))
+        self.assertLess(raised.common(obstacle).Volume, 1e-7)
+        blocked = _lift_path(
+            "OpticalMountBase",
+            base,
+            {"Rail": rail.rail_shape(), "Obstacle": obstacle},
+            0,
+        )
+        self.assertFalse(blocked["passed"], blocked)
+
     def test_both_shoes_share_the_same_closed_m3_passages(self):
         from gondola.parts import rail
         from gondola.print_export import geometry_comparison

@@ -11,13 +11,17 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, placed_shape, union, world_shape
-from gondola.contracts.design import MODULE_STATIONS
 from gondola.parts import rail
 
 from .baseline import module_attachment_pose, module_control_bindings
 from .geometry import TOL, translation_sweep
 from .propulsion_service import contained_region_paths, continuous_path
-from .rail_interface import attachment_sites, mount_binding, site_placement
+from .rail_interface import (
+    attachment_sites,
+    mount_binding,
+    selected_mount_bindings,
+    site_placement,
+)
 
 V = App.Vector
 
@@ -144,6 +148,7 @@ def _mount_service_regions(name, shape, offset):
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
+        "OpticalMountBase",
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         return [(name, shape)]
@@ -169,6 +174,14 @@ def _mount_service_regions(name, shape, offset):
             V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
         )
         return [*lower_regions, (name + "Upper", shape.common(upper_region))]
+    if name == "OpticalMountBase":
+        upper_region = Part.makeBox(
+            bounds.XLength + 2,
+            bounds.YLength + 2,
+            bounds.ZLength + 1,
+            V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
+        )
+        return [(name + "Lower", lower), (name + "Upper", shape.common(upper_region))]
     # The broad deck has narrow supports. A whole upper bounding box would
     # obstruct the adjacent servo cap during a real horizontal service slide.
     # These literal witnesses remain independent of the carrier builder.
@@ -287,7 +300,33 @@ def _service_preflight(doc, registry, bindings):
                 )
                 break
         else:
-            if pose["passed"]:
+            expected_hardware = {
+                module.Name + site["prefix"] + suffix
+                for site in attachment_sites(module.Name)
+                for suffix in ("RailMountScrew", "RailMountNut")
+            }
+            actual_locks = [
+                obj for obj in registry.RailLocks if belongs_to_group(obj, module)
+            ]
+            hardware = list(registry.HardwareParts)
+            hardware_valid = (
+                len(actual_locks) == len(expected_hardware)
+                and {obj.Name for obj in actual_locks} == expected_hardware
+                and all(hardware.count(obj) == 1 for obj in actual_locks)
+            )
+            if not hardware_valid:
+                failures.append(
+                    {
+                        "module": module.Name,
+                        "expected_attachment_hardware": sorted(expected_hardware),
+                        "actual_attachment_hardware": sorted(
+                            obj.Name for obj in actual_locks
+                        ),
+                        "error": "Rail attachment inventory mismatch",
+                        "passed": False,
+                    }
+                )
+            elif pose["passed"]:
                 checked.append((module, pose, name))
             else:
                 failures.append(
@@ -397,7 +436,12 @@ def supported_carrier_slide(shapes, obstacles, pose):
     path = [(low, 0, 0), (high, 0, 0)]
     rows = []
     for name, shape in sorted(shapes.items()):
-        if name in {"BatteryMount", "ElectronicsMount", "AccessoryMount"}:
+        if name in {
+            "BatteryMount",
+            "ElectronicsMount",
+            "AccessoryMount",
+            "OpticalMountBase",
+        }:
             row = _lift_path(name, shape, obstacles, 0, waypoints=path)
         elif name.endswith("RailMountScrew"):
             row = _screw_slide(
@@ -447,7 +491,7 @@ def supported_propulsion_slide(shapes, obstacles, pose):
     }
 
 
-def rail_attachment_service(doc, registry, objects):
+def rail_attachment_service(doc, registry, objects, *, module_names=None):
     """Check each populated module independently, with all neighbours present."""
     objects = list(objects)
     inventory = _service_inventory(doc, registry, objects)
@@ -469,9 +513,15 @@ def rail_attachment_service(doc, registry, objects):
             "error": "Rail service preflight failed",
             "passed": False,
         }
+    try:
+        selected = {row[1] for row in selected_mount_bindings(module_names)}
+    except (TypeError, ValueError) as error:
+        return {"passed": False, "error": str(error), "obstacle_inventory": inventory}
     world = {obj.Name: world_shape(obj) for obj in objects}
     rows = []
     for module, pose, mount_name in checked:
+        if module.Name not in selected:
+            continue
         members = {obj.Name for obj in objects if belongs_to_group(obj, module)}
         attachment_names = [
             obj.Name for obj in registry.RailLocks if belongs_to_group(obj, module)
@@ -608,9 +658,9 @@ def rail_attachment_service(doc, registry, objects):
         )
     return {
         "modules": rows,
+        "selected_modules": sorted(selected),
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The open-bottom hex recess restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm; this temporary unclamped position is not an operating setting. Battery and accessory carriers retain direct vertical lift. No covering board or battery removal. Support the integrated propulsion assembly when either rail clamp is loose. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
-        "passed": len(rows) == len(MODULE_STATIONS)
-        and all(row["passed"] for row in rows),
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The open-bottom hex recess restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm; this temporary unclamped position is not an operating setting. Battery and accessory carriers and a selected rail-direct optical module retain direct vertical lift. No covering board or battery removal. Support the integrated propulsion assembly when either rail clamp is loose. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "passed": len(rows) == len(selected) and all(row["passed"] for row in rows),
     }

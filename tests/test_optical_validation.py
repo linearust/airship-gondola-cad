@@ -1,4 +1,4 @@
-"""Negative native-CAD regressions for the pinned carrier-mounted optical pitch joint."""
+"""Negative native-CAD regressions for the pinned selected optical pitch joint."""
 
 import unittest
 from unittest.mock import patch
@@ -22,7 +22,7 @@ class OpticalClearanceTests(unittest.TestCase):
         self.addCleanup(self.close_without_changing_baseline)
         self.assertIsNotNone(
             self.doc.getObject("OpticalFlowModule"),
-            "The pinned reference must include the reviewed carrier-mounted optical joint.",
+            "The pinned reference must include the reviewed optical joint.",
         )
 
     def close_without_changing_baseline(self):
@@ -88,7 +88,7 @@ class OpticalClearanceTests(unittest.TestCase):
             parent.addObject(bolt)
         self.assertTrue(_source_evidence(self.doc)["passed"])
 
-    def test_obsolete_rail_hardware_cannot_remain_in_registry(self):
+    def test_unexpected_optical_hardware_cannot_remain_in_registry(self):
         from gondola.validation.optical import _source_evidence
 
         original = list(self.doc.DesignRegistry.HardwareParts)
@@ -108,7 +108,8 @@ class OpticalClearanceTests(unittest.TestCase):
         group = self.doc.OpticalFlowModule
         original = group.Placement.copy()
         host = group.getParentGeoFeatureGroup()
-        host.removeObject(group)
+        if host is not None:
+            host.removeObject(group)
         self.doc.ElectronicsEquipmentModule.addObject(group)
         try:
             result = mtf_sensor_check(self.doc)
@@ -119,7 +120,8 @@ class OpticalClearanceTests(unittest.TestCase):
             self.assertTrue(group.Placement.isSame(original, 1e-7))
         finally:
             self.doc.ElectronicsEquipmentModule.removeObject(group)
-            host.addObject(group)
+            if host is not None:
+                host.addObject(group)
         group.removeProperty("OpticalMountContract")
         self.assertFalse(mtf_sensor_check(self.doc)["passed"])
 
@@ -168,7 +170,7 @@ class OpticalClearanceTests(unittest.TestCase):
         for name, shape in before_sensor_shapes.items():
             self.assertEqual(self.doc.getObject(name).Shape.exportBrepToString(), shape)
 
-    def test_both_sensors_visit_actual_carrier_and_restore_state_on_exception(self):
+    def test_both_sensors_visit_actual_attachment_and_restore_state_on_exception(self):
         from gondola.parts.optical_mount import set_pitch
         from gondola.validation import optical
 
@@ -176,7 +178,7 @@ class OpticalClearanceTests(unittest.TestCase):
         set_pitch(self.doc, 11)
         before = optical._saved_sensor_state(self.doc)
         selected = group.SensorModel
-        mount = (group.CarrierHostName, str(group.MountSide))
+        mount = (str(group.OpticalAttachmentMode), tuple(group.Placement.Base))
         calls = []
 
         def screen(doc, physical, kit, *, profile):
@@ -184,8 +186,8 @@ class OpticalClearanceTests(unittest.TestCase):
                 (
                     profile.key,
                     (
-                        doc.OpticalFlowModule.CarrierHostName,
-                        str(doc.OpticalFlowModule.MountSide),
+                        str(doc.OpticalFlowModule.OpticalAttachmentMode),
+                        tuple(doc.OpticalFlowModule.Placement.Base),
                     ),
                 )
             )
@@ -196,14 +198,16 @@ class OpticalClearanceTests(unittest.TestCase):
         with (
             patch.object(optical, "_placement_checks", side_effect=screen),
             patch.object(
-                optical, "_foot_service_checks", return_value={"passed": True}
+                optical, "_attachment_service_checks", return_value={"passed": True}
             ),
         ):
             with self.assertRaisesRegex(RuntimeError, "deliberate"):
                 optical.mtf_sensor_check(self.doc)
         self.assertEqual(calls, [("MTF02P", mount), ("MTF01P", mount)])
         self.assertEqual(group.SensorModel, selected)
-        self.assertEqual((group.CarrierHostName, str(group.MountSide)), mount)
+        self.assertEqual(
+            (str(group.OpticalAttachmentMode), tuple(group.Placement.Base)), mount
+        )
         self.assertEqual(self.doc.OpticalPitchStage.Pitch.Value, 11)
         after = optical._saved_sensor_state(self.doc)
         for name, values in before.items():
@@ -215,45 +219,6 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertTrue(value.isSame(after[name][key], 1e-7))
                 else:
                     self.assertEqual(value, after[name][key], (name, key))
-
-    def test_carrier_support_and_clamp_axis_witnesses_reject_missing_material(self):
-        from gondola.validation.optical import _carrier_interface_checks
-
-        self.assertTrue(_carrier_interface_checks(self.doc)["passed"])
-        carrier = self.doc.BatteryMount
-        original = carrier.Shape.copy()
-        try:
-            # Remove real stock through the saved carrier's top 2mm deck;
-            # the outer support strip is at carrier X29..31, Y-8..8.
-            deck_bottom = original.BoundBox.ZMax - 2.0
-            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, deck_bottom))
-            self.assertAlmostEqual(original.common(defect).Volume, 8.0)
-            carrier.Shape = original.cut(defect)
-            result = _carrier_interface_checks(self.doc)
-            self.assertFalse(result["passed"])
-            support = next(
-                row
-                for row in result["witnesses"]
-                if row["kind"] == "foot_support_strip"
-                and row["surface"] == "carrier"
-                and row["x_min_mm"] == 2.0
-            )
-            self.assertFalse(support["passed"])
-            self.assertAlmostEqual(support["missing_material_mm3"], 0.8)
-        finally:
-            carrier.Shape = original
-        foot = self.doc.OpticalMountBase
-        original = foot.Shape.copy()
-        try:
-            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, 5, 0)))
-            result = _carrier_interface_checks(self.doc)
-            self.assertFalse(result["passed"])
-            self.assertTrue(
-                any(row.get("obstruction_mm3", 0) > 6 for row in result["witnesses"])
-            )
-        finally:
-            foot.Shape = original
-        self.assertTrue(_carrier_interface_checks(self.doc)["passed"])
 
     def test_continuous_field_does_not_filter_unknown_obstacles(self):
         from gondola.validation.optical import _external_field_bound
@@ -320,12 +285,14 @@ class OpticalClearanceTests(unittest.TestCase):
         self.assertFalse(clearance["passed"])
         self.assertGreater(clearance["intersection_mm3"], 0.06)
 
-    def test_both_sensor_connectors_clear_maximum_battery_over_native_pitch_range(self):
+    def test_selected_attachment_connectors_clear_maximum_battery_over_native_pitch_range(
+        self,
+    ):
         from gondola.cad import world_shape
         from gondola.contracts.optical_sensors import SENSOR_PROFILES
         from gondola.parts import optical_interface, optical_mount, optical_sensor
 
-        # Use the saved battery carrier, registration allowance and native
+        # Use the saved selected attachment, registration allowance and native
         # pitch control. A neutral default-MTF02P test missed the MTF01P long
         # connector dipping within 1.5 mm after the carrier deck was raised.
         battery = world_shape(self.doc.MaximumBatteryEnvelope)
@@ -343,7 +310,9 @@ class OpticalClearanceTests(unittest.TestCase):
                 connector = world_shape(self.doc.MTF02PConnectorReserve)
                 local = connector.copy()
                 local.Placement = inverse.multiply(local.Placement)
-                bound = optical_interface.registration_bound(local)
+                bound = optical_interface.registration_bound(
+                    local, str(group.OpticalAttachmentMode)
+                )
                 bound.Placement = group.getGlobalPlacement()
                 for kind, envelope in (("nominal", connector), ("registration", bound)):
                     with self.subTest(sensor=profile.key, pitch=angle, envelope=kind):

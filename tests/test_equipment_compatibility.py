@@ -170,7 +170,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
 
-    def test_direct_helix_is_screened_at_actual_carrier_attachment(self):
+    def test_direct_helix_is_screened_at_actual_attachment(self):
         from gondola.cad import placed_shape
         from gondola.contracts.equipment_options import get_navigation_profile
         from gondola.parts import wiring_reserves
@@ -186,10 +186,13 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             ),
             self.doc.AccessoryEquipmentModule.getGlobalPlacement(),
         )
+        actual = screens[0]["attachment"]
+        self.assertEqual(actual["mode"], "rail")
+        self.assertEqual(actual["rail_station_x_mm"], 140)
         for required, expected in (
-            (("BatteryEquipmentModule", "PositiveX"), True),
-            (("BatteryEquipmentModule", "NegativeX"), False),
-            (("ElectronicsEquipmentModule", "PositiveX"), False),
+            (actual, True),
+            ({**actual, "rail_station_x_mm": 139}, False),
+            ({**actual, "mode": "carrier"}, False),
         ):
             report = _optical_option_check(
                 screens,
@@ -198,6 +201,7 @@ class EquipmentCompatibilityTests(unittest.TestCase):
                 required_mount=required,
             )
             self.assertEqual(report["passed"], expected, report)
+            self.assertEqual(report["installed_attachment_matches"], expected)
         # Unknown obstacles remain geometric inputs; no profile-name allowlist.
         blocked = _optical_option_check(
             screens, {"Unknown": screens[0]["continuous_field"]}
@@ -239,6 +243,124 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         finally:
             self.doc.DesignRegistry.ReferenceParts = original
             self.doc.removeObject(blocker.Name)
+
+
+@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
+class OpticalEquipmentScreenTests(unittest.TestCase):
+    def native_optical(self, mode):
+        from gondola.parts import optical_mount, rail
+
+        doc = App.newDocument("EquipmentOpticalAttachment")
+        self.addCleanup(App.closeDocument, doc.Name)
+        if mode == "carrier":
+            host = doc.addObject("App::Part", "BatteryEquipmentModule")
+            host.Placement.Base.x = 84
+            optical_mount.build_optical_mount(doc, host, mode=mode)
+        else:
+            kit = optical_mount.build_optical_mount(doc, mode=mode)
+            group = kit["group"]
+            group.addProperty("App::PropertyLength", "RailPositionX")
+            group.RailPositionX = 140
+            group.setExpression("Placement.Base.x", "RailPositionX")
+            rail.build_attachment_hardware(doc, group, group.Name)
+        doc.recompute()
+        return doc
+
+    def test_both_sensor_models_keep_the_actual_attachment_mode_and_hardware(self):
+        from gondola.cad import world_shape
+        from gondola.validation.equipment_options import _optical_screens
+
+        for mode in ("rail", "carrier"):
+            with self.subTest(mode=mode):
+                doc = self.native_optical(mode)
+                screens = _optical_screens(doc)
+                self.assertEqual(
+                    {row["sensor"] for row in screens}, {"MTF01P", "MTF02P"}
+                )
+                for screen in screens:
+                    attachment = screen["attachment"]
+                    self.assertEqual(attachment["mode"], mode)
+                    self.assertEqual(
+                        attachment["rail_station_x_mm"], 140 if mode == "rail" else None
+                    )
+                    self.assertEqual(
+                        attachment["carrier_host"],
+                        None if mode == "rail" else "BatteryEquipmentModule",
+                    )
+                    self.assertEqual(
+                        attachment["carrier_side"],
+                        None if mode == "rail" else "PositiveX",
+                    )
+                    for pose in screen["poses"]:
+                        physical = pose["physical"]
+                        if mode == "rail":
+                            names = [
+                                "OpticalFlowModuleRailMountNut",
+                                "OpticalFlowModuleRailMountScrew",
+                            ]
+                            self.assertEqual(screen["saved_rail_hardware"], names)
+                            self.assertNotIn("OpticalFootBolt1", physical)
+                            for name in names:
+                                actual = world_shape(doc.getObject(name))
+                                self.assertLess(
+                                    physical[name].cut(actual).Volume
+                                    + actual.cut(physical[name]).Volume,
+                                    1e-7,
+                                )
+                        else:
+                            self.assertEqual(screen["saved_rail_hardware"], [])
+                            self.assertIn("OpticalFootBolt1", physical)
+                            self.assertIn("OpticalFootNut1", physical)
+                            self.assertNotIn(
+                                "OpticalFlowModuleRailMountScrew", physical
+                            )
+
+    def test_saved_rail_hardware_is_a_geometric_obstacle_input(self):
+        from gondola.validation.equipment_options import (
+            _optical_option_check,
+            _optical_screens,
+        )
+
+        doc = self.native_optical("rail")
+        # Move actual saved hardware away from its generated nominal position.
+        # The option screen must still include this actual shape, not silently
+        # substitute a source-generated screw that misses the obstruction.
+        doc.OpticalFlowModuleRailMountScrew.Placement.Base.x = 20
+        doc.recompute()
+        screens = _optical_screens(doc)
+        obstacle = Part.makeBox(0.2, 0.2, 0.2, App.Vector(159.9, -4.35, 5.9))
+        result = _optical_option_check(screens, {"UnknownHardwareObstacle": obstacle})
+        self.assertFalse(result["passed"])
+        self.assertTrue(
+            all(
+                any(
+                    hit["moving"] == "OpticalFlowModuleRailMountScrew"
+                    and hit["object"] == "UnknownHardwareObstacle"
+                    for pose in row["sampled_attitudes"]
+                    for hit in pose["collisions"]
+                )
+                for row in result["sensor_screens"]
+            )
+        )
+
+    def test_rail_screen_rejects_missing_hardware_and_mixed_attachment_controls(self):
+        from gondola.validation.equipment_options import _optical_screens
+
+        doc = self.native_optical("rail")
+        optical = doc.OpticalFlowModule
+        optical.addProperty("App::PropertyString", "CarrierHostName")
+        with self.assertRaisesRegex(ValueError, "inconsistent native controls"):
+            _optical_screens(doc)
+        optical.removeProperty("CarrierHostName")
+        obj = doc.OpticalFlowModuleRailMountNut
+        sku = obj.HardwareSKU
+        obj.HardwareSKU = "M2_HEX_NUT"
+        with self.assertRaisesRegex(ValueError, "rail hardware"):
+            _optical_screens(doc)
+        obj.HardwareSKU = sku
+        doc.removeObject(obj.Name)
+        with self.assertRaisesRegex(ValueError, "rail hardware"):
+            _optical_screens(doc)
 
 
 if __name__ == "__main__":

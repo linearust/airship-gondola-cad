@@ -1,4 +1,4 @@
-"""Four rail modules; optics attach to an existing universal carrier."""
+"""Selected optical attachment adds a rail station or follows an existing carrier."""
 
 import unittest
 from dataclasses import asdict
@@ -7,6 +7,7 @@ from gondola.contracts.design import (
     FC_INSTALLATION_LOCAL_YAW_DEG,
     MODULE_STATIONS,
     ModuleStation,
+    module_stations,
 )
 from gondola.contracts.rail_attachments import attachment_pattern
 
@@ -14,7 +15,7 @@ from gondola.contracts.rail_attachments import attachment_pattern
 class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
-        self.assertEqual(len(stations), 4)
+        self.assertEqual(len(stations), 5)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, 14.0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 84)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -56)
@@ -24,12 +25,14 @@ class ModuleLayoutTests(unittest.TestCase):
         propulsion = stations["MainPropulsionModule"]
         self.assertEqual(propulsion.contact_length_mm, 44)
         self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 28)
-        self.assertNotIn("OpticalFlowModule", stations)
+        self.assertEqual(stations["OpticalFlowModule"].x_mm, 140)
+        self.assertEqual(stations["OpticalFlowModule"].attachment_offsets_x_mm, (0,))
+        self.assertEqual(stations["OpticalFlowModule"].contact_length_mm, 16)
 
     def test_shared_plate_stations_leave_room_for_the_larger_square(self):
         # Independent plan-view witness; full solid/wiring checks follow in CAD.
         carriers = sorted(
-            s.x_mm for s in MODULE_STATIONS if s.object_name != "MainPropulsionModule"
+            s.x_mm for s in MODULE_STATIONS if s.object_name.endswith("EquipmentModule")
         )
         self.assertEqual(carriers, [-140, -56, 84])
         self.assertTrue(
@@ -49,17 +52,39 @@ class ModuleLayoutTests(unittest.TestCase):
         )
         self.assertEqual(RAIL_LENGTH_MM, 300)
         self.assertEqual(MAX_PRINT_PART_DIMENSION_MM, 340)
-        # The 16mm roof may overhang its wall; each radius4.5 crown remains
-        # inside the full-width base, including at the ±3mm trim endpoints.
+        # The 16mm roof may overhang its wall; the 10mm contact cheeks
+        # remain supported at the ±3mm trim endpoints.
         self.assertEqual(RAIL_LENGTH_MM / 2 - abs(accessory.x_mm) - 8, 2)
-        crown_to_chamfer = RAIL_LENGTH_MM / 2 - 1 - (abs(accessory.x_mm) + 3 + 4.5)
-        self.assertEqual(crown_to_chamfer, 1.5)
+        contact_to_wall_end = 9 - (3 + 5)
+        self.assertEqual(contact_to_wall_end, 1)
         self.assertEqual(
             next(
                 s for s in MODULE_STATIONS if s.object_name == "MainPropulsionModule"
             ).attachment_offset_x_mm,
             14.0,
         )
+
+    def test_optical_modes_change_only_the_dedicated_rail_station(self):
+        from gondola.contracts.optical_attachment import (
+            DEFAULT_CARRIER_HOST,
+            DEFAULT_CARRIER_SIDE,
+            pivot_z,
+            resolve_mount_mode,
+        )
+
+        carrier = module_stations("carrier")
+        direct = module_stations("rail")
+        self.assertEqual(direct[:-1], carrier)
+        self.assertEqual(len(carrier), 4)
+        self.assertEqual(direct[-1], ModuleStation("OpticalFlowModule", 140))
+        self.assertEqual(DEFAULT_CARRIER_HOST, "BatteryEquipmentModule")
+        self.assertEqual(DEFAULT_CARRIER_SIDE, "PositiveX")
+        self.assertEqual(pivot_z("carrier"), 23)
+        self.assertEqual(pivot_z("rail"), 42)
+        self.assertEqual(resolve_mount_mode(), "rail")
+        for invalid in ("", "Rail", "side", True, 0, [], {}):
+            with self.subTest(mode=invalid), self.assertRaises(ValueError):
+                module_stations(invalid)
 
     def test_modules_allow_only_fixed_forward_or_reverse_orientation(self):
         forward = ModuleStation("Forward", 0)

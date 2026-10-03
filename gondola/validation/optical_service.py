@@ -7,6 +7,7 @@ import Part
 
 from gondola.cad import belongs_to_group, union, world_shape
 from gondola.contracts import fasteners
+from gondola.contracts.optical_attachment import resolve_mount_mode
 from gondola.parts import optical_interface, optical_mount
 
 from .geometry import intersection_volume, translation_sweep
@@ -37,9 +38,9 @@ def _tray_service_envelope(shape):
     return envelope, missing
 
 
-def pitch_tool_shape():
+def pitch_tool_shape(mode="carrier"):
     """Module-local straight hex-key leg envelope, not a handle or socket model."""
-    x, y, z = optical_mount.PIVOT_CENTRE
+    x, y, z = optical_mount.pivot_centre(mode)
     return Part.makeCylinder(
         fasteners.SOCKET_KEY / math.sqrt(3),
         TOOL_APPROACH_LENGTH_MM,
@@ -50,7 +51,7 @@ def pitch_tool_shape():
 
 def pitch_tool_check(group, obstacles):
     """Check the fixed approach against supplied physical and reserved solids."""
-    tool = pitch_tool_shape()
+    tool = pitch_tool_shape(str(group.OpticalAttachmentMode))
     tool.Placement = group.getGlobalPlacement()
     # The screw head is the tool's target; its exact socket is unmodeled.
     hits = collision_hits(
@@ -67,7 +68,7 @@ def pitch_tool_check(group, obstacles):
         "straight_approach_length_mm": TOOL_APPROACH_LENGTH_MM,
         "collisions": hits,
         "passed": not hits,
-        "scope": "A straight 1.5 mm hex-key leg approaching 15 mm along optical-local -Y. The envelope is fixed to the post, independent of pitch; moving tray/sensor clearance is checked at the stated sampled attitudes. Actual socket engagement, bent key/handle and hands remain unmodeled. Disconnect leads and remove the carrier for bench access as needed; passing this reservation does not establish complete on-balloon service.",
+        "scope": "A straight 1.5 mm hex-key leg approaching 15 mm along optical-local -Y. The envelope is fixed to the post, independent of pitch; moving tray/sensor clearance is checked at the stated sampled attitudes. Actual socket engagement, bent key/handle and hands remain unmodeled. Disconnect leads and remove the optical module or its carrier for bench access as needed; passing this reservation does not establish complete on-balloon service.",
     }
 
 
@@ -80,10 +81,16 @@ def pitch_disassembly_check(doc, kit):
         for kind in ("Nut", "Bolt")
         for index in optical_interface.CLAMP_CENTRES
     }
+    mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
+    attachment_fasteners = (
+        foot_fasteners
+        if mode == "carrier"
+        else {"OpticalFlowModuleRailMountScrew", "OpticalFlowModuleRailMountNut"}
+    )
     remaining = {}
     for obj in kit:
-        if obj.Name in foot_fasteners:
-            continue  # Removed first by the separate, ordered foot-service check.
+        if obj.Name in attachment_fasteners:
+            continue  # Removed by the separate, ordered attachment-service check.
         shape = world_shape(obj)
         shape.Placement = inverse.multiply(shape.Placement)
         remaining[obj.Name] = shape
@@ -141,10 +148,14 @@ def pitch_disassembly_check(doc, kit):
         check_path("TrayAssembly/" + name, remaining[name], (0.0, distance, 0.0), fixed)
     return {
         "neutral_pitch": neutral,
-        "previously_removed_foot_fasteners": sorted(foot_fasteners),
+        "attachment_mode": mode,
+        "previously_removed_attachment_fasteners": sorted(attachment_fasteners),
+        "previously_removed_foot_fasteners": sorted(foot_fasteners)
+        if mode == "carrier"
+        else [],
         "paths": paths,
         "passed": neutral
         and bool(moving_names)
         and all(row["passed"] for row in paths),
-        "scope": "Disconnect the sensor lead, use the checked foot-removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel separates the saved bounding boxes by 0.2 mm. The tray sweep uses a literal full-pad/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
+        "scope": "Disconnect the sensor lead, use the checked rail-module or carrier-foot removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel separates the saved bounding boxes by 0.2 mm. The tray sweep uses a literal full-pad/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
     }

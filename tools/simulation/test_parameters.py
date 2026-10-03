@@ -18,6 +18,7 @@ from tools.simulation.export_parameters import (
     export,
     extract,
     input_support_geometry,
+    optical_attachment_geometry,
     optical_pitch_degrees,
     output_support_geometry,
     printed_carrier_mass_properties,
@@ -311,6 +312,141 @@ class NativeSupportExportTests(unittest.TestCase):
                 App.closeDocument(doc.Name)
 
 
+class OpticalAttachmentTests(unittest.TestCase):
+    def native_optical(self, mode):
+        from gondola.parts import optical_mount
+
+        doc = App.newDocument("SimulationOpticalAttachment")
+        self.addCleanup(
+            lambda name=doc.Name: (
+                App.closeDocument(name) if name in App.listDocuments() else None
+            )
+        )
+        host = doc.addObject("App::Part", "BatteryEquipmentModule")
+        host.addProperty("App::PropertyLength", "RailPositionX")
+        host.RailPositionX = 84
+        host.setExpression("Placement.Base.x", "RailPositionX")
+        optical = optical_mount.build_optical_mount(
+            doc, host if mode == "carrier" else None, mode=mode
+        )["group"]
+        if mode == "rail":
+            optical.addProperty("App::PropertyLength", "RailPositionX")
+            optical.RailPositionX = 140
+            optical.setExpression("Placement.Base.x", "RailPositionX")
+        doc.recompute()
+        return doc
+
+    def test_saved_native_modes_export_distinct_attachment_frames(self):
+        for mode in ("rail", "carrier"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                doc = self.native_optical(mode)
+                result = optical_attachment_geometry(doc)
+                self.assertEqual(result["optical_attachment_mode"], mode)
+                self.assertEqual(
+                    result["optical_native_parent"],
+                    None if mode == "rail" else "BatteryEquipmentModule",
+                )
+                self.assertEqual(
+                    result["optical_carrier_host"],
+                    None if mode == "rail" else "BatteryEquipmentModule",
+                )
+                self.assertEqual(
+                    result["optical_mount_side"],
+                    None if mode == "rail" else "PositiveX",
+                )
+                self.assertEqual(
+                    result["optical_rail_station_x_m"], 0.14 if mode == "rail" else None
+                )
+                self.assertEqual(
+                    result["optical_module_origin_cad_m"],
+                    [0.14, 0, 0] if mode == "rail" else [0.111, 0, 0.019],
+                )
+                self.assertEqual(
+                    vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base),
+                    [0.14 if mode == "rail" else 0.111, 0, 0.042],
+                )
+                path = Path(directory) / "optical.FCStd"
+                doc.saveAs(str(path))
+                App.closeDocument(doc.Name)
+                reopened = App.openDocument(str(path), hidden=True)
+                try:
+                    self.assertEqual(optical_attachment_geometry(reopened), result)
+                finally:
+                    App.closeDocument(reopened.Name)
+
+    def test_rail_optical_position_is_independent_of_carrier(self):
+        doc = self.native_optical("rail")
+        doc.BatteryEquipmentModule.RailPositionX = 101
+        doc.OpticalFlowModule.RailPositionX = 139
+        doc.recompute()
+        result = optical_attachment_geometry(doc)
+        self.assertEqual(result["optical_rail_station_x_m"], 0.139)
+        self.assertEqual(result["optical_module_origin_cad_m"], [0.139, 0, 0])
+        self.assertEqual(
+            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base), [0.139, 0, 0.042]
+        )
+        # A disconnected native control must not silently replace the actual pose.
+        doc.OpticalFlowModule.setExpression("Placement.Base.x", None)
+        doc.OpticalFlowModule.Placement.Base.x = 140
+        with self.assertRaisesRegex(ValueError, "native placement"):
+            optical_attachment_geometry(doc)
+
+    def test_carrier_optical_frame_follows_parent_side_and_global_transform(self):
+        doc = self.native_optical("carrier")
+        host = doc.BatteryEquipmentModule
+        host.RailPositionX = 101
+        doc.OpticalFlowModule.MountSide = "NegativeX"
+        doc.recompute()
+        result = optical_attachment_geometry(doc)
+        self.assertEqual(result["optical_mount_side"], "NegativeX")
+        self.assertEqual(result["optical_module_origin_cad_m"], [0.074, 0, 0.019])
+        self.assertEqual(
+            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base), [0.074, 0, 0.042]
+        )
+        host.Placement.Rotation = App.Rotation(App.Vector(0, 0, 1), 90)
+        doc.recompute()
+        result = optical_attachment_geometry(doc)
+        self.assertEqual(result["optical_module_origin_cad_m"], [0.101, -0.027, 0.019])
+        self.assertEqual(
+            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base),
+            [0.101, -0.027, 0.042],
+        )
+
+    def test_rail_parent_and_mixed_carrier_controls_are_rejected(self):
+        doc = self.native_optical("rail")
+        optical = doc.OpticalFlowModule
+        doc.BatteryEquipmentModule.addObject(optical)
+        with self.assertRaisesRegex(ValueError, "rail binding"):
+            optical_attachment_geometry(doc)
+        doc.BatteryEquipmentModule.removeObject(optical)
+        for name in ("CarrierHostName", "MountSide"):
+            optical.addProperty("App::PropertyString", name)
+            with (
+                self.subTest(name=name),
+                self.assertRaisesRegex(ValueError, "rail binding"),
+            ):
+                optical_attachment_geometry(doc)
+            optical.removeProperty(name)
+        optical.removeProperty("RailPositionX")
+        with self.assertRaisesRegex(ValueError, "rail binding"):
+            optical_attachment_geometry(doc)
+
+    def test_carrier_binding_and_mode_cannot_be_spoofed(self):
+        doc = self.native_optical("carrier")
+        optical = doc.OpticalFlowModule
+        optical.CarrierHostName = "ElectronicsEquipmentModule"
+        with self.assertRaisesRegex(ValueError, "carrier binding"):
+            optical_attachment_geometry(doc)
+        optical.CarrierHostName = "BatteryEquipmentModule"
+        optical.addProperty("App::PropertyLength", "RailPositionX")
+        with self.assertRaisesRegex(ValueError, "carrier binding"):
+            optical_attachment_geometry(doc)
+        optical.removeProperty("RailPositionX")
+        optical.OpticalAttachmentMode = "legacy"
+        with self.assertRaisesRegex(ValueError, "attachment mode"):
+            optical_attachment_geometry(doc)
+
+
 class SavedGeometryTests(unittest.TestCase):
     def setUp(self):
         self.digest = file_sha256(BASELINE_FILE)
@@ -340,10 +476,13 @@ class SavedGeometryTests(unittest.TestCase):
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.111, 0, 0.038])
-        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
-        self.assertEqual(geo["optical_mount_side"], "PositiveX")
-        self.assertNotIn("optical_rail_station_x_mm", geo)
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.140, 0, 0.042])
+        self.assertEqual(geo["optical_attachment_mode"], "rail")
+        self.assertIsNone(geo["optical_native_parent"])
+        self.assertIsNone(geo["optical_carrier_host"])
+        self.assertIsNone(geo["optical_mount_side"])
+        self.assertEqual(geo["optical_rail_station_x_m"], 0.140)
+        self.assertEqual(geo["module_origins_cad_m"]["OpticalFlowModule"], [0.14, 0, 0])
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
         for name in ("Port", "Starboard"):
             pod = self.doc.getObject(name + "Pod")
@@ -407,15 +546,16 @@ class SavedGeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Pivot alignment changed"):
             extract(self.doc)
 
-    def test_optical_pose_follows_carrier_translation_and_selected_side(self):
+    def test_optical_pose_follows_its_rail_station_independently_of_carrier(self):
         self.doc.BatteryEquipmentModule.RailPositionX = 101
-        self.doc.OpticalFlowModule.MountSide = "NegativeX"
+        self.doc.OpticalFlowModule.RailPositionX = 139
         self.doc.OpticalPitchStage.Pitch = 20
         self.doc.recompute()
         geo = extract(self.doc)["exact_geometry"]
-        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
-        self.assertEqual(geo["optical_mount_side"], "NegativeX")
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.074, 0, 0.038])
+        self.assertIsNone(geo["optical_carrier_host"])
+        self.assertIsNone(geo["optical_mount_side"])
+        self.assertEqual(geo["optical_rail_station_x_m"], 0.139)
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.139, 0, 0.042])
         self.assertEqual(geo["optical_pitch_deg"], 20)
 
     def test_optical_export_uses_actual_clamped_pose_without_mutating_controls(self):
@@ -488,13 +628,13 @@ class SavedGeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "metadata"):
             optical_pitch_degrees(SimpleNamespace())
 
-    def test_optical_metadata_cannot_name_a_different_parent(self):
-        self.doc.OpticalFlowModule.CarrierHostName = "ElectronicsEquipmentModule"
-        with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
+    def test_rail_optical_cannot_be_reparented_as_a_carrier_accessory(self):
+        self.doc.BatteryEquipmentModule.addObject(self.doc.OpticalFlowModule)
+        with self.assertRaisesRegex(ValueError, "Optical rail binding"):
             extract(self.doc)
 
-    def test_legacy_independent_optical_rail_control_is_rejected(self):
-        self.doc.OpticalFlowModule.addProperty("App::PropertyLength", "RailPositionX")
+    def test_rail_optical_rejects_a_stale_carrier_mode_claim(self):
+        self.doc.OpticalFlowModule.OpticalAttachmentMode = "carrier"
         with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
             extract(self.doc)
 
@@ -577,7 +717,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 7)
+                self.assertEqual(snapshot["schema_version"], 8)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

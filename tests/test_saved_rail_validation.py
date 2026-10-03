@@ -15,7 +15,7 @@ except ImportError:
 class SavedRailValidationTests(unittest.TestCase):
     def setUp(self):
         from gondola.cad import set_property
-        from gondola.parts import equipment_mounts, propulsion, rail
+        from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
 
         self.doc = App.newDocument("SavedSideSlotRailTest")
         self.root = self.doc.addObject("App::Part", "Root")
@@ -36,6 +36,7 @@ class SavedRailValidationTests(unittest.TestCase):
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
             ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 0, 14.0),
+            ("OpticalMountBase", "OpticalFlowModule", "optical", 140, 0, 0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -55,11 +56,13 @@ class SavedRailValidationTests(unittest.TestCase):
             )
             obj = self.doc.addObject("Part::Feature", name)
             module.addObject(obj)
-            obj.Shape = (
-                equipment_mounts.mount_shape(kind)
-                if kind
-                else propulsion.fixed_frame_shape()
-            )
+            if kind == "optical":
+                obj.Shape = optical_mount.base_shape(mode="rail")
+                set_property(module, "OpticalAttachmentMode", "rail")
+            elif kind is None:
+                obj.Shape = propulsion.fixed_frame_shape()
+            else:
+                obj.Shape = equipment_mounts.mount_shape(kind)
             hardware.extend(
                 rail.build_attachment_hardware(
                     self.doc, module, parent, x_offset=offset, shared_drive=kind is None
@@ -67,7 +70,7 @@ class SavedRailValidationTests(unittest.TestCase):
             )
             modules.append(module)
             prints.append(obj)
-            if kind:
+            if kind in ("battery", "electronics", "accessory"):
                 mounts.append(obj)
         registry = self.doc.addObject("App::FeaturePython", "DesignRegistry")
         for key, values in (
@@ -95,20 +98,48 @@ class SavedRailValidationTests(unittest.TestCase):
         }
         return rail_check(self.doc.DesignRegistry, shapes)
 
-    def test_actual_five_attachments_pass_in_common_rigid_frame(self):
+    def test_actual_six_attachments_pass_in_common_rigid_frame(self):
         self.root.Placement = App.Placement(
             App.Vector(20, -10, 7), App.Rotation(App.Vector(1, 2, 3), 37)
         )
         self.doc.recompute()
         report = self.check()
         self.assertTrue(report["passed"], report)
-        actual = sorted(
-            row["attachment_axis_x_mm"]
-            for row in report["rails"][0]["installed_mounts"]
+        expected_axes = {
+            ("BatteryEquipmentModule", ""): 84,
+            ("ElectronicsEquipmentModule", ""): -56,
+            ("AccessoryEquipmentModule", ""): -140,
+            ("MainPropulsionModule", ""): 28,
+            ("MainPropulsionModule", "Opposite"): 0,
+            ("OpticalFlowModule", ""): 140,
+        }
+        actual = report["rails"][0]["installed_mounts"]
+        self.assertCountEqual(
+            [(row["module"], row["attachment_prefix"]) for row in actual],
+            expected_axes,
         )
-        self.assertEqual(len(actual), 5)
-        for value, expected in zip(actual, (-140, -56, 0, 28, 84)):
-            self.assertAlmostEqual(value, expected)
+        for row in actual:
+            self.assertAlmostEqual(
+                row["attachment_axis_x_mm"],
+                expected_axes[(row["module"], row["attachment_prefix"])],
+            )
+        optical = next(row for row in actual if row["module"] == "OpticalFlowModule")
+        self.assertEqual(optical["part"], "OpticalMountBase")
+        self.assertFalse(optical["paired_propulsion_clamp"])
+        self.assertCountEqual(
+            [row["object"] for row in optical["installed_hardware"]],
+            ["OpticalFlowModuleRailMountScrew", "OpticalFlowModuleRailMountNut"],
+        )
+        self.assertEqual(
+            self.doc.OpticalFlowModuleRailMountScrew.HardwareSKU,
+            "M3X10_BUTTON_HEAD",
+        )
+        self.assertEqual(
+            self.doc.OpticalFlowModuleRailMountNut.HardwareSKU, "M3_HEX_NUT"
+        )
+        self.assertNotIn(
+            self.doc.OpticalMountBase, self.doc.DesignRegistry.EquipmentMounts
+        )
 
     def test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones(self):
         for position in (11, 17):

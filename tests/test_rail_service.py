@@ -246,7 +246,7 @@ class RailServiceTests(unittest.TestCase):
             set_property(registry, name, objects, "App::PropertyLinkList")
         doc.recompute()
 
-        def report():
+        def report(module_names=None):
             objects = (
                 list(registry.PrintedParts)
                 + list(registry.ReferenceParts)
@@ -257,11 +257,17 @@ class RailServiceTests(unittest.TestCase):
                 for row in MODULE_STATIONS
                 if row.object_name in {obj.Name for obj in registry.Modules}
             )
-            with (
-                patch.object(baseline, "MODULE_STATIONS", stations),
-                patch.object(rail_access, "MODULE_STATIONS", stations),
-            ):
-                return rail_access.rail_attachment_service(doc, registry, objects)
+            with patch.object(baseline, "MODULE_STATIONS", stations):
+                return rail_access.rail_attachment_service(
+                    doc,
+                    registry,
+                    objects,
+                    module_names=(
+                        tuple(row.object_name for row in stations)
+                        if module_names is None
+                        else module_names
+                    ),
+                )
 
         return doc, report
 
@@ -294,6 +300,7 @@ class RailServiceTests(unittest.TestCase):
                 ("ElectronicsMount", "ElectronicsEquipmentModule"),
                 ("AccessoryMount", "AccessoryEquipmentModule"),
                 ("PropulsionFixedFrame", "MainPropulsionModule"),
+                ("OpticalMountBase", "OpticalFlowModule"),
             ):
                 with self.subTest(part=part):
                     doc.removeObject(part)
@@ -533,6 +540,25 @@ class RailServiceTests(unittest.TestCase):
         )
         self.assertTrue(row["unclamped_module_held_during_rail_slide"])
         self.assertEqual(row["other_modules_removed"], [])
+        selected = check((module.Name,))
+        self.assertTrue(selected["passed"], selected)
+        self.assertEqual([row["module"] for row in selected["modules"]], [module.Name])
+        # Selecting the FC's paths must not hide a missing neighbour's clamp.
+        registry.RailLocks = [
+            obj
+            for obj in registry.RailLocks
+            if obj.Name != "MainPropulsionModuleOppositeRailMountNut"
+        ]
+        from gondola.validation import rail_access
+
+        with patch.object(rail_access, "world_shape") as geometry:
+            broken = check((module.Name,))
+        geometry.assert_not_called()
+        self.assertFalse(broken["passed"], broken)
+        self.assertEqual(broken["modules"][0]["module"], "MainPropulsionModule")
+        self.assertEqual(
+            broken["modules"][0]["error"], "Rail attachment inventory mismatch"
+        )
 
     def test_opposite_pair_must_be_registered_for_service(self):
         doc, check = self.source_propulsion_service()

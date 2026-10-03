@@ -7,7 +7,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import placed_shape
-from gondola.parts import equipment_mounts, propulsion, rail
+from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
 from gondola.print_export import geometry_comparison
 
 from . import rail_contact
@@ -18,6 +18,7 @@ from .rail_interface import (
     MOUNT_BINDINGS,
     attachment_sites,
     mount_binding,
+    selected_mount_bindings,
     site_placement,
 )
 
@@ -345,14 +346,33 @@ def paired_spine_support_check(rail_in_module, frame):
     }
 
 
-def saved_integral_mount_checks(doc, registry):
+def saved_integral_mount_checks(doc, registry, *, module_names=None):
     printed, equipment = list(registry.PrintedParts), list(registry.EquipmentMounts)
-    expected = [name for name, _, kind, _, _ in MOUNT_BINDINGS if kind is not None]
+    expected = [
+        name
+        for name, _, kind, _, _ in MOUNT_BINDINGS
+        if kind in ("battery", "electronics", "accessory")
+    ]
     inventory = sorted(obj.Name for obj in equipment) == sorted(expected) and all(
         obj == doc.getObject(obj.Name) for obj in equipment
     )
+    # Selection scopes solid comparisons, while every mount must still be
+    # registered once, in the right parent and at its canonical local placement.
+    mount_inventory = all(
+        (obj := doc.getObject(name)) is not None
+        and hasattr(obj, "Shape")
+        and printed.count(obj) == 1
+        and obj.getParentGeoFeatureGroup() == doc.getObject(parent)
+        and obj.Placement.Base.Length < TOL
+        and abs(obj.Placement.Rotation.Angle) < TOL
+        for name, parent, _, _, _ in MOUNT_BINDINGS
+    )
+    try:
+        selected = selected_mount_bindings(module_names)
+    except (TypeError, ValueError) as error:
+        return [{"passed": False, "error": str(error)}]
     rows = []
-    for name, parent_name, kind, offset, length in MOUNT_BINDINGS:
+    for name, parent_name, kind, offset, length in selected:
         obj = doc.getObject(name)
         if obj is None or not hasattr(obj, "Shape"):
             rows.append(
@@ -360,11 +380,12 @@ def saved_integral_mount_checks(doc, registry):
             )
             continue
         actual = local_shape(obj)
-        source = (
-            propulsion.fixed_frame_shape()
-            if kind is None
-            else equipment_mounts.mount_shape(kind)
-        )
+        if kind is None:
+            source = propulsion.fixed_frame_shape()
+        elif kind == "optical":
+            source = optical_mount.base_shape(mode="rail")
+        else:
+            source = equipment_mounts.mount_shape(kind)
         complete = geometry_comparison(actual, source)
         sites = attachment_sites(parent_name, offset)
         zone_length = 16.0
@@ -426,10 +447,12 @@ def saved_integral_mount_checks(doc, registry):
                 "registered_once_as_print": registered,
                 "part_local_placement_identity": placement_ok,
                 "equipment_registry_matches": inventory,
+                "complete_mount_registry_matches": mount_inventory,
                 "passed": parent_ok
                 and placement_ok
                 and registered
                 and inventory
+                and mount_inventory
                 and all(
                     comparison_passed(check, TOL)
                     for check in (complete, lower, source_lower)
@@ -642,7 +665,11 @@ def rail_check(registry, shapes):
                 and abs(bounds.ZMax - 9.5) < TOL
                 and missing_base < TOL
                 and extra_base < TOL
-                and len(mounts) == 5
+                and len(mounts)
+                == sum(
+                    len(attachment_sites(parent, offset))
+                    for _, parent, _, offset, _ in MOUNT_BINDINGS
+                )
                 and flex["passed"]
                 and wall_sections["passed"]
                 and slot_sections["passed"]
@@ -755,7 +782,7 @@ def rail_check(registry, shapes):
         and module_inventory
         and lock_inventory
         and tape_inventory
-        and len(integral) == 4
+        and len(integral) == len(MOUNT_BINDINGS)
         and all(row["passed"] for row in integral + rows + tapes)
         and all(row["matches_current_attachment_contract"] for row in annotations),
     }

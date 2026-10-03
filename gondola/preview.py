@@ -117,8 +117,15 @@ def style_power_option(doc):
 
 
 def optical_detail_host(optical):
-    """Show the supporting populated carrier together with the attached head."""
+    """Frame the rail head or its supporting populated carrier."""
     parent = optical.getParentGeoFeatureGroup()
+    mode = str(optical.OpticalAttachmentMode)
+    if mode == "rail":
+        if parent is not None:
+            raise RuntimeError("Rail optical preview requires a top-level module.")
+        return optical
+    if mode != "carrier":
+        raise RuntimeError(f"Unsupported optical attachment mode: {mode}")
     if parent is None or parent.Name != optical.CarrierHostName:
         raise RuntimeError("Optical preview requires its declared carrier parent.")
     return parent
@@ -206,7 +213,7 @@ def render_previews(close_after=False):
             (doc, "axon", "_rail.png", "rail", 1900, 800),
             (doc, "axon", "_electronics.png", "electronics", 1400, 1400),
             (doc, "axon", "_wiring.png", "wiring", 1600, 1400),
-            (doc, "axon", "_optical_carrier.png", "optical", 1400, 1600),
+            (doc, "axon", "_optical.png", "optical", 1400, 1600),
             (doc, "axon", "_propulsion.png", "propulsion", 1800, 1300),
             (doc, "axon", "_printed_structure.png", "structure", 1900, 1200),
             (detail, "axon", "_attachment_detail.png", "all", 1700, 1300),

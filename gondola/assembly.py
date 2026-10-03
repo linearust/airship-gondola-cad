@@ -22,6 +22,11 @@ from gondola.contracts.design import (
     WIRING_PURCHASE_PLAN,
     release_status,
 )
+from gondola.contracts.optical_attachment import (
+    DEFAULT_CARRIER_HOST,
+    DEFAULT_CARRIER_SIDE,
+    resolve_mount_mode,
+)
 from gondola.contracts.power_options import POWER_ARTIFACT_NAMES, power_option_contract
 from gondola.mass_budget import mass_budget
 from gondola.parts.equipment_envelopes import build_equipment
@@ -114,7 +119,13 @@ def build_assembly():
         "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
-    optical_assembly = optical_mount.build_optical_mount(doc, battery_module)
+    optical_mode = resolve_mount_mode()
+    optical_assembly = optical_mount.build_optical_mount(
+        doc,
+        doc.getObject(DEFAULT_CARRIER_HOST) if optical_mode == "carrier" else None,
+        DEFAULT_CARRIER_SIDE,
+        mode=optical_mode,
+    )
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         x = station.x_mm
@@ -217,7 +228,7 @@ def build_assembly():
         (rail_assembly["printed"], "Rail"),
         (mount_parts, "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
-        (optical_assembly["printed"], "Carrier-mounted optical pitch"),
+        (optical_assembly["printed"], "Optical base and manual pitch"),
         (fit_coupons["printed"], "Fit samples"),
     ]:
         set_print_category(objects, category)
@@ -312,8 +323,11 @@ def build_assembly():
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
-        "optical_mount": optical_mount.mount_contract(),
-        "optical_carrier_interface": optical_interface.interface_contract(),
+        "optical_mount": optical_mount.mount_contract(optical_mode),
+        "optical_attachment_mode": optical_mode,
+        "optical_attachment_interface": optical_interface.interface_contract(
+            optical_mode
+        ),
         "installed_printed_part_count": len(printed_parts),
         "purchased_hardware_count": len(hardware_parts),
         "unique_stl_count": manifest["unique_stl_count"],

@@ -206,6 +206,62 @@ class HornProfileMembershipTests(unittest.TestCase):
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
+class OpticalExpressionSelectionTests(unittest.TestCase):
+    def test_each_optical_base_allows_only_its_own_manual_dependencies(self):
+        from gondola.cad import set_property
+        from gondola.contracts import optical_attachment
+        from gondola.contracts.design import module_stations
+        from gondola.contracts.drive import SELECTED_DRIVE
+        from gondola.parts.optical_mount import build_optical_mount
+        from gondola.validation import relative_motion
+
+        for mode in ("rail", "carrier"):
+            with self.subTest(mode=mode):
+                doc = App.newDocument("OpticalExpressionSelection")
+                try:
+                    host = doc.addObject("App::Part", "BatteryEquipmentModule")
+                    built = build_optical_mount(
+                        doc, host if mode == "carrier" else None, mode=mode
+                    )
+                    optical = built["group"]
+                    if mode == "rail":
+                        set_property(
+                            optical, "RailPositionX", 140, "App::PropertyDistance"
+                        )
+                        optical.setExpression("Placement.Base.x", "RailPositionX")
+                    doc.recompute()
+                    with (
+                        patch.object(optical_attachment, "SELECTED_MOUNT", mode),
+                        patch.object(
+                            relative_motion, "MODULE_STATIONS", module_stations(mode)
+                        ),
+                    ):
+                        good = relative_motion._static_expression_contract(
+                            doc, SELECTED_DRIVE
+                        )
+                        self.assertTrue(good["passed"])
+                        self.assertEqual(
+                            good["checked_expression_count"], 2 if mode == "rail" else 3
+                        )
+                        # The wrong base's expression is never an alternative
+                        # allowed dependency on this selected native object.
+                        wrong = (
+                            "MountSide == 0 ? 27 mm : -27 mm"
+                            if mode == "rail"
+                            else "RailPositionX"
+                        )
+                        prop = "MountSide" if mode == "rail" else "RailPositionX"
+                        set_property(optical, prop, 0, "App::PropertyInteger")
+                        optical.setExpression("Placement.Base.x", wrong)
+                        with self.assertRaisesRegex(ValueError, "OpticalFlowModule"):
+                            relative_motion._static_expression_contract(
+                                doc, SELECTED_DRIVE
+                            )
+                finally:
+                    App.closeDocument(doc.Name)
+
+
+@unittest.skipIf(App is None, "Requires FreeCAD")
 class NativeModuleExpressionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -219,12 +275,12 @@ class NativeModuleExpressionTests(unittest.TestCase):
         cls.addClassCleanup(App.closeDocument, cls.doc.Name)
         cls.spec = drive_for_document(cls.doc)
 
-    def test_current_fixture_carrier_formulas_have_exact_allowed_dependencies(self):
+    def test_current_fixture_mount_formulas_have_exact_allowed_dependencies(self):
         from gondola.validation.relative_motion import _static_expression_contract
 
         result = _static_expression_contract(self.doc, self.spec)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["checked_expression_count"], 15)
+        self.assertEqual(result["checked_expression_count"], 14)
 
     def test_optical_edge_formula_cannot_follow_propulsor_motion(self):
         from gondola.validation.relative_motion import _static_expression_contract

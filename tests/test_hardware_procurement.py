@@ -65,20 +65,20 @@ class NativeHardwareProcurementTests(unittest.TestCase):
 
 
 class HardwareSpecificationTests(unittest.TestCase):
-    def test_five_m3_rail_joints_share_one_spec_and_preserve_remaining_m2_inventory(
+    def test_selected_m3_rail_joints_share_one_spec_and_preserve_remaining_m2_inventory(
         self,
     ):
         from gondola.contracts.design import HARDWARE_MATERIALS
         from gondola.procurement import hardware_material_code
 
         expected = {
-            "M3X10_BUTTON_HEAD": 5,
-            "M3_HEX_NUT": 5,
-            "M2X8_BUTTON_HEAD": 2,
+            "M3X10_BUTTON_HEAD": 6,
+            "M3_HEX_NUT": 6,
+            "M2X8_BUTTON_HEAD": 1,
             "M2X10_BUTTON_HEAD": 6,
             "M2X12_BUTTON_HEAD": 2,
             "M2X6_BUTTON_HEAD": 2,
-            "M2_HEX_NUT": 12,
+            "M2_HEX_NUT": 11,
             "BEARING_3X6X2_5": 6,
             "SS304_CUT3_L35_FLAT16_A0": 2,
         }

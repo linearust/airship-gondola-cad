@@ -439,6 +439,23 @@ def fixed_frame_shape():
         2,
         "Short bearing web inward roots",
     )
+    body = fillet_selected(
+        body,
+        1.5,
+        lambda edge, bounds: (
+            near(abs(bounds.XMin), bearing_retention.BODY_HALF_WIDTH)
+            and near(bounds.XLength, 0)
+            and near(bounds.ZMin, PIVOT_Z + bearing_retention.BODY_BOTTOM_Z)
+            and near(bounds.ZLength, 0)
+            and near(
+                bounds.YLength,
+                bearing_retention.INPUT_BODY_REAR_Y
+                - bearing_retention.INPUT_BODY_FRONT_Y,
+            )
+        ),
+        2,
+        "Input-bearing wing lower roots",
+    )
     return _checked(body, "Integrated servo and inboard-bearing frame")
 
 

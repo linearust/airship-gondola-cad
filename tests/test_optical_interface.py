@@ -211,7 +211,7 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
             self.assertEqual(kit["group"].getParentGeoFeatureGroup(), hosts[1])
             self.assertEqual(kit["group"].CarrierHostName, hosts[1].Name)
             self.assertEqual(
-                tuple(kit["pitch_stage"].getGlobalPlacement().Base), (-81, -0.1, 38)
+                tuple(kit["pitch_stage"].getGlobalPlacement().Base), (-81, -0.1, 42)
             )
             self.assertNotIn("RailPositionX", kit["group"].PropertiesList)
             kit["group"].MountSide = "PositiveX"
@@ -224,3 +224,43 @@ class OpticalCarrierInterfaceTests(unittest.TestCase):
                 optical_interface.attach_to_host(kit["group"], other)
         finally:
             App.closeDocument(doc.Name)
+
+    def test_carrier_support_and_clamp_axis_witnesses_reject_missing_material(self):
+        from gondola.validation.optical import _carrier_interface_checks
+
+        doc = self.new_carrier_mount()
+        self.assertTrue(_carrier_interface_checks(doc)["passed"])
+        carrier = doc.BatteryMount
+        original = carrier.Shape.copy()
+        try:
+            # Remove real stock through the saved carrier's top 2mm deck;
+            # the outer support strip is at carrier X29..31, Y-8..8.
+            deck_bottom = original.BoundBox.ZMax - 2.0
+            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, deck_bottom))
+            self.assertAlmostEqual(original.common(defect).Volume, 8.0)
+            carrier.Shape = original.cut(defect)
+            result = _carrier_interface_checks(doc)
+            self.assertFalse(result["passed"])
+            support = next(
+                row
+                for row in result["witnesses"]
+                if row["kind"] == "foot_support_strip"
+                and row["surface"] == "carrier"
+                and row["x_min_mm"] == 2.0
+            )
+            self.assertFalse(support["passed"])
+            self.assertAlmostEqual(support["missing_material_mm3"], 0.8)
+        finally:
+            carrier.Shape = original
+        foot = doc.OpticalMountBase
+        original = foot.Shape.copy()
+        try:
+            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, 5, 0)))
+            result = _carrier_interface_checks(doc)
+            self.assertFalse(result["passed"])
+            self.assertTrue(
+                any(row.get("obstruction_mm3", 0) > 6 for row in result["witnesses"])
+            )
+        finally:
+            foot.Shape = original
+        self.assertTrue(_carrier_interface_checks(doc)["passed"])

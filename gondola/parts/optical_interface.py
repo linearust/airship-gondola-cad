@@ -1,4 +1,4 @@
-"""Compact optical foot on the middle slot of an existing equipment carrier."""
+"""Selectable optical attachment: standard rail shoe or existing carrier slot."""
 
 import json
 import math
@@ -9,6 +9,7 @@ import Part
 from gondola.cad import box, set_property, union
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
+from gondola.contracts.optical_attachment import resolve_mount_mode
 
 from . import mounting_plate, purchased_hardware, slot_bearing
 
@@ -110,8 +111,23 @@ def locator_shape():
     ).removeSplitter()
 
 
-def interface_contract():
+def interface_contract(mode="carrier"):
+    mode = resolve_mount_mode(mode)
+    if mode == "rail":
+        from . import rail
+
+        return {
+            "attachment_mode": mode,
+            "mechanism": "The same integral U shoe as the universal carriers, with one transverse M3x10/ordinary M3 nut pair",
+            "industry_standard_claimed": False,
+            "rail_interface": rail.attachment_contract(),
+            "hardware": "One standard M3x10 rail pair replaces the carrier-foot M2 pair; one M2x8 pair still clamps pitch. No additional adapter, washer or printed part.",
+            "relocation": "Loosen the single rail pair for supported local trim; remove and reseat at a different clear wall station for larger moves. Recheck optical field, whole head, cable slack and service access after any position change.",
+            "service": "Disconnect the sensor, support the head, remove its rail screw/nut from their open-bottom recesses, then lift the complete head. Use the checked saved-position rail service path; no connected-cable or arbitrary-position clearance claim.",
+            "qualification": "Nominal standard shoe contacts only. Production PA12 fit, local rail curvature, friction retention, pointing, adhesive and creep remain unqualified. The pitch joint does not self-level.",
+        }
     return {
+        "attachment_mode": mode,
         "mechanism": "One M2 clamp and an integral rigid locating tongue in an existing carrier middle-side slot",
         "industry_standard_claimed": False,
         "supported_carriers": SUPPORTED_HOSTS,
@@ -159,16 +175,20 @@ def interface_contract():
     }
 
 
-def annotate_interface(obj):
+def annotate_interface(obj, mode="carrier"):
     set_property(
         obj,
         "OpticalInterfaceContract",
-        json.dumps(interface_contract(), sort_keys=True),
+        json.dumps(interface_contract(mode), sort_keys=True),
     )
     set_property(obj, "OpticalFitVerified", False, "App::PropertyBool")
 
 
 def attach_to_host(group, host, side=DEFAULT_SIDE):
+    if getattr(group, "OpticalAttachmentMode", "carrier") != "carrier":
+        raise ValueError(
+            "Rebuild with the carrier base before changing attachment type"
+        )
     if host.Name not in SUPPORTED_HOSTS or host.Document != group.Document:
         raise ValueError(
             "Optical mount requires a supported carrier in the same document"
@@ -232,8 +252,12 @@ def build_hardware(doc, group):
     return objects
 
 
-def registration_bound(shape):
+def registration_bound(shape, mode="carrier"):
     """Conservative XY/yaw enclosure of a shape in optical-module coordinates."""
+    resolve_mount_mode(mode)
+    # Keep the broader carrier-foot registration envelope for both base choices.
+    # The rail shoe is separately checked for its snug seating; this collision
+    # reserve is conservative screening, not rail operating play or a fit claim.
     bounds = shape.BoundBox
     xs, ys = [], []
     limit = MAX_REGISTRATION_YAW_RAD
@@ -257,11 +281,13 @@ def registration_bound(shape):
     )
 
 
-def manufacturing_wall_probes():
+def manufacturing_wall_probes(mode="carrier"):
     from . import optical_mount as mount
 
-    x, y, z = mount.PIVOT_CENTRE
-    return [
+    mode = resolve_mount_mode(mode)
+    x, y, z = mount.pivot_centre(mode)
+    bottom = mount.base_top_z(mode)
+    rows = [
         (
             "optical_foot_nut_recess_floor",
             "OpticalMountBase",
@@ -293,48 +319,62 @@ def manufacturing_wall_probes():
         (
             "optical_upright_thickness",
             "OpticalMountBase",
-            (x, y - mount.EAR_THICKNESS - 0.01, 8),
-            (x, y + 0.01, 8),
-            mount.EAR_THICKNESS,
+            (x, y - mount.FIXED_EAR_THICKNESS - 0.01, bottom + mount.GUSSET_HEIGHT + 1),
+            (x, y + 0.01, bottom + mount.GUSSET_HEIGHT + 1),
+            mount.FIXED_EAR_THICKNESS,
         ),
         (
             "optical_fixed_pivot_ear",
             "OpticalMountBase",
-            (x, y - mount.EAR_THICKNESS - 0.01, z + 2.5),
+            (x, y - mount.FIXED_EAR_THICKNESS - 0.01, z + 2.5),
             (x, y + 0.01, z + 2.5),
-            mount.EAR_THICKNESS,
+            mount.FIXED_EAR_THICKNESS,
         ),
     ]
+    return rows if mode == "carrier" else rows[-2:]
 
 
-def base_component_proxies():
+def base_component_proxies(mode="carrier"):
     from . import optical_mount as mount
+    from . import rail
 
-    x, y, z = mount.PIVOT_CENTRE
+    mode = resolve_mount_mode(mode)
+    x, y, z = mount.pivot_centre(mode)
+    bottom = mount.base_top_z(mode)
+    depth = mount.gusset_depth(mode)
     return [
         (
             "OpticalFoot",
             union(
                 [
-                    foot_shape(),
-                    box(8, 0.5, 0.5, (-4, -2.5, 2)),
+                    rail.mount_base_shape() if mode == "rail" else foot_shape(),
+                    box(8, 0.5, 0.5, (-4, -mount.FIXED_EAR_THICKNESS - 0.5, bottom)),
                     # The sloping toe's tangency also extends behind Y=2 and
                     # above Z=2.5; enclose the complete obtuse R0.5 transition.
-                    box(8, 1, 1, (-4, 1.5, 2)),
+                    box(8, 1, 1, (-4, depth - 0.5, bottom)),
                 ]
             ),
         ),
         (
             "OpticalPost",
-            union([mount.upright_shape(), box(8, 0.5, 1, (-4, 0, 6.5))]),
+            union(
+                [
+                    mount.upright_shape(mode),
+                    box(8, 0.5, 1, (-4, 0, bottom + mount.GUSSET_HEIGHT - 0.5)),
+                ]
+            ),
         ),
         (
             "OpticalEar",
             box(
                 2 * mount.EAR_RADIUS,
-                mount.EAR_THICKNESS,
+                mount.FIXED_EAR_THICKNESS,
                 2 * mount.EAR_RADIUS,
-                (x - mount.EAR_RADIUS, y - mount.EAR_THICKNESS, z - mount.EAR_RADIUS),
+                (
+                    x - mount.EAR_RADIUS,
+                    y - mount.FIXED_EAR_THICKNESS,
+                    z - mount.EAR_RADIUS,
+                ),
             ),
         ),
     ]

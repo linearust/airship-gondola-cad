@@ -443,11 +443,16 @@ def battery_check(doc, objects):
 
     float_rows = []
     tower = next((obj for obj in objects if obj.Name == "OpticalMountBase"), None)
-    component_bounds = optical_interface.base_component_proxies()
+    optical_mode = (
+        getattr(tower.getParentGeoFeatureGroup(), "OpticalAttachmentMode", "carrier")
+        if tower is not None
+        else "carrier"
+    )
+    component_bounds = optical_interface.base_component_proxies(optical_mode)
     expected_components = {name for name, _ in component_bounds}
     if tower is not None:
         for component, envelope in component_bounds:
-            envelope = optical_interface.registration_bound(envelope)
+            envelope = optical_interface.registration_bound(envelope, optical_mode)
             envelope.Placement = tower.getGlobalPlacement().multiply(envelope.Placement)
             gap = swept.distToShape(envelope)[0]
             float_rows.append(
@@ -463,7 +468,7 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Conservative XY/yaw assembly-registration component envelopes of the compact carrier foot and straight optical post at the selected host/side. Assembly clearance is not deliberate operating looseness; qualify foot seating, pointing retention and clamp friction.",
+        "tower_registration_scope": "Conservative XY/yaw component envelopes of the selected optical base and straight post at its saved rail station or carrier attachment. Assembly clearance is not deliberate operating looseness; qualify base seating, pointing retention and clamp friction.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
         and bool(expected_components)

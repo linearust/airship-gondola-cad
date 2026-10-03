@@ -23,6 +23,8 @@ class OpticalPitchServiceTests(unittest.TestCase):
         self.before = file_sha256(self.path)
         self.doc = App.openDocument(str(self.path), hidden=True)
         self.addCleanup(self.close_without_saving)
+        self.mode = str(self.doc.OpticalFlowModule.OpticalAttachmentMode)
+        self.pivot_z = self.doc.OpticalPitchStage.Placement.Base.z
         registry = self.doc.DesignRegistry
         self.physical = (
             list(registry.PrintedParts)
@@ -64,7 +66,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
             result = pitch_disassembly_check(self.doc, self.kit)
             self.assertTrue(result["passed"], result)
             self.assertEqual(result["paths"][0]["part"], "OpticalPitchNut")
-            self.assertAlmostEqual(result["paths"][0]["translation_mm"][1], 4.7)
+            self.assertAlmostEqual(result["paths"][0]["translation_mm"][1], 3.7)
             self.assertEqual(result["paths"][1]["part"], "OpticalPitchBolt")
             self.assertAlmostEqual(result["paths"][1]["translation_mm"][1], -8.2)
         optical_mount.set_pitch(self.doc, 10)
@@ -76,7 +78,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
         from gondola.validation.optical_service import pitch_tool_check
 
         group = self.doc.OpticalFlowModule
-        blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, 19))
+        blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, self.pivot_z))
         blocker.Placement = group.getGlobalPlacement()
         obstacles = {obj.Name: world_shape(obj) for obj in self.physical}
         self.assertTrue(
@@ -100,7 +102,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
         # Exercise today's builders even before a new regression fixture is
         # promoted. The prior fixture alone cannot detect a new curved face.
         self.doc.OpticalSensorTray.Shape = optical_mount.sensor_tray_shape()
-        self.doc.OpticalMountBase.Shape = optical_mount.base_shape()
+        self.doc.OpticalMountBase.Shape = optical_mount.base_shape(self.mode)
         optical_mount.set_pitch(self.doc, 0)
 
         def verify(doc, kit):
@@ -174,10 +176,12 @@ class OpticalPitchServiceTests(unittest.TestCase):
         original = base.Shape.copy()
         inverse = self.doc.OpticalFlowModule.getGlobalPlacement().inverse()
         nominal = pitch_disassembly_check(self.doc, self.kit)
+        # At Y6.7 the pad clears both installed Y<=6 and the shorter rail-base
+        # removal endpoint Y>=7.45; only the continuous sweep meets this blocker.
         for name, point in (
-            ("OpticalPitchNut", (2.0, 4.3, 19.0)),
-            ("OpticalPitchBolt", (1.6, -8.0, 19.0)),
-            ("TrayAssembly/OpticalSensorTray", (4.0, 8.0, 24.5)),
+            ("OpticalPitchNut", (2.0, 4.3, self.pivot_z)),
+            ("OpticalPitchBolt", (1.6, -8.0, self.pivot_z)),
+            ("TrayAssembly/OpticalSensorTray", (4.0, 6.7, self.pivot_z + 5.5)),
         ):
             with self.subTest(part=name):
                 blocker = Part.makeSphere(0.2, App.Vector(*point))
@@ -208,12 +212,12 @@ class OpticalPitchServiceTests(unittest.TestCase):
 
         group = self.doc.OpticalFlowModule
         blocker = self.doc.addObject("Part::Feature", "ToolRegistrationBlocker")
-        blocker.Shape = Part.makeSphere(0.04, App.Vector(0.94, -11.5, 19))
+        blocker.Shape = Part.makeSphere(0.04, App.Vector(0.94, -11.5, self.pivot_z))
         blocker.Placement = group.getGlobalPlacement()
         target = world_shape(blocker)
         obstacles = {obj.Name: world_shape(obj) for obj in self.physical + [blocker]}
         self.assertTrue(pitch_tool_check(group, obstacles)["passed"])
-        shifted = pitch_tool_shape()
+        shifted = pitch_tool_shape(self.mode)
         shifted.Placement = group.getGlobalPlacement()
         shifted.translate(
             group.getGlobalPlacement().Rotation.multVec(App.Vector(0.1, 0, 0))
@@ -244,7 +248,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
             _optical_screens,
         )
 
-        blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, 19))
+        blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, self.pivot_z))
         blocker.Placement = self.doc.OpticalFlowModule.getGlobalPlacement()
         report = _optical_option_check(
             _optical_screens(self.doc), {"ToolBlocker": blocker}

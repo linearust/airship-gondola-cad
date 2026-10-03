@@ -6,6 +6,7 @@ only a visual review derivative; the native B-rep and validation remain authorit
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -231,35 +232,95 @@ def check_review_basis(doc, report):
     REVIEW_MOTION.check_rotor_service_basis(evidence)
 
 
-def check_optical_carrier_basis(doc):
-    """Keep the optical caption bound to its actual carrier parent and hardware."""
+def check_optical_attachment_basis(doc):
+    """Bind the optical caption to the selected native attachment and hardware."""
     optical = doc.getObject("OpticalFlowModule")
-    host_name = getattr(optical, "CarrierHostName", "")
-    host = doc.getObject(host_name)
-    side = str(getattr(optical, "MountSide", ""))
+    stage = doc.getObject("OpticalPitchStage")
+    mode = str(getattr(optical, "OpticalAttachmentMode", ""))
     if (
         optical is None
-        or host_name
-        not in (
-            "BatteryEquipmentModule",
-            "ElectronicsEquipmentModule",
-            "AccessoryEquipmentModule",
-        )
-        or host is None
-        or optical.getParentGeoFeatureGroup() != host
-        or side not in ("PositiveX", "NegativeX")
-        or "RailPositionX" in optical.PropertiesList
+        or stage is None
+        or stage.getParentGeoFeatureGroup() != optical
+        or mode not in ("rail", "carrier")
     ):
-        raise RuntimeError("Update optical carrier review for changed host binding.")
-    for name in ("OpticalFootBolt1", "OpticalPitchBolt"):
+        raise RuntimeError("Update optical review for changed attachment mode.")
+    parent = optical.getParentGeoFeatureGroup()
+    host_name = side = station = None
+    if mode == "rail":
+        if (
+            parent is not None
+            or "RailPositionX" not in optical.PropertiesList
+            or any(
+                name in optical.PropertiesList
+                for name in ("CarrierHostName", "MountSide")
+            )
+        ):
+            raise RuntimeError("Update optical rail review for changed native binding.")
+        station = float(optical.RailPositionX)
+        if (
+            not math.isfinite(station)
+            or abs(optical.getGlobalPlacement().Base.x - station) > 1e-7
+        ):
+            raise RuntimeError("Optical rail position disagrees with native placement.")
+        attachment_hardware = {
+            "OpticalFlowModuleRailMountScrew": "M3X10_BUTTON_HEAD",
+            "OpticalFlowModuleRailMountNut": "M3_HEX_NUT",
+        }
+        unexpected = ("OpticalFootBolt1", "OpticalFootNut1")
+    else:
+        host_name = str(getattr(optical, "CarrierHostName", ""))
+        side = str(getattr(optical, "MountSide", ""))
+        host = doc.getObject(host_name)
+        if (
+            host_name
+            not in (
+                "BatteryEquipmentModule",
+                "ElectronicsEquipmentModule",
+                "AccessoryEquipmentModule",
+            )
+            or host is None
+            or parent != host
+            or side not in ("PositiveX", "NegativeX")
+            or "RailPositionX" in optical.PropertiesList
+        ):
+            raise RuntimeError(
+                "Update optical carrier review for changed host binding."
+            )
+        attachment_hardware = {
+            "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
+            "OpticalFootNut1": "M2_HEX_NUT",
+        }
+        unexpected = (
+            "OpticalFlowModuleRailMountScrew",
+            "OpticalFlowModuleRailMountNut",
+        )
+    if any(doc.getObject(name) is not None for name in unexpected):
+        raise RuntimeError("Optical attachment hardware mixes rail and carrier modes.")
+    for name, sku in {
+        **attachment_hardware,
+        "OpticalPitchBolt": "M2X8_BUTTON_HEAD",
+        "OpticalPitchNut": "M2_HEX_NUT",
+    }.items():
         obj = doc.getObject(name)
-        if obj is None or getattr(obj, "HardwareSKU", "") != "M2X8_BUTTON_HEAD":
-            raise RuntimeError("Expected two M2x8 optical foot/pitch screws.")
-    for name in ("OpticalFootNut1", "OpticalPitchNut"):
-        obj = doc.getObject(name)
-        if obj is None or getattr(obj, "HardwareSKU", "") != "M2_HEX_NUT":
-            raise RuntimeError("Expected two M2 optical foot/pitch nuts.")
-    return {"host": host_name, "side": side}
+        if obj is None or getattr(obj, "HardwareSKU", "") != sku:
+            raise RuntimeError(f"Expected optical fastener {name}: {sku}.")
+    contract = json.loads(optical.OpticalMountContract)
+    if (
+        contract.get("attachment_mode") != mode
+        or contract.get("fixed_ear_thickness_mm") != 3.0
+        or contract.get("ear_thickness_mm") != 2.0
+        or abs(contract.get("bolt_tip_beyond_nut_mm", -1) - 1.9) > 1e-8
+    ):
+        raise RuntimeError("Update optical pitch review for changed ear/bolt contract.")
+    return {
+        "mode": mode,
+        "native_parent": parent.Name if parent is not None else None,
+        "host": host_name,
+        "side": side,
+        "rail_position_x_mm": station,
+        "module_origin_cad_mm": list(optical.getGlobalPlacement().Base),
+        "pitch_pivot_cad_mm": list(stage.getGlobalPlacement().Base),
+    }
 
 
 def export(cad_path, output):
@@ -277,7 +338,7 @@ def export(cad_path, output):
         registry = doc.DesignRegistry
         report = snapshot.report
         check_review_basis(doc, report)
-        optical_attachment = check_optical_carrier_basis(doc)
+        optical_attachment = check_optical_attachment_basis(doc)
         objects = review_objects(registry)
         rail_names = {obj.Name for obj in registry.RailSegments}
         parts = []
@@ -477,17 +538,34 @@ def export(cad_path, output):
             return {}, set()
 
         origin = doc.OpticalFlowModule.getGlobalPlacement().Base
+        if optical_attachment["mode"] == "rail":
+            attachment_caption = (
+                "The integral common rail shoe is fixed by one M3x10 pair at native rail station "
+                + f"{optical_attachment['rail_position_x_mm']:g} mm. "
+                "Rail position stays fixed; rail trim is not animated. "
+            )
+        else:
+            attachment_caption = (
+                "A shallow tongue and one M2x8 pair fix the foot to "
+                + optical_attachment["host"]
+                + " ("
+                + optical_attachment["side"]
+                + "); host and side stay fixed. "
+            )
         scene(
-            "05 Optical carrier pitch",
-            "OPTICAL MANUAL PITCH / CARRIER SIDE FOOT",
-            "One manual pitch axis +/-20 deg. A rigid shallow tongue and one M2 pair fix the foot to "
-            + optical_attachment["host"]
-            + " ("
-            + optical_attachment["side"]
-            + "); a second pair locks pitch. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. Host and side remain fixed during this review. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
+            "05 Optical pitch",
+            "OPTICAL MANUAL PITCH / "
+            + (
+                "DIRECT RAIL SHOE"
+                if optical_attachment["mode"] == "rail"
+                else "CARRIER SIDE FOOT"
+            ),
+            "One manual pitch axis +/-20 deg. "
+            + attachment_caption
+            + "One M2x8 pair locks the 3 mm fixed ear and 2 mm moving ear, with 1.9 mm nominal tip beyond the nut. Loosen, align and retighten the pivot; no roll correction, actuation or self-levelling. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
             145,
             all_names,
-            [[origin.x - 35, origin.y - 30, 0], [origin.x + 35, origin.y + 30, 60]],
+            [[origin.x - 35, origin.y - 30, 0], [origin.x + 35, origin.y + 30, 80]],
             [
                 (1, "Aligned"),
                 (37, "Pitch +20"),
@@ -524,6 +602,8 @@ def export(cad_path, output):
                 "service_animation_included": True,
                 "animated_service_scope": "Output rotor and its locked output shaft only; input-shaft and servo service are not animated.",
                 "input_service_animation_included": False,
+                "optical_attachment": optical_attachment,
+                "optical_rail_trim_animation_included": False,
                 "checked_input_service": REVIEW_MOTION.input_service_summary(
                     report["local_propulsion_evidence"]
                 ),

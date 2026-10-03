@@ -6,6 +6,7 @@ from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.contracts.design import MODULE_STATIONS
 from gondola.contracts.drive import drive_for_document
+from gondola.contracts.optical_attachment import resolve_mount_mode
 
 from .geometry import intersection_volume
 from .rotation_envelope import full_orbit_envelope
@@ -62,10 +63,11 @@ def _static_expression_contract(doc, spec):
         allowed[station.object_name] = {
             "Placement.Base.x": "RailPositionX",
         }
-    allowed["OpticalFlowModule"] = {
-        "Placement.Base.x": "MountSide==0?27mm:-27mm",
-        "Placement.Rotation.Angle": "MountSide==0?0deg:180deg",
-    }
+    if resolve_mount_mode() == "carrier":
+        allowed["OpticalFlowModule"] = {
+            "Placement.Base.x": "MountSide==0?27mm:-27mm",
+            "Placement.Rotation.Angle": "MountSide==0?0deg:180deg",
+        }
     for prefix in ("Port", "Starboard"):
         allowed[prefix + "Pod"] = {
             "Placement.Rotation.Angle": "min(MaximumTilt;max(MinimumTilt;Tilt))"

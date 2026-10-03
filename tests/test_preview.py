@@ -167,6 +167,7 @@ class PreviewCallbacks(unittest.TestCase):
     def test_optical_detail_includes_actual_supporting_carrier(self):
         host = types.SimpleNamespace(Name="BatteryEquipmentModule")
         optical = types.SimpleNamespace(
+            OpticalAttachmentMode="carrier",
             CarrierHostName="BatteryEquipmentModule",
             getParentGeoFeatureGroup=lambda: host,
         )
@@ -176,6 +177,15 @@ class PreviewCallbacks(unittest.TestCase):
             self.preview.optical_detail_host(optical)
         optical.getParentGeoFeatureGroup = lambda: None
         with self.assertRaisesRegex(RuntimeError, "declared carrier parent"):
+            self.preview.optical_detail_host(optical)
+
+    def test_direct_rail_optical_detail_has_no_carrier_parent(self):
+        optical = types.SimpleNamespace(
+            OpticalAttachmentMode="rail", getParentGeoFeatureGroup=lambda: None
+        )
+        self.assertIs(self.preview.optical_detail_host(optical), optical)
+        optical.getParentGeoFeatureGroup = lambda: types.SimpleNamespace(Name="Host")
+        with self.assertRaisesRegex(RuntimeError, "top-level module"):
             self.preview.optical_detail_host(optical)
 
 

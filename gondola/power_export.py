@@ -65,6 +65,15 @@ from .validation.geometry import (
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
+# These are operating ray reservations, not physical bodies. Keep this exact
+# allowlist separate from all body/tray/connector/tool bounds and unknown names.
+FUNCTIONAL_OPTICAL_FIELDS = frozenset(
+    {
+        "MTF02POpticalClearanceReserve",
+        "MTF02PContinuousOpticalFieldBound",
+        "MTF01PContinuousOpticalFieldBound",
+    }
+)
 
 
 def _main_shapes(doc):
@@ -87,7 +96,7 @@ def _main_shapes(doc):
 def _illustrated_optical_mount(main):
     """Copy the tether arrangement without saving or changing the main assembly."""
     optical = main.getObject("OpticalFlowModule")
-    if optical is None:
+    if optical is None or str(optical.OpticalAttachmentMode) == "rail":
         yield
         return
     from .parts import optical_interface
@@ -144,9 +153,10 @@ def _optical_motion_bounds(optical):
     from .validation.optical import _external_field_bound
     from .validation.optical_service import pitch_tool_shape
 
+    mode = str(optical.OpticalAttachmentMode)
     result = {
         "OpticalPitchToolAccessBound": placed_shape(
-            optical_interface.registration_bound(pitch_tool_shape()),
+            optical_interface.registration_bound(pitch_tool_shape(mode), mode),
             optical.getGlobalPlacement(),
         )
     }
@@ -160,8 +170,8 @@ def _optical_motion_bounds(optical):
             ("Tray", optical_mount.sensor_tray_shape()),
         ):
             bound = _pitch_bound(shape, optical_mount.ANGLE_LIMIT_DEG)
-            bound.translate(App.Vector(*optical_mount.PIVOT_CENTRE))
-            bound = optical_interface.registration_bound(bound)
+            bound.translate(App.Vector(*optical_mount.pivot_centre(mode)))
+            bound = optical_interface.registration_bound(bound, mode)
             result[f"{key}Continuous{name}Bound"] = placed_shape(
                 bound, optical.getGlobalPlacement()
             )
@@ -223,15 +233,32 @@ def _registration_bounds(plan_key):
     return result
 
 
+def _disconnected_service_context(context):
+    """Retain every obstacle except the named, inactive optical ray fields.
+
+    Disconnected maintenance does not require optical operation. The selected
+    sensor and both alternatives' continuous body, tray, connector and tool
+    reservations remain obstacles; this exemption never changes seated checks.
+    """
+    return {
+        name: shape
+        for name, shape in context.items()
+        if name not in FUNCTIONAL_OPTICAL_FIELDS
+    }
+
+
 def _portal_foot_service_conflicts(physical, pose, context, off_rail_names):
     """Bench access; only the detached rail and its tape are absent.
 
-    Keep the complete host and every other supplied obstacle conservatively.
-    The matching operated bolt/nut pair is the only local tool-contact exemption.
+    Keep the complete host and every physical/access obstacle conservatively.
+    The inactive optical ray fields are not solid maintenance obstacles. The
+    matching operated bolt/nut pair is the only local tool-contact exemption.
     """
     tools = _placed(dict(stack_interface.clamp_tool_reservations()), pose)
     obstacles = {
-        name: shape for name, shape in context.items() if name not in off_rail_names
+        name: shape
+        for name, shape in _disconnected_service_context(context).items()
+        if name not in off_rail_names
     }
     conflicts = _collisions(tools, obstacles)
     for name, tool in tools.items():
@@ -290,6 +317,7 @@ def _configuration_conflicts(
                 }
             )
     if packaging == DIRECT_CARRIER:
+        service_context = _disconnected_service_context(context)
         for name, shape in physical.items():
             sweep, _ = translation_sweep(
                 shape, tuple(pose.Rotation.multVec(App.Vector(0, 0, 32)))
@@ -299,7 +327,7 @@ def _configuration_conflicts(
                 for row in _collisions(
                     {name: sweep},
                     {
-                        **context,
+                        **service_context,
                         **{
                             other: body
                             for other, body in physical.items()
@@ -327,6 +355,21 @@ def _configuration_conflicts(
     ]
 
 
+def _optical_attachment_description(optical):
+    if optical is None:
+        return None
+    mode = str(optical.OpticalAttachmentMode)
+    if mode == "rail":
+        return {"mode": mode, "rail_position_x_mm": float(optical.RailPositionX)}
+    if mode == "carrier":
+        return {
+            "mode": mode,
+            "host": optical.CarrierHostName,
+            "side": str(optical.MountSide),
+        }
+    raise ValueError("Unknown optical attachment mode")
+
+
 def screen_configurations(main_doc):
     """Retain every packaging/host/plan choice and compose navigation conflicts."""
     from .contracts.equipment_options import NAVIGATION_PROFILES, get_navigation_profile
@@ -338,11 +381,7 @@ def screen_configurations(main_doc):
         for obj in getattr(main_doc.DesignRegistry, category, ())
     )
     optical = main_doc.getObject("OpticalFlowModule")
-    optical_attachment = (
-        {"host": optical.CarrierHostName, "side": str(optical.MountSide)}
-        if optical is not None
-        else None
-    )
+    optical_attachment = _optical_attachment_description(optical)
     optical_bounds = _optical_motion_bounds(optical) if optical is not None else {}
     contexts = {}
     for plan_key in OPTIONAL_PLANS:
@@ -447,7 +486,7 @@ def screen_configurations(main_doc):
     selected = get_navigation_profile()
     selected_installation = "direct_sma" if selected.external_antenna else "integrated"
     # Default arrangement rows use exactly the same composed decisions as the
-    # navigation matrix, including saved optical carrier attachment.
+    # navigation matrix, including the saved optical attachment.
     for row in rows:
         match = next(
             probe
@@ -478,14 +517,25 @@ def screen_configurations(main_doc):
         and row["plan"] == power_mount.DEFAULT_PLAN
         and row["packaging"] == power_mount.DEFAULT_PACKAGING
     )
+    inactive_fields = sorted(
+        FUNCTIONAL_OPTICAL_FIELDS.intersection(
+            {name for context in contexts.values() for name in context}
+        )
+    )
     return {
         "foot_fastener_service": {
             "mode": "Disconnected carrier and complete portal removed from the rail for bench service",
             "excluded_only_during_bench_service": sorted(off_rail_names),
-            "retained_obstacles": "Complete host and every other context object, plus optional platform and boards; only each tool's operated bolt/nut pair is an intended-contact exemption.",
+            "inactive_optical_fields_excluded_only_during_service": inactive_fields,
+            "retained_obstacles": "Complete host, platform, boards, sensor bodies, trays, connector/tool reservations and unknown objects remain obstacles. Only each tool's operated bolt/nut pair is an intended-contact exemption; operating optical ray fields are inactive during disconnected bench maintenance.",
             "scope": "Disconnect leads and remove the complete carrier from the rail first. This is a conservative bench tool-space check, not permission to reach through installed tape or the balloon; no connected harness or hand clearance is qualified.",
         },
-        "saved_optical_carrier_attachment": optical_attachment,
+        "direct_board_service": {
+            "mode": "Unpowered boards, leads disconnected and adhesive released before the checked 32 mm lift",
+            "inactive_optical_fields_excluded_only_during_service": inactive_fields,
+            "retained_obstacles": "All physical parts, the other board, continuous sensor body/tray bounds, connector/tool reservations and unknown objects. The complete optical field remains mandatory for seated configurations.",
+        },
+        "saved_optical_attachment": optical_attachment,
         "configurations": rows,
         "default_configuration_clear": default["permitted"],
         "permitted_hosts_by_plan": {
@@ -496,7 +546,7 @@ def screen_configurations(main_doc):
         "source_selected_navigation": selected.key,
         "navigation_compatibility_probes": navigation_rows,
         "seated_registration_scope": "Portal choices retain the continuous conservative opposed-slot XY/yaw bounds. Direct boards are nominal adhesive placements on the vacated battery carrier, with measured intact land/body overlap; adhesive placement and retention remain physical checks.",
-        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and carrier-mounted optical attachment. Both sensors' continuous field, body, tray and connector bounds include the full pitch range; the field additionally includes carrier registration and nominal rail clearance. Actual fit and angular rocking are unqualified. Retained solid bodies/reserves and disconnected direct-board removal are screened. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
+        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and the selected rail/carrier optical attachment. Both sensors' continuous field, body, tray and connector bounds include the full pitch range and conservative registration reserve. Actual fit and angular rocking are unqualified. Retained solid bodies/access reserves and disconnected direct-board removal are screened. Inactive optical ray fields alone may be crossed during disconnected maintenance; seated optical field checks are unchanged. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
         "passed": all(permitted.values())
         and len(rows)
         == len(POWER_PACKAGINGS)
@@ -521,10 +571,9 @@ def _manifest(doc, manufacturing):
         "default_host": power_mount.DEFAULT_HOST,
         "illustrated_power_plan": get_power_plan(power_mount.DEFAULT_PLAN).contract(),
         "illustrated_packaging": power_mount.DEFAULT_PACKAGING,
-        "illustrated_optical_carrier_attachment": {
-            "host": power_mount.DEFAULT_OPTICAL_HOST,
-            "side": power_mount.DEFAULT_OPTICAL_SIDE,
-        },
+        "illustrated_optical_attachment": json.loads(
+            doc.PowerOptionModule.OpticalAttachment
+        ),
         "installed_additional_printed_quantity": 0,
         "manufacturing_document": POWER_PLATFORM_DOCUMENT_NAME,
         "manufacturing_packaging": PORTAL,
@@ -548,7 +597,7 @@ def _manifest(doc, manufacturing):
         ),
         "platform_contract": power_mount.platform_contract(),
         "power_options": power_option_contract(),
-        "context_scope": "Saved optional-installation context preserves the reused carrier and relocated optical geometry independently of main CAD display properties. The battery is absent for tether power. Context shapes are not optional manufacturing parts or additional bought parts.",
+        "context_scope": "Saved optional-installation context preserves the reused carrier and selected optical geometry independently of main CAD display properties. The battery is absent for tether power. Context shapes are not optional manufacturing parts or additional bought parts.",
     }
 
 
@@ -673,6 +722,9 @@ def audit_power_options(source=None, output_dir=None):
         group = option.getObject("PowerOptionModule")
         with _illustrated_optical_mount(main):
             pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
+            report["optical_attachment_matches"] = json.loads(
+                option.PowerOptionModule.OpticalAttachment
+            ) == _optical_attachment_description(main.getObject("OpticalFlowModule"))
         report["option_pose_matches"] = group.Placement.isSame(pose, TOL)
         report["option_source_matches"] = (
             str(group.SourceFingerprint) == source_fingerprint()
@@ -681,8 +733,6 @@ def audit_power_options(source=None, output_dir=None):
             str(group.PowerPlan) == power_mount.DEFAULT_PLAN
             and str(group.StackHostName) == power_mount.DEFAULT_HOST
             and str(group.PowerPackaging) == power_mount.DEFAULT_PACKAGING
-            and str(group.OpticalCarrierHost) == power_mount.DEFAULT_OPTICAL_HOST
-            and str(group.OpticalCarrierSide) == power_mount.DEFAULT_OPTICAL_SIDE
         )
         report["option_contract_matches"] = json.loads(
             group.PowerPlatformContract
@@ -813,6 +863,7 @@ def audit_power_options(source=None, output_dir=None):
                 report[key]
                 for key in (
                     "option_pose_matches",
+                    "optical_attachment_matches",
                     "illustrated_configuration_clear",
                     "main_optional_contract_matches",
                     "option_source_matches",

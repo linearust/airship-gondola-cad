@@ -77,33 +77,36 @@ class OpticalProfileGeometryTests(unittest.TestCase):
         doc = App.newDocument("OpticalFullFieldBound")
         try:
             group = doc.addObject("App::Part", "OpticalFlowModule")
-            for profile in SENSOR_PROFILES.values():
-                bound, _ = _external_field_bound(group, profile)
-                for pitch in (-20, -11, 0, 13, 20):
-                    rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
-                    for distance in (0, 100, 400):
-                        expansion = distance * math.tan(
-                            math.radians(profile.flow_fov_deg / 2)
-                        )
-                        for sx, sy in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
-                            start = App.Vector(
-                                sx * (profile.size_mm[0] / 2 + expansion),
-                                sy * (profile.size_mm[1] / 2 + expansion),
-                                optical_sensor.SENSOR_BOTTOM_Z
-                                + profile.optical_origin_min_z_mm
-                                + distance,
+            group.addProperty("App::PropertyString", "OpticalAttachmentMode")
+            for mode in ("rail", "carrier"):
+                group.OpticalAttachmentMode = mode
+                for profile in SENSOR_PROFILES.values():
+                    bound, _ = _external_field_bound(group, profile)
+                    for pitch in (-20, -11, 0, 13, 20):
+                        rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
+                        for distance in (0, 100, 400):
+                            expansion = distance * math.tan(
+                                math.radians(profile.flow_fov_deg / 2)
                             )
-                            point = rotation.multVec(start) + App.Vector(
-                                *optical_mount.PIVOT_CENTRE
-                            )
-                            for ty in (
-                                -RAIL_ALIGNMENT_RESERVE_MM,
-                                RAIL_ALIGNMENT_RESERVE_MM,
-                            ):
-                                shifted = point + App.Vector(0, ty, 0)
-                                self.assertTrue(
-                                    bound.isInside(shifted, 1e-7, True),
-                                    (profile.key, pitch, distance, sx, sy, ty),
+                            for sx, sy in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                                start = App.Vector(
+                                    sx * (profile.size_mm[0] / 2 + expansion),
+                                    sy * (profile.size_mm[1] / 2 + expansion),
+                                    optical_sensor.SENSOR_BOTTOM_Z
+                                    + profile.optical_origin_min_z_mm
+                                    + distance,
                                 )
+                                point = rotation.multVec(start) + App.Vector(
+                                    *optical_mount.pivot_centre(mode)
+                                )
+                                for ty in (
+                                    -RAIL_ALIGNMENT_RESERVE_MM,
+                                    RAIL_ALIGNMENT_RESERVE_MM,
+                                ):
+                                    shifted = point + App.Vector(0, ty, 0)
+                                    self.assertTrue(
+                                        bound.isInside(shifted, 1e-7, True),
+                                        (profile.key, pitch, distance, sx, sy, ty),
+                                    )
         finally:
             App.closeDocument(doc.Name)

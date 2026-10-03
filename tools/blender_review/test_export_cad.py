@@ -10,7 +10,7 @@ from unittest.mock import patch
 from tools.blender_review import export_cad
 from tools.blender_review.export_cad import (
     check_mesh_placement,
-    check_optical_carrier_basis,
+    check_optical_attachment_basis,
     check_review_basis,
     representation,
     review_objects,
@@ -113,41 +113,111 @@ class ExportContractTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), contents)
 
     @staticmethod
-    def optical_basis():
-        host = SimpleNamespace(Name="BatteryEquipmentModule")
-        optical = SimpleNamespace(
-            CarrierHostName=host.Name,
-            MountSide="PositiveX",
-            PropertiesList=["CarrierHostName", "MountSide"],
-            getParentGeoFeatureGroup=lambda: host,
-        )
-        objects = {host.Name: host, "OpticalFlowModule": optical}
-        for prefix in ("OpticalFoot", "OpticalPitch"):
-            for index in ("1",) if prefix == "OpticalFoot" else ("",):
-                for kind, sku in (("Bolt", "M2X8_BUTTON_HEAD"), ("Nut", "M2_HEX_NUT")):
-                    objects[prefix + kind + index] = SimpleNamespace(HardwareSKU=sku)
-        return SimpleNamespace(getObject=objects.get), objects
-
-    def test_native_carrier_optical_attachment_matches_review(self):
+    def optical_basis(mode="carrier"):
         import FreeCAD as App
 
-        from gondola.parts import optical_mount
+        host = SimpleNamespace(Name="BatteryEquipmentModule")
+        optical = SimpleNamespace(
+            OpticalAttachmentMode=mode,
+            OpticalMountContract=json.dumps(
+                {
+                    "attachment_mode": mode,
+                    "fixed_ear_thickness_mm": 3.0,
+                    "ear_thickness_mm": 2.0,
+                    "bolt_tip_beyond_nut_mm": 1.9,
+                }
+            ),
+            PropertiesList=["OpticalAttachmentMode"],
+        )
+        if mode == "carrier":
+            optical.CarrierHostName = host.Name
+            optical.MountSide = "PositiveX"
+            optical.PropertiesList += ["CarrierHostName", "MountSide"]
+            optical.getParentGeoFeatureGroup = lambda: host
+            origin = App.Vector(27, 0, 19)
+            hardware = {
+                "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
+                "OpticalFootNut1": "M2_HEX_NUT",
+            }
+        else:
+            optical.RailPositionX = 140
+            optical.PropertiesList += ["RailPositionX"]
+            optical.getParentGeoFeatureGroup = lambda: None
+            origin = App.Vector(140, 0, 0)
+            hardware = {
+                "OpticalFlowModuleRailMountScrew": "M3X10_BUTTON_HEAD",
+                "OpticalFlowModuleRailMountNut": "M3_HEX_NUT",
+            }
+        optical.getGlobalPlacement = lambda: App.Placement(origin, App.Rotation())
+        stage = SimpleNamespace(
+            getParentGeoFeatureGroup=lambda: optical,
+            getGlobalPlacement=lambda: App.Placement(
+                App.Vector(origin.x, 0, 42), App.Rotation()
+            ),
+        )
+        objects = {
+            host.Name: host,
+            "OpticalFlowModule": optical,
+            "OpticalPitchStage": stage,
+        }
+        for name, sku in {
+            **hardware,
+            "OpticalPitchBolt": "M2X8_BUTTON_HEAD",
+            "OpticalPitchNut": "M2_HEX_NUT",
+        }.items():
+            objects[name] = SimpleNamespace(HardwareSKU=sku)
+        return SimpleNamespace(getObject=objects.get), objects
 
-        doc = App.newDocument("BlenderOpticalCarrierReview")
-        try:
-            host = doc.addObject("App::Part", "BatteryEquipmentModule")
-            optical_mount.build_optical_mount(doc, host)
-            self.assertEqual(
-                check_optical_carrier_basis(doc),
-                {"host": "BatteryEquipmentModule", "side": "PositiveX"},
-            )
-            doc.OpticalFlowModule.MountSide = "NegativeX"
-            doc.recompute()
-            self.assertEqual(check_optical_carrier_basis(doc)["side"], "NegativeX")
-        finally:
-            App.closeDocument(doc.Name)
+    def test_native_optical_modes_and_saved_parent_match_review(self):
+        import FreeCAD as App
 
-    def test_wrong_optical_binding_and_legacy_rail_control_are_rejected(self):
+        from gondola.parts import optical_mount, rail
+
+        for mode in ("rail", "carrier"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "optical.FCStd"
+                doc = App.newDocument("BlenderOpticalAttachmentReview")
+                try:
+                    if mode == "carrier":
+                        host = doc.addObject("App::Part", "BatteryEquipmentModule")
+                        host.Placement.Base.x = 84
+                        optical_mount.build_optical_mount(doc, host)
+                        doc.OpticalFlowModule.MountSide = "NegativeX"
+                    else:
+                        group = optical_mount.build_optical_mount(doc, mode="rail")[
+                            "group"
+                        ]
+                        group.addProperty("App::PropertyLength", "RailPositionX")
+                        group.RailPositionX = 140
+                        group.setExpression("Placement.Base.x", "RailPositionX")
+                        rail.build_attachment_hardware(doc, group, group.Name)
+                    doc.recompute()
+                    expected = check_optical_attachment_basis(doc)
+                    self.assertEqual(expected["mode"], mode)
+                    self.assertEqual(
+                        expected["pitch_pivot_cad_mm"],
+                        [140, 0, 42] if mode == "rail" else [57, 0, 42],
+                    )
+                    self.assertEqual(
+                        expected["native_parent"],
+                        None if mode == "rail" else "BatteryEquipmentModule",
+                    )
+                    self.assertEqual(
+                        expected["rail_position_x_mm"], 140 if mode == "rail" else None
+                    )
+                    self.assertEqual(
+                        expected["side"], None if mode == "rail" else "NegativeX"
+                    )
+                    doc.saveAs(str(path))
+                finally:
+                    App.closeDocument(doc.Name)
+                doc = App.openDocument(str(path), hidden=True)
+                try:
+                    self.assertEqual(check_optical_attachment_basis(doc), expected)
+                finally:
+                    App.closeDocument(doc.Name)
+
+    def test_wrong_carrier_binding_and_mixed_rail_control_are_rejected(self):
         for field, value in (
             ("CarrierHostName", "ElectronicsEquipmentModule"),
             ("MountSide", "InvalidSide"),
@@ -158,24 +228,74 @@ class ExportContractTests(unittest.TestCase):
                 doc, objects = self.optical_basis()
                 setattr(objects["OpticalFlowModule"], field, value)
                 with self.assertRaisesRegex(RuntimeError, "host binding"):
-                    check_optical_carrier_basis(doc)
+                    check_optical_attachment_basis(doc)
 
-    def test_each_optical_foot_and_pitch_fastener_is_required(self):
-        for name in (
-            "OpticalFootBolt1",
-            "OpticalPitchBolt",
-            "OpticalFootNut1",
-            "OpticalPitchNut",
+    def test_wrong_rail_parent_controls_and_station_are_rejected(self):
+        for field, value in (
+            (
+                "getParentGeoFeatureGroup",
+                lambda: SimpleNamespace(Name="BatteryEquipmentModule"),
+            ),
+            ("PropertiesList", ["OpticalAttachmentMode"]),
+            ("PropertiesList", ["RailPositionX", "CarrierHostName"]),
+            ("RailPositionX", 139),
         ):
-            for missing in (False, True):
-                with self.subTest(name=name, missing=missing):
-                    doc, objects = self.optical_basis()
-                    if missing:
-                        del objects[name]
-                    else:
-                        objects[name].HardwareSKU = "WrongFastener"
-                    with self.assertRaisesRegex(RuntimeError, "Expected two M2"):
-                        check_optical_carrier_basis(doc)
+            with self.subTest(field=field):
+                doc, objects = self.optical_basis("rail")
+                setattr(objects["OpticalFlowModule"], field, value)
+                with self.assertRaisesRegex(
+                    RuntimeError, "native binding|native placement"
+                ):
+                    check_optical_attachment_basis(doc)
+
+    def test_each_mode_requires_its_attachment_and_pitch_fasteners(self):
+        for mode, names in (
+            ("carrier", ("OpticalFootBolt1", "OpticalFootNut1")),
+            (
+                "rail",
+                ("OpticalFlowModuleRailMountScrew", "OpticalFlowModuleRailMountNut"),
+            ),
+        ):
+            for name in (*names, "OpticalPitchBolt", "OpticalPitchNut"):
+                for missing in (False, True):
+                    with self.subTest(mode=mode, name=name, missing=missing):
+                        doc, objects = self.optical_basis(mode)
+                        if missing:
+                            del objects[name]
+                        else:
+                            objects[name].HardwareSKU = "WrongFastener"
+                        with self.assertRaisesRegex(
+                            RuntimeError, "Expected optical fastener"
+                        ):
+                            check_optical_attachment_basis(doc)
+
+    def test_mixed_hardware_or_stale_pitch_contract_is_rejected(self):
+        for mode, wrong_name in (
+            ("rail", "OpticalFootBolt1"),
+            ("carrier", "OpticalFlowModuleRailMountScrew"),
+        ):
+            doc, objects = self.optical_basis(mode)
+            objects[wrong_name] = SimpleNamespace(HardwareSKU="M2X8_BUTTON_HEAD")
+            with (
+                self.subTest(mode=mode),
+                self.assertRaisesRegex(RuntimeError, "mixes rail and carrier"),
+            ):
+                check_optical_attachment_basis(doc)
+        for field, value in (
+            ("attachment_mode", "rail"),
+            ("fixed_ear_thickness_mm", 2.0),
+            ("ear_thickness_mm", 3.0),
+            ("bolt_tip_beyond_nut_mm", 2.9),
+        ):
+            doc, objects = self.optical_basis("carrier")
+            contract = json.loads(objects["OpticalFlowModule"].OpticalMountContract)
+            contract[field] = value
+            objects["OpticalFlowModule"].OpticalMountContract = json.dumps(contract)
+            with (
+                self.subTest(field=field),
+                self.assertRaisesRegex(RuntimeError, "ear/bolt contract"),
+            ):
+                check_optical_attachment_basis(doc)
 
     @staticmethod
     def basis():

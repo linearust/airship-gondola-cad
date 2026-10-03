@@ -63,10 +63,10 @@ class OpticalMountTests(unittest.TestCase):
         shape = optical_mount.base_shape()
         self.assertLess(abs(optical_interface.foot_shape().cut(shape).Volume), 1e-5)
         self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 18))
-        # The raised carrier retains a local Z19 pivot. Preserve the complete
+        # The extended carrier post places its pivot at local Z23. Preserve the complete
         # straight post witness while excluding its intentional clearance bore.
-        bore = Part.makeCylinder(1.1, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
-        post = Part.makeBox(8, 2, 17, App.Vector(-4, -2, 2)).cut(bore)
+        bore = Part.makeCylinder(1.1, 3, App.Vector(0, -3, 23), App.Vector(0, 1, 0))
+        post = Part.makeBox(8, 3, 21, App.Vector(-4, -3, 2)).cut(bore)
         self.assertLess(abs(post.cut(shape).Volume), 1e-5)
         self.assertLess(abs(bore.common(shape).Volume), 1e-5)
         self.assertAlmostEqual(shape.BoundBox.ZMin, -1.2)
@@ -115,11 +115,11 @@ class OpticalMountTests(unittest.TestCase):
     def test_pivot_is_centred_on_foot_and_follows_carrier(self):
         from gondola.parts import optical_mount
 
-        self.assertEqual(optical_mount.PIVOT_CENTRE, (0.0, 0.0, 19.0))
+        self.assertEqual(optical_mount.PIVOT_CENTRE, (0.0, 0.0, 23.0))
         self.assertEqual(self.module["group"].getParentGeoFeatureGroup(), self.host)
         self.assertAlmostEqual(self.module["group"].Placement.Base.z, 19.0)
         self.assertAlmostEqual(
-            self.module["pitch_stage"].getGlobalPlacement().Base.z, 38
+            self.module["pitch_stage"].getGlobalPlacement().Base.z, 42
         )
 
     def test_pitch_limit_is_native_and_every_part_follows_the_host(self):
@@ -215,7 +215,7 @@ class OpticalMountTests(unittest.TestCase):
         )
         self.assertLess(abs(core.cut(bolt).Volume), 1e-5)
         self.assertAlmostEqual(b.YLength, 1.6)
-        self.assertAlmostEqual(bolt.BoundBox.YMax - b.YMax, 2.9)
+        self.assertAlmostEqual(bolt.BoundBox.YMax - b.YMax, 1.9)
         for obj in self.module["printed"]:
             self.assertLess(abs(world_shape(obj).common(core).Volume), 1e-5)
 

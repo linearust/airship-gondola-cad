@@ -263,7 +263,8 @@ def review(doc, registry):
         for x in rail.PAD_CENTRES
         for side in (-1, 1)
     )
-    analytic.extend(optical_interface.manufacturing_wall_probes())
+    optical_mode = str(doc.OpticalFlowModule.OpticalAttachmentMode)
+    analytic.extend(optical_interface.manufacturing_wall_probes(optical_mode))
     measurements = []
     probes_with_frames = [(probe, False) for probe in analytic] + [
         (probe, True)
@@ -318,7 +319,9 @@ def review(doc, registry):
             "accessory_deck_size_mm": mounts.ACCESSORY_DECK_SIZE,
             "hole_pad_diameter_mm": mounts.MOUNT_PAD_DIAMETER,
             "contracts": [mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES],
-            "independent_optical_mount_contract": optical_mount.mount_contract(),
+            "independent_optical_mount_contract": optical_mount.mount_contract(
+                optical_mode
+            ),
         },
         "rail_functional_flexure_assessment": {
             "nominal_base_and_tape_wing_thickness_mm": rail.PAD_THICKNESS,
