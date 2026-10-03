@@ -27,7 +27,7 @@ from .servo_horns import SELECTED_BY_SIDE, preparation_note
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "CI"
+DESIGN_REVISION = "CJ"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -74,14 +74,14 @@ MANUFACTURING_DECISION = {
 # Retained splits have assembly, motion or requested replacement functions.
 # Reconsider these reasons when redesigning; this is not a fixed part-count target.
 PART_SEPARATION_REASONS = {
-    "fc_and_accessory_carriers": "Battery and navigation use two identical fixed square carriers. FC uses the same plate pattern on a two-print manually adjustable instrument mount. One fixed optical bracket shares its moving plate. The standard U rail shoe and source-confirmed device holes remain. Hole compatibility is not a payload rating.",
+    "fc_and_accessory_carriers": "Battery and navigation use two identical fixed square carriers. The separate FC/optical levelling variant retains their square hole pattern and rail interface, with an integral sensor bridge on its moving plate and a separate pitch base. The complete carriers are not interchangeable parts. Hole compatibility is not a payload rating.",
     "rail_and_carriers": "Five M3x10 pairs attach three equipment modules and the paired propulsion support to the rail. The FC instrument platform has two additional M3 joint pairs. Local rail trim remains nominally +/-3mm per station; curvature, adhesion, fit and loaded retention require physical trials.",
-    "integrated_servo_and_output_support": "Servo supports and input/output-bearing beds form one fixed frame. The raised central plinth reaches the underside of the compact closed servo supports; no upper tie or broad linking plate. The7.4x20.4mm window provides0.2mm nominal clearance per face around the7x20mm case. The published+0.2mm overall case allowance leaves0.1mm per face when centred, before printing error. Finish the printed window for snug hand assembly without compressing the case; ear joints provide the operating clamp. Each35mm input shaft has a16mm proximal flat and a round distal journal supported by one external bearing. Follow the checked shaft-first service sequence after output-gear unmeshing; remove the loose driver before the servo/horn/adapter. Keep the M1 horn joints and OEM centre screw installed. The input axes remain16mm from the output axes atZ50. Check the complete service path, leads, mesh and loaded support deflection. A closed planar frame and an added shaft support do not qualify alignment, load sharing or strength; no detachable printed servo bridge or added closure hardware.",
-    "bearings_and_frame": "Six generic3x6x2.5 bearings are required: two inboard output bearings and one external input-shaft bearing per side. Four were previously confirmed purchased; verify two additional matching bearings or spares. Each existing housing cap extends to retain all three bearings on that side. A third M2x10 bolt/ordinary M2 nut supports the new input-bearing wing; no additional cap is added. Tighten the cap onto its hard frame lands, never squeeze the bearings to hide loose seats. Nominal diameter6 seats require production-process fit qualification and coaxiality checks, including alignment of the input bearing with the servo/horn shaft axis. Outer-ring shoulders retain the bearings; separate broad gear/frame and carrier/frame stops bound output-shaft travel without shield contact. No bought spacer, push-on ring or outboard idler shaft. Actual shield/race lands, endplay, clamp slip, post compliance, load sharing and strength remain unqualified.",
+    "integrated_servo_and_output_support": "Servo supports and input/output-bearing beds form one fixed frame. The 9.5mm bearing-support beam meets the central servo plinth without the former underside step; no upper tie or broad linking plate. The7.4x20.4mm window provides0.2mm nominal clearance per face around the7x20mm case. The published+0.2mm overall case allowance leaves0.1mm per face when centred, before printing error. Finish the printed window for snug hand assembly without compressing the case; ear joints provide the operating clamp. Each35mm input shaft has a16mm proximal flat and a round distal journal supported by one external bearing. Follow the checked shaft-first service sequence after output-gear unmeshing; remove the loose driver before the servo/horn/adapter. Keep the M1 horn joints and OEM centre screw installed. The input axes remain16mm from the output axes atZ50. Check the complete service path, leads, mesh and loaded support deflection. A closed planar frame and an added shaft support do not qualify alignment, load sharing or strength; no detachable printed servo bridge or added closure hardware.",
+    "bearings_and_frame": "Six generic3x6x2.5 bearings are required: two inboard output bearings and one external input-shaft bearing per side. Four were previously confirmed purchased; verify two additional matching bearings or spares. Each existing housing cap extends to retain all three bearings on that side. Two aligned M2x10 bolt/ordinary M2 nut pairs retain each cap; locating keys and hard lands remain. The input wing is set back for gear and shaft-clamp access; its root is rounded without filling the service path. Tighten the cap onto its hard frame lands, never squeeze the bearings to hide loose seats. Nominal diameter6 seats require production-process fit qualification and coaxiality checks, including alignment of the input bearing with the servo/horn shaft axis. Outer-ring shoulders retain the bearings; separate broad gear/frame and carrier/frame stops bound output-shaft travel without shield contact. No bought spacer, push-on ring or outboard idler shaft. Actual shield/race lands, endplay, clamp slip, post compliance, load sharing and strength remain unqualified.",
     "motor_carriers_and_frame": "Independent rotating carriers remain shaft-supported from the inboard side only. The rear motor plate joins the protective ring at the keyed root and an opposite integral return arm, reducing the unsupported ring span without an outer bearing, shaft or added hardware. Preserve clearance through bounded rotation, wire-loop allowance and positive axial stops. Motor mounting face X=-5mm is a printed datum; actual propeller seating and full blade sweep remain unresolved. The current guard serves nominal40mm propellers;50mm is only a replacement-space provision requiring a new rotor. Ring impact resistance and loaded stiffness remain unqualified.",
     "horn_and_adapter": preparation_note()
     + " Keep the purchased spline, OEM centre screw, shaft-stop floor and gear/stub planes. Adapter openings and nut clearance accommodate fitting before tightening, not operating looseness. Follow the coupling contract for actual geometry and ordered service; source dimensions do not qualify strength or runout.",
-    "optical_head": "A short rigid detachable optical bracket mounts to the common FC platform. FC and sensor share one setup-only pitch axis; no independent optical joint, direct optical rail shoe or self-levelling mechanism. Preserve mounting location, both sensor envelopes and field clearance; verify adhesive, printed seating and creep.",
+    "optical_head": "The optical support is integral with the FC levelling carrier, centred below the FC in its local frame. FC and sensor share one setup-only pitch axis; no separate optical print, foot fasteners, optical joint or self-levelling mechanism. Preserve both sensor envelopes and field clearance; verify adhesive, printed seating and creep.",
 }
 
 
@@ -176,11 +176,10 @@ PURCHASED_HARDWARE_QUANTITIES = {
     "M3X10_BUTTON_HEAD": RAIL_ATTACHMENT_COUNT,
     "M3_HEX_NUT": RAIL_ATTACHMENT_COUNT + 2,
     "M3X16_BUTTON_HEAD": 2,
-    "M2X8_BUTTON_HEAD": 2,
     "M2X12_BUTTON_HEAD": 2,
     "M2X6_BUTTON_HEAD": 2,
-    "M2X10_BUTTON_HEAD": 6,
-    "M2_HEX_NUT": 12,
+    "M2X10_BUTTON_HEAD": 4,
+    "M2_HEX_NUT": 8,
     "M1_6X8_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
@@ -216,12 +215,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 3,
     "tilting_propulsors": 2,
-    "installed_prints": 13,
-    "optical_mount_parts": 1,
+    "installed_prints": 12,
+    "optical_mount_parts": 0,
     "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 14,
+    "unique_print_files": 13,
 }
 
 # Preserve the FC's previous world-heading basis in the 180-degree carrier.
@@ -229,11 +228,11 @@ EXPECTED_INVENTORY = {
 # and assembled sensor/controller orientation remain to be verified.
 FC_INSTALLATION_LOCAL_YAW_DEG = 180.0
 MODULE_LAYOUT_DECISION = {
-    "layout": "Three main mass regions: central propulsion, battery on +X, electronics on -X. FC and optical sensor share one adjustable instrument platform; navigation and Mini use a separate fixed carrier. Rail stations are layout choices, not measured balance or sensor origins.",
+    "layout": "Three main mass regions: central propulsion, battery on +X, electronics on -X. FC and optical sensor share one integral adjustable carrier; navigation and Mini use a separate fixed carrier. The initial FC station remains X=-82mm: moving to the adjacent -56mm station intersects reserved FC wiring with the servo drive during pitch adjustment. Neither this station nor the heavy propulsion assembly establishes whole-vehicle CG. Locate the rail on the hull lower centreline and measure the complete vehicle CG with its actual envelope, battery and harness before final trim.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Adjust the battery carrier within its supported slot or relocate it to another wall segment for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
     "electronics": "The FC upper plate and all its references follow InstrumentPitchStage on the electronics rail base. Its local device coordinates retain the existing 8mm underbody wiring allowance. The carrier rail frame yaw and FC local yaw remain design markers; identify actual board arrow and IMU origin before firmware setup. The navigation/radio carrier remains fixed.",
-    "optical": "One MTF-02P or MTF-01P is rigidly located on the same upper platform as the FC. Align the platform to the defined vehicle reference attitude and lock before use. The sensor follows body attitude in flight. Exact optical/IMU origins and firmware orientation remain to measure; common mounting does not justify zero offsets.",
-    "service": "Disconnect harnesses and support modules. Loosen every shared M3 pair for local trim; remain within all foot support intervals. For propulsion removal, extract both screw/nut pairs, slide the whole supported module +X10 mm along the rail and lift Z30 mm to clear the FC carrier. This unclamped removal stroke is not an operating CG position. Keep both propulsion shoes seated during trim; no automatic centring. Carriers use one side pair; at the selected layout the FC carrier slides world -X4 mm before Z30 lift, while the accessory carrier must slide world -X9 mm before Z30 lift. Hold it throughout removal because its shoe partly leaves the rail end. Only the battery carrier lifts directly. These temporary removal positions are not operating positions. Equipment stays mounted, but revalidate full tool/fastener/removal access after any layout change.",
+    "optical": "One MTF-02P or MTF-01P is rigidly located below the FC on the same upper platform, with coincident envelope centre lines in local X/Y. Align the platform to the defined vehicle reference attitude and lock before use. The sensor follows body attitude in flight. Exact optical/IMU origins and firmware orientation remain to measure; common mounting does not justify zero offsets.",
+    "service": "Disconnect harnesses and support modules. For bare FC replacement, first return InstrumentPitchStage to its 0-degree maintenance pose, remove the actual FC mounting hardware, slide the board local +X60mm and then lift local +Z32mm through the integral bridge. Re-establish and lock the body-reference angle after service. No assembled FC fastener stack or tool beyond the reserved head columns is certified. Loosen every shared M3 pair for local trim; remain within all foot support intervals. For propulsion removal, extract both screw/nut pairs, slide the whole supported module +X10 mm along the rail and lift Z30 mm to clear the FC carrier. This unclamped removal stroke is not an operating CG position. Keep both propulsion shoes seated during trim; no automatic centring. Carriers use one side pair; at the selected layout the FC carrier slides world -X4 mm before Z30 lift, while the accessory carrier must slide world -X9 mm before Z30 lift. Hold it throughout removal because its shoe partly leaves the rail end. Only the battery carrier lifts directly. These temporary removal positions are not operating positions. Equipment stays mounted, but revalidate full tool/fastener/removal access after any layout change.",
 }
 
 
@@ -404,7 +403,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optional_power_and_tether",
-        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The selected FC supports 2S by user confirmation; 8 V is nominally consistent with that supply class, while regulator startup/transients and loaded operation remain unverified. The common instrument platform and optical bracket must clear the selected power configuration; a shared mounting pattern does not establish simultaneous fit or an unobstructed view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
+        "Optional tether plan: one BEC12S-PRO converts 24 V to 8 V; this rail supplies the FC/main load and the SVPDB-8S input. SVPDB supplies a separate 5 V servo rail. The upstream BEC's published 5 A output must cover both the main load and the SVPDB input, including conversion losses; installed current and thermal margins are unmeasured. Check board undersides, insulation, headers, plugs, external strap contact and cooling. Keep servo-positive wires separate from FC 5 V with common ground. The selected FC supports 2S by user confirmation; 8 V is nominally consistent with that supply class, while regulator startup/transients and loaded operation remain unverified. The FC/optical levelling carrier must clear the selected power configuration; a shared mounting pattern does not establish simultaneous fit or an unobstructed view. Straps wrap existing structure without dedicated tie holes; actual tether gauge, bend radius, tension, strain relief, whole-cable propeller/FOV clearance and loaded PA12 retention remain unverified. No live battery/tether changeover is designed.",
     ),
     UnresolvedInterface(
         "servo_ear_retention",
@@ -436,7 +435,7 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Seat the rigid optical bracket on the common instrument deck and tighten its two M2 pairs. Align the complete FC/sensor platform using its M3 pivot and arc lock, then verify no rocking or drift under cable load. Finish interfering print fits before clamping; do not distort parts with screw torque. Physical stiffness, friction, creep and rail torsion remain unqualified. Disconnect leads before service.",
+        "The optical support is integral with the FC carrier. Align the complete FC/sensor platform using its M3 pivot and arc lock, then verify no rocking or drift under cable load. Finish interfering print fits before clamping; do not distort parts with screw torque. Physical stiffness, friction, creep and rail torsion remain unqualified. Disconnect leads before service.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",

@@ -5,12 +5,11 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import placed_shape, union
+from gondola.cad import placed_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES
-from gondola.parts import optical_interface, optical_sensor
+from gondola.parts import instrument_mount, optical_interface, optical_sensor
 
 from .geometry import local_shape
-from .optical_service import mount_tool_shapes, tray_stock_enclosures
 
 V = App.Vector
 PITCH_SAMPLE_ANGLES = (-20, -10, 0, 10, 20)
@@ -19,7 +18,7 @@ RAIL_ALIGNMENT_RESERVE_MM = 0.3
 # Independent literals bind these envelopes to the actual shared mechanism.
 PIVOT_MODULE = (0.0, 0.0, 27.5)
 PIVOT_UPPER = (0.0, 0.0, 8.0)
-OPTICAL_ORIGIN = (0.0, 27.0, 19.0)
+OPTICAL_ORIGIN = (0.0, 0.0, 0.0)
 
 
 def instrument_context(optical):
@@ -31,25 +30,25 @@ def instrument_context(optical):
         doc.getObject("InstrumentPitchStage"),
         doc.getObject("ElectronicsEquipmentModule"),
     )
-    frame, tray = (
+    frame, carrier = (
         doc.getObject("OpticalSensorFrame"),
-        doc.getObject("OpticalSensorTray"),
+        doc.getObject("ElectronicsMount"),
     )
-    if any(obj is None for obj in (stage, module, frame, tray)):
+    if any(obj is None for obj in (stage, module, frame, carrier)):
         raise ValueError("Missing common instrument or fixed optical frame")
     if (
         stage.getParentGeoFeatureGroup() != module
         or optical.getParentGeoFeatureGroup() != stage
         or frame.getParentGeoFeatureGroup() != optical
-        or tray.getParentGeoFeatureGroup() != frame
+        or carrier.getParentGeoFeatureGroup() != stage
         or not optical.Placement.isSame(
             App.Placement(V(*OPTICAL_ORIGIN), App.Rotation()), 1e-7
         )
         or not frame.Placement.isSame(App.Placement(), 1e-7)
-        or not tray.Placement.isSame(App.Placement(), 1e-7)
+        or not carrier.Placement.isSame(App.Placement(), 1e-7)
         or list(optical.ExpressionEngine)
         or list(frame.ExpressionEngine)
-        or list(tray.ExpressionEngine)
+        or list(carrier.ExpressionEngine)
         or any(
             name in frame.PropertiesList
             for name in ("Pitch", "Roll", "MinimumAngle", "MaximumAngle")
@@ -61,7 +60,16 @@ def instrument_context(optical):
         )
         or any(
             doc.getObject(name) is not None
-            for name in ("OpticalPitchStage", "OpticalRollStage", "OpticalMountBase")
+            for name in (
+                "OpticalPitchStage",
+                "OpticalRollStage",
+                "OpticalMountBase",
+                "OpticalSensorTray",
+                "OpticalFootBolt1",
+                "OpticalFootBolt2",
+                "OpticalFootNut1",
+                "OpticalFootNut2",
+            )
         )
     ):
         raise ValueError(
@@ -92,9 +100,33 @@ def instrument_context(optical):
         "Placement.Base.z": "27.5mm-8mm*cos(" + clamp + ")",
     }:
         raise ValueError("Instrument stage differs from its fixed-pivot pitch motion")
-    if tray.Shape.isNull() or not tray.Shape.isValid() or len(tray.Shape.Solids) != 1:
-        raise ValueError("Saved optical bracket must be one valid solid")
-    return module, stage, frame, tray
+    if (
+        carrier.Shape.isNull()
+        or not carrier.Shape.isValid()
+        or len(carrier.Shape.Solids) != 1
+    ):
+        raise ValueError("Saved integral carrier must be one valid solid")
+    registry = doc.getObject("DesignRegistry")
+    if registry is not None:
+        printed = list(getattr(registry, "PrintedParts", []))
+        excluded = [
+            obj
+            for key in ("HardwareParts", "ReferenceParts", "TapeReferences")
+            for obj in getattr(registry, key, [])
+        ]
+        if (
+            getattr(carrier, "PrintSKU", None) != "InstrumentCarrier"
+            or printed.count(carrier) != 1
+            or carrier in excluded
+        ):
+            raise ValueError("Integral carrier print identity or inventory differs")
+    expected = instrument_mount.upper_shape()
+    actual = local_shape(carrier)
+    if abs(actual.cut(expected).Volume) > TOL or abs(expected.cut(actual).Volume) > TOL:
+        raise ValueError(
+            "Integral optical carrier stock differs from the selected design"
+        )
+    return module, stage, frame, carrier
 
 
 def pitch_bound(shape, angle_limit_deg):
@@ -123,7 +155,7 @@ def pitch_bound(shape, angle_limit_deg):
 
 
 def registered_instrument_bound(optical, shape):
-    """Register in the foot frame, then enclose the full common-stage rotation."""
+    """Enclose the integral sensor frame throughout common-stage rotation."""
     module, _, frame, _ = instrument_context(optical)
     registered = optical_interface.registration_bound(shape)
     upper = placed_shape(registered, optical.Placement.multiply(frame.Placement))
@@ -177,13 +209,8 @@ def external_field_bound(group, profile=None):
     return bound, {
         "minimum_front_z_in_module_frame_mm": minimum_z,
         "initial_radius_mm": radius,
-        "assembly_registration_xy_mm": (
-            optical_interface.MAX_REGISTRATION_X,
-            optical_interface.MAX_REGISTRATION_Y,
-        ),
-        "assembly_registration_yaw_deg": math.degrees(
-            optical_interface.MAX_REGISTRATION_YAW_RAD
-        ),
+        "printed_joint_registration": "No detachable optical support joint",
+        "adhesive_registration_verified": False,
         "rail_alignment_radius_allowance_mm": RAIL_ALIGNMENT_RESERVE_MM,
         "half_angle_deg": math.degrees(angular_bound),
         "height_mm": height,
@@ -193,8 +220,8 @@ def external_field_bound(group, profile=None):
 
 
 def motion_bounds(optical):
-    """Saved rigid bracket and both sensor alternatives over common pitch."""
-    _, _, frame, saved_tray = instrument_context(optical)
+    """Sensor envelopes only; the whole integral carrier is audited separately."""
+    _, _, frame, _ = instrument_context(optical)
     profile = optical_sensor.profile_for_document(optical.Document)
     for name, expected in (
         ("ModuleMTF02PEnvelope", optical_sensor.envelope_shape(profile)),
@@ -218,27 +245,11 @@ def motion_bounds(optical):
             raise ValueError(
                 "Saved optical sensor geometry exceeds its declared envelope: " + name
             )
-    regions, missing = tray_stock_enclosures(local_shape(saved_tray))
-    if missing > TOL:
-        raise ValueError(
-            "Optical bracket stock exceeds its literal continuous envelopes"
-        )
-    tray_bound = union(
-        [registered_instrument_bound(optical, region) for region in regions]
-    )
-    result = {
-        "OpticalMountToolAccessBound": union(
-            [
-                registered_instrument_bound(optical, shape)
-                for shape in mount_tool_shapes().values()
-            ]
-        )
-    }
+    result = {}
     for key, profile in SENSOR_PROFILES.items():
         result[f"{key}ContinuousOpticalFieldBound"] = external_field_bound(
             optical, profile
         )[0]
-        result[f"{key}ContinuousTrayBound"] = tray_bound.copy()
         for name, shape in (
             ("Body", optical_sensor.envelope_shape(profile)),
             ("Connector", optical_sensor.connector_reserve_shape(profile)),

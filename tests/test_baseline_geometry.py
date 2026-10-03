@@ -427,7 +427,7 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(
             {obj.Name for obj in getattr(registry, "OpticalMountParts", [])},
-            {"OpticalSensorTray"},
+            set(),
         )
         self.assertTrue(
             {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(

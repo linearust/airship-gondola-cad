@@ -245,6 +245,35 @@ def centre_accessory_check(shape):
     }
 
 
+def fc_bridge_access_check(shape):
+    """Literal FC hole-axis head columns and body/lead space, independent of bridge builder."""
+    from gondola.parts.equipment_envelopes import fc_envelope_shape
+    from gondola.parts.wiring_reserves import reserve_shapes
+
+    if shape.isNull() or not shape.isValid() or len(shape.Solids) != 1:
+        return {"passed": False, "reason": "Invalid integral carrier"}
+    axis = 25.5 / math.sqrt(2)
+    tools = {
+        str(index): Part.makeCylinder(3.25, 45, V(x, y, 35))
+        for index, (x, y) in enumerate(((axis, 0), (-axis, 0), (0, axis), (0, -axis)))
+    }
+    stock = {
+        "fc_body": fc_envelope_shape(),
+        "fc_wiring": reserve_shapes()["FCWiringClearanceReserve"],
+        **tools,
+    }
+    overlaps = {
+        name: intersection_volume(shape, witness) for name, witness in stock.items()
+    }
+    return {
+        "obstruction_mm3": overlaps,
+        "fc_head_column_diameter_mm": 6.5,
+        "fc_head_columns_above_body_mm": 45,
+        "passed": all(value < TOL for value in overlaps.values()),
+        "scope": "Four vertical Ø6.5 planning columns from the overall FC envelope top. Actual installed heads, tools, board bearing planes and removable damper stack remain unmeasured. Bare board exits laterally after those parts and leads are removed.",
+    }
+
+
 def _driver_shape(bolt):
     b = bolt.BoundBox
     return union(
@@ -471,6 +500,8 @@ def instrument_check(doc, *, include_installed=True):
         )
         centre = centre_accessory_check(high)
         checks["centre_accessory_head_clearance"] = centre["passed"]
+        bridge_access = fc_bridge_access_check(high)
+        checks["fc_bridge_body_wiring_and_head_access"] = bridge_access["passed"]
         moving, fixed = _physical_inventory(doc, stage, module, include_installed)
         hardware = _hardware_witnesses()
         hardware_rows = {}
@@ -534,6 +565,7 @@ def instrument_check(doc, *, include_installed=True):
                 source_stock=shape_rows,
                 hardware_stock=hardware_rows,
                 centre_accessory=centre,
+                fc_bridge_access=bridge_access,
                 arc_web={
                     "actual_slot_to_relief_mm": relief_gap,
                     "material_on_web_probe_mm": web_material,
@@ -695,6 +727,7 @@ def instrument_check(doc, *, include_installed=True):
             nut_floor_missing_mm3=floor_rows,
             nut_rotation_blockage_mm3=capture_rows,
             centre_accessory=centre,
+            fc_bridge_access=bridge_access,
             arc_web={
                 "actual_slot_to_relief_mm": relief_gap,
                 "material_on_web_probe_mm": web_material,

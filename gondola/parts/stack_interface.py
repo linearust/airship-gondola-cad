@@ -60,7 +60,6 @@ HOST_SLOT_TRAVEL = mounting_slots.SIDE_Y_RANGE[1] - mounting_slots.SIDE_Y_RANGE[
 REGISTRATION_CELLS = 256
 MECHANICAL_HOSTS = {
     "BatteryEquipmentModule": "BatteryMount",
-    "ElectronicsEquipmentModule": "ElectronicsMount",
     "AccessoryEquipmentModule": "AccessoryMount",
 }
 HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
@@ -68,7 +67,7 @@ HOST_ORIGINS_XY = {name: (0.0, 0.0) for name in MECHANICAL_HOSTS}
 
 def host_origin_xy(host_name=None):
     """Common attachment datum in a carrier, accepting its group or print name."""
-    if host_name is None:
+    if host_name in (None, "ElectronicsMount", "ElectronicsEquipmentModule"):
         return (0.0, 0.0)
     for group, part in MECHANICAL_HOSTS.items():
         if host_name in (group, part):
@@ -133,9 +132,12 @@ def interface_contract(host_name=None):
         "portal_top_beam_bottom_z_mm": STACK_TOP_Z,
         "power_deck_bottom_z_mm": STACK_TOP_Z + TOP_BEAM_THICKNESS - DECK_THICKNESS,
         "mechanical_hosts": dict(MECHANICAL_HOSTS),
+        "host_supported": host_name is None
+        or host_name in MECHANICAL_HOSTS
+        or host_name in MECHANICAL_HOSTS.values(),
         "carrier_datum_xy_mm": host_origin_xy(host_name),
         "mechanical_host_datums_xy_mm": dict(HOST_ORIGINS_XY),
-        "scope": "Optional power platform only; the compact optical head has its own one-axis interface. Shared host slots do not qualify concurrent modules, wiring, access or tether loads. The saved optional-power screening determines permitted installed arrangements.",
+        "scope": "Optional power platform on fixed battery or navigation carriers only. The dedicated FC/optical levelling carrier retains the hole template but its integral bridge excludes this platform. Shared host slots do not qualify concurrent modules, wiring, access or tether loads; use the composed saved-option screening.",
         "load_path": "Carrier plate -> two directly clamped feet -> opposed diagonal legs -> integral beam and power deck. Loads bypass FC dampers, PCB and battery. Clamp friction retention remains unqualified.",
         "clamp_fit": clamp_fit_contract(),
     }

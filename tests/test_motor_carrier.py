@@ -97,7 +97,8 @@ class MotorCarrierTests(unittest.TestCase):
             self.assertAlmostEqual(guard.BoundBox.XMax, 11)
             self.assertEqual(contract["guard_axial_range_mm"], [8, 11])
             self.assertEqual(contract["guard_inner_outer_radius_mm"], [23, 26])
-            self.assertEqual(contract["guard_root_fan_height_mm"], 12)
+            self.assertEqual(contract["guard_root_fan_height_mm"], 8)
+            self.assertEqual(contract["carrier_root_edge_radius_mm"], 0.5)
             # The supplier's positive body-length tolerance must also clear
             # the print, independently of the nominal display body.
             maximum_body = Part.makeCylinder(
@@ -119,7 +120,7 @@ class MotorCarrierTests(unittest.TestCase):
         guard_join = Part.makeBox(1.8, 0.8, 1, App.Vector(8.1, -23.9, 2))
         ring_top = Part.makeBox(3, 0.2, 2.8, App.Vector(8, -0.1, 23.1))
         root_fan = (
-            Part.makeBox(3, 10, 12, App.Vector(8, -30.5, -6))
+            Part.makeBox(3, 10, 8, App.Vector(8, -30.5, -4))
             .cut(Part.makeCylinder(23, 5, App.Vector(7, 0, 0), App.Vector(1, 0, 0)))
             .cut(
                 Part.makeCylinder(
@@ -127,6 +128,15 @@ class MotorCarrierTests(unittest.TestCase):
                 )
             )
         )
+        # The fan is flush with the 8mm root. Independent quarter-cylinder
+        # cuts describe only the two exposed convex end corners.
+        for bottom, centre in ((3.5, 3.5), (-4, -3.5)):
+            corner = Part.makeBox(3, 0.5, 0.5, App.Vector(8, -30.5, bottom)).cut(
+                Part.makeCylinder(
+                    0.5, 3, App.Vector(8, -30, centre), App.Vector(1, 0, 0)
+                )
+            )
+            root_fan = root_fan.cut(corner)
         rear_bridge = Part.makeBox(3, 17.8, 8, App.Vector(-8, 8.2, -4))
         outer_return = Part.makeBox(19, 3, 8, App.Vector(-8, 23, -4))
         return_root = Part.makeBox(1, 1, 8, App.Vector(-5, 22, -4)).cut(
@@ -178,7 +188,7 @@ class MotorCarrierTests(unittest.TestCase):
             ),
             (
                 "missing_root_fan",
-                self.carrier.cut(Part.makeBox(3, 2, 1, App.Vector(8, -29, 5))),
+                self.carrier.cut(Part.makeBox(3, 2, 1, App.Vector(8, -29, 2.5))),
             ),
             (
                 "missing_rear_bridge",
@@ -205,6 +215,38 @@ class MotorCarrierTests(unittest.TestCase):
             rotated = self.carrier.copy()
             rotated.rotate(App.Vector(), App.Vector(0, 1, 0), angle)
             self.assertLess(rotated.cut(reserve).Volume, 1e-6)
+
+    def test_flush_root_keeps_its_thrust_land_and_has_only_local_end_rounds(self):
+        # This crop is outside the ring: a raised 12mm fan would exceed Z±4.
+        root_end = self.carrier.common(
+            Part.makeBox(3, 2, 20, App.Vector(8, -30.5, -10))
+        )
+        self.assertAlmostEqual(root_end.BoundBox.ZMin, -4)
+        self.assertAlmostEqual(root_end.BoundBox.ZMax, 4)
+        for bottom, centre in ((3.5, 3.5), (-4, -3.5)):
+            block = Part.makeBox(4, 0.5, 0.5, App.Vector(3, -30.5, bottom))
+            retained = block.common(
+                Part.makeCylinder(
+                    0.5, 4, App.Vector(3, -30, centre), App.Vector(1, 0, 0)
+                )
+            )
+            removed = block.cut(retained)
+            self.assertGreater(removed.Volume, 0.2)
+            self.assertLess(removed.common(self.carrier).Volume, 1e-6)
+            self.assertLess(retained.cut(self.carrier).Volume, 1e-6)
+        # The bearing-independent axial stop remains a full flat annulus;
+        # rounding it would change endplay/contact, even if the body is valid.
+        outer = Part.Face(
+            Part.Wire(
+                Part.makeCircle(3.2, App.Vector(0, -30.5, 0), App.Vector(0, 1, 0))
+            )
+        )
+        inner = Part.Face(
+            Part.Wire(
+                Part.makeCircle(2.81, App.Vector(0, -30.5, 0), App.Vector(0, 1, 0))
+            )
+        )
+        self.assertLess(outer.cut(inner).cut(self.carrier).Area, 1e-6)
 
 
 if __name__ == "__main__":

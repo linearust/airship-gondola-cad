@@ -103,6 +103,27 @@ class InstrumentMountTests(unittest.TestCase):
         self.assertLess(abs(plate.cut(expected).Volume), 1e-5)
         self.assertLess(abs(expected.cut(plate).Volume), 1e-5)
 
+    def test_integral_bridge_keeps_fc_head_columns_and_wiring_clear(self):
+        from gondola.validation.instrument import fc_bridge_access_check
+
+        shape = self.kit["upper"].Shape
+        report = fc_bridge_access_check(shape)
+        self.assertTrue(report["passed"], report)
+        for x, y in ((25.5 / math.sqrt(2), 0), (0, -25.5 / math.sqrt(2))):
+            obstruction = Part.makeBox(1, 1, 8, App.Vector(x - 0.5, y - 0.5, 34))
+            # A joined roof tongue blocks a real head column and must be rejected.
+            blocked = shape.fuse(obstruction).fuse(
+                Part.makeBox(
+                    abs(x) + 1,
+                    abs(y) + 1,
+                    1,
+                    App.Vector(min(0, x) - 0.5, min(0, y) - 0.5, 42),
+                )
+            )
+            self.assertTrue(blocked.isValid())
+            self.assertEqual(len(blocked.Solids), 1)
+            self.assertFalse(fc_bridge_access_check(blocked)["passed"])
+
     def test_native_pitch_keeps_literal_axis_fixed_under_parent_pose(self):
         self.root.Placement = App.Placement(
             App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)

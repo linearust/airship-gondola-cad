@@ -312,15 +312,7 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
         doc = self.native_optical()
         screens = _optical_screens(doc)
         self.assertEqual({row["sensor"] for row in screens}, {"MTF01P", "MTF02P"})
-        names = {
-            "ElectronicsMount",
-            "ModuleFCEnvelope",
-            "OpticalSensorTray",
-            "OpticalFootBolt1",
-            "OpticalFootBolt2",
-            "OpticalFootNut1",
-            "OpticalFootNut2",
-        }
+        names = {"ElectronicsMount", "ModuleFCEnvelope"}
         for screen in screens:
             attachment = screen["attachment"]
             self.assertEqual(attachment["native_parent"], "InstrumentPitchStage")
@@ -329,12 +321,7 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
             self.assertEqual(attachment["rail_station_x_mm"], -82)
             self.assertEqual(attachment["instrument_pitch_range_deg"], (-20, 20))
             self.assertTrue(names.issubset(screen["saved_moving_parts"]))
-            for name in (
-                "OpticalFootBolt1",
-                "OpticalFootBolt2",
-                "OpticalFootNut1",
-                "OpticalFootNut2",
-            ):
+            for name in names:
                 self.assertIn("Instrument/" + name, screen["continuous_bounds"])
             for pose in screen["poses"]:
                 instrument_mount.set_pitch(doc, pose["instrument_pitch_deg"])
@@ -355,7 +342,7 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
                 self.assertNotIn("OpticalMountBase", pose["physical"])
                 self.assertNotIn("OpticalFlowModuleRailMountScrew", pose["physical"])
 
-    def test_saved_mount_hardware_is_a_geometric_obstacle_input(self):
+    def test_saved_unknown_moving_stock_is_a_geometric_obstacle_input(self):
         from gondola.cad import world_shape
         from gondola.validation.equipment_options import (
             _optical_option_check,
@@ -363,13 +350,18 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
         )
 
         doc = self.native_optical()
-        # Use the actual displaced saved bolt, rather than replacing it with a
-        # fresh nominal bolt that would miss this obstruction.
-        nominal = world_shape(doc.OpticalFootBolt2)
-        doc.OpticalFootBolt2.Placement.Base.x += 20
+        unknown = doc.addObject("Part::Feature", "UnknownInstrumentStock")
+        doc.InstrumentPitchStage.addObject(unknown)
+        unknown.Shape = Part.makeBox(2, 2, 2, App.Vector(40, 0, 25))
+        doc.DesignRegistry.ReferenceParts = [
+            *doc.DesignRegistry.ReferenceParts,
+            unknown,
+        ]
+        nominal = world_shape(unknown)
+        unknown.Placement.Base.x += 20
         doc.recompute()
         screens = _optical_screens(doc)
-        obstacle = world_shape(doc.OpticalFootBolt2)
+        obstacle = world_shape(unknown)
         self.assertGreater(obstacle.Volume, 0)
         self.assertAlmostEqual(nominal.common(obstacle).Volume, 0)
         result = _optical_option_check(screens, {"UnknownHardwareObstacle": obstacle})
@@ -377,7 +369,7 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
         self.assertTrue(
             all(
                 any(
-                    hit["moving"] == "OpticalFootBolt2"
+                    hit["moving"] == "UnknownInstrumentStock"
                     and hit["object"] == "UnknownHardwareObstacle"
                     for pose in row["sampled_attitudes"]
                     for hit in pose["collisions"]
@@ -395,20 +387,19 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _optical_screens(doc)
         frame.removeProperty("Pitch")
-        obj = doc.OpticalFootNut2
-        sku = obj.HardwareSKU
-        obj.HardwareSKU = "M3_HEX_NUT"
-        with self.assertRaisesRegex(ValueError, "hardware"):
+        obj = doc.ElectronicsMount
+        sku = obj.PrintSKU
+        obj.PrintSKU = "UniversalCarrier"
+        with self.assertRaises(ValueError):
             _optical_screens(doc)
-
-        obj.HardwareSKU = sku
-        registered = list(doc.DesignRegistry.HardwareParts)
-        doc.DesignRegistry.HardwareParts = [part for part in registered if part != obj]
-        with self.assertRaisesRegex(ValueError, "hardware"):
+        obj.PrintSKU = sku
+        registered = list(doc.DesignRegistry.PrintedParts)
+        doc.DesignRegistry.PrintedParts = [part for part in registered if part != obj]
+        with self.assertRaises(ValueError):
             _optical_screens(doc)
-        doc.DesignRegistry.HardwareParts = registered
+        doc.DesignRegistry.PrintedParts = registered
         doc.removeObject(obj.Name)
-        with self.assertRaisesRegex(ValueError, "hardware"):
+        with self.assertRaises(ValueError):
             _optical_screens(doc)
 
     def test_unknown_moving_stock_between_samples_fails_continuous_certificate(self):
@@ -421,7 +412,7 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
 
         doc = self.native_optical()
         unknown = doc.addObject("Part::Feature", "UnknownInstrumentStock")
-        doc.OpticalFlowModule.addObject(unknown)
+        doc.InstrumentPitchStage.addObject(unknown)
         unknown.Shape = Part.makeSphere(0.5, App.Vector(200, 40, 8))
         doc.DesignRegistry.ReferenceParts = [
             *doc.DesignRegistry.ReferenceParts,

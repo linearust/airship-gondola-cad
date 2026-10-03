@@ -124,6 +124,10 @@ def split_housing_vertical_service(
             Part.makeBox(10, 1, 4.5, App.Vector(-5, 24, 50))
         )
         reference = reference.fuse(Part.makeBox(18.5, 8, 4.5, App.Vector(8, 29, 50)))
+        # Literal R0.75 concave plan roots fit this narrow external band.
+        reference = reference.fuse(
+            Part.makeBox(0.75, 9.5, 4.5, App.Vector(9, 28.25, 50))
+        )
         reference = reference.cut(
             Part.makeCylinder(2.8, 8, App.Vector(16, 29, 50), axis)
         )
@@ -141,6 +145,7 @@ def split_housing_vertical_service(
             reference = reference.cut(Part.makeBox(3, 3, 1.5, App.Vector(x, 28, 50)))
         swept = reference.fuse(Part.makeBox(18, 20, 30, App.Vector(-9, 24, 54.5)))
         swept = swept.fuse(Part.makeBox(18.5, 8, 30, App.Vector(8, 29, 54.5)))
+        swept = swept.fuse(Part.makeBox(0.75, 9.5, 30, App.Vector(9, 28.25, 54.5)))
         method = "continuous three-seat split-cap radial-monotonicity envelope"
     else:
         if (bearing_centre_x, bearing_centre_y) not in (

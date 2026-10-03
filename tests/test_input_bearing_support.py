@@ -36,6 +36,17 @@ class ExternalInputSupportTests(unittest.TestCase):
             self.assertTrue(result["fixed_native_parent"])
             self.assertEqual(result["capture"]["missing_complete_round_journal_mm3"], 0)
 
+    def test_two_cap_pairs_are_aligned_and_deleted_middle_pair_is_absent(self):
+        for side, sign in (("Port", 1), ("Starboard", -1)):
+            for suffix, x in (("Negative", -5.5), ("Input", 23)):
+                bolt = self.doc.getObject(side + "BearingCap" + suffix + "Bolt")
+                self.assertAlmostEqual(bolt.Shape.BoundBox.Center.x, sign * x)
+                self.assertAlmostEqual(bolt.Shape.BoundBox.Center.y, sign * 33)
+            for kind in ("Bolt", "Nut"):
+                self.assertIsNone(
+                    self.doc.getObject(side + "BearingCapPositive" + kind)
+                )
+
     def test_missing_or_moving_bearing_cannot_claim_support(self):
         bearing = self.doc.PortInputBearing
         parent = bearing.getParentGeoFeatureGroup()
@@ -101,38 +112,24 @@ class ExternalInputSupportTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(
             {row["cap_joint"] for row in result["nut_pockets"]},
-            {"Negative", "Positive", "Input"},
+            {"Negative", "Input"},
         )
         for row in result["nut_pockets"]:
             self.assertEqual(len(row["seat_distances_mm"]), 3)
             self.assertGreaterEqual(min(row["seat_distances_mm"]), 1.5)
             self.assertLess(row["missing_shortest_wall_stock_mm"], 1e-5)
 
-    def test_former_positive_nut_position_reintroduces_submillimetre_ligament(self):
-        import math
-
+    def test_enlarged_negative_nut_cavity_cannot_approach_a_bearing_seat(self):
         from gondola.validation.bearing_capture import cap_nut_seat_ligament_check
 
-        radius = 4.25 / math.sqrt(3)
-        points = [
-            App.Vector(
-                5.5 + radius * math.cos(i * math.pi / 3),
-                39.5 + radius * math.sin(i * math.pi / 3),
-                45.7,
-            )
-            for i in range(6)
-        ]
-        old_pocket = Part.Face(Part.makePolygon(points + points[:1])).extrude(
-            App.Vector(0, 0, 1.8)
-        )
+        intrusion = Part.makeBox(3, 5, 1.8, App.Vector(-4, 26.5, 45.7))
         result = cap_nut_seat_ligament_check(
-            self.doc.PropulsionFixedFrame.Shape.cut(old_pocket)
+            self.doc.PropulsionFixedFrame.Shape.cut(intrusion)
         )
-        positive = next(
-            row for row in result["nut_pockets"] if row["cap_joint"] == "Positive"
+        negative = next(
+            row for row in result["nut_pockets"] if row["cap_joint"] == "Negative"
         )
-        self.assertGreater(positive["minimum_wall_mm"], 0.9)
-        self.assertLess(positive["minimum_wall_mm"], 1.0)
+        self.assertLess(negative["minimum_wall_mm"], 1.5)
         self.assertFalse(result["passed"], result)
 
     def test_removed_ligament_stock_fails_with_pocket_distance_unchanged(self):
@@ -141,14 +138,14 @@ class ExternalInputSupportTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame.Shape
         original = cap_nut_seat_ligament_check(frame)
         row = next(
-            row for row in original["nut_pockets"] if row["cap_joint"] == "Positive"
+            row for row in original["nut_pockets"] if row["cap_joint"] == "Negative"
         )
         start, end = [App.Vector(*point) for point in row["shortest_wall_segment_mm"]]
         result = cap_nut_seat_ligament_check(
             frame.cut(Part.makeSphere(0.1, (start + end) * 0.5))
         )
         changed = next(
-            row for row in result["nut_pockets"] if row["cap_joint"] == "Positive"
+            row for row in result["nut_pockets"] if row["cap_joint"] == "Negative"
         )
         self.assertAlmostEqual(
             changed["minimum_wall_mm"], row["minimum_wall_mm"], places=6

@@ -170,7 +170,6 @@ class CarrierTrimTests(unittest.TestCase):
                     self.assertTrue(
                         {
                             "ElectronicsMount",
-                            "OpticalSensorTray",
                             "InstrumentPivotBolt",
                             "InstrumentLockNut",
                         }.issubset(carried_parts)

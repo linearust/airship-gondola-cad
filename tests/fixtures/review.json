@@ -1,15 +1,15 @@
 {
-  "revision": "CI",
+  "revision": "CJ",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "0eb95c67ceae9ee9737cfa44900e5949755f3286c1996dac74ce963a74fa8939",
-  "old_fixture_sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
+  "candidate_sha256": "0272eea29e3c857f17d754331de54a521d0da1e9b6c14de417b239a713b38882",
+  "old_fixture_sha256": "0eb95c67ceae9ee9737cfa44900e5949755f3286c1996dac74ce963a74fa8939",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "ci_common_instrument_revision",
+      "cj_integral_instrument_and_bearing_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "a49860fb521b48cc3dab7b4c52f06dac11a9f95cfcdf94bb7842af023d8d193a"
+    "canonical_json_sha256": "2e0231fe8caf5287cfae5de63bbdc8f403dc512c5675cb055fff92e4c791147b"
   },
-  "scope": "Shared locked FC/optical pitch platform. Independently reconstructed instrument and optical solids, unchanged plate/shoe interfaces, native controls, all placements, metadata, procurement and export inventory. Nominal CAD regression baseline only; physical qualification remains outstanding."
+  "scope": "Independent literal saved-solid review of integral FC/optical carrier, two-bolt bearing caps, reinforced beam and simplified rotors. Native controls, placements, metadata and inventory reviewed. Nominal regression fixture only; physical qualification remains outstanding."
 }

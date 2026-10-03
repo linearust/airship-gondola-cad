@@ -239,7 +239,9 @@ class PropulsionWiringTests(unittest.TestCase):
                 set_pitch(self.doc, angle)
                 stage = self.stage.getGlobalPlacement()
                 pose = stage.multiply(optical_interface.placement())
-                obstacles = {"OpticalSensorTray": optical_mount.sensor_tray_shape()}
+                obstacles = {
+                    "IntegralOpticalSupport": optical_mount.optical_support_shape()
+                }
                 for key, profile in SENSOR_PROFILES.items():
                     obstacles[key + "Body"] = optical_sensor.envelope_shape(profile)
                     obstacles[key + "Field"] = optical_sensor.optical_reserve_shape(

@@ -142,7 +142,6 @@ class SharedRailInterfaceTests(unittest.TestCase):
             {
                 "InstrumentMountBase",
                 "ElectronicsMount",
-                "OpticalSensorTray",
                 "ModuleFCEnvelope",
                 "ModuleMTF02PEnvelope",
             }.issubset(carried)

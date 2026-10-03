@@ -136,11 +136,11 @@ class FrameRootTests(unittest.TestCase):
             frame.Shape = original
             self.doc.recompute()
 
-    def test_shared_beam_has_shortened_span_and_five_mm_core(self):
+    def test_shared_beam_has_shortened_span_and_nine_point_five_mm_core(self):
         frame = self.doc.PropulsionFixedFrame.Shape
         # This full-height interior slab ties each housing into the pedestal.
         for start_y in (-44, 20):
-            core = Part.makeBox(16, 24, 5, App.Vector(-8, start_y, 24.5))
+            core = Part.makeBox(16, 24, 9.5, App.Vector(-8, start_y, 20))
             self.assertLess(abs(core.cut(frame).Volume), 1e-7)
         self.assertAlmostEqual(frame.BoundBox.YMin, -44, places=6)
         self.assertAlmostEqual(frame.BoundBox.YMax, 44, places=6)
@@ -151,7 +151,7 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
         try:
-            loss = Part.makeBox(3, 4, 1, App.Vector(-1.5, 20, 24.5))
+            loss = Part.makeBox(3, 4, 1, App.Vector(-1.5, 20, 20))
             self.assertAlmostEqual(original.common(loss).Volume, 12, places=6)
             frame.Shape = original.cut(loss)
             rows = bearing_post_roots_check(self.doc)
@@ -171,7 +171,7 @@ class FrameRootTests(unittest.TestCase):
         frame = self.doc.PropulsionFixedFrame
         original = frame.Shape.copy()
         try:
-            # Bed stock above the broad web and between the two bolt axes.
+            # Bed stock above the broad web and away from the remaining bolt axis.
             loss = Part.makeBox(3, 3, 1, App.Vector(-1.5, 33, 42.5))
             self.assertAlmostEqual(original.common(loss).Volume, 9, places=6)
             frame.Shape = original.cut(loss)

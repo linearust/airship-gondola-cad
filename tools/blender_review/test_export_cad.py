@@ -145,9 +145,7 @@ class ExportContractTests(unittest.TestCase):
         expected = check_optical_attachment_basis(doc)
         self.assertEqual(expected["optical_attachment_mode"], "instrument")
         self.assertEqual(expected["instrument_pitch_pivot_cad_m"], [-0.056, 0, 0.0275])
-        self.assertEqual(
-            expected["optical_module_origin_cad_m"], [-0.056, -0.027, 0.0385]
-        )
+        self.assertEqual(expected["optical_module_origin_cad_m"], [-0.056, 0, 0.0195])
         self.assertEqual(expected["optical_native_parent"], "InstrumentPitchStage")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "optical.FCStd"
@@ -165,7 +163,7 @@ class ExportContractTests(unittest.TestCase):
             doc.ModuleFCEnvelope,
             doc.OpticalFlowModule,
             doc.OpticalSensorFrame,
-            doc.OpticalSensorTray,
+            doc.ElectronicsMount,
         ):
             parent = obj.getParentGeoFeatureGroup()
             try:
@@ -175,17 +173,13 @@ class ExportContractTests(unittest.TestCase):
             finally:
                 parent.addObject(obj)
 
-    def test_all_eight_common_joint_and_foot_hardware_parts_are_required(self):
+    def test_all_four_common_joint_hardware_parts_are_required(self):
         doc, objects = self.optical_basis()
         names = (
             "InstrumentPivotBolt",
             "InstrumentPivotNut",
             "InstrumentLockBolt",
             "InstrumentLockNut",
-            "OpticalFootBolt1",
-            "OpticalFootNut1",
-            "OpticalFootBolt2",
-            "OpticalFootNut2",
         )
         for name in names:
             obj = objects[name]
@@ -199,7 +193,7 @@ class ExportContractTests(unittest.TestCase):
             finally:
                 obj.HardwareSKU = original
         # Missing objects must fail as well as incorrect metadata.
-        doc.removeObject("OpticalFootBolt2")
+        doc.removeObject("InstrumentLockBolt")
         with self.assertRaisesRegex(RuntimeError, "reviewed instrument hardware"):
             check_optical_attachment_basis(doc)
 

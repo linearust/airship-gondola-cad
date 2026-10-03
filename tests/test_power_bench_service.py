@@ -83,9 +83,8 @@ class PowerBenchServiceTests(unittest.TestCase):
             "UnknownAttachedPart",
             "PASConnectorReserve",
             "MTF01PContinuousBodyBound",
-            "MTF01PContinuousTrayBound",
+            "Instrument/ElectronicsMount",
             "MTF01PContinuousConnectorBound",
-            "OpticalMountToolAccessBound",
             "UnknownOpticalFieldBound",
         ):
             with self.subTest(obstacle=name):
@@ -220,9 +219,8 @@ class DirectBoardServicePhaseTests(unittest.TestCase):
         for name in (
             "ActualSensorBody",
             "MTF01PContinuousBodyBound",
-            "MTF01PContinuousTrayBound",
+            "Instrument/ElectronicsMount",
             "MTF01PContinuousConnectorBound",
-            "OpticalMountToolAccessBound",
             "UnknownOpticalFieldBound",
         ):
             with self.subTest(obstacle=name):

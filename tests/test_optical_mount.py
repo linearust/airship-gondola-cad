@@ -1,6 +1,5 @@
-"""Native geometry checks for the rigid common-platform optical bracket."""
+"""Literal load paths and clearances of the integral FC/optical carrier."""
 
-import itertools
 import json
 import unittest
 
@@ -11,60 +10,59 @@ except ImportError:
     App = Part = None
 
 
-@unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
+@unittest.skipIf(App is None, "Requires FreeCAD")
 class OpticalMountTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.parts import optical_mount
+        from gondola.parts import instrument_mount, optical_mount, optical_sensor
 
         cls.doc = App.newDocument("OpticalMountRegression")
-        cls.host = cls.doc.addObject("App::Part", "InstrumentPitchStage")
+        module = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
+        cls.instrument = instrument_mount.build_mount(cls.doc, module)
+        cls.host = cls.instrument["pitch_stage"]
         cls.module = optical_mount.build_optical_mount(cls.doc, cls.host)
+        optical_sensor.build_sensor(cls.doc, cls.module["sensor_frame"])
+        cls.doc.recompute()
 
     @classmethod
     def tearDownClass(cls):
         App.closeDocument(cls.doc.Name)
 
     def setUp(self):
-        self.host.Placement = App.Placement()
-        self.doc.recompute()
+        from gondola.parts.instrument_mount import set_pitch
 
-    def test_one_rigid_print_and_two_common_fastener_pairs(self):
-        from gondola.contracts import fasteners
+        set_pitch(self.doc, 0)
 
-        self.assertEqual(len(self.module["printed"]), 1)
-        self.assertEqual(len(self.module["hardware"]), 4)
-        for absent in (
+    def test_support_is_integral_with_no_optical_print_or_foot_fasteners(self):
+        self.assertEqual(self.module["printed"], [])
+        self.assertEqual(self.module["hardware"], [])
+        for name in (
+            "OpticalSensorTray",
             "OpticalMountBase",
             "OpticalPitchStage",
-            "OpticalPitchBolt",
-            "OpticalRollStage",
+            "OpticalFootBolt1",
+            "OpticalFootBolt2",
+            "OpticalFootNut1",
+            "OpticalFootNut2",
         ):
-            self.assertIsNone(self.doc.getObject(absent))
+            self.assertIsNone(self.doc.getObject(name))
         self.assertEqual(
-            self.doc.OpticalSensorFrame.getParentGeoFeatureGroup(),
-            self.doc.OpticalFlowModule,
+            self.doc.ElectronicsMount.getParentGeoFeatureGroup(), self.host
         )
         self.assertEqual(
             self.doc.OpticalFlowModule.getParentGeoFeatureGroup(), self.host
         )
+        self.assertEqual(
+            self.doc.OpticalSensorFrame.getParentGeoFeatureGroup(),
+            self.doc.OpticalFlowModule,
+        )
         self.assertFalse(self.doc.OpticalSensorFrame.ExpressionEngine)
         self.assertNotIn("Pitch", self.doc.OpticalSensorFrame.PropertiesList)
-        for obj in self.module["printed"] + self.module["hardware"]:
-            self.assertTrue(obj.Shape.isValid(), obj.Name)
-            self.assertEqual(len(obj.Shape.Solids), 1, obj.Name)
-        for obj in self.module["hardware"]:
-            self.assertFalse(obj.PrintPart)
-            self.assertEqual(
-                obj.HardwareSKU,
-                "M2X8_BUTTON_HEAD" if "Bolt" in obj.Name else "M2_HEX_NUT",
-            )
-            self.assertEqual(obj.MaterialSelection, fasteners.KIT_MATERIAL)
-        contract = json.loads(self.module["group"].OpticalMountContract)
+        self.assertTrue(self.doc.ElectronicsMount.Shape.isValid())
+        self.assertEqual(len(self.doc.ElectronicsMount.Shape.Solids), 1)
+        contract = json.loads(self.doc.OpticalFlowModule.OpticalMountContract)
         self.assertEqual(contract["adjustment_degrees_of_freedom"], 0)
-        self.assertEqual(
-            contract["shared_adjustment_control"], "InstrumentPitchStage.Pitch"
-        )
+        self.assertEqual(contract["support_part"], "ElectronicsMount")
         for key in (
             "holding_torque_verified",
             "self_levelling",
@@ -72,139 +70,81 @@ class OpticalMountTests(unittest.TestCase):
         ):
             self.assertFalse(contract[key])
 
-    def test_two_full_height_supports_and_continuous_pad_have_real_stock(self):
-        shape = self.doc.OpticalSensorTray.Shape
-        for origin, size in (
-            ((-25, -4, 2), (3, 8, 16.5)),
-            ((22, -4, 2), (3, 8, 16.5)),
-            ((-20, -2, 18.5), (40, 4, 2)),
-            ((-8, -5, 18.5), (16, 10, 2)),
-        ):
-            witness = Part.makeBox(*size, App.Vector(*origin))
-            self.assertLess(abs(witness.cut(shape).Volume), 1e-5)
-        self.assertAlmostEqual(shape.BoundBox.ZMin, 0, places=6)
-        self.assertAlmostEqual(shape.BoundBox.ZMax, 20.5, places=6)
-        # Root rounds add real material beyond the straight stock.
-        for x in (-25.25, -21.75, 21.75, 25.25):
-            self.assertTrue(shape.isInside(App.Vector(x, 0, 2.03), 1e-7, False))
-        self.assertFalse(shape.isInside(App.Vector(8.99, 5.99, 19.5), 1e-7, True))
+    def test_balanced_posts_diagonal_roof_and_pad_have_continuous_stock(self):
+        from gondola.validation.optical import _rigid_interface_checks
 
-    def test_front_notch_preserves_full_fc_underbody_rectangle_and_rear_bridge(self):
-        from gondola.parts import optical_interface
+        result = _rigid_interface_checks(self.doc)
+        self.assertTrue(result["passed"], result)
+        shape = self.doc.ElectronicsMount.Shape
+        upper = shape.common(Part.makeBox(70, 70, 26, App.Vector(-35, -35, 19)))
+        reflected = upper.copy()
+        reflected.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+        self.assertLess(upper.cut(reflected).Volume, 1e-5)
+        self.assertLess(reflected.cut(upper).Volume, 1e-5)
+        self.assertAlmostEqual(upper.BoundBox.ZMax, 44)
+        self.assertAlmostEqual(self.doc.ModuleMTF02PEnvelope.Shape.BoundBox.ZMin, 45)
 
-        shape = self.doc.OpticalSensorTray.Shape.copy()
-        shape.Placement = optical_interface.placement()
-        # Complete published body footprint, not just the narrower wire lane.
-        underbody = Part.makeBox(36, 36, 8, App.Vector(-18, -18, 19))
-        underbody.rotate(App.Vector(), App.Vector(0, 0, 1), -45)
-        self.assertLess(abs(shape.common(underbody).Volume), 1e-5)
-        self.assertGreaterEqual(shape.distToShape(underbody)[0], 1.5 - 1e-5)
-        bridge = Part.makeBox(12, 3, 2, App.Vector(-6, 1, 0))
-        self.assertLess(abs(bridge.cut(self.doc.OpticalSensorTray.Shape).Volume), 1e-5)
-        restored_notch = Part.makeBox(12, 5, 2, App.Vector(-6, 23, 19))
-        self.assertGreater(restored_notch.common(underbody).Volume, 10)
+    def test_underbody_and_service_channel_remain_open(self):
+        from gondola.validation.optical import _rigid_interface_checks
 
-    def test_recess_floor_and_side_wall_are_printable_with_negative_control(self):
-        from gondola.validation.manufacturing import (
-            material_length_on_line,
-            planar_wall_regions,
-        )
+        result = _rigid_interface_checks(self.doc)
+        self.assertLess(result["fc_underbody_intrusion_mm3"], 1e-5)
+        self.assertLess(result["fc_connector_and_wire_intrusion_mm3"], 1e-5)
+        self.assertLess(result["central_channel_intrusion_mm3"], 1e-5)
+        part = self.doc.ElectronicsMount
+        original = part.Shape.copy()
+        try:
+            part.Shape = part.Shape.fuse(Part.makeBox(1, 1, 2, App.Vector(0, 0, 25)))
+            self.assertFalse(_rigid_interface_checks(self.doc)["passed"])
+        finally:
+            part.Shape = original
 
-        shape = self.doc.OpticalSensorTray.Shape
-        regions = planar_wall_regions(shape)
-        self.assertTrue(regions)
-        self.assertTrue(
-            all(row["material_thickness_mm"] >= 1.5 - 1e-5 for row in regions), regions
-        )
-        for x in (-19, 19):
-            self.assertAlmostEqual(
-                material_length_on_line(shape, (x + 1.5, 0, -0.01), (x + 1.5, 0, 2.01)),
-                1.5,
-                places=6,
-            )
-            self.assertAlmostEqual(
-                material_length_on_line(shape, (x, 2.09, 1.75), (x, 4.01, 1.75)),
-                1.875,
-                places=6,
-            )
-        damaged = shape.cut(Part.makeBox(1, 1, 0.7, App.Vector(20, -0.5, 0)))
-        self.assertAlmostEqual(
-            material_length_on_line(damaged, (20.5, 0, -0.01), (20.5, 0, 2.01)),
-            0.8,
-            places=6,
-        )
+    def test_missing_load_path_or_pad_is_rejected(self):
+        from gondola.validation.optical import _rigid_interface_checks
 
-    def test_all_manufacturing_probes_measure_actual_saved_stock(self):
-        from gondola.parts import optical_interface
+        part = self.doc.ElectronicsMount
+        original = part.Shape.copy()
+        for origin in ((-31, -31, 27), (9, 9, 41), (-1, -1, 42)):
+            try:
+                part.Shape = original.cut(Part.makeBox(2, 3, 2, App.Vector(*origin)))
+                self.assertFalse(_rigid_interface_checks(self.doc)["passed"], origin)
+            finally:
+                part.Shape = original
+
+    def test_manufacturing_probes_measure_integral_saved_stock(self):
+        from gondola.parts.optical_interface import manufacturing_wall_probes
         from gondola.validation.manufacturing import material_length_on_line
 
-        for (
-            name,
-            part,
-            start,
-            end,
-            expected,
-        ) in optical_interface.manufacturing_wall_probes():
-            self.assertEqual(part, "OpticalSensorTray")
+        for name, part, start, end, expected in manufacturing_wall_probes():
+            self.assertEqual(part, "ElectronicsMount")
             self.assertAlmostEqual(
-                material_length_on_line(self.doc.OpticalSensorTray.Shape, start, end),
+                material_length_on_line(self.doc.ElectronicsMount.Shape, start, end),
                 expected,
                 places=5,
                 msg=name,
             )
 
-    def test_entire_attachment_follows_shared_host_without_relative_motion(self):
-        from gondola.cad import world_shape
+    def test_sensor_support_transform_is_fixed_over_common_pitch(self):
+        from gondola.parts.instrument_mount import set_pitch
 
-        objects = self.module["printed"] + self.module["hardware"]
-        original = {obj.Name: world_shape(obj) for obj in objects}
-        pose = App.Placement(
-            App.Vector(37, -9, 19.5), App.Rotation(App.Vector(0, 1, 0), 20)
+        expected = (
+            self.doc.ElectronicsMount.getGlobalPlacement()
+            .inverse()
+            .multiply(self.doc.OpticalSensorFrame.getGlobalPlacement())
         )
-        self.host.Placement = pose
-        self.doc.recompute()
-        for obj in objects:
-            expected = original[obj.Name].copy()
-            expected.Placement = pose.multiply(expected.Placement)
-            self.assertLess(abs(expected.cut(world_shape(obj)).Volume), 1e-5)
-            self.assertLess(abs(world_shape(obj).cut(expected).Volume), 1e-5)
-        for first, second in itertools.combinations(objects, 2):
-            self.assertLess(
-                abs(world_shape(first).common(world_shape(second)).Volume),
-                1e-5,
-                (first.Name, second.Name),
+        for angle in (-20, 0, 20):
+            set_pitch(self.doc, angle)
+            actual = (
+                self.doc.ElectronicsMount.getGlobalPlacement()
+                .inverse()
+                .multiply(self.doc.OpticalSensorFrame.getGlobalPlacement())
             )
+            self.assertTrue(actual.isSame(expected, 1e-7))
 
-    def test_both_screws_engage_complete_nuts_and_clear_print(self):
-        from gondola.cad import world_shape
-
-        for index, x in ((1, -19), (2, 19)):
-            bolt = self.doc.getObject(f"OpticalFootBolt{index}")
-            nut = self.doc.getObject(f"OpticalFootNut{index}")
-            core = Part.makeCylinder(0.8, 1.6, App.Vector(x, 0, 1.5))
-            self.assertLess(abs(core.cut(bolt.Shape).Volume), 1e-5)
-            self.assertAlmostEqual(nut.Shape.BoundBox.ZLength, 1.6, places=6)
-            self.assertAlmostEqual(
-                bolt.Shape.BoundBox.ZMax - nut.Shape.BoundBox.ZMax, 2.9, places=6
-            )
-            self.assertLess(
-                abs(core.common(self.doc.OpticalSensorTray.Shape).Volume), 1e-5
-            )
-            self.assertLess(
-                abs(
-                    world_shape(bolt)
-                    .common(world_shape(self.doc.OpticalSensorTray))
-                    .Volume
-                ),
-                1e-5,
-            )
-
-    def test_each_sensor_and_connector_clear_shared_fc_and_wiring(self):
+    def test_both_sensor_bodies_fields_and_connectors_clear_the_fixed_support(self):
         from gondola.contracts.optical_sensors import SENSOR_PROFILES
         from gondola.parts import equipment_envelopes, optical_sensor, wiring_reserves
 
-        fc = equipment_envelopes.fc_envelope_shape()
-        wire = wiring_reserves.reserve_shapes()["FCWiringClearanceReserve"]
         for profile in SENSOR_PROFILES.values():
             for factory in (
                 optical_sensor.envelope_shape,
@@ -212,10 +152,16 @@ class OpticalMountTests(unittest.TestCase):
                 optical_sensor.connector_reserve_shape,
             ):
                 shape = factory(profile)
-                shape.Placement = self.doc.OpticalFlowModule.Placement
-                for obstacle in (fc, wire):
-                    self.assertLess(abs(shape.common(obstacle).Volume), 1e-5)
-                    self.assertGreaterEqual(shape.distToShape(obstacle)[0], 4.5 - 1e-5)
+                for obstacle in (
+                    self.doc.ElectronicsMount.Shape,
+                    equipment_envelopes.fc_envelope_shape(),
+                    wiring_reserves.reserve_shapes()["FCWiringClearanceReserve"],
+                ):
+                    self.assertLess(
+                        abs(shape.common(obstacle).Volume),
+                        1e-5,
+                        (profile.key, factory.__name__),
+                    )
 
 
 if __name__ == "__main__":

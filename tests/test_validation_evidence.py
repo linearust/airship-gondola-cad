@@ -132,7 +132,8 @@ class PropulsionEvidenceTests(unittest.TestCase):
         result = propulsion_evidence_check(self.complete_report())
         self.assertTrue(result["passed"], result)
         self.assertEqual(result["inventory"]["rail_mount_clearance"]["expected"], 1)
-        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 14)
+        # Each bearing cap now uses two aligned screws instead of three.
+        self.assertEqual(result["inventory"]["fastener_service"]["expected"], 12)
         self.assertEqual(result["inventory"]["geometry"]["expected"], 7)
         self.assertEqual(result["inventory"]["functional_wall_probes"]["expected"], 11)
         self.assertEqual(result["inventory"]["integrated_frame"]["expected"], 1)

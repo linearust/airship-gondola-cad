@@ -112,6 +112,85 @@ class DirectPowerTests(unittest.TestCase):
                         (profile.key, factory.__name__, angle),
                     )
 
+    def test_instrument_bound_refinement_keeps_real_and_unknown_obstructions(self):
+        from gondola.cad import placed_shape, set_property
+        from gondola.contracts.equipment_options import get_navigation_profile
+        from gondola.parts import instrument_mount, optical_mount, wiring_reserves
+        from gondola.power_export import _collisions, _instrument_motion_context
+
+        doc = App.newDocument("PowerPitchRefinement")
+        self.addCleanup(App.closeDocument, doc.Name)
+        module = doc.addObject("App::Part", "ElectronicsEquipmentModule")
+        module.Placement = App.Placement(
+            App.Vector(-82, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
+        kit = instrument_mount.build_mount(doc, module)
+        optical = optical_mount.build_optical_mount(doc, kit["pitch_stage"])["group"]
+        registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
+        for category in (
+            "PrintedParts",
+            "HardwareParts",
+            "ReferenceParts",
+            "TapeReferences",
+            "ClearanceVolumes",
+        ):
+            set_property(
+                registry,
+                category,
+                kit["printed"] if category == "PrintedParts" else [],
+                "App::PropertyLinkListGlobal",
+            )
+        doc.recompute()
+        motion = _instrument_motion_context(doc, optical)
+        bounds = motion["bounds"]
+        nav = placed_shape(
+            wiring_reserves.reserve_shapes(
+                navigation_profile=get_navigation_profile("MGA01")
+            )["PASConnectorReserve"],
+            App.Placement(App.Vector(-140, 0, 0), App.Rotation()),
+        )
+        self.assertTrue(_collisions({"Navigation": nav}, bounds))
+        self.assertEqual(
+            _collisions({"Navigation": nav}, bounds, instrument_motion=motion), []
+        )
+        self.assertTrue(motion["proofs"])
+        actual_hit = placed_shape(
+            Part.makeSphere(0.5, App.Vector(29.5, 29.5, 30)),
+            kit["pitch_stage"].getGlobalPlacement(),
+        )
+        self.assertTrue(
+            _collisions({"ActualHit": actual_hit}, bounds, instrument_motion=motion)
+        )
+        changed = {
+            **bounds,
+            "Instrument/ElectronicsMount": bounds["Instrument/ElectronicsMount"].fuse(
+                nav
+            ),
+        }
+        self.assertTrue(
+            _collisions({"Navigation": nav}, changed, instrument_motion=motion)
+        )
+        unknown = doc.addObject("Part::Feature", "UnknownOpticalStock")
+        optical.addObject(unknown)
+        unknown.Shape = Part.makeBox(1, 1, 1, App.Vector(60, 40, 8))
+        registry.ReferenceParts = [unknown]
+        doc.recompute()
+        motion = _instrument_motion_context(doc, optical)
+        self.assertIn("Instrument/UnknownOpticalStock", motion["bounds"])
+        middle = placed_shape(
+            unknown.Shape,
+            module.getGlobalPlacement().multiply(instrument_mount.stage_placement(5)),
+        )
+        nominal = placed_shape(unknown.Shape, kit["pitch_stage"].getGlobalPlacement())
+        self.assertLess(nominal.common(middle).Volume, 1e-6)
+        self.assertTrue(
+            _collisions(
+                {"MidIntervalBlocker": middle},
+                motion["bounds"],
+                instrument_motion=motion,
+            )
+        )
+
     def test_composed_matrix_keeps_direct_tether_with_common_instrument_optics(self):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
@@ -121,7 +200,11 @@ class DirectPowerTests(unittest.TestCase):
             optical_mount,
             optical_sensor,
         )
-        from gondola.power_export import _installation_context, screen_configurations
+        from gondola.power_export import (
+            _installation_context,
+            _instrument_motion_bounds,
+            screen_configurations,
+        )
 
         doc = App.newDocument("DirectPowerMatrixFixture")
         try:
@@ -174,20 +257,33 @@ class DirectPowerTests(unittest.TestCase):
                 battery.Name, _installation_context(doc, "TETHER_BEC_SVPDB")
             )
             self.assertIn(battery.Name, _installation_context(doc, "BATTERY_SVPDB"))
+            bounds = _instrument_motion_bounds(doc, optical["group"])
+            self.assertIn("Instrument/ElectronicsMount", bounds)
+            from gondola.cad import world_shape
+
+            for angle in (-20, -7, 0, 11, 20):
+                instrument_mount.set_pitch(doc, angle)
+                self.assertLess(
+                    world_shape(doc.ElectronicsMount)
+                    .cut(bounds["Instrument/ElectronicsMount"])
+                    .Volume,
+                    1e-5,
+                )
+            instrument_mount.set_pitch(doc, 0)
             screen = screen_configurations(doc)
             self.assertTrue(screen["passed"], screen)
             self.assertTrue(screen["default_configuration_clear"], screen)
-            self.assertEqual(len(screen["configurations"]), 12)
-            self.assertEqual(len(screen["navigation_compatibility_probes"]), 48)
+            self.assertEqual(len(screen["configurations"]), 8)
+            self.assertEqual(len(screen["navigation_compatibility_probes"]), 32)
             blocked = [
                 r
                 for r in screen["navigation_compatibility_probes"]
                 if r["navigation"] == "MGF10A"
                 and r["antenna_installation"] == "direct_sma"
             ]
-            self.assertEqual(len(blocked), 12)
+            self.assertEqual(len(blocked), 8)
             self.assertTrue(all(not r["permitted"] for r in blocked))
-            # Both sensors' common-platform swept tray and operating field
+            # Both sensors' common-platform operating field
             # block the direct helix; the remote SMA alternative stays available.
             direct_tether_helix = next(
                 row
@@ -198,9 +294,7 @@ class DirectPowerTests(unittest.TestCase):
             )
             for bound in (
                 "MTF02PContinuousOpticalFieldBound",
-                "MTF02PContinuousTrayBound",
                 "MTF01PContinuousOpticalFieldBound",
-                "MTF01PContinuousTrayBound",
             ):
                 self.assertTrue(
                     any(

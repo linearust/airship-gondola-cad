@@ -65,6 +65,7 @@ def optical_attachment_geometry(doc):
         or stage.getParentGeoFeatureGroup() != doc.ElectronicsEquipmentModule
         or sensor_frame.getParentGeoFeatureGroup() != optical
         or doc.ModuleFCEnvelope.getParentGeoFeatureGroup() != stage
+        or doc.ElectronicsMount.getParentGeoFeatureGroup() != stage
         or doc.getObject("OpticalPitchStage") is not None
     ):
         raise ValueError("Common FC/optical platform hierarchy changed.")
@@ -74,14 +75,14 @@ def optical_attachment_geometry(doc):
             name in optical.PropertiesList
             for name in ("RailPositionX", "CarrierHostName", "MountSide")
         )
-        or doc.OpticalSensorTray.getParentGeoFeatureGroup() != sensor_frame
+        or doc.getObject("OpticalSensorTray") is not None
         or doc.getObject("OpticalRollStage") is not None
     ):
-        raise ValueError("Optical attachment metadata or rigid tray hierarchy changed.")
-    if not optical.Placement.isSame(
-        App.Placement(App.Vector(0, 27, 19), App.Rotation()), 1e-7
-    ):
-        raise ValueError("Fixed optical bracket datum changed.")
+        raise ValueError(
+            "Optical attachment metadata or integral support hierarchy changed."
+        )
+    if not optical.Placement.isSame(App.Placement(), 1e-7):
+        raise ValueError("Integral optical frame datum changed.")
     if not sensor_frame.Placement.isSame(App.Placement(), 1e-7):
         raise ValueError("Optical sensor frame must be fixed to its bracket.")
     angle = instrument_pitch_degrees(stage)
@@ -98,7 +99,9 @@ def optical_attachment_geometry(doc):
         "instrument_adjustment_degrees_of_freedom": 1,
         "optical_native_parent": stage.Name,
         "optical_module_origin_cad_m": vector_m(optical.getGlobalPlacement().Base),
-        "optical_tray_origin_cad_m": vector_m(sensor_frame.getGlobalPlacement().Base),
+        "optical_sensor_frame_origin_cad_m": vector_m(
+            sensor_frame.getGlobalPlacement().Base
+        ),
         "instrument_pitch_pivot_cad_m": vector_m(
             doc.ElectronicsEquipmentModule.getGlobalPlacement().multVec(
                 App.Vector(0, 0, 27.5)

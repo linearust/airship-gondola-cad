@@ -101,15 +101,15 @@ class NativeInterfaceTests(unittest.TestCase):
                     doc.ElectronicsEquipmentModule,
                 )
                 self.assertNotIn("RailPositionX", doc.OpticalFlowModule.PropertiesList)
-                self.assertEqual(doc.OpticalFootBolt1.HardwareSKU, "M2X8_BUTTON_HEAD")
-                self.assertEqual(doc.OpticalFootNut1.HardwareSKU, "M2_HEX_NUT")
+                self.assertIsNone(doc.getObject("OpticalFootBolt1"))
+                self.assertIsNone(doc.getObject("OpticalFootNut1"))
                 self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountScrew"))
                 self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountNut"))
                 self.assertIsNone(doc.getObject("OpticalMountBase"))
                 self.assertIsNone(doc.getObject("OpticalPitchStage"))
                 self.assertEqual(
-                    doc.OpticalSensorTray.getParentGeoFeatureGroup(),
-                    doc.OpticalSensorFrame,
+                    doc.OpticalSensorFrame.getParentGeoFeatureGroup(),
+                    doc.OpticalFlowModule,
                 )
                 self.assertEqual(
                     len(doc.DesignRegistry.PrintedParts),
@@ -158,7 +158,7 @@ class NativeInterfaceTests(unittest.TestCase):
                             ).getParentGeoFeatureGroup(),
                             pod,
                         )
-                    for position in ("Negative", "Positive", "Input"):
+                    for position in ("Negative", "Input"):
                         for kind in ("Bolt", "Nut"):
                             cap_fastener = doc.getObject(
                                 prefix + "BearingCap" + position + kind

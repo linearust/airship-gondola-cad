@@ -342,11 +342,10 @@ class OpticalAttachmentTests(unittest.TestCase):
         self.assertEqual(result["optical_adjustment_degrees_of_freedom"], 0)
         self.assertEqual(result["instrument_adjustment_degrees_of_freedom"], 1)
         self.assertEqual(result["optical_native_parent"], "InstrumentPitchStage")
+        self.assertEqual(result["optical_module_origin_cad_m"], [-0.056, 0, 0.0195])
         self.assertEqual(
-            result["optical_module_origin_cad_m"], [-0.056, -0.027, 0.0385]
-        )
-        self.assertEqual(
-            result["optical_tray_origin_cad_m"], result["optical_module_origin_cad_m"]
+            result["optical_sensor_frame_origin_cad_m"],
+            result["optical_module_origin_cad_m"],
         )
         self.assertEqual(result["instrument_pitch_pivot_cad_m"], [-0.056, 0, 0.0275])
         with tempfile.TemporaryDirectory() as directory:
@@ -383,7 +382,7 @@ class OpticalAttachmentTests(unittest.TestCase):
                 (doc.ModuleFCEnvelope, App.Placement()),
                 (
                     doc.ModuleMTF02PEnvelope,
-                    App.Placement(App.Vector(0, 27, 19), App.Rotation()),
+                    App.Placement(),
                 ),
             ):
                 expected = module_pose.multiply(stage).multiply(local)
@@ -407,7 +406,7 @@ class OpticalAttachmentTests(unittest.TestCase):
             doc.OpticalFlowModule,
             doc.ModuleFCEnvelope,
             doc.OpticalSensorFrame,
-            doc.OpticalSensorTray,
+            doc.ElectronicsMount,
         ):
             parent = obj.getParentGeoFeatureGroup()
             try:
@@ -437,7 +436,7 @@ class OpticalAttachmentTests(unittest.TestCase):
     def test_shifted_fixed_frames_or_hinge_pivot_are_rejected(self):
         doc = self.native_optical()
         for obj, message in (
-            (doc.OpticalFlowModule, "bracket datum"),
+            (doc.OpticalFlowModule, "frame datum"),
             (doc.OpticalSensorFrame, "fixed"),
         ):
             original = App.Placement(obj.Placement)

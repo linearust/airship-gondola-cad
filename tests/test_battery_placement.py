@@ -1,4 +1,4 @@
-"""Native regressions for the declared pack placement and shared-platform optical bracket gap."""
+"""Native regressions for the declared pack placement and integral instrument support clearance."""
 
 import json
 import unittest
@@ -61,13 +61,7 @@ class BatteryPlacementTests(unittest.TestCase):
         self.assertEqual(
             {row["component"] for row in floats},
             {
-                "OpticalFootLeft",
-                "OpticalFootRight",
-                "OpticalFootRearBridge",
-                "OpticalLeftSupport",
-                "OpticalRightSupport",
-                "OpticalCrossbar",
-                "OpticalAdhesivePad",
+                "IntegralOpticalBridge",
             },
         )
         self.assertTrue(all(row["passed"] for row in floats), floats)
@@ -79,7 +73,7 @@ class BatteryPlacementTests(unittest.TestCase):
                 row["object"]
                 for row in result["continuous_translation"]["stack_tower_gaps"]
             },
-            {"OpticalSensorTray"},
+            {"ElectronicsMount"},
         )
         self.assertGreater(
             min(
@@ -138,8 +132,8 @@ class BatteryPlacementTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_tower_gap_fails_before_geometric_contact(self):
-        tower = self.doc.OpticalSensorTray
-        group = self.doc.OpticalFlowModule
+        tower = self.doc.ElectronicsMount
+        group = self.doc.ElectronicsEquipmentModule
         before = App.Placement(group.Placement)
         # Use the actual closest-point direction to preserve a positive gap
         # while making the separate minimum-clearance policy fail.
@@ -155,10 +149,7 @@ class BatteryPlacementTests(unittest.TestCase):
         gap, pairs, _ = world_shape(tower).distToShape(sweep)
         direction = pairs[0][1] - pairs[0][0]
         direction.normalize()
-        parent_rotation = group.getParentGeoFeatureGroup().getGlobalPlacement().Rotation
-        group.Placement.Base += parent_rotation.inverted().multVec(
-            direction * (gap - 0.5)
-        )
+        group.Placement.Base += direction * (gap - 0.5)
         self.doc.recompute()
         try:
             result = self.check()
@@ -173,14 +164,14 @@ class BatteryPlacementTests(unittest.TestCase):
             group.Placement = before
             self.doc.recompute()
 
-    def test_nominal_gap_does_not_replace_registration_clearance(self):
+    def test_nominal_gap_does_not_replace_continuous_pitch_clearance(self):
         import Part
 
         from gondola.cad import world_shape
         from gondola.parts import equipment_mounts
 
-        tower = self.doc.OpticalSensorTray
-        group = self.doc.OpticalFlowModule
+        tower = self.doc.ElectronicsMount
+        group = self.doc.ElectronicsEquipmentModule
         original = group.Placement.copy()
         sweep = Part.makeBox(
             28, 74, 17, App.Vector(-14, -37, equipment_mounts.SUPPORT_FACE_Z + 1)
@@ -190,12 +181,7 @@ class BatteryPlacementTests(unittest.TestCase):
         direction = pairs[0][1] - pairs[0][0]
         direction.normalize()
         try:
-            parent_rotation = (
-                group.getParentGeoFeatureGroup().getGlobalPlacement().Rotation
-            )
-            group.Placement.Base += parent_rotation.inverted().multVec(
-                direction * (gap - 2)
-            )
+            group.Placement.Base += direction * (gap - 2)
             self.doc.recompute()
             result = self.check()
             continuous = result["continuous_translation"]
@@ -214,9 +200,29 @@ class BatteryPlacementTests(unittest.TestCase):
             group.Placement = original
             self.doc.recompute()
 
+    def test_modified_integral_support_cannot_hide_behind_a_nominal_proxy(self):
+        import Part
+
+        support = self.doc.ElectronicsMount
+        original = support.Shape.copy()
+        try:
+            support.Shape = original.fuse(
+                Part.makeBox(180, 2, 2, App.Vector(-180, -1, 42))
+            ).removeSplitter()
+            self.assertTrue(support.Shape.isValid())
+            self.assertEqual(len(support.Shape.Solids), 1)
+            result = self.check()
+            self.assertEqual(result["continuous_translation"]["collisions"], [])
+            row = result["continuous_translation"]["tower_clamped_registration_gaps"][0]
+            self.assertFalse(row["passed"], row)
+            self.assertFalse(result["passed"])
+        finally:
+            support.Shape = original
+            self.doc.recompute()
+
     def test_missing_tower_cannot_pass_clearance_check(self):
         result = self.check(
-            [obj for obj in self.objects if obj.Name != "OpticalSensorTray"]
+            [obj for obj in self.objects if obj.Name != "ElectronicsMount"]
         )
         self.assertFalse(result["passed"])
         self.assertEqual(result["continuous_translation"]["stack_tower_gaps"], [])

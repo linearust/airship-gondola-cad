@@ -78,10 +78,25 @@ class EdgeBlendTests(unittest.TestCase):
             self.solid(self.frame, (sign * 9.1, sign * 33, 41.9))
             self.empty(self.frame, (sign * 10.4, sign * 33, 40.6))
 
-    def test_cap_upper_rounds_preserve_three_head_annuli_and_split_lands(self):
+    def test_shared_cap_and_frame_keep_both_concave_t_wing_root_blends(self):
+        # Independent R0.75 added stock on both plan-view reentrant corners;
+        # the narrow band does not reach the shaft-jaw corridor atX14.5+.
+        root = Part.makeBox(0.75, 0.75, 1, App.Vector(9, 0.25, 2)).cut(
+            Part.makeCylinder(0.75, 1, App.Vector(9.75, 0.25, 2))
+        )
+        roots = [root, root.mirror(App.Vector(0, 5, 0), App.Vector(0, 1, 0))]
+        for witness in roots:
+            self.assertAlmostEqual(witness.Volume, 0.75**2 * (1 - math.pi / 4))
+            self.assertLess(witness.cut(self.cap).Volume, 1e-6)
+            witness.translate(App.Vector(0, 28, 44))
+            self.assertLess(witness.cut(self.frame).Volume, 1e-6)
+        jaw = Part.makeBox(15, 3.8, 6, App.Vector(14.5, 37.7, 47))
+        self.assertLess(jaw.common(self.frame).Volume, 1e-6)
+
+    def test_cap_upper_rounds_preserve_two_head_annuli_and_split_lands(self):
         self.empty(self.cap, (26.49, 5, 4.49))
         self.solid(self.cap, (26.15, 5, 4.15))
-        for x, y in ((-5.5, 6.5), (6.25, 11.5), (23, 5)):
+        for x, y in ((-5.5, 5), (23, 5)):
             annulus = Part.makeCylinder(2.25, 0.01, App.Vector(x, y, 4.49)).cut(
                 Part.makeCylinder(1.1, 0.03, App.Vector(x, y, 4.48))
             )
@@ -100,26 +115,29 @@ class EdgeBlendTests(unittest.TestCase):
                 min(row["material_thickness_mm"] for row in walls), 1.5 - 1e-5
             )
 
-    def test_optical_pad_rounding_preserves_flat_adhesive_seat(self):
-        from gondola.parts import optical_mount
+    def test_integral_optical_post_roots_have_small_protected_blends(self):
+        from gondola.parts import instrument_mount
 
-        tray = optical_mount.sensor_tray_shape()
-        # Independent R1 outline over the top1.5 mm; the crossbar outside
-        # the pad is structural stock, not extra adhesive seating area.
-        pad = Part.makeBox(16, 12, 1.5, App.Vector(-8, -6, 19)).fuse(
-            Part.makeBox(18, 10, 1.5, App.Vector(-9, -5, 19))
+        carrier = instrument_mount.upper_shape()
+        # Literal quarter-circle stock along each of eight root edges; corner
+        # transitions are excluded so the witness does not assume a kernel patch.
+        root = Part.makeBox(0.25, 2, 0.25, App.Vector(27.25, 28.5, 19)).cut(
+            Part.makeCylinder(
+                0.25, 2, App.Vector(27.25, 28.5, 19.25), App.Vector(0, 1, 0)
+            )
         )
-        for x in (-8, 8):
-            for y in (-5, 5):
-                pad = pad.fuse(Part.makeCylinder(1, 1.5, App.Vector(x, y, 19)))
-        self.assertAlmostEqual(pad.Volume, (18 * 12 - (4 - math.pi)) * 1.5)
-        self.assertLess(pad.cut(tray).Volume, 1e-6)
-        above_seat = Part.makeBox(20, 14, 1, App.Vector(-10, -7, 20.5))
-        self.assertLess(tray.common(above_seat).Volume, 1e-6)
-        wrong_corner = Part.makeBox(2, 2, 1.5, App.Vector(7, 4, 19)).cut(
-            Part.makeCylinder(2, 1.5, App.Vector(7, 4, 19))
-        )
-        self.assertGreater(pad.cut(tray.cut(wrong_corner)).Volume, 0.1)
+        self.assertAlmostEqual(root.Volume, 2 * 0.25**2 * (1 - math.pi / 4))
+        for angle in (0, 90, 180, 270):
+            positive = root.copy()
+            positive.rotate(App.Vector(29.5, 29.5, 0), App.Vector(0, 0, 1), angle)
+            negative = positive.copy()
+            negative.rotate(App.Vector(), App.Vector(0, 0, 1), 180)
+            for witness in (positive, negative):
+                self.assertLess(witness.cut(carrier).Volume, 1e-6)
+        pad = Part.makeBox(18, 12, 2, App.Vector(-9, -6, 42))
+        self.assertLess(pad.cut(carrier).Volume, 1e-6)
+        above_pad = Part.makeBox(18, 12, 1, App.Vector(-9, -6, 44))
+        self.assertLess(above_pad.common(carrier).Volume, 1e-6)
 
 
 if __name__ == "__main__":

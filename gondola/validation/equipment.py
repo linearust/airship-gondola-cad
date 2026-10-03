@@ -489,13 +489,39 @@ def _carrier_support_checks(doc):
             support_rows.append({"object": name, "passed": False, "error": "missing"})
             continue
         shape = local_shape(obj)
-        comparison = geometry_comparison(shape, mounts.mount_shape(kind))
+        reference_shape = mounts.mount_shape(kind)
+        comparison = geometry_comparison(shape, reference_shape)
         expected_contract = json.loads(json.dumps(mounts.mount_contract(kind)))
         try:
             contract_matches = json.loads(obj.MountContract) == expected_contract
         except (AttributeError, ValueError, TypeError):
             contract_matches = False
         no_posts = abs(shape.BoundBox.ZMax - mounts.SUPPORT_FACE_Z) < TOL
+        above_support_comparison = None
+        if kind == "electronics":
+            # Only the declared integral optical bridge may rise above the deck.
+            # Include the complete actual bounds so added stock cannot escape the
+            # audit by extending outside the reference bridge or plate footprint.
+            actual, reference = shape.BoundBox, reference_shape.BoundBox
+            xmin, xmax = (
+                min(actual.XMin, reference.XMin),
+                max(actual.XMax, reference.XMax),
+            )
+            ymin, ymax = (
+                min(actual.YMin, reference.YMin),
+                max(actual.YMax, reference.YMax),
+            )
+            zmax = max(actual.ZMax, reference.ZMax)
+            upper_region = Part.makeBox(
+                xmax - xmin + 2,
+                ymax - ymin + 2,
+                zmax - mounts.SUPPORT_FACE_Z + 1,
+                App.Vector(xmin - 1, ymin - 1, mounts.SUPPORT_FACE_Z),
+            )
+            above_support_comparison = geometry_comparison(
+                shape.common(upper_region), reference_shape.common(upper_region)
+            )
+            no_posts = comparison_passed(above_support_comparison, TOL)
         unverified_stack = "MountingStackVerified" in obj.PropertiesList and not bool(
             obj.MountingStackVerified
         )
@@ -515,7 +541,7 @@ def _carrier_support_checks(doc):
         shared_comparison = (
             geometry_comparison(
                 shape,
-                mounts.mount_shape(kind)
+                reference_shape
                 if kind == "electronics"
                 else local_shape(shared_reference),
             )
@@ -543,6 +569,7 @@ def _carrier_support_checks(doc):
                 "contract_matches": contract_matches,
                 "single_valid_solid": shape.isValid() and len(shape.Solids) == 1,
                 "no_unverified_device_posts_above_support_face": no_posts,
+                "above_support_face_comparison": above_support_comparison,
                 "mounting_stack_remains_unverified": unverified_stack,
                 "structural_stack_contract_matches": stack_contract_matches,
                 "shared_print_comparison": shared_comparison,
@@ -817,64 +844,11 @@ def _fc_wiring_check(doc, physical_objects, physical_shapes_by_name):
     return wiring_report
 
 
-def _optical_removal_preparation(doc, physical_objects):
-    """Only the reviewed rigid optical kit may be removed before FC service."""
-    optical = doc.getObject("OpticalFlowModule")
-    try:
-        instrument_context(optical)
-        native_error = None
-    except (AttributeError, TypeError, ValueError) as error:
-        native_error = str(error)
-    parents = {
-        "OpticalSensorTray": "OpticalSensorFrame",
-        "ModuleMTF02PEnvelope": "OpticalSensorFrame",
-        "OpticalFootBolt1": "OpticalFlowModule",
-        "OpticalFootNut1": "OpticalFlowModule",
-        "OpticalFootBolt2": "OpticalFlowModule",
-        "OpticalFootNut2": "OpticalFlowModule",
-    }
-    actual = [
-        obj.Name
-        for obj in physical_objects
-        if optical is not None and belongs_to_group(obj, optical)
-    ]
-    descendants = {
-        obj.Name
-        for obj in doc.Objects
-        if optical is not None
-        and "Shape" in obj.PropertiesList
-        and belongs_to_group(obj, optical)
-    }
-    expected_descendants = set(parents) | {
-        "MTF02POpticalClearanceReserve",
-        "MTF02PConnectorReserve",
-    }
-    fixed_parents = all(
-        (obj := doc.getObject(name)) is not None
-        and obj.getParentGeoFeatureGroup() == doc.getObject(parent)
-        and not list(obj.ExpressionEngine)
-        for name, parent in parents.items()
-    )
-    inventory_matches = Counter(actual) == Counter(list(parents))
-    descendants_match = descendants == expected_descendants
-    return {
-        "native_frame_error": native_error,
-        "expected_physical_parts": sorted(parents),
-        "actual_physical_parts": sorted(actual),
-        "physical_inventory_matches": inventory_matches,
-        "all_shape_descendants_match": descendants_match,
-        "fixed_part_parents_match": fixed_parents,
-        "scope": "Only this exact native optical kit is eligible for prior removal. Its ordered tool and part paths remain subject to the optical service audit; unknown or malformed stock stays an obstacle.",
-        "passed": native_error is None
-        and inventory_matches
-        and descendants_match
-        and fixed_parents,
-    }
-
-
 def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
+    """Bare-device paths keep the integral bridge and every other physical part."""
+    from .propulsion_service import continuous_path
+
     service_rows = []
-    optical_preparation = _optical_removal_preparation(doc, physical_objects)
     for name in (
         "ModuleBatteryEnvelope",
         "ModuleFCEnvelope",
@@ -882,30 +856,70 @@ def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
         "ModuleRadioEnvelope",
     ):
         device_parent = doc.getObject(name).getParentGeoFeatureGroup()
-        local_travel = App.Vector(*layout.device_removal_vector(name))
-        world_travel = device_parent.getGlobalPlacement().Rotation.multVec(local_travel)
-        sweep, sweep_method = translation_sweep(
-            physical_shapes_by_name[name], tuple(world_travel)
-        )
+        rotation = device_parent.getGlobalPlacement().Rotation
         detached_carrier = name == "ModuleRadioEnvelope"
         off_carrier_names = {
             obj.Name
             for obj in physical_objects
             if detached_carrier and not belongs_to_group(obj, device_parent)
         }
-        optical_first = name == "ModuleFCEnvelope" and optical_preparation["passed"]
-        prior_removed = {
-            obj.Name
+        obstacles = {
+            obj.Name: physical_shapes_by_name[obj.Name]
             for obj in physical_objects
-            if optical_first and belongs_to_group(obj, doc.OpticalFlowModule)
+            if obj.Name != name and obj.Name not in off_carrier_names
         }
+        if name == "ModuleFCEnvelope":
+            native_error = None
+            try:
+                instrument_context(doc.getObject("OpticalFlowModule"))
+            except (AttributeError, TypeError, ValueError) as error:
+                native_error = str(error)
+            neutral = abs(float(doc.InstrumentPitchStage.Pitch)) < 1e-7
+            local_waypoints = [(0, 0, 0), (60, 0, 0), (60, 0, 32)]
+            world_waypoints = [
+                tuple(rotation.multVec(App.Vector(*point))) for point in local_waypoints
+            ]
+            path = continuous_path(
+                physical_shapes_by_name[name], world_waypoints, obstacles
+            )
+            hits = sorted(
+                {
+                    obstacle
+                    for row in path["segments"]
+                    for obstacle, volume in row["intersection_mm3"].items()
+                    if volume > TOL
+                }
+            )
+            service_rows.append(
+                {
+                    "device": name,
+                    "local_waypoints_mm": local_waypoints,
+                    "world_waypoints_mm": world_waypoints,
+                    "bench_access_required": False,
+                    "service_collision_scope": "Installed assembly; integral optical bridge and sensor retained",
+                    "off_carrier_parts_excluded_for_bench_service": [],
+                    "optical_head_must_be_removed_first": False,
+                    "complete_optical_mount_removed": False,
+                    "temporarily_removed_head_parts": [],
+                    "native_frame_error": native_error,
+                    "neutral_pitch_required": True,
+                    "neutral_pitch_confirmed": neutral,
+                    "prerequisite": "Return the instrument stage to neutral 0 degrees and support the FC, disconnect all leads and remove its actual mounting bolts, nuts and spacers/dampers that prevent lateral movement. Slide the bare board local +X60 mm through the open bridge, then lift +Z32 mm. Retain the optical sensor and integral support. Restore and verify the calibrated body-reference setup angle before operation. This verifies a bare-envelope path, not a connected harness or unmodeled fastener-removal path.",
+                    "path": path,
+                    "collisions": hits,
+                    "passed": path["passed"] and native_error is None and neutral,
+                }
+            )
+            continue
+        local_travel = App.Vector(*layout.device_removal_vector(name))
+        world_travel = rotation.multVec(local_travel)
+        sweep, method = translation_sweep(
+            physical_shapes_by_name[name], tuple(world_travel)
+        )
         hits = [
-            obj.Name
-            for obj in physical_objects
-            if obj.Name != name
-            and obj.Name not in prior_removed
-            and obj.Name not in off_carrier_names
-            and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
+            other
+            for other, shape in obstacles.items()
+            if intersection_volume(sweep, shape) > TOL
         ]
         service_rows.append(
             {
@@ -919,17 +933,13 @@ def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
                 "off_carrier_parts_excluded_for_bench_service": sorted(
                     off_carrier_names
                 ),
-                "optical_removal_preparation": optical_preparation
-                if name == "ModuleFCEnvelope"
-                else None,
-                "optical_head_must_be_removed_first": optical_first,
-                "complete_optical_mount_removed": optical_first,
-                "temporarily_removed_head_parts": sorted(prior_removed),
-                "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. Remove the complete optical bracket before FC withdrawal; its ordered removal is checked by the optical service audit. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. Only the exact optical kit with valid native attachment may be excluded after removal; unknown or malformed optical stock remains an obstacle. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "optical_head_must_be_removed_first": False,
+                "complete_optical_mount_removed": False,
+                "temporarily_removed_head_parts": [],
+                "method": method,
+                "prerequisite": "Disconnect leads and release device retention before bare-device withdrawal. Detach the underside-radio carrier for bench access; the balloon is not modeled.",
                 "collisions": hits,
-                "passed": not hits
-                and (name != "ModuleFCEnvelope" or optical_preparation["passed"]),
+                "passed": not hits,
             }
         )
     return service_rows

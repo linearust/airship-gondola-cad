@@ -265,7 +265,6 @@ class BearingCaptureTests(unittest.TestCase):
             {row["bolt"] for row in result["cap_fasteners"]},
             {
                 "PortBearingCapNegativeBolt",
-                "PortBearingCapPositiveBolt",
                 "PortBearingCapInputBolt",
             },
         )
@@ -276,7 +275,7 @@ class BearingCaptureTests(unittest.TestCase):
         self.assertFalse(self.check()["passed"])
 
     def test_unseated_cap_fastener_cannot_claim_capture(self):
-        self.doc.PortBearingCapPositiveBolt.Placement.Base.z += 0.2
+        self.doc.PortBearingCapNegativeBolt.Placement.Base.z += 0.2
         self.doc.recompute()
         result = self.check()
         self.assertFalse(result["passed"], result)
@@ -1230,8 +1229,8 @@ class NativeGearedDriveTests(unittest.TestCase):
                     world_shape(self.doc.PortBearingCap),
                 ]
             ),
-            world_shape(self.doc.PortBearingCapPositiveBolt),
-            world_shape(self.doc.PortBearingCapPositiveNut),
+            world_shape(self.doc.PortBearingCapNegativeBolt),
+            world_shape(self.doc.PortBearingCapNegativeNut),
         )
 
     def test_split_clamp_has_seated_fasteners_and_full_nut_engagement(self):
@@ -2100,17 +2099,17 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 # drifting together with production constants. In particular,
                 # the raised beam is not at the central rail-foot bottom.
                 expected_sections = {
-                    "frame_foot_thickness": 5.0,
+                    "frame_foot_thickness": 9.5,
                     "rail_straight_base_width": 6.0,
                     "carrier_roof": 3.0,
                     "carrier_nut_pocket_bottom_opening": 0,
-                    "frame_crossbeam": 5.0,
+                    "frame_crossbeam": 9.5,
                     "integrated_saddle_roof": 3.0,
                     "bearing_cap_roof": 1.5,
                     "bearing_cap_nut_floor": 2.5,
                     "guard_radial_wall": 3.0,
                     "guard_axial_wall": 3.0,
-                    "guard_root_fan": 3.0,
+                    "guard_root_fan": 8.0,
                     "guard_rear_bridge": 3.0,
                     "guard_outer_return": 3.0,
                 }
@@ -2122,10 +2121,14 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                             row["measured_material_length_mm"], expected
                         )
                         self.assertTrue(row["passed"], row)
+                self.assertEqual(
+                    measurements["guard_root_fan"]["sample_line_mm"],
+                    [(9.5, -29, -4.01), (9.5, -29, 4.01)],
+                )
                 beam = measurements["frame_foot_thickness"]
                 self.assertEqual(beam["coordinate_frame"], "part local")
                 self.assertEqual(
-                    beam["sample_line_mm"], [(8, 20, 24.49), (8, 20, 29.51)]
+                    beam["sample_line_mm"], [(8, 20, 19.99), (8, 20, 29.51)]
                 )
                 from gondola.validation.manufacturing import material_length_on_line
 
@@ -2198,7 +2201,7 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 original = frame.Shape.copy()
                 try:
                     frame.Shape = original.cut(
-                        Part.makeBox(1, 1, 0.1, App.Vector(5.75, 40.3, 49.5))
+                        Part.makeBox(1, 1, 0.1, App.Vector(-6, 33.8, 49.5))
                     )
                     saved.recompute()
                     physical, missing = module_service_shapes(saved, saved_module)

@@ -170,6 +170,18 @@ def reserve_checks(doc):
     expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract(
         profile
     )
+    from .optical_envelopes import instrument_context
+
+    instrument_context_check = {"passed": False}
+    try:
+        _, _, _, carrier = instrument_context(doc.getObject("OpticalFlowModule"))
+        if list(registry.PrintedParts).count(carrier) != 1:
+            raise ValueError(
+                "Integral instrument carrier must be registered exactly once"
+            )
+        instrument_context_check = {"carrier": carrier.Name, "passed": True}
+    except (AttributeError, TypeError, ValueError) as error:
+        instrument_context_check["error"] = str(error)
     checks = []
     propulsion_routes = {
         row["object"]: row for row in propulsion_wiring_check(doc)["routes"]
@@ -331,6 +343,11 @@ def reserve_checks(doc):
                 "native_source_url_matches": source_url_matches,
                 "installed_connector_fit_remains_unverified": fit_unverified,
                 "neighbour_clearance_buffers": buffers,
+                "instrument_support_context": (
+                    instrument_context_check
+                    if name == "FCWiringClearanceReserve"
+                    else None
+                ),
                 "notes": str(getattr(obj, "Notes", "")),
                 "passed": not intersections
                 and shape.isValid()
@@ -342,7 +359,11 @@ def reserve_checks(doc):
                 and fit_unverified
                 and parent_matches
                 and all(row["passed"] for row in buffers)
-                and clearance_only,
+                and clearance_only
+                and (
+                    name != "FCWiringClearanceReserve"
+                    or instrument_context_check["passed"]
+                ),
             }
         )
     pairs = []

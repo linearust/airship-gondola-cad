@@ -1,6 +1,5 @@
 """The FC and optical head share one explicit native adjustment, without aliases."""
 
-import itertools
 import unittest
 
 try:
@@ -62,6 +61,9 @@ class OpticalCommonPlatformTests(unittest.TestCase):
             "OpticalMountBase",
             "OpticalPitchBolt",
             "OpticalFlowModuleRailMountScrew",
+            "OpticalSensorTray",
+            "OpticalFootBolt1",
+            "OpticalFootNut1",
         ):
             self.assertIsNone(doc.getObject(name))
         self.assertEqual(
@@ -70,9 +72,7 @@ class OpticalCommonPlatformTests(unittest.TestCase):
         self.assertEqual(
             doc.ElectronicsMount.getParentGeoFeatureGroup(), doc.InstrumentPitchStage
         )
-        self.assertEqual(
-            doc.OpticalSensorTray.getParentGeoFeatureGroup(), doc.OpticalSensorFrame
-        )
+        self.assertTrue(doc.OpticalFlowModule.Placement.isSame(App.Placement(), 1e-7))
 
     def test_old_modes_and_independent_sensor_control_fail_closed(self):
         from gondola.validation.optical import _source_evidence
@@ -92,25 +92,25 @@ class OpticalCommonPlatformTests(unittest.TestCase):
     def test_missing_wrong_parent_or_compensated_native_stage_is_rejected(self):
         from gondola.validation.optical_envelopes import motion_bounds
 
-        frame, tray = self.doc.OpticalSensorFrame, self.doc.OpticalSensorTray
-        frame.removeObject(tray)
-        self.doc.OpticalFlowModule.addObject(tray)
+        frame, sensor = self.doc.OpticalSensorFrame, self.doc.ModuleMTF02PEnvelope
+        frame.removeObject(sensor)
+        self.doc.OpticalFlowModule.addObject(sensor)
         with self.assertRaises(ValueError):
             motion_bounds(self.doc.OpticalFlowModule)
-        self.doc.OpticalFlowModule.removeObject(tray)
-        frame.addObject(tray)
+        self.doc.OpticalFlowModule.removeObject(sensor)
+        frame.addObject(sensor)
         frame.Placement.Base.x = 1
-        tray.Placement.Base.x = -1
+        sensor.Placement.Base.x = -1
         with self.assertRaises(ValueError):
             motion_bounds(self.doc.OpticalFlowModule)
         frame.Placement = App.Placement()
-        tray.Placement = App.Placement()
+        sensor.Placement = App.Placement()
         stage = self.doc.InstrumentPitchStage
         stage.setExpression("Placement.Base.z", None)
         with self.assertRaises(ValueError):
             motion_bounds(self.doc.OpticalFlowModule)
 
-    def test_continuous_tray_bounds_contain_full_saved_stock_at_registration_extremes(
+    def test_continuous_body_bounds_contain_full_saved_sensor_over_common_pitch(
         self,
     ):
         from gondola.cad import placed_shape
@@ -124,35 +124,33 @@ class OpticalCommonPlatformTests(unittest.TestCase):
             App.Vector(31, -17, 8), App.Rotation(App.Vector(1, 2, 3), 29)
         )
         self.doc.recompute()
-        bound = motion_bounds(self.doc.OpticalFlowModule)["MTF02PContinuousTrayBound"]
-        saved = local_shape(self.doc.OpticalSensorTray)
-        for angle, yaw, x, y in itertools.product(
-            (-20, 0, 20), (-3, 3), (-1, 1), (-1, 1)
-        ):
+        bound = motion_bounds(self.doc.OpticalFlowModule)["MTF02PContinuousBodyBound"]
+        saved = local_shape(self.doc.ModuleMTF02PEnvelope)
+        for angle in (-20, 0, 20):
             instrument_mount.set_pitch(self.doc, angle)
             shape = saved.copy()
-            shape.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
-            shape.translate(App.Vector(x, y, 0))
             shape = placed_shape(
                 shape, self.doc.OpticalSensorFrame.getGlobalPlacement()
             )
-            with self.subTest(angle=angle, yaw=yaw, x=x, y=y):
+            with self.subTest(angle=angle):
                 self.assertLess(abs(shape.cut(bound).Volume), 1e-5)
 
-    def test_unknown_tray_and_sensor_stock_cannot_be_ignored_by_power_envelopes(self):
+    def test_unknown_carrier_and_sensor_stock_cannot_be_ignored_by_power_envelopes(
+        self,
+    ):
         from gondola.validation.optical_envelopes import motion_bounds
 
-        tray = self.doc.OpticalSensorTray
-        original = tray.Shape.copy()
-        tray.Shape = tray.Shape.fuse(
-            Part.makeBox(1.5, 1, 1, App.Vector(26.5, 2, 0.5))
+        carrier = self.doc.ElectronicsMount
+        original = carrier.Shape.copy()
+        carrier.Shape = carrier.Shape.fuse(
+            Part.makeBox(1.5, 1, 1, App.Vector(32.5, 2, 18.5))
         ).removeSplitter()
         with self.assertRaisesRegex(ValueError, "stock"):
             motion_bounds(self.doc.OpticalFlowModule)
-        tray.Shape = original
+        carrier.Shape = original
         sensor = self.doc.ModuleMTF02PEnvelope
         sensor.Shape = sensor.Shape.fuse(
-            Part.makeBox(2, 2, 2, App.Vector(-1, -1, 40))
+            Part.makeBox(2, 2, 2, App.Vector(-1, -1, 65))
         ).removeSplitter()
         with self.assertRaisesRegex(ValueError, "sensor geometry"):
             motion_bounds(self.doc.OpticalFlowModule)
@@ -200,13 +198,9 @@ class OpticalCommonPlatformTests(unittest.TestCase):
         for profile in SENSOR_PROFILES.values():
             bound, metadata = external_field_bound(self.doc.OpticalFlowModule, profile)
             self.assertEqual(metadata["instrument_pitch_range_deg"], (-20, 20))
-            for angle, yaw, x, y in itertools.product(
-                (-20, -7, 0, 13, 20), (-3, 3), (-1, 1), (-1, 1)
-            ):
+            for angle in (-20, -7, 0, 13, 20):
                 instrument_mount.set_pitch(self.doc, angle)
                 field = optical_sensor.optical_reserve_shape(profile)
-                field.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
-                field.translate(App.Vector(x, y, 0))
                 field = placed_shape(
                     field, self.doc.OpticalSensorFrame.getGlobalPlacement()
                 )
@@ -215,5 +209,5 @@ class OpticalCommonPlatformTests(unittest.TestCase):
                 for vertex in field.Vertexes:
                     self.assertTrue(
                         bound.isInside(vertex.Point, 1e-5, True),
-                        (profile.key, angle, yaw, x, y, tuple(vertex.Point)),
+                        (profile.key, angle, tuple(vertex.Point)),
                     )

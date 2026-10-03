@@ -32,18 +32,14 @@ def split_cap_seating_check(frame, cap):
                 ]
             )
         )
-        hole = Part.Face(
-            Part.Wire(
-                Part.makeCircle(
-                    1.11,
-                    App.Vector(
-                        -5.5 if sign < 0 else 6.25, 34.5 if sign < 0 else 39.5, 50
-                    ),
-                    App.Vector(0, 0, 1),
+        if sign < 0:
+            hole = Part.Face(
+                Part.Wire(
+                    Part.makeCircle(1.11, App.Vector(-5.5, 33, 50), App.Vector(0, 0, 1))
                 )
             )
-        )
-        witnesses.append(patch.cut(hole))
+            patch = patch.cut(hole)
+        witnesses.append(patch)
     witness = Part.makeCompound(witnesses)
     keys = union([box(3, 3, 1.5, (x, 28, 50)) for x in (-9, 6)]).cut(
         Part.makeCylinder(2.8, 20, App.Vector(0, 24, 50), App.Vector(0, 1, 0))
@@ -99,8 +95,7 @@ def cap_nut_seat_ligament_check(frame):
     # Crops include each complete nut pocket and its side opening, while
     # excluding the separate bearing cavities. Distances use actual cut stock.
     for name, x, width, y in (
-        ("Negative", -9.5, 7, 34.5),
-        ("Positive", 2.5, 7, 39.5),
+        ("Negative", -9.5, 7, 33.0),
         ("Input", 20, 7, 33),
     ):
         air = Part.makeBox(width, 4.25, 1.8, App.Vector(x, y - 2.125, 45.7)).cut(frame)
@@ -122,7 +117,7 @@ def cap_nut_seat_ligament_check(frame):
     return {
         "minimum_required_wall_mm": 1.5,
         "nut_pockets": rows,
-        "scope": "Three actual lower-housing nut cavities against all three literal diameter-6 bearing seats, plus continuous solid stock along each shortest ligament. This local wall screen is not a strength or bearing-preload qualification.",
+        "scope": "Two actual lower-housing nut cavities against all three literal diameter-6 bearing seats, plus continuous solid stock along each shortest ligament. This local wall screen is not a strength or bearing-preload qualification.",
         "passed": all(row["passed"] for row in rows),
     }
 

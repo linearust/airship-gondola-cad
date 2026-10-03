@@ -183,7 +183,7 @@ def carrier_metal_clearance_check(doc, prefix):
     ]
     metal_names.extend(
         prefix + "BearingCap" + side + kind
-        for side in ("Negative", "Positive", "Input")
+        for side in ("Negative", "Input")
         for kind in ("Bolt", "Nut")
     )
     objects = [doc.getObject(name) for name in names + metal_names]

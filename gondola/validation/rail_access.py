@@ -150,7 +150,6 @@ def _mount_service_regions(name, shape, offset):
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
-        "OpticalSensorTray",
     }
     if name == "ElectronicsMount":
         # Actual moving plate/lug stock in the rail attachment frame. The neutral
@@ -452,7 +451,6 @@ def supported_carrier_slide(shapes, obstacles, pose):
             "InstrumentMountBase",
             "ElectronicsMount",
             "AccessoryMount",
-            "OpticalSensorTray",
         }:
             row = _lift_path(name, shape, obstacles, 0, waypoints=path)
         elif name.endswith("RailMountScrew"):

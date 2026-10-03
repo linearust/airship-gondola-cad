@@ -284,12 +284,7 @@ def host_placement(
     host = main_doc.getObject(host_name)
     if host is None:
         raise ValueError("Missing power-platform host")
-    frame = (
-        main_doc.InstrumentPitchStage
-        if host_name == "ElectronicsEquipmentModule"
-        else host
-    )
-    return frame.getGlobalPlacement().multiply(
+    return host.getGlobalPlacement().multiply(
         stack_interface.host_placement(
             host_name,
             z=stack_interface.HOST_SUPPORT_Z

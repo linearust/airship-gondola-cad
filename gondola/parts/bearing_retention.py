@@ -18,9 +18,9 @@ INPUT_BEARING_X = 16.0
 INPUT_BEARING_Y = 5.0
 INPUT_BODY_FRONT_Y, INPUT_BODY_REAR_Y = 1.0, 9.0
 INPUT_BODY_OUTER_X = 26.5
+INPUT_WING_ROOT_RADIUS = 0.75
 CAP_FASTENER_STATIONS = (
-    ("Negative", -5.5, 6.5),
-    ("Positive", 6.25, 11.5),
+    ("Negative", -5.5, INPUT_BEARING_Y),
     ("Input", 23.0, INPUT_BEARING_Y),
 )
 SEAT_WIDTH = 3.0
@@ -145,6 +145,25 @@ def _housing_stock(bottom_z):
             CAP_TOP_Z - bottom_z,
             (BODY_HALF_WIDTH - 1, INPUT_BODY_FRONT_Y, bottom_z),
         )
+    )
+    from .edge_blends import fillet_selected, near
+
+    # Concave plan-view roots join the T wing without extending into the
+    # distal shaft/tool corridor. Both halves share this exact split outline.
+    body = fillet_selected(
+        body.removeSplitter(),
+        INPUT_WING_ROOT_RADIUS,
+        lambda edge, bounds: (
+            near(bounds.XMin, BODY_HALF_WIDTH)
+            and near(bounds.XLength, 0)
+            and near(bounds.YLength, 0)
+            and any(
+                near(bounds.YMin, y) for y in (INPUT_BODY_FRONT_Y, INPUT_BODY_REAR_Y)
+            )
+            and near(bounds.ZLength, CAP_TOP_Z - bottom_z)
+        ),
+        2,
+        "Shared bearing T-wing concave roots",
     )
     # This separate broad thrust land contacts the gear web, never a shield.
     return body.fuse(_cylinder(GEAR_STOP_OUTER_RADIUS, GEAR_STOP_Y, 1)).removeSplitter()

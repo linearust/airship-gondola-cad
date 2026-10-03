@@ -7,12 +7,11 @@ is a qualification of print fit, clamp retention, cable flex or calibration.
 
 import itertools
 import json
-import math
 
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, placed_shape, union, world_shape
+from gondola.cad import belongs_to_group, placed_shape, world_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
     instrument_mount,
@@ -20,7 +19,6 @@ from gondola.parts import (
     optical_mount,
     optical_sensor,
     propulsion_wiring,
-    slot_bearing,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
@@ -28,12 +26,7 @@ from gondola.print_export import geometry_comparison
 from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape
 from .optical_envelopes import PITCH_SAMPLE_ANGLES, instrument_context, motion_bounds
-from .optical_service import (
-    CLAMP_CENTRES,
-    mount_tool_check,
-    mounting_service_check,
-    tray_stock_enclosures,
-)
+from .optical_service import mounting_service_check
 from .wiring import RESERVES, collision_hits, measure_clearances, named_gap_checks
 
 TOL = 1e-5
@@ -64,6 +57,7 @@ def _native_structure_check(doc):
             "ClearanceVolumes",
             "FitCoupons",
             "OpticalMountParts",
+            "InstrumentMountParts",
             "TapeReferences",
             "RailLocks",
             "Modules",
@@ -129,6 +123,11 @@ def _native_structure_check(doc):
         "OpticalRollBracket",
         "OpticalFlowModuleRailMountScrew",
         "OpticalFlowModuleRailMountNut",
+        "OpticalSensorTray",
+        "OpticalFootBolt1",
+        "OpticalFootBolt2",
+        "OpticalFootNut1",
+        "OpticalFootNut2",
     ):
         if doc.getObject(name) is not None:
             errors.append(
@@ -277,6 +276,16 @@ def _source_evidence(doc):
                 for name in ("Pitch", "Roll", "MinimumAngle", "MaximumAngle")
             )
         )
+        support = doc.ElectronicsMount
+        inventory["integral_support"] = (
+            list(registry.PrintedParts).count(support) == 1
+            and list(registry.InstrumentMountParts).count(support) == 1
+            and list(registry.EquipmentMounts).count(support) == 1
+            and support not in registry.HardwareParts
+            and support not in registry.ReferenceParts
+            and support not in registry.ClearanceVolumes
+            and getattr(support, "PrintSKU", "") == "InstrumentCarrier"
+        )
         module_ok = (
             all(group_metadata.values())
             and fixed_frame
@@ -302,144 +311,48 @@ def _source_evidence(doc):
 
 
 def _rigid_interface_checks(doc):
-    """Literal stock and bearing witnesses for the two opposed M2 clamps."""
-    group = doc.OpticalFlowModule
-    inverse = group.getGlobalPlacement().inverse()
-    plate = world_shape(doc.ElectronicsMount)
-    plate.Placement = inverse.multiply(plate.Placement)
-    foot = local_shape(doc.OpticalSensorTray)
-    witness = Part.makeBox(54, 8, 1.5, V(-27, -4, 0))
-    witness = witness.cut(Part.makeBox(12, 5, 2, V(-6, -4, 0)))
-    for x, y in CLAMP_CENTRES.values():
-        witness = witness.cut(Part.makeCylinder(1.1, 1.7, V(x, y, -0.1)))
-    missing = abs(witness.cut(foot).Volume)
-    rows = [
-        {
-            "kind": "complete_1_5mm_foot_floor",
-            "missing_stock_mm3": missing,
-            "passed": missing <= TOL,
-        }
+    """Independent stock witnesses for the integral bridge and adhesive pad."""
+    shape = local_shape(doc.ElectronicsMount)
+    witnesses = [
+        ("negative_diagonal_post", Part.makeBox(4, 4, 22, V(-31.5, -31.5, 19))),
+        ("positive_diagonal_post", Part.makeBox(4, 4, 22, V(27.5, 27.5, 19))),
+        ("continuous_adhesive_pad", Part.makeBox(18, 12, 2, V(-9, -6, 42))),
     ]
-    notch_stock = intersection_volume(foot, Part.makeBox(12, 5, 2, V(-6, -4, 0)))
-    rows.append(
-        {
-            "kind": "FC_underbody_notch",
-            "unexpected_stock_mm3": notch_stock,
-            "passed": notch_stock <= TOL,
-        }
-    )
-    # Rotate the real plate so the existing independent slot-bearing test's
-    # transverse X direction corresponds to this pair's transverse Y direction.
-    transverse = plate.copy()
-    transverse.rotate(V(), V(0, 0, 1), -90)
-    for index, (x, y) in CLAMP_CENTRES.items():
-        passage = Part.makeCylinder(1, 4, V(x, y, -2))
-        volume = intersection_volume(passage, plate) + intersection_volume(
-            passage, foot
-        )
+    diagonal_length = 62 * 2**0.5
+    roof = Part.makeBox(diagonal_length, 5, 3, V(-diagonal_length / 2, -2.5, 41))
+    roof.rotate(V(), V(0, 0, 1), 45)
+    witnesses.append(("diagonal_roof", roof))
+    rows = []
+    for name, witness in witnesses:
+        missing = abs(witness.cut(shape).Volume)
         rows.append(
-            {
-                "kind": "complete_M2_passage",
-                "index": index,
-                "intersection_mm3": volume,
-                "passed": volume <= TOL,
-            }
+            {"kind": name, "missing_stock_mm3": missing, "passed": missing <= TOL}
         )
-        rows.append(
-            {
-                "kind": "centred_slot_head_bearing",
-                "index": index,
-                **slot_bearing.check(
-                    transverse,
-                    (y, -x),
-                    -2,
-                    maximum_slot_width=2.9,
-                    minimum_screw_diameter=1.8,
-                ),
-            }
-        )
-        for side in (-1, 1):
-            land = Part.makeBox(
-                1, 0.35, 0.2, V(x - 0.5, y + (1.35 if side == 1 else -1.7), 1.3)
-            )
-            loss = abs(land.cut(foot).Volume)
-            rows.append(
-                {
-                    "kind": "nut_floor_bearing_land",
-                    "index": index,
-                    "side": side,
-                    "missing_stock_mm3": loss,
-                    "passed": loss <= TOL,
-                }
-            )
-    overlap = intersection_volume(plate, foot)
-    # Maximum slot and foot-hole size, minimum received shank. Translation and
-    # yaw follow the two separate screw axes; no unmodeled locator is credited.
-    axis_allowance = (2.9 - 1.8) / 2 + (2.5 - 1.8) / 2
-    yaw = math.asin(2 * axis_allowance / 38)
-    x_bound = axis_allowance + 19 * (1 - math.cos(yaw))
-    registration = {
-        "required_xy_bound_mm": (x_bound, axis_allowance),
-        "required_yaw_bound_deg": math.degrees(yaw),
-        "passed": optical_interface.MAX_REGISTRATION_X >= x_bound
-        and optical_interface.MAX_REGISTRATION_Y >= axis_allowance
-        and optical_interface.MAX_REGISTRATION_YAW_RAD >= yaw,
-    }
+    # Complete36mm-square underbody footprint, not only a narrow wire lane.
+    underbody = Part.makeBox(36, 36, 8, V(-18, -18, 19))
+    underbody.rotate(V(), V(0, 0, 1), -45)
+    intrusion = intersection_volume(shape, underbody)
+    wire = wiring_reserves.reserve_shapes()["FCWiringClearanceReserve"]
+    wire_intrusion = intersection_volume(shape, wire)
+    # Empty channel beneath the optical bridge remains available for FC
+    # service. It is independent of any source-generated cavity or mesh.
+    channel = Part.makeBox(16, 57, 21.5, V(-8, -28.5, 19.5))
+    channel_intrusion = intersection_volume(shape, channel)
+    sensor_floor = local_shape(doc.ModuleMTF02PEnvelope).BoundBox.ZMin
+    adhesive_gap = sensor_floor - 44
     return {
         "support": "ElectronicsMount",
         "witnesses": rows,
-        "overlap_mm3": overlap,
-        "registration_bound": registration,
-        "passed": overlap <= TOL
-        and registration["passed"]
-        and all(row["passed"] for row in rows),
-        "scope": "Two opposed slot-end clamps on the same common plate, without a locating tongue or independent pitch joint. Literal foot floor, complete M2 passages and head/nut bearing lands are required. The conservative assembly registration reserve includes pre-clamp hole clearance; actual flat-head centring, print finishing, preload, PA12 creep and physical FC/sensor calibration remain unqualified.",
-    }
-
-
-def _nut_recess_checks(doc):
-    from gondola.parts.purchased_hardware import hex_prism
-
-    rows = []
-    for index, (x, y) in CLAMP_CENTRES.items():
-        support = local_shape(doc.OpticalSensorTray)
-        support.translate(V(-x, -y, -1.5))
-        nut = hex_prism(3.8, 1.35).cut(Part.makeCylinder(1, 1.55, V(0, 0, -0.1)))
-        overlap = intersection_volume(nut, support)
-        turns = []
-        for angle in (-30, 30):
-            rotated = nut.copy()
-            rotated.rotate(V(), V(0, 0, 1), angle)
-            turns.append(intersection_volume(rotated, support))
-        lengths = [
-            support.common(
-                Part.makeLine(V(0, side * 1.5, -1.5), V(0, side * 1.5, 0))
-            ).Length
-            for side in (-1, 1)
-        ]
-        actual = doc.getObject(f"OpticalFootNut{index}")
-        follows = (
-            actual is not None
-            and actual.getParentGeoFeatureGroup() == doc.OpticalFlowModule
-        )
-        rows.append(
-            {
-                "nut": f"OpticalFootNut{index}",
-                "support": "OpticalSensorTray",
-                "aligned_minimum_nut_overlap_mm3": overlap,
-                "turn_30deg_obstruction_mm3": turns,
-                "nut_follows_its_seat": follows,
-                "retained_floor_lengths_mm": lengths,
-                "passed": overlap <= TOL
-                and min(turns) > TOL
-                and follows
-                and all(abs(length - 1.5) <= TOL for length in lengths),
-            }
-        )
-    return {
-        "seats": rows,
-        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
-        "scope": "Open shallow pockets resist a minimum nominal nut's rotation but do not retain a loose nut axially. Chamfers, physical fit and loaded retention require inspection.",
+        "fc_underbody_intrusion_mm3": intrusion,
+        "fc_connector_and_wire_intrusion_mm3": wire_intrusion,
+        "central_channel_intrusion_mm3": channel_intrusion,
+        "nominal_adhesive_allowance_mm": adhesive_gap,
+        "passed": all(row["passed"] for row in rows)
+        and intrusion <= TOL
+        and wire_intrusion <= TOL
+        and channel_intrusion <= TOL
+        and abs(adhesive_gap - 1) <= TOL,
+        "scope": "The optical pad, one 5×3 mm diagonal roof beam and two 4×4 mm posts are one solid with the FC carrier. Independent literal stock and clearance witnesses preserve the continuous 18×12×2 mm pad, full FC underbody and central channel. No foot fasteners, independent hinge or inferred self-alignment are credited. Printed stiffness, adhesive retention and actual sensor registration remain unqualified.",
     }
 
 
@@ -535,12 +448,6 @@ def _placement_checks(doc, physical, kit, *, profile=None):
             validation_cache=cache,
         )
         registration = []
-        tray_regions, missing_tray_stock = tray_stock_enclosures(
-            local_shape(doc.OpticalSensorTray)
-        )
-        tray_registration = union(
-            [optical_interface.registration_bound(region) for region in tray_regions]
-        )
         for name, shape in (
             ("body", optical_sensor.envelope_shape(profile)),
             ("connector", optical_sensor.connector_reserve_shape(profile)),
@@ -568,24 +475,6 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                     "passed": not hits and all(row["passed"] for row in gaps),
                 }
             )
-        tray_bound = placed_shape(tray_registration, frame.getGlobalPlacement())
-        tray_hits = collision_hits(
-            tray_bound, external, tolerance=TOL, validation_cache=cache
-        )
-        tray_gaps = measure_clearances(
-            tray_bound, reservations, tolerance=TOL, validation_cache=cache
-        )
-        registration.append(
-            {
-                "component": "bracket",
-                "uncovered_saved_stock_mm3": missing_tray_stock,
-                "external_obstructions": tray_hits,
-                "reserved_space_clearances": tray_gaps,
-                "passed": missing_tray_stock <= TOL
-                and not tray_hits
-                and all(row["passed"] for row in tray_gaps),
-            }
-        )
         neighbours = named_gap_checks(
             {
                 **fixed,
@@ -598,7 +487,6 @@ def _placement_checks(doc, physical, kit, *, profile=None):
             tolerance=TOL,
             validation_cache=cache,
         )
-        tools = mount_tool_check(group, {**external, **own, **reservations})
         relative = (
             doc.ModuleFCEnvelope.getGlobalPlacement()
             .inverse()
@@ -616,7 +504,6 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 "optical_reserved_space_intrusions": field_reserve_hits,
                 "connector_reserved_space_clearances": connector_gaps,
                 "neighbour_clearance_buffers": neighbours,
-                "mounting_tool_access": tools,
                 "assembly_registration_checks": registration,
                 "native_rotation_matches": control,
                 "fc_to_sensor_transform_invariant": invariant,
@@ -634,7 +521,6 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 and all(
                     row["passed"] for row in connector_gaps + neighbours + registration
                 )
-                and tools["passed"]
                 and control
                 and invariant,
             }
@@ -667,19 +553,15 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 (box.XMin, box.XMax), (box.YMin, box.YMax), (box.ZMin, box.ZMax)
             )
         )
-        + 19
         - 8
         + optical_sensor.SENSOR_BOTTOM_Z
         + profile.optical_origin_min_z_mm
-        + math.sqrt(2)
     )
     continuous = []
     for name in (
         f"{profile.key}ContinuousOpticalFieldBound",
-        f"{profile.key}ContinuousTrayBound",
         f"{profile.key}ContinuousBodyBound",
         f"{profile.key}ContinuousConnectorBound",
-        "OpticalMountToolAccessBound",
     ):
         hits = collision_hits(
             bounds[name],
@@ -705,7 +587,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
         ),
         "passed": all(row["passed"] for row in rows + continuous)
         and body_depth <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
-        "scope": "All optical stock, sensor alternatives, connector and tool reserves share the FC's bounded native stage. Relative instrument geometry remains fixed; conservative continuous bounds check external solids and all named reserves. The separate instrument-joint audit checks the plate, FC and intended pivot/arc-lock contacts.",
+        "scope": "Both optical sensor alternatives and connector reserves share the FC's bounded native stage. The complete integral carrier is source-bound and checked by the instrument audit. Relative instrument geometry remains fixed; conservative continuous bounds check external solids and all named reserves. The separate instrument-joint audit checks the plate, FC and intended pivot/arc-lock contacts.",
     }
 
 
@@ -736,7 +618,7 @@ def _restore_sensor_state(doc, state):
 def mtf_sensor_check(doc):
     """Audit the saved common instrument assembly without saving or retaining changes."""
     report = {
-        "scope": "One rigid optical bracket shares the FC instrument stage. Both mutually exclusive sensors, complete saved stock, fixed relative transform, continuous external envelopes, two mounting joints and ordered disconnected service are checked. No independent optical pitch or separate rail attachment is modeled. Print fit, clamp retention, FC damper compliance, optical origins and measured calibration remain unqualified."
+        "scope": "One integral carrier supports FC and optical sensor on the common pitch stage. Both mutually exclusive sensors, complete saved stock, fixed relative transform, continuous external envelopes and disconnected sensor service are checked. No separate optical bracket, foot fasteners or independent pitch is modeled. Print fit, clamp retention, adhesive positioning, FC damper compliance, optical origins and measured calibration remain unqualified."
     }
     evidence = _source_evidence(doc)
     report["source_evidence"] = evidence
@@ -750,7 +632,6 @@ def mtf_sensor_check(doc):
         report["passed"] = False
         return report
     report["rigid_interface"] = _rigid_interface_checks(doc)
-    report["nut_recesses"] = _nut_recess_checks(doc)
     group = doc.OpticalFlowModule
     old_model, old_pitch = str(group.SensorModel), float(doc.InstrumentPitchStage.Pitch)
     state = _saved_sensor_state(doc)
@@ -775,10 +656,8 @@ def mtf_sensor_check(doc):
                 "passed"
             ]
         report.update(selected_sensor_model=old_model, sensor_alternatives=alternatives)
-        report["passed"] = (
-            report["rigid_interface"]["passed"]
-            and report["nut_recesses"]["passed"]
-            and all(row["passed"] for row in alternatives.values())
+        report["passed"] = report["rigid_interface"]["passed"] and all(
+            row["passed"] for row in alternatives.values()
         )
         return report
     finally:

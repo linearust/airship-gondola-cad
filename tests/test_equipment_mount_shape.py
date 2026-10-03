@@ -111,7 +111,10 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 self.assertAlmostEqual(bounds.XMax, 33)
                 self.assertAlmostEqual(bounds.YMin, -33)
                 self.assertAlmostEqual(bounds.YMax, 33)
-                envelope = Part.makeBox(66, 66, 25, App.Vector(-33, -33, -1))
+                top = 44 if kind == "electronics" else 24
+                if kind == "electronics":
+                    self.assertAlmostEqual(bounds.ZMax, 44)
+                envelope = Part.makeBox(66, 66, top + 1, App.Vector(-33, -33, -1))
                 self.assertLess(shape.cut(envelope).Volume, 1e-6)
 
     def test_plate_outline_is_centred_rounded_and_half_turn_symmetric(self):
@@ -608,53 +611,101 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentServiceTests(unittest.TestCase):
-    def test_prior_optical_removal_requires_exact_known_kit(self):
+    def test_fc_service_retains_integral_support_and_sensor(self):
         from gondola.config import BASELINE_FILE
         from gondola.provenance import file_sha256
-        from gondola.validation.equipment import _optical_removal_preparation
+        from gondola.validation.equipment import mounting_check
 
         before = file_sha256(BASELINE_FILE)
         doc = App.openDocument(str(BASELINE_FILE), hidden=True)
         try:
-            registry = doc.DesignRegistry
-            objects = [
-                obj
-                for key in (
-                    "PrintedParts",
-                    "HardwareParts",
-                    "ReferenceParts",
-                    "TapeReferences",
-                )
-                for obj in getattr(registry, key)
-            ]
-            good = _optical_removal_preparation(doc, objects)
-            self.assertTrue(good["passed"], good)
+            report = mounting_check(doc)
+            self.assertTrue(report["passed"], report)
+            row = next(
+                item
+                for item in report["device_service"]
+                if item["device"] == "ModuleFCEnvelope"
+            )
+            self.assertTrue(row["passed"], row)
             self.assertEqual(
-                good["expected_physical_parts"],
-                sorted(
-                    (
-                        "OpticalSensorTray",
-                        "ModuleMTF02PEnvelope",
-                        "OpticalFootBolt1",
-                        "OpticalFootNut1",
-                        "OpticalFootBolt2",
-                        "OpticalFootNut2",
-                    )
+                row["local_waypoints_mm"], [(0, 0, 0), (60, 0, 0), (60, 0, 32)]
+            )
+            self.assertEqual(row["temporarily_removed_head_parts"], [])
+            self.assertFalse(row["optical_head_must_be_removed_first"])
+            self.assertIn("ElectronicsMount", row["path"]["obstacles"])
+            self.assertIn("ModuleMTF02PEnvelope", row["path"]["obstacles"])
+            from gondola.parts import instrument_mount
+
+            instrument_mount.set_pitch(doc, 10)
+            nonneutral = next(
+                item
+                for item in mounting_check(doc)["device_service"]
+                if item["device"] == "ModuleFCEnvelope"
+            )
+            self.assertFalse(nonneutral["passed"])
+            self.assertFalse(nonneutral["neutral_pitch_confirmed"])
+            instrument_mount.set_pitch(doc, 0)
+            doc.DesignRegistry.PrintedParts = [
+                p for p in doc.DesignRegistry.PrintedParts if p != doc.ElectronicsMount
+            ]
+            row = next(
+                item
+                for item in mounting_check(doc)["device_service"]
+                if item["device"] == "ModuleFCEnvelope"
+            )
+            self.assertFalse(row["passed"])
+            self.assertIsNotNone(row["native_frame_error"])
+        finally:
+            App.closeDocument(doc.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), before)
+
+    def test_integral_bridge_allows_only_declared_stock_above_deck(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
+        from gondola.validation.equipment import _carrier_support_checks
+        from gondola.validation.geometry import local_shape
+
+        before = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        try:
+            mount = doc.ElectronicsMount
+            original = local_shape(mount)
+            placement = mount.Placement
+            changes = {
+                # Remove half of one known post above its root blend, without
+                # changing the roof height or the overall upper bounding box.
+                "missing_post_stock": original.cut(
+                    Part.makeBox(2, 4, 10, App.Vector(29.5, 27.5, 25))
                 ),
-            )
-            missing = [obj for obj in objects if obj.Name != "OpticalFootNut2"]
-            self.assertFalse(_optical_removal_preparation(doc, missing)["passed"])
-            duplicate = objects + [doc.OpticalFootNut2]
-            self.assertFalse(_optical_removal_preparation(doc, duplicate)["passed"])
-            blocker = doc.addObject("Part::Feature", "UnexpectedOpticalStock")
-            doc.OpticalFlowModule.addObject(blocker)
-            blocker.Shape = Part.makeBox(1, 1, 1)
-            doc.recompute()
-            # Unknown stock is rejected even when it has not entered a registry.
-            self.assertFalse(_optical_removal_preparation(doc, objects)["passed"])
-            self.assertFalse(
-                _optical_removal_preparation(doc, objects + [blocker])["passed"]
-            )
+                # A joined extra post remains below the approved44mm roof and
+                # inside the plate outline; a ZMax-only check would miss it.
+                "extra_post_stock": original.fuse(
+                    Part.makeBox(2, 2, 10, App.Vector(-1, -1, 18))
+                ),
+                # Also require unknown stock beyond the reference footprint to
+                # enter the above-plane audit, rather than being cropped away.
+                "outside_bridge_stock": original.fuse(
+                    Part.makeBox(7, 2, 3, App.Vector(30, 29, 25))
+                ),
+            }
+            for name, changed in changes.items():
+                with self.subTest(name=name):
+                    self.assertAlmostEqual(changed.BoundBox.ZMax, 44)
+                    mount.Shape = changed
+                    mount.Placement = placement
+                    doc.recompute()
+                    row = next(
+                        row
+                        for row in _carrier_support_checks(doc)
+                        if row["object"] == "ElectronicsMount"
+                    )
+                    self.assertFalse(row["passed"], row)
+                    self.assertFalse(
+                        row["no_unverified_device_posts_above_support_face"], row
+                    )
+                    self.assertGreater(
+                        row["above_support_face_comparison"]["difference_mm3"], 1
+                    )
         finally:
             App.closeDocument(doc.Name)
             self.assertEqual(file_sha256(BASELINE_FILE), before)
@@ -681,7 +732,7 @@ class EquipmentServiceTests(unittest.TestCase):
                 host.getGlobalPlacement().inverse().multiply(world_placement)
             )
             doc.recompute()
-            # A small optical child in the FC's upward removal path must remain
+            # A small optical child in the FC lateral removal path must remain
             # an obstacle even if a malformed saved file reparents that group
             # onto the FC carrier. The former host-release exemption hid it.
             bounds = world_shape(doc.ModuleFCEnvelope).BoundBox
@@ -689,7 +740,9 @@ class EquipmentServiceTests(unittest.TestCase):
                 2,
                 2,
                 2,
-                App.Vector(bounds.Center.x - 1, bounds.Center.y - 1, bounds.ZMax + 5),
+                App.Vector(
+                    bounds.Center.x - 31, bounds.Center.y - 1, bounds.Center.z - 1
+                ),
             )
             expected_world = obstruction.copy()
             obstruction.Placement = (

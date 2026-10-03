@@ -15,7 +15,8 @@ from gondola.cad import box, create_group, create_printed_part, set_property, un
 from gondola.contracts import equipment_interfaces, fasteners
 from gondola.contracts import instrument_mount as spec
 
-from . import mounting_plate, purchased_hardware, rail, stack_interface
+from . import mounting_plate, optical_mount, purchased_hardware, rail, stack_interface
+from .edge_blends import fillet_selected, near
 
 V = App.Vector
 
@@ -118,7 +119,7 @@ def base_shape():
 
 
 def upper_shape():
-    """Same plate datums/openings, with its rotating support entirely below."""
+    """Dedicated integral FC/flow carrier sharing the fixed carrier plate template."""
     pz = spec.PIVOT_UPPER_MM[2]
     dx, dz = spec.LOCK_OFFSET_XZ_MM
     width = spec.LUG_WIDTH_MM
@@ -142,7 +143,23 @@ def upper_shape():
     # Re-cut through the unchanged plate only; every original opening remains.
     for cutter in mounting_plate.cutters(16.99, 2.02):
         shape = shape.cut(cutter)
-    return _finished(shape, "upper common plate")
+    shape = union([shape, optical_mount.optical_support_shape()]).removeSplitter()
+    # Short root blends reinforce the two diagonal posts without closing any
+    # plate opening or the FC edge wiring reserve.
+    shape = fillet_selected(
+        shape,
+        0.25,
+        lambda edge, bounds: (
+            near(bounds.ZLength, 0)
+            and near(bounds.ZMin, 19)
+            and near(edge.Length, 4)
+            and (bounds.XMin >= 26.9 or bounds.XMax <= -26.9)
+            and (bounds.YMin >= 26.9 or bounds.YMax <= -26.9)
+        ),
+        8,
+        "Integral optical bridge post roots",
+    )
+    return _finished(shape, "integral FC and optical carrier")
 
 
 def stage_placement(angle):
@@ -189,7 +206,9 @@ def hardware_shapes():
 
 def mount_contract():
     return {
-        "mechanism": "Setup-only common instrument plate with fixed pivot and off-axis arc-slot clamp",
+        "mechanism": "Dedicated integral FC and optical levelling carrier with fixed pivot and off-axis arc-slot clamp",
+        "fixed_universal_carrier_interchangeable": False,
+        "shared_interfaces": "Same rail shoe and 66mm plate hole template. The integral optical bridge restricts payload and stack access; this is a separate carrier variant.",
         "axis": "Module-local Y",
         "angle_limit_deg": spec.PITCH_LIMIT_DEG,
         "pivot_module_mm": spec.PIVOT_MODULE_MM,
@@ -216,6 +235,7 @@ def mount_contract():
         "hardware": "Two M3x16 button-head screws and ordinary M3 nuts, in addition to the unchanged M3x10 rail clamp. No washers or bearings.",
         "fit": "0.2 mm total nominal side-face reserve permits free insertion before finishing. Fit the broad opposing lug/cheek faces freely, then clamp both joints with faces seated. Do not force an oversized print into the yoke, leave operating side play, or assume the stated reserve proves an acceptable elastic deflection or preload. Trial actual nuts in the open outer pockets; antirotation and retention need physical checks.",
         "assembly": "Support the instruments. Place the upper lug between the yoke cheeks, insert both M3 screws from negative Y and ordinary nuts freely from positive Y. Loosen both joints for setup, align, then tighten both while maintaining contact. Remove the nuts and withdraw both screws before lifting the complete upper assembly. Disconnect leads first.",
+        "fc_service": "Return to neutral 0 degrees; disconnect leads and remove actual FC bolts, nuts and spacers/dampers blocking lateral movement. Slide the bare FC local +X60 mm, then +Z32 mm, retaining the optical sensor. Restore and verify the calibrated body-reference setup angle before operation. Actual fastening stack and tool envelopes remain unmeasured.",
         "qualification": "Nominal single-axis setup mechanism, not automatic or in-flight levelling. Native limits are planning controls, not physical angle stops. Printed stiffness, clamp friction, creep, vibration, actual FC damper compliance and the measured IMU/sensor transform remain unqualified.",
         "holding_torque_verified": False,
         "self_levelling": False,
@@ -254,7 +274,7 @@ def build_mount(doc, electronics_module):
         doc,
         stage,
         "ElectronicsMount",
-        "PRINT | Common instrument pitch plate",
+        "PRINT | FC+optical levelling carrier",
         upper_shape(),
         equipment_mounts.PRINT_ROTATION,
         notes["qualification"],
@@ -272,6 +292,10 @@ def build_mount(doc, electronics_module):
         json.dumps(equipment_mounts.mount_contract("electronics"), sort_keys=True),
     )
     set_property(upper, "HalfTurnSymmetric", False, "App::PropertyBool")
+    set_property(
+        upper, "FixedUniversalCarrierInterchangeable", False, "App::PropertyBool"
+    )
+    set_property(upper, "OpticalSupportIntegral", True, "App::PropertyBool")
     set_property(upper, "MountingStackVerified", False, "App::PropertyBool")
     set_property(upper, "EquipmentFaceZ", 19, "App::PropertyLength")
     set_property(upper, "SourceURL", equipment_interfaces.FC_SOURCE)

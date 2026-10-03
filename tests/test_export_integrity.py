@@ -41,6 +41,7 @@ class ExportIntegrityTests(unittest.TestCase):
             "gondola.parts.optical_sensor": Mock(),
             "gondola.parts.stack_interface": Mock(),
             "gondola.validation.optical": Mock(),
+            "gondola.validation.optical_envelopes": Mock(),
             "gondola.validation.wiring": Mock(),
             "gondola.parts.equipment_mounts": Mock(),
             "gondola.contracts.equipment_interfaces": Mock(),

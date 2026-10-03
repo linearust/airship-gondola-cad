@@ -434,38 +434,55 @@ def battery_check(doc, objects):
         name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
     ]
     optical_group = doc.getObject("OpticalFlowModule")
-    tower_names = {"OpticalSensorTray"}
+    tower_names = {"ElectronicsMount"}
     tower_gaps = [
         {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
         for name, shape in obstacles
         if name in tower_names
     ]
-    from gondola.parts import optical_interface
+    from .geometry import local_shape
+    from .optical_envelopes import registered_instrument_bound
 
     float_rows = []
-    tower = next((obj for obj in objects if obj.Name in tower_names), None)
-    component_bounds = optical_interface.base_component_proxies()
-    expected_components = {name for name, _ in component_bounds}
-    if tower is not None:
-        for component, envelope in component_bounds:
-            envelope = optical_interface.registration_bound(envelope)
-            frame = optical_group
-            envelope.Placement = frame.getGlobalPlacement().multiply(envelope.Placement)
-            gap = swept.distToShape(envelope)[0]
-            float_rows.append(
-                {
-                    "component": component,
-                    "minimum_gap_mm": gap,
-                    "passed": gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
-                }
+    expected_components = {"IntegralOpticalBridge"}
+    carriers = [obj for obj in objects if obj.Name == "ElectronicsMount"]
+    if len(carriers) == 1:
+        row = {"component": "IntegralOpticalBridge", "passed": False}
+        try:
+            # Inspect the saved integral stock above the unchanged deck datum.
+            # Never substitute a freshly generated ideal bridge: added, removed
+            # or shifted stock must remain visible to this clearance audit.
+            carrier = local_shape(carriers[0])
+            bounds = carrier.BoundBox
+            if not carrier.isValid() or len(carrier.Solids) != 1 or bounds.ZMax <= 19:
+                raise ValueError("Missing solid integral optical support")
+            support = carrier.common(
+                Part.makeBox(
+                    bounds.XLength + 2,
+                    bounds.YLength + 2,
+                    bounds.ZMax - 19 + 1,
+                    V(bounds.XMin - 1, bounds.YMin - 1, 19),
+                )
             )
+            if support.isNull() or not support.isValid() or not support.Solids:
+                raise ValueError("Missing solid integral optical support")
+            bound = registered_instrument_bound(optical_group, support)
+            gap = swept.distToShape(bound)[0]
+            row.update(
+                minimum_gap_mm=gap,
+                actual_support_volume_mm3=support.Volume,
+                passed=gap >= contract["minimum_stack_tower_gap_mm"] - TOL,
+            )
+        except (AttributeError, TypeError, ValueError) as error:
+            row["error"] = str(error)
+        float_rows.append(row)
     continuous = {
         "method": "Exact maximum-pack translation envelope over the entire declared XY rectangle",
         "local_size_mm": [width + 2 * x_limit, length + 2 * y_limit, height],
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Conservative XY/yaw component envelopes of the rigid optical bracket in its foot frame. Assembly clearance is not deliberate operating looseness; qualify base seating, pointing retention and clamp friction.",
+        "tower_registration_scope": "Continuous common-pitch bound of actual saved carrier stock above deckZ19. There is no separate printed-joint registration float. Adhesive retention, rail flexure and actual pointing remain unqualified.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
         and bool(expected_components)

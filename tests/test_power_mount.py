@@ -193,7 +193,10 @@ class PowerMountTests(unittest.TestCase):
         try:
             hosts = {
                 name: doc.addObject("App::Part", name)
-                for name in stack_interface.MECHANICAL_HOSTS
+                for name in (
+                    *stack_interface.MECHANICAL_HOSTS,
+                    "ElectronicsEquipmentModule",
+                )
             }
             hosts["BatteryEquipmentModule"].Placement.Base.x = -112
             hosts["AccessoryEquipmentModule"].Placement.Base.x = 84
@@ -206,7 +209,7 @@ class PowerMountTests(unittest.TestCase):
             for pitch in (-20, 0, 20):
                 instrument_mount.set_pitch(doc, pitch)
                 before_pose = optical.Placement.copy()
-                before_world = world_shape(doc.OpticalSensorTray)
+                before_world = world_shape(doc.ElectronicsMount)
                 option = power_mount.create_option_document(doc)
                 self.assertEqual(
                     json.loads(option.PowerOptionModule.OpticalAttachment),
@@ -214,7 +217,7 @@ class PowerMountTests(unittest.TestCase):
                         "mode": "instrument",
                         "host": "InstrumentPitchStage",
                         "support_part": "ElectronicsMount",
-                        "foot_origin_in_stage_mm": [0.0, 27.0, 19.0],
+                        "sensor_frame_origin_in_stage_mm": [0.0, 0.0, 0.0],
                     },
                 )
                 self.assertEqual(
@@ -222,7 +225,7 @@ class PowerMountTests(unittest.TestCase):
                 )
                 self.assertEqual(float(instrument["pitch_stage"].Pitch), pitch)
                 self.assertTrue(optical.Placement.isSame(before_pose, 1e-7))
-                after_world = world_shape(doc.OpticalSensorTray)
+                after_world = world_shape(doc.ElectronicsMount)
                 self.assertLess(abs(before_world.cut(after_world).Volume), 1e-6)
                 self.assertLess(abs(after_world.cut(before_world).Volume), 1e-6)
                 self.assertNotIn(
@@ -250,7 +253,8 @@ class PowerMountTests(unittest.TestCase):
         doc = App.newDocument("PowerStackHostTest")
         try:
             hosts = {
-                name: doc.addObject("App::Part", name) for name in s.MECHANICAL_HOSTS
+                name: doc.addObject("App::Part", name)
+                for name in (*s.MECHANICAL_HOSTS, "ElectronicsEquipmentModule")
             }
             instrument = instrument_mount.build_mount(
                 doc, hosts["ElectronicsEquipmentModule"]
@@ -264,6 +268,9 @@ class PowerMountTests(unittest.TestCase):
             self.assertIsNotNone(
                 p.host_placement(doc, "BatteryEquipmentModule", packaging="PORTAL")
             )
+            with self.assertRaises(ValueError):
+                p.host_placement(doc, "ElectronicsEquipmentModule", packaging="PORTAL")
+            self.assertFalse(s.interface_contract("ElectronicsMount")["host_supported"])
             host = hosts["AccessoryEquipmentModule"]
             host.Placement = App.Placement(
                 App.Vector(80, 20, 7), App.Rotation(App.Vector(0, 0, 1), 180)
@@ -427,7 +434,7 @@ class PowerMountTests(unittest.TestCase):
                     obj.Shape = equipment_mounts.mount_shape(kind)
                     host.addObject(obj)
                     mounts.append(obj)
-                # Configuration screening requires the actual saved tray and
+                # Configuration screening requires the actual saved integral carrier and
                 # bounded native stage, not a metadata-only optical placeholder.
                 optical = optical_mount.build_optical_mount(
                     doc, doc.InstrumentPitchStage

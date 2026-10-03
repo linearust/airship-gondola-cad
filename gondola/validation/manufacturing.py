@@ -202,7 +202,15 @@ def review(doc, registry):
             (11.01, 0, 24.5),
             3.0,
         ),
-        ("guard_root_fan", "PortMotorCarrier", (7.99, -29, 5), (11.01, -29, 5), 3.0),
+        # The fan is flush with the keyed root: an X-directed line would
+        # continue into joined stock. Measure its complete vertical section.
+        (
+            "guard_root_fan",
+            "PortMotorCarrier",
+            (9.5, -29, -4.01),
+            (9.5, -29, 4.01),
+            8.0,
+        ),
         ("guard_rear_bridge", "PortMotorCarrier", (-8.01, 16, 0), (-4.99, 16, 0), 3.0),
         ("guard_outer_return", "PortMotorCarrier", (2, 22.99, 0), (2, 26.01, 0), 3.0),
         (
@@ -238,8 +246,8 @@ def review(doc, registry):
             propulsion.FOOT_THICKNESS,
         ),
         (
-            "optical_tray_deck_thickness",
-            "OpticalSensorTray",
+            "integral_optical_pad_thickness",
+            "ElectronicsMount",
             (0, 4, optical_mount.TRAY_BOTTOM_Z - 0.01),
             (0, 4, optical_mount.TRAY_TOP_Z + 0.01),
             optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,

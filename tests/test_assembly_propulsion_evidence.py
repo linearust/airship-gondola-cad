@@ -38,16 +38,14 @@ class SavedPropulsionEvidenceTests(unittest.TestCase):
                     {row["nut"] for row in guides},
                     {
                         "PortBearingCapNegativeNut",
-                        "PortBearingCapPositiveNut",
                         "PortBearingCapInputNut",
                         "PortOutputClampNegativeNut",
                         "StarboardBearingCapNegativeNut",
-                        "StarboardBearingCapPositiveNut",
                         "StarboardBearingCapInputNut",
                         "StarboardOutputClampPositiveNut",
                     },
                 )
-                self.assertEqual(len(guides), 8)
+                self.assertEqual(len(guides), 6)
                 self.assertTrue(all(row["passed"] for row in guides), guides)
 
                 # Isolate final aggregation from unrelated expensive motion

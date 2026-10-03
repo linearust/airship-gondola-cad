@@ -98,7 +98,7 @@ def _positive_module_shapes(doc, prefix, objects):
 
 
 def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
-    """Check each real split-housing bearing and all three cap fasteners."""
+    """Check each real split-housing bearing and both cap fasteners."""
     shaft_suffix = "Negative" if prefix == "Port" else "Positive"
     names = [
         prefix + "OutputBearing" + suffix,
@@ -108,7 +108,7 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
     ]
     fastener_names = [
         prefix + "BearingCap" + side + kind
-        for side in ("Negative", "Positive", "Input")
+        for side in ("Negative", "Input")
         for kind in ("Bolt", "Nut")
     ]
     objects = [doc.getObject(name) for name in names]
@@ -142,7 +142,7 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
                 clamp, world_shape(fasteners[index]), world_shape(fasteners[index + 1])
             ),
         }
-        for index in (0, 2, 4)
+        for index in (0, 2)
     ]
     return {
         "bearing": names[0],
@@ -156,7 +156,7 @@ def output_bearing_stack_check(doc, prefix, suffix, axial_stops=None):
 
 
 def input_bearing_support_check(doc, prefix):
-    """Literal saved-solid proof of the new far input support and third joint."""
+    """Literal saved-solid proof of the new far input support and outer joint."""
     names = [
         prefix + "InputBearing",
         prefix + "InputShaft",
@@ -213,7 +213,7 @@ def input_bearing_support_check(doc, prefix):
         "missing_lower_hard_land_mm3": missing_lower,
         "missing_cap_hard_land_mm3": missing_upper,
         "outer_cap_joint": clamp,
-        "scope": "One external bearing supports the far side of each servo-driven gear. Literal round journal, complete outer-ring capture, short connecting web, hard lands and third M2 cap joint are required. No servo axial preload is intended; the shaft may slide through the bearing during service. Align received servo/horn/stub to the fitted bearing before final fastening and verify the whole +/-60 degree range. Nominal geometry cannot establish horn runout, shaft straightness, bearing load capacity or printed stiffness.",
+        "scope": "One external bearing supports the far side of each servo-driven gear. Literal round journal, complete outer-ring capture, short connecting web, hard lands and outer M2 cap joint are required. No servo axial preload is intended; the shaft may slide through the bearing during service. Align received servo/horn/stub to the fitted bearing before final fastening and verify the whole +/-60 degree range. Nominal geometry cannot establish horn runout, shaft straightness, bearing load capacity or printed stiffness.",
         "passed": capture["passed"]
         and fixed_bearing
         and missing_web < TOL
@@ -859,7 +859,7 @@ def bearing_post_roots_check(doc):
         return [{"passed": False, "error": "Missing integrated output support"}]
     shape = obj.Shape.copy()
     shape.Placement = App.Placement()
-    beam = Part.makeBox(18, 88, 5, App.Vector(-9, -44, 24.5))
+    beam = Part.makeBox(18, 88, 9.5, App.Vector(-9, -44, 20))
     missing_beam = abs(beam.cut(shape).Volume)
     rows = []
     for sign in (-1, 1):
@@ -872,7 +872,7 @@ def bearing_post_roots_check(doc):
             root = root.mirror(App.Vector(), App.Vector(0, 1, 0))
         bed_y = 25 if sign > 0 else -44
         bed = Part.makeBox(18, 19, 3, App.Vector(-9, bed_y, 42))
-        for x, y_bolt in ((-5.5, 34.5), (6.25, 39.5)):
+        for x, y_bolt in ((-5.5, 33.0),):
             bed = bed.cut(
                 Part.makeCylinder(1.1, 3, App.Vector(sign * x, sign * y_bolt, 42))
             )
@@ -889,9 +889,9 @@ def bearing_post_roots_check(doc):
                 "root_blend_radius_mm": 1.5,
                 "missing_root_blend_mm3": missing_blends,
                 "missing_housing_bed_mm3": missing_bed,
-                "shared_beam_z_range_mm": [24.5, 29.5],
+                "shared_beam_z_range_mm": [20.0, 29.5],
                 "missing_shared_beam_mm3": missing_beam,
-                "scope": "One full18x19 web per side joins the88mm shared beam atZ29.5 to the equally wide paired-bearing bed atZ42. An independent quarter-circle stock witness proves the R1.5 lower inner-Y transition across the full18mm width. The18x19 bed retains3mm continuous stock below its nut slots, apart from its two explicit vertical screw bores. These are geometry and material-continuity witnesses, not load or stiffness qualification.",
+                "scope": "One full18x19 web per side joins the88mm shared beam atZ29.5 to the equally wide paired-bearing bed atZ42. An independent quarter-circle stock witness proves the R1.5 lower inner-Y transition across the full18mm width. The18x19 bed retains3mm continuous stock below its nut slots, apart from its one explicit vertical screw bore. These are geometry and material-continuity witnesses, not load or stiffness qualification.",
                 "passed": max(missing, missing_blends, missing_bed, missing_beam) < TOL,
             }
         )
@@ -1185,7 +1185,7 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
     cap_name = prefix + "BearingCap"
     pairs = [
         (cap_name + side + "Bolt", cap_name + side + "Nut")
-        for side in ("Negative", "Positive", "Input")
+        for side in ("Negative", "Input")
     ]
     required = [cap_name, *[name for pair in pairs for name in pair]]
     missing = sorted(set(missing) | (set(required) - set(staged)))
@@ -1239,7 +1239,7 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
                 "passed": carrier_service["passed"]
                 and stack["passed"]
                 and not missing
-                and len(release) == 3
+                and len(release) == 2
                 and all(row["passed"] for row in release)
                 and cap_path["passed"]
                 and path["passed"],
@@ -1269,11 +1269,11 @@ def _record_bearing_checks(report, doc, module, prefix, physical):
             "cap_removal": cap_path,
             "bearing_removal": path,
             "fastener_release": release,
-            "scope": "For bearing replacement remove the input unit using the checked parked-rotor sequence, return the unmeshed rotor to neutral along the certified reverse parking arc, then remove the output rotor/shaft. Release all three cap pairs and lift the cap, output bearings, then input bearing+Z30. No shaft is forced through a bearing shoulder; all unremoved parts remain obstacles. This is a maintenance route, not an assembly-fit guarantee.",
+            "scope": "For bearing replacement remove the input unit using the checked parked-rotor sequence, return the unmeshed rotor to neutral along the certified reverse parking arc, then remove the output rotor/shaft. Release both cap pairs and lift the cap, output bearings, then input bearing+Z30. No shaft is forced through a bearing shoulder; all unremoved parts remain obstacles. This is a maintenance route, not an assembly-fit guarantee.",
             "passed": input_service["passed"]
             and carrier_service["passed"]
             and not missing
-            and len(release) == 3
+            and len(release) == 2
             and all(row["passed"] for row in release)
             and cap_path["passed"]
             and path["passed"],
@@ -1502,7 +1502,13 @@ def _record_print_checks(report, module, physical):
             3.0,
         ),
         ("guard_axial", "PortMotorCarrier", (7.99, 75, 74.5), (11.01, 75, 74.5), 3.0),
-        ("guard_root_fan", "PortMotorCarrier", (7.99, 46, 55), (11.01, 46, 55), 3.0),
+        (
+            "guard_root_fan",
+            "PortMotorCarrier",
+            (9.5, 46, 45.99),
+            (9.5, 46, 54.01),
+            8.0,
+        ),
         (
             "guard_rear_bridge",
             "PortMotorCarrier",

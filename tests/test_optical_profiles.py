@@ -67,7 +67,7 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                 )
                 self.assertTrue(screen.isInside(point, 1e-7, True))
 
-    def test_continuous_external_cone_contains_both_fields_and_registration(self):
+    def test_continuous_external_cone_contains_both_fields_and_rail_reserve(self):
         from gondola.parts import instrument_mount, optical_mount, optical_sensor
         from gondola.validation.optical_envelopes import (
             RAIL_ALIGNMENT_RESERVE_MM,
@@ -97,34 +97,18 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                                 + profile.optical_origin_min_z_mm
                                 + distance,
                             )
-                            for yaw in (-3, 3):
-                                registered = App.Rotation(
-                                    App.Vector(0, 0, 1), yaw
-                                ).multVec(start)
-                                for tx, ty in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
-                                    point = pose.multVec(
-                                        registered + App.Vector(tx, ty, 0)
-                                    )
-                                    for rail_y in (
-                                        -RAIL_ALIGNMENT_RESERVE_MM,
-                                        RAIL_ALIGNMENT_RESERVE_MM,
-                                    ):
-                                        self.assertTrue(
-                                            bound.isInside(
-                                                point + App.Vector(0, rail_y, 0),
-                                                1e-7,
-                                                True,
-                                            ),
-                                            (
-                                                profile.key,
-                                                pitch,
-                                                distance,
-                                                sx,
-                                                sy,
-                                                yaw,
-                                                tx,
-                                                ty,
-                                            ),
-                                        )
+                            point = pose.multVec(start)
+                            for rail_y in (
+                                -RAIL_ALIGNMENT_RESERVE_MM,
+                                RAIL_ALIGNMENT_RESERVE_MM,
+                            ):
+                                self.assertTrue(
+                                    bound.isInside(
+                                        point + App.Vector(0, rail_y, 0),
+                                        1e-7,
+                                        True,
+                                    ),
+                                    (profile.key, pitch, distance, sx, sy, rail_y),
+                                )
         finally:
             App.closeDocument(doc.Name)

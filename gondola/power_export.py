@@ -5,6 +5,7 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 """
 
 import functools
+import hashlib
 import json
 from itertools import combinations
 from pathlib import Path
@@ -14,6 +15,7 @@ import Mesh
 import Part
 
 from .cad import (
+    belongs_to_group,
     create_group,
     create_printed_part,
     create_reference,
@@ -60,12 +62,13 @@ from .validation.geometry import (
     intersection_volume,
     translation_sweep,
 )
-from .validation.optical_envelopes import motion_bounds
+from .validation.instrument import certify_pitch_clearance
+from .validation.optical_envelopes import instrument_context, motion_bounds, pitch_bound
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
 # These are operating ray reservations, not physical bodies. Keep this exact
-# allowlist separate from all body/tray/connector/tool bounds and unknown names.
+# allowlist separate from all body/carrier/connector/tool bounds and unknown names.
 FUNCTIONAL_OPTICAL_FIELDS = frozenset(
     {
         "MTF02POpticalClearanceReserve",
@@ -99,17 +102,70 @@ def _installation_context(main, plan_key):
     return context
 
 
+def _instrument_motion_context(doc, optical):
+    """Bind conservative bounds and exact source stock in one audit invocation."""
+    module, stage, _, _ = instrument_context(optical)
+    inverse = stage.getGlobalPlacement().inverse()
+    bounds, sources = {}, {}
+    for name, world in _main_shapes(doc).items():
+        obj = doc.getObject(name)
+        if not belongs_to_group(obj, stage) or name in {
+            "ModuleMTF02PEnvelope",
+            "MTF02POpticalClearanceReserve",
+            "MTF02PConnectorReserve",
+        }:
+            continue
+        key = "Instrument/" + name
+        upper = placed_shape(world, inverse)
+        sources[key] = upper.copy()
+        upper.translate(App.Vector(0, 0, -8))
+        bound = pitch_bound(upper, 20)
+        bound.translate(App.Vector(0, 0, 27.5))
+        bounds[key] = placed_shape(bound, module.getGlobalPlacement())
+    return {
+        "bounds": bounds,
+        "sources": sources,
+        "inverse": module.getGlobalPlacement().inverse(),
+        "proofs": {},
+    }
+
+
+def _instrument_motion_bounds(doc, optical):
+    return _instrument_motion_context(doc, optical)["bounds"]
+
+
 def _placed(shapes, pose):
     return {name: placed_shape(shape, pose) for name, shape in shapes.items()}
 
 
-def _collisions(first, second):
-    return [
-        {"first": name, "second": other, "intersection_mm3": volume}
-        for name, shape in first.items()
-        for other, obstacle in second.items()
-        if (volume := intersection_volume(shape, obstacle)) > TOL
-    ]
+def _collisions(first, second, *, instrument_motion=None):
+    hits = []
+    for name, shape in first.items():
+        for other, obstacle in second.items():
+            volume = intersection_volume(shape, obstacle)
+            if volume <= TOL:
+                continue
+            proof = None
+            if instrument_motion is not None and obstacle is instrument_motion[
+                "bounds"
+            ].get(other):
+                # Only bounds created from these exact saved solids are eligible.
+                # Added or replaced obstacles, even with a known name, stay blocking.
+                digest = hashlib.sha256(shape.exportBrepToString().encode()).hexdigest()
+                key = (other, digest)
+                if key not in instrument_motion["proofs"]:
+                    instrument_motion["proofs"][key] = certify_pitch_clearance(
+                        instrument_motion["sources"][other],
+                        placed_shape(shape, instrument_motion["inverse"]),
+                    )
+                proof = instrument_motion["proofs"][key]
+                if proof["passed"]:
+                    continue
+            row = {"first": name, "second": other, "intersection_mm3": volume}
+            if proof is not None:
+                row["continuous_pitch_clearance"] = proof
+            hits.append(row)
+    return hits
 
 
 def _internal_collisions(physical, reserves):
@@ -158,7 +214,7 @@ def _disconnected_service_context(context):
     """Retain every obstacle except the named, inactive optical ray fields.
 
     Disconnected maintenance does not require optical operation. The selected
-    sensor and both alternatives' continuous body, tray, connector and tool
+    sensor and both alternatives' continuous body, integral carrier, connector and tool
     reservations remain obstacles; this exemption never changes seated checks.
     """
     return {
@@ -168,7 +224,9 @@ def _disconnected_service_context(context):
     }
 
 
-def _portal_foot_service_conflicts(physical, pose, context, off_rail_names):
+def _portal_foot_service_conflicts(
+    physical, pose, context, off_rail_names, *, instrument_motion=None
+):
     """Bench access; only the detached rail and its tape are absent.
 
     Keep the complete host and every physical/access obstacle conservatively.
@@ -181,7 +239,7 @@ def _portal_foot_service_conflicts(physical, pose, context, off_rail_names):
         for name, shape in _disconnected_service_context(context).items()
         if name not in off_rail_names
     }
-    conflicts = _collisions(tools, obstacles)
+    conflicts = _collisions(tools, obstacles, instrument_motion=instrument_motion)
     for name, tool in tools.items():
         index = name.rsplit("_", 1)[1]
         operated = {"PowerFootBolt" + index, "PowerFootNut" + index}
@@ -199,7 +257,14 @@ def _portal_foot_service_conflicts(physical, pose, context, off_rail_names):
 
 
 def _configuration_conflicts(
-    plan_key, pose, context, host_name, *, packaging=PORTAL, off_rail_names=()
+    plan_key,
+    pose,
+    context,
+    host_name,
+    *,
+    packaging=PORTAL,
+    off_rail_names=(),
+    instrument_motion=None,
 ):
     local_physical, local_reserves = power_mount.local_shapes(
         plan_key, packaging=packaging
@@ -207,8 +272,8 @@ def _configuration_conflicts(
     physical, reserves = local_physical, local_reserves
     physical, reserves = _placed(physical, pose), _placed(reserves, pose)
     nominal = (
-        _collisions(physical, context)
-        + _collisions(reserves, context)
+        _collisions(physical, context, instrument_motion=instrument_motion)
+        + _collisions(reserves, context, instrument_motion=instrument_motion)
         + _internal_collisions(physical, reserves)
     )
     host_shape = context.get(stack_interface.MECHANICAL_HOSTS[host_name])
@@ -255,12 +320,15 @@ def _configuration_conflicts(
                             if other != name
                         },
                     },
+                    instrument_motion=instrument_motion,
                 )
             ]
         return [{"phase": "nominal", **row} for row in nominal]
     # The documented sequence removes the carrier from the rail before this
     # bench operation. Installed/registration checks still retain rail and tape.
-    nominal += _portal_foot_service_conflicts(physical, pose, context, off_rail_names)
+    nominal += _portal_foot_service_conflicts(
+        physical, pose, context, off_rail_names, instrument_motion=instrument_motion
+    )
     # Feet intentionally seat on their host. Its mating-hole/clamp fit is a
     # separate interface check; arbitrary host overlap is never excused nominally.
     obstacles = {
@@ -269,7 +337,9 @@ def _configuration_conflicts(
         if name != stack_interface.MECHANICAL_HOSTS[host_name]
     }
     float_conflicts = _collisions(
-        _placed(_registration_bounds(plan_key), pose), obstacles
+        _placed(_registration_bounds(plan_key), pose),
+        obstacles,
+        instrument_motion=instrument_motion,
     )
     return [{"phase": "nominal", **row} for row in nominal] + [
         {**row, "phase": "conservative seated registration"} for row in float_conflicts
@@ -298,7 +368,14 @@ def screen_configurations(main_doc):
     )
     optical = main_doc.getObject("OpticalFlowModule")
     optical_attachment = _optical_attachment_description(optical)
-    optical_bounds = motion_bounds(optical) if optical is not None else {}
+    instrument_motion = (
+        _instrument_motion_context(main_doc, optical) if optical is not None else None
+    )
+    optical_bounds = (
+        {**motion_bounds(optical), **instrument_motion["bounds"]}
+        if optical is not None
+        else {}
+    )
     contexts = {}
     for plan_key in OPTIONAL_PLANS:
         context = _installation_context(main_doc, plan_key)
@@ -328,6 +405,7 @@ def screen_configurations(main_doc):
                 host_name,
                 packaging=packaging,
                 off_rail_names=off_rail_names,
+                instrument_motion=instrument_motion,
             ),
         ]
         return {
@@ -381,7 +459,9 @@ def screen_configurations(main_doc):
                 # collisions between two members of the substituted context.
                 combined_conflicts = [
                     {**hit, "phase": "navigation and retained assembly"}
-                    for hit in _collisions(replacements, fixed)
+                    for hit in _collisions(
+                        replacements, fixed, instrument_motion=instrument_motion
+                    )
                 ]
                 context = {**fixed, **replacements}
                 for packaging in POWER_PACKAGINGS:
@@ -443,15 +523,21 @@ def screen_configurations(main_doc):
             "mode": "Disconnected carrier and complete portal removed from the rail for bench service",
             "excluded_only_during_bench_service": sorted(off_rail_names),
             "inactive_optical_fields_excluded_only_during_service": inactive_fields,
-            "retained_obstacles": "Complete host, platform, boards, sensor bodies, trays, connector/tool reservations and unknown objects remain obstacles. Only each tool's operated bolt/nut pair is an intended-contact exemption; operating optical ray fields are inactive during disconnected bench maintenance.",
+            "retained_obstacles": "Complete host, platform, boards, sensor bodies, integral carriers, connector/tool reservations and unknown objects remain obstacles. Only each tool's operated bolt/nut pair is an intended-contact exemption; operating optical ray fields are inactive during disconnected bench maintenance.",
             "scope": "Disconnect leads and remove the complete carrier from the rail first. This is a conservative bench tool-space check, not permission to reach through installed tape or the balloon; no connected harness or hand clearance is qualified.",
         },
         "direct_board_service": {
             "mode": "Unpowered boards, leads disconnected and adhesive released before the checked 32 mm lift",
             "inactive_optical_fields_excluded_only_during_service": inactive_fields,
-            "retained_obstacles": "All physical parts, the other board, continuous sensor body/tray bounds, connector/tool reservations and unknown objects. The complete optical field remains mandatory for seated configurations.",
+            "retained_obstacles": "All physical parts, the other board, continuous sensor body bounds, connector/tool reservations and unknown objects. The complete optical field remains mandatory for seated configurations.",
         },
         "saved_optical_attachment": optical_attachment,
+        "instrument_pitch_clearance_proofs": [
+            {"moving": key[0], "obstacle_brep_sha256": key[1], **proof}
+            for key, proof in instrument_motion["proofs"].items()
+        ]
+        if instrument_motion
+        else [],
         "configurations": rows,
         "default_configuration_clear": default["permitted"],
         "permitted_hosts_by_plan": {
@@ -462,7 +548,7 @@ def screen_configurations(main_doc):
         "source_selected_navigation": selected.key,
         "navigation_compatibility_probes": navigation_rows,
         "seated_registration_scope": "Portal choices retain the continuous conservative opposed-slot XY/yaw bounds. Direct boards are nominal adhesive placements on the vacated battery carrier, with measured intact land/body overlap; adhesive placement and retention remain physical checks.",
-        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and the common FC/optical instrument platform. Both sensors' continuous field, body, tray and connector bounds include the full pitch range and conservative registration reserve. Actual fit and angular rocking are unqualified. Retained solid bodies/access reserves and disconnected direct-board removal are screened. Inactive optical ray fields alone may be crossed during disconnected maintenance; seated optical field checks are unchanged. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
+        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and the common FC/optical instrument platform. Both sensors' continuous field, body and connector bounds include the full pitch range. The complete integral carrier and all other saved moving instrument stock are bounded over the full pitch range; optional power portals use only the fixed battery or accessory carriers. Actual fit and angular rocking are unqualified. Retained solid bodies/access reserves and disconnected direct-board removal are screened. Inactive optical ray fields alone may be crossed during disconnected maintenance; seated optical field checks are unchanged. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
         "passed": all(permitted.values())
         and len(rows)
         == len(POWER_PACKAGINGS)

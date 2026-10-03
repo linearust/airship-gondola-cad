@@ -3,7 +3,7 @@
 SELECTED_MOUNT = "instrument"
 MOUNT_MODES = ("instrument",)
 DEFAULT_HOST = "InstrumentPitchStage"
-FOOT_ORIGIN_IN_STAGE = (0.0, 27.0, 19.0)
+SENSOR_FRAME_ORIGIN_IN_STAGE = (0.0, 0.0, 0.0)
 
 
 def resolve_mount_mode(mode=None):

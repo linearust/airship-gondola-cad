@@ -27,7 +27,7 @@ class OpticalClearanceTests(unittest.TestCase):
         App.closeDocument(self.doc.Name)
         self.assertEqual(file_sha256(self.path), self.original_sha)
 
-    def test_changed_sensor_and_mount_hardware_metadata_is_rejected(self):
+    def test_changed_sensor_and_integral_support_metadata_is_rejected(self):
         from gondola.validation.optical import _source_evidence
 
         self.assertTrue(_source_evidence(self.doc)["passed"])
@@ -41,9 +41,7 @@ class OpticalClearanceTests(unittest.TestCase):
             (self.doc.MTF02POpticalClearanceReserve, "SensorProfileContract", "{}"),
             (self.doc.OpticalFlowModule, "SupportedSensorModels", ["MTF02P"]),
             (self.doc.OpticalFlowModule, "SelfLevelling", True),
-            (self.doc.OpticalFootBolt1, "HardwareSKU", "M2X6_BUTTON_HEAD"),
-            (self.doc.OpticalFootBolt2, "MaterialSelection", "Unqualified material"),
-            (self.doc.OpticalFootNut1, "HardwareSKU", "M2_UNQUALIFIED_NUT"),
+            (self.doc.ElectronicsMount, "PrintSKU", "WrongCarrier"),
         )
         for obj, name, changed in mutations:
             original = getattr(obj, name)
@@ -54,28 +52,29 @@ class OpticalClearanceTests(unittest.TestCase):
                 finally:
                     setattr(obj, name, original)
 
-    def test_changed_hardware_geometry_and_parent_are_rejected(self):
+    def test_changed_integral_carrier_geometry_and_parent_are_rejected(self):
         from gondola.validation.optical import _source_evidence
 
-        bolt = self.doc.OpticalFootBolt1
+        bolt = self.doc.ElectronicsMount
         shape, parent = bolt.Shape.copy(), bolt.getParentGeoFeatureGroup()
         try:
-            bolt.Shape = bolt.Shape.fuse(Part.makeBox(1, 1, 1, App.Vector(-19, 0, 6)))
+            bolt.Shape = bolt.Shape.fuse(Part.makeBox(1, 1, 1, App.Vector(0, 0, 43.5)))
             self.assertFalse(_source_evidence(self.doc)["passed"])
             bolt.Shape = shape
             parent.removeObject(bolt)
-            self.doc.InstrumentPitchStage.addObject(bolt)
+            self.doc.OpticalFlowModule.addObject(bolt)
             self.assertFalse(_source_evidence(self.doc)["passed"])
         finally:
             bolt.Shape = shape
-            self.doc.InstrumentPitchStage.removeObject(bolt)
+            self.doc.OpticalFlowModule.removeObject(bolt)
             parent.addObject(bolt)
 
-    def test_extra_optical_hardware_and_missing_second_pair_fail_inventory(self):
+    def test_extra_optical_hardware_and_missing_sensor_fail_inventory(self):
         from gondola.validation.optical import _source_evidence
 
         registry = self.doc.DesignRegistry
         original = list(registry.HardwareParts)
+        references = list(registry.ReferenceParts)
         extra = self.doc.addObject("Part::Feature", "UnreviewedOpticalClamp")
         extra.Shape = Part.makeCylinder(1, 5)
         self.doc.OpticalFlowModule.addObject(extra)
@@ -83,12 +82,15 @@ class OpticalClearanceTests(unittest.TestCase):
             self.assertFalse(_source_evidence(self.doc)["passed"])
             registry.HardwareParts = original + [extra]
             self.assertFalse(_source_evidence(self.doc)["passed"])
-            registry.HardwareParts = [
-                obj for obj in original if obj != self.doc.OpticalFootNut2
+            registry.HardwareParts = original
+            self.doc.removeObject(extra.Name)
+            registry.ReferenceParts = [
+                obj for obj in references if obj != self.doc.ModuleMTF02PEnvelope
             ]
             self.assertFalse(_source_evidence(self.doc)["passed"])
         finally:
             registry.HardwareParts = original
+            registry.ReferenceParts = references
 
     def test_wrong_native_parent_is_rejected_before_any_mutation(self):
         from gondola.validation.optical import mtf_sensor_check
@@ -245,15 +247,10 @@ class OpticalClearanceTests(unittest.TestCase):
         self.assertFalse(row["passed"])
         self.assertGreater(row["intersection_mm3"], 0.06)
 
-    def test_mounting_floor_and_second_nut_seat_cannot_be_removed(self):
-        from gondola.validation.optical import (
-            _nut_recess_checks,
-            _rigid_interface_checks,
-        )
+    def test_integral_pad_or_bridge_load_path_cannot_be_removed(self):
+        from gondola.validation.optical import _rigid_interface_checks
 
         self.assertTrue(_rigid_interface_checks(self.doc)["passed"])
-        self.assertTrue(_nut_recess_checks(self.doc)["passed"])
-        part = self.doc.OpticalSensorTray
-        part.Shape = part.Shape.cut(Part.makeBox(2, 1, 1.5, App.Vector(18, 1.3, 0)))
+        part = self.doc.ElectronicsMount
+        part.Shape = part.Shape.cut(Part.makeBox(2, 1, 2, App.Vector(-1, -1, 42)))
         self.assertFalse(_rigid_interface_checks(self.doc)["passed"])
-        self.assertFalse(_nut_recess_checks(self.doc)["passed"])

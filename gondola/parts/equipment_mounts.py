@@ -20,7 +20,7 @@ MOUNT_PAD_DIAMETER = mounting_plate.FC_PAD_DIAMETER_MM
 FC_CENTRE_XY = (0.0, 0.0)
 FC_ROTATION_DEG = -45.0
 FC_HOLE_CENTRES = mounting_plate.FC_HOLE_CENTRES
-# All three carriers use the same local mechanical datum and physical print.
+# The two fixed carriers share one print; the FC/optical variant shares its plate template.
 # Equipment selection/placement is role-specific; the spare slots are not.
 COMMON_PRINT_SKU = "UniversalEquipmentCarrier"
 COMMON_DECK_SIZE = mounting_plate.SIZE_MM
@@ -293,8 +293,8 @@ def mount_contract(kind):
     }
     scope = {
         "battery": "Universal carrier in battery role. Four declared continuous adhesive regions retain 304 mm2 clear of the centre bore and other openings. The common outer slots support separately screened optional power feet, as on the other carriers.",
-        "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
-        "accessory": "Universal navigation carrier. P-AS uses local centre(0,+9.3); mutually exclusive GPS alternatives retain centre(0,-2.2) and their adhesive support. The Mini body is centred at (26,-17) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 5 x 12 mm at (23,-12) and 4 x 15 mm at (30.5,-13.5), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the middle slot open. The relocated body and unchanged-size connector reserves clear the optional portal hardware registration and service bounds. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform. The optical foot can use an existing middle side slot; occupied host/side and power combinations need their composed clearance checks.",
+        "electronics": "Dedicated FC/optical levelling carrier. Confirmed FC holes and 8 mm underbody wiring reservation remain. Its integral optical bridge changes payload access; it is not interchangeable with the fixed Universal carrier.",
+        "accessory": "Universal navigation carrier. P-AS uses local centre(0,+9.3); mutually exclusive GPS alternatives retain centre(0,-2.2) and their adhesive support. The Mini body is centred at (26,-17) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 5 x 12 mm at (23,-12) and 4 x 15 mm at (30.5,-13.5), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the middle slot open. The relocated body and unchanged-size connector reserves clear the optional portal hardware registration and service bounds. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform. Occupied host and power combinations need their composed clearance checks.",
     }
     contract = {
         "kind": kind,
@@ -339,17 +339,17 @@ def mount_contract(kind):
             shared_print_sku="InstrumentCarrier",
             integral_side_clamped_u_shoe=False,
             instrument_mount=instrument_mount.mount_contract(),
-            support_path_scope="The common plate is integral with a rotating lug. A separate lower U-shoe/yoke supports it on the same rail interface. FC and the fixed optical bracket share this plate and its setup-only pitch control.",
+            support_path_scope="The plate, rotating lug and centred optical bridge form one printed carrier. A separate lower U-shoe/yoke uses the standard rail interface. This is a dedicated FC/optical variant; the bridge restricts stack and spare-slot use.",
         )
         contract["common_plate"]["central_support"] = {
             "profile": "integral rotating lug with separated upper ribs",
-            "scope": "Centre accessory bore remains available above the moving support; validate actual chosen screw/head/nut access against saved geometry. This upper plate has no integral rail shoe.",
+            "scope": "Centre accessory bore remains physically present but the integral bridge limits upper access; validate actual hardware against saved geometry. This upper plate has no integral rail shoe.",
         }
         contract["centre_accessory_mount"] = {
             "centre_xy_mm": (0.0, 0.0),
             "clearance_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
-            "available_as_spare_accessory_mount": True,
-            "scope": "A common M2 centre bore; select accessory fasteners against the rotating support below it. No preselected mounting stack or unrestricted through-stack.",
+            "available_as_spare_accessory_mount": False,
+            "scope": "The M2 centre bore is retained from the plate template, but the integral optical bridge blocks an unrestricted upper stack. No accessory use is qualified.",
         }
         contract.pop("deck_underside_to_rail_web_mm")
         contract["future_fastener_scope"] = (

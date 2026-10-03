@@ -19,7 +19,7 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_bearing_support": 2,
         "input_bearing_service": 2,
         "bearing_post_roots": 2,
-        "nut_guides": 8,
+        "nut_guides": 6,
         "output_stub_clearance": 2,
         "shaft_service": 2,
         "bearing_service": 4,
@@ -33,13 +33,13 @@ PROPULSION_EVIDENCE_COUNTS = MappingProxyType(
         "input_drive_service": 2,
         "servo_case_service": 2,
         "rail_mount_clearance": 1,
-        # Six seated M2 bearing-cap joints, four M1.6 servo-ear joints and
+        # Four seated M2 bearing-cap joints, four M1.6 servo-ear joints and
         # four M1 horn joints with front nuts.
         # Rail screws are outside this module. The two radial input-stub jack
         # clamps stay assembled during service and use input_shaft_retention;
         # their deliberately unseated heads are not bearing-face stacks.
-        "fastener_stacks": 14,
-        "fastener_service": 14,
+        "fastener_stacks": 12,
+        "fastener_service": 12,
         "functional_wall_probes": 11,  # Beam, shoe roof, cap roof/floor, five guard sections and two adapter walls.
         "geometry": 7,  # Integrated frame, two carriers, two adapters and two bearing caps.
     }

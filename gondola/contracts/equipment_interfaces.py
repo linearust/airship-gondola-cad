@@ -245,7 +245,7 @@ PROPULSION_EVIDENCE = {
         "inner_ring_abutment_outer_diameter_max_mm": 3.7,
         "housing_abutment_opening_diameter_min_mm": 5.4,
         "abutment_fillet_max_mm": 0.1,
-        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the purchased generic bearing. Split-housing outer-ring shoulder contact and shield-clearance targets use this reference pending physical verification. The common three-bearing cap closes onto hard frame lands under its three screws, without intended bearing or shield preload. Keep hubs off shields and outer rings; check radial fit, free rotation and axial capture with the received lot.",
+        "scope": "Comparison only: these published ISC MR63ZZ dimensions and mass do not identify or qualify the purchased generic bearing. Split-housing outer-ring shoulder contact and shield-clearance targets use this reference pending physical verification. The common three-bearing cap closes onto hard frame lands under its two aligned screws, without intended bearing or shield preload. Keep hubs off shields and outer rings; check radial fit, free rotation and axial capture with the received lot.",
     },
 }
 

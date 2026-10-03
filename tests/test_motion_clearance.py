@@ -37,7 +37,6 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     prefix + stem + kind
                     for stem in (
                         "BearingCapNegative",
-                        "BearingCapPositive",
                         "BearingCapInput",
                         "ServoEarLower",
                         "ServoEarUpper",
@@ -45,7 +44,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
                     for kind in ("Bolt", "Nut")
                 },
             )
-            self.assertEqual(len(result["fixed_hardware"]), 10)
+            self.assertEqual(len(result["fixed_hardware"]), 8)
             self.assertEqual(len(result["envelope"]["containment"]), 6)
 
     def test_parent_transform_and_tilt_preserve_the_proof(self):
@@ -158,7 +157,7 @@ class CarrierMotionClearanceTests(unittest.TestCase):
         from gondola.validation.motion_clearance import carrier_metal_clearance_check
 
         doc, _ = self.module()
-        nut = doc.PortBearingCapPositiveNut
+        nut = doc.PortBearingCapNegativeNut
         position = nut.Placement
         position.Base = (
             nut.getParentGeoFeatureGroup()

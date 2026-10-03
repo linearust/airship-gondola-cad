@@ -43,7 +43,6 @@ from .optical_envelopes import (
     motion_bounds,
     pitch_bound,
 )
-from .optical_service import mount_tool_shapes
 from .wiring import collision_hits, measure_clearances, named_gap_checks
 
 V = App.Vector
@@ -221,22 +220,6 @@ def _optical_screens(doc):
     selected = doc.OpticalFlowModule
     module, stage, frame, _ = instrument_context(selected)
     registry = doc.DesignRegistry
-    for index in (1, 2):
-        for kind, sku in (("Bolt", "M2X8_BUTTON_HEAD"), ("Nut", "M2_HEX_NUT")):
-            obj = doc.getObject(f"OpticalFoot{kind}{index}")
-            if (
-                obj is None
-                or obj not in registry.HardwareParts
-                or obj.getParentGeoFeatureGroup() != selected
-                or getattr(obj, "HardwareSKU", None) != sku
-                or not hasattr(obj, "Shape")
-                or obj.Shape.isNull()
-                or not obj.Shape.isValid()
-                or not obj.Shape.Solids
-            ):
-                raise ValueError(
-                    "Incomplete or inconsistent saved optical mount hardware"
-                )
     physical = (
         list(registry.PrintedParts)
         + list(registry.HardwareParts)
@@ -263,8 +246,8 @@ def _optical_screens(doc):
     optical_frame = selected.Placement.multiply(frame.Placement)
     all_bounds = motion_bounds(selected)
     for name, shape in {**moving, **moving_reserves}.items():
-        if name in ("OpticalSensorTray", "ModuleMTF02PEnvelope"):
-            continue  # These two solids have tighter registered optical bounds.
+        if name == "ModuleMTF02PEnvelope":
+            continue  # The sensor has a separate optical motion bound.
         relative = shape.copy()
         relative.translate(V(0, 0, -8))
         bound = pitch_bound(relative, 20)
@@ -306,10 +289,6 @@ def _optical_screens(doc):
                     "connector": registered(
                         optical_sensor.connector_reserve_shape(profile)
                     ),
-                    "mount_tools": {
-                        name: registered(shape)
-                        for name, shape in mount_tool_shapes().items()
-                    },
                 }
             )
         screens.append(
@@ -321,9 +300,7 @@ def _optical_screens(doc):
                 "continuous_bounds": {
                     name: shape
                     for name, shape in all_bounds.items()
-                    if name.startswith(profile.key)
-                    or name.startswith("Instrument/")
-                    or name == "OpticalMountToolAccessBound"
+                    if name.startswith(profile.key) or name.startswith("Instrument/")
                 },
                 "continuous_field": all_bounds[
                     f"{profile.key}ContinuousOpticalFieldBound"
@@ -331,7 +308,7 @@ def _optical_screens(doc):
                 "instrument_stock": {
                     "Instrument/" + name: shape
                     for name, shape in {**moving, **moving_reserves}.items()
-                    if name not in ("OpticalSensorTray", "ModuleMTF02PEnvelope")
+                    if name != "ModuleMTF02PEnvelope"
                 },
                 "module_inverse": module.getGlobalPlacement().inverse(),
             }
@@ -359,10 +336,6 @@ def _optical_option_check(
                 **pose["instrument_reserves"],
                 "OpticalField": pose["field"],
                 "OpticalConnector": pose["connector"],
-                **{
-                    "MountTool/" + key: shape
-                    for key, shape in pose["mount_tools"].items()
-                },
             }.items():
                 hits.extend(
                     {"moving": name, **hit}

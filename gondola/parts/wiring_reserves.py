@@ -47,14 +47,12 @@ RESERVE_PARENTS = {
 
 def neighbour_gap_pairs():
     """Preserve wiring clearance around the common instrument bracket."""
-    optical_part = "OpticalSensorTray"
     return {
         "FCWiringClearanceReserve": {
             "ModuleRadioEnvelope": 2.0,
             "ModulePASEnvelope": 2.0,
             "XT30ServiceReserve": 2.0,
             "MTF02POpticalClearanceReserve": 1.5,
-            optical_part: 1.5,
             "CapacitorServiceReserve": 1.5,
         }
     }

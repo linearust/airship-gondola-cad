@@ -87,7 +87,7 @@ def connector_contract(profile=None):
         "edge_width_mm": profile.size_mm[1 if profile.connector_axis == "+X" else 0],
         "edge_height_mm": profile.size_mm[2],
         "design_outward_travel_mm": CONNECTOR_TRAVEL_MM,
-        "operating_scope": f"The {profile.model} documented connector edge is modeled as tray-local{profile.connector_axis}. The whole edge follows the fixed sensor frame and shared instrument-platform pitch; actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
+        "operating_scope": f"The {profile.model} documented connector edge is modeled as sensor-frame-local{profile.connector_axis}. The whole edge follows the fixed sensor frame and shared instrument-platform pitch; actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
         "withdrawal_scope": "Continuous12mm lane is a design allowance, not measured withdrawal stroke or bend radius. Leave slack for pitch adjustment and secure the fixed lead. Disconnect before removing the module. Keep ties away from all optical openings.",
     }
 
@@ -103,7 +103,7 @@ def _apply_objects(group, sensor, optical, connector, profile):
     group.setEditorMode("SensorModel", 1)
     sensor.Shape = envelope_shape(profile)
     sensor.Label = profile.model + " | shared-platform optical face"
-    sensor.Notes = f"Published envelope {profile.size_mm} mm, {profile.mass_g:g} g. One sensor only, using the rigid 18x12 mm tray and 1 mm nominal insulating adhesive allowance. No sensor fixing screws. Optical face is local +Z. FC and optical sensor share InstrumentPitchStage adjustment; this bracket has no independent hinge. Align downward at flight trim and lock the common platform. This is not active stabilization. Verify actual rear contact, retention, lens origins, cable clearance and the selected unit's firmware yaw; do not copy another model's orientation setting."
+    sensor.Notes = f"Published envelope {profile.size_mm} mm, {profile.mass_g:g} g. One sensor only, using the rigid 18x12 mm pad and 1 mm nominal insulating adhesive allowance. No sensor fixing screws. Optical face is local +Z. FC and optical sensor share InstrumentPitchStage adjustment; this bracket has no independent hinge. Align downward at flight trim and lock the common platform. This is not active stabilization. Verify actual rear contact, retention, lens origins, cable clearance and the selected unit's firmware yaw; do not copy another model's orientation setting."
     add_interface_metadata(sensor, profile.key)
     for name, value in (
         ("ProductSource", profile.product_source),
@@ -125,7 +125,9 @@ def _apply_objects(group, sensor, optical, connector, profile):
     ):
         set_property(sensor, name, value, kind)
     optical.Shape = optical_reserve_shape(profile)
-    optical.Label = "RESERVE | " + profile.model + " optical field, follows tray"
+    optical.Label = (
+        "RESERVE | " + profile.model + " optical field, follows sensor frame"
+    )
     optical.Role = "Clearance"
     optical.Notes = (
         profile.contract()["optical_screen"]

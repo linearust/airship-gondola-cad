@@ -56,8 +56,8 @@ from . import (
 )
 
 V = App.Vector
-FOOT_THICKNESS = 5.0
-FOOT_BOTTOM_Z = 24.5
+FOOT_THICKNESS = 9.5
+FOOT_BOTTOM_Z = 20.0
 FOOT_WIDTH = 18.0
 BEARING_POST_WIDTH = 18.0
 BEARING_ROOT_RADIUS = 1.5
@@ -98,13 +98,14 @@ MOTOR_PLATE_THICKNESS = 3.0
 MOTOR_PLATE_BACK_X = MOTOR_MOUNT_FACE_X - MOTOR_PLATE_THICKNESS
 GUARD_DEPTH = 3.0
 # Keep the rear face at X8 and the front flush with the root at X11. The 3x3
-# ring and 12mm-high front fan add stock without closing the jack-nut exit.
+# ring and 8mm-high front fan meet the root without a raised step or closed exit.
 # Physical blade coverage still needs verified seating and blade geometry.
 GUARD_PLANE_X = 9.5
-GUARD_ROOT_FAN_HEIGHT = 12.0
+GUARD_ROOT_FAN_HEIGHT = 8.0
 GUARD_RETURN_HEIGHT = 8.0
 GUARD_RETURN_ROOT_RADIUS = 1.0
 CARRIER_SIDE_THICKNESS = 8.0
+CARRIER_ROOT_EDGE_RADIUS = 0.5
 CARRIER_SIDE_FRONT_X = 11.0
 CARRIER_SIDE_LENGTH = CARRIER_SIDE_FRONT_X - MOTOR_PLATE_BACK_X
 MOTOR_SOURCE = "https://www.happymodel.cn/index.php/2025/01/08/happymodel-rs1102-kv10000-kv13500-brushless-motor-for-micro-fpv-drone/"
@@ -329,6 +330,22 @@ def moving_carrier_shape(sign=1):
             2,
             "Carrier " + label,
         )
+    # Free end corners only: retain the complete shaft/stop annulus, nut
+    # reaction wall, motor seat and guard section. This is not a seat fillet.
+    body = fillet_selected(
+        body,
+        CARRIER_ROOT_EDGE_RADIUS,
+        lambda e, b: (
+            type(e.Curve).__name__ == "Line"
+            and near(b.YMin, -CARRIER_END_Y)
+            and near(b.YLength, 0)
+            and near(b.ZLength, 0)
+            and near(abs(b.ZMin), CARRIER_SIDE_THICKNESS / 2)
+            and b.XLength > CARRIER_SIDE_LENGTH - 1
+        ),
+        2,
+        "Carrier exposed root end corners",
+    )
     return _checked(mirrored_y(body, sign), "Braced-guard keyed motor carrier")
 
 
@@ -353,6 +370,7 @@ def rotor_geometry_contract():
         "guard_axial_range_mm": [8.0, 11.0],
         "guard_inner_outer_radius_mm": [23.0, 26.0],
         "guard_root_fan_height_mm": GUARD_ROOT_FAN_HEIGHT,
+        "carrier_root_edge_radius_mm": CARRIER_ROOT_EDGE_RADIUS,
         "guard_outer_return": {
             "rear_bridge_x_mm": [-8.0, -5.0],
             "return_x_mm": [-8.0, 11.0],
@@ -362,7 +380,7 @@ def rotor_geometry_contract():
             "scope": "An integral rear bridge and outer return support the opposite ring sector. The bridge is behind the motor face; the forward return is outside the nominalR23 opening. No outboard shaft or fixed bearing is added.",
         },
         "physical_propeller_clearance_verified": False,
-        "scope": "Motor mounting face and guard plane are printed design datums. Body/shaft lengths are supplier nominal dimensions, not measurements. Preview uses s=0 and a 40 by 5 mm disk; hub thickness does not prove blade swept volume. The3x3 ring atX8..11 and12mm-high front root fan retain the known clamp service openings; extra stock is not strength qualification. Coverage of the real blades is unverified. Confirm actual hub seating, rear clip, screws and complete blade sweep before releasing this motor carrier for fabrication. Nominal motion checks do not close these interfaces. Other printed parts are not made unverified by this propeller-specific uncertainty.",
+        "scope": "Motor mounting face and guard plane are printed design datums. Body/shaft lengths are supplier nominal dimensions, not measurements. Preview uses s=0 and a 40 by 5 mm disk; hub thickness does not prove blade swept volume. The3x3 ring atX8..11 meets an8mm-high front fan flush with the root. Only two free root-end corners haveR0.5 rounds; shaft and thrust faces remain intact. Clamp service remains open; stock dimensions do not qualify strength. Coverage of the real blades is unverified. Confirm actual hub seating, rear clip, screws and complete blade sweep before releasing this motor carrier for fabrication. Nominal motion checks do not close these interfaces. Other printed parts are not made unverified by this propeller-specific uncertainty.",
     }
 
 
@@ -450,7 +468,8 @@ def fixed_frame_shape():
             and near(
                 bounds.YLength,
                 bearing_retention.INPUT_BODY_REAR_Y
-                - bearing_retention.INPUT_BODY_FRONT_Y,
+                - bearing_retention.INPUT_BODY_FRONT_Y
+                + 2 * bearing_retention.INPUT_WING_ROOT_RADIUS,
             )
         ),
         2,
@@ -660,9 +679,9 @@ def build_fit_coupons(doc):
         "BearingKeeperFitSample",
         bearing_retention.keeper_shape(),
         "Production shared cap coupon. Assemble with the shared housing, three actual "
-        "bearings and three M2x10 screws with ordinary M2 nuts. Both locating keys "
+        "bearings and two aligned M2x10 screws with ordinary M2 nuts. Both locating keys "
         "and hard seating lands must engage before tightening. The screw heads seat "
-        "on the cap; the three side-entry nuts bear against the lower body's 2.5 mm floors. "
+        "on the cap; the two side-entry nuts bear against the lower body's 2.5 mm floors. "
         "Match process and finish to the production cap, then verify concentricity, "
         "shield clearance at both axial limits, free rotation and screw retention.",
         sku="BearingKeeperFitSample",
@@ -798,9 +817,9 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "frame_crossbeam",
             "PropulsionFixedFrame",
-            (0, 20, 24.49),
+            (0, 20, 19.99),
             (0, 20, 29.51),
-            5.0,
+            9.5,
         ),
         (
             "integrated_saddle_roof",
@@ -813,8 +832,8 @@ def manufacturing_wall_probes(drive=SELECTED_DRIVE):
         (
             "bearing_cap_nut_floor",
             "PropulsionFixedFrame",
-            (6.25, 40.8, 47.49),
-            (6.25, 40.8, 50.01),
+            (-5.5, 34.3, 47.49),
+            (-5.5, 34.3, 50.01),
             2.5,
         ),
     ]
@@ -826,7 +845,7 @@ def _build_frame(doc, module, spec):
         module,
         "PropulsionFixedFrame",
         fixed_frame_shape(),
-        "One integral PA12 support with two standard carrier U shoes atX±14 and M3x10 rail pairs. Both shoes seat atZ9.5; their rail walls must be coplanar. A raised5mm crossbeam atZ24.5..29.5 ends flush with two18x19mm bearing webs. Only broad R1.5 bearing-web roots are blended. Each compact closed servo frame seats directly on a45.4x21x9.5 central plinth atZ20..29.5; there are no thin projecting feet or upper tie. An integral short wing adds one external input-bearing seat atX±16/|Y|33; each shared three-bearing cap has threeM2x10 joints. Input axesX±16/Z50 keep16mm mesh distance; output axes remain150mm apart atZ50. The7.4x20.4 window has0.2mm nominal clearance per case face; fastened ears locate and clamp the servo. Remove both small gears, loosen the input jack/driver screw, park the unmeshed rotor for shaft service, withdraw its35mm stubY32 thenX60, and remove the loose driverX60 before releasing the ear pairs and withdrawing servo/horn/adapterY13 thenX60. Mirror X/Y on Starboard. Keep OEM horn and M1 joints assembled until off-frame. Finish tight windows without forcing case compression. Each side uses a common keyed cap for two output bearings and one input bearing, on hard lands. Finish nominalØ6 seats to fit;0.5mm bearing float and±0.5mm rotor stops are independent. No cap preload on bearings/shields. Physical fit, retention, stiffness and strength remain unqualified.",
+        "One integral PA12 support with two standard carrier U shoes atX±14 and M3x10 rail pairs. Both shoes seat atZ9.5; their rail walls must be coplanar. A9.5mm crossbeam atZ20..29.5 ends flush with two18x19mm bearing webs. Broad R1.5 lower roots and R0.75 concave T-wing plan roots retain the shaft-tool corridor. Each compact closed servo frame seats directly on a45.4x21x9.5 central plinth atZ20..29.5; there are no thin projecting feet or upper tie. An integral short wing adds one external input-bearing seat atX±16/|Y|33; each shared three-bearing cap has two aligned M2x10 joints. Input axesX±16/Z50 keep16mm mesh distance; output axes remain150mm apart atZ50. The7.4x20.4 window has0.2mm nominal clearance per case face; fastened ears locate and clamp the servo. Remove both small gears, loosen the input jack/driver screw, park the unmeshed rotor for shaft service, withdraw its35mm stubY32 thenX60, and remove the loose driverX60 before releasing the ear pairs and withdrawing servo/horn/adapterY13 thenX60. Mirror X/Y on Starboard. Keep OEM horn and M1 joints assembled until off-frame. Finish tight windows without forcing case compression. Each side uses a common keyed cap for two output bearings and one input bearing, on hard lands. Finish nominalØ6 seats to fit;0.5mm bearing float and±0.5mm rotor stops are independent. No cap preload on bearings/shields. Physical fit, retention, stiffness and strength remain unqualified.",
         App.Rotation(V(0, 0, 1), 45),
         sku=spec.frame_sku,
     )
@@ -873,7 +892,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         pod,
         prefix + "MotorCarrier",
         moving_carrier_shape(sign),
-        "The rotor remains supported by its inboard shaft and bearings only. One10mm nominalØ3 D socket,0.5mm shaft flat and radialM2x12 jack provide keyed torque transfer and axial grip. The nut enters from the top and reacts against a3mm outer wall; the screw head floats2mm outside the root, its tip seats on the flat. Do not apply clamp torque as though the head seated. An8mm-thick triangular web joins the3mm motor plate to the solid root. The3x3mm guard has a23mm inner radius and12mm-high inboard fan. A3x8mm rear bridge and outer return arm support the opposite ring sector, behind the motor face and outside the nominal propeller disk; the return has oneR1 rear root. No outboard shaft, fixed bearing or extra hardware is added. Jack access remains open. The inner root face and output-gear web bracket stationary thrust lands with±0.5mm rotor travel independently of bearing shields. Nominal40mm guard geometry does not establish real blade seating, protection or strength; fabrication remains on hold pending installation evidence.",
+        "The rotor remains supported by its inboard shaft and bearings only. One10mm nominalØ3 D socket,0.5mm shaft flat and radialM2x12 jack provide keyed torque transfer and axial grip. The nut enters from the top and reacts against a3mm outer wall; the screw head floats2mm outside the root, its tip seats on the flat. Do not apply clamp torque as though the head seated. An8mm-thick triangular web joins the3mm motor plate to the solid root. The3x3mm guard has a23mm inner radius and an8mm-high inboard fan flush with the root. TwoR0.5 free root-end rounds leave the shaft and thrust faces intact. A3x8mm rear bridge and outer return arm support the opposite ring sector, behind the motor face and outside the nominal propeller disk; the return has oneR1 rear root. No outboard shaft, fixed bearing or extra hardware is added. Jack access remains open. The inner root face and output-gear web bracket stationary thrust lands with±0.5mm rotor travel independently of bearing shields. These stops can rub under axial load; they are not qualified thrust bearings. Nominal40mm guard geometry does not establish real blade seating, protection or strength; fabrication remains on hold pending installation evidence.",
         App.Rotation(V(0, 1, 0), -90),
         sku=prefix + "MotorCarrier",
     )
@@ -884,6 +903,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
         ("GuardRadialWall", GUARD_OUTER_RADIUS - GUARD_INNER_RADIUS),
         ("GuardAxialThickness", GUARD_DEPTH),
         ("GuardRootFanHeight", GUARD_ROOT_FAN_HEIGHT),
+        ("CarrierRootEdgeRadius", CARRIER_ROOT_EDGE_RADIUS),
         ("GuardReturnHeight", GUARD_RETURN_HEIGHT),
         ("GuardReturnRootRadius", GUARD_RETURN_ROOT_RADIUS),
     ):
@@ -985,7 +1005,7 @@ def _build_output_pod(doc, assembly, prefix, sign, spec):
             assembly,
             prefix + "BearingCap",
             cap,
-            "One rigid cap retains two output bearings and the input bearing. Two1.5mm side keys positively register the cap; finish both halves together to the actual bearings and never use bolt preload to remove radial play. ThreeM2x10 screws, including the outer input-bearing joint, seat on hard cap/body lands, with7mm grip,1.6mm nuts and1.4mm nominal tip projection. Remove screws/nuts and lift cap+Z; support rotor and remove shaft before lifting bearings. No bearing shields carry cap or rotor-stop load.",
+            "One rigid cap retains two output bearings and the input bearing. Two1.5mm side keys positively register the cap; finish both halves together to the actual bearings and never use bolt preload to remove radial play. Two aligned M2x10 screws, spanning the output and input bearing axes, seat on hard cap/body lands, with7mm grip,1.6mm nuts and1.4mm nominal tip projection. Remove screws/nuts and lift cap+Z; support rotor and remove shaft before lifting bearings. No bearing shields carry cap or rotor-stop load.",
             rotation=App.Rotation(V(0, 0, 1), 0 if sign > 0 else 180),
             sku="SharedGearBearingCap",
         )
@@ -1306,13 +1326,13 @@ def _module_metrics(printed, hardware, references, spec):
             "complete_circumferential_guide_width_mm": bearing_retention.SEAT_WIDTH,
             "minimum_complete_guide_overlap_mm": 2.5,
             "nominal_bearing_axial_float_mm": 0.5,
-            "retention": "Two split seats per rotor; one positively keyed rigid cap shared with the input bearing with threeM2x10 pairs seats on hard frame lands, not bearings. Independent shoulders retain outer rings; separate carrier/gear thrust lands bound rotor translation.",
+            "retention": "Two split seats per rotor; one positively keyed rigid cap shared with the input bearing with two aligned M2x10 pairs seats on hard frame lands, not bearings. Independent shoulders retain outer rings; separate carrier/gear thrust lands bound rotor translation.",
             "cap_screw_length_mm": 10,
             "cap_count": 2,
             "finishing": "Coupon-match all three split seats and locating side keys to actual bearings. Reject radial shake or cap mismatch rather than tightening it away. Verify shield lands and no preload at both bearing-float limits.",
             "rotor_stop_clearance_each_direction_mm": 0.5,
             "rotor_total_axial_travel_mm": 1.0,
-            "assembly": "With input unit and rotor/shaft removed, lower the two output bearings and one input bearing into the open seats. Place the keyed cap and seat its three screws/nuts on hard lands. Fit the input unit and rotor/shaft through their checked service routes, install gears and qualify both output axial stops. Align the input shaft before tightening the horn joints; never force the two supports into alignment.",
+            "assembly": "With input unit and rotor/shaft removed, lower the two output bearings and one input bearing into the open seats. Place the keyed cap and seat its two screws/nuts on hard lands. Fit the input unit and rotor/shaft through their checked service routes, install gears and qualify both output axial stops. Align the input shaft before tightening the horn joints; never force the two supports into alignment.",
         },
         "input_bearing_seats": {
             "count": 2,
@@ -1323,7 +1343,7 @@ def _module_metrics(printed, hardware, references, spec):
             "outer_ring_axial_float_mm": 0.5,
             "shaft_length_mm": 35,
             "proximal_flat_length_mm": 16,
-            "scope": "One external round-journal bearing supports each driver opposite its servo; common three-joint cap. Coaxiality, finished fits and loaded deflection require physical verification.",
+            "scope": "One external round-journal bearing supports each driver opposite its servo; common two-joint cap. Coaxiality, finished fits and loaded deflection require physical verification.",
         },
         "replacement_rotor_space": {
             "future_propeller_reference_diameter_mm": FUTURE_ROTOR_PROPELLER_DIAMETER,
@@ -1338,7 +1358,8 @@ def _module_metrics(printed, hardware, references, spec):
             "minimum_feature_wall_mm": 1.5,
             "guard_radial_wall_mm": 3,
             "guard_axial_thickness_mm": 3,
-            "guard_root_fan_height_mm": 12,
+            "guard_root_fan_height_mm": GUARD_ROOT_FAN_HEIGHT,
+            "carrier_root_edge_radius_mm": CARRIER_ROOT_EDGE_RADIUS,
             "guard_return_section_mm": [3, 8],
             "guard_return_root_radius_mm": 1,
             "frame_foot_thickness_mm": FOOT_THICKNESS,

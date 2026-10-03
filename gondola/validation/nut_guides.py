@@ -99,7 +99,7 @@ def nut_guide_check(host_shape, placement, *, outward_sign, floor_thickness):
 
 
 def installed_nut_guide_checks(doc):
-    """Audit six cap side slots and the two sole rotor jack pockets."""
+    """Audit four cap side slots and the two sole rotor jack pockets."""
     rows = []
     module = doc.getObject("MainPropulsionModule")
     for prefix, sign in (("Port", 1), ("Starboard", -1)):
@@ -115,7 +115,7 @@ def installed_nut_guide_checks(doc):
                 sign * (-1 if x < 0 else 1),
                 2.5,
             )
-            for x, y, suffix in ((-5.5, 34.5, "Negative"), (6.25, 39.5, "Positive"))
+            for x, y, suffix in ((-5.5, 33.0, "Negative"),)
         ]
         sites.append(
             (

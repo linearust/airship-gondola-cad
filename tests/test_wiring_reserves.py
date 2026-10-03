@@ -404,7 +404,9 @@ class InstrumentOpticalWiringGapTests(unittest.TestCase):
             rows, _ = wiring.reserve_checks(self.doc)
         return next(row for row in rows if row["object"] == "FCWiringClearanceReserve")
 
-    def test_common_platform_contract_requires_actual_tray_with_unchanged_gap(self):
+    def test_integral_carrier_context_keeps_external_device_clearance_requirements(
+        self,
+    ):
         from gondola.parts import wiring_reserves
 
         self.assertIsNone(self.doc.getObject("OpticalMountBase"))
@@ -412,15 +414,15 @@ class InstrumentOpticalWiringGapTests(unittest.TestCase):
         self.assertTrue(row["passed"], row)
         self.assertTrue(row["native_wiring_contract_matches"])
         gaps = row["neighbour_clearance_buffers"]
-        self.assertEqual(len(gaps), 6)
-        self.assertIn("OpticalSensorTray", {item["object"] for item in gaps})
+        self.assertEqual(len(gaps), 5)
+        self.assertIsNone(self.doc.getObject("OpticalSensorTray"))
+        self.assertTrue(row["instrument_support_context"]["passed"])
         self.assertNotIn("OpticalMountBase", {item["object"] for item in gaps})
         expected = {
             "ModuleRadioEnvelope": 2.0,
             "ModulePASEnvelope": 2.0,
             "XT30ServiceReserve": 2.0,
             "MTF02POpticalClearanceReserve": 1.5,
-            "OpticalSensorTray": 1.5,
             "CapacitorServiceReserve": 1.5,
         }
         self.assertEqual(
@@ -433,26 +435,44 @@ class InstrumentOpticalWiringGapTests(unittest.TestCase):
             expected,
         )
 
-    def test_missing_bracket_cannot_pass_as_an_inapplicable_base(self):
+    def test_missing_registered_integral_carrier_cannot_hide_a_required_obstacle(self):
         registry = self.doc.DesignRegistry
         original = list(registry.PrintedParts)
         try:
             registry.PrintedParts = [
-                obj for obj in original if obj.Name != "OpticalSensorTray"
+                obj for obj in original if obj.Name != "ElectronicsMount"
             ]
             row = self.fc_result()
             self.assertFalse(row["passed"])
-            tray = next(
-                item
-                for item in row["neighbour_clearance_buffers"]
-                if item["object"] == "OpticalSensorTray"
-            )
-            self.assertFalse(tray["passed"])
-            self.assertEqual(tray["error"], "missing solid shape")
+            self.assertFalse(row["instrument_support_context"]["passed"])
+            self.assertTrue(row["instrument_support_context"].get("error"))
         finally:
             registry.PrintedParts = original
 
-    def test_clear_but_cramped_bracket_and_stale_base_metadata_are_rejected(self):
+    def test_extra_integral_carrier_stock_cannot_hide_inside_fc_wire_space(self):
+        carrier = self.doc.ElectronicsMount
+        original = carrier.Shape.copy()
+        try:
+            carrier.Shape = original.fuse(
+                Part.makeBox(10, 10, 8, App.Vector(-5, -12, 19))
+            ).removeSplitter()
+            self.doc.recompute()
+            row = self.fc_result()
+            self.assertFalse(row["passed"])
+            self.assertIn(
+                carrier.Name,
+                {
+                    item["object"]
+                    for item in row[
+                        "intersections_with_printed_hardware_equipment_tape"
+                    ]
+                },
+            )
+        finally:
+            carrier.Shape = original
+            self.doc.recompute()
+
+    def test_clear_but_cramped_optical_field_and_stale_tray_metadata_are_rejected(self):
         from gondola.parts import wiring_reserves
         from gondola.validation.wiring import named_gap_checks
 
@@ -466,13 +486,13 @@ class InstrumentOpticalWiringGapTests(unittest.TestCase):
             },
         }
         for gap, passed in ((1.49, False), (1.5, True)):
-            shapes["OpticalSensorTray"] = Part.makeBox(
+            shapes["MTF02POpticalClearanceReserve"] = Part.makeBox(
                 1, 1, 1, App.Vector(2 + gap, 0, 0)
             )
             row = next(
                 item
                 for item in named_gap_checks(shapes, requirements)
-                if item["object"] == "OpticalSensorTray"
+                if item["object"] == "MTF02POpticalClearanceReserve"
             )
             self.assertEqual(row["passed"], passed)
         obj = self.doc.FCWiringClearanceReserve
@@ -480,7 +500,7 @@ class InstrumentOpticalWiringGapTests(unittest.TestCase):
         try:
             stale = wiring_reserves.reserve_contracts()[obj.Name]
             gaps = stale["minimum_neighbour_gaps_mm"]
-            gaps["OpticalMountBase"] = gaps.pop("OpticalSensorTray")
+            gaps["OpticalSensorTray"] = 1.5
             obj.WiringContract = json.dumps(stale)
             row = self.fc_result()
             self.assertFalse(row["native_wiring_contract_matches"])

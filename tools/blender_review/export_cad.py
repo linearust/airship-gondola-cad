@@ -241,10 +241,6 @@ def check_optical_attachment_basis(doc):
         "InstrumentPivotNut": "M3_HEX_NUT",
         "InstrumentLockBolt": "M3X16_BUTTON_HEAD",
         "InstrumentLockNut": "M3_HEX_NUT",
-        "OpticalFootBolt2": "M2X8_BUTTON_HEAD",
-        "OpticalFootNut2": "M2_HEX_NUT",
-        "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
-        "OpticalFootNut1": "M2_HEX_NUT",
     }
     for name, sku in hardware.items():
         obj = doc.getObject(name)
@@ -453,7 +449,7 @@ def export(cad_path, output):
         scene(
             "03 Gear and horn",
             "GEAR / HORN / SHAFT REVIEW",
-            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Each35mm input shaft has a16mm proximal flat and a round journal through its fixed external bearing. One common cap retains that bearing and the two output bearings; three screws seat the cap on hard lands. Manufacturer stock plastic half arm 1 retains its unmodified source geometry; rear M1x6 hex bolts and front nuts clamp the round-hole/slot adapter after alignment. Installed fit and bearing load sharing remain unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
+            "48T driver / 16T driven: input -60..+60 deg, output +180..-180 deg. Each35mm input shaft has a16mm proximal flat and a round journal through its fixed external bearing. One common cap retains that bearing and the two output bearings; two aligned screws seat the cap on hard lands. Manufacturer stock plastic half arm 1 retains its unmodified source geometry; rear M1x6 hex bolts and front nuts clamp the round-hole/slot adapter after alignment. Installed fit and bearing load sharing remain unverified. Gear teeth are reference geometry; no backlash/contact simulation.",
             193,
             port_detail,
             [[-28, -12, 14], [30, 103, 77]],

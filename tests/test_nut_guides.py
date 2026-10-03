@@ -21,7 +21,7 @@ class SideEntryNutGuideTests(unittest.TestCase):
             (
                 bearing_retention.lower_housing_shape(),
                 App.Placement(
-                    App.Vector(6.25, 11.5, -2.5), App.Rotation(App.Vector(1, 0, 0), 180)
+                    App.Vector(23, 5, -2.5), App.Rotation(App.Vector(1, 0, 0), 180)
                 ),
                 1,
                 2.5,
@@ -127,7 +127,7 @@ class SideEntryNutGuideTests(unittest.TestCase):
             try:
                 saved.recompute()
                 rows = installed_nut_guide_checks(saved)
-                self.assertEqual(len(rows), 8)
+                self.assertEqual(len(rows), 6)
                 self.assertTrue(all(x["passed"] for x in rows), rows)
                 nut = saved.PortOutputClampNegativeNut
                 original = nut.Placement
