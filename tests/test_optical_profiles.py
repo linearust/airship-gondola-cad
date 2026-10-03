@@ -69,9 +69,9 @@ class OpticalProfileGeometryTests(unittest.TestCase):
 
     def test_continuous_external_cone_contains_both_fields_and_registration(self):
         from gondola.parts import optical_mount, optical_sensor
-        from gondola.validation.optical import (
+        from gondola.validation.optical_envelopes import (
             RAIL_ALIGNMENT_RESERVE_MM,
-            _external_field_bound,
+            external_field_bound,
         )
 
         doc = App.newDocument("OpticalFullFieldBound")
@@ -81,7 +81,7 @@ class OpticalProfileGeometryTests(unittest.TestCase):
             for mode in ("rail", "carrier"):
                 group.OpticalAttachmentMode = mode
                 for profile in SENSOR_PROFILES.values():
-                    bound, _ = _external_field_bound(group, profile)
+                    bound, _ = external_field_bound(group, profile)
                     for pitch in (-20, -11, 0, 13, 20):
                         rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
                         for distance in (0, 100, 400):

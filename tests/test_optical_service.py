@@ -223,7 +223,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
             group.getGlobalPlacement().Rotation.multVec(App.Vector(0.1, 0, 0))
         )
         self.assertGreater(intersection_volume(shifted, target), 1e-5)
-        with patch.object(optical, "ANGLES", (0,)):
+        with patch.object(optical, "PITCH_SAMPLE_ANGLES", (0,)):
             result = optical._placement_checks(
                 self.doc, self.physical + [blocker], self.kit
             )
@@ -242,11 +242,12 @@ class OpticalPitchServiceTests(unittest.TestCase):
         )
 
     def test_equipment_and_power_screens_preserve_the_shared_tool_reserve(self):
-        from gondola.power_export import _collisions, _optical_motion_bounds
+        from gondola.power_export import _collisions
         from gondola.validation.equipment_options import (
             _optical_option_check,
             _optical_screens,
         )
+        from gondola.validation.optical_envelopes import motion_bounds
 
         blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, self.pivot_z))
         blocker.Placement = self.doc.OpticalFlowModule.getGlobalPlacement()
@@ -260,7 +261,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
                     {hit["moving"] for hit in pose["collisions"]},
                     {"OpticalPitchToolAccess"},
                 )
-        bounds = _optical_motion_bounds(self.doc.OpticalFlowModule)
+        bounds = motion_bounds(self.doc.OpticalFlowModule)
         hits = _collisions({"ToolBlocker": blocker}, bounds)
         self.assertEqual(
             {hit["second"] for hit in hits}, {"OpticalPitchToolAccessBound"}

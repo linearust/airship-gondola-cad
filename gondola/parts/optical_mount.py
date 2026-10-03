@@ -17,8 +17,6 @@ from gondola.contracts.optical_attachment import pivot_z, resolve_mount_mode
 from . import optical_interface, purchased_hardware, rail
 
 V = App.Vector
-# Keep this height local to the carrier so deck changes carry the sensor with it.
-PIVOT_CENTRE = (0.0, 0.0, pivot_z("carrier"))
 ANGLE_LIMIT_DEG = 20.0
 EAR_RADIUS = 4.0
 EAR_THICKNESS = 2.0
@@ -27,7 +25,6 @@ UPRIGHT_WIDTH = 8.0
 GUSSET_DEPTH = 2.0
 RAIL_GUSSET_DEPTH = 4.0
 GUSSET_HEIGHT = 10.0
-GUSSET_TOP_Z = optical_interface.FOOT_THICKNESS + GUSSET_HEIGHT
 PIVOT_HOLE_DIAMETER = 2.2
 TRAY_SIZE_MM = (18.0, 12.0)
 TRAY_CORNER_RADIUS = 1.0

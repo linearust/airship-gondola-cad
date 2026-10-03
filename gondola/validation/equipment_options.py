@@ -37,7 +37,7 @@ from gondola.print_export import geometry_comparison
 
 from .evidence import comparison_passed
 from .geometry import intersection_volume, local_shape, translation_sweep
-from .optical import ANGLES, _external_field_bound
+from .optical_envelopes import PITCH_SAMPLE_ANGLES, external_field_bound
 from .optical_service import pitch_tool_shape
 from .wiring import collision_hits, measure_clearances, named_gap_checks
 
@@ -279,7 +279,7 @@ def _optical_screens(doc):
         physical = kit["printed"] + kit["hardware"]
         for profile in SENSOR_PROFILES.values():
             poses = []
-            for pitch in ANGLES:
+            for pitch in PITCH_SAMPLE_ANGLES:
                 optical_mount.set_pitch(temporary, pitch)
                 pose = kit["pitch_stage"].getGlobalPlacement()
                 shapes = {
@@ -316,7 +316,7 @@ def _optical_screens(doc):
                     }
                 )
             optical_mount.set_pitch(temporary, 0)
-            bound, _ = _external_field_bound(kit["group"], profile)
+            bound, _ = external_field_bound(kit["group"], profile)
             screens.append(
                 {
                     "attachment": attachment,

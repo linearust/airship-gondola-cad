@@ -6,7 +6,6 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 
 import functools
 import json
-import math
 from contextlib import contextmanager
 from itertools import combinations
 from pathlib import Path
@@ -62,6 +61,7 @@ from .validation.geometry import (
     intersection_volume,
     translation_sweep,
 )
+from .validation.optical_envelopes import motion_bounds
 
 OPTIONAL_PLANS = OPTIONAL_POWER_PLAN_KEYS
 TOL = 1e-5
@@ -119,63 +119,6 @@ def _installation_context(main, plan_key):
         context.pop("ModuleBatteryEnvelope", None)
         context.pop("MaximumBatteryEnvelope", None)
     return context
-
-
-def _pitch_bound(shape, angle_limit_deg):
-    """Exact axis-aligned enclosure of a box throughout a bounded Y rotation."""
-    bounds = shape.BoundBox
-    limit = math.radians(angle_limit_deg)
-    xs, zs = [], []
-    for x in (bounds.XMin, bounds.XMax):
-        for z in (bounds.ZMin, bounds.ZMax):
-            angles = [-limit, limit]
-            for critical in (math.atan2(z, x), math.atan2(-x, z)):
-                angles.extend(
-                    critical + n * math.pi
-                    for n in range(-2, 3)
-                    if -limit <= critical + n * math.pi <= limit
-                )
-            for angle in angles:
-                xs.append(x * math.cos(angle) + z * math.sin(angle))
-                zs.append(-x * math.sin(angle) + z * math.cos(angle))
-    return Part.makeBox(
-        max(xs) - min(xs),
-        bounds.YLength,
-        max(zs) - min(zs),
-        App.Vector(min(xs), bounds.YMin, min(zs)),
-    )
-
-
-def _optical_motion_bounds(optical):
-    """Both mutually exclusive sensors and connectors, continuous pitch."""
-    from .contracts.optical_sensors import SENSOR_PROFILES
-    from .parts import optical_interface, optical_mount, optical_sensor
-    from .validation.optical import _external_field_bound
-    from .validation.optical_service import pitch_tool_shape
-
-    mode = str(optical.OpticalAttachmentMode)
-    result = {
-        "OpticalPitchToolAccessBound": placed_shape(
-            optical_interface.registration_bound(pitch_tool_shape(mode), mode),
-            optical.getGlobalPlacement(),
-        )
-    }
-    for key, profile in SENSOR_PROFILES.items():
-        result[f"{key}ContinuousOpticalFieldBound"] = _external_field_bound(
-            optical, profile
-        )[0]
-        for name, shape in (
-            ("Body", optical_sensor.envelope_shape(profile)),
-            ("Connector", optical_sensor.connector_reserve_shape(profile)),
-            ("Tray", optical_mount.sensor_tray_shape()),
-        ):
-            bound = _pitch_bound(shape, optical_mount.ANGLE_LIMIT_DEG)
-            bound.translate(App.Vector(*optical_mount.pivot_centre(mode)))
-            bound = optical_interface.registration_bound(bound, mode)
-            result[f"{key}Continuous{name}Bound"] = placed_shape(
-                bound, optical.getGlobalPlacement()
-            )
-    return result
 
 
 def _placed(shapes, pose):
@@ -382,7 +325,7 @@ def screen_configurations(main_doc):
     )
     optical = main_doc.getObject("OpticalFlowModule")
     optical_attachment = _optical_attachment_description(optical)
-    optical_bounds = _optical_motion_bounds(optical) if optical is not None else {}
+    optical_bounds = motion_bounds(optical) if optical is not None else {}
     contexts = {}
     for plan_key in OPTIONAL_PLANS:
         context = _installation_context(main_doc, plan_key)

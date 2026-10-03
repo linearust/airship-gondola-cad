@@ -18,6 +18,20 @@ from unittest.mock import patch
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+def imported_modules(path):
+    """Include local imports and resolve their package-relative module names."""
+    package = ".".join(path.parent.relative_to(REPO_ROOT).parts)
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            yield from (item.name for item in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if node.level:
+                module = importlib.util.resolve_name("." * node.level + module, package)
+            yield module
+            yield from (f"{module}.{item.name}" for item in node.names)
+
+
 class RepositoryIntegrityTests(unittest.TestCase):
     def test_leaf_validation_checks_do_not_import_the_propulsion_coordinator(self):
         # Shared checks must remain usable without importing their coordinator
@@ -32,22 +46,19 @@ class RepositoryIntegrityTests(unittest.TestCase):
             "geometry.py",
         ):
             path = REPO_ROOT / "gondola" / "validation" / filename
-            for node in ast.walk(ast.parse(path.read_text())):
-                if isinstance(node, ast.Import):
-                    imports = [item.name for item in node.names]
-                elif isinstance(node, ast.ImportFrom):
-                    module = node.module or ""
-                    if node.level:
-                        module = importlib.util.resolve_name(
-                            "." * node.level + module, "gondola.validation"
-                        )
-                    imports = [
-                        module,
-                        *(f"{module}.{item.name}" for item in node.names),
-                    ]
-                else:
-                    continue
-                self.assertNotIn(coordinator, imports, (filename, node.lineno))
+            self.assertNotIn(coordinator, set(imported_modules(path)), filename)
+
+    def test_shared_optical_geometry_does_not_depend_on_report_coordinators(self):
+        forbidden = {
+            "gondola.validation.optical",
+            "gondola.validation.equipment_options",
+            "gondola.power_export",
+        }
+        path = REPO_ROOT / "gondola/validation/optical_envelopes.py"
+        self.assertFalse(set(imported_modules(path)) & forbidden)
+        for filename in ("power_export.py", "validation/equipment_options.py"):
+            path = REPO_ROOT / "gondola" / filename
+            self.assertNotIn("gondola.validation.optical", set(imported_modules(path)))
 
     def test_active_imports_do_not_require_revision_scripts_or_private_tools(self):
         allowed = set(sys.stdlib_module_names) | {

@@ -94,7 +94,7 @@ class DirectPowerTests(unittest.TestCase):
     def test_continuous_pitch_bounds_contain_both_sensor_and_connector_poses(self):
         from gondola.contracts.optical_sensors import SENSOR_PROFILES
         from gondola.parts import optical_sensor
-        from gondola.power_export import _pitch_bound
+        from gondola.validation.optical_envelopes import pitch_bound
 
         for profile in SENSOR_PROFILES.values():
             for factory in (
@@ -102,7 +102,7 @@ class DirectPowerTests(unittest.TestCase):
                 optical_sensor.connector_reserve_shape,
             ):
                 original = factory(profile)
-                bound = _pitch_bound(original, 20)
+                bound = pitch_bound(original, 20)
                 for angle in range(-20, 21, 2):
                     moved = original.copy()
                     moved.rotate(App.Vector(), App.Vector(0, 1, 0), angle)

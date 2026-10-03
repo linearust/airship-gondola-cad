@@ -221,11 +221,11 @@ class OpticalClearanceTests(unittest.TestCase):
                     self.assertEqual(value, after[name][key], (name, key))
 
     def test_continuous_field_does_not_filter_unknown_obstacles(self):
-        from gondola.validation.optical import _external_field_bound
+        from gondola.validation.optical_envelopes import external_field_bound
         from gondola.validation.wiring import collision_hits
 
         group = self.doc.OpticalFlowModule
-        bound, _ = _external_field_bound(group)
+        bound, _ = external_field_bound(group)
         block = Part.makeBox(1, 1, 1, App.Vector(0, 0, 50))
         block.Placement = group.getGlobalPlacement()
         hits = collision_hits(bound, {"UnknownBlock": block}, tolerance=1e-5)
@@ -272,7 +272,7 @@ class OpticalClearanceTests(unittest.TestCase):
             .multVec(point),
         )
         reserve.Placement = App.Placement()
-        with patch.object(optical, "ANGLES", (0,)):
+        with patch.object(optical, "PITCH_SAMPLE_ANGLES", (0,)):
             result = optical._placement_checks(self.doc, physical, kit, profile=profile)
         self.assertFalse(result["passed"])
         clearance = next(
