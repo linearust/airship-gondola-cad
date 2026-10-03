@@ -17,7 +17,6 @@ from gondola.contracts.equipment_options import (
     get_navigation_profile,
     get_radio_profile,
 )
-from gondola.contracts.optical_attachment import resolve_mount_mode
 
 from . import equipment_layout as layout
 from . import equipment_mounts as mounts
@@ -40,19 +39,15 @@ RESERVE_PARENTS = {
     "RadioNegativeXConnectorReserve": "AccessoryEquipmentModule",
     "RadioPositiveXConnectorReserve": "AccessoryEquipmentModule",
     "NavigationDirectAntennaReserve": "AccessoryEquipmentModule",
-    "FCWiringClearanceReserve": "ElectronicsEquipmentModule",
-    "XT30ServiceReserve": "ElectronicsEquipmentModule",
-    "CapacitorServiceReserve": "ElectronicsEquipmentModule",
+    "FCWiringClearanceReserve": "InstrumentPitchStage",
+    "XT30ServiceReserve": "InstrumentPitchStage",
+    "CapacitorServiceReserve": "InstrumentPitchStage",
 }
 
 
-def neighbour_gap_pairs(mode=None):
-    """Require the installed optical print while retaining every gap threshold."""
-    optical_part = (
-        "OpticalSensorTray"
-        if resolve_mount_mode(mode) == "rail"
-        else "OpticalMountBase"
-    )
+def neighbour_gap_pairs():
+    """Preserve wiring clearance around the common instrument bracket."""
+    optical_part = "OpticalSensorTray"
     return {
         "FCWiringClearanceReserve": {
             "ModuleRadioEnvelope": 2.0,
@@ -244,9 +239,7 @@ def device_connector_contract(key):
     }
 
 
-def reserve_contracts(
-    navigation_profile=None, radio_profile=None, *, optical_mode=None
-):
+def reserve_contracts(navigation_profile=None, radio_profile=None):
     """Attach measured evidence and explicitly unverified design allowances."""
     navigation_profile = navigation_profile or get_navigation_profile()
     radio_profile = radio_profile or get_radio_profile()
@@ -261,9 +254,7 @@ def reserve_contracts(
         "orientation_scope": "FC, underbody corridor and exit turns are clocked together180deg in the electronics carrier to retain the prior world-heading design basis. The square envelope does not establish the actual board arrow, firmware orientation or port coordinates.",
         "design_exit_bundle_diameter_mm": FC_EXIT_BUNDLE_DIAMETER_MM,
         "design_exit_centreline_bend_radius_mm": FC_EXIT_BEND_RADIUS_MM,
-        "minimum_neighbour_gaps_mm": neighbour_gap_pairs(optical_mode)[
-            "FCWiringClearanceReserve"
-        ],
+        "minimum_neighbour_gaps_mm": neighbour_gap_pairs()["FCWiringClearanceReserve"],
         "withdrawal_scope": f"The {FC_PERIPHERAL_DEPTH_MM:g}mm peripheral band adds handling allowance beyond the nominal SH housing length; it is not a measured installed projection, complete unplug stroke or grip/latch-access proof. The {FC_EXIT_BUNDLE_DIAMETER_MM:g}mm bundle and {FC_EXIT_BEND_RADIUS_MM:g}mm bend are planning choices, not wire specifications.",
         "ventilation_limit": "Reserved volume is not permission to cover ESC MOS regions; route actual wires with cooling, insulation and strain relief checked.",
     }

@@ -38,7 +38,7 @@ SERVO_SCREW_HEAD_HEIGHT = 1.6
 SERVO_SCREW_LENGTH = 8.0
 SERVO_SCREW_MATERIAL = "304 stainless steel (seller claim)"
 
-# Rail-only M3 interfaces. Do not propagate these dimensions to the M2 clamps.
+# Shared rail and instrument M3 envelopes; keep separate from the M2 clamps.
 # A procurement source has not been selected; these are acceptance envelopes.
 RAIL_THREAD_DIAMETER = 3.0
 RAIL_THREAD_PITCH = 0.5

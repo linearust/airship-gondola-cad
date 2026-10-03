@@ -1,4 +1,4 @@
-"""Selectable optical attachment: standard rail shoe or existing carrier slot."""
+"""Two detachable M2 clamps on existing slots of the common instrument plate."""
 
 import json
 import math
@@ -6,78 +6,46 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import box, set_property, union
+from gondola.cad import box, set_property
 from gondola.contracts import fasteners
 from gondola.contracts.hardware import HEX_NUT_SOURCE, STACK_SCREW_SOURCE
-from gondola.contracts.optical_attachment import resolve_mount_mode
+from gondola.contracts.optical_attachment import DEFAULT_HOST, FOOT_ORIGIN_IN_STAGE
 
 from . import mounting_plate, purchased_hardware, slot_bearing
 
 V = App.Vector
 HOST_SUPPORT_Z = mounting_plate.CARRIER_SUPPORT_Z
-HOST_OFFSET_X = 27.0
-FOOT_SIZE_MM = (8.0, 18.0)
+FOOT_SIZE_MM = (54.0, 8.0)
 FOOT_THICKNESS = 2.0
 NUT_RECESS_DEPTH = 0.5
 NUT_RECESS_AF = 4.25
-FOOT_NUT_SEAT_Z = FOOT_THICKNESS - NUT_RECESS_DEPTH
-# Retain the positive-Y joint's existing object identity; the negative joint
-# is replaced by a broad rigid locator, not a spring or interference fit.
-CLAMP_CENTRES = {1: (0.0, 5.0)}
+FOOT_NUT_SEAT_Z = 1.5
+CLAMP_CENTRES = {1: (-19.0, 0.0), 2: (19.0, 0.0)}
 HOST_SLOT_WIDTH = 2.6
 CLAMP_HOLE_DIAMETER = 2.2
 CLAMP_SCREW_LENGTH = 8.0
-LOCATOR_WIDTH = 2.4
-LOCATOR_END_CENTRES_Y = (-5.0, 1.0)
-LOCATOR_DEPTH = 1.2
-DEFAULT_HOST = "BatteryEquipmentModule"
-DEFAULT_SIDE = "PositiveX"
-SUPPORTED_HOSTS = {
-    "BatteryEquipmentModule": "BatteryMount",
-    "ElectronicsEquipmentModule": "ElectronicsMount",
-    "AccessoryEquipmentModule": "AccessoryMount",
-}
-SIDES = ("PositiveX", "NegativeX")
-# Retain the prior conservative assembly envelope; it is not operating play.
-# With +/-0.3 mm total-size variation, a 2.1 mm-wide locator with a 5.7 mm
-# straight centreline inside a 2.9 mm slot limits yaw to asin(0.8 / 5.7),
-# below this 12.71-degree bound. The positive-end screw bounds longitudinal
-# translation. Full foot seating and a tightened clamp are still required.
 DIMENSION_ALLOWANCE = 0.3
 MINIMUM_RECEIVED_BOLT_DIAMETER = 1.8
-MAX_REGISTRATION_ERROR = (
-    HOST_SLOT_WIDTH + DIMENSION_ALLOWANCE - MINIMUM_RECEIVED_BOLT_DIAMETER
-)
-REGISTRATION_HALF_PITCH = 5.0
-MAX_REGISTRATION_YAW_RAD = math.asin(MAX_REGISTRATION_ERROR / REGISTRATION_HALF_PITCH)
-MAX_REGISTRATION_X = MAX_REGISTRATION_ERROR
-MAX_REGISTRATION_Y = MAX_REGISTRATION_ERROR + REGISTRATION_HALF_PITCH * (
-    1 - math.cos(MAX_REGISTRATION_YAW_RAD)
-)
+# Each screw can move .55 mm across its maximum slot and .35 mm in its
+# maximum foot bore. At 38 mm separation yaw is bounded by asin(1.8/38).
+# Round outward to include the small second-order X displacement as well.
+MAX_REGISTRATION_X = 1.0
+MAX_REGISTRATION_Y = 1.0
+MAX_REGISTRATION_YAW_RAD = math.radians(3.0)
 
 
-def placement(side=DEFAULT_SIDE):
-    if side not in SIDES:
-        raise ValueError("Unknown optical carrier side: " + str(side))
-    sign = 1 if side == "PositiveX" else -1
-    return App.Placement(
-        V(sign * HOST_OFFSET_X, 0, HOST_SUPPORT_Z),
-        App.Rotation(V(0, 0, 1), 0 if sign == 1 else 180),
-    )
+def placement():
+    return App.Placement(V(*FOOT_ORIGIN_IN_STAGE), App.Rotation())
 
 
 def foot_shape():
     width, length = FOOT_SIZE_MM
-    shape = union(
-        [
-            box(width, length, FOOT_THICKNESS, (-width / 2, -length / 2, 0)),
-            locator_shape(),
-        ]
-    )
+    shape = box(width, length, FOOT_THICKNESS, (-width / 2, -length / 2, 0))
+    # Preserve the complete FC underbody rectangle; the rear 3 mm strip
+    # joins both foot pads without entering that reserved volume.
+    shape = shape.cut(box(12, 5, FOOT_THICKNESS + 2, (-6, -4, -1)))
     for x, y in CLAMP_CENTRES.values():
-        shape = shape.cut(
-            Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, FOOT_THICKNESS + 2, V(x, y, -1))
-        )
+        shape = shape.cut(Part.makeCylinder(CLAMP_HOLE_DIAMETER / 2, 4, V(x, y, -1)))
         recess = purchased_hardware.hex_prism(NUT_RECESS_AF, NUT_RECESS_DEPTH + 0.1)
         recess.translate(V(x, y, FOOT_NUT_SEAT_Z))
         shape = shape.cut(recess)
@@ -90,69 +58,25 @@ def nut_recess_contract():
         "across_flats_mm": NUT_RECESS_AF,
         "remaining_floor_mm": FOOT_NUT_SEAT_Z,
         "finished_flat_gap_acceptance_mm": [4.15, 4.3],
-        "scope": "Ordinary M2 hex nuts only. Shallow open pockets restrain turning without raised guides; they do not retain a loose nut axially or qualify tightening torque. Check received nut chamfers and flank engagement, finish for free insertion and full floor seating, and reject a freely rotating nut or damaged floor. The finished range is an acceptance target, not guaranteed PA12 process tolerance.",
+        "scope": "Ordinary M2 hex nuts only. Shallow open pockets restrain turning without raised guides; they do not retain loose nuts axially or qualify tightening torque. Check actual nut chamfers and flank engagement, finish for free insertion and full floor seating, and reject a freely rotating nut or damaged floor. The finished range is an acceptance target, not guaranteed PA12 process tolerance.",
     }
 
 
-def locator_shape():
-    """Shallow capsule enters only the slot; it never clips beneath the plate."""
-    radius = LOCATOR_WIDTH / 2
-    low, high = LOCATOR_END_CENTRES_Y
-    return union(
-        [
-            box(
-                LOCATOR_WIDTH, high - low, LOCATOR_DEPTH, (-radius, low, -LOCATOR_DEPTH)
-            ),
-            *(
-                Part.makeCylinder(radius, LOCATOR_DEPTH, V(0, y, -LOCATOR_DEPTH))
-                for y in (low, high)
-            ),
-        ]
-    ).removeSplitter()
-
-
-def interface_contract(mode="carrier"):
-    mode = resolve_mount_mode(mode)
-    if mode == "rail":
-        from . import rail
-
-        return {
-            "attachment_mode": mode,
-            "mechanism": "The same integral U shoe as the universal carriers, with one transverse M3x10/ordinary M3 nut pair",
-            "industry_standard_claimed": False,
-            "rail_interface": rail.attachment_contract(),
-            "hardware": "One standard M3x10 rail pair replaces the carrier-foot M2 pair; direct rail mode has no pitch joint or M2 hardware. No additional adapter, washer or printed part.",
-            "relocation": "Loosen the single rail pair for supported local trim; remove and reseat at a different clear wall station for larger moves. Recheck optical field, whole head, cable slack and service access after any position change.",
-            "service": "Disconnect the sensor, support the head, remove its rail screw/nut from their open-bottom recesses, then lift the complete head. Use the checked saved-position rail service path; no connected-cable or arbitrary-position clearance claim.",
-            "qualification": "Nominal standard shoe contacts only. Production PA12 fit, local rail curvature, friction retention, pointing, adhesive and creep remain unqualified. Direct rail mode has no pitch correction; use the stacked pedestal for manual alignment.",
-        }
+def interface_contract():
     return {
-        "attachment_mode": mode,
-        "mechanism": "One M2 clamp and an integral rigid locating tongue in an existing carrier middle-side slot",
+        "attachment_mode": "instrument",
+        "mechanism": "One rigid removable optical bracket with two spaced M2 clamps on the shared instrument plate",
         "industry_standard_claimed": False,
-        "supported_carriers": SUPPORTED_HOSTS,
         "default_host": DEFAULT_HOST,
-        "default_side": DEFAULT_SIDE,
-        "host_offset_x_mm": HOST_OFFSET_X,
-        "host_support_z_mm": HOST_SUPPORT_Z,
+        "support_part": "ElectronicsMount",
+        "foot_origin_in_stage_mm": FOOT_ORIGIN_IN_STAGE,
         "foot_size_mm": (*FOOT_SIZE_MM, FOOT_THICKNESS),
+        "foot_front_notch_mm": {"width": 12.0, "depth": 5.0, "rear_bridge_width": 3.0},
         "foot_bolt_centres_xy_mm": tuple(CLAMP_CENTRES.values()),
-        "locator": {
-            "width_mm": LOCATOR_WIDTH,
-            "end_centres_y_mm": LOCATOR_END_CENTRES_Y,
-            "depth_mm": LOCATOR_DEPTH,
-            "nominal_slot_side_clearance_mm": (HOST_SLOT_WIDTH - LOCATOR_WIDTH) / 2,
-            "nominal_recess_above_carrier_underside_mm": mounting_plate.THICKNESS_MM
-            - LOCATOR_DEPTH,
-            "dimensional_screen_recess_mm": mounting_plate.THICKNESS_MM
-            - DIMENSION_ALLOWANCE
-            - LOCATOR_DEPTH
-            - DIMENSION_ALLOWANCE,
-            "scope": "Rigid location only; no latch, interference or elastic preload. The 1.2 mm projection is a shallow locator, not an unsupported structural wall. The nominal side gap is 0.1 mm; +/-0.3 mm size variation can cause interference. Finish high spots for snug hand insertion without rocking; reprint an oversized slot or undersized tongue. The foot must sit flat on both support strips before tightening; never pull an interfering tongue into its slot with the screw. Verify the actual tongue remains above the carrier underside.",
-        },
+        "host_bolt_centres_xy_mm": [(-19.0, 27.0), (19.0, 27.0)],
         "clearance_hole_diameter_mm": CLAMP_HOLE_DIAMETER,
-        "host_interface": "Existing x=+/-27 mm middle side slot; one screw at local y=+5 mm and the locating tongue toward negative Y. Same foot on either X edge, rotated 180 degrees on NegativeX. No optical-specific carrier holes or additional carrier.",
-        "hardware": "One M2x8 button-head screw from below the plate and ordinary M2 nut in a shallow foot recess; one further identical pair locks the pitch ears. No washers.",
+        "host_interface": "Opposed existing side-slot endpoints at plate X=-19/+19, Y=27 mm. No new plate holes, independent optical hinge, rail shoe or locating tongue.",
+        "hardware": "Two M2x8 button-head screws from below the plate and two ordinary M2 nuts in shallow foot recesses. No washers.",
         **slot_bearing.contract(
             HOST_SLOT_WIDTH + DIMENSION_ALLOWANCE, MINIMUM_RECEIVED_BOLT_DIAMETER
         ),
@@ -166,53 +90,35 @@ def interface_contract(mode="carrier"):
             "printed_hole_and_slot_width_allowance_mm": DIMENSION_ALLOWANCE,
             "minimum_received_screw_diameter_mm": MINIMUM_RECEIVED_BOLT_DIAMETER,
             "conservative_xy_translation_mm": (MAX_REGISTRATION_X, MAX_REGISTRATION_Y),
-            "maximum_yaw_bound_deg": math.degrees(MAX_REGISTRATION_YAW_RAD),
-            "scope": "Conservative collision allowance bounded by the tongue width/length and positive-end screw, assuming full planar seating. This includes positions that fail head-bearing acceptance; admissible assembly additionally requires screw centring within 0.1 mm across the slot and retained lands after tightening. Hand-align and lock the screw; this is not operating looseness, automatic alignment or a pointing specification. Width/length size screening does not include slot-end location, feature-position error or warpage. Inspect the actual features; these bounds are not an all-process tolerance guarantee.",
+            "maximum_yaw_bound_deg": 3.0,
+            "scope": "Conservative assembly collision allowance for two clamps 38 mm apart with full planar seating. Includes positions that fail head-bearing acceptance; centre each screw within 0.1 mm across its slot and verify both lands after tightening. This is not operating slack, automatic alignment or an all-process tolerance guarantee. Inspect feature position and warpage separately.",
         },
-        "relocation": "Move the same foot to a free middle side slot on an existing carrier and recheck populated device, wiring and optical fields. Carrier and side compatibility alone do not establish a clear view or simultaneous power-platform fit.",
-        "service": "Disconnect the sensor and bench-support the carrier off the rail. Remove the exposed foot nut and withdraw its screw downward, then lift the mount vertically to clear the 1.2 mm tongue. Remove obstructing equipment first if the selected populated host blocks access. No powered transfer or connected-cable service is modeled.",
-        "qualification": "Nominal geometry only. Check actual print fit, full head/nut bearing, preload, PA12 creep, adhesive retention and pointing. The manual pitch joint does not self-level.",
+        "service": "Disconnect the sensor and support the common platform. Lift each foot nut 4.7 mm, move it 8 mm toward positive local Y, 10 mm outward in X, then lift clear. Withdraw both screws 8.2 mm below the plate, slide the complete bracket 10 mm toward positive local Y to clear the FC corner, then lift it 40 mm. Remove this bracket before FC removal; the FC and optical sensor share one manually adjusted platform.",
+        "qualification": "Nominal geometry only. Verify printed fit, full head/nut bearing, actual engagement, clamping retention, PA12 creep, adhesive retention and pointing. No loaded stiffness or torque claim.",
     }
 
 
-def annotate_interface(obj, mode="carrier"):
+def attachment_description(optical):
+    if str(getattr(optical, "OpticalAttachmentMode", "")) != "instrument":
+        raise ValueError("Optical bracket requires the common instrument attachment")
+    host = optical.getParentGeoFeatureGroup()
+    if host is None or host.Name != DEFAULT_HOST:
+        raise ValueError("Optical bracket is not attached to InstrumentPitchStage")
+    return {
+        "mode": "instrument",
+        "host": host.Name,
+        "support_part": "ElectronicsMount",
+        "foot_origin_in_stage_mm": FOOT_ORIGIN_IN_STAGE,
+    }
+
+
+def annotate_interface(obj):
     set_property(
         obj,
         "OpticalInterfaceContract",
-        json.dumps(interface_contract(mode), sort_keys=True),
+        json.dumps(interface_contract(), sort_keys=True),
     )
     set_property(obj, "OpticalFitVerified", False, "App::PropertyBool")
-
-
-def attach_to_host(group, host, side=DEFAULT_SIDE):
-    if getattr(group, "OpticalAttachmentMode", "carrier") != "carrier":
-        raise ValueError(
-            "Rebuild with the carrier base before changing attachment type"
-        )
-    if host.Name not in SUPPORTED_HOSTS or host.Document != group.Document:
-        raise ValueError(
-            "Optical mount requires a supported carrier in the same document"
-        )
-    pose = placement(side)
-    old = group.getParentGeoFeatureGroup()
-    if old is not None and old != host:
-        old.removeObject(group)
-    host.addObject(group)
-    group.Placement = pose
-    set_property(group, "CarrierHostName", host.Name)
-    group.setEditorMode("CarrierHostName", 1)
-    if "MountSide" not in group.PropertiesList:
-        group.addProperty("App::PropertyEnumeration", "MountSide", "Carrier mounting")
-        group.MountSide = list(SIDES)
-    group.MountSide = side
-    group.Placement.Rotation = App.Rotation(V(0, 0, 1), 1)
-    group.setExpression(
-        "Placement.Base.x",
-        f"MountSide == 0 ? {HOST_OFFSET_X:g} mm : {-HOST_OFFSET_X:g} mm",
-    )
-    group.setExpression("Placement.Rotation.Angle", "MountSide == 0 ? 0 deg : 180 deg")
-    annotate_interface(group)
-    group.Document.recompute()
 
 
 def build_hardware(doc, group):
@@ -234,17 +140,16 @@ def build_hardware(doc, group):
                 HEX_NUT_SOURCE,
             ),
         ):
-            shape = shape.copy()
             shape.translate(V(x, y, z))
             objects.append(
                 purchased_hardware.add_hardware(
                     doc,
                     group,
                     f"OpticalFoot{kind}{index}",
-                    f"BUY | optical carrier foot {index + 1} {kind.lower()}",
+                    f"BUY | optical bracket foot {index} {kind.lower()}",
                     shape,
                     sku,
-                    "One M2x8 screw through carrier and 1.5 mm foot floor under a 0.5 mm shallow ordinary M2 nut recess. Integral shallow tongue limits rotation before clamping. Bench assembly; verify free insertion, full flat seating, actual engagement and full slot bearing. No washer.",
+                    "M2x8 through the existing 2 mm plate and 1.5 mm foot floor beneath a 0.5 mm shallow ordinary M2 nut recess. Two spaced clamps locate the rigid bracket. Verify free insertion, complete seating, received hardware engagement and both slot bearing lands. No washer.",
                     source,
                     fasteners.KIT_MATERIAL,
                 )
@@ -252,12 +157,8 @@ def build_hardware(doc, group):
     return objects
 
 
-def registration_bound(shape, mode="carrier"):
+def registration_bound(shape):
     """Conservative XY/yaw enclosure of a shape in optical-module coordinates."""
-    resolve_mount_mode(mode)
-    # Keep the broader carrier-foot registration envelope for both base choices.
-    # The rail shoe is separately checked for its snug seating; this collision
-    # reserve is conservative screening, not rail operating play or a fit claim.
     bounds = shape.BoundBox
     xs, ys = [], []
     limit = MAX_REGISTRATION_YAW_RAD
@@ -281,103 +182,71 @@ def registration_bound(shape, mode="carrier"):
     )
 
 
-def manufacturing_wall_probes(mode="carrier"):
-    from . import optical_mount as mount
-
-    mode = resolve_mount_mode(mode)
-    if mode == "rail":
-        return []
-    x, y, z = mount.pivot_centre(mode)
-    bottom = mount.base_top_z(mode)
-    rows = [
-        (
-            "optical_foot_nut_recess_floor",
-            "OpticalMountBase",
-            (1.5, 5.0, -0.01),
-            (1.5, 5.0, FOOT_THICKNESS + 0.01),
-            FOOT_NUT_SEAT_Z,
-        ),
-        (
-            "optical_foot_nut_pocket_end_ligament",
-            "OpticalMountBase",
-            (0.0, 7.09, 1.75),
-            (0.0, FOOT_SIZE_MM[1] / 2 + 0.01, 1.75),
-            FOOT_SIZE_MM[1] / 2 - CLAMP_CENTRES[1][1] - NUT_RECESS_AF / 2,
-        ),
-        (
-            "optical_locator_transverse_width",
-            "OpticalMountBase",
-            (-LOCATOR_WIDTH / 2 - 0.01, -3, -LOCATOR_DEPTH / 2),
-            (LOCATOR_WIDTH / 2 + 0.01, -3, -LOCATOR_DEPTH / 2),
-            LOCATOR_WIDTH,
-        ),
-        (
-            "optical_locator_backed_by_foot",
-            "OpticalMountBase",
-            (0, -4, -LOCATOR_DEPTH - 0.01),
-            (0, -4, FOOT_THICKNESS + 0.01),
-            FOOT_THICKNESS + LOCATOR_DEPTH,
-        ),
-        (
-            "optical_upright_thickness",
-            "OpticalMountBase",
-            (x, y - mount.FIXED_EAR_THICKNESS - 0.01, bottom + mount.GUSSET_HEIGHT + 1),
-            (x, y + 0.01, bottom + mount.GUSSET_HEIGHT + 1),
-            mount.FIXED_EAR_THICKNESS,
-        ),
-        (
-            "optical_fixed_pivot_ear",
-            "OpticalMountBase",
-            (x, y - mount.FIXED_EAR_THICKNESS - 0.01, z + 2.5),
-            (x, y + 0.01, z + 2.5),
-            mount.FIXED_EAR_THICKNESS,
-        ),
-    ]
+def manufacturing_wall_probes():
+    rows = []
+    for index, (x, y) in CLAMP_CENTRES.items():
+        rows.extend(
+            [
+                (
+                    f"optical_foot_{index}_nut_floor",
+                    "OpticalSensorTray",
+                    (x + 1.5, y, -0.01),
+                    (x + 1.5, y, 2.01),
+                    1.5,
+                ),
+                (
+                    f"optical_foot_{index}_pocket_side",
+                    "OpticalSensorTray",
+                    (x, 2.09, 1.75),
+                    (x, 4.01, 1.75),
+                    1.875,
+                ),
+            ]
+        )
+    rows.extend(
+        [
+            (
+                "optical_foot_rear_bridge",
+                "OpticalSensorTray",
+                (0, 0.99, 1),
+                (0, 4.01, 1),
+                3.0,
+            ),
+            (
+                "optical_left_upright",
+                "OpticalSensorTray",
+                (-25.01, 0, 10),
+                (-21.99, 0, 10),
+                3.0,
+            ),
+            (
+                "optical_right_upright",
+                "OpticalSensorTray",
+                (21.99, 0, 10),
+                (25.01, 0, 10),
+                3.0,
+            ),
+            ("optical_roof", "OpticalSensorTray", (15, 0, 18.49), (15, 0, 20.51), 2.0),
+            (
+                "optical_adhesive_pad",
+                "OpticalSensorTray",
+                (0, 4, 18.49),
+                (0, 4, 20.51),
+                2.0,
+            ),
+        ]
+    )
     return rows
 
 
-def base_component_proxies(mode="carrier"):
-    from . import optical_mount as mount
-
-    mode = resolve_mount_mode(mode)
-    if mode == "rail":
-        return [("OpticalRailTray", mount.rail_mounted_tray_shape())]
-    x, y, z = mount.pivot_centre(mode)
-    bottom = mount.base_top_z(mode)
-    depth = mount.gusset_depth(mode)
+def base_component_proxies():
+    # Complete literal stock enclosures, including R0.5 concave root material.
     return [
-        (
-            "OpticalFoot",
-            union(
-                [
-                    foot_shape(),
-                    box(8, 0.5, 0.5, (-4, -mount.FIXED_EAR_THICKNESS - 0.5, bottom)),
-                    # The sloping toe's tangency also extends behind Y=2 and
-                    # above Z=2.5; enclose the complete obtuse R0.5 transition.
-                    box(8, 1, 1, (-4, depth - 0.5, bottom)),
-                ]
-            ),
-        ),
-        (
-            "OpticalPost",
-            union(
-                [
-                    mount.upright_shape(mode),
-                    box(8, 0.5, 1, (-4, 0, bottom + mount.GUSSET_HEIGHT - 0.5)),
-                ]
-            ),
-        ),
-        (
-            "OpticalEar",
-            box(
-                2 * mount.EAR_RADIUS,
-                mount.FIXED_EAR_THICKNESS,
-                2 * mount.EAR_RADIUS,
-                (
-                    x - mount.EAR_RADIUS,
-                    y - mount.FIXED_EAR_THICKNESS,
-                    z - mount.EAR_RADIUS,
-                ),
-            ),
-        ),
+        ("OpticalFootLeft", box(21, 8, 2.5, (-27, -4, 0))),
+        ("OpticalFootRight", box(21, 8, 2.5, (6, -4, 0))),
+        ("OpticalFootRearBridge", box(12, 3, 2, (-6, 1, 0))),
+        ("OpticalLeftSupport", box(4, 8, 17, (-25.5, -4, 2))),
+        ("OpticalRightSupport", box(4, 8, 17, (21.5, -4, 2))),
+        ("OpticalCrossbar", box(50, 4, 2.5, (-25, -2, 18))),
+        ("OpticalAdhesivePad", box(18, 12, 2, (-9, -6, 18.5))),
     ]

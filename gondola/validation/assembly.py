@@ -53,7 +53,7 @@ from gondola.print_materials import print_specification
 from gondola.procurement import purchase_code
 from gondola.provenance import file_sha256, source_fingerprint
 
-from . import manufacturing, propulsion_wiring
+from . import instrument, manufacturing, propulsion_wiring
 from .equipment import mounting_check
 from .evidence import overlap_failures
 from .geometry import (
@@ -434,10 +434,7 @@ def battery_check(doc, objects):
         name for name, shape in obstacles if intersection_volume(swept, shape) > TOL
     ]
     optical_group = doc.getObject("OpticalFlowModule")
-    optical_mode = str(getattr(optical_group, "OpticalAttachmentMode", ""))
-    tower_names = {
-        "OpticalSensorTray" if optical_mode == "rail" else "OpticalMountBase"
-    }
+    tower_names = {"OpticalSensorTray"}
     tower_gaps = [
         {"object": name, "minimum_gap_mm": swept.distToShape(shape)[0]}
         for name, shape in obstacles
@@ -447,12 +444,12 @@ def battery_check(doc, objects):
 
     float_rows = []
     tower = next((obj for obj in objects if obj.Name in tower_names), None)
-    component_bounds = optical_interface.base_component_proxies(optical_mode)
+    component_bounds = optical_interface.base_component_proxies()
     expected_components = {name for name, _ in component_bounds}
     if tower is not None:
         for component, envelope in component_bounds:
-            envelope = optical_interface.registration_bound(envelope, optical_mode)
-            frame = optical_group if optical_mode == "rail" else tower
+            envelope = optical_interface.registration_bound(envelope)
+            frame = optical_group
             envelope.Placement = frame.getGlobalPlacement().multiply(envelope.Placement)
             gap = swept.distToShape(envelope)[0]
             float_rows.append(
@@ -468,7 +465,7 @@ def battery_check(doc, objects):
         "collisions": swept_hits,
         "stack_tower_gaps": tower_gaps,
         "tower_clamped_registration_gaps": float_rows,
-        "tower_registration_scope": "Conservative XY/yaw component envelopes of the original carrier pedestal, or the complete fixed rail tray in its module frame. Assembly clearance is not deliberate operating looseness; qualify base seating, pointing retention and clamp friction.",
+        "tower_registration_scope": "Conservative XY/yaw component envelopes of the rigid optical bracket in its foot frame. Assembly clearance is not deliberate operating looseness; qualify base seating, pointing retention and clamp friction.",
         "required_stack_tower_gap_mm": contract["minimum_stack_tower_gap_mm"],
         "passed": not swept_hits
         and bool(expected_components)
@@ -911,6 +908,7 @@ def validate(source=None):
         )
         report["neutral_assembly"] = neutral_check(objects, shapes)
         report["continuous_rail"] = rail_check(r, shapes)
+        report["instrument_mount"] = instrument.instrument_check(doc)
         report["equipment_mounts"] = mounting_check(doc)
         report["equipment_options"] = compatibility_check(doc)
         report["propulsion_wire_planning"] = propulsion_wiring.check(doc)
@@ -981,6 +979,7 @@ def validate(source=None):
             "neutral_assembly",
             "continuous_rail",
             "equipment_mounts",
+            "instrument_mount",
             "equipment_options",
             "propulsion_wire_planning",
             "purchased_hardware",

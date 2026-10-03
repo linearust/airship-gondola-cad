@@ -112,10 +112,15 @@ class DirectPowerTests(unittest.TestCase):
                         (profile.key, factory.__name__, angle),
                     )
 
-    def test_composed_matrix_keeps_direct_tether_with_carrier_optics(self):
+    def test_composed_matrix_keeps_direct_tether_with_common_instrument_optics(self):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import equipment_mounts, optical_mount, power_mount
+        from gondola.parts import (
+            equipment_mounts,
+            instrument_mount,
+            optical_mount,
+            optical_sensor,
+        )
         from gondola.power_export import _installation_context, screen_configurations
 
         doc = App.newDocument("DirectPowerMatrixFixture")
@@ -129,17 +134,18 @@ class DirectPowerTests(unittest.TestCase):
                     App.Vector(station.x_mm, 0, 0),
                     App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                 )
-                mount = doc.addObject("Part::Feature", name)
-                mount.Shape = equipment_mounts.mount_shape(kind)
-                host.addObject(mount)
-                mounts.append(mount)
+                if kind == "electronics":
+                    instrument = instrument_mount.build_mount(doc, host)
+                    mounts.extend(instrument["printed"])
+                else:
+                    mount = equipment_mounts.build_mount(doc, host, kind)
+                    mounts.append(mount)
             battery = doc.addObject("Part::Feature", "ModuleBatteryEnvelope")
             doc.BatteryEquipmentModule.addObject(battery)
             battery.Shape = Part.makeBox(16, 61, 15, App.Vector(-8, -30.5, 16.4))
-            optical = optical_mount.build_optical_mount(
-                doc,
-                doc.getObject(power_mount.DEFAULT_OPTICAL_HOST),
-                power_mount.DEFAULT_OPTICAL_SIDE,
+            optical = optical_mount.build_optical_mount(doc, instrument["pitch_stage"])
+            sensor_refs, sensor_reserves = optical_sensor.build_sensor(
+                doc, optical["sensor_frame"]
             )
             registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
             for category in (
@@ -156,8 +162,10 @@ class DirectPowerTests(unittest.TestCase):
                     if category == "PrintedParts"
                     else optical["hardware"]
                     if category == "HardwareParts"
-                    else [battery]
+                    else [battery] + sensor_refs
                     if category == "ReferenceParts"
+                    else sensor_reserves
+                    if category == "ClearanceVolumes"
                     else [],
                     "App::PropertyLinkListGlobal",
                 )
@@ -179,8 +187,8 @@ class DirectPowerTests(unittest.TestCase):
             ]
             self.assertEqual(len(blocked), 12)
             self.assertTrue(all(not r["permitted"] for r in blocked))
-            # The relocated optical head occupies the accessory-carrier region.
-            # A direct helix is rejected by geometry; remote SMA stays available.
+            # Both sensors' common-platform swept tray and operating field
+            # block the direct helix; the remote SMA alternative stays available.
             direct_tether_helix = next(
                 row
                 for row in blocked
@@ -188,15 +196,21 @@ class DirectPowerTests(unittest.TestCase):
                 and row["host"] == "BatteryEquipmentModule"
                 and row["plan"] == "TETHER_BEC_SVPDB"
             )
-            self.assertTrue(
-                any(
-                    hit["first"] == "NavigationDirectAntennaReserve"
-                    and hit["second"].startswith("Optical")
-                    and hit["intersection_mm3"] > 1e-5
-                    for hit in direct_tether_helix["collisions"]
-                ),
-                direct_tether_helix,
-            )
+            for bound in (
+                "MTF02PContinuousOpticalFieldBound",
+                "MTF02PContinuousTrayBound",
+                "MTF01PContinuousOpticalFieldBound",
+                "MTF01PContinuousTrayBound",
+            ):
+                self.assertTrue(
+                    any(
+                        hit["first"] == "NavigationDirectAntennaReserve"
+                        and hit["second"] == bound
+                        and hit["intersection_mm3"] > 1e-5
+                        for hit in direct_tether_helix["collisions"]
+                    ),
+                    (bound, direct_tether_helix),
+                )
             direct = [
                 r
                 for r in screen["navigation_compatibility_probes"]

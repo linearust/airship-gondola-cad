@@ -57,7 +57,7 @@ def check(doc):
     """Check current module poses; a saved corridor cannot silently follow a slide."""
     registry = doc.DesignRegistry
     propulsion_placement = doc.MainPropulsionModule.getGlobalPlacement()
-    electronics_placement = doc.ElectronicsEquipmentModule.getGlobalPlacement()
+    electronics_placement = doc.InstrumentPitchStage.getGlobalPlacement()
     physical = (
         list(registry.PrintedParts)
         + list(registry.HardwareParts)

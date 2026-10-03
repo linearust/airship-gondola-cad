@@ -85,7 +85,7 @@ class PowerBenchServiceTests(unittest.TestCase):
             "MTF01PContinuousBodyBound",
             "MTF01PContinuousTrayBound",
             "MTF01PContinuousConnectorBound",
-            "OpticalPitchToolAccessBound",
+            "OpticalMountToolAccessBound",
             "UnknownOpticalFieldBound",
         ):
             with self.subTest(obstacle=name):
@@ -222,7 +222,7 @@ class DirectBoardServicePhaseTests(unittest.TestCase):
             "MTF01PContinuousBodyBound",
             "MTF01PContinuousTrayBound",
             "MTF01PContinuousConnectorBound",
-            "OpticalPitchToolAccessBound",
+            "OpticalMountToolAccessBound",
             "UnknownOpticalFieldBound",
         ):
             with self.subTest(obstacle=name):

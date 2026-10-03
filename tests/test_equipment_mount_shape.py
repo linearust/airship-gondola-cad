@@ -1,4 +1,4 @@
-"""Identical carriers with audited openings, contact pads and device axes."""
+"""Fixed carriers and the common pitch plate: openings, pads and device axes."""
 
 import json
 import math
@@ -18,7 +18,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
     def test_all_carriers_clear_the_indexed_rail_at_their_saved_stations(self):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import equipment_mounts as mounts
-        from gondola.parts import rail
+        from gondola.parts import instrument_mount, rail
         from gondola.validation.geometry import intersection_volume
 
         stations = {station.object_name: station for station in MODULE_STATIONS}
@@ -33,7 +33,15 @@ class EquipmentMountShapeTests(unittest.TestCase):
                 App.Vector(station.x_mm, 0, 0),
                 App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
             )
-            body = mounts.mount_shape(kind).copy()
+            body = (
+                instrument_mount.base_shape().fuse(
+                    mounts.mount_shape(kind).transformed(
+                        instrument_mount.stage_placement(0).toMatrix()
+                    )
+                )
+                if kind == "electronics"
+                else mounts.mount_shape(kind).copy()
+            )
             body.Placement = pose.multiply(body.Placement)
             with self.subTest(kind=kind):
                 self.assertLess(intersection_volume(body, rail_shape), 1e-6)
@@ -50,7 +58,7 @@ class EquipmentMountShapeTests(unittest.TestCase):
         self.assertAlmostEqual(plate.BoundBox.ZMin, mounts.DECK_BOTTOM_Z)
         self.assertGreaterEqual(plate.BoundBox.ZMin - rail.WEB_TOP_Z, 1.8 - 1e-6)
 
-    def test_every_carrier_is_the_same_single_solid_without_projecting_tabs(self):
+    def test_fixed_carriers_share_stock_while_instrument_upper_keeps_same_plate(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.print_export import geometry_comparison
 
@@ -60,15 +68,23 @@ class EquipmentMountShapeTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertTrue(shape.isValid())
                 self.assertEqual(len(shape.Solids), 1)
-                comparison = geometry_comparison(shape, reference)
+                comparison = geometry_comparison(
+                    shape.common(Part.makeBox(80, 80, 2, App.Vector(-40, -40, 17)))
+                    if kind == "electronics"
+                    else shape,
+                    mounting_plate.shape() if kind == "electronics" else reference,
+                )
                 self.assertLess(comparison["difference_mm3"], 1e-6)
                 self.assertLess(comparison["bounds_difference_mm"], 1e-6)
                 self.assertEqual(
                     mounts.mount_contract(kind)["shared_print_sku"],
-                    "UniversalEquipmentCarrier",
+                    "InstrumentCarrier"
+                    if kind == "electronics"
+                    else "UniversalEquipmentCarrier",
                 )
-                self.assertTrue(
-                    mounts.mount_contract(kind)["integral_side_clamped_u_shoe"]
+                self.assertEqual(
+                    mounts.mount_contract(kind)["integral_side_clamped_u_shoe"],
+                    kind != "electronics",
                 )
                 self.assertNotIn(
                     "integral_side_clamped_l_foot", mounts.mount_contract(kind)
@@ -159,8 +175,14 @@ class EquipmentMountShapeTests(unittest.TestCase):
     def test_two_short_supports_leave_the_spare_centre_mount_open(self):
         from gondola.parts import equipment_mounts as mounts
         from gondola.validation.equipment import carrier_centre_mount_check
+        from gondola.validation.instrument import centre_accessory_check
 
         for kind in mounts.MOUNT_NAMES:
+            if kind == "electronics":
+                result = centre_accessory_check(mounts.mount_shape(kind))
+                self.assertTrue(result["passed"], result)
+                self.assertAlmostEqual(result["available_head_clearance_mm"], 4)
+                continue
             result = carrier_centre_mount_check(mounts.mount_shape(kind))
             self.assertTrue(result["passed"], result)
             self.assertAlmostEqual(result["under_deck_gap_mm"], 4.5)
@@ -381,6 +403,10 @@ class EquipmentMountShapeTests(unittest.TestCase):
                     self.assertLess(sweep.common(carrier).Volume, 1e-6)
                     self.assertGreaterEqual(head.distToShape(underdeck)[0], 0.4)
                 placed = sweep.copy()
+                if kind == "electronics":
+                    from gondola.parts.instrument_mount import stage_placement
+
+                    placed.Placement = stage_placement(0).multiply(placed.Placement)
                 placed.Placement = App.Placement(
                     App.Vector(station.x_mm, 0, 0),
                     App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
@@ -582,6 +608,57 @@ class EquipmentMountShapeTests(unittest.TestCase):
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class EquipmentServiceTests(unittest.TestCase):
+    def test_prior_optical_removal_requires_exact_known_kit(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
+        from gondola.validation.equipment import _optical_removal_preparation
+
+        before = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        try:
+            registry = doc.DesignRegistry
+            objects = [
+                obj
+                for key in (
+                    "PrintedParts",
+                    "HardwareParts",
+                    "ReferenceParts",
+                    "TapeReferences",
+                )
+                for obj in getattr(registry, key)
+            ]
+            good = _optical_removal_preparation(doc, objects)
+            self.assertTrue(good["passed"], good)
+            self.assertEqual(
+                good["expected_physical_parts"],
+                sorted(
+                    (
+                        "OpticalSensorTray",
+                        "ModuleMTF02PEnvelope",
+                        "OpticalFootBolt1",
+                        "OpticalFootNut1",
+                        "OpticalFootBolt2",
+                        "OpticalFootNut2",
+                    )
+                ),
+            )
+            missing = [obj for obj in objects if obj.Name != "OpticalFootNut2"]
+            self.assertFalse(_optical_removal_preparation(doc, missing)["passed"])
+            duplicate = objects + [doc.OpticalFootNut2]
+            self.assertFalse(_optical_removal_preparation(doc, duplicate)["passed"])
+            blocker = doc.addObject("Part::Feature", "UnexpectedOpticalStock")
+            doc.OpticalFlowModule.addObject(blocker)
+            blocker.Shape = Part.makeBox(1, 1, 1)
+            doc.recompute()
+            # Unknown stock is rejected even when it has not entered a registry.
+            self.assertFalse(_optical_removal_preparation(doc, objects)["passed"])
+            self.assertFalse(
+                _optical_removal_preparation(doc, objects + [blocker])["passed"]
+            )
+        finally:
+            App.closeDocument(doc.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), before)
+
     def test_reparented_optical_part_cannot_hide_device_removal_obstruction(self):
         from gondola.cad import world_shape
         from gondola.config import BASELINE_FILE
@@ -594,11 +671,8 @@ class EquipmentServiceTests(unittest.TestCase):
             optical = doc.OpticalFlowModule
             host = doc.ElectronicsEquipmentModule
             world_placement = optical.getGlobalPlacement()
-            # This malformed saved-state fixture preserves the original world
-            # pose. Disable the new native edge expressions before reparenting
-            # so a later recompute cannot move the injected obstruction.
-            optical.setExpression("Placement.Base.x", None)
-            optical.setExpression("Placement.Rotation.Angle", None)
+            # The optical group must follow InstrumentPitchStage. Preserve its
+            # world pose while corrupting that native attachment.
             old_parent = optical.getParentGeoFeatureGroup()
             if old_parent is not None:
                 old_parent.removeObject(optical)
@@ -653,6 +727,7 @@ class FCInstallationTests(unittest.TestCase):
     def setUp(self):
         from gondola.cad import create_group
         from gondola.contracts.design import MODULE_STATIONS
+        from gondola.parts import instrument_mount
         from gondola.parts.equipment_envelopes import build_equipment
         from gondola.parts.equipment_mounts import build_mount
 
@@ -666,22 +741,30 @@ class FCInstallationTests(unittest.TestCase):
                 App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
             )
             groups[station.object_name] = group
-        for kind in ("battery", "electronics", "accessory"):
+        for kind in ("battery", "accessory"):
             build_mount(self.doc, groups[kind.capitalize() + "EquipmentModule"], kind)
+        instrument = instrument_mount.build_mount(
+            self.doc, groups["ElectronicsEquipmentModule"]
+        )
         build_equipment(
             self.doc,
             groups["BatteryEquipmentModule"],
-            groups["ElectronicsEquipmentModule"],
+            instrument["pitch_stage"],
             groups["AccessoryEquipmentModule"],
         )
         self.doc.recompute()
 
-    def test_print_metadata_uses_one_sku_and_half_turn_symmetric_base(self):
+    def test_print_metadata_distinguishes_fixed_and_rotating_carriers(self):
         from gondola.parts import equipment_mounts as mounts
 
         for kind, name in mounts.MOUNT_NAMES.items():
             obj = self.doc.getObject(name)
-            self.assertEqual(obj.PrintSKU, "UniversalEquipmentCarrier")
+            self.assertEqual(
+                obj.PrintSKU,
+                "InstrumentCarrier"
+                if kind == "electronics"
+                else "UniversalEquipmentCarrier",
+            )
             self.assertEqual(obj.MountKind, kind)
             self.assertFalse(obj.HalfTurnSymmetric)
             contract = json.loads(obj.MountContract)

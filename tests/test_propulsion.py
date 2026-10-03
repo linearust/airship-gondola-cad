@@ -2047,7 +2047,13 @@ class SelectedGearDriveTests(unittest.TestCase):
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class SavedDriveManufacturingTests(unittest.TestCase):
     def test_wall_probes_follow_saved_selected_drive_and_root_transform(self):
-        from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
+        from gondola.parts import (
+            equipment_mounts,
+            instrument_mount,
+            optical_mount,
+            propulsion,
+            rail,
+        )
         from gondola.validation.manufacturing import review
         from gondola.validation.propulsion import _record_print_checks
         from gondola.validation.propulsion_evidence import PROPULSION_EVIDENCE_COUNTS
@@ -2070,10 +2076,10 @@ class SavedDriveManufacturingTests(unittest.TestCase):
                 host = doc.addObject("App::Part", "BatteryEquipmentModule")
                 equipment_mounts.build_mount(doc, host, "battery")
                 electronics = doc.addObject("App::Part", "ElectronicsEquipmentModule")
-                equipment_mounts.build_mount(doc, electronics, "electronics")
+                instrument = instrument_mount.build_mount(doc, electronics)
                 accessory = doc.addObject("App::Part", "AccessoryEquipmentModule")
                 equipment_mounts.build_mount(doc, accessory, "accessory")
-                optical_mount.build_optical_mount(doc, host)
+                optical_mount.build_optical_mount(doc, instrument["pitch_stage"])
                 doc.recompute()
                 doc.saveAs(str(path))
             finally:

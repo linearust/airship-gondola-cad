@@ -69,7 +69,7 @@ class ShapeCacheTests(unittest.TestCase):
                 self.assert_same_shape(factory(length=6), short_reference)
                 self.assert_same_shape(factory(8), long_reference)
 
-    def test_carrier_roles_share_one_template_but_not_mutable_results(self):
+    def test_fixed_carrier_roles_share_one_template_but_not_mutable_results(self):
         from gondola.parts import equipment_mounts
 
         equipment_mounts._common_mount_shape.cache_clear()
@@ -80,13 +80,20 @@ class ShapeCacheTests(unittest.TestCase):
             wraps=equipment_mounts.mounting_plate.shape,
         ) as plate_builder:
             shapes = [
-                equipment_mounts.mount_shape(kind)
-                for kind in equipment_mounts.MOUNT_NAMES
+                equipment_mounts.mount_shape(kind) for kind in ("battery", "accessory")
             ]
             self.assertEqual(plate_builder.call_count, 1)
-        self.assertEqual(len({id(shape) for shape in shapes}), 3)
-        for shape in shapes[1:]:
-            self.assert_same_shape(shape, shapes[0])
+        self.assertEqual(len({id(shape) for shape in shapes}), 2)
+        self.assert_same_shape(shapes[1], shapes[0])
+        # Electronics uses the common plate pattern with a rotating lug, not
+        # the fixed carrier's integral rail shoe. Its ownership is checked by
+        # the mutation-isolation test alongside every other public factory.
+        electronics = equipment_mounts.mount_shape("electronics")
+        self.assertGreater(
+            abs(electronics.cut(shapes[0]).Volume)
+            + abs(shapes[0].cut(electronics).Volume),
+            1.0,
+        )
 
     def test_invalid_carrier_role_is_rejected_before_template_lookup(self):
         from gondola.parts import equipment_mounts

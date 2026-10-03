@@ -1,14 +1,12 @@
-"""Optical pitch access and disconnected bench disassembly reservations."""
+"""Access and ordered removal of the rigid, two-screw optical bracket."""
 
 import math
 
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, union, world_shape
+from gondola.cad import belongs_to_group, placed_shape, union, world_shape
 from gondola.contracts import fasteners
-from gondola.contracts.optical_attachment import resolve_mount_mode
-from gondola.parts import optical_interface, optical_mount
 
 from .geometry import intersection_volume, translation_sweep
 from .wiring import collision_hits
@@ -16,199 +14,172 @@ from .wiring import collision_hits
 V = App.Vector
 TOL = 1e-5
 TOOL_APPROACH_LENGTH_MM = 15.0
-RELEASE_MARGIN_MM = 0.2
+CLAMP_CENTRES = {1: (-19.0, 0.0), 2: (19.0, 0.0)}
 
 
 def tray_stock_enclosures(shape):
-    """Literal raised pad, bridge, shoe, neck and ear around the saved tray.
+    """Contain the saved portal without filling the space under its pad.
 
-    The pad's lower edge rounds include cylinders transverse to the Y move.
-    Filling the outer rounds, empty rail-shoe channel and released fastener
-    holes preserves the gap beside the narrow neck instead of filling the
-    entire tray box. The shoe begins at X4, tangent to the fixed post.
+    Independent literal regions include the half-mm load-root blends. Filled
+    mounting holes are conservative after both fasteners have left. Unknown
+    stock outside these regions fails closed.
     """
-    # Expand only free envelope faces by CAD precision to avoid coincident
-    # curved-face Boolean ambiguity. Keep mating Y=0 and shoe X=4 exact:
-    # expanding either toward the pedestal would create a false collision.
     epsilon = 1e-6
-    regions = [
-        Part.makeCylinder(4 + epsilon, 2 + epsilon, V(), V(0, 1, 0)),
-        Part.makeBox(
-            4 + 2 * epsilon, 2 + epsilon, 8.5 + epsilon, V(-2 - epsilon, 0, 0)
-        ),
-        Part.makeBox(
-            18 + 2 * epsilon,
-            12 + 2 * epsilon,
-            2 + 2 * epsilon,
-            V(-9 - epsilon, -6 - epsilon, 8.5 - epsilon),
-        ),
-        Part.makeBox(10 + epsilon, 2 + epsilon, 4 + epsilon, V(-2, 0, 4.5)),
-        # Full unused shoe at S=(12,-1.25,-6.5), filling its empty channel.
-        Part.makeBox(
-            16 + epsilon,
-            10.5 + 2 * epsilon,
-            10 + 2 * epsilon,
-            V(4, -6.5 - epsilon, -4 - epsilon),
-        ),
-    ]
-    for region in regions:
+    boxes = (
+        ((21, 8, 2), (-27, -4, 0)),
+        ((21, 8, 2), (6, -4, 0)),
+        ((12, 3, 2), (-6, 1, 0)),
+        ((4, 8, 17), (-25.5, -4, 1.5)),
+        ((4, 8, 17), (21.5, -4, 1.5)),
+        ((50, 4, 2), (-25, -2, 18.5)),
+        ((18, 12, 2), (-9, -6, 18.5)),
+    )
+    regions = []
+    for size, origin in boxes:
+        lower = [value - epsilon for value in origin]
+        dimensions = [value + 2 * epsilon for value in size]
+        # Keep the seated face exact: expansion below it creates a false plate
+        # collision during vertical lift.
+        if origin[2] == 0:
+            lower[2], dimensions[2] = 0, size[2] + epsilon
+        region = Part.makeBox(*dimensions, V(*lower))
         region.Placement = shape.Placement
-    envelope = union(regions)
-    missing = abs(shape.cut(envelope).Volume)
-    return regions, missing
+        regions.append(region)
+    return regions, abs(shape.cut(union(regions)).Volume)
 
 
-def _tray_service_envelope(shape):
-    regions, missing = tray_stock_enclosures(shape)
-    return union(regions), missing
+def mount_tool_shapes():
+    """Two straight M2 hex-key approaches in rigid bracket coordinates."""
+    return {
+        f"OpticalFootBolt{index}": Part.makeCylinder(
+            fasteners.SOCKET_KEY / math.sqrt(3),
+            TOOL_APPROACH_LENGTH_MM,
+            V(x, y, -2 - fasteners.SCREW_HEAD_HEIGHT),
+            V(0, 0, -1),
+        )
+        for index, (x, y) in CLAMP_CENTRES.items()
+    }
 
 
-def pitch_tool_shape(mode="carrier"):
-    """Module-local straight hex-key leg envelope, not a handle or socket model."""
-    if resolve_mount_mode(mode) != "carrier":
-        raise ValueError("Fixed direct rail tray has no M2 pitch fastener")
-    x, y, z = optical_mount.pivot_centre(mode)
-    return Part.makeCylinder(
-        fasteners.SOCKET_KEY / math.sqrt(3),
-        TOOL_APPROACH_LENGTH_MM,
-        V(x, y + optical_mount.SCREW_BEARING_START - fasteners.SCREW_HEAD_HEIGHT, z),
-        V(0, -1, 0),
-    )
-
-
-def pitch_tool_check(group, obstacles):
-    """Check the fixed approach against supplied physical and reserved solids."""
-    if resolve_mount_mode(str(group.OpticalAttachmentMode)) == "rail":
-        return {
-            "applicable": False,
-            "collisions": [],
-            "passed": True,
-            "scope": "Fixed direct rail tray: no M2 pitch fastener or pitch tool operation. M3 access is checked by the standard rail service validation.",
-        }
-    tool = pitch_tool_shape(str(group.OpticalAttachmentMode))
-    tool.Placement = group.getGlobalPlacement()
-    # The screw head is the tool's target; its exact socket is unmodeled.
-    hits = collision_hits(
-        tool,
-        {
-            name: shape
-            for name, shape in obstacles.items()
-            if name != "OpticalPitchBolt"
-        },
-        tolerance=TOL,
-    )
+def mount_tool_check(group, obstacles):
+    """Retain every obstacle except the screw socket being accessed."""
+    rows = []
+    for target, local in mount_tool_shapes().items():
+        tool = placed_shape(local, group.getGlobalPlacement())
+        hits = collision_hits(
+            tool,
+            {name: shape for name, shape in obstacles.items() if name != target},
+            tolerance=TOL,
+        )
+        rows.append({"target": target, "collisions": hits, "passed": not hits})
     return {
         "key_across_flats_mm": fasteners.SOCKET_KEY,
         "straight_approach_length_mm": TOOL_APPROACH_LENGTH_MM,
-        "collisions": hits,
-        "passed": not hits,
-        "scope": "A straight 1.5 mm hex-key leg approaching 15 mm along optical-local -Y. The envelope is fixed to the post, independent of pitch; moving tray/sensor clearance is checked at the stated sampled attitudes. Actual socket engagement, bent key/handle and hands remain unmodeled. Disconnect leads and remove the optical module or its carrier for bench access as needed; passing this reservation does not establish complete on-balloon service.",
+        "tools": rows,
+        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
+        "scope": "Straight 1.5 mm hex-key legs below the two M2 mounting heads. Actual sockets, handles, hands, thread rotation and cable slack are not modeled. Disconnect leads and support the instruments before removing the rigid bracket.",
     }
 
 
-def pitch_disassembly_check(doc, kit):
-    """Release nut, withdraw screw, then remove the neutral tray and sensor."""
-    group, stage = doc.OpticalFlowModule, doc.OpticalPitchStage
+def mounting_service_check(doc, physical, kit):
+    """Remove both nuts and screws, then lift the supported bracket and sensor.
+
+    All physical parts outside the bracket remain obstacles, including the FC,
+    common plate, rail, instrument joint and unknown registered parts. The path
+    uses the actual saved bracket frame, including oblique module placement.
+    """
+    group = doc.OpticalFlowModule
     inverse = group.getGlobalPlacement().inverse()
-    foot_fasteners = {
-        f"OpticalFoot{kind}{index}"
-        for kind in ("Nut", "Bolt")
-        for index in optical_interface.CLAMP_CENTRES
-    }
-    mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
-    if mode == "rail":
-        return {
-            "applicable": False,
-            "attachment_mode": mode,
-            "paths": [],
-            "passed": not any(
-                doc.getObject(name)
-                for name in (
-                    "OpticalMountBase",
-                    "OpticalPitchBolt",
-                    "OpticalPitchNut",
-                    "OpticalFootBolt1",
-                    "OpticalFootNut1",
-                )
-            )
-            and stage.Pitch.Value == 0
-            and stage.MinimumAngle.Value == 0
-            and stage.MaximumAngle.Value == 0,
-            "scope": "The fixed direct rail variant is one shared tray with no lower base or M2 joints. Its complete removal and M3 access use the standard rail attachment service check.",
-        }
-    attachment_fasteners = (
-        foot_fasteners
-        if mode == "carrier"
-        else {"OpticalFlowModuleRailMountScrew", "OpticalFlowModuleRailMountNut"}
-    )
-    remaining = {}
-    for obj in kit:
-        if obj.Name in attachment_fasteners:
-            continue  # Removed by the separate, ordered attachment-service check.
+
+    def local(obj):
         shape = world_shape(obj)
         shape.Placement = inverse.multiply(shape.Placement)
-        remaining[obj.Name] = shape
-    neutral = stage.Placement.Rotation.isSame(App.Rotation(), TOL)
-    paths = []
+        return shape
 
-    def check_path(name, shape, delta, obstacles):
-        sweep_input = shape
+    remaining = {obj.Name: local(obj) for obj in kit}
+    fixed = {
+        obj.Name: local(obj) for obj in physical if not belongs_to_group(obj, group)
+    }
+    required = {"OpticalSensorTray", "ModuleMTF02PEnvelope"} | {
+        f"OpticalFoot{kind}{index}"
+        for kind in ("Nut", "Bolt")
+        for index in CLAMP_CENTRES
+    }
+    missing = sorted(required - set(remaining))
+    if missing:
+        return {"missing_parts": missing, "paths": [], "passed": False}
+    rows = []
+
+    def path(name, shape, points, obstacles, *, tray=False):
+        regions = [shape]
         enclosure = None
-        if name == "TrayAssembly/OpticalSensorTray":
-            sweep_input, missing = _tray_service_envelope(shape)
+        if tray:
+            regions, uncovered = tray_stock_enclosures(shape)
             enclosure = {
-                "kind": "literal full raised pad, bridge, unused rail shoe, neck and coaxial ear",
-                "uncovered_saved_stock_mm3": missing,
-                "passed": missing < TOL,
+                "kind": "literal foot, two legs, crossbar and adhesive pad",
+                "uncovered_saved_stock_mm3": uncovered,
+                "passed": uncovered <= TOL,
             }
-        swept, method = translation_sweep(sweep_input, delta)
-        hits = [
-            {"object": other, "intersection_mm3": volume}
-            for other, target in obstacles.items()
-            if (volume := intersection_volume(swept, target)) > TOL
-        ]
-        paths.append(
+        segments = []
+        for start, end in zip(points, points[1:]):
+            hits, methods = [], set()
+            for region in regions:
+                moving = region.copy()
+                moving.translate(V(*start))
+                sweep, method = translation_sweep(
+                    moving, tuple(b - a for a, b in zip(start, end))
+                )
+                methods.add(method)
+                hits.extend(
+                    {"object": other, "intersection_mm3": volume}
+                    for other, target in obstacles.items()
+                    if (volume := intersection_volume(sweep, target)) > TOL
+                )
+            segments.append(
+                {
+                    "start_mm": start,
+                    "end_mm": end,
+                    "methods": sorted(methods),
+                    "collisions": hits,
+                    "passed": not hits,
+                }
+            )
+        rows.append(
             {
                 "part": name,
-                "translation_mm": delta,
-                "method": method,
                 "conservative_enclosure": enclosure,
-                "collisions": hits,
-                "passed": not hits and (enclosure is None or enclosure["passed"]),
+                "segments": segments,
+                "passed": all(row["passed"] for row in segments)
+                and (enclosure is None or enclosure["passed"]),
             }
         )
 
-    nut_release = optical_mount.BOLT_TIP - optical_mount.NUT_START + RELEASE_MARGIN_MM
-    for name, distance in (
-        ("OpticalPitchNut", nut_release),
-        ("OpticalPitchBolt", -optical_mount.SCREW_LENGTH - RELEASE_MARGIN_MM),
-    ):
-        moving = remaining.pop(name)
-        check_path(name, moving, (0.0, distance, 0.0), remaining)
-    moving_names = {
-        obj.Name
-        for obj in kit
-        if belongs_to_group(obj, stage) and obj.Name in remaining
-    }
-    fixed = {
-        name: shape for name, shape in remaining.items() if name not in moving_names
-    }
-    # The shoe's trailing face moves from Y=-6.5 to +9.5, beyond the
-    # pedestal foot's Y=9 end. The taller sensor can retain overlapping Y
-    # bounds without touching the pedestal; every actual solid is swept.
-    distance = 16.0
-    for name in sorted(moving_names):
-        check_path("TrayAssembly/" + name, remaining[name], (0.0, distance, 0.0), fixed)
+    for index, (x, _) in CLAMP_CENTRES.items():
+        name = f"OpticalFootNut{index}"
+        shape = remaining.pop(name)
+        outward = -10.0 if x < 0 else 10.0
+        path(
+            name,
+            shape,
+            [(0, 0, 0), (0, 0, 4.7), (0, 8, 4.7), (outward, 8, 4.7), (outward, 8, 40)],
+            {**fixed, **remaining},
+        )
+    for index in CLAMP_CENTRES:
+        name = f"OpticalFootBolt{index}"
+        shape = remaining.pop(name)
+        path(name, shape, [(0, 0, 0), (0, 0, -8.2)], {**fixed, **remaining})
+    for name, shape in remaining.items():
+        path(
+            "CompleteOpticalBracket/" + name,
+            shape,
+            [(0, 0, 0), (0, 10, 0), (0, 10, 40)],
+            fixed,
+            tray=name == "OpticalSensorTray",
+        )
     return {
-        "neutral_pitch": neutral,
-        "attachment_mode": mode,
-        "previously_removed_attachment_fasteners": sorted(attachment_fasteners),
-        "previously_removed_foot_fasteners": sorted(foot_fasteners)
-        if mode == "carrier"
-        else [],
-        "paths": paths,
-        "passed": neutral
-        and bool(moving_names)
-        and all(row["passed"] for row in paths),
-        "scope": "Disconnect the sensor lead, use the checked rail-module or carrier-foot removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel is 16 mm, carrying the unused shoe beyond the foot end with 0.5 mm nominal axial separation. The tray sweep uses a literal raised-pad/bridge/unused-shoe/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
+        "paths": rows,
+        "retained_parts": sorted(fixed),
+        "moving_parts": sorted(remaining),
+        "passed": all(row["passed"] for row in rows),
+        "scope": "Disconnect sensor leads and support the bracket. Unthread each pocket-held nut beyond its screw tip, move it +Y around its leg, outward in X, then lift. Withdraw both screws through the common plate, slide the bracket and sensor together 10 mm toward +Y to clear the FC, then lift 40 mm. All other installed physical solids remain obstacles. This continuous rigid-body reservation does not qualify hand access, thread engagement, retention or connected-cable service; the FC is serviced only after this bracket has been removed.",
     }

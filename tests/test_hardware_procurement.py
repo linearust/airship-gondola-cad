@@ -73,7 +73,8 @@ class HardwareSpecificationTests(unittest.TestCase):
 
         expected = {
             "M3X10_BUTTON_HEAD": 5,
-            "M3_HEX_NUT": 5,
+            "M3_HEX_NUT": 7,
+            "M3X16_BUTTON_HEAD": 2,
             "M2X8_BUTTON_HEAD": 2,
             "M2X10_BUTTON_HEAD": 6,
             "M2X12_BUTTON_HEAD": 2,

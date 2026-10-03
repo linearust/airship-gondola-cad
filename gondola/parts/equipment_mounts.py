@@ -1,4 +1,4 @@
-"""One universal plate with an integral M3-clamped U-shoe, installed in three equipment roles."""
+"""Shared plate pattern; two fixed carriers and one adjustable instrument carrier."""
 
 import functools
 import json
@@ -172,7 +172,7 @@ def common_plate_contract():
         "fc_slot_count": len(FC_HOLE_CENTRES),
         "centre_through_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
         "slot_count": len(mounting_slots.rows()),
-        "scope": "One66mm rounded-square plate with one2.6mm central bore and40 shared slots. Four short FC slots retain the nominal25.5mm axes within square pitches25..26mm and full6.5mm bearing-face sweeps except the intentional openings. Optical side-middle slots remain. P-AS uses the23mm opposed axial endpoints with its declared positive-Y offset. The deck has quarter-turn and X/Y mirror symmetry; its U rail shoe is directional. Three installed carriers share one print and the optional power deck shares its plate template. Optional Pi5/A8 provisions are alternative mounting patterns, not populated-device, fastener, electrical, strength or simultaneous-installation qualification.",
+        "scope": "One66mm rounded-square plate with one2.6mm central bore and40 shared slots. Four short FC slots retain the nominal25.5mm axes within square pitches25..26mm and full6.5mm bearing-face sweeps except the intentional openings. Optical side-middle slots remain. P-AS uses the23mm opposed axial endpoints with its declared positive-Y offset. The deck has quarter-turn and X/Y mirror symmetry; its U rail shoe is directional. Two fixed carriers share one print; the adjustable FC carrier and optional power deck share its plate template. Optional Pi5/A8 provisions are alternative mounting patterns, not populated-device, fastener, electrical, strength or simultaneous-installation qualification.",
     }
 
 
@@ -252,6 +252,10 @@ def mount_shape(kind):
     """Return an independent copy of the common carrier for a supported role."""
     if kind not in MOUNT_NAMES:
         raise ValueError("Unknown equipment mount kind: " + str(kind))
+    if kind == "electronics":
+        from .instrument_mount import upper_shape
+
+        return upper_shape()
     return _common_mount_shape().copy()
 
 
@@ -292,7 +296,7 @@ def mount_contract(kind):
         "electronics": "Universal carrier in FC role. Confirmed FC holes and 8 mm underbody wiring reservation remain; the same symmetric plate outline and spare patterns exist on every carrier.",
         "accessory": "Universal navigation carrier. P-AS uses local centre(0,+9.3); mutually exclusive GPS alternatives retain centre(0,-2.2) and their adhesive support. The Mini body is centred at (26,-17) with its long axis along carrier Y. Two continuous insulating-adhesive strips, 5 x 12 mm at (23,-12) and 4 x 15 mm at (30.5,-13.5), lie on the rail-facing face on opposite sides of the outer slot row. Each strip has complete carrier backing and nominal body overlap. This retains 120 mm2 total available contact while leaving the middle slot open. The relocated body and unchanged-size connector reserves clear the optional portal hardware registration and service bounds. The allocation is not a qualified minimum holding area. No separate radio plate, tab or pocket. Populated face and connector access face the balloon; actual envelope curvature, plug height, underside components, antenna and retention remain unverified. Remove the carrier for bench service. The outer common slots also accept the separately screened optional power platform. The optical foot can use an existing middle side slot; occupied host/side and power combinations need their composed clearance checks.",
     }
-    return {
+    contract = {
         "kind": kind,
         "shared_print_sku": COMMON_PRINT_SKU,
         "common_plate": common_plate_contract(),
@@ -328,12 +332,41 @@ def mount_contract(kind):
         "clearance_scope": "FC 8 mm and P-AS 4 mm are design reservations below conservative component envelopes, not manufacturer mounting-height requirements. Inspect cable access, adhesive contact, clamp strength and actual fit before use. A plain plate does not establish device underside flatness, adhesion or loaded helix stiffness.",
     }
 
+    if kind == "electronics":
+        from . import instrument_mount
+
+        contract.update(
+            shared_print_sku="InstrumentCarrier",
+            integral_side_clamped_u_shoe=False,
+            instrument_mount=instrument_mount.mount_contract(),
+            support_path_scope="The common plate is integral with a rotating lug. A separate lower U-shoe/yoke supports it on the same rail interface. FC and the fixed optical bracket share this plate and its setup-only pitch control.",
+        )
+        contract["common_plate"]["central_support"] = {
+            "profile": "integral rotating lug with separated upper ribs",
+            "scope": "Centre accessory bore remains available above the moving support; validate actual chosen screw/head/nut access against saved geometry. This upper plate has no integral rail shoe.",
+        }
+        contract["centre_accessory_mount"] = {
+            "centre_xy_mm": (0.0, 0.0),
+            "clearance_bore_diameter_mm": mounting_plate.CENTRE_HOLE_DIAMETER_MM,
+            "available_as_spare_accessory_mount": True,
+            "scope": "A common M2 centre bore; select accessory fasteners against the rotating support below it. No preselected mounting stack or unrestricted through-stack.",
+        }
+        contract.pop("deck_underside_to_rail_web_mm")
+        contract["future_fastener_scope"] = (
+            "Accessory hardware must clear the rotating lug, fixed yoke and rail over the entire allowed pitch range. Hole compatibility alone does not qualify a populated stack."
+        )
+    return contract
+
 
 def build_mount(doc, parent, kind):
+    if kind == "electronics":
+        raise ValueError(
+            "Use instrument_mount.build_mount for the two-part FC platform"
+        )
     contract = mount_contract(kind)
     name = MOUNT_NAMES[kind]
     notes = (
-        "Universal PA12 SLS/MJF carrier: print three identical copies for battery, FC and navigation. "
+        "Universal PA12 SLS/MJF carrier: print two identical copies for battery and navigation; the FC uses an adjustable support. "
         f"Centred66x66mm deck with {len(mounting_slots.rows())} symmetric mounting slots, including four FC slots, and one central M2 bore. "
         "One recessed transverse M3x10 screw and a nut on the opposite2mm bearing floor in an open-bottom anti-rotation recess clamp the integral U-shoe to the rail wall. "
         "The upper seat and two sides surround the rail wall; loosen the side screw to adjust within a supported rail segment. "

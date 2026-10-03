@@ -6,7 +6,6 @@ Validation refreshes only its report; it never regenerates exported artifacts.
 
 import functools
 import json
-from contextlib import contextmanager
 from itertools import combinations
 from pathlib import Path
 
@@ -90,27 +89,6 @@ def _main_shapes(doc):
         for obj in getattr(registry, category)
         if hasattr(obj, "Shape") and not obj.Shape.isNull() and obj.Shape.Solids
     }
-
-
-@contextmanager
-def _illustrated_optical_mount(main):
-    """Copy the tether arrangement without saving or changing the main assembly."""
-    optical = main.getObject("OpticalFlowModule")
-    if optical is None or str(optical.OpticalAttachmentMode) == "rail":
-        yield
-        return
-    from .parts import optical_interface
-
-    host, side = optical.getParentGeoFeatureGroup(), str(optical.MountSide)
-    try:
-        optical_interface.attach_to_host(
-            optical,
-            main.getObject(power_mount.DEFAULT_OPTICAL_HOST),
-            power_mount.DEFAULT_OPTICAL_SIDE,
-        )
-        yield
-    finally:
-        optical_interface.attach_to_host(optical, host, side)
 
 
 def _installation_context(main, plan_key):
@@ -299,18 +277,13 @@ def _configuration_conflicts(
 
 
 def _optical_attachment_description(optical):
-    if optical is None:
-        return None
-    mode = str(optical.OpticalAttachmentMode)
-    if mode == "rail":
-        return {"mode": mode, "rail_position_x_mm": float(optical.RailPositionX)}
-    if mode == "carrier":
-        return {
-            "mode": mode,
-            "host": optical.CarrierHostName,
-            "side": str(optical.MountSide),
-        }
-    raise ValueError("Unknown optical attachment mode")
+    from .parts.optical_interface import attachment_description
+
+    return (
+        json.loads(json.dumps(attachment_description(optical)))
+        if optical is not None
+        else None
+    )
 
 
 def screen_configurations(main_doc):
@@ -489,7 +462,7 @@ def screen_configurations(main_doc):
         "source_selected_navigation": selected.key,
         "navigation_compatibility_probes": navigation_rows,
         "seated_registration_scope": "Portal choices retain the continuous conservative opposed-slot XY/yaw bounds. Direct boards are nominal adhesive placements on the vacated battery carrier, with measured intact land/body overlap; adhesive placement and retention remain physical checks.",
-        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and the selected rail/carrier optical attachment. Both sensors' continuous field, body, tray and connector bounds include the full pitch range and conservative registration reserve. Actual fit and angular rocking are unqualified. Retained solid bodies/access reserves and disconnected direct-board removal are screened. Inactive optical ray fields alone may be crossed during disconnected maintenance; seated optical field checks are unchanged. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
+        "scope": "Composed geometric configurations: selected power packaging, mutually exclusive battery/tether inventory, navigation/antenna and the common FC/optical instrument platform. Both sensors' continuous field, body, tray and connector bounds include the full pitch range and conservative registration reserve. Actual fit and angular rocking are unqualified. Retained solid bodies/access reserves and disconnected direct-board removal are screened. Inactive optical ray fields alone may be crossed during disconnected maintenance; seated optical field checks are unchanged. No installed tether, remote antenna, adhesive strength, cooling or electrical qualification.",
         "passed": all(permitted.values())
         and len(rows)
         == len(POWER_PACKAGINGS)
@@ -564,34 +537,31 @@ def export_power_options(main_doc, output_dir=None):
     out.mkdir(parents=True, exist_ok=True)
     doc = manufacturing = None
     try:
-        with _illustrated_optical_mount(main_doc):
-            doc = power_mount.create_option_document(main_doc)
-            context = create_group(
-                doc, "AssemblyContext", "REFERENCE | installed optional arrangement"
+        doc = power_mount.create_option_document(main_doc)
+        context = create_group(
+            doc, "AssemblyContext", "REFERENCE | installed optional arrangement"
+        )
+        roles = _context_roles(main_doc)
+        for name, shape in _installation_context(
+            main_doc, power_mount.DEFAULT_PLAN
+        ).items():
+            obj = create_reference(
+                doc,
+                context,
+                "Context_" + name,
+                name,
+                shape,
+                "Copied optional installation context; not an added print or purchased part",
             )
-            roles = _context_roles(main_doc)
-            for name, shape in _installation_context(
-                main_doc, power_mount.DEFAULT_PLAN
-            ).items():
-                obj = create_reference(
-                    doc,
-                    context,
-                    "Context_" + name,
-                    name,
-                    shape,
-                    "Copied optional installation context; not an added print or purchased part",
-                )
-                set_property(obj, "SourceObjectName", name)
-                set_property(obj, "SourceRole", roles[name])
-                obj.Label = "CONTEXT | " + name
-                if App.GuiUp:
-                    obj.ViewObject.Visibility = False
-            set_property(
-                doc.PowerOptionModule, "SourceFingerprint", source_fingerprint()
-            )
-            doc.recompute()
-            native_path = out / ARTIFACT_NAMES[0]
-            doc.saveAs(str(native_path))
+            set_property(obj, "SourceObjectName", name)
+            set_property(obj, "SourceRole", roles[name])
+            obj.Label = "CONTEXT | " + name
+            if App.GuiUp:
+                obj.ViewObject.Visibility = False
+        set_property(doc.PowerOptionModule, "SourceFingerprint", source_fingerprint())
+        doc.recompute()
+        native_path = out / ARTIFACT_NAMES[0]
+        doc.saveAs(str(native_path))
         App.closeDocument(doc.Name)
         doc = App.openDocument(str(native_path))
         # A separate manufacturing source keeps the retained portal out of the
@@ -663,11 +633,10 @@ def audit_power_options(source=None, output_dir=None):
         physical, reserves = power_mount.local_shapes()
         expected = {**physical, **reserves}
         group = option.getObject("PowerOptionModule")
-        with _illustrated_optical_mount(main):
-            pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
-            report["optical_attachment_matches"] = json.loads(
-                option.PowerOptionModule.OpticalAttachment
-            ) == _optical_attachment_description(main.getObject("OpticalFlowModule"))
+        pose = power_mount.host_placement(main, power_mount.DEFAULT_HOST)
+        report["optical_attachment_matches"] = json.loads(
+            option.PowerOptionModule.OpticalAttachment
+        ) == _optical_attachment_description(main.getObject("OpticalFlowModule"))
         report["option_pose_matches"] = group.Placement.isSame(pose, TOL)
         report["option_source_matches"] = (
             str(group.SourceFingerprint) == source_fingerprint()
@@ -701,8 +670,7 @@ def audit_power_options(source=None, output_dir=None):
         report["native_inventory_matches"] = {
             obj.Name for obj in group.Group if hasattr(obj, "Shape")
         } == set(expected)
-        with _illustrated_optical_mount(main):
-            main_shapes = _installation_context(main, power_mount.DEFAULT_PLAN)
+        main_shapes = _installation_context(main, power_mount.DEFAULT_PLAN)
         context = {
             obj.SourceObjectName: obj
             for obj in option.AssemblyContext.Group
@@ -784,8 +752,7 @@ def audit_power_options(source=None, output_dir=None):
             "passed"
         ]
         report["configuration_screen"] = screen_configurations(main)
-        with _illustrated_optical_mount(main):
-            report["illustrated_configuration_screen"] = screen_configurations(main)
+        report["illustrated_configuration_screen"] = screen_configurations(main)
         report["illustrated_configuration_clear"] = report[
             "illustrated_configuration_screen"
         ].get("default_configuration_clear", False)

@@ -227,7 +227,7 @@ def power_option_contract():
                 "battery_installed": False,
                 "additional_prints": 0,
                 "additional_screw_nut_pairs": 0,
-                "scope": "Reuse the vacated battery carrier with insulating adhesive allocations. The illustrated rail optical head stays at its saved station; the alternative carrier-foot head relocates to the navigation carrier NegativeX side. Screen the complete navigation/optical/power combination. Board underside contact, adhesive, cooling and tether retention remain unqualified.",
+                "scope": "Reuse the vacated battery carrier with insulating adhesive allocations. The rigid optical bracket stays on the common FC instrument platform; no automatic relocation occurs for power options. Screen the complete navigation/optical/power combination. Board underside contact, adhesive, cooling and tether retention remain unqualified.",
             },
             PORTAL: {
                 "plans": list(OPTIONAL_POWER_PLAN_KEYS),

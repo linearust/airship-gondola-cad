@@ -29,7 +29,6 @@ from gondola.contracts.design import (
     SCOPED_LISTED_EQUIPMENT_MASS_G,
     release_status,
 )
-from gondola.contracts.optical_attachment import resolve_mount_mode
 from gondola.parts import rail
 from gondola.print_export import geometry_comparison
 from gondola.provenance import file_sha256, source_fingerprint
@@ -47,6 +46,7 @@ REGISTRY_LISTS = (
     "Modules",
     "EquipmentMounts",
     "OpticalMountParts",
+    "InstrumentMountParts",
     "RailSegments",
     "RailLocks",
     "HardwareParts",
@@ -332,155 +332,74 @@ def control_behavior(doc):
         finally:
             pod.Tilt = original
             doc.recompute()
+    stage = doc.getObject("InstrumentPitchStage")
     optical = doc.getObject("OpticalFlowModule")
-    from gondola.parts import optical_mount
-
-    pitch = doc.getObject("OpticalPitchStage")
     if (
-        optical is None
-        or pitch is None
+        stage is None
+        or optical is None
+        or stage.getParentGeoFeatureGroup() != doc.ElectronicsEquipmentModule
+        or optical.getParentGeoFeatureGroup() != stage
+        or getattr(optical, "OpticalAttachmentMode", "") != "instrument"
+        or doc.getObject("OpticalPitchStage") is not None
         or doc.getObject("OpticalRollStage") is not None
     ):
         return {
             "cases": rows,
-            "module_control_mapping_valid": True,
-            "error": "Expected exactly one optical pitch stage; no roll stage",
             "passed": False,
+            "error": "Invalid common instrument hierarchy",
         }
-    for property_name, stage, axis, origin, expected_parent in (
-        (
-            "Pitch",
-            pitch,
-            App.Vector(0, 1, 0),
-            App.Vector(*optical_mount.pivot_centre(mode=resolve_mount_mode())),
-            optical,
-        ),
-    ):
-        if not {property_name, "MinimumAngle", "MaximumAngle"}.issubset(
-            stage.PropertiesList
-        ):
-            return {
-                "cases": rows,
-                "error": "Missing optical angle control",
-                "passed": False,
-            }
-        original = float(getattr(stage, property_name))
-        module_placements = {module.Name: module.Placement.copy() for module in modules}
-        optical_placement = optical.getGlobalPlacement()
-        limit = optical_mount.angle_limit_deg(resolve_mount_mode())
-        declared_limits_match = (
-            abs(float(stage.MinimumAngle) + limit) < TOL
-            and abs(float(stage.MaximumAngle) - limit) < TOL
-            and (limit > 0 or abs(original) < TOL)
-        )
-        try:
-            for requested in (-999, -10, 0, 10, 999):
-                expected = max(-limit, min(limit, requested))
-                setattr(stage, property_name, requested)
-                doc.recompute()
-                independent = optical.getGlobalPlacement().isSame(
-                    optical_placement, 1e-7
-                ) and all(
-                    doc.getObject(name).Placement.isSame(placement, 1e-7)
-                    for name, placement in module_placements.items()
-                )
-                stage_pose_matches = stage.Placement.isSame(
-                    App.Placement(origin, App.Rotation(axis, expected)), 1e-7
-                )
-                parent_matches = stage.getParentGeoFeatureGroup() == expected_parent
-                rows.append(
-                    {
-                        "object": stage.Name,
-                        "property": property_name,
-                        "input": requested,
-                        "expected_bounded_angle_deg": expected,
-                        "stage": stage.Name,
-                        "stage_local_placement_matches": stage_pose_matches,
-                        "stage_parent_matches": parent_matches,
-                        "declared_limits_match": declared_limits_match,
-                        "parent_and_modules_unchanged": independent,
-                        "passed": stage_pose_matches
-                        and parent_matches
-                        and declared_limits_match
-                        and independent,
-                    }
-                )
-        finally:
-            setattr(stage, property_name, original)
-            doc.recompute()
-    selected_mode = resolve_mount_mode()
-    declared_mode = str(getattr(optical, "OpticalAttachmentMode", ""))
-    if declared_mode != selected_mode:
+    if not {"Pitch", "MinimumAngle", "MaximumAngle"}.issubset(stage.PropertiesList):
         return {
             "cases": rows,
-            "error": "Optical attachment mode differs from selection",
             "passed": False,
+            "error": "Missing instrument angle controls",
         }
-    if selected_mode == "rail":
-        valid_binding = (
-            optical.getParentGeoFeatureGroup() is None
-            and optical in modules
-            and "RailPositionX" in optical.PropertiesList
-            and "MountSide" not in optical.PropertiesList
-            and "CarrierHostName" not in optical.PropertiesList
-        )
-        if not valid_binding:
-            return {
-                "cases": rows,
-                "error": "Optical rail binding invalid",
-                "passed": False,
-            }
-    else:
-        host = optical.getParentGeoFeatureGroup()
-        if (
-            host not in modules
-            or "MountSide" not in optical.PropertiesList
-            or "CarrierHostName" not in optical.PropertiesList
-            or optical.CarrierHostName != host.Name
-            or "RailPositionX" in optical.PropertiesList
-        ):
-            return {
-                "cases": rows,
-                "error": "Optical carrier binding invalid",
-                "passed": False,
-            }
-        from gondola.parts import mounting_plate
-
-        original_side = str(optical.MountSide)
-        module_placements = {module.Name: module.Placement.copy() for module in modules}
-        try:
-            for side, x, angle in (("PositiveX", 27, 0), ("NegativeX", -27, 180)):
-                optical.MountSide = side
-                doc.recompute()
-                expected = App.Placement(
-                    App.Vector(x, 0, mounting_plate.CARRIER_SUPPORT_Z),
-                    App.Rotation(App.Vector(0, 0, 1), angle),
-                )
-                unchanged = all(
-                    doc.getObject(name).Placement.isSame(pose, 1e-7)
-                    for name, pose in module_placements.items()
-                )
-                parent_matches = optical.getParentGeoFeatureGroup() == host
-                local_matches = optical.Placement.isSame(expected, 1e-7)
-                rows.append(
-                    {
-                        "object": optical.Name,
-                        "property": "MountSide",
-                        "input": side,
-                        "carrier_parent_matches": parent_matches,
-                        "local_placement_matches": local_matches,
-                        "modules_unchanged": unchanged,
-                        "passed": parent_matches and local_matches and unchanged,
-                    }
-                )
-        finally:
-            optical.MountSide = original_side
+    original = float(stage.Pitch)
+    module_placements = {module.Name: module.Placement.copy() for module in modules}
+    relative = (
+        doc.ModuleFCEnvelope.getGlobalPlacement()
+        .inverse()
+        .multiply(doc.ModuleMTF02PEnvelope.getGlobalPlacement())
+    )
+    limits_match = float(stage.MinimumAngle) == -20 and float(stage.MaximumAngle) == 20
+    try:
+        for requested in (-999, -10, 0, 10, 999):
+            angle = max(-20, min(20, requested))
+            stage.Pitch = requested
             doc.recompute()
+            radians = math.radians(angle)
+            expected = App.Placement(
+                App.Vector(-8 * math.sin(radians), 0, 27.5 - 8 * math.cos(radians)),
+                App.Rotation(App.Vector(0, 1, 0), angle),
+            )
+            unchanged = all(
+                doc.getObject(name).Placement.isSame(pose, 1e-7)
+                for name, pose in module_placements.items()
+            )
+            current = (
+                doc.ModuleFCEnvelope.getGlobalPlacement()
+                .inverse()
+                .multiply(doc.ModuleMTF02PEnvelope.getGlobalPlacement())
+            )
+            rows.append(
+                {
+                    "object": stage.Name,
+                    "property": "Pitch",
+                    "input": requested,
+                    "expected_bounded_angle_deg": angle,
+                    "modules_unchanged": unchanged,
+                    "fc_to_sensor_transform_invariant": current.isSame(relative, 1e-7),
+                    "passed": limits_match
+                    and unchanged
+                    and current.isSame(relative, 1e-7)
+                    and stage.Placement.isSame(expected, 1e-7),
+                }
+            )
+    finally:
+        stage.Pitch = original
+        doc.recompute()
     expected_cases = (
-        module_case_count
-        + 5 * EXPECTED_INVENTORY["tilting_propulsors"]
-        + 5
-        + (2 if selected_mode == "carrier" else 0)
+        module_case_count + 5 * EXPECTED_INVENTORY["tilting_propulsors"] + 5
     )
     return {
         "cases": rows,
@@ -621,6 +540,7 @@ def procurement_and_scope_metadata(obj):
         "MountContract",
         "ModulePlacementContract",
         "OpticalMountContract",
+        "InstrumentMountContract",
         "OpticalAttachmentMode",
         "OpticalInterfaceContract",
         "OpticalFitVerified",

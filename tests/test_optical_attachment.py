@@ -1,8 +1,7 @@
-"""Both optical attachment choices bind real stock, controls and ordered service."""
+"""The FC and optical head share one explicit native adjustment, without aliases."""
 
-import json
+import itertools
 import unittest
-from dataclasses import asdict
 
 try:
     import FreeCAD as App
@@ -12,381 +11,209 @@ except ImportError:
 
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
-class OpticalAttachmentModeTests(unittest.TestCase):
-    def make_document(self, mode):
-        from gondola.cad import set_property
-        from gondola.contracts.design import module_stations
-        from gondola.parts import optical_mount, optical_sensor, rail
+class OpticalCommonPlatformTests(unittest.TestCase):
+    def setUp(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
 
-        doc = App.newDocument("OpticalAttachmentMode")
-        self.addCleanup(App.closeDocument, doc.Name)
-        host = (
-            doc.addObject("App::Part", "BatteryEquipmentModule")
-            if mode == "carrier"
-            else None
-        )
-        kit = optical_mount.build_optical_mount(doc, host, mode=mode)
-        group = kit["group"]
-        hardware = list(kit["hardware"])
-        locks = []
-        if mode == "rail":
-            station = next(
-                row for row in module_stations(mode) if row.object_name == group.Name
-            )
-            for name, value, kind in (
-                ("RailPositionX", station.x_mm, "App::PropertyDistance"),
-                ("RailAttachmentOffsetX", 0, "App::PropertyDistance"),
-                ("RailAttachmentOffsetsX", [0], "App::PropertyFloatList"),
-                ("RailContactLength", 16, "App::PropertyLength"),
-            ):
-                set_property(group, name, value, kind)
-            set_property(group, "ModulePlacementContract", json.dumps(asdict(station)))
-            set_property(
-                group, "RailAttachmentContract", json.dumps(rail.attachment_contract())
-            )
-            group.Placement.Rotation = App.Rotation(
-                App.Vector(0, 0, 1), station.yaw_deg
-            )
-            group.setExpression("Placement.Base.x", "RailPositionX")
-            locks = rail.build_attachment_hardware(doc, group, group.Name)
-            hardware += locks
-        refs, reserves = optical_sensor.build_sensor(doc, kit["pitch_stage"])
-        registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
-        for name, objects in (
-            ("PrintedParts", kit["printed"]),
-            ("HardwareParts", hardware),
-            ("ReferenceParts", refs),
-            ("ClearanceVolumes", reserves),
-            ("FitCoupons", []),
-            ("EquipmentMounts", []),
-            ("OpticalMountParts", kit["printed"]),
-            ("TapeReferences", []),
-            ("RailLocks", locks),
-            ("Modules", [host] if mode == "carrier" else [group]),
-        ):
-            registry.addProperty("App::PropertyLinkListGlobal", name)
-            setattr(registry, name, objects)
-        doc.recompute()
-        return doc, kit["printed"] + hardware + refs
+        self.path = BASELINE_FILE
+        self.sha = file_sha256(self.path)
+        self.doc = App.openDocument(str(self.path), hidden=True)
+        self.addCleanup(self.close_without_saving)
 
-    def test_attachment_inference_and_wrong_host_are_explicit(self):
-        from gondola.parts import optical_mount
+    def close_without_saving(self):
+        from gondola.provenance import file_sha256
 
-        doc = App.newDocument("OpticalModeInference")
-        self.addCleanup(App.closeDocument, doc.Name)
-        with self.assertRaises(ValueError):
-            optical_mount.build_optical_mount(doc)
-        kit = optical_mount.build_optical_mount(doc, mode="rail")
-        self.assertEqual(str(kit["group"].OpticalAttachmentMode), "rail")
-        self.assertIsNone(kit["group"].getParentGeoFeatureGroup())
-        self.assertNotIn("CarrierHostName", kit["group"].PropertiesList)
-        self.assertNotIn("MountSide", kit["group"].PropertiesList)
-        self.assertEqual(len(kit["hardware"]), 0)
-        self.assertIsNone(doc.getObject("OpticalFootBolt1"))
-        self.assertIsNone(doc.getObject("OpticalMountBase"))
-        self.assertEqual(doc.OpticalSensorTray.PrintSKU, "OpticalSensorTray")
-        self.assertEqual(tuple(kit["pitch_stage"].Placement.Base), (-12, 1.25, 6.5))
-        host = doc.addObject("App::Part", "BatteryEquipmentModule")
-        for host_arg, mode in ((host, "rail"), (None, "carrier"), (None, "unknown")):
-            with self.subTest(mode=mode), self.assertRaises(ValueError):
-                optical_mount.build_optical_mount(doc, host_arg, mode=mode)
+        App.closeDocument(self.doc.Name)
+        self.assertEqual(file_sha256(self.path), self.sha)
 
-    def test_both_native_attachments_match_source_and_bind_their_inventory(self):
-        from gondola.validation.optical import _source_evidence
+    def test_only_shared_stage_moves_and_fc_to_sensor_transform_is_invariant(self):
+        from gondola.parts import instrument_mount
+        from gondola.validation.optical_envelopes import instrument_context
 
-        for mode in ("carrier", "rail"):
-            doc, _ = self.make_document(mode)
-            with self.subTest(mode=mode):
-                result = _source_evidence(doc)
-                self.assertTrue(result["passed"], result)
-                self.assertEqual(result["attachment_controls"]["mode"], mode)
-                self.assertEqual(len(result["objects"]), 9 if mode == "carrier" else 6)
-                self.assertEqual(doc.OpticalSensorTray.PrintSKU, "OpticalSensorTray")
-                self.assertEqual(
-                    doc.getObject("OpticalMountBase") is None, mode == "rail"
-                )
-
-    def test_missing_or_conflicting_mode_and_controls_fail_closed(self):
-        from gondola.validation.optical import _source_evidence
-
-        doc, _ = self.make_document("rail")
-        self.assertTrue(_source_evidence(doc)["passed"])
-        group = doc.OpticalFlowModule
-        group.addProperty("App::PropertyString", "CarrierHostName")
-        group.CarrierHostName = "BatteryEquipmentModule"
-        self.assertFalse(_source_evidence(doc)["passed"])
-        group.removeProperty("CarrierHostName")
-        group.setExpression("Placement.Base.x", None)
-        self.assertFalse(_source_evidence(doc)["passed"])
-        group.setExpression("Placement.Base.x", "RailPositionX")
-        locks = list(doc.DesignRegistry.RailLocks)
-        doc.DesignRegistry.RailLocks = locks[:-1]
-        self.assertFalse(_source_evidence(doc)["passed"])
-        doc.DesignRegistry.RailLocks = locks
-        group.removeProperty("OpticalAttachmentMode")
-        self.assertFalse(_source_evidence(doc)["passed"])
-
-    def test_original_lower_pedestal_and_dual_interface_upper_stock(self):
-        from gondola.parts import optical_mount, rail
-
-        shape = optical_mount.base_shape("carrier")
-        bore = Part.makeCylinder(1.1, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0))
-        post = Part.makeBox(8, 2, 17, App.Vector(-4, -2, 2)).cut(bore)
-        ear = Part.makeCylinder(4, 2, App.Vector(0, -2, 19), App.Vector(0, 1, 0)).cut(
-            bore
-        )
-        points = [App.Vector(-4, 0, 2), App.Vector(-4, 2, 2), App.Vector(-4, 0, 7)]
-        buttress = Part.Face(Part.makePolygon(points + points[:1])).extrude(
-            App.Vector(8, 0, 0)
-        )
-        for stock in (post, ear, buttress):
-            self.assertLess(abs(stock.cut(shape).Volume), 1e-5)
-        self.assertLess(abs(shape.common(bore).Volume), 1e-5)
-        with self.assertRaises(ValueError):
-            optical_mount.base_shape("rail")
-        tray = optical_mount.sensor_tray_shape()
-        shoe = rail.mount_base_shape()
-        shoe.translate(App.Vector(12, -1.25, -6.5))
-        bridge = Part.makeBox(10, 2, 4, App.Vector(-2, 0, 4.5))
-        pad_core = Part.makeBox(16, 10, 2, App.Vector(-8, -5, 8.5))
-        for stock in (shoe, bridge, pad_core):
-            self.assertLess(abs(stock.cut(tray).Volume), 1e-5)
-        self.assertEqual(len(tray.Solids), 1)
-
-    def test_source_check_rejects_missing_upper_bridge_and_obsolete_lower_base(self):
-        from gondola.parts import optical_mount
-        from gondola.validation.optical import _source_evidence
-
-        doc, _ = self.make_document("rail")
-        original = doc.OpticalSensorTray.Shape.copy()
-        defect = Part.makeBox(1, 1, 1, App.Vector(3, 0.5, 7))
-        self.assertAlmostEqual(original.common(defect).Volume, 1)
-        doc.OpticalSensorTray.Shape = original.cut(defect)
-        self.assertFalse(_source_evidence(doc)["passed"])
-        doc.OpticalSensorTray.Shape = original
-        obsolete = doc.addObject("Part::Feature", "OpticalMountBase")
-        obsolete.Shape = optical_mount.base_shape()
-        doc.OpticalFlowModule.addObject(obsolete)
-        self.assertFalse(_source_evidence(doc)["passed"])
-
-    def test_fixed_rail_pitch_cannot_be_changed_or_silently_reintroduced(self):
-        from gondola.parts import optical_mount
-        from gondola.validation.optical import _source_evidence
-        from gondola.validation.optical_envelopes import motion_bounds
-        from gondola.validation.optical_service import pitch_tool_shape
-
-        doc, _ = self.make_document("rail")
-        self.assertTrue(_source_evidence(doc)["passed"])
-        self.assertNotIn(
-            "OpticalPitchToolAccessBound", motion_bounds(doc.OpticalFlowModule)
-        )
-        with self.assertRaises(ValueError):
-            optical_mount.set_pitch(doc, 1)
-        with self.assertRaises(ValueError):
-            pitch_tool_shape("rail")
-        doc.OpticalPitchStage.Pitch = 1
-        doc.recompute()
-        self.assertFalse(_source_evidence(doc)["passed"])
-
-    def test_only_carrier_has_pitch_tools_and_disassembly(self):
-        from gondola.cad import world_shape
-        from gondola.contracts.optical_sensors import SENSOR_PROFILES
-        from gondola.parts import optical_mount, optical_sensor
-        from gondola.validation.optical_service import (
-            pitch_disassembly_check,
-            pitch_tool_check,
-        )
-
-        for mode in ("carrier", "rail"):
-            doc, kit = self.make_document(mode)
-            for profile in SENSOR_PROFILES.values():
-                optical_sensor.apply_profile(doc, profile)
-                for pitch in (-20, 0, 20) if mode == "carrier" else (0,):
-                    optical_mount.set_pitch(doc, pitch)
-                    result = pitch_tool_check(
-                        doc.OpticalFlowModule,
-                        {obj.Name: world_shape(obj) for obj in kit},
-                    )
-                    self.assertTrue(
-                        result["passed"], (mode, profile.key, pitch, result)
-                    )
-                optical_mount.set_pitch(doc, 0)
-                result = pitch_disassembly_check(doc, kit)
-                self.assertTrue(result["passed"], (mode, profile.key, result))
-                self.assertEqual(result["attachment_mode"], mode)
-                if mode == "rail":
-                    self.assertFalse(result["applicable"])
-                    self.assertEqual(result["paths"], [])
-                else:
-                    self.assertAlmostEqual(result["paths"][0]["translation_mm"][1], 4.7)
-                    self.assertEqual(
-                        len(result["previously_removed_attachment_fasteners"]), 2
-                    )
-                    self.assertEqual(
-                        next(
-                            row
-                            for row in result["paths"]
-                            if row["part"] == "TrayAssembly/OpticalSensorTray"
-                        )["translation_mm"],
-                        (0.0, 16.0, 0.0),
-                    )
-
-    def test_shared_tray_motion_bound_contains_unused_shoe_at_every_carrier_angle(self):
-        from gondola.cad import world_shape
-        from gondola.parts import optical_mount
-        from gondola.validation.optical_envelopes import motion_bounds
-
-        for mode in ("carrier", "rail"):
-            doc, _ = self.make_document(mode)
-            bounds = motion_bounds(doc.OpticalFlowModule)
-            for angle in range(-20, 21, 2) if mode == "carrier" else (0,):
-                optical_mount.set_pitch(doc, angle)
-                tray = world_shape(doc.OpticalSensorTray)
-                self.assertLess(
-                    abs(tray.cut(bounds["MTF02PContinuousTrayBound"]).Volume),
-                    1e-5,
-                    (mode, angle),
-                )
-
-    def test_component_motion_bounds_retain_registration_and_reject_unknown_stock(self):
-        import math
-
-        from gondola.cad import placed_shape
-        from gondola.parts import optical_interface, optical_mount
-        from gondola.validation.optical_envelopes import motion_bounds
-
-        doc, _ = self.make_document("carrier")
-        group = doc.OpticalFlowModule
-        group.Placement.Base += App.Vector(13, -7, 2)
-        bound = motion_bounds(group)["MTF02PContinuousTrayBound"]
-        for pitch in (-20, 0, 20):
-            for sign_x, sign_y in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
-                moved = optical_mount.sensor_tray_shape()
-                moved.rotate(App.Vector(), App.Vector(0, 1, 0), pitch)
-                moved.translate(App.Vector(0, 0, 19))
-                moved.rotate(
-                    App.Vector(),
-                    App.Vector(0, 0, 1),
-                    math.degrees(sign_x * optical_interface.MAX_REGISTRATION_YAW_RAD),
-                )
-                moved.translate(
-                    App.Vector(
-                        sign_x * optical_interface.MAX_REGISTRATION_X,
-                        sign_y * optical_interface.MAX_REGISTRATION_Y,
-                        0,
-                    )
-                )
-                moved = placed_shape(moved, group.getGlobalPlacement())
-                self.assertLess(
-                    abs(moved.cut(bound).Volume), 1e-5, (pitch, sign_x, sign_y)
-                )
-        # A saved physical branch cannot silently fall outside the source
-        # primitives used to refine the broad continuous envelope.
-        tray = doc.OpticalSensorTray
-        tray.Shape = tray.Shape.fuse(Part.makeBox(2, 1, 1, App.Vector(-10, 0, 9)))
-        with self.assertRaisesRegex(ValueError, "tray stock"):
-            motion_bounds(group)
-
-    def test_motion_bounds_reject_missing_misparented_or_shifted_saved_tray(self):
-        from gondola.validation.optical_envelopes import motion_bounds
-
-        doc, _ = self.make_document("carrier")
-        group, stage, tray = (
-            doc.OpticalFlowModule,
-            doc.OpticalPitchStage,
-            doc.OpticalSensorTray,
-        )
-        before = stage.Placement.copy()
-        stage.Placement.Base.x += 0.5
-        with self.assertRaisesRegex(ValueError, "pitch domain"):
-            motion_bounds(group)
-        stage.Placement = before
-        group.addObject(tray)
-        with self.assertRaisesRegex(ValueError, "hierarchy"):
-            motion_bounds(group)
-        stage.addObject(tray)
-        self.assertIn("MTF02PContinuousTrayBound", motion_bounds(group))
-        doc.removeObject(tray.Name)
-        with self.assertRaisesRegex(ValueError, "hierarchy"):
-            motion_bounds(group)
-
-    def test_unused_shoe_midpath_obstacle_rejects_carrier_tray_removal(self):
-        from gondola.cad import world_shape
-        from gondola.validation.optical_service import pitch_disassembly_check
-
-        doc, kit = self.make_document("carrier")
-        base = doc.OpticalMountBase
-        original = base.Shape.copy()
-        # Only the outboard unused shoe crosses this point during +Y16.
-        # The pad ends at X9; its ear and neck are much farther inboard.
-        blocker = Part.makeBox(0.3, 0.3, 0.3, App.Vector(15, 7, 21))
-        moving = world_shape(doc.OpticalSensorTray)
-        moving.Placement = (
-            doc.OpticalFlowModule.getGlobalPlacement()
+        doc = self.doc
+        expected = (
+            doc.ModuleFCEnvelope.getGlobalPlacement()
             .inverse()
-            .multiply(moving.Placement)
+            .multiply(doc.OpticalSensorFrame.getGlobalPlacement())
         )
-        self.assertLess(abs(moving.common(blocker).Volume), 1e-5)
-        midway = moving.copy()
-        midway.translate(App.Vector(0, 4, 0))
-        self.assertGreater(abs(midway.common(blocker).Volume), 1e-5)
-        moving.translate(App.Vector(0, 16, 0))
-        self.assertLess(abs(moving.common(blocker).Volume), 1e-5)
-        base.Shape = original.fuse(blocker)
-        result = pitch_disassembly_check(doc, kit)
-        tray_path = next(
-            row
-            for row in result["paths"]
-            if row["part"] == "TrayAssembly/OpticalSensorTray"
+        module_pose = doc.ElectronicsEquipmentModule.Placement.copy()
+        for requested in (-999, -13, 0, 11, 999):
+            instrument_mount.set_pitch(doc, requested)
+            angle = max(-20, min(20, requested))
+            rotation = App.Rotation(App.Vector(0, 1, 0), angle)
+            literal = App.Placement(
+                App.Vector(0, 0, 27.5) - rotation.multVec(App.Vector(0, 0, 8)), rotation
+            )
+            self.assertTrue(doc.InstrumentPitchStage.Placement.isSame(literal, 1e-7))
+            actual = (
+                doc.ModuleFCEnvelope.getGlobalPlacement()
+                .inverse()
+                .multiply(doc.OpticalSensorFrame.getGlobalPlacement())
+            )
+            self.assertTrue(actual.isSame(expected, 1e-7))
+            self.assertTrue(
+                doc.ElectronicsEquipmentModule.Placement.isSame(module_pose, 1e-7)
+            )
+            instrument_context(doc.OpticalFlowModule)
+        for name in (
+            "OpticalPitchStage",
+            "OpticalRollStage",
+            "OpticalMountBase",
+            "OpticalPitchBolt",
+            "OpticalFlowModuleRailMountScrew",
+        ):
+            self.assertIsNone(doc.getObject(name))
+        self.assertEqual(
+            doc.OpticalFlowModule.getParentGeoFeatureGroup(), doc.InstrumentPitchStage
         )
-        self.assertFalse(tray_path["passed"], tray_path)
-        self.assertIn(
-            "OpticalMountBase", [row["object"] for row in tray_path["collisions"]]
+        self.assertEqual(
+            doc.ElectronicsMount.getParentGeoFeatureGroup(), doc.InstrumentPitchStage
+        )
+        self.assertEqual(
+            doc.OpticalSensorTray.getParentGeoFeatureGroup(), doc.OpticalSensorFrame
         )
 
-    def test_rail_equipment_screens_have_one_pose_and_no_phantom_pitch_tool(self):
+    def test_old_modes_and_independent_sensor_control_fail_closed(self):
+        from gondola.validation.optical import _source_evidence
+        from gondola.validation.optical_envelopes import motion_bounds
+
+        group = self.doc.OpticalFlowModule
+        for mode in ("carrier", "rail", "legacy"):
+            group.OpticalAttachmentMode = mode
+            self.assertFalse(_source_evidence(self.doc)["passed"])
+            with self.assertRaises(ValueError):
+                motion_bounds(group)
+        group.OpticalAttachmentMode = "instrument"
+        self.doc.OpticalSensorFrame.addProperty("App::PropertyAngle", "Pitch")
+        with self.assertRaises(ValueError):
+            motion_bounds(group)
+
+    def test_missing_wrong_parent_or_compensated_native_stage_is_rejected(self):
+        from gondola.validation.optical_envelopes import motion_bounds
+
+        frame, tray = self.doc.OpticalSensorFrame, self.doc.OpticalSensorTray
+        frame.removeObject(tray)
+        self.doc.OpticalFlowModule.addObject(tray)
+        with self.assertRaises(ValueError):
+            motion_bounds(self.doc.OpticalFlowModule)
+        self.doc.OpticalFlowModule.removeObject(tray)
+        frame.addObject(tray)
+        frame.Placement.Base.x = 1
+        tray.Placement.Base.x = -1
+        with self.assertRaises(ValueError):
+            motion_bounds(self.doc.OpticalFlowModule)
+        frame.Placement = App.Placement()
+        tray.Placement = App.Placement()
+        stage = self.doc.InstrumentPitchStage
+        stage.setExpression("Placement.Base.z", None)
+        with self.assertRaises(ValueError):
+            motion_bounds(self.doc.OpticalFlowModule)
+
+    def test_continuous_tray_bounds_contain_full_saved_stock_at_registration_extremes(
+        self,
+    ):
+        from gondola.cad import placed_shape
+        from gondola.parts import instrument_mount
+        from gondola.validation.geometry import local_shape
+        from gondola.validation.optical_envelopes import motion_bounds
+
+        module = self.doc.ElectronicsEquipmentModule
+        module.setExpression("Placement.Base.x", None)
+        module.Placement = App.Placement(
+            App.Vector(31, -17, 8), App.Rotation(App.Vector(1, 2, 3), 29)
+        )
+        self.doc.recompute()
+        bound = motion_bounds(self.doc.OpticalFlowModule)["MTF02PContinuousTrayBound"]
+        saved = local_shape(self.doc.OpticalSensorTray)
+        for angle, yaw, x, y in itertools.product(
+            (-20, 0, 20), (-3, 3), (-1, 1), (-1, 1)
+        ):
+            instrument_mount.set_pitch(self.doc, angle)
+            shape = saved.copy()
+            shape.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
+            shape.translate(App.Vector(x, y, 0))
+            shape = placed_shape(
+                shape, self.doc.OpticalSensorFrame.getGlobalPlacement()
+            )
+            with self.subTest(angle=angle, yaw=yaw, x=x, y=y):
+                self.assertLess(abs(shape.cut(bound).Volume), 1e-5)
+
+    def test_unknown_tray_and_sensor_stock_cannot_be_ignored_by_power_envelopes(self):
+        from gondola.validation.optical_envelopes import motion_bounds
+
+        tray = self.doc.OpticalSensorTray
+        original = tray.Shape.copy()
+        tray.Shape = tray.Shape.fuse(
+            Part.makeBox(1.5, 1, 1, App.Vector(26.5, 2, 0.5))
+        ).removeSplitter()
+        with self.assertRaisesRegex(ValueError, "stock"):
+            motion_bounds(self.doc.OpticalFlowModule)
+        tray.Shape = original
+        sensor = self.doc.ModuleMTF02PEnvelope
+        sensor.Shape = sensor.Shape.fuse(
+            Part.makeBox(2, 2, 2, App.Vector(-1, -1, 40))
+        ).removeSplitter()
+        with self.assertRaisesRegex(ValueError, "sensor geometry"):
+            motion_bounds(self.doc.OpticalFlowModule)
+
+    def test_equipment_screens_move_fc_and_preserve_unknown_stage_members(self):
+        from gondola.cad import world_shape
+        from gondola.parts import instrument_mount
         from gondola.validation.equipment_options import _optical_screens
 
-        doc, _ = self.make_document("rail")
-        screens = _optical_screens(doc)
+        extra = self.doc.addObject("Part::Feature", "UnknownInstrumentStock")
+        extra.Shape = Part.makeBox(1, 1, 1, App.Vector(31, 31, 21))
+        self.doc.InstrumentPitchStage.addObject(extra)
+        self.doc.DesignRegistry.PrintedParts = list(
+            self.doc.DesignRegistry.PrintedParts
+        ) + [extra]
+        screens = _optical_screens(self.doc)
+        self.assertEqual(len(screens), 2)
         for screen in screens:
-            self.assertEqual(len(screen["poses"]), 1)
-            pose = screen["poses"][0]
-            self.assertEqual(pose["pitch_deg"], 0)
-            self.assertNotIn("pitch_tool", pose)
-            self.assertNotIn("OpticalMountBase", pose["physical"])
-            self.assertIn("OpticalSensorTray", pose["physical"])
-            self.assertEqual(len(screen["saved_rail_hardware"]), 2)
+            self.assertIn(extra.Name, screen["saved_moving_parts"])
+            self.assertIn("ModuleFCEnvelope", screen["saved_moving_parts"])
+            for pose in screen["poses"]:
+                instrument_mount.set_pitch(self.doc, pose["instrument_pitch_deg"])
+                for name in ("ModuleFCEnvelope", extra.Name):
+                    actual = world_shape(self.doc.getObject(name))
+                    self.assertLess(
+                        abs(actual.cut(pose["physical"][name]).Volume), 1e-5
+                    )
+                    self.assertLess(
+                        abs(pose["physical"][name].cut(actual).Volume), 1e-5
+                    )
+                self.assertIn("FCWiringClearanceReserve", pose["instrument_reserves"])
 
-    def test_carrier_mode_retains_ordered_foot_release_and_continuous_lift(self):
-        from gondola.parts import mounting_plate
-        from gondola.validation.optical import _foot_service_checks
+    def test_continuous_registered_external_field_contains_both_profiles(self):
+        from gondola.cad import placed_shape
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import instrument_mount, optical_sensor
+        from gondola.validation.optical_envelopes import external_field_bound
 
-        doc, kit = self.make_document("carrier")
-        plate = doc.addObject("Part::Feature", "BatteryMount")
-        plate.Shape = mounting_plate.shape()
-        doc.BatteryEquipmentModule.addObject(plate)
-        doc.recompute()
-        result = _foot_service_checks(doc, kit + [plate], kit)
-        self.assertTrue(result["passed"], result)
-        self.assertEqual(result["paths"][0]["part"], "OpticalFootNut1")
-        self.assertEqual(result["paths"][1]["part"], "OpticalFootBolt1")
-        original = plate.Shape.copy()
-        # A real shelf above one foot edge blocks lift after both clamps are out.
-        from gondola.cad import world_shape
-
-        block = Part.makeBox(1, 2, 1, App.Vector(3, 6, 4))
-        block.Placement = doc.OpticalFlowModule.getGlobalPlacement()
-        self.assertLess(
-            abs(block.common(world_shape(doc.OpticalMountBase)).Volume), 1e-5
+        module = self.doc.ElectronicsEquipmentModule
+        module.setExpression("Placement.Base.x", None)
+        module.Placement = App.Placement(
+            App.Vector(-23, 19, 11), App.Rotation(App.Vector(2, -1, 3), 37)
         )
-        plate.Shape = original.fuse(block)
-        blocked = _foot_service_checks(doc, kit + [plate], kit)
-        self.assertFalse(blocked["passed"])
-        self.assertFalse(
-            next(
-                row
-                for row in blocked["paths"]
-                if row["part"] == "CompleteOpticalMount/OpticalMountBase"
-            )["passed"]
-        )
+        self.doc.recompute()
+        for profile in SENSOR_PROFILES.values():
+            bound, metadata = external_field_bound(self.doc.OpticalFlowModule, profile)
+            self.assertEqual(metadata["instrument_pitch_range_deg"], (-20, 20))
+            for angle, yaw, x, y in itertools.product(
+                (-20, -7, 0, 13, 20), (-3, 3), (-1, 1), (-1, 1)
+            ):
+                instrument_mount.set_pitch(self.doc, angle)
+                field = optical_sensor.optical_reserve_shape(profile)
+                field.rotate(App.Vector(), App.Vector(0, 0, 1), yaw)
+                field.translate(App.Vector(x, y, 0))
+                field = placed_shape(
+                    field, self.doc.OpticalSensorFrame.getGlobalPlacement()
+                )
+                # The field is a convex rectangular frustum and the cone is
+                # convex; containing all vertices contains its entire volume.
+                for vertex in field.Vertexes:
+                    self.assertTrue(
+                        bound.isInside(vertex.Point, 1e-5, True),
+                        (profile.key, angle, yaw, x, y, tuple(vertex.Point)),
+                    )

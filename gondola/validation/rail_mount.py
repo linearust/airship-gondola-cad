@@ -7,7 +7,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import placed_shape
-from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
+from gondola.parts import equipment_mounts, instrument_mount, propulsion, rail
 from gondola.print_export import geometry_comparison
 
 from . import rail_contact
@@ -350,13 +350,11 @@ def paired_spine_support_check(rail_in_module, frame):
 
 def saved_integral_mount_checks(doc, registry, *, module_names=None):
     printed, equipment = list(registry.PrintedParts), list(registry.EquipmentMounts)
-    expected = [
-        name
-        for name, _, kind, _, _ in MOUNT_BINDINGS
-        if kind in ("battery", "electronics", "accessory")
-    ]
+    # EquipmentMounts identifies the three device decks. The moving FC deck
+    # and its fixed rail shoe are distinct prints in the common pitch mount.
+    expected = ("BatteryMount", "ElectronicsMount", "AccessoryMount")
     inventory = sorted(obj.Name for obj in equipment) == sorted(expected) and all(
-        obj == doc.getObject(obj.Name) for obj in equipment
+        obj == doc.getObject(obj.Name) and printed.count(obj) == 1 for obj in equipment
     )
     # Selection scopes solid comparisons, while every mount must still be
     # registered once, in the right parent and at its canonical local placement.
@@ -404,8 +402,8 @@ def saved_integral_mount_checks(doc, registry, *, module_names=None):
         actual = mount_shape_in_module(obj, parent)
         if kind is None:
             source = propulsion.fixed_frame_shape()
-        elif kind == "optical":
-            source = optical_mount.rail_mounted_tray_shape()
+        elif kind == "electronics":
+            source = instrument_mount.base_shape()
         else:
             source = equipment_mounts.mount_shape(kind)
         complete = geometry_comparison(actual, source)

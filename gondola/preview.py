@@ -117,18 +117,11 @@ def style_power_option(doc):
 
 
 def optical_detail_host(optical):
-    """Frame the rail head or its supporting populated carrier."""
+    """Frame the whole common instrument assembly, including its fixed base."""
     parent = optical.getParentGeoFeatureGroup()
-    mode = str(optical.OpticalAttachmentMode)
-    if mode == "rail":
-        if parent is not None:
-            raise RuntimeError("Rail optical preview requires a top-level module.")
-        return optical
-    if mode != "carrier":
-        raise RuntimeError(f"Unsupported optical attachment mode: {mode}")
-    if parent is None or parent.Name != optical.CarrierHostName:
-        raise RuntimeError("Optical preview requires its declared carrier parent.")
-    return parent
+    if parent is None or parent.Name != "InstrumentPitchStage":
+        raise RuntimeError("Optical preview requires the common instrument platform.")
+    return parent.getParentGeoFeatureGroup()
 
 
 class _PreviewSession:

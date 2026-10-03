@@ -40,7 +40,7 @@ class IntegralMountValidationTests(unittest.TestCase):
             {row["part"] for row in rows},
             {
                 "BatteryMount",
-                "ElectronicsMount",
+                "InstrumentMountBase",
                 "AccessoryMount",
                 "PropulsionFixedFrame",
             },
@@ -66,12 +66,12 @@ class IntegralMountValidationTests(unittest.TestCase):
         # Complete source comparison must catch defects above that witness.
         cuts = {
             name: Part.makeBox(1, 1, 0.4, App.Vector(4, -0.5, 13))
-            for name in ("BatteryMount", "ElectronicsMount", "AccessoryMount")
+            for name in ("BatteryMount", "InstrumentMountBase", "AccessoryMount")
         }
         cuts["PropulsionFixedFrame"] = Part.makeBox(1, 1, 0.4, App.Vector(0, 40, 35))
         for name in (
             "BatteryMount",
-            "ElectronicsMount",
+            "InstrumentMountBase",
             "AccessoryMount",
             "PropulsionFixedFrame",
         ):
@@ -147,7 +147,7 @@ class IntegralMountValidationTests(unittest.TestCase):
         cut = Part.makeCylinder(0.3, 1, App.Vector(2.4, 0, 11))
         for name in (
             "BatteryMount",
-            "ElectronicsMount",
+            "InstrumentMountBase",
             "AccessoryMount",
         ):
             with self.subTest(part=name):
@@ -183,7 +183,14 @@ class IntegralMountValidationTests(unittest.TestCase):
     def test_missing_registry_entry_and_duplicate_cannot_hide_another_carrier(self):
         registry = self.doc.DesignRegistry
         mounts = list(registry.EquipmentMounts)
-        for equipment in (mounts[:-1], [mounts[0], mounts[0], mounts[2]]):
+        for equipment in (
+            mounts[:-1],
+            [mounts[0], mounts[0], mounts[2]],
+            [
+                self.doc.InstrumentMountBase if obj.Name == "ElectronicsMount" else obj
+                for obj in mounts
+            ],
+        ):
             with self.subTest(names=[obj.Name for obj in equipment]):
                 rows = self.checks(
                     SimpleNamespace(

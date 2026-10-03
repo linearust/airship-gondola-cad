@@ -76,7 +76,7 @@ class ModuleControlMappingTests(unittest.TestCase):
     def test_actual_manual_stages_are_bounded_and_independent(self):
         from gondola.cad import create_group, set_property
         from gondola.contracts.design import module_stations
-        from gondola.contracts.optical_attachment import resolve_mount_mode
+        from gondola.parts import equipment_envelopes, instrument_mount
         from gondola.parts.optical_mount import build_optical_mount
         from gondola.validation.baseline import control_behavior
 
@@ -86,10 +86,7 @@ class ModuleControlMappingTests(unittest.TestCase):
                 App.closeDocument(name) if name in App.listDocuments() else None
             )
         )
-        mode = resolve_mount_mode()
-        stations = module_stations(mode)
-        if mode == "rail":
-            build_optical_mount(doc, mode=mode)
+        stations = module_stations()
         modules = []
         for station in stations:
             module = doc.getObject(station.object_name) or create_group(
@@ -119,8 +116,17 @@ class ModuleControlMappingTests(unittest.TestCase):
             )
             module.setExpression("Placement.Base.x", "RailPositionX")
             modules.append(module)
-        if mode == "carrier":
-            build_optical_mount(doc, doc.BatteryEquipmentModule, mode=mode)
+        instrument = instrument_mount.build_mount(doc, doc.ElectronicsEquipmentModule)
+        optical = build_optical_mount(doc, instrument["pitch_stage"])
+        equipment_envelopes.build_equipment(
+            doc,
+            doc.BatteryEquipmentModule,
+            instrument["pitch_stage"],
+            doc.AccessoryEquipmentModule,
+        )
+        from gondola.parts import optical_sensor
+
+        optical_sensor.build_sensor(doc, optical["sensor_frame"])
         pods = []
         for name in ("PortPod", "StarboardPod"):
             pod = create_group(doc, name, name)
@@ -143,16 +149,14 @@ class ModuleControlMappingTests(unittest.TestCase):
         )
         self.assertEqual(
             sum(row["property"] == "MountSide" for row in result["cases"]),
-            2 if mode == "carrier" else 0,
+            0,
         )
-        doc.OpticalFlowModule.OpticalAttachmentMode = (
-            "carrier" if mode == "rail" else "rail"
-        )
+        doc.OpticalFlowModule.OpticalAttachmentMode = "rail"
         self.assertFalse(control_behavior(doc)["passed"])
-        doc.OpticalFlowModule.OpticalAttachmentMode = mode
-        doc.OpticalPitchStage.MaximumAngle = 30
+        doc.OpticalFlowModule.OpticalAttachmentMode = "instrument"
+        doc.InstrumentPitchStage.MaximumAngle = 30
         self.assertFalse(control_behavior(doc)["passed"])
-        doc.OpticalPitchStage.MaximumAngle = 20
+        doc.InstrumentPitchStage.MaximumAngle = 20
         # Saved manual positions remain editable; the validator rejects positions
         # outside the supported slot intervals without silently clamping them.
         with tempfile.TemporaryDirectory() as directory:
@@ -165,17 +169,6 @@ class ModuleControlMappingTests(unittest.TestCase):
             restored.recompute()
             self.assertFalse(control_behavior(restored)["passed"])
             self.assertEqual(float(restored.BatteryEquipmentModule.RailPositionX), 999)
-
-    def test_carrier_mode_preserves_native_host_side_and_pitch_controls(self):
-        from gondola.contracts import optical_attachment
-        from gondola.contracts.design import module_stations
-        from gondola.validation import baseline
-
-        with (
-            patch.object(optical_attachment, "SELECTED_MOUNT", "carrier"),
-            patch.object(baseline, "MODULE_STATIONS", module_stations("carrier")),
-        ):
-            self.test_actual_manual_stages_are_bounded_and_independent()
 
     def test_continuous_carrier_rejects_unsupported_station_offset_or_rotation(self):
         from gondola.contracts.design import ModuleStation
@@ -434,7 +427,7 @@ class FrozenBaselineTests(unittest.TestCase):
         )
         self.assertEqual(
             {obj.Name for obj in getattr(registry, "OpticalMountParts", [])},
-            {"OpticalMountBase", "OpticalSensorTray"},
+            {"OpticalSensorTray"},
         )
         self.assertTrue(
             {"StandardBoards", "StackPosts", "StackLocks", "StackWashers"}.isdisjoint(

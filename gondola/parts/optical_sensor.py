@@ -1,4 +1,4 @@
-"""One replaceable optical sensor, using the common dual-interface adhesive tray.
+"""One replaceable optical sensor, using the rigid common-platform adhesive bracket.
 
 MTF02P-named native IDs are retained as stable assembly references, not a model
 selection. Labels, SensorModel and all evidence/shapes describe the active model.
@@ -82,12 +82,12 @@ def connector_contract(profile=None):
     profile = _profile(profile)
     return {
         **device_connector_contract(profile.key),
-        "parent_frame": "OpticalPitchStage",
+        "parent_frame": "OpticalSensorFrame",
         "outward_axis": profile.connector_axis,
         "edge_width_mm": profile.size_mm[1 if profile.connector_axis == "+X" else 0],
         "edge_height_mm": profile.size_mm[2],
         "design_outward_travel_mm": CONNECTOR_TRAVEL_MM,
-        "operating_scope": f"The {profile.model} documented connector edge is modeled as tray-local{profile.connector_axis}. The whole edge follows the tray frame (manual pitch in stack mode, fixed in direct rail mode); actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
+        "operating_scope": f"The {profile.model} documented connector edge is modeled as tray-local{profile.connector_axis}. The whole edge follows the fixed sensor frame and shared instrument-platform pitch; actual connector datums and firmware yaw remain to verify independently for the selected sensor.",
         "withdrawal_scope": "Continuous12mm lane is a design allowance, not measured withdrawal stroke or bend radius. Leave slack for pitch adjustment and secure the fixed lead. Disconnect before removing the module. Keep ties away from all optical openings.",
     }
 
@@ -102,12 +102,8 @@ def _apply_objects(group, sensor, optical, connector, profile):
     set_property(group, "SensorModel", profile.key)
     group.setEditorMode("SensorModel", 1)
     sensor.Shape = envelope_shape(profile)
-    sensor.Label = profile.model + (
-        " | manually aligned optical face"
-        if str(group.OpticalAttachmentMode) == "carrier"
-        else " | fixed rail optical face"
-    )
-    sensor.Notes = f"Published envelope{profile.size_mm}mm,{profile.mass_g:g}g. One sensor only, using the existing18x12mm tray and1mm nominal insulating adhesive allowance. No extra mount or sensor screws. Optical face is local+Z; in stack mode manually align downward at flight trim and lock pitch; direct rail mode has no pitch correction and requires suitable rail orientation. This is not active stabilization. Verify actual rear contact, retention, lens origins, cable clearance and the selected unit's firmware yaw; do not copy another model's orientation setting."
+    sensor.Label = profile.model + " | shared-platform optical face"
+    sensor.Notes = f"Published envelope {profile.size_mm} mm, {profile.mass_g:g} g. One sensor only, using the rigid 18x12 mm tray and 1 mm nominal insulating adhesive allowance. No sensor fixing screws. Optical face is local +Z. FC and optical sensor share InstrumentPitchStage adjustment; this bracket has no independent hinge. Align downward at flight trim and lock the common platform. This is not active stabilization. Verify actual rear contact, retention, lens origins, cable clearance and the selected unit's firmware yaw; do not copy another model's orientation setting."
     add_interface_metadata(sensor, profile.key)
     for name, value in (
         ("ProductSource", profile.product_source),
@@ -171,11 +167,11 @@ def apply_profile(doc, profile):
     doc.recompute()
 
 
-def build_sensor(doc, pitch_stage, profile=None):
+def build_sensor(doc, sensor_frame, profile=None):
     profile = _profile(profile)
-    group = pitch_stage.getParentGeoFeatureGroup()
+    group = sensor_frame.getParentGeoFeatureGroup()
     objects = [
-        create_reference(doc, pitch_stage, name, name, shape, "", profile.source)
+        create_reference(doc, sensor_frame, name, name, shape, "", profile.source)
         for name, shape in (
             (SENSOR_OBJECT, envelope_shape(profile)),
             (FIELD_OBJECT, optical_reserve_shape(profile)),

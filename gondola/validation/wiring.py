@@ -165,9 +165,8 @@ def reserve_checks(doc):
     expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape(
         profile
     )
-    optical_mode = str(doc.OpticalFlowModule.OpticalAttachmentMode)
-    expected_contracts = wiring.reserve_contracts(optical_mode=optical_mode)
-    minimum_gaps = wiring.neighbour_gap_pairs(optical_mode)
+    expected_contracts = wiring.reserve_contracts()
+    minimum_gaps = wiring.neighbour_gap_pairs()
     expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract(
         profile
     )
@@ -222,7 +221,7 @@ def reserve_checks(doc):
         source_url_matches = True
         fit_unverified = True
         expected_parent_name = (
-            "OpticalPitchStage"
+            "OpticalSensorFrame"
             if name in ("MTF02PConnectorReserve", optical_sensor.FIELD_OBJECT)
             else wiring.RESERVE_PARENTS.get(name)
         )

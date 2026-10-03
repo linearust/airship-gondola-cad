@@ -1,4 +1,4 @@
-"""Selected optical attachment adds a rail station or follows an existing carrier."""
+"""Four rail modules retain a shared rigid FC/optical setup platform."""
 
 import unittest
 from dataclasses import asdict
@@ -18,7 +18,7 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertEqual(len(stations), 4)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, 14.0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 84)
-        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -56)
+        self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -82)
         self.assertEqual(stations["ElectronicsEquipmentModule"].yaw_deg, 180)
         self.assertEqual(stations["AccessoryEquipmentModule"].x_mm, -140)
         self.assertEqual(stations["AccessoryEquipmentModule"].yaw_deg, 180)
@@ -28,13 +28,14 @@ class ModuleLayoutTests(unittest.TestCase):
         self.assertNotIn("OpticalFlowModule", stations)
 
     def test_shared_plate_stations_leave_room_for_the_larger_square(self):
-        # Independent plan-view witness; full solid/wiring checks follow in CAD.
+        # Raised electronics overlaps the accessory footprint; native swept solid checks
+        # establish clearance, not this station-spacing witness.
         carriers = sorted(
             s.x_mm for s in MODULE_STATIONS if s.object_name.endswith("EquipmentModule")
         )
-        self.assertEqual(carriers, [-140, -56, 84])
+        self.assertEqual(carriers, [-140, -82, 84])
         self.assertTrue(
-            all(right - left > 66 for left, right in zip(carriers, carriers[1:]))
+            all(right - left > 50 for left, right in zip(carriers, carriers[1:]))
         )
 
     def test_compact_rail_preserves_base_end_margin_and_manufacturing_limit(self):
@@ -62,27 +63,11 @@ class ModuleLayoutTests(unittest.TestCase):
             14.0,
         )
 
-    def test_optical_modes_change_only_the_dedicated_rail_station(self):
-        from gondola.contracts.optical_attachment import (
-            DEFAULT_CARRIER_HOST,
-            DEFAULT_CARRIER_SIDE,
-            pivot_z,
-            resolve_mount_mode,
+    def test_optical_uses_no_independent_rail_station(self):
+        self.assertEqual(module_stations(), MODULE_STATIONS)
+        self.assertNotIn(
+            "OpticalFlowModule", [s.object_name for s in module_stations()]
         )
-
-        carrier = module_stations("carrier")
-        direct = module_stations("rail")
-        self.assertEqual(direct[:-1], carrier)
-        self.assertEqual(len(carrier), 4)
-        self.assertEqual(direct[-1], ModuleStation("OpticalFlowModule", 140, 180))
-        self.assertEqual(DEFAULT_CARRIER_HOST, "BatteryEquipmentModule")
-        self.assertEqual(DEFAULT_CARRIER_SIDE, "PositiveX")
-        self.assertEqual(pivot_z("carrier"), 19)
-        self.assertEqual(pivot_z("rail"), 6.5)
-        self.assertEqual(resolve_mount_mode(), "carrier")
-        for invalid in ("", "Rail", "side", True, 0, [], {}):
-            with self.subTest(mode=invalid), self.assertRaises(ValueError):
-                module_stations(invalid)
 
     def test_modules_allow_only_fixed_forward_or_reverse_orientation(self):
         forward = ModuleStation("Forward", 0)

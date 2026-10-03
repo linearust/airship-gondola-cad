@@ -164,29 +164,36 @@ class PreviewCallbacks(unittest.TestCase):
         self.assertFalse(self.read_state()["passed"])
         self.gui.getMainWindow.assert_not_called()
 
-    def test_optical_detail_includes_actual_supporting_carrier(self):
-        host = types.SimpleNamespace(Name="BatteryEquipmentModule")
-        optical = types.SimpleNamespace(
-            OpticalAttachmentMode="carrier",
-            CarrierHostName="BatteryEquipmentModule",
-            getParentGeoFeatureGroup=lambda: host,
+    def test_optical_detail_includes_fixed_base_and_complete_common_stage(self):
+        host = types.SimpleNamespace(Name="ElectronicsEquipmentModule")
+        stage = types.SimpleNamespace(
+            Name="InstrumentPitchStage", getParentGeoFeatureGroup=lambda: host
         )
+        optical = types.SimpleNamespace(
+            OpticalAttachmentMode="instrument",
+            getParentGeoFeatureGroup=lambda: stage,
+        )
+        # Framing only the moving stage would omit its fixed rail base and joint.
         self.assertIs(self.preview.optical_detail_host(optical), host)
-        optical.CarrierHostName = "ElectronicsEquipmentModule"
-        with self.assertRaisesRegex(RuntimeError, "declared carrier parent"):
-            self.preview.optical_detail_host(optical)
-        optical.getParentGeoFeatureGroup = lambda: None
-        with self.assertRaisesRegex(RuntimeError, "declared carrier parent"):
-            self.preview.optical_detail_host(optical)
+        self.assertIsNot(self.preview.optical_detail_host(optical), stage)
 
-    def test_direct_rail_optical_detail_has_no_carrier_parent(self):
-        optical = types.SimpleNamespace(
-            OpticalAttachmentMode="rail", getParentGeoFeatureGroup=lambda: None
-        )
-        self.assertIs(self.preview.optical_detail_host(optical), optical)
-        optical.getParentGeoFeatureGroup = lambda: types.SimpleNamespace(Name="Host")
-        with self.assertRaisesRegex(RuntimeError, "top-level module"):
-            self.preview.optical_detail_host(optical)
+    def test_optical_detail_rejects_missing_or_wrong_common_stage(self):
+        for parent_name in (
+            None,
+            "BatteryEquipmentModule",
+            "OpticalPitchStage",
+            "OpticalSensorFrame",
+        ):
+            with self.subTest(parent=parent_name):
+                parent = (
+                    types.SimpleNamespace(Name=parent_name) if parent_name else None
+                )
+                optical = types.SimpleNamespace(
+                    OpticalAttachmentMode="instrument",
+                    getParentGeoFeatureGroup=lambda: parent,
+                )
+                with self.assertRaisesRegex(RuntimeError, "common instrument platform"):
+                    self.preview.optical_detail_host(optical)
 
 
 if __name__ == "__main__":

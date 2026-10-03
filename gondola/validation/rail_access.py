@@ -146,11 +146,23 @@ def _mount_service_regions(name, shape, offset):
     bounds = shape.BoundBox
     mount_names = {
         "BatteryMount",
+        "InstrumentMountBase",
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
         "OpticalSensorTray",
     }
+    if name == "ElectronicsMount":
+        # Actual moving plate/lug stock in the rail attachment frame. The neutral
+        # deck starts at36.5; crops retain every saved feature even if another
+        # selected setup pose produces a more conservative service bound.
+        return [
+            (
+                name + label,
+                shape.common(Part.makeBox(400, 400, height, V(-200, -200, z))),
+            )
+            for label, z, height in (("Lug", -100, 136.5), ("Plate", 36.5, 200))
+        ]
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         return [(name, shape)]
     shared = name == "PropulsionFixedFrame"
@@ -162,6 +174,9 @@ def _mount_service_regions(name, shape, offset):
             Part.makeBox(16, 10.5, 3, V(-8, -5.25, 9.5)),
         ]
     )
+    if name == "InstrumentMountBase":
+        upper = shape.common(Part.makeBox(200, 200, 100, V(-100, -100, 12.5)))
+        return [(name + "Lower", lower), (name + "Yoke", upper)]
     if shared:
         lower_regions = []
         for x in (-14, 14):
@@ -175,17 +190,6 @@ def _mount_service_regions(name, shape, offset):
             V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
         )
         return [*lower_regions, (name + "Upper", shape.common(upper_region))]
-    if name == "OpticalSensorTray":
-        # The same upper print retains its unused M2 ear in rail mode. These
-        # literal envelopes are in the shoe frame, after inverse S. Separate
-        # regions preserve the U channel during both trim and vertical lift.
-        return [
-            (name + "Lower", lower),
-            (name + "PitchEar", Part.makeBox(8, 2, 8, V(-16, 1.25, 2.5))),
-            (name + "Neck", Part.makeBox(4, 2, 8.5, V(-14, 1.25, 6.5))),
-            (name + "Pad", Part.makeBox(18, 12, 2, V(-21, -4.75, 15))),
-            (name + "Bridge", Part.makeBox(10, 2, 4, V(-14, 1.25, 11))),
-        ]
     # The broad deck has narrow supports. A whole upper bounding box would
     # obstruct the adjacent servo cap during a real horizontal service slide.
     # These literal witnesses remain independent of the carrier builder.
@@ -256,7 +260,7 @@ def _saved_stage_settings(doc):
     for name, control in (
         ("PortPod", "Tilt"),
         ("StarboardPod", "Tilt"),
-        ("OpticalPitchStage", "Pitch"),
+        ("InstrumentPitchStage", "Pitch"),
     ):
         stage = doc.getObject(name)
         if stage is not None:
@@ -445,6 +449,7 @@ def supported_carrier_slide(shapes, obstacles, pose):
     for name, shape in sorted(shapes.items()):
         if name in {
             "BatteryMount",
+            "InstrumentMountBase",
             "ElectronicsMount",
             "AccessoryMount",
             "OpticalSensorTray",
@@ -629,7 +634,11 @@ def rail_attachment_service(doc, registry, objects, *, module_names=None):
             )
         )
         slide = (
-            10 if shared else 4 if module.Name == "ElectronicsEquipmentModule" else 0
+            10
+            if shared
+            else {"ElectronicsEquipmentModule": 4, "AccessoryEquipmentModule": 9}.get(
+                module.Name, 0
+            )
         )
         removal_path = (
             [(0, 0, 0), (slide, 0, 0), (slide, 0, 30)]
@@ -650,7 +659,7 @@ def rail_attachment_service(doc, registry, objects, *, module_names=None):
                 "attachment_services": services,
                 "removed_attachment_hardware": sorted(removed),
                 "populated_module_removal_path_mm": removal_path,
-                "removal_path_coordinate_frame": "Module local; electronics +X is world -X at its required 180-degree yaw.",
+                "removal_path_coordinate_frame": "Module local; electronics and accessory +X are world -X at their required 180-degree yaw.",
                 "unclamped_module_held_during_rail_slide": bool(slide),
                 "unclamped_propulsion_held_during_rail_slide": shared,
                 "populated_supported_trim": trim,
@@ -668,6 +677,6 @@ def rail_attachment_service(doc, registry, objects, *, module_names=None):
         "selected_modules": sorted(selected),
         "obstacle_inventory": inventory,
         "saved_stage_settings": _saved_stage_settings(doc),
-        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The open-bottom hex recess restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm; this temporary unclamped position is not an operating setting. Battery and accessory carriers and a selected rail-direct optical module retain direct vertical lift. No covering board or battery removal. Support the integrated propulsion assembly when either rail clamp is loose. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
+        "scope": "Each populated module is checked at its saved configuration and recorded stage settings, with every other registered physical part installed. These paths do not certify other angles or positions. The open-bottom hex recess restrains nut rotation and its 2 mm nominal floor carries axial load. For each clamp in order, withdraw its transverse screw and slide its nut outward through the pocket opening, retaining the other pair until its turn. The opposite propulsion clamp reverses these directions. After removing both propulsion pairs, hold the complete assembly, slide it +X10mm along the open U channels, then lift30mm. The unclamped feet cross wall gaps during hand-supported removal; this is not an operating attachment position or an extension of allowed clamped adjustment. The populated FC carrier similarly slides world -X4mm (its local +X4mm) while held before lifting30mm; this temporary unclamped position is not an operating setting. The populated accessory carrier slides world -X9mm (its local +X9mm) while held to clear the raised FC platform before lifting30mm. Its shoe partly leaves the rail end during this hand-supported removal; do not clamp or operate there. The battery carrier retains direct vertical lift. The rigid optical bracket remains on the FC instrument platform during complete-module removal. No covering board or battery removal. Support the integrated propulsion assembly when either rail clamp is loose. Disconnect/release flexible leads and external retention before lifting. Continuous rigid envelopes, including full screw head and specified tools, do not qualify hands, supplied bit/nut-pocket fit, curved rail, wiring, friction, PA12 creep or adhesive strength. Local slot travel does not imply every alternative module position is collision-free; revalidate after moving.",
         "passed": len(rows) == len(selected) and all(row["passed"] for row in rows),
     }

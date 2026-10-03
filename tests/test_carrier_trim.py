@@ -94,47 +94,6 @@ class CarrierTrimTests(unittest.TestCase):
         )
         self.assertFalse(supported_carrier_slide(shapes, obstacles, pose)["passed"])
 
-    def test_optical_tray_trim_keeps_open_channel_and_checks_all_saved_stock(self):
-        from gondola.cad import translated_shape
-        from gondola.parts import optical_mount, rail
-        from gondola.validation.rail_access import supported_carrier_slide
-
-        base = optical_mount.rail_mounted_tray_shape()
-        pose = {"attachment_world_axes_x_mm": [140], "expected_carrier_yaw_deg": 180}
-        # In the yaw180 module frame the end wall lies at the rail's negative end.
-        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=140)}
-        shapes = {
-            "OpticalSensorTray": base,
-            "OpticalFlowModuleRailMountScrew": rail.attachment_screw_shape(),
-            "OpticalFlowModuleRailMountNut": rail.nut_shape(),
-        }
-        good = supported_carrier_slide(shapes, obstacles, pose)
-        self.assertTrue(good["passed"], good)
-        row = next(row for row in good["parts"] if row["part"] == "OpticalSensorTray")
-        self.assertEqual(
-            {r["region"] for r in row["regions"]},
-            {
-                "OpticalSensorTray" + region
-                for region in ("Lower", "PitchEar", "Neck", "Pad", "Bridge")
-            },
-        )
-        self.assertLess(row["shape_outside_service_envelope_mm3"], 1e-7)
-        # Unreviewed stock cannot be omitted from the containing proxy, even
-        # when a collision would occur only between placement endpoints.
-        changed = base.fuse(Part.makeBox(0.1, 10, 1, App.Vector(0, -0.1, 40)))
-        obstacle = Part.makeBox(0.1, 1, 0.5, App.Vector(0.4, 8, 40.2))
-        for shift in (-3, 3):
-            self.assertLess(
-                translated_shape(changed, x=shift).common(obstacle).Volume, 1e-7
-            )
-        shapes["OpticalSensorTray"] = changed
-        bad = supported_carrier_slide(shapes, {**obstacles, "Midpath": obstacle}, pose)
-        self.assertFalse(bad["passed"], bad)
-        changed_row = next(
-            row for row in bad["parts"] if row["part"] == "OpticalSensorTray"
-        )
-        self.assertGreater(changed_row["shape_outside_service_envelope_mm3"], 0.9)
-
     def test_carrier_screw_sweep_rejects_uncovered_saved_protrusion(self):
         from gondola.parts import rail
         from gondola.validation.rail_access import supported_carrier_slide
@@ -177,7 +136,7 @@ class CarrierTrimTests(unittest.TestCase):
             ]
             expected_mounts = {
                 "BatteryEquipmentModule": "BatteryMount",
-                "ElectronicsEquipmentModule": "ElectronicsMount",
+                "ElectronicsEquipmentModule": "InstrumentMountBase",
                 "AccessoryEquipmentModule": "AccessoryMount",
             }
             self.assertCountEqual(
@@ -188,7 +147,10 @@ class CarrierTrimTests(unittest.TestCase):
                 trim = carrier["populated_supported_trim"]
                 self.assertTrue(trim["passed"], trim)
                 self.assertEqual(len(carrier["attachment_services"]), 1)
-                self.assertEqual(trim["relative_x_range_mm"], [-3, 3])
+                self.assertEqual(
+                    trim["relative_x_range_mm"],
+                    [-1, 5] if module_name == "ElectronicsEquipmentModule" else [-3, 3],
+                )
                 self.assertAlmostEqual(trim["travel_mm"], 6)
                 carried_parts = [row["part"] for row in trim["parts"]]
                 for required in (
@@ -197,13 +159,20 @@ class CarrierTrimTests(unittest.TestCase):
                     module_name + "RailMountNut",
                 ):
                     self.assertEqual(carried_parts.count(required), 1)
-                if module_name == "BatteryEquipmentModule":
+                if module_name == "AccessoryEquipmentModule":
+                    self.assertEqual(
+                        carrier["populated_module_removal_path_mm"],
+                        [(0, 0, 0), (9, 0, 0), (9, 0, 30)],
+                    )
+                    self.assertTrue(carrier["unclamped_module_held_during_rail_slide"])
+                    self.assertEqual(carrier["other_modules_removed"], [])
+                if module_name == "ElectronicsEquipmentModule":
                     self.assertTrue(
                         {
-                            "OpticalMountBase",
+                            "ElectronicsMount",
                             "OpticalSensorTray",
-                            "OpticalPitchBolt",
-                            "OpticalPitchNut",
+                            "InstrumentPivotBolt",
+                            "InstrumentLockNut",
                         }.issubset(carried_parts)
                     )
         finally:

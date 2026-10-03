@@ -21,7 +21,7 @@ def vector_m(value):
     return [round(float(component) / 1000, 9) for component in value]
 
 
-def optical_pitch_degrees(stage, mode="carrier"):
+def instrument_pitch_degrees(stage):
     """Read signed local-Y pose; the saved command may exceed native limits."""
     import FreeCAD as App
 
@@ -30,100 +30,81 @@ def optical_pitch_degrees(stage, mode="carrier"):
         minimum, maximum = float(stage.MinimumAngle), float(stage.MaximumAngle)
         rotation = stage.Placement.Rotation
     except (AttributeError, TypeError, ValueError) as error:
-        raise ValueError("Optical pitch metadata is missing or invalid.") from error
+        raise ValueError("Instrument pitch metadata is missing or invalid.") from error
     if not all(math.isfinite(value) for value in (command, minimum, maximum)):
-        raise ValueError("Optical pitch metadata must be finite.")
-    if mode not in ("carrier", "rail"):
-        raise ValueError("Unknown optical attachment mode.")
-    limit = 20 if mode == "carrier" else 0
-    if abs(minimum + limit) > 1e-8 or abs(maximum - limit) > 1e-8:
-        raise ValueError("Optical pitch limits changed; review the exported frame.")
-    if mode == "rail" and abs(command) > 1e-8:
-        raise ValueError("Rigid rail attachment has no optical pitch control.")
+        raise ValueError("Instrument pitch metadata must be finite.")
+    if abs(minimum + 20) > 1e-8 or abs(maximum - 20) > 1e-8:
+        raise ValueError("Instrument pitch limits changed; review the exported frame.")
     if not all(math.isfinite(value) for value in rotation.Q):
-        raise ValueError("Optical pitch rotation must be finite.")
+        raise ValueError("Instrument pitch rotation must be finite.")
     local_x = rotation.multVec(App.Vector(1, 0, 0))
     angle = math.degrees(math.atan2(-local_x.z, local_x.x))
     if not math.isfinite(angle) or not rotation.isSame(
         App.Rotation(App.Vector(0, 1, 0), angle), 1e-8
     ):
-        raise ValueError("Optical pitch must be a pure local-Y rotation.")
+        raise ValueError("Instrument pitch must be a pure local-Y rotation.")
     if not minimum - 1e-8 <= angle <= maximum + 1e-8:
-        raise ValueError("Actual optical pitch is outside its declared limits.")
+        raise ValueError("Actual instrument pitch is outside its declared limits.")
     # Suppress floating-point serialization noise without replacing the pose
     # with a clamped command or changing the existing degrees-valued field.
     return round(angle, 9)
 
 
 def optical_attachment_geometry(doc):
-    """Read the native attachment mode and parent, without inferring a default."""
+    """Read the common platform and rigid sensor frame, rejecting legacy mounts."""
+    import FreeCAD as App
+
     optical = doc.getObject("OpticalFlowModule")
-    stage = doc.getObject("OpticalPitchStage")
-    mode = str(getattr(optical, "OpticalAttachmentMode", ""))
+    stage = doc.getObject("InstrumentPitchStage")
+    sensor_frame = doc.getObject("OpticalSensorFrame")
     if (
         optical is None
         or stage is None
-        or stage.getParentGeoFeatureGroup() != optical
-        or mode not in ("rail", "carrier")
+        or sensor_frame is None
+        or optical.getParentGeoFeatureGroup() != stage
+        or stage.getParentGeoFeatureGroup() != doc.ElectronicsEquipmentModule
+        or sensor_frame.getParentGeoFeatureGroup() != optical
+        or doc.ModuleFCEnvelope.getParentGeoFeatureGroup() != stage
+        or doc.getObject("OpticalPitchStage") is not None
     ):
-        raise ValueError("Optical attachment mode or pitch parent changed.")
-    parent = optical.getParentGeoFeatureGroup()
-    host_name = side = rail_station = None
-    if mode == "rail":
-        if (
-            parent is not None
-            or "RailPositionX" not in optical.PropertiesList
-            or any(
-                name in optical.PropertiesList
-                for name in ("CarrierHostName", "MountSide")
-            )
-        ):
-            raise ValueError(
-                "Optical rail binding changed; review the native controls."
-            )
-        station = float(optical.RailPositionX)
-        origin = optical.getGlobalPlacement().Base
-        if not math.isfinite(station) or abs(origin.x - station) > 1e-7:
-            raise ValueError(
-                "Optical rail position disagrees with its native placement."
-            )
-        rail_station = round(station / 1000, 9)
-    else:
-        host_name = str(getattr(optical, "CarrierHostName", ""))
-        side = str(getattr(optical, "MountSide", ""))
-        host = doc.getObject(host_name)
-        if (
-            host_name
-            not in (
-                "BatteryEquipmentModule",
-                "ElectronicsEquipmentModule",
-                "AccessoryEquipmentModule",
-            )
-            or host is None
-            or parent != host
-            or side not in ("PositiveX", "NegativeX")
-            or "RailPositionX" in optical.PropertiesList
-        ):
-            raise ValueError("Optical carrier binding changed; review host and side.")
-    expected_origin = (0, 0, 19) if mode == "carrier" else (-12, 1.25, 6.5)
-    if any(
-        abs(float(actual) - expected) > 1e-7
-        for actual, expected in zip(stage.Placement.Base, expected_origin, strict=True)
+        raise ValueError("Common FC/optical platform hierarchy changed.")
+    if (
+        getattr(optical, "OpticalAttachmentMode", "") != "instrument"
+        or any(
+            name in optical.PropertiesList
+            for name in ("RailPositionX", "CarrierHostName", "MountSide")
+        )
+        or doc.OpticalSensorTray.getParentGeoFeatureGroup() != sensor_frame
+        or doc.getObject("OpticalRollStage") is not None
     ):
-        raise ValueError("Optical tray attachment datum changed.")
-    optical_pitch_degrees(stage, mode)
+        raise ValueError("Optical attachment metadata or rigid tray hierarchy changed.")
+    if not optical.Placement.isSame(
+        App.Placement(App.Vector(0, 27, 19), App.Rotation()), 1e-7
+    ):
+        raise ValueError("Fixed optical bracket datum changed.")
+    if not sensor_frame.Placement.isSame(App.Placement(), 1e-7):
+        raise ValueError("Optical sensor frame must be fixed to its bracket.")
+    angle = instrument_pitch_degrees(stage)
+    theta = math.radians(angle)
+    expected = App.Placement(
+        App.Vector(-8 * math.sin(theta), 0, 27.5 - 8 * math.cos(theta)),
+        App.Rotation(App.Vector(0, 1, 0), angle),
+    )
+    if not stage.Placement.isSame(expected, 1e-7):
+        raise ValueError("Instrument pivot datum changed.")
     return {
-        "optical_attachment_mode": mode,
-        "optical_adjustment_degrees_of_freedom": 1 if mode == "carrier" else 0,
-        "optical_native_parent": parent.Name if parent is not None else None,
-        "optical_carrier_host": host_name,
-        "optical_mount_side": side,
-        "optical_rail_station_x_m": rail_station,
+        "optical_attachment_mode": "instrument",
+        "optical_adjustment_degrees_of_freedom": 0,
+        "instrument_adjustment_degrees_of_freedom": 1,
+        "optical_native_parent": stage.Name,
         "optical_module_origin_cad_m": vector_m(optical.getGlobalPlacement().Base),
-        "optical_tray_origin_cad_m": vector_m(stage.getGlobalPlacement().Base),
-        "optical_pitch_pivot_cad_m": vector_m(stage.getGlobalPlacement().Base)
-        if mode == "carrier"
-        else None,
+        "optical_tray_origin_cad_m": vector_m(sensor_frame.getGlobalPlacement().Base),
+        "instrument_pitch_pivot_cad_m": vector_m(
+            doc.ElectronicsEquipmentModule.getGlobalPlacement().multVec(
+                App.Vector(0, 0, 27.5)
+            )
+        ),
+        "position_scope": "CAD attachment datums only; actual FC IMU and optical/range origins and body-frame offsets are unmeasured.",
     }
 
 
@@ -397,8 +378,6 @@ def extract(doc):
     )
     points = {name: row["pivot_cad_m"] for name, row in propulsion.items()}
     optical_attachment = optical_attachment_geometry(doc)
-    if optical_attachment["optical_attachment_mode"] == "rail":
-        module_ids += ("OpticalFlowModule",)
     if (
         abs(points["Port"][0] - points["Starboard"][0]) > 1e-9
         or abs(points["Port"][2] - points["Starboard"][2]) > 1e-9
@@ -452,9 +431,7 @@ def extract(doc):
             },
             "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
             **optical_attachment,
-            "optical_pitch_deg": optical_pitch_degrees(
-                doc.OpticalPitchStage, optical_attachment["optical_attachment_mode"]
-            ),
+            "instrument_pitch_deg": instrument_pitch_degrees(doc.InstrumentPitchStage),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
         },
         "whole_airship": {

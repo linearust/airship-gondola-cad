@@ -1,4 +1,4 @@
-"""Native regressions for the declared pack placement and carrier-mounted optical post gap."""
+"""Native regressions for the declared pack placement and shared-platform optical bracket gap."""
 
 import json
 import unittest
@@ -16,7 +16,7 @@ class BatteryPlacementTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
-            optical_interface,
+            instrument_mount,
             optical_mount,
         )
 
@@ -24,22 +24,20 @@ class BatteryPlacementTests(unittest.TestCase):
         cls.host = cls.doc.addObject("App::Part", "BatteryEquipmentModule")
         cls.host.Placement.Base.x = 90
         electronics = cls.doc.addObject("App::Part", "ElectronicsEquipmentModule")
-        electronics.Placement.Base.x = -54
+        electronics.Placement = App.Placement(
+            App.Vector(-82, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
         accessory = cls.doc.addObject("App::Part", "AccessoryEquipmentModule")
         accessory.Placement.Base.x = -140
         mount = equipment_mounts.build_mount(cls.doc, cls.host, "battery")
+        instrument = instrument_mount.build_mount(cls.doc, electronics)
+        stage = instrument["pitch_stage"]
         references, _ = equipment_envelopes.build_equipment(
-            cls.doc, cls.host, electronics, accessory
+            cls.doc, cls.host, stage, accessory
         )
-        stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
-        stack.addProperty("App::PropertyString", "OpticalAttachmentMode")
-        stack.OpticalAttachmentMode = "carrier"
-        optical_interface.attach_to_host(stack, cls.host)
-        base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
-        stack.addObject(base)
-        base.Shape = optical_mount.base_shape()
+        optical = optical_mount.build_optical_mount(cls.doc, stage)
         cls.battery = cls.doc.ModuleBatteryEnvelope
-        cls.objects = [mount, base, *references]
+        cls.objects = [mount, *instrument["printed"], *optical["printed"], *references]
         cls.doc.recompute()
 
     @classmethod
@@ -62,7 +60,15 @@ class BatteryPlacementTests(unittest.TestCase):
         floats = result["continuous_translation"]["tower_clamped_registration_gaps"]
         self.assertEqual(
             {row["component"] for row in floats},
-            {"OpticalFoot", "OpticalPost", "OpticalEar"},
+            {
+                "OpticalFootLeft",
+                "OpticalFootRight",
+                "OpticalFootRearBridge",
+                "OpticalLeftSupport",
+                "OpticalRightSupport",
+                "OpticalCrossbar",
+                "OpticalAdhesivePad",
+            },
         )
         self.assertTrue(all(row["passed"] for row in floats), floats)
         self.assertEqual(
@@ -73,7 +79,7 @@ class BatteryPlacementTests(unittest.TestCase):
                 row["object"]
                 for row in result["continuous_translation"]["stack_tower_gaps"]
             },
-            {"OpticalMountBase"},
+            {"OpticalSensorTray"},
         )
         self.assertGreater(
             min(
@@ -132,8 +138,9 @@ class BatteryPlacementTests(unittest.TestCase):
             self.doc.recompute()
 
     def test_tower_gap_fails_before_geometric_contact(self):
-        tower = self.doc.OpticalMountBase
-        before = App.Placement(tower.Placement)
+        tower = self.doc.OpticalSensorTray
+        group = self.doc.OpticalFlowModule
+        before = App.Placement(group.Placement)
         # Use the actual closest-point direction to preserve a positive gap
         # while making the separate minimum-clearance policy fail.
         import Part
@@ -148,7 +155,10 @@ class BatteryPlacementTests(unittest.TestCase):
         gap, pairs, _ = world_shape(tower).distToShape(sweep)
         direction = pairs[0][1] - pairs[0][0]
         direction.normalize()
-        tower.Placement.Base += direction * (gap - 0.5)
+        parent_rotation = group.getParentGeoFeatureGroup().getGlobalPlacement().Rotation
+        group.Placement.Base += parent_rotation.inverted().multVec(
+            direction * (gap - 0.5)
+        )
         self.doc.recompute()
         try:
             result = self.check()
@@ -160,7 +170,7 @@ class BatteryPlacementTests(unittest.TestCase):
             self.assertGreater(gap, 0)
             self.assertLess(gap, continuous["required_stack_tower_gap_mm"])
         finally:
-            tower.Placement = before
+            group.Placement = before
             self.doc.recompute()
 
     def test_nominal_gap_does_not_replace_registration_clearance(self):
@@ -169,8 +179,9 @@ class BatteryPlacementTests(unittest.TestCase):
         from gondola.cad import world_shape
         from gondola.parts import equipment_mounts
 
-        tower = self.doc.OpticalMountBase
-        original = tower.Placement.copy()
+        tower = self.doc.OpticalSensorTray
+        group = self.doc.OpticalFlowModule
+        original = group.Placement.copy()
         sweep = Part.makeBox(
             28, 74, 17, App.Vector(-14, -37, equipment_mounts.SUPPORT_FACE_Z + 1)
         )
@@ -179,7 +190,12 @@ class BatteryPlacementTests(unittest.TestCase):
         direction = pairs[0][1] - pairs[0][0]
         direction.normalize()
         try:
-            tower.Placement.Base += direction * (gap - 2)
+            parent_rotation = (
+                group.getParentGeoFeatureGroup().getGlobalPlacement().Rotation
+            )
+            group.Placement.Base += parent_rotation.inverted().multVec(
+                direction * (gap - 2)
+            )
             self.doc.recompute()
             result = self.check()
             continuous = result["continuous_translation"]
@@ -195,12 +211,12 @@ class BatteryPlacementTests(unittest.TestCase):
             )
             self.assertFalse(result["passed"])
         finally:
-            tower.Placement = original
+            group.Placement = original
             self.doc.recompute()
 
     def test_missing_tower_cannot_pass_clearance_check(self):
         result = self.check(
-            [obj for obj in self.objects if obj.Name != "OpticalMountBase"]
+            [obj for obj in self.objects if obj.Name != "OpticalSensorTray"]
         )
         self.assertFalse(result["passed"])
         self.assertEqual(result["continuous_translation"]["stack_tower_gaps"], [])

@@ -44,8 +44,6 @@ CONNECTION_HEIGHT_ALLOWANCE_MM = 15.0
 DEFAULT_HOST = "BatteryEquipmentModule"
 DEFAULT_PLAN = DEFAULT_OPTIONAL_POWER_PLAN_KEY
 DEFAULT_PACKAGING = DIRECT_CARRIER
-DEFAULT_OPTICAL_HOST = "AccessoryEquipmentModule"
-DEFAULT_OPTICAL_SIDE = "NegativeX"
 DIRECT_BAY_CENTRES = ((0.0, -14.0), (0.0, 14.0))
 DIRECT_ADHESIVE_REGIONS = (
     (((0.0, -23.0), (12.0, 4.0)), ((0.0, -6.0), (12.0, 4.0))),
@@ -286,7 +284,12 @@ def host_placement(
     host = main_doc.getObject(host_name)
     if host is None:
         raise ValueError("Missing power-platform host")
-    return host.getGlobalPlacement().multiply(
+    frame = (
+        main_doc.InstrumentPitchStage
+        if host_name == "ElectronicsEquipmentModule"
+        else host
+    )
+    return frame.getGlobalPlacement().multiply(
         stack_interface.host_placement(
             host_name,
             z=stack_interface.HOST_SUPPORT_Z
@@ -311,22 +314,9 @@ def create_option_document(
     group = create_group(doc, "PowerOptionModule", "Optional power module")
     group.Placement = pose
     optical = main_doc.getObject("OpticalFlowModule")
-    attachment = None
-    if optical is not None:
-        mode = str(optical.OpticalAttachmentMode)
-        if mode == "rail":
-            attachment = {
-                "mode": mode,
-                "rail_position_x_mm": float(optical.RailPositionX),
-            }
-        elif mode == "carrier":
-            attachment = {
-                "mode": mode,
-                "host": str(optical.CarrierHostName),
-                "side": str(optical.MountSide),
-            }
-        else:
-            raise ValueError(f"Unsupported optical attachment mode: {mode}")
+    from .optical_interface import attachment_description
+
+    attachment = attachment_description(optical) if optical is not None else None
     for key, value in (
         ("PowerPlan", plan_key),
         ("PowerPackaging", packaging),

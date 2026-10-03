@@ -68,7 +68,7 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                 self.assertTrue(screen.isInside(point, 1e-7, True))
 
     def test_continuous_external_cone_contains_both_fields_and_registration(self):
-        from gondola.parts import optical_mount, optical_sensor
+        from gondola.parts import instrument_mount, optical_mount, optical_sensor
         from gondola.validation.optical_envelopes import (
             RAIL_ALIGNMENT_RESERVE_MM,
             external_field_bound,
@@ -76,37 +76,55 @@ class OpticalProfileGeometryTests(unittest.TestCase):
 
         doc = App.newDocument("OpticalFullFieldBound")
         try:
-            group = doc.addObject("App::Part", "OpticalFlowModule")
-            group.addProperty("App::PropertyString", "OpticalAttachmentMode")
-            for mode in ("rail", "carrier"):
-                group.OpticalAttachmentMode = mode
-                for profile in SENSOR_PROFILES.values():
-                    bound, _ = external_field_bound(group, profile)
-                    for pitch in (-20, -11, 0, 13, 20) if mode == "carrier" else (0,):
-                        rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
-                        for distance in (0, 100, 400):
-                            expansion = distance * math.tan(
-                                math.radians(profile.flow_fov_deg / 2)
+            module = doc.addObject("App::Part", "ElectronicsEquipmentModule")
+            instrument = instrument_mount.build_mount(doc, module)
+            kit = optical_mount.build_optical_mount(doc, instrument["pitch_stage"])
+            optical_sensor.build_sensor(doc, kit["sensor_frame"])
+            for profile in SENSOR_PROFILES.values():
+                bound, _ = external_field_bound(kit["group"], profile)
+                for pitch in (-20, -11, 0, 13, 20):
+                    instrument_mount.set_pitch(doc, pitch)
+                    pose = kit["sensor_frame"].getGlobalPlacement()
+                    for distance in (0, 100, 400):
+                        expansion = distance * math.tan(
+                            math.radians(profile.flow_fov_deg / 2)
+                        )
+                        for sx, sy in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                            start = App.Vector(
+                                sx * (profile.size_mm[0] / 2 + expansion),
+                                sy * (profile.size_mm[1] / 2 + expansion),
+                                optical_sensor.SENSOR_BOTTOM_Z
+                                + profile.optical_origin_min_z_mm
+                                + distance,
                             )
-                            for sx, sy in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
-                                start = App.Vector(
-                                    sx * (profile.size_mm[0] / 2 + expansion),
-                                    sy * (profile.size_mm[1] / 2 + expansion),
-                                    optical_sensor.SENSOR_BOTTOM_Z
-                                    + profile.optical_origin_min_z_mm
-                                    + distance,
-                                )
-                                point = rotation.multVec(start) + App.Vector(
-                                    *optical_mount.pivot_centre(mode)
-                                )
-                                for ty in (
-                                    -RAIL_ALIGNMENT_RESERVE_MM,
-                                    RAIL_ALIGNMENT_RESERVE_MM,
-                                ):
-                                    shifted = point + App.Vector(0, ty, 0)
-                                    self.assertTrue(
-                                        bound.isInside(shifted, 1e-7, True),
-                                        (profile.key, pitch, distance, sx, sy, ty),
+                            for yaw in (-3, 3):
+                                registered = App.Rotation(
+                                    App.Vector(0, 0, 1), yaw
+                                ).multVec(start)
+                                for tx, ty in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                                    point = pose.multVec(
+                                        registered + App.Vector(tx, ty, 0)
                                     )
+                                    for rail_y in (
+                                        -RAIL_ALIGNMENT_RESERVE_MM,
+                                        RAIL_ALIGNMENT_RESERVE_MM,
+                                    ):
+                                        self.assertTrue(
+                                            bound.isInside(
+                                                point + App.Vector(0, rail_y, 0),
+                                                1e-7,
+                                                True,
+                                            ),
+                                            (
+                                                profile.key,
+                                                pitch,
+                                                distance,
+                                                sx,
+                                                sy,
+                                                yaw,
+                                                tx,
+                                                ty,
+                                            ),
+                                        )
         finally:
             App.closeDocument(doc.Name)

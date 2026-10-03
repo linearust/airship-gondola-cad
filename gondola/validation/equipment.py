@@ -49,6 +49,7 @@ from .geometry import (
     translation_sweep,
 )
 from .optical import mtf_sensor_check
+from .optical_envelopes import instrument_context
 
 TOL = 1e-6
 
@@ -56,7 +57,7 @@ TOL = 1e-6
 def fc_installation_check(doc):
     """Check FC identity and orientation beyond its symmetric reference solid."""
     board = doc.getObject("ModuleFCEnvelope")
-    parent = doc.getObject("ElectronicsEquipmentModule")
+    parent = doc.getObject("InstrumentPitchStage")
     station = next(
         station
         for station in MODULE_STATIONS
@@ -73,8 +74,11 @@ def fc_installation_check(doc):
     )
     native_pose_matches = board.Placement.isSame(intended_local, TOL)
     expected_carrier_rotation = App.Rotation(App.Vector(0, 0, 1), station.yaw_deg)
-    carrier_rotation_matches = parent.Placement.Rotation.isSame(
-        expected_carrier_rotation, TOL
+    carrier_rotation_matches = (
+        parent.getParentGeoFeatureGroup() == doc.ElectronicsEquipmentModule
+        and doc.ElectronicsEquipmentModule.Placement.Rotation.isSame(
+            expected_carrier_rotation, TOL
+        )
     )
     metadata_matches = (
         "InstallationYawInCarrier" in board.PropertiesList
@@ -502,16 +506,31 @@ def _carrier_support_checks(doc):
         except (AttributeError, ValueError, TypeError):
             stack_contract_matches = False
         openings = carrier_opening_checks(shape)
-        centre_interface = carrier_centre_mount_check(shape)
+        if kind == "electronics":
+            from .instrument import centre_accessory_check
+
+            centre_interface = centre_accessory_check(shape)
+        else:
+            centre_interface = carrier_centre_mount_check(shape)
         shared_comparison = (
-            geometry_comparison(shape, local_shape(shared_reference))
+            geometry_comparison(
+                shape,
+                mounts.mount_shape(kind)
+                if kind == "electronics"
+                else local_shape(shared_reference),
+            )
             if shared_reference is not None
             else None
         )
         shared_print_matches = (
             shared_comparison is not None
             and comparison_passed(shared_comparison, TOL)
-            and str(getattr(obj, "PrintSKU", "")) == mounts.COMMON_PRINT_SKU
+            and str(getattr(obj, "PrintSKU", ""))
+            == (
+                "InstrumentCarrier"
+                if kind == "electronics"
+                else mounts.COMMON_PRINT_SKU
+            )
             and str(getattr(obj, "MountKind", "")) == kind
             and "HalfTurnSymmetric" in obj.PropertiesList
             and not bool(obj.HalfTurnSymmetric)
@@ -599,7 +618,8 @@ def _device_hole_checks(doc, carriers, physical_shapes_by_name, navigation_profi
         comparison = geometry_comparison(
             body, placed_shape(factory(), parent.getGlobalPlacement())
         )
-        bounds = body.optimalBoundingBox(False, False)
+        local_body = placed_shape(body, parent.getGlobalPlacement().inverse())
+        bounds = local_body.optimalBoundingBox(False, False)
         holes = []
         for centre in centres:
             pad = slot_mounting_pad_check(
@@ -610,11 +630,13 @@ def _device_hole_checks(doc, carriers, physical_shapes_by_name, navigation_profi
                 hole_diameter=mounts.MOUNT_HOLE_DIAMETER,
                 pad_diameter=mounts.MOUNT_PAD_DIAMETER,
             )
-            world_axis = parent.getGlobalPlacement().multVec(App.Vector(*centre, 0))
-            axis_probe = Part.makeCylinder(
-                device_hole_diameter / 2,
-                bounds.ZLength + 2,
-                App.Vector(world_axis.x, world_axis.y, bounds.ZMin - 1),
+            axis_probe = placed_shape(
+                Part.makeCylinder(
+                    device_hole_diameter / 2,
+                    bounds.ZLength + 2,
+                    App.Vector(*centre, bounds.ZMin - 1),
+                ),
+                parent.getGlobalPlacement(),
             )
             obstruction = intersection_volume(body, axis_probe)
             pad["device_hole_diameter_mm"] = device_hole_diameter
@@ -697,13 +719,11 @@ def _underbody_clearance_checks(
         ),
     ):
         parent = carriers[name].getParentGeoFeatureGroup()
-        bounds = physical_shapes_by_name[name].optimalBoundingBox(False, False)
-        support_top = (
-            parent.getGlobalPlacement()
-            .multVec(App.Vector(0, 0, mounts.SUPPORT_FACE_Z))
-            .z
+        body_in_mount = placed_shape(
+            physical_shapes_by_name[name], parent.getGlobalPlacement().inverse()
         )
-        gap = bounds.ZMin - support_top
+        bounds = body_in_mount.optimalBoundingBox(False, False)
+        gap = bounds.ZMin - mounts.SUPPORT_FACE_Z
         # Preserve the complete device rectangle in its actual rotated frame;
         # a world bounding box would falsely occupy the FC's empty corners.
         dimensions = (
@@ -748,7 +768,7 @@ def _fc_wiring_check(doc, physical_objects, physical_shapes_by_name):
 
     registry = doc.DesignRegistry
     reserve = doc.getObject("FCWiringClearanceReserve")
-    parent = doc.ElectronicsEquipmentModule
+    parent = doc.InstrumentPitchStage
     wiring_report = {"passed": False, "error": "missing FC wiring corridor"}
     if reserve is not None:
         actual = world_shape(reserve)
@@ -797,8 +817,64 @@ def _fc_wiring_check(doc, physical_objects, physical_shapes_by_name):
     return wiring_report
 
 
+def _optical_removal_preparation(doc, physical_objects):
+    """Only the reviewed rigid optical kit may be removed before FC service."""
+    optical = doc.getObject("OpticalFlowModule")
+    try:
+        instrument_context(optical)
+        native_error = None
+    except (AttributeError, TypeError, ValueError) as error:
+        native_error = str(error)
+    parents = {
+        "OpticalSensorTray": "OpticalSensorFrame",
+        "ModuleMTF02PEnvelope": "OpticalSensorFrame",
+        "OpticalFootBolt1": "OpticalFlowModule",
+        "OpticalFootNut1": "OpticalFlowModule",
+        "OpticalFootBolt2": "OpticalFlowModule",
+        "OpticalFootNut2": "OpticalFlowModule",
+    }
+    actual = [
+        obj.Name
+        for obj in physical_objects
+        if optical is not None and belongs_to_group(obj, optical)
+    ]
+    descendants = {
+        obj.Name
+        for obj in doc.Objects
+        if optical is not None
+        and "Shape" in obj.PropertiesList
+        and belongs_to_group(obj, optical)
+    }
+    expected_descendants = set(parents) | {
+        "MTF02POpticalClearanceReserve",
+        "MTF02PConnectorReserve",
+    }
+    fixed_parents = all(
+        (obj := doc.getObject(name)) is not None
+        and obj.getParentGeoFeatureGroup() == doc.getObject(parent)
+        and not list(obj.ExpressionEngine)
+        for name, parent in parents.items()
+    )
+    inventory_matches = Counter(actual) == Counter(list(parents))
+    descendants_match = descendants == expected_descendants
+    return {
+        "native_frame_error": native_error,
+        "expected_physical_parts": sorted(parents),
+        "actual_physical_parts": sorted(actual),
+        "physical_inventory_matches": inventory_matches,
+        "all_shape_descendants_match": descendants_match,
+        "fixed_part_parents_match": fixed_parents,
+        "scope": "Only this exact native optical kit is eligible for prior removal. Its ordered tool and part paths remain subject to the optical service audit; unknown or malformed stock stays an obstacle.",
+        "passed": native_error is None
+        and inventory_matches
+        and descendants_match
+        and fixed_parents,
+    }
+
+
 def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
     service_rows = []
+    optical_preparation = _optical_removal_preparation(doc, physical_objects)
     for name in (
         "ModuleBatteryEnvelope",
         "ModuleFCEnvelope",
@@ -817,10 +893,17 @@ def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
             for obj in physical_objects
             if detached_carrier and not belongs_to_group(obj, device_parent)
         }
+        optical_first = name == "ModuleFCEnvelope" and optical_preparation["passed"]
+        prior_removed = {
+            obj.Name
+            for obj in physical_objects
+            if optical_first and belongs_to_group(obj, doc.OpticalFlowModule)
+        }
         hits = [
             obj.Name
             for obj in physical_objects
             if obj.Name != name
+            and obj.Name not in prior_removed
             and obj.Name not in off_carrier_names
             and intersection_volume(sweep, physical_shapes_by_name[obj.Name]) > TOL
         ]
@@ -836,13 +919,17 @@ def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
                 "off_carrier_parts_excluded_for_bench_service": sorted(
                     off_carrier_names
                 ),
-                "optical_head_must_be_removed_first": False,
-                "complete_optical_mount_removed": False,
-                "temporarily_removed_head_parts": [],
+                "optical_removal_preparation": optical_preparation
+                if name == "ModuleFCEnvelope"
+                else None,
+                "optical_head_must_be_removed_first": optical_first,
+                "complete_optical_mount_removed": optical_first,
+                "temporarily_removed_head_parts": sorted(prior_removed),
                 "method": sweep_method,
-                "prerequisite": "Disconnect leads and release device retention. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. Any optical mount remains an obstacle for installed device removal; remove it first if the populated configuration blocks the device path. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
+                "prerequisite": "Disconnect leads and release device retention. Remove the complete optical bracket before FC withdrawal; its ordered removal is checked by the optical service audit. For the underside radio, detach the carrier from the rail and remove the device along carrier-Z on the bench. Only the exact optical kit with valid native attachment may be excluded after removal; unknown or malformed optical stock remains an obstacle. The balloon is not modeled, so in-place underside access is not established. Bare-device path, not a connected harness.",
                 "collisions": hits,
-                "passed": not hits,
+                "passed": not hits
+                and (name != "ModuleFCEnvelope" or optical_preparation["passed"]),
             }
         )
     return service_rows
@@ -1110,7 +1197,7 @@ def validate(source=None):
             "limits": [
                 "Connector catalog dimensions are retained evidence; reserved lanes do not verify installed PCB port datums, actual plug fit, withdrawal stroke or wire bends. The capacitor remains a provisional space allocation.",
                 "The toroidal reserves are not proven wire routes, bend radii, strain relief or validated phase-lead slack over the bounded -180 to +180 degree output range.",
-                "The optical base has either its own rail station or a carrier parent with an edge orientation control. Its 400 mm whole-face field is checked to cover modeled-gondola depth; lens datums, actual optical calibration, gravity alignment and cable slack remain unverified.",
+                "The optical bracket is rigidly attached to the shared FC instrument pitch stage. Its 400 mm whole-face field screens modeled-gondola depth; actual lens/IMU datums, body-reference alignment, calibration and cable slack remain unverified.",
                 "No physical fit, electrical insulation/current capacity, clamp force or structural test was performed.",
             ],
         }

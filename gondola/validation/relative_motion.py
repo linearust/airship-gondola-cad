@@ -6,7 +6,6 @@ from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
 from gondola.contracts.design import MODULE_STATIONS
 from gondola.contracts.drive import drive_for_document
-from gondola.contracts.optical_attachment import resolve_mount_mode
 
 from .geometry import intersection_volume
 from .rotation_envelope import full_orbit_envelope
@@ -63,11 +62,6 @@ def _static_expression_contract(doc, spec):
         allowed[station.object_name] = {
             "Placement.Base.x": "RailPositionX",
         }
-    if resolve_mount_mode() == "carrier":
-        allowed["OpticalFlowModule"] = {
-            "Placement.Base.x": "MountSide==0?27mm:-27mm",
-            "Placement.Rotation.Angle": "MountSide==0?0deg:180deg",
-        }
     for prefix in ("Port", "Starboard"):
         allowed[prefix + "Pod"] = {
             "Placement.Rotation.Angle": "min(MaximumTilt;max(MinimumTilt;Tilt))"
@@ -75,10 +69,12 @@ def _static_expression_contract(doc, spec):
         allowed[prefix + "InputDrive"] = {
             "Placement.Rotation.Angle": f"-{prefix}Pod.Placement.Rotation.Angle/{spec.ratio:g}"
         }
-    for coordinate in ("Roll", "Pitch"):
-        allowed["Optical" + coordinate + "Stage"] = {
-            "Placement.Rotation.Angle": f"min(MaximumAngle;max(MinimumAngle;{coordinate}))"
-        }
+    bounded = "min(MaximumAngle;max(MinimumAngle;Pitch))"
+    allowed["InstrumentPitchStage"] = {
+        "Placement.Rotation.Angle": bounded,
+        "Placement.Base.x": "-8mm*sin(" + bounded + ")",
+        "Placement.Base.z": "27.5mm-8mm*cos(" + bounded + ")",
+    }
     allowed["ModuleBatteryEnvelope"] = {
         "Placement.Base.x": "CentreX-(Length*cos(InPlaneRotation)-Width*sin(InPlaneRotation))/2",
         "Placement.Base.y": "CentreY-(Length*sin(InPlaneRotation)+Width*cos(InPlaneRotation))/2",

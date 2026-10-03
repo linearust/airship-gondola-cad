@@ -6,7 +6,6 @@ only a visual review derivative; the native B-rep and validation remain authorit
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -17,7 +16,7 @@ import MeshPart
 
 from gondola.cad import belongs_to_group, world_shape
 from gondola.contracts import servo_horns
-from gondola.parts import optical_mount
+from gondola.parts import instrument_mount
 from tools.blender_review.motion_plan import REVIEW_MOTION, curve
 from tools.cad_snapshot import open_validated_cad
 
@@ -233,152 +232,46 @@ def check_review_basis(doc, report):
 
 
 def check_optical_attachment_basis(doc):
-    """Bind the optical caption to the selected native attachment and hardware."""
-    optical = doc.getObject("OpticalFlowModule")
-    stage = doc.getObject("OpticalPitchStage")
-    mode = str(getattr(optical, "OpticalAttachmentMode", ""))
-    if (
-        optical is None
-        or stage is None
-        or stage.getParentGeoFeatureGroup() != optical
-        or mode not in ("rail", "carrier")
-    ):
-        raise RuntimeError("Update optical review for changed attachment mode.")
-    parent = optical.getParentGeoFeatureGroup()
-    host_name = side = station = None
-    if mode == "rail":
-        if (
-            parent is not None
-            or "RailPositionX" not in optical.PropertiesList
-            or any(
-                name in optical.PropertiesList
-                for name in ("CarrierHostName", "MountSide")
-            )
-        ):
-            raise RuntimeError("Update optical rail review for changed native binding.")
-        station = float(optical.RailPositionX)
-        if (
-            not math.isfinite(station)
-            or abs(optical.getGlobalPlacement().Base.x - station) > 1e-7
-        ):
-            raise RuntimeError("Optical rail position disagrees with native placement.")
-        attachment_hardware = {
-            "OpticalFlowModuleRailMountScrew": "M3X10_BUTTON_HEAD",
-            "OpticalFlowModuleRailMountNut": "M3_HEX_NUT",
-        }
-        unexpected = (
-            "OpticalFootBolt1",
-            "OpticalFootNut1",
-            "OpticalPitchBolt",
-            "OpticalPitchNut",
-        )
-    else:
-        host_name = str(getattr(optical, "CarrierHostName", ""))
-        side = str(getattr(optical, "MountSide", ""))
-        host = doc.getObject(host_name)
-        if (
-            host_name
-            not in (
-                "BatteryEquipmentModule",
-                "ElectronicsEquipmentModule",
-                "AccessoryEquipmentModule",
-            )
-            or host is None
-            or parent != host
-            or side not in ("PositiveX", "NegativeX")
-            or "RailPositionX" in optical.PropertiesList
-        ):
-            raise RuntimeError(
-                "Update optical carrier review for changed host binding."
-            )
-        attachment_hardware = {
-            "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
-            "OpticalFootNut1": "M2_HEX_NUT",
-            "OpticalPitchBolt": "M2X8_BUTTON_HEAD",
-            "OpticalPitchNut": "M2_HEX_NUT",
-        }
-        unexpected = (
-            "OpticalFlowModuleRailMountScrew",
-            "OpticalFlowModuleRailMountNut",
-        )
-    if any(doc.getObject(name) is not None for name in unexpected):
-        raise RuntimeError("Optical attachment hardware mixes rail and carrier modes.")
-    for name, sku in attachment_hardware.items():
+    """Require the reviewed common-platform architecture before animating it."""
+    from tools.simulation.export_parameters import optical_attachment_geometry
+
+    attachment = optical_attachment_geometry(doc)
+    hardware = {
+        "InstrumentPivotBolt": "M3X16_BUTTON_HEAD",
+        "InstrumentPivotNut": "M3_HEX_NUT",
+        "InstrumentLockBolt": "M3X16_BUTTON_HEAD",
+        "InstrumentLockNut": "M3_HEX_NUT",
+        "OpticalFootBolt2": "M2X8_BUTTON_HEAD",
+        "OpticalFootNut2": "M2_HEX_NUT",
+        "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
+        "OpticalFootNut1": "M2_HEX_NUT",
+    }
+    for name, sku in hardware.items():
         obj = doc.getObject(name)
         if obj is None or getattr(obj, "HardwareSKU", "") != sku:
-            raise RuntimeError(f"Expected optical fastener {name}: {sku}.")
-    contract = json.loads(optical.OpticalMountContract)
-    if (
-        contract.get("attachment_mode") != mode
-        or contract.get("fixed_ear_thickness_mm") != 2.0
-        or contract.get("ear_thickness_mm") != 2.0
-        or contract.get("adjustment_degrees_of_freedom")
-        != (1 if mode == "carrier" else 0)
-        or contract.get("bolt_tip_beyond_nut_mm")
-        != (2.9 if mode == "carrier" else None)
+            raise RuntimeError(f"Missing reviewed instrument hardware {name}: {sku}")
+    if any(
+        doc.getObject(name) is not None
+        for name in ("OpticalPitchBolt", "OpticalPitchNut", "OpticalMountBase")
     ):
-        raise RuntimeError("Update optical pitch review for changed ear/bolt contract.")
-    expected_origin = (0, 0, 19) if mode == "carrier" else (-12, 1.25, 6.5)
-    limit = 20 if mode == "carrier" else 0
-    if (
-        doc.getObject("OpticalSensorTray") is None
-        or (doc.getObject("OpticalMountBase") is not None) != (mode == "carrier")
-        or abs(float(stage.MinimumAngle) + limit) > 1e-8
-        or abs(float(stage.MaximumAngle) - limit) > 1e-8
-        or any(
-            abs(a - b) > 1e-8
-            for a, b in zip(stage.Placement.Base, expected_origin, strict=True)
-        )
-        or (
-            mode == "rail"
-            and (
-                abs(float(stage.Pitch)) > 1e-8
-                or not stage.Placement.Rotation.isSame(App.Rotation(), 1e-8)
-            )
-        )
-    ):
-        raise RuntimeError("Optical attachment geometry or degrees of freedom changed.")
-    return {
-        "mode": mode,
-        "native_parent": parent.Name if parent is not None else None,
-        "host": host_name,
-        "side": side,
-        "rail_position_x_mm": station,
-        "module_origin_cad_mm": list(optical.getGlobalPlacement().Base),
-        "adjustment_degrees_of_freedom": 1 if mode == "carrier" else 0,
-        "tray_origin_cad_mm": list(stage.getGlobalPlacement().Base),
-        "pitch_pivot_cad_mm": list(stage.getGlobalPlacement().Base)
-        if mode == "carrier"
-        else None,
-    }
+        raise RuntimeError("Obsolete independent optical joint remains")
+    return attachment
 
 
 def optical_review_plan(attachment):
-    """Describe manual pitch only when the original pedestal is installed."""
-    if attachment["mode"] == "rail":
-        return {
-            "title": "OPTICAL FIXED TRAY / DIRECT RAIL SHOE",
-            "description": "The same upper tray mounts directly with one M3x10 pair at native rail station "
-            + f"{attachment['rail_position_x_mm']:g} mm. "
-            "The lower pedestal and M2 pitch hardware are absent. This attachment has zero pitch adjustment; its pose stays fixed. Rail trim is not animated. Use the stacked carrier arrangement for manual pitch alignment. Sensor local +Z is the viewing direction.",
-            "pitch_points": [(1, 0), (145, 0)],
-            "markers": [(1, "Fixed rail tray"), (145, "Fixed rail tray")],
-        }
+    """Show FC and MTF adjusting together, then locked for flight."""
+    if attachment.get("optical_attachment_mode") != "instrument":
+        raise ValueError("Unsupported instrument attachment")
     return {
-        "title": "OPTICAL MANUAL PITCH / ORIGINAL CARRIER PEDESTAL",
-        "description": "One manual pitch axis +/-20 deg. A shallow tongue and one M2x8 pair fix the original lower pedestal to "
-        + attachment["host"]
-        + " ("
-        + attachment["side"]
-        + "); host and side stay fixed. "
-        "The extended upper tray retains its unused rail shoe. One M2x8 pair clamps two 2 mm ears, with 2.9 mm nominal tip beyond the nut. Loosen, align and retighten; no roll correction, actuation or self-levelling. Relocation requires renewed populated-device, service and field checks. Sensor local +Z is the viewing direction.",
+        "title": "COMMON FC + OPTICAL PLATFORM / MANUAL PITCH",
+        "description": "FC and MTF share one setup-only pitch axis +/-20deg. The rigid optical bracket has no independent joint. Loosen the M3 pivot and arc lock, align to the body datum, retighten and qualify retention. No active stabilization or roll correction. Sensor local+Z is the viewing direction; actual IMU/optical origins remain unmeasured.",
         "pitch_points": [(1, 0), (37, 20), (73, -20), (109, 20), (145, 0)],
         "markers": [
             (1, "Aligned"),
             (37, "Pitch +20"),
             (73, "Pitch -20"),
             (109, "Pitch +20"),
-            (145, "Aligned"),
+            (145, "Aligned and locked"),
         ],
     }
 
@@ -451,7 +344,7 @@ def export(cad_path, output):
 
         def reset():
             doc.PortPod.Tilt = doc.StarboardPod.Tilt = 0
-            optical_mount.set_pitch(doc, 0)
+            instrument_mount.set_pitch(doc, 0)
             doc.recompute()
 
         def scene(
@@ -596,7 +489,7 @@ def export(cad_path, output):
 
         def optical(frame):
             pitch = curve(frame, optical_plan["pitch_points"])
-            optical_mount.set_pitch(doc, pitch)
+            instrument_mount.set_pitch(doc, pitch)
             return {}, set()
 
         origin = doc.OpticalFlowModule.getGlobalPlacement().Base

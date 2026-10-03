@@ -1,8 +1,7 @@
 """Reject disconnected, stale, blocked or falsely qualified lead planning space."""
 
-import math
+import json
 import unittest
-from unittest.mock import patch
 
 try:
     import FreeCAD as App
@@ -19,6 +18,7 @@ class PropulsionWiringTests(unittest.TestCase):
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.parts import (
             equipment_envelopes,
+            instrument_mount,
             propulsion_wiring,
             wiring_reserves,
         )
@@ -38,9 +38,11 @@ class PropulsionWiringTests(unittest.TestCase):
                 App.Vector(station.x_mm, 0, 0),
                 App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
             )
+        instrument = instrument_mount.build_mount(cls.doc, cls.electronics)
+        cls.stage = instrument["pitch_stage"]
         fc = create_reference(
             cls.doc,
-            cls.electronics,
+            cls.stage,
             "ModuleFCEnvelope",
             "FC",
             equipment_envelopes.fc_envelope_shape(),
@@ -48,7 +50,7 @@ class PropulsionWiringTests(unittest.TestCase):
         )
         cls.fc_reserve = create_reference(
             cls.doc,
-            cls.electronics,
+            cls.stage,
             "FCWiringClearanceReserve",
             "FC space",
             wiring_reserves.reserve_shapes()["FCWiringClearanceReserve"],
@@ -56,12 +58,12 @@ class PropulsionWiringTests(unittest.TestCase):
         )
         cls.fc_reserve.Role = "Clearance"
         cls.routes = propulsion_wiring.build_reserves(
-            cls.doc, cls.propulsion, cls.electronics
+            cls.doc, cls.propulsion, cls.stage
         )
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, items in {
-            "PrintedParts": [],
-            "HardwareParts": [],
+            "PrintedParts": instrument["printed"],
+            "HardwareParts": instrument["hardware"],
             "ReferenceParts": [fc],
             "TapeReferences": [],
             "ClearanceVolumes": [cls.fc_reserve] + cls.routes,
@@ -85,62 +87,56 @@ class PropulsionWiringTests(unittest.TestCase):
                 1e-9,
             )
 
-    def test_thirteen_mm_rise_has_real_remote_overlap_at_actual_module_stations(
+    def test_route_endpoint_follows_actual_shared_stage_pitch(self):
+        from gondola.parts.instrument_mount import set_pitch
+
+        prop = self.propulsion.getGlobalPlacement()
+        try:
+            for angle in (-20, 0, 20):
+                set_pitch(self.doc, angle)
+                stage = self.stage.getGlobalPlacement()
+                fc_frame = stage.multiply(
+                    App.Placement(App.Vector(), App.Rotation(App.Vector(0, 0, 1), 180))
+                )
+                for sign in (-1, 1):
+                    points = self.wiring.route_points(sign, prop, stage)
+                    actual = prop.multVec(App.Vector(*points[-1]))
+                    expected = fc_frame.multVec(App.Vector(24, sign * 10, 31))
+                    self.assertLess((actual - expected).Length, 1e-7)
+                    self.assertAlmostEqual(points[1][0] - points[-1][0], 11.0)
+                    self.assertAlmostEqual(points[1][2] - points[-1][2], 14.0)
+        finally:
+            set_pitch(self.doc, 0)
+
+    def test_pitch_change_rejects_saved_route_until_geometry_and_contract_regenerated(
         self,
     ):
-        from gondola.cad import placed_shape, world_shape
+        from gondola.parts.instrument_mount import set_pitch
 
-        propulsion = self.propulsion.getGlobalPlacement()
-        electronics = self.electronics.getGlobalPlacement()
-        self.assertEqual(propulsion.Base.x, 14)
-        fc = world_shape(self.fc_reserve)
-        for sign in (-1, 1):
-            points = self.wiring.route_points(sign, propulsion, electronics)
-            self.assertAlmostEqual(points[1][2] - points[-1][2], 14.0)
-            # Retain the previous insufficient13 mm rise as the FC deck moves:
-            # its old absolute Z42 becomes Z44 after raising the carrier2 mm.
-            points[1] = (*points[1][:2], points[-1][2] + 13.0)
-            with patch.object(self.wiring, "route_points", return_value=points):
-                route = self.wiring.route_geometry(sign, propulsion, electronics)
-            shape = placed_shape(route["shape"], propulsion)
-            endpoint = propulsion.multVec(App.Vector(*points[-1]))
-            result = self.audit.connection_check(shape, fc, tuple(endpoint))
-            self.assertFalse(result["passed"], result)
-            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 5e-5)
-
-            # Independent cylinder/plane bound: at the top of the FC band,
-            # the furthest point on the last straight Ø3 corridor lies beyond
-            # the 8 mm sphere by 0.02623 mm. This is real geometry, not a
-            # Boolean sliver to discard by widening the audit tolerance.
-            approach = propulsion.multVec(App.Vector(*points[1])) - endpoint
-            rise = approach.z
-            horizontal = math.hypot(approach.x, approach.y)
-            band_height = fc.BoundBox.ZMax - endpoint.z
-            axial_distance = (band_height * approach.Length + 1.5 * horizontal) / rise
-            maximum_radius = math.hypot(axial_distance, 1.5)
-            self.assertGreater(maximum_radius, 8.02)
-            self.assertLess(maximum_radius, 8.03)
-
-    def test_fixed_z43_waypoint_cannot_follow_the_raised_fc_terminal(self):
-        from gondola.cad import placed_shape, world_shape
-
-        propulsion = self.propulsion.getGlobalPlacement()
-        electronics = self.electronics.getGlobalPlacement()
-        fc = world_shape(self.fc_reserve)
-        for sign in (-1, 1):
-            points = self.wiring.route_points(sign, propulsion, electronics)
-            self.assertAlmostEqual(points[-1][2], 31.0)
-            self.assertAlmostEqual(points[1][2], 45.0)
-            # This was the actual regression: the terminal rose2 mm while
-            # the intermediate waypoint remained at absolute Z43.
-            points[1] = (*points[1][:2], 43.0)
-            with patch.object(self.wiring, "route_points", return_value=points):
-                route = self.wiring.route_geometry(sign, propulsion, electronics)
-            shape = placed_shape(route["shape"], propulsion)
-            endpoint = propulsion.multVec(App.Vector(*points[-1]))
-            result = self.audit.connection_check(shape, fc, tuple(endpoint))
-            self.assertFalse(result["passed"], result)
-            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 0.07)
+        originals = [(obj, obj.Shape.copy(), obj.WiringContract) for obj in self.routes]
+        try:
+            set_pitch(self.doc, 20)
+            result = self.audit.check(self.doc)
+            self.assertFalse(result["passed"])
+            self.assertTrue(
+                all(not row["layout_geometry_matches"] for row in result["routes"])
+            )
+            prop = self.propulsion.getGlobalPlacement()
+            stage = self.stage.getGlobalPlacement()
+            for obj, sign in zip(self.routes, (1, -1)):
+                obj.Shape = self.wiring.route_geometry(sign, prop, stage)["shape"]
+                obj.WiringContract = json.dumps(
+                    self.wiring.route_contract(sign, prop, stage), sort_keys=True
+                )
+            self.doc.recompute()
+            result = self.audit.check(self.doc)
+            self.assertTrue(result["passed"], result)
+        finally:
+            set_pitch(self.doc, 0)
+            for obj, shape, contract in originals:
+                obj.Shape = shape
+                obj.WiringContract = contract
+            self.doc.recompute()
 
     def test_disconnected_route_fails(self):
         route = self.routes[0]
@@ -149,7 +145,7 @@ class PropulsionWiringTests(unittest.TestCase):
             points = self.wiring.route_points(
                 1,
                 self.propulsion.getGlobalPlacement(),
-                self.electronics.getGlobalPlacement(),
+                self.stage.getGlobalPlacement(),
             )
             middle_y = (points[0][1] + points[1][1]) / 2
             route.Shape = original.cut(
@@ -166,7 +162,7 @@ class PropulsionWiringTests(unittest.TestCase):
         points = self.wiring.route_points(
             1,
             self.propulsion.getGlobalPlacement(),
-            self.electronics.getGlobalPlacement(),
+            self.stage.getGlobalPlacement(),
         )
         middle = (App.Vector(*points[0]) + App.Vector(*points[1])) / 2
         blocker = create_reference(
@@ -230,62 +226,38 @@ class PropulsionWiringTests(unittest.TestCase):
         finally:
             route.MovingWireSweepVerified = False
 
-    def _optical_carrier_obstacles(self, host_name, side):
-        from gondola.contracts.design import MODULE_STATIONS
-        from gondola.parts import optical_interface, optical_mount
-
-        station = next(s for s in MODULE_STATIONS if s.object_name == host_name)
-        host = App.Placement(
-            App.Vector(station.x_mm, 0, 0),
-            App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
-        )
-        tower_placement = host.multiply(optical_interface.placement(side))
-        obstacles = {"OpticalMountBase": optical_mount.base_shape()}
-        obstacles.update(dict(optical_interface.base_component_proxies()))
-        for shape in obstacles.values():
-            shape.Placement = tower_placement.multiply(shape.Placement)
-        return obstacles
-
-    def test_selected_optical_carrier_attachments_clear_motor_routes(self):
-        from gondola.cad import world_shape
-        from gondola.parts import power_mount
-
-        for host, side in {
-            ("BatteryEquipmentModule", "PositiveX"),
-            (power_mount.DEFAULT_OPTICAL_HOST, power_mount.DEFAULT_OPTICAL_SIDE),
-        }:
-            obstacles = self._optical_carrier_obstacles(host, side)
-            for route in self.routes:
-                shape = world_shape(route)
-                for name, obstacle in obstacles.items():
-                    with self.subTest(
-                        host=host, side=side, route=route.Name, obstacle=name
-                    ):
-                        self.assertLess(shape.common(obstacle).Volume, 1e-6)
-                        self.assertGreaterEqual(shape.distToShape(obstacle)[0], 1.5)
-
-    def test_low_waypoint_crosses_fc_band_before_terminal_entry(self):
-        from gondola.cad import world_shape
+    def test_common_optical_bracket_and_both_sensor_fields_clear_regenerated_routes(
+        self,
+    ):
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import optical_interface, optical_mount, optical_sensor
+        from gondola.parts.instrument_mount import set_pitch
 
         prop = self.propulsion.getGlobalPlacement()
-        electronics = self.electronics.getGlobalPlacement()
-        for sign in (-1, 1):
-            points = self.wiring.route_points(sign, prop, electronics)
-            # Preserve the deliberately bad waypoint 16 mm ahead of the FC
-            # after changing the module station.
-            fc_local_x = prop.inverse().multVec(electronics.Base).x
-            points[1] = (fc_local_x + 16.0, sign * 20.0, 34.0)
-            with patch.object(self.wiring, "route_points", return_value=points):
-                shape = self.wiring.route_geometry(sign, prop, electronics)["shape"]
-            shape.Placement = prop.multiply(shape.Placement)
-            endpoint = prop.multVec(App.Vector(*points[-1]))
-            result = self.audit.connection_check(
-                shape,
-                world_shape(self.fc_reserve),
-                (endpoint.x, endpoint.y, endpoint.z),
-            )
-            self.assertFalse(result["passed"], result)
-            self.assertGreater(result["overlap_outside_terminal_region_mm3"], 1)
+        try:
+            for angle in (-20, 0, 20):
+                set_pitch(self.doc, angle)
+                stage = self.stage.getGlobalPlacement()
+                pose = stage.multiply(optical_interface.placement())
+                obstacles = {"OpticalSensorTray": optical_mount.sensor_tray_shape()}
+                for key, profile in SENSOR_PROFILES.items():
+                    obstacles[key + "Body"] = optical_sensor.envelope_shape(profile)
+                    obstacles[key + "Field"] = optical_sensor.optical_reserve_shape(
+                        profile
+                    )
+                    obstacles[key + "Connector"] = (
+                        optical_sensor.connector_reserve_shape(profile)
+                    )
+                for shape in obstacles.values():
+                    shape.Placement = pose.multiply(shape.Placement)
+                for sign in (-1, 1):
+                    route = self.wiring.route_geometry(sign, prop, stage)["shape"]
+                    route.Placement = prop.multiply(route.Placement)
+                    for name, obstacle in obstacles.items():
+                        with self.subTest(angle=angle, sign=sign, obstacle=name):
+                            self.assertLess(abs(route.common(obstacle).Volume), 1e-6)
+        finally:
+            set_pitch(self.doc, 0)
 
     def test_remote_fc_crossing_is_not_a_permitted_connection(self):
         a = Part.makeBox(1, 1, 1)

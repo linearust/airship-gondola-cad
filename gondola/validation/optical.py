@@ -1,38 +1,39 @@
-"""Read-only rail- or carrier-mounted optical evidence and clearance audit.
+"""Saved evidence for a rigid optical head on the shared FC instrument platform.
 
-Carrier mechanism and connector-access checks sample five pitch attitudes; the direct rail tray is checked at its one fixed attitude. The separate broad
-optical cone conservatively contains the external field over the entire angle
-range; neither check qualifies physical fit, friction, cables or gravity trim.
+Both sensor alternatives follow the same native stage as the FC. Sampled
+internal contacts supplement conservative continuous external envelopes; neither
+is a qualification of print fit, clamp retention, cable flex or calibration.
 """
 
 import itertools
 import json
 import math
-from dataclasses import asdict
-from functools import partial
 
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, world_shape
-from gondola.contracts.design import module_stations
-from gondola.contracts.optical_attachment import resolve_mount_mode
+from gondola.cad import belongs_to_group, placed_shape, union, world_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
-    mounting_plate,
+    instrument_mount,
     optical_interface,
     optical_mount,
     optical_sensor,
-    rail,
+    propulsion_wiring,
     slot_bearing,
     wiring_reserves,
 )
 from gondola.print_export import geometry_comparison
 
 from .evidence import comparison_passed
-from .geometry import intersection_volume, local_shape, translation_sweep
-from .optical_envelopes import PITCH_SAMPLE_ANGLES, external_field_bound
-from .optical_service import pitch_disassembly_check, pitch_tool_check, pitch_tool_shape
+from .geometry import intersection_volume, local_shape
+from .optical_envelopes import PITCH_SAMPLE_ANGLES, instrument_context, motion_bounds
+from .optical_service import (
+    CLAMP_CENTRES,
+    mount_tool_check,
+    mounting_service_check,
+    tray_stock_enclosures,
+)
 from .wiring import RESERVES, collision_hits, measure_clearances, named_gap_checks
 
 TOL = 1e-5
@@ -40,14 +41,10 @@ V = App.Vector
 
 
 def _matches(first, second):
+    if first.isNull() or not first.isValid() or not first.Solids:
+        return {"error": "Invalid saved solid"}, False
     result = geometry_comparison(first, second)
     return result, comparison_passed(result, TOL)
-
-
-def _same_placement(first, second):
-    return (first.Base - second.Base).Length < TOL and first.Rotation.isSame(
-        second.Rotation, TOL
-    )
 
 
 def _json_equal(first, second):
@@ -58,7 +55,7 @@ def _json_equal(first, second):
 
 
 def _native_structure_check(doc):
-    """Reject incomplete native assemblies before any geometry probe or mutation."""
+    """Reject missing objects and wrong native ancestry before any mutation."""
     required = {
         "DesignRegistry": (
             "PrintedParts",
@@ -75,14 +72,13 @@ def _native_structure_check(doc):
         "OpticalFlowModule": (
             "OpticalMountContract",
             "OpticalInterfaceContract",
-            "OpticalAttachmentMode",
-            "HoldingTorqueVerified",
-            "SelfLevelling",
-            "OpticalFitVerified",
             "SensorModel",
             "SupportedSensorModels",
         ),
-        "OpticalPitchStage": ("Pitch", "MinimumAngle", "MaximumAngle"),
+        "InstrumentPitchStage": ("Pitch", "MinimumAngle", "MaximumAngle"),
+        "OpticalSensorFrame": ("Placement",),
+        "ElectronicsMount": ("Shape",),
+        "ModuleFCEnvelope": ("Shape",),
     }
     required.update(
         {
@@ -103,176 +99,116 @@ def _native_structure_check(doc):
             missing = [key for key in properties if key not in obj.PropertiesList]
             if missing:
                 errors.append({"object": name, "missing_properties": missing})
-    group = doc.getObject("OpticalFlowModule")
     try:
-        mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
-    except (AttributeError, ValueError):
-        mode = None
-        errors.append({"error": "Missing or invalid optical attachment mode"})
+        instrument_context(doc.getObject("OpticalFlowModule"))
+    except (AttributeError, TypeError, ValueError) as error:
+        errors.append({"error": str(error)})
     parents = {
-        "OpticalFlowModule": (
-            {None} if mode == "rail" else set(optical_interface.SUPPORTED_HOSTS)
-        ),
-        "OpticalPitchStage": {"OpticalFlowModule"},
+        "ElectronicsMount": "InstrumentPitchStage",
+        "ModuleFCEnvelope": "InstrumentPitchStage",
+        "ModuleMTF02PEnvelope": "OpticalSensorFrame",
+        "MTF02POpticalClearanceReserve": "OpticalSensorFrame",
+        "MTF02PConnectorReserve": "OpticalSensorFrame",
     }
-    for name, allowed in parents.items():
+    for name, expected in parents.items():
         obj = doc.getObject(name)
         if obj is None:
             continue
         parent = obj.getParentGeoFeatureGroup()
-        parent_name = parent.Name if parent is not None else None
-        if parent_name not in allowed:
+        if parent is None or parent.Name != expected or list(obj.ExpressionEngine):
             errors.append(
                 {
                     "object": name,
-                    "parent": parent_name,
-                    "expected_parents": list(allowed),
+                    "expected_fixed_parent": expected,
+                    "error": "Incorrect parent or independent expression",
                 }
             )
-    if group is not None and mode == "carrier":
-        parent = group.getParentGeoFeatureGroup()
-        if getattr(group, "CarrierHostName", None) != (parent.Name if parent else None):
-            errors.append(
-                {"error": "Optical carrier metadata differs from native parent"}
-            )
-        if str(getattr(group, "MountSide", "")) not in optical_interface.SIDES:
-            errors.append({"error": "Unknown optical carrier side"})
-        if "RailPositionX" in group.PropertiesList:
-            errors.append(
-                {"error": "Carrier optical attachment has an independent rail control"}
-            )
-    elif group is not None and mode == "rail":
-        for name in (
-            "OpticalMountBase",
-            "OpticalPitchBolt",
-            "OpticalPitchNut",
-            "OpticalFootBolt1",
-            "OpticalFootNut1",
-        ):
-            if doc.getObject(name) is not None:
-                errors.append(
-                    {
-                        "object": name,
-                        "error": "Obsolete carrier-only part in fixed rail mode",
-                    }
-                )
-        forbidden = {"CarrierHostName", "MountSide"}.intersection(group.PropertiesList)
-        required_controls = {
-            "RailPositionX",
-            "RailAttachmentOffsetX",
-            "RailAttachmentOffsetsX",
-            "RailContactLength",
-            "RailAttachmentContract",
-            "ModulePlacementContract",
-        }
-        missing = sorted(required_controls.difference(group.PropertiesList))
-        if forbidden or missing:
-            errors.append(
-                {
-                    "object": group.Name,
-                    "forbidden_properties": sorted(forbidden),
-                    "missing_properties": missing,
-                }
-            )
-    if (
-        doc.getObject("OpticalRollStage") is not None
-        or doc.getObject("OpticalRollBracket") is not None
+    for name in (
+        "OpticalPitchBolt",
+        "OpticalPitchNut",
+        "OpticalRollBracket",
+        "OpticalFlowModuleRailMountScrew",
+        "OpticalFlowModuleRailMountNut",
     ):
-        errors.append(
-            {"error": "Obsolete roll mechanism remains in single-axis assembly"}
-        )
+        if doc.getObject(name) is not None:
+            errors.append(
+                {"object": name, "error": "Obsolete independent optical mechanism"}
+            )
     return {"errors": errors, "passed": not errors}
 
 
-def _rail_native_controls(group, registry):
-    """Bind adjustable rail X to a supported canonical station and native pose."""
-    from .baseline import module_attachment_pose
-
-    station = next(
-        (item for item in module_stations("rail") if item.object_name == group.Name),
-        None,
-    )
-    if station is None:
-        return {
-            "mode": "rail",
-            "passed": False,
-            "error": "No selected optical rail station",
-        }
-    pose = module_attachment_pose(station, group)
-    expected = (
-        App.Placement(
-            V(float(group.RailPositionX), 0, 0),
-            App.Rotation(V(0, 0, 1), station.yaw_deg),
-        )
-        if pose.get("passed")
-        else None
-    )
-    contracts = _json_equal(
-        group.ModulePlacementContract, json.dumps(asdict(station))
-    ) and _json_equal(
-        group.RailAttachmentContract, json.dumps(rail.attachment_contract(16.0))
-    )
-    return {
-        "mode": "rail",
-        "supported_attachment": pose,
-        "passed": pose.get("passed", False)
-        and contracts
-        and list(registry.Modules).count(group) == 1
-        and group.getParentGeoFeatureGroup() is None
-        and _same_placement(group.Placement, expected)
-        and [
-            (path.lstrip("."), expression)
-            for path, expression in group.ExpressionEngine
-        ]
-        == [("Placement.Base.x", "RailPositionX")],
+def _metadata_matches(actual, expected):
+    names = {
+        name
+        for name in expected.PropertiesList
+        if expected.getGroupOfProperty(name) in ("Design", "Printing")
     }
+    names.update(
+        name
+        for name in (
+            "HardwareSKU",
+            "MaterialSelection",
+            "SourceURL",
+            "SourceEvidence",
+            "ThreadStandard",
+            "ThreadPitch",
+            "NominalThreadDiameter",
+            "ThreadGeometry",
+            "ModelDetail",
+            "Role",
+            "Notes",
+            "PrintPart",
+        )
+        if name in expected.PropertiesList
+    )
+    result = {}
+    for name in names:
+        present = name in actual.PropertiesList
+        first, second = getattr(actual, name, None), getattr(expected, name)
+        if name in ("PrintPlacement", "PrintRotation"):
+            equal = present and first.isSame(second, TOL)
+        else:
+            equal = present and (
+                first == second
+                or (
+                    name.endswith(("Contract", "Evidence"))
+                    and _json_equal(first, second)
+                )
+            )
+        result[name] = bool(equal)
+    return result
 
 
 def _source_evidence(doc):
-    """Bind saved shapes, placements, metadata and registries to source factories."""
+    """Bind actual saved optical inventory, shape, placement and source metadata."""
     structure = _native_structure_check(doc)
     if not structure["passed"]:
         return {"native_structure": structure, "passed": False}
-    selected_profile = get_sensor_profile()
-    selected_model_matches = (
-        str(doc.OpticalFlowModule.SensorModel) == selected_profile.key
-    )
-    if not selected_model_matches:
+    profile = get_sensor_profile()
+    group = doc.OpticalFlowModule
+    if str(group.SensorModel) != profile.key:
         return {
             "native_structure": structure,
-            "saved_sensor_model": str(doc.OpticalFlowModule.SensorModel),
-            "source_selected_sensor_model": selected_profile.key,
             "selected_model_matches_source": False,
             "passed": False,
         }
     expected_doc = App.newDocument("OpticalEvidenceReference")
-    rows = []
+    rows, inventory = [], {}
     try:
-        group = doc.OpticalFlowModule
-        mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
-        host = (
-            expected_doc.addObject("App::Part", group.CarrierHostName)
-            if mode == "carrier"
-            else None
-        )
-        kit = optical_mount.build_optical_mount(
-            expected_doc,
-            host,
-            str(group.MountSide)
-            if mode == "carrier"
-            else optical_interface.DEFAULT_SIDE,
-            mode=mode,
-        )
-        if mode == "rail":
-            kit["hardware"] += rail.build_attachment_hardware(
-                expected_doc, kit["group"], "OpticalFlowModule"
-            )
+        module = expected_doc.addObject("App::Part", "ElectronicsEquipmentModule")
+        stage = expected_doc.addObject("App::Part", "InstrumentPitchStage")
+        module.addObject(stage)
+        kit = optical_mount.build_optical_mount(expected_doc, stage)
         refs, reserves = optical_sensor.build_sensor(
-            expected_doc, kit["pitch_stage"], selected_profile
+            expected_doc, kit["sensor_frame"], profile
         )
         expected_doc.recompute()
         registry = doc.DesignRegistry
-        inventory = {}
+        inventory["all_native_shape_descendants"] = {
+            obj.Name
+            for obj in doc.Objects
+            if "Shape" in obj.PropertiesList and belongs_to_group(obj, group)
+        } == {obj.Name for obj in kit["printed"] + kit["hardware"] + refs + reserves}
         for category, objects in (
             ("PrintedParts", kit["printed"]),
             ("HardwareParts", kit["hardware"]),
@@ -282,7 +218,7 @@ def _source_evidence(doc):
             actual_names = [
                 obj.Name
                 for obj in getattr(registry, category)
-                if belongs_to_group(obj, doc.OpticalFlowModule)
+                if belongs_to_group(obj, group)
             ]
             inventory[category] = sorted(actual_names) == sorted(
                 obj.Name for obj in objects
@@ -291,70 +227,20 @@ def _source_evidence(doc):
                 actual = doc.getObject(expected.Name)
                 if actual is None:
                     rows.append(
-                        {"object": expected.Name, "passed": False, "error": "missing"}
+                        {"object": expected.Name, "error": "missing", "passed": False}
                     )
                     continue
                 comparison, geometry_ok = _matches(
                     local_shape(actual), local_shape(expected)
                 )
+                parent = actual.getParentGeoFeatureGroup()
                 parent_ok = (
-                    actual.getParentGeoFeatureGroup() is not None
-                    and actual.getParentGeoFeatureGroup().Name
-                    == expected.getParentGeoFeatureGroup().Name
+                    parent is not None
+                    and parent.Name == expected.getParentGeoFeatureGroup().Name
                 )
-                metadata = {}
-                metadata_names = {
-                    "OpticalMountContract",
-                    "OpticalInterfaceContract",
-                    "MountingEvidence",
-                    "ConnectorEvidence",
-                    "WiringContract",
-                    "SourceURL",
-                    "ProductSource",
-                    "DimensionDrawingSource",
-                    "FirmwareOrientationSource",
-                    "HardwareSKU",
-                    "MaterialSelection",
-                    "ThreadStandard",
-                    "ThreadGeometry",
-                    "Role",
-                    "ShapeModelNotes",
-                    "PrintPart",
-                    "ListedMassGrams",
-                    "OpticalDirection",
-                    "PlannedConnectorDirection",
-                    "PublishedOpticalFlowFOV",
-                    "PublishedToFFOV",
-                    "ReservedOpticalDistance",
-                    "HoldingTorqueVerified",
-                    "OpticalFitVerified",
-                    "MountingStackVerified",
-                    "PCBHeightMeasured",
-                    "InstalledConnectorFitVerified",
-                    "InstalledOpticalFieldVerified",
-                    "OpticalOriginsMeasured",
-                }
-                # Sensor profiles carry source, dimensions and qualification scope.
-                # Bind every factory-created design property, not a stale shortlist.
-                metadata_names.update(
-                    name
-                    for name in expected.PropertiesList
-                    if expected.getGroupOfProperty(name) == "Design"
-                )
-                for name in sorted(metadata_names):
-                    if name not in expected.PropertiesList:
-                        continue
-                    present = name in actual.PropertiesList
-                    first, second = getattr(actual, name, None), getattr(expected, name)
-                    metadata[name] = present and (
-                        first == second
-                        or (
-                            name.endswith(("Contract", "Evidence"))
-                            and _json_equal(first, second)
-                        )
-                    )
-                placement_ok = _same_placement(actual.Placement, expected.Placement)
-                registered = actual in getattr(registry, category)
+                placement_ok = actual.Placement.isSame(expected.Placement, TOL)
+                metadata = _metadata_matches(actual, expected)
+                registered = list(getattr(registry, category)).count(actual) == 1
                 exclusive = all(
                     actual not in getattr(registry, other)
                     for other in (
@@ -382,137 +268,238 @@ def _source_evidence(doc):
                         and all(metadata.values()),
                     }
                 )
-        group = doc.OpticalFlowModule
-        if mode == "carrier":
-            attachment_controls = {
-                "mode": mode,
-                "passed": group.getParentGeoFeatureGroup() in registry.Modules
-                and group.getParentGeoFeatureGroup().Name == group.CarrierHostName
-                and group not in registry.Modules
-                and "RailPositionX" not in group.PropertiesList
-                and _same_placement(group.Placement, kit["group"].Placement)
-                and list(group.ExpressionEngine) == list(kit["group"].ExpressionEngine),
-            }
-        else:
-            attachment_controls = _rail_native_controls(group, registry)
-        module_ok = (
-            _json_equal(group.OpticalMountContract, kit["group"].OpticalMountContract)
-            and _json_equal(
-                group.OpticalInterfaceContract, kit["group"].OpticalInterfaceContract
+        group_metadata = _metadata_matches(group, kit["group"])
+        fixed_frame = (
+            doc.OpticalSensorFrame.Placement.isSame(kit["sensor_frame"].Placement, TOL)
+            and not list(doc.OpticalSensorFrame.ExpressionEngine)
+            and not any(
+                name in doc.OpticalSensorFrame.PropertiesList
+                for name in ("Pitch", "Roll", "MinimumAngle", "MaximumAngle")
             )
-            and str(group.SensorModel) == selected_profile.key
-            and list(group.SupportedSensorModels) == list(SENSOR_PROFILES)
-            and not group.HoldingTorqueVerified
-            and not group.SelfLevelling
-            and not group.OpticalFitVerified
-            and attachment_controls["passed"]
-            and sorted(
-                obj.Name for obj in registry.RailLocks if belongs_to_group(obj, group)
-            )
-            == (
-                ["OpticalFlowModuleRailMountNut", "OpticalFlowModuleRailMountScrew"]
-                if mode == "rail"
-                else []
-            )
-            and {obj.Name for obj in registry.OpticalMountParts}
-            == {obj.Name for obj in kit["printed"]}
         )
-        controls = []
-        for name, key in (("OpticalPitchStage", "Pitch"),):
-            actual, expected = doc.getObject(name), expected_doc.getObject(name)
-            valid = (
-                actual.getParentGeoFeatureGroup().Name
-                == expected.getParentGeoFeatureGroup().Name
-                and (actual.Placement.Base - expected.Placement.Base).Length < TOL
-                and actual.MinimumAngle.Value == -optical_mount.angle_limit_deg(mode)
-                and actual.MaximumAngle.Value == optical_mount.angle_limit_deg(mode)
-                and (
-                    mode != "rail"
-                    or (
-                        actual.Pitch.Value == 0
-                        and actual.getEditorMode("Pitch") == ["ReadOnly"]
-                    )
-                )
-                and list(actual.ExpressionEngine) == list(expected.ExpressionEngine)
-                and key in actual.PropertiesList
-            )
-            controls.append({"stage": name, "passed": valid})
+        module_ok = (
+            all(group_metadata.values())
+            and fixed_frame
+            and group not in registry.Modules
+            and not any(belongs_to_group(obj, group) for obj in registry.RailLocks)
+            and sorted(obj.Name for obj in registry.OpticalMountParts)
+            == sorted(obj.Name for obj in kit["printed"])
+        )
         return {
             "native_structure": structure,
-            "saved_sensor_model": str(group.SensorModel),
-            "source_selected_sensor_model": selected_profile.key,
-            "selected_model_matches_source": selected_model_matches,
+            "selected_model_matches_source": True,
             "objects": rows,
             "registered_kit_inventory_matches_factory": inventory,
+            "module_metadata_matches": group_metadata,
+            "fixed_sensor_frame": fixed_frame,
             "module_contract_and_registry": module_ok,
-            "native_controls": controls,
-            "attachment_controls": attachment_controls,
             "passed": module_ok
             and all(inventory.values())
-            and all(row["passed"] for row in rows + controls),
+            and all(row["passed"] for row in rows),
         }
     finally:
         App.closeDocument(expected_doc.Name)
 
 
-def _corners(shape):
-    b = shape.BoundBox
-    return [
-        V(x, y, z)
-        for x, y, z in itertools.product(
-            (b.XMin, b.XMax), (b.YMin, b.YMax), (b.ZMin, b.ZMax)
-        )
+def _rigid_interface_checks(doc):
+    """Literal stock and bearing witnesses for the two opposed M2 clamps."""
+    group = doc.OpticalFlowModule
+    inverse = group.getGlobalPlacement().inverse()
+    plate = world_shape(doc.ElectronicsMount)
+    plate.Placement = inverse.multiply(plate.Placement)
+    foot = local_shape(doc.OpticalSensorTray)
+    witness = Part.makeBox(54, 8, 1.5, V(-27, -4, 0))
+    witness = witness.cut(Part.makeBox(12, 5, 2, V(-6, -4, 0)))
+    for x, y in CLAMP_CENTRES.values():
+        witness = witness.cut(Part.makeCylinder(1.1, 1.7, V(x, y, -0.1)))
+    missing = abs(witness.cut(foot).Volume)
+    rows = [
+        {
+            "kind": "complete_1_5mm_foot_floor",
+            "missing_stock_mm3": missing,
+            "passed": missing <= TOL,
+        }
     ]
+    notch_stock = intersection_volume(foot, Part.makeBox(12, 5, 2, V(-6, -4, 0)))
+    rows.append(
+        {
+            "kind": "FC_underbody_notch",
+            "unexpected_stock_mm3": notch_stock,
+            "passed": notch_stock <= TOL,
+        }
+    )
+    # Rotate the real plate so the existing independent slot-bearing test's
+    # transverse X direction corresponds to this pair's transverse Y direction.
+    transverse = plate.copy()
+    transverse.rotate(V(), V(0, 0, 1), -90)
+    for index, (x, y) in CLAMP_CENTRES.items():
+        passage = Part.makeCylinder(1, 4, V(x, y, -2))
+        volume = intersection_volume(passage, plate) + intersection_volume(
+            passage, foot
+        )
+        rows.append(
+            {
+                "kind": "complete_M2_passage",
+                "index": index,
+                "intersection_mm3": volume,
+                "passed": volume <= TOL,
+            }
+        )
+        rows.append(
+            {
+                "kind": "centred_slot_head_bearing",
+                "index": index,
+                **slot_bearing.check(
+                    transverse,
+                    (y, -x),
+                    -2,
+                    maximum_slot_width=2.9,
+                    minimum_screw_diameter=1.8,
+                ),
+            }
+        )
+        for side in (-1, 1):
+            land = Part.makeBox(
+                1, 0.35, 0.2, V(x - 0.5, y + (1.35 if side == 1 else -1.7), 1.3)
+            )
+            loss = abs(land.cut(foot).Volume)
+            rows.append(
+                {
+                    "kind": "nut_floor_bearing_land",
+                    "index": index,
+                    "side": side,
+                    "missing_stock_mm3": loss,
+                    "passed": loss <= TOL,
+                }
+            )
+    overlap = intersection_volume(plate, foot)
+    # Maximum slot and foot-hole size, minimum received shank. Translation and
+    # yaw follow the two separate screw axes; no unmodeled locator is credited.
+    axis_allowance = (2.9 - 1.8) / 2 + (2.5 - 1.8) / 2
+    yaw = math.asin(2 * axis_allowance / 38)
+    x_bound = axis_allowance + 19 * (1 - math.cos(yaw))
+    registration = {
+        "required_xy_bound_mm": (x_bound, axis_allowance),
+        "required_yaw_bound_deg": math.degrees(yaw),
+        "passed": optical_interface.MAX_REGISTRATION_X >= x_bound
+        and optical_interface.MAX_REGISTRATION_Y >= axis_allowance
+        and optical_interface.MAX_REGISTRATION_YAW_RAD >= yaw,
+    }
+    return {
+        "support": "ElectronicsMount",
+        "witnesses": rows,
+        "overlap_mm3": overlap,
+        "registration_bound": registration,
+        "passed": overlap <= TOL
+        and registration["passed"]
+        and all(row["passed"] for row in rows),
+        "scope": "Two opposed slot-end clamps on the same common plate, without a locating tongue or independent pitch joint. Literal foot floor, complete M2 passages and head/nut bearing lands are required. The conservative assembly registration reserve includes pre-clamp hole clearance; actual flat-head centring, print finishing, preload, PA12 creep and physical FC/sensor calibration remain unqualified.",
+    }
+
+
+def _nut_recess_checks(doc):
+    from gondola.parts.purchased_hardware import hex_prism
+
+    rows = []
+    for index, (x, y) in CLAMP_CENTRES.items():
+        support = local_shape(doc.OpticalSensorTray)
+        support.translate(V(-x, -y, -1.5))
+        nut = hex_prism(3.8, 1.35).cut(Part.makeCylinder(1, 1.55, V(0, 0, -0.1)))
+        overlap = intersection_volume(nut, support)
+        turns = []
+        for angle in (-30, 30):
+            rotated = nut.copy()
+            rotated.rotate(V(), V(0, 0, 1), angle)
+            turns.append(intersection_volume(rotated, support))
+        lengths = [
+            support.common(
+                Part.makeLine(V(0, side * 1.5, -1.5), V(0, side * 1.5, 0))
+            ).Length
+            for side in (-1, 1)
+        ]
+        actual = doc.getObject(f"OpticalFootNut{index}")
+        follows = (
+            actual is not None
+            and actual.getParentGeoFeatureGroup() == doc.OpticalFlowModule
+        )
+        rows.append(
+            {
+                "nut": f"OpticalFootNut{index}",
+                "support": "OpticalSensorTray",
+                "aligned_minimum_nut_overlap_mm3": overlap,
+                "turn_30deg_obstruction_mm3": turns,
+                "nut_follows_its_seat": follows,
+                "retained_floor_lengths_mm": lengths,
+                "passed": overlap <= TOL
+                and min(turns) > TOL
+                and follows
+                and all(abs(length - 1.5) <= TOL for length in lengths),
+            }
+        )
+    return {
+        "seats": rows,
+        "passed": len(rows) == 2 and all(row["passed"] for row in rows),
+        "scope": "Open shallow pockets resist a minimum nominal nut's rotation but do not retain a loose nut axially. Chamfers, physical fit and loaded retention require inspection.",
+    }
 
 
 def _placement_checks(doc, physical, kit, *, profile=None):
+    """Move the real common stage; never detach FC geometry from its sensor."""
     profile = profile or optical_sensor.profile_for_document(doc)
-    group = doc.OpticalFlowModule
-    validation_cache = {}
-    find_hits = partial(
-        collision_hits, tolerance=TOL, validation_cache=validation_cache
+    group, stage = doc.OpticalFlowModule, doc.InstrumentPitchStage
+    _, _, frame, _ = instrument_context(group)
+    expected_relative = (
+        doc.ModuleFCEnvelope.getGlobalPlacement()
+        .inverse()
+        .multiply(frame.getGlobalPlacement())
     )
-    fixed = {obj.Name: world_shape(obj) for obj in physical if obj not in kit}
-    rotor = {
-        obj.Name: world_shape(obj)
-        for obj in doc.DesignRegistry.ClearanceVolumes
-        if "Sweep" in obj.Name and ("Port" in obj.Name or "Starboard" in obj.Name)
-    }
-    rotor_complete = set(rotor) == {"PortSweepBound", "StarboardSweepBound"}
-    reservations = {
-        obj.Name: world_shape(obj)
-        for obj in doc.DesignRegistry.ClearanceVolumes
-        if obj.Name not in rotor and not belongs_to_group(obj, group)
-    }
-    # Required named external reservations cannot disappear from the registry.
-    # Own connector and whole-footprint field are design reservations, not lens
-    # or installed-plug datums; they are excluded from one another's obstacles.
-    # Their possible overlap does not qualify actual connected-harness optics.
-    for name in RESERVES:
-        if name in ("MTF02PConnectorReserve", "MTF02POpticalClearanceReserve"):
-            continue
-        if name not in reservations:
-            reservations[name] = None
-    external = {**fixed, **rotor}
-    mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
-    tool_reserve = None
-    if mode == "carrier":
-        tool_reserve = pitch_tool_shape(mode)
-        tool_reserve.Placement = group.getGlobalPlacement()
     rows = []
-    maximum_depth = -math.inf
-    for pitch in PITCH_SAMPLE_ANGLES if mode == "carrier" else (0,):
-        optical_mount.set_pitch(doc, pitch)
+    cache = {}
+    pitches = tuple(
+        dict.fromkeys((*PITCH_SAMPLE_ANGLES, max(-20, min(20, float(stage.Pitch)))))
+    )
+    for pitch in pitches:
+        instrument_mount.set_pitch(doc, pitch)
         own = {obj.Name: world_shape(obj) for obj in kit}
-        collisions = []
-        reserved_hits = []
+        fixed = {obj.Name: world_shape(obj) for obj in physical if obj not in kit}
+        rotor = {
+            obj.Name: world_shape(obj)
+            for obj in doc.DesignRegistry.ClearanceVolumes
+            if obj.Name in ("PortSweepBound", "StarboardSweepBound")
+        }
+        reservations = {
+            obj.Name: world_shape(obj)
+            for obj in doc.DesignRegistry.ClearanceVolumes
+            if obj.Name not in rotor and not belongs_to_group(obj, group)
+        }
+        for name in RESERVES:
+            if name not in ("MTF02POpticalClearanceReserve", "MTF02PConnectorReserve"):
+                reservations.setdefault(name, None)
+        # These are setup planning paths, regenerated after manual adjustment;
+        # the saved-current versions are independently bound before mutation.
+        propulsion_pose = doc.MainPropulsionModule.getGlobalPlacement()
+        for prefix, sign in propulsion_wiring.PREFIX_SIGNS:
+            route = propulsion_wiring.route_geometry(
+                sign, propulsion_pose, stage.getGlobalPlacement()
+            )
+            reservations[prefix + "PhaseLeadLoopReserve"] = placed_shape(
+                route["shape"], propulsion_pose
+            )
+        external = {**fixed, **rotor}
+        collisions, reserve_hits = [], []
         for name, shape in own.items():
-            collisions += [
-                {"moving": name, **hit} for hit in find_hits(shape, external)
-            ]
-            reserved_hits += [
-                {"moving": name, **hit} for hit in find_hits(shape, reservations)
-            ]
+            collisions.extend(
+                {"moving": name, **hit}
+                for hit in collision_hits(
+                    shape, external, tolerance=TOL, validation_cache=cache
+                )
+            )
+            reserve_hits.extend(
+                {"moving": name, **hit}
+                for hit in collision_hits(
+                    shape, reservations, tolerance=TOL, validation_cache=cache
+                )
+            )
         for (name, shape), (other, target) in itertools.combinations(own.items(), 2):
             volume = intersection_volume(shape, target)
             if volume > TOL:
@@ -527,40 +514,53 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 if name != "ModuleMTF02PEnvelope"
             },
         }
-        optical_reserve = world_shape(doc.MTF02POpticalClearanceReserve)
-        connector_reserve = world_shape(doc.MTF02PConnectorReserve)
-        optic_hits = find_hits(optical_reserve, obstacles)
-        connector_hits = find_hits(connector_reserve, obstacles)
-        optical_reserve_hits = find_hits(optical_reserve, reservations)
-        connector_reserve_gaps = measure_clearances(
-            connector_reserve,
+        field, connector = (
+            world_shape(doc.MTF02POpticalClearanceReserve),
+            world_shape(doc.MTF02PConnectorReserve),
+        )
+        field_hits = collision_hits(
+            field, obstacles, tolerance=TOL, validation_cache=cache
+        )
+        connector_hits = collision_hits(
+            connector, obstacles, tolerance=TOL, validation_cache=cache
+        )
+        field_reserve_hits = collision_hits(
+            field, reservations, tolerance=TOL, validation_cache=cache
+        )
+        connector_gaps = measure_clearances(
+            connector,
             reservations,
             minimum_gap_mm=wiring_reserves.CONNECTOR_SERVICE_GAP_MM,
             tolerance=TOL,
-            validation_cache=validation_cache,
+            validation_cache=cache,
         )
-        registration_checks = []
-        inverse_group = group.getGlobalPlacement().inverse()
+        registration = []
+        tray_regions, missing_tray_stock = tray_stock_enclosures(
+            local_shape(doc.OpticalSensorTray)
+        )
+        tray_registration = union(
+            [optical_interface.registration_bound(region) for region in tray_regions]
+        )
         for name, shape in (
-            ("body", own["ModuleMTF02PEnvelope"]),
-            ("connector", connector_reserve),
-            *(([("pitch_tool", tool_reserve)]) if tool_reserve is not None else []),
+            ("body", optical_sensor.envelope_shape(profile)),
+            ("connector", optical_sensor.connector_reserve_shape(profile)),
         ):
-            local = shape.copy()
-            local.Placement = inverse_group.multiply(local.Placement)
-            bound = optical_interface.registration_bound(local, mode)
-            bound.Placement = group.getGlobalPlacement()
-            hits = find_hits(bound, external)
+            bound = placed_shape(
+                optical_interface.registration_bound(shape), frame.getGlobalPlacement()
+            )
+            hits = collision_hits(
+                bound, external, tolerance=TOL, validation_cache=cache
+            )
             gaps = measure_clearances(
                 bound,
                 reservations,
                 minimum_gap_mm=wiring_reserves.CONNECTOR_SERVICE_GAP_MM
                 if name == "connector"
-                else 0.0,
+                else 0,
                 tolerance=TOL,
-                validation_cache=validation_cache,
+                validation_cache=cache,
             )
-            registration_checks.append(
+            registration.append(
                 {
                     "component": name,
                     "external_obstructions": hits,
@@ -568,426 +568,148 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                     "passed": not hits and all(row["passed"] for row in gaps),
                 }
             )
-        neighbour_gaps = named_gap_checks(
+        tray_bound = placed_shape(tray_registration, frame.getGlobalPlacement())
+        tray_hits = collision_hits(
+            tray_bound, external, tolerance=TOL, validation_cache=cache
+        )
+        tray_gaps = measure_clearances(
+            tray_bound, reservations, tolerance=TOL, validation_cache=cache
+        )
+        registration.append(
+            {
+                "component": "bracket",
+                "uncovered_saved_stock_mm3": missing_tray_stock,
+                "external_obstructions": tray_hits,
+                "reserved_space_clearances": tray_gaps,
+                "passed": missing_tray_stock <= TOL
+                and not tray_hits
+                and all(row["passed"] for row in tray_gaps),
+            }
+        )
+        neighbours = named_gap_checks(
             {
                 **fixed,
                 **own,
                 **reservations,
-                "MTF02POpticalClearanceReserve": optical_reserve,
-                "MTF02PConnectorReserve": connector_reserve,
+                "MTF02POpticalClearanceReserve": field,
+                "MTF02PConnectorReserve": connector,
             },
-            wiring_reserves.neighbour_gap_pairs(mode),
+            wiring_reserves.neighbour_gap_pairs(),
             tolerance=TOL,
-            validation_cache=validation_cache,
+            validation_cache=cache,
         )
-        pitch_tool = pitch_tool_check(group, {**external, **own, **reservations})
-        inverse = doc.OpticalPitchStage.getGlobalPlacement().inverse()
-        depth = max(
-            inverse.multVec(point).z
-            - optical_sensor.SENSOR_BOTTOM_Z
-            - profile.optical_origin_min_z_mm
-            for shape in obstacles.values()
-            for point in _corners(shape)
+        tools = mount_tool_check(group, {**external, **own, **reservations})
+        relative = (
+            doc.ModuleFCEnvelope.getGlobalPlacement()
+            .inverse()
+            .multiply(frame.getGlobalPlacement())
         )
-        maximum_depth = max(maximum_depth, depth)
-        control_ok = doc.OpticalPitchStage.Placement.Rotation.isSame(
-            App.Rotation(V(0, 1, 0), pitch), TOL
-        )
+        invariant = relative.isSame(expected_relative, 1e-7)
+        control = stage.Placement.isSame(instrument_mount.stage_placement(pitch), 1e-7)
         rows.append(
             {
-                "pitch_deg": pitch,
+                "instrument_pitch_deg": pitch,
                 "physical_collisions": collisions,
-                "reserved_space_intrusions": reserved_hits,
-                "optical_obstructions": optic_hits,
+                "reserved_space_intrusions": reserve_hits,
+                "optical_obstructions": field_hits,
                 "connector_obstructions": connector_hits,
-                "optical_reserved_space_intrusions": optical_reserve_hits,
-                "connector_reserved_space_clearances": connector_reserve_gaps,
-                "neighbour_clearance_buffers": neighbour_gaps,
-                "pitch_clamp_tool_access": pitch_tool,
-                "assembly_registration_checks": registration_checks,
-                "body_forward_extent_mm": depth,
-                "native_rotation_matches": control_ok,
-                "passed": not collisions
-                and not reserved_hits
-                and not optic_hits
-                and not connector_hits
-                and not optical_reserve_hits
-                and all(
-                    row["passed"] for row in connector_reserve_gaps + neighbour_gaps
+                "optical_reserved_space_intrusions": field_reserve_hits,
+                "connector_reserved_space_clearances": connector_gaps,
+                "neighbour_clearance_buffers": neighbours,
+                "mounting_tool_access": tools,
+                "assembly_registration_checks": registration,
+                "native_rotation_matches": control,
+                "fc_to_sensor_transform_invariant": invariant,
+                "planning_routes_regenerated_for_setup_pose": True,
+                "passed": len(rotor) == 2
+                and not any(
+                    (
+                        collisions,
+                        reserve_hits,
+                        field_hits,
+                        connector_hits,
+                        field_reserve_hits,
+                    )
                 )
-                and all(row["passed"] for row in registration_checks)
-                and control_ok
-                and pitch_tool["passed"]
-                and depth <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
+                and all(
+                    row["passed"] for row in connector_gaps + neighbours + registration
+                )
+                and tools["passed"]
+                and control
+                and invariant,
             }
         )
-    optical_mount.set_pitch(doc, 0)
-    bound, dimensions = external_field_bound(group, profile)
-    bound_hits = find_hits(bound, external)
-    bound_reserve_hits = find_hits(bound, reservations)
-    pivot = group.getGlobalPlacement().multVec(V(*optical_mount.pivot_centre(mode)))
-    # Norm bounds every forward projection for all pitch angles.
-    depth_bound = (
+    instrument_mount.set_pitch(doc, 0)
+    # Co-moving stock is checked above and has a fixed relative transform.
+    # Only stock outside the common stage enters the continuous external test.
+    external = {
+        obj.Name: world_shape(obj)
+        for obj in physical
+        if not belongs_to_group(obj, stage)
+    }
+    reservations = {
+        obj.Name: world_shape(obj)
+        for obj in doc.DesignRegistry.ClearanceVolumes
+        if not belongs_to_group(obj, stage)
+        and obj.Name
+        not in ("PortPhaseLeadLoopReserve", "StarboardPhaseLeadLoopReserve")
+    }
+    bounds = motion_bounds(group)
+    pivot = doc.ElectronicsEquipmentModule.getGlobalPlacement().multVec(V(0, 0, 27.5))
+    # A norm bound covers every possible forward projection of the modeled
+    # gondola, including the selected sensor's offset from the common pivot.
+    body_depth = (
         max(
-            (point - pivot).Length
-            for shape in {**external, **{o.Name: world_shape(o) for o in kit}}.values()
-            for point in _corners(shape)
+            (V(x, y, z) - pivot).Length
+            for obj in physical
+            for box in (world_shape(obj).BoundBox,)
+            for x, y, z in itertools.product(
+                (box.XMin, box.XMax), (box.YMin, box.YMax), (box.ZMin, box.ZMax)
+            )
         )
+        + 19
+        - 8
         + optical_sensor.SENSOR_BOTTOM_Z
         + profile.optical_origin_min_z_mm
+        + math.sqrt(2)
     )
-    continuous = {
-        **dimensions,
-        "external_obstructions": bound_hits,
-        "external_reserved_space_intrusions": bound_reserve_hits,
-        "all_angles_body_depth_upper_bound_mm": depth_bound,
-        "method": "Conservative full-angle circular cone with the broad assembly-registration reserve and nominal rail-fit allowance against external parts, complete rotor bounds and named wire/access reservations; norm bound covers modeled-body depth. Printed angular rocking and deformation are unqualified.",
-        "passed": not bound_hits
-        and not bound_reserve_hits
-        and depth_bound <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
-    }
-    return {
-        "attachment_mode": mode,
-        "carrier_host": getattr(group, "CarrierHostName", None),
-        "carrier_side": str(group.MountSide) if mode == "carrier" else None,
-        "pitch_pivot_world_mm": tuple(pivot),
-        "sensor_model": profile.key,
-        "both_complete_rotor_bounds_present": rotor_complete,
-        "sampled_attitudes": rows,
-        "maximum_sampled_forward_extent_mm": maximum_depth,
-        "continuous_external_optical_bound": continuous,
-        "passed": rotor_complete
-        and all(row["passed"] for row in rows)
-        and continuous["passed"],
-    }
-
-
-def _seated_foot_lift_sweep(shape, distance):
-    """Continuously lift the actual locator separately from the backed foot.
-
-    The transverse pitch-ear cylinder otherwise makes the generic sweep use
-    one bounding prism, extending the locator's low Z across the whole foot.
-    Splitting at the known seating plane retains all actual saved material;
-    each component still uses the conservative continuous sweep unchanged.
-    """
-    if distance <= 0:
-        raise ValueError("Optical foot lift must be positive")
-    bounds = shape.BoundBox
-    below = shape.common(
-        Part.makeBox(
-            bounds.XLength + 2,
-            bounds.YLength + 2,
-            max(0, -bounds.ZMin) + 1,
-            V(bounds.XMin - 1, bounds.YMin - 1, min(0, bounds.ZMin) - 1),
-        )
-    )
-    above = shape.cut(below)
-    pieces, methods = [], []
-    for component in (below, above):
-        if component.Volume <= TOL:
-            continue
-        swept, method = translation_sweep(component, (0, 0, distance))
-        pieces.append(swept)
-        methods.append(method)
-    return Part.makeCompound(pieces), "seating-plane partition: " + "; ".join(methods)
-
-
-def _carrier_interface_checks(doc):
-    """Saved material witnesses for seating, slot axes and clamp bearing lands."""
-    from gondola.cad import box
-
-    group = doc.OpticalFlowModule
-    carrier = doc.getObject(optical_interface.SUPPORTED_HOSTS[group.CarrierHostName])
-    inverse = group.getGlobalPlacement().inverse()
-    plate = world_shape(carrier)
-    plate.Placement = inverse.multiply(plate.Placement)
-    foot = world_shape(doc.OpticalMountBase)
-    foot.Placement = inverse.multiply(foot.Placement)
-    rows = []
-    for x in (-4.0, 2.0):
-        for target, z, face in ((plate, -0.2, "carrier"), (foot, 0.0, "foot")):
-            witness = box(2, 18, 0.2, (x, -9, z))
-            missing = witness.cut(target).Volume
-            rows.append(
-                {
-                    "kind": "foot_support_strip",
-                    "surface": face,
-                    "x_min_mm": x,
-                    "missing_material_mm3": missing,
-                    "passed": missing <= TOL,
-                }
-            )
-    # Independent material witness: a narrow peg, shortened/rotated tongue or
-    # a historical two-bolt foot cannot certify this single-clamp connection.
-    locator_core = box(2.4, 6.0, 1.2, (-1.2, -5.0, -1.2))
-    missing = locator_core.cut(foot).Volume
-    rows.append(
-        {
-            "kind": "rigid_locator_full_length_and_section",
-            "missing_material_mm3": missing,
-            "passed": missing <= TOL,
-        }
-    )
-    underside = box(8, 18, 10, (-4, -9, -mounting_plate.THICKNESS_MM - 10))
-    intrusion = intersection_volume(underside, foot)
-    rows.append(
-        {
-            "kind": "locator_stays_above_carrier_underside",
-            "obstruction_mm3": intrusion,
-            "passed": intrusion <= TOL,
-        }
-    )
-    # The upward sweep is the same occupied set as the reversed insertion.
-    insertion, method = _seated_foot_lift_sweep(foot, 2.0)
-    blockage = intersection_volume(insertion, plate)
-    rows.append(
-        {
-            "kind": "continuous_full_seating_insertion",
-            "method": method,
-            "obstruction_mm3": blockage,
-            "passed": blockage <= TOL,
-        }
-    )
-    for index, (x, y) in optical_interface.CLAMP_CENTRES.items():
-        axis = Part.makeCylinder(1.0, 4.0, V(x, y, -mounting_plate.THICKNESS_MM))
-        obstruction = intersection_volume(axis, plate) + intersection_volume(axis, foot)
-        rows.append(
-            {
-                "kind": "M2_axis_through_slot_and_foot",
-                "index": index,
-                "obstruction_mm3": obstruction,
-                "passed": obstruction <= TOL,
-            }
-        )
-        rows.append(
-            {
-                "kind": "centred_slot_head_bearing",
-                "index": index,
-                **slot_bearing.check(
-                    plate,
-                    (x, y),
-                    -mounting_plate.THICKNESS_MM,
-                    maximum_slot_width=optical_interface.HOST_SLOT_WIDTH
-                    + optical_interface.DIMENSION_ALLOWANCE,
-                    minimum_screw_diameter=optical_interface.MINIMUM_RECEIVED_BOLT_DIAMETER,
-                ),
-            }
-        )
-        for side in (-1, 1):
-            lower_x = x + (1.35 if side == 1 else -1.7)
-            for material, z in ((plate, -mounting_plate.THICKNESS_MM), (foot, 1.3)):
-                witness = box(0.35, 1.0, 0.2, (lower_x, y - 0.5, z))
-                missing = witness.cut(material).Volume
-                rows.append(
-                    {
-                        "kind": "transverse_clamp_bearing_land",
-                        "index": index,
-                        "side": side,
-                        "surface": "carrier_head" if z < 0 else "foot_nut",
-                        "missing_material_mm3": missing,
-                        "passed": missing <= TOL,
-                    }
-                )
-    overlap = intersection_volume(plate, foot)
-    return {
-        "carrier": carrier.Name,
-        "witnesses": rows,
-        "overlap_mm3": overlap,
-        "scope": "Nominal saved geometry, not bearing pressure or retention qualification. Full flat support strips, the rigid locator and one axial passage plus nominal transverse head/nut lands must retain material. Insertion is a rigid translation, not a fit-force, preload or retention qualification.",
-        "passed": overlap <= TOL and all(row["passed"] for row in rows),
-    }
-
-
-def _foot_service_checks(doc, physical, kit):
-    """Continuous ordered removal on the detached, supported carrier bench."""
-    group = doc.OpticalFlowModule
-    host = group.getParentGeoFeatureGroup()
-    inverse = group.getGlobalPlacement().inverse()
-
-    def local(obj):
-        shape = world_shape(obj)
-        shape.Placement = inverse.multiply(shape.Placement)
-        return shape
-
-    host_parts = {
-        obj.Name: local(obj)
-        for obj in physical
-        if belongs_to_group(obj, host) and obj not in kit
-    }
-    remaining = {obj.Name: local(obj) for obj in kit}
-    rows = []
-
-    def path(name, shape, points, obstacles):
-        segments = []
-        for start, end in zip(points, points[1:]):
-            moving = shape.copy()
-            moving.translate(V(*start))
-            if (
-                name == "CompleteOpticalMount/OpticalMountBase"
-                and start == (0, 0, 0)
-                and end[:2] == (0, 0)
-                and end[2] > 0
-            ):
-                swept, method = _seated_foot_lift_sweep(moving, end[2])
-            else:
-                swept, method = translation_sweep(
-                    moving, tuple(b - a for a, b in zip(start, end))
-                )
-            hits = [
-                {"object": other, "intersection_mm3": volume}
-                for other, target in obstacles.items()
-                if (volume := intersection_volume(swept, target)) > TOL
-            ]
-            segments.append(
-                {
-                    "start_mm": start,
-                    "end_mm": end,
-                    "method": method,
-                    "collisions": hits,
-                    "passed": not hits,
-                }
-            )
-        rows.append(
-            {
-                "part": name,
-                "segments": segments,
-                "passed": all(row["passed"] for row in segments),
-            }
-        )
-
-    release_z = (
-        optical_interface.CLAMP_SCREW_LENGTH
-        - mounting_plate.THICKNESS_MM
-        - optical_interface.FOOT_NUT_SEAT_Z
-        + 0.2
-    )
-    screw_withdrawal = optical_interface.CLAMP_SCREW_LENGTH + 0.2
-    for index in optical_interface.CLAMP_CENTRES:
-        name = f"OpticalFootNut{index}"
-        shape = remaining.pop(name)
-        # First unthread beyond the bolt tip, then move outside the tray and lift.
-        path(
-            name,
-            shape,
-            [(0, 0, 0), (0, 0, release_z), (24, 0, release_z), (24, 0, 40)],
-            {**host_parts, **remaining},
-        )
-    for index in optical_interface.CLAMP_CENTRES:
-        name = f"OpticalFootBolt{index}"
-        shape = remaining.pop(name)
-        path(
-            name,
-            shape,
-            [(0, 0, 0), (0, 0, -screw_withdrawal)],
-            {**host_parts, **remaining},
-        )
-    for name, shape in remaining.items():
-        path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
-    return {
-        "scope": f"Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut {release_z:g} mm, slide24 mm along optical-local+X outside the shared tray and its unused shoe and lift; withdraw its screw{screw_withdrawal:g} mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
-        "paths": rows,
-        "passed": all(row["passed"] for row in rows),
-    }
-
-
-def _rail_interface_checks(doc):
-    """Use the standard saved lower-shoe material audit without carrier foot assumptions."""
-    from .rail_mount import saved_integral_mount_checks
-
-    rows = saved_integral_mount_checks(
-        doc, doc.DesignRegistry, module_names=("OpticalFlowModule",)
-    )
-    return {
-        "attachment_mode": "rail",
-        "saved_mounts": rows,
-        "passed": len(rows) == 1
-        and rows[0].get("part") == "OpticalSensorTray"
-        and rows[0]["passed"],
-        "scope": "Standard rail shoe, independent lower-stock comparison and complete saved shared tray. Seating, M3 hardware and ordered removal are additionally checked by the common rail audit.",
-    }
-
-
-def _attachment_service_checks(doc, physical, kit):
-    mode = resolve_mount_mode(str(doc.OpticalFlowModule.OpticalAttachmentMode))
-    if mode == "carrier":
-        return _foot_service_checks(doc, physical, kit)
-    from .rail_access import rail_attachment_service
-
-    return rail_attachment_service(
-        doc, doc.DesignRegistry, physical, module_names=("OpticalFlowModule",)
-    )
-
-
-def _nut_recess_checks(doc):
-    """Saved shallow seats restrain minimum M2 nuts without raising outer surfaces."""
-    from gondola.parts.purchased_hardware import hex_prism
-
-    if str(doc.OpticalFlowModule.OpticalAttachmentMode) == "rail":
-        return {
-            "applicable": False,
-            "seats": [],
-            "passed": True,
-            "scope": "No M2 nuts in the fixed rail variant; its M3 seat is checked by the common rail audit.",
-        }
-    rows = []
-    for name, part, parent, origin, rotation in (
-        (
-            "OpticalFootNut1",
-            "OpticalMountBase",
-            doc.OpticalFlowModule,
-            V(0, 5, 1.5),
-            App.Rotation(),
-        ),
-        (
-            "OpticalPitchNut",
-            "OpticalSensorTray",
-            doc.OpticalPitchStage,
-            V(0, 1.5, 0),
-            App.Rotation(V(1, 0, 0), -90),
-        ),
+    continuous = []
+    for name in (
+        f"{profile.key}ContinuousOpticalFieldBound",
+        f"{profile.key}ContinuousTrayBound",
+        f"{profile.key}ContinuousBodyBound",
+        f"{profile.key}ContinuousConnectorBound",
+        "OpticalMountToolAccessBound",
     ):
-        support = world_shape(doc.getObject(part))
-        support.Placement = (
-            parent.getGlobalPlacement().inverse().multiply(support.Placement)
+        hits = collision_hits(
+            bounds[name],
+            {**external, **reservations},
+            tolerance=TOL,
+            validation_cache=cache,
         )
-        frame = App.Placement(origin, rotation)
-        support.Placement = frame.inverse().multiply(support.Placement)
-        nut = hex_prism(3.8, 1.35).cut(Part.makeCylinder(1.0, 1.55, V(0, 0, -0.1)))
-        overlap = abs(nut.common(support).Volume)
-        turns = []
-        for angle in (-30, 30):
-            turned = nut.copy()
-            turned.rotate(V(), V(0, 0, 1), angle)
-            turns.append(abs(turned.common(support).Volume))
-        floor_lengths = [
-            support.common(Part.makeLine(V(x, 0, -1.5), V(x, 0, 0))).Length
-            for x in (-1.5, 1.5)
-        ]
-        actual = doc.getObject(name)
-        parent_ok = actual.getParentGeoFeatureGroup() == parent
-        rows.append(
-            {
-                "nut": name,
-                "support": part,
-                "aligned_minimum_nut_overlap_mm3": overlap,
-                "turn_30deg_obstruction_mm3": turns,
-                "nut_follows_its_seat": parent_ok,
-                "retained_floor_lengths_mm": floor_lengths,
-                "passed": overlap < TOL
-                and min(turns) > TOL
-                and parent_ok
-                and all(abs(length - 1.5) < TOL for length in floor_lengths),
-            }
-        )
+        continuous.append({"bound": name, "collisions": hits, "passed": not hits})
     return {
-        "seats": rows,
-        "scope": "Nominal minimum AF3.8 x1.35 nut without chamfers; actual chamfer engagement, print fit, tightening and PA12 creep remain unqualified. Pockets are open and do not retain a loose nut axially.",
-        "passed": all(row["passed"] for row in rows),
+        "attachment": "rigid_on_common_instrument_stage",
+        "sensor_model": profile.key,
+        "sampled_attitudes": rows,
+        "continuous_external_bounds": continuous,
+        "all_angles_body_depth_upper_bound_mm": body_depth,
+        "setup_planning_routes": {
+            "objects": ["PortPhaseLeadLoopReserve", "StarboardPhaseLeadLoopReserve"],
+            "continuous_connected_wire_motion_claimed": False,
+            "checked_setup_angles_deg": pitches,
+            "scope": "The two exact saved-current planning routes are source-bound separately. Each sampled setup pose regenerates both complete routes and checks all optical stock, fields and connectors against them. They are not stationary obstacles through adjustment and no interpolated or connected moving harness is qualified. Disconnect and reroute at each selected setup angle.",
+        },
+        "fc_to_sensor_transform_invariant": all(
+            row["fc_to_sensor_transform_invariant"] for row in rows
+        ),
+        "passed": all(row["passed"] for row in rows + continuous)
+        and body_depth <= optical_sensor.OPTICAL_RESERVE_LENGTH_MM + TOL,
+        "scope": "All optical stock, sensor alternatives, connector and tool reserves share the FC's bounded native stage. Relative instrument geometry remains fixed; conservative continuous bounds check external solids and all named reserves. The separate instrument-joint audit checks the plate, FC and intended pivot/arc-lock contacts.",
     }
 
 
 def _saved_sensor_state(doc):
-    """Snapshot only properties the temporary profile switch may replace."""
     state = {}
     for name in (
         "ModuleMTF02PEnvelope",
@@ -1007,35 +729,31 @@ def _saved_sensor_state(doc):
 
 def _restore_sensor_state(doc, state):
     for name, properties in state.items():
-        obj = doc.getObject(name)
         for key, value in properties.items():
-            setattr(obj, key, value)
+            setattr(doc.getObject(name), key, value)
 
 
 def mtf_sensor_check(doc):
-    """Audit both sensors on the saved rail or carrier attachment; never save."""
+    """Audit the saved common instrument assembly without saving or retaining changes."""
     report = {
-        "scope": "Saved CAD only: both mutually exclusive sensors, five sampled carrier pitch attitudes or one fixed rail attitude, and a conservative external field. The standard rail audit covers selected module seating and ordered removal. Carrier mode additionally checks the optical foot on its detached host and both M2 service operations; rail mode uses the shared tray alone with its M3 pair and has no pitch disassembly. Actual print distortion, angular rocking, retention, optical origins, cables and pointing remain unqualified; host, side and rail-position changes require renewed clearance checks."
+        "scope": "One rigid optical bracket shares the FC instrument stage. Both mutually exclusive sensors, complete saved stock, fixed relative transform, continuous external envelopes, two mounting joints and ordered disconnected service are checked. No independent optical pitch or separate rail attachment is modeled. Print fit, clamp retention, FC damper compliance, optical origins and measured calibration remain unqualified."
     }
     evidence = _source_evidence(doc)
     report["source_evidence"] = evidence
     if not evidence["passed"]:
         report["passed"] = False
         return report
-    mode = resolve_mount_mode(str(doc.OpticalFlowModule.OpticalAttachmentMode))
-    interface = (
-        _carrier_interface_checks(doc)
-        if mode == "carrier"
-        else _rail_interface_checks(doc)
-    )
-    report[mode + "_interface"] = interface
-    report["attachment_mode"] = mode
-    nut_recesses = _nut_recess_checks(doc)
-    report["nut_recesses"] = nut_recesses
+    from .propulsion_wiring import check as saved_planning_route_check
+
+    report["saved_planning_routes"] = saved_planning_route_check(doc)
+    if not report["saved_planning_routes"]["passed"]:
+        report["passed"] = False
+        return report
+    report["rigid_interface"] = _rigid_interface_checks(doc)
+    report["nut_recesses"] = _nut_recess_checks(doc)
     group = doc.OpticalFlowModule
-    old_model = group.SensorModel
-    saved_sensor_state = _saved_sensor_state(doc)
-    old_pitch = doc.OpticalPitchStage.Pitch.Value
+    old_model, old_pitch = str(group.SensorModel), float(doc.InstrumentPitchStage.Pitch)
+    state = _saved_sensor_state(doc)
     try:
         registry = doc.DesignRegistry
         physical = (
@@ -1047,27 +765,23 @@ def mtf_sensor_check(doc):
         kit = [obj for obj in physical if belongs_to_group(obj, group)]
         alternatives = {}
         for key, profile in SENSOR_PROFILES.items():
+            instrument_mount.set_pitch(doc, old_pitch)
             optical_sensor.apply_profile(doc, profile)
             alternatives[key] = _placement_checks(doc, physical, kit, profile=profile)
-            alternatives[key]["bench_service"] = _attachment_service_checks(
+            alternatives[key]["mounting_service"] = mounting_service_check(
                 doc, physical, kit
             )
-            alternatives[key]["pitch_disassembly"] = pitch_disassembly_check(doc, kit)
-            alternatives[key]["passed"] &= alternatives[key]["bench_service"]["passed"]
-            alternatives[key]["passed"] &= alternatives[key]["pitch_disassembly"][
+            alternatives[key]["passed"] &= alternatives[key]["mounting_service"][
                 "passed"
             ]
-        report["carrier_host"] = getattr(group, "CarrierHostName", None)
-        report["carrier_side"] = str(group.MountSide) if mode == "carrier" else None
-        report["selected_sensor_model"] = old_model
-        report["sensor_alternatives"] = alternatives
+        report.update(selected_sensor_model=old_model, sensor_alternatives=alternatives)
         report["passed"] = (
-            interface["passed"]
-            and nut_recesses["passed"]
+            report["rigid_interface"]["passed"]
+            and report["nut_recesses"]["passed"]
             and all(row["passed"] for row in alternatives.values())
         )
         return report
     finally:
-        _restore_sensor_state(doc, saved_sensor_state)
+        _restore_sensor_state(doc, state)
         group.SensorModel = old_model
-        optical_mount.set_pitch(doc, old_pitch)
+        instrument_mount.set_pitch(doc, old_pitch)

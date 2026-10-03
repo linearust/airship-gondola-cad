@@ -180,7 +180,16 @@ def add_hardware(
         "ShapeModelNotes",
         "Nominal dimensional envelope only; material selection does not qualify "
         "strength, preload or retention. Helical threads and actual mass are unverified."
-        + (" " + fasteners.HEAD_ENVELOPE_NOTE if sku.endswith("_BUTTON_HEAD") else ""),
+        + (
+            " "
+            + (
+                fasteners.RAIL_HEAD_ENVELOPE_NOTE
+                if sku.startswith("M3")
+                else fasteners.HEAD_ENVELOPE_NOTE
+            )
+            if sku.endswith("_BUTTON_HEAD")
+            else ""
+        ),
     )
     set_property(
         obj,

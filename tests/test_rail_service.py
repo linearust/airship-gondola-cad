@@ -82,7 +82,7 @@ class RailServiceTests(unittest.TestCase):
         report = side_driver_clearance(
             rail.attachment_screw_shape(),
             {
-                "Carrier": equipment_mounts.mount_shape("electronics"),
+                "Carrier": equipment_mounts.mount_shape("battery"),
                 "FC": Part.makeBox(30, 30, 5, App.Vector(-15, -15, 24)),
             },
         )
@@ -297,7 +297,7 @@ class RailServiceTests(unittest.TestCase):
         try:
             for part, module in (
                 ("BatteryMount", "BatteryEquipmentModule"),
-                ("ElectronicsMount", "ElectronicsEquipmentModule"),
+                ("InstrumentMountBase", "ElectronicsEquipmentModule"),
                 ("AccessoryMount", "AccessoryEquipmentModule"),
                 ("PropulsionFixedFrame", "MainPropulsionModule"),
             ):
@@ -405,14 +405,14 @@ class RailServiceTests(unittest.TestCase):
                     row["required_mount"]["object"], "PropulsionFixedFrame"
                 )
 
-    def test_populated_propulsion_retains_clearance_to_relocated_fc_carrier(self):
+    def test_populated_propulsion_clears_a_nearby_fixed_carrier(self):
         from gondola.cad import placed_shape, world_shape
         from gondola.parts import equipment_mounts
         from gondola.validation.rail_access import _lift_path
 
         doc, check = self.source_propulsion_service()
-        neighbour = doc.addObject("Part::Feature", "ElectronicsMount")
-        neighbour.Shape = equipment_mounts.mount_shape("electronics")
+        neighbour = doc.addObject("Part::Feature", "NearbyFixedCarrier")
+        neighbour.Shape = equipment_mounts.mount_shape("battery")
         neighbour.Placement = App.Placement(
             App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
         )
@@ -472,11 +472,11 @@ class RailServiceTests(unittest.TestCase):
         from gondola.parts import equipment_mounts
         from gondola.validation.rail_access import _lift_path
 
-        carrier = equipment_mounts.mount_shape("electronics").fuse(
+        carrier = equipment_mounts.mount_shape("battery").fuse(
             Part.makeBox(1, 1, 1, App.Vector(20, 0, 16.4))
         )
         report = _lift_path(
-            "ElectronicsMount",
+            "BatteryMount",
             carrier,
             {},
             0,
@@ -488,24 +488,23 @@ class RailServiceTests(unittest.TestCase):
     def test_relocated_fc_carrier_clears_retained_starboard_adapter(self):
         from gondola.cad import placed_shape, set_property, world_shape
         from gondola.contracts.drive import SELECTED_DRIVE
-        from gondola.parts import equipment_mounts, rail, servo_coupling
+        from gondola.parts import instrument_mount, rail, servo_coupling
         from gondola.validation.rail_access import _lift_path
 
         doc, check = self.source_propulsion_service()
         module = doc.addObject("App::Part", "ElectronicsEquipmentModule")
         module.Placement = App.Placement(
-            App.Vector(-56, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+            App.Vector(-82, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
         )
         for name, value, kind in (
-            ("RailPositionX", -56, "App::PropertyDistance"),
+            ("RailPositionX", -82, "App::PropertyDistance"),
             ("RailAttachmentOffsetX", 0, "App::PropertyDistance"),
             ("RailAttachmentOffsetsX", [0], "App::PropertyFloatList"),
             ("RailContactLength", 16, "App::PropertyLength"),
         ):
             set_property(module, name, value, kind)
-        carrier = doc.addObject("Part::Feature", "ElectronicsMount")
-        module.addObject(carrier)
-        carrier.Shape = equipment_mounts.mount_shape("electronics")
+        instrument = instrument_mount.build_mount(doc, module)
+        carrier = instrument["lower"]
         adapter = doc.addObject("Part::Feature", "StarboardHornGearAdapter")
         doc.MainPropulsionModule.addObject(adapter)
         shape = servo_coupling.adapter_shape()
@@ -518,8 +517,12 @@ class RailServiceTests(unittest.TestCase):
         hardware = rail.build_attachment_hardware(doc, module, module.Name)
         registry = doc.DesignRegistry
         registry.Modules = list(registry.Modules) + [module]
-        registry.PrintedParts = list(registry.PrintedParts) + [carrier, adapter]
-        registry.HardwareParts = list(registry.HardwareParts) + hardware
+        registry.PrintedParts = (
+            list(registry.PrintedParts) + instrument["printed"] + [adapter]
+        )
+        registry.HardwareParts = (
+            list(registry.HardwareParts) + hardware + instrument["hardware"]
+        )
         registry.RailLocks = list(registry.RailLocks) + hardware
         doc.recompute()
         inverse = module.getGlobalPlacement().inverse()
@@ -559,6 +562,71 @@ class RailServiceTests(unittest.TestCase):
             broken["modules"][0]["error"], "Rail attachment inventory mismatch"
         )
 
+    def test_accessory_removal_slides_clear_of_raised_fc_before_lifting(self):
+        from gondola.cad import belongs_to_group, placed_shape, world_shape
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
+        from gondola.validation.rail_access import _lift_path
+
+        before = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+        try:
+            registry = doc.DesignRegistry
+            objects = [
+                obj
+                for key in (
+                    "PrintedParts",
+                    "ReferenceParts",
+                    "HardwareParts",
+                    "TapeReferences",
+                )
+                for obj in getattr(registry, key)
+            ]
+            module = doc.AccessoryEquipmentModule
+            inverse = module.getGlobalPlacement().inverse()
+            shapes = {
+                obj.Name: placed_shape(world_shape(obj), inverse) for obj in objects
+            }
+            members = {obj.Name for obj in objects if belongs_to_group(obj, module)}
+            removed = {
+                obj.Name for obj in registry.RailLocks if belongs_to_group(obj, module)
+            }
+            self.assertEqual(
+                removed,
+                {
+                    "AccessoryEquipmentModuleRailMountScrew",
+                    "AccessoryEquipmentModuleRailMountNut",
+                },
+            )
+            fixed = {
+                name: shape for name, shape in shapes.items() if name not in members
+            }
+            path = [(0, 0, 0), (9, 0, 0), (9, 0, 30)]
+            direct = _lift_path("AccessoryMount", shapes["AccessoryMount"], fixed, 0)
+            self.assertFalse(direct["passed"])
+            for name in sorted(members - removed):
+                with self.subTest(part=name):
+                    lifted = _lift_path(name, shapes[name], fixed, 0, waypoints=path)
+                    self.assertTrue(lifted["passed"], lifted)
+            # Both endpoint poses are clear of a small intermediate lift blocker;
+            # the continuous path must still detect it.
+            obstruction = Part.makeBox(1, 1, 1, App.Vector(9, 30, 28))
+            for end in (path[0], path[-1]):
+                at_end = shapes["AccessoryMount"].copy()
+                at_end.translate(App.Vector(*end))
+                self.assertLess(at_end.common(obstruction).Volume, 1e-7)
+            blocked = _lift_path(
+                "AccessoryMount",
+                shapes["AccessoryMount"],
+                {**fixed, "IntermediateLiftObstacle": obstruction},
+                0,
+                waypoints=path,
+            )
+            self.assertFalse(blocked["passed"])
+        finally:
+            App.closeDocument(doc.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), before)
+
     def test_opposite_pair_must_be_registered_for_service(self):
         doc, check = self.source_propulsion_service()
         doc.DesignRegistry.RailLocks = [
@@ -597,7 +665,7 @@ class RailServiceTests(unittest.TestCase):
                 App.Vector(), App.Rotation(App.Vector(0, 1, 0), -12)
             ),
         )
-        objects = {"PortPod": pod, "OpticalPitchStage": stage}
+        objects = {"PortPod": pod, "InstrumentPitchStage": stage}
         doc = SimpleNamespace(getObject=objects.get)
         report = _saved_stage_settings(doc)
         self.assertEqual(report["PortPod"]["commanded_angle_deg"], 999)
@@ -605,7 +673,7 @@ class RailServiceTests(unittest.TestCase):
             report["PortPod"]["actual_local_rotation_quaternion_xyzw"],
             list(pod.Placement.Rotation.Q),
         )
-        self.assertEqual(report["OpticalPitchStage"]["commanded_angle_deg"], -12)
+        self.assertEqual(report["InstrumentPitchStage"]["commanded_angle_deg"], -12)
         self.assertEqual(pod.Tilt, 999)
         self.assertEqual(stage.Pitch, -12)
 

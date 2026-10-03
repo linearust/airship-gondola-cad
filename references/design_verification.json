@@ -1,72 +1,87 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-03T03:01:40.009140+00:00",
-  "revision": "CH",
-  "change_kind": "Restore original optical pedestal and extend one shared tray for stacked or direct rail mounting",
-  "scope": "Nominal CAD geometry and service only. Default carrier stack restores the exact original lower pedestal from 31ec2cb. The extended upper tray is the same print in both modes: its pad is 4 mm farther from the pitch ear and its integral unchanged standard rail shoe enables fixed-angle direct attachment without the pedestal or M2 pairs. Carrier mode retains manual +/-20 deg pitch and two M2x8 pairs; rail mode has zero pitch DOF and one M3x10 pair. Both full sensor configurations, complete tray stock, optical fields, fit datums and ordered hardware/removal paths are checked. Unrelated propulsion and rail solids remain unchanged. Physical fit, strength, loaded pointing, PA12 creep, adhesive and harnesses remain unqualified. Existing motor-carrier fabrication hold remains in effect.",
-  "predecessor_commit": "d05da62bd76a593d4e52d726d7c31d288d8f868b",
-  "source_fingerprint": "d4d7070c7bb344cbdf3b1708274f54d698a925c2a452a9283dbafe0258cb8e9d",
-  "cad_sha256": "13d8064b310cfc071e629e7d69ef6bf16da9e1c3a6cf0b1b48b078209f29c9c8",
+  "recorded_utc": "2026-10-03T05:50:00.734707+00:00",
+  "revision": "CI",
+  "change_kind": "One shared manually adjustable FC and optical platform with a rigid detachable MTF bracket",
+  "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. The unchanged standard rail shoe supports a two-print instrument pitch joint; the FC plate and rigid notched-foot MTF bracket move together through setup-only +/-20 degrees. The optical bracket has no independent hinge, rail shoe or adjustment mode. Two M3x16 instrument pairs supplement five M3x10 rail pairs; two M2x8 pairs retain the optical bracket. Existing common-plate openings, unrelated rail/propulsion solids and purchased drive geometry are preserved. Both MTF profiles are geometry options, not measured optical origins or qualified adhesive retention. MG-F10-A direct-helix installation is blocked over the full setup range in this layout; remote antenna placement remains unmodeled and conditional. Physical fit, stiffness, clamp friction, creep, wiring, IMU alignment and flight readiness remain unqualified. The existing motor-carrier fabrication hold remains in effect.",
+  "predecessor_commit": "a0b83d0554086166b53eb7a11626dd7094f54668",
+  "source_fingerprint": "951ae007156161197e245883ea57d4b4d953b738e8cfa38063e9bdc8bae1ae45",
+  "cad_sha256": "2bd35937ce2a0f8ce6ced879cb56fa552b528ba7166f19fc61eb9e95c679f456",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
-    "independently_reviewed": true
+    "sha256": "0eb95c67ceae9ee9737cfa44900e5949755f3286c1996dac74ce963a74fa8939",
+    "independently_reviewed": true,
+    "review_json_sha256": "409a5e3c6982ac65456c093b86d2da4be87042742b505a85c81159bb0da5faac",
+    "independent_review_canonical_sha256": "a49860fb521b48cc3dab7b4c52f06dac11a9f95cfcdf94bb7842af023d8d193a"
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 891,
+    "testsRun": 887,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "exact_discovery_coverage": true,
     "per_execution_inputs_frozen": true,
-    "verification_strategy": "Full native discovery plus a complete changed-test-module rerun. Raw failed execution is retained; all earlier results from that module are superseded.",
-    "unique_tests_covered": 891,
-    "total_tests_executed": 916,
-    "rerun_test_count": 25,
-    "superseded_module": "test_relative_motion"
+    "verification_strategy": "Full raw native discovery plus complete reruns of every changed test module. All original results from those modules are superseded; raw failures remain archived. Production source and native fixture are unchanged between executions.",
+    "frozen_input_scope": "Python under gondola/tests/tools, root FCMacro files, source_fingerprint assets and native fixture bytes. Prose and evidence files are outside the frozen code-input claim; the retained independent fixture approval is separately bound by exact canonical JSON and native-file hashes.",
+    "raw_execution_passed": false,
+    "raw_failed_tests": [
+      "test_saved_rail_validation.SavedRailValidationTests.test_actual_five_attachments_pass_in_common_rigid_frame",
+      "test_saved_rail_validation.SavedRailValidationTests.test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones (position=11)",
+      "test_saved_rail_validation.SavedRailValidationTests.test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones (position=17)",
+      "test_saved_rail_validation.SavedRailValidationTests.test_saved_contract_and_tape_inventory_are_not_inferred",
+      "test_saved_rail_validation.SavedRailValidationTests.test_saved_tape_contract_cannot_misrepresent_unqualified_adhesion",
+      "test_shape_cache.ShapeCacheTests.test_carrier_roles_share_one_template_but_not_mutable_results"
+    ],
+    "unique_tests_covered": 887,
+    "total_tests_executed": 913,
+    "rerun_test_count": 26,
+    "superseded_modules": [
+      "test_saved_rail_validation",
+      "test_shape_cache"
+    ]
   },
   "pipeline": [
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 33.210198838001816,
-      "log_sha256": "693d675a4d89f2648118555e39b96e8cae167240cbf83666fbe10dc88fbce02f"
+      "elapsed_seconds": 42.646726225997554,
+      "log_sha256": "fc7fe65dbf747af6eb8a2a2f5f9ee901290ac4e42344c9e412375d4785c6695a"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 42.96658546500839,
+      "elapsed_seconds": 46.9782085439947,
       "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 15.413299172010738,
-      "log_sha256": "2b1eec01f01809ff4f349c03369b64b9dcb612d913b0b5a509a8f4717fadc5a3"
+      "elapsed_seconds": 20.95995439501712,
+      "log_sha256": "00cf55156bc3198b086751792ff64fd239a692eb9807eb65e370727cef852c1c"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 1065.1171403909975,
-      "log_sha256": "f6554241919e3d82db607e774ed4ee95da98655b5e1ec4a368a4c582c45e8439"
+      "elapsed_seconds": 1274.9210353250091,
+      "log_sha256": "fc64639a8965d3e62156f3626c63cc0d0a10105b9a8eb52480a42e9e58ebbd66"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.3079152389836963,
-      "log_sha256": "dbf5ff8f32fadcbbaa194be08c830089abed60f24fd2df1233303cbc07b09660"
+      "elapsed_seconds": 0.43458649099920876,
+      "log_sha256": "af4ea71c6ad1327b1bbf5d3afad2ab13d1ef8fc379b17ed9a1177a8537f990c0"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 14.823910364008043,
-      "log_sha256": "f15cde006f24ed6ce5c7be1299d7e5dda974047dfe8a629d3f4ffce6a49c84ea"
+      "elapsed_seconds": 16.149793270014925,
+      "log_sha256": "2a04ed87d95a8947b3acd297c38de96bb0e3ffca0447c186c6add70a26a91bde"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.6202737169805914,
+      "elapsed_seconds": 0.8005615300207864,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -83,19 +98,21 @@
     "passed": true,
     "scene_count": 6,
     "sampled_frames": 1181,
-    "matrix_checks": 84487,
-    "discrepancy_count": 0
+    "matrix_checks": 86703,
+    "discrepancy_count": 0,
+    "source_cad_hash_checked": false,
+    "writer_freshness_binding_passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola_attachment_detail.FCStd": "5ef5d2d63366b8adc8f71bd9f46db2e76a7a2cd3af7b1e9a6d96837f9d7123d1",
-    "gondola_power_options.FCStd": "926ec011df2952406b405d8b389da925d1a226455e5a25faa45b2e61d5028c8f",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "a57315d087326433a2e1499f4c29b59957133a35b7a11dfc790d9dc772eb29e3",
-    "gondola_print_parts.FCStd": "18d3e555495c93b5899c964ea1264830748703de0d3c01db607434d54a40e260",
-    "gondola.FCStd": "13d8064b310cfc071e629e7d69ef6bf16da9e1c3a6cf0b1b48b078209f29c9c8"
+    "gondola.FCStd": "2bd35937ce2a0f8ce6ced879cb56fa552b528ba7166f19fc61eb9e95c679f456",
+    "gondola_print_parts.FCStd": "1480101890b6254a644f3ce64615f09608be063c2d48561f9933c77564e57f0a",
+    "gondola_attachment_detail.FCStd": "ed59a1759195c78804564f4ee7bd62bedafdfce56adaf195caa192ecf4eaa2f4",
+    "gondola_power_options.FCStd": "b1bb615480247982b554ceb10b720cff5913a2b733968adbd22342ded923b66a",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "64a385c562a2f74eaf1c7ff71a140f078ac97a1236ad87b06877a48f5c107ca0"
   },
-  "print_bundle_sha256": "7632a0f9ac8d6c7f7125c2be3f3a9931751918138738d08f3a7a201c6850ebac",
-  "simulation_parameters_sha256": "c09c3147d6c7ae1f46ee1f8e804ebf85e992cd942a7306637f16dd0975050044",
+  "print_bundle_sha256": "fdf073948c7d6860f37053adc5c6d7fa66743897ade6afc1cce3cb5a293ec582",
+  "simulation_parameters_sha256": "e2feff4d4ac7bbe3a9d1c6bc4b05193d05dfd00417225685295469f6de9b603c",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "ch_optical_upper_revision",
-  "evidence_archive_sha256": "04c9c608be420e96f0e46ba1e1eebac1308de1109d644e0372b5e17f6c620958"
+  "evidence_record_key": "ci_common_instrument_revision",
+  "evidence_archive_sha256": "764a1031397cdd9155ade37083353bef7d09f5641bf16d94ccb0866153769e49"
 }

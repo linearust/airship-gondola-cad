@@ -80,20 +80,36 @@ class NativeInterfaceTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     doc.OpticalFlowModule.getParentGeoFeatureGroup(),
-                    doc.BatteryEquipmentModule,
+                    doc.InstrumentPitchStage,
                 )
-                self.assertEqual(doc.OpticalFlowModule.OpticalAttachmentMode, "carrier")
                 self.assertEqual(
-                    doc.OpticalFlowModule.CarrierHostName, "BatteryEquipmentModule"
+                    doc.OpticalFlowModule.OpticalAttachmentMode, "instrument"
+                )
+                self.assertNotIn(
+                    "CarrierHostName", doc.OpticalFlowModule.PropertiesList
+                )
+                self.assertEqual(
+                    doc.InstrumentPitchStage.getParentGeoFeatureGroup(),
+                    doc.ElectronicsEquipmentModule,
+                )
+                self.assertEqual(
+                    doc.ElectronicsMount.getParentGeoFeatureGroup(),
+                    doc.InstrumentPitchStage,
+                )
+                self.assertEqual(
+                    doc.InstrumentMountBase.getParentGeoFeatureGroup(),
+                    doc.ElectronicsEquipmentModule,
                 )
                 self.assertNotIn("RailPositionX", doc.OpticalFlowModule.PropertiesList)
                 self.assertEqual(doc.OpticalFootBolt1.HardwareSKU, "M2X8_BUTTON_HEAD")
                 self.assertEqual(doc.OpticalFootNut1.HardwareSKU, "M2_HEX_NUT")
                 self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountScrew"))
                 self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountNut"))
+                self.assertIsNone(doc.getObject("OpticalMountBase"))
+                self.assertIsNone(doc.getObject("OpticalPitchStage"))
                 self.assertEqual(
-                    doc.OpticalMountBase.getParentGeoFeatureGroup(),
-                    doc.OpticalFlowModule,
+                    doc.OpticalSensorTray.getParentGeoFeatureGroup(),
+                    doc.OpticalSensorFrame,
                 )
                 self.assertEqual(
                     len(doc.DesignRegistry.PrintedParts),
@@ -256,10 +272,15 @@ class NativeInterfaceTests(unittest.TestCase):
 
     def test_saved_mount_has_complete_slot_bearing_faces_and_clear_axes(self):
         from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import instrument_mount
         from gondola.validation.equipment import slot_mounting_pad_check
 
         for kind in ("electronics", "accessory"):
-            shape = mounts.mount_shape(kind).copy()
+            shape = (
+                instrument_mount.upper_shape()
+                if kind == "electronics"
+                else mounts.mount_shape(kind).copy()
+            )
             for centre in mounts.mount_hole_centres(kind):
                 result = slot_mounting_pad_check(
                     shape,
@@ -273,9 +294,10 @@ class NativeInterfaceTests(unittest.TestCase):
 
     def test_partial_bearing_or_filled_bore_is_rejected(self):
         from gondola.parts import equipment_mounts as mounts
+        from gondola.parts import instrument_mount
         from gondola.validation.equipment import slot_mounting_pad_check
 
-        shape = mounts.mount_shape("electronics").copy()
+        shape = instrument_mount.upper_shape()
         centre = mounts.FC_HOLE_CENTRES[0]
         x, y = centre
         bottom, thickness = mounts.DECK_BOTTOM_Z, mounts.DECK_THICKNESS

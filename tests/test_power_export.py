@@ -66,18 +66,13 @@ class SavedPowerExportTests(unittest.TestCase):
             try:
                 from gondola.parts import optical_interface
 
-                for name in {
-                    power_mount.DEFAULT_HOST,
-                    power_mount.DEFAULT_OPTICAL_HOST,
-                    optical_interface.DEFAULT_HOST,
-                }:
+                for name in {power_mount.DEFAULT_HOST, optical_interface.DEFAULT_HOST}:
                     main.addObject("App::Part", name)
                 optical = main.addObject("App::Part", "OpticalFlowModule")
                 optical.addProperty("App::PropertyString", "OpticalAttachmentMode")
-                optical.OpticalAttachmentMode = "carrier"
-                optical_interface.attach_to_host(
-                    optical, main.getObject(optical_interface.DEFAULT_HOST)
-                )
+                optical.OpticalAttachmentMode = "instrument"
+                main.getObject(optical_interface.DEFAULT_HOST).addObject(optical)
+                optical.Placement = optical_interface.placement()
                 registry = main.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
                 set_property(

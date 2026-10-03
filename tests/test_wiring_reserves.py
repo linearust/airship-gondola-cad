@@ -20,6 +20,7 @@ class WiringReserveTests(unittest.TestCase):
         from gondola.parts import (
             equipment_envelopes,
             equipment_mounts,
+            instrument_mount,
             optical_mount,
             optical_sensor,
             wiring_reserves,
@@ -43,23 +44,26 @@ class WiringReserveTests(unittest.TestCase):
                     App.Vector(station.x_mm, 0, 0),
                     App.Rotation(App.Vector(0, 0, 1), station.yaw_deg),
                 )
-        carrier = equipment_mounts.build_mount(cls.doc, electronics, "electronics")
+        instrument = instrument_mount.build_mount(cls.doc, electronics)
+        stage = instrument["pitch_stage"]
         accessory_carrier = equipment_mounts.build_mount(
             cls.doc, accessory, "accessory"
         )
         refs, reserves = equipment_envelopes.build_equipment(
-            cls.doc, battery, electronics, accessory
+            cls.doc, battery, stage, accessory
         )
-        optical = optical_mount.build_optical_mount(cls.doc, battery)
+        optical = optical_mount.build_optical_mount(cls.doc, stage)
         sensor_refs, sensor_reserves = optical_sensor.build_sensor(
-            cls.doc, optical["pitch_stage"]
+            cls.doc, optical["sensor_frame"]
         )
         refs += sensor_refs
         reserves += sensor_reserves
         registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
         for name, value in {
-            "PrintedParts": [carrier, accessory_carrier] + optical["printed"],
-            "HardwareParts": optical["hardware"],
+            "PrintedParts": instrument["printed"]
+            + [accessory_carrier]
+            + optical["printed"],
+            "HardwareParts": instrument["hardware"] + optical["hardware"],
             "ReferenceParts": refs,
             "ClearanceVolumes": reserves,
             "TapeReferences": [],
@@ -124,9 +128,7 @@ class WiringReserveTests(unittest.TestCase):
             "XT30ServiceReserve",
             "CapacitorServiceReserve",
         ):
-            self.assertEqual(
-                self.wiring.parent_name(name), "ElectronicsEquipmentModule"
-            )
+            self.assertEqual(self.wiring.parent_name(name), "InstrumentPitchStage")
 
     def test_unknown_reservation_cannot_silently_use_the_fc_frame(self):
         for name in (
@@ -380,66 +382,12 @@ class WiringReserveTests(unittest.TestCase):
 
 
 @unittest.skipIf(App is None, "requires FreeCAD's Python runtime")
-class RailOpticalWiringGapTests(unittest.TestCase):
+class InstrumentOpticalWiringGapTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from gondola.cad import set_property
-        from gondola.contracts import optical_attachment
-        from gondola.parts import (
-            equipment_envelopes,
-            equipment_mounts,
-            optical_mount,
-            optical_sensor,
-            rail,
-            wiring_reserves,
-        )
-
-        cls.doc = App.newDocument("RailOpticalWiringGapRegression")
-        parents = []
-        for name, x, yaw in (
-            ("BatteryEquipmentModule", 84, 0),
-            ("ElectronicsEquipmentModule", -56, 180),
-            ("AccessoryEquipmentModule", -140, 180),
-        ):
-            group = cls.doc.addObject("App::Part", name)
-            group.Placement = App.Placement(
-                App.Vector(x, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
-            )
-            parents.append(group)
-        printed = [
-            equipment_mounts.build_mount(cls.doc, parent, kind)
-            for parent, kind in zip(parents, ("battery", "electronics", "accessory"))
-        ]
-        # A rail-mode rebuild emits its native wiring contract from the selected
-        # mode. The audit below must independently read that saved mode.
-        with patch.object(optical_attachment, "SELECTED_MOUNT", "rail"):
-            refs, reserves = equipment_envelopes.build_equipment(cls.doc, *parents)
-        optical = optical_mount.build_optical_mount(cls.doc, mode="rail")
-        optical["group"].Placement = App.Placement(
-            App.Vector(140, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
-        )
-        sensor_refs, sensor_reserves = optical_sensor.build_sensor(
-            cls.doc, optical["pitch_stage"]
-        )
-        built_rail = rail.build_rail(cls.doc)
-        locks = rail.build_attachment_hardware(
-            cls.doc, optical["group"], "OpticalFlowModule"
-        )
-        registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
-        for name, values in {
-            "PrintedParts": printed + optical["printed"] + built_rail["printed"],
-            "HardwareParts": locks,
-            "ReferenceParts": refs + sensor_refs,
-            "ClearanceVolumes": reserves + sensor_reserves,
-            "TapeReferences": built_rail["tapes"],
-        }.items():
-            set_property(registry, name, values, "App::PropertyLinkListGlobal")
-        cls.reserve_names = tuple(wiring_reserves.reserve_shapes()) + (
-            "MTF02PConnectorReserve",
-            "MTF02POpticalClearanceReserve",
-            "CapacitorServiceReserve",
-        )
-        cls.doc.recompute()
+        # Reuse the complete common-platform fixture without duplicating its
+        # general wiring tests or introducing an obsolete optical mode.
+        WiringReserveTests.setUpClass.__func__(cls)
 
     @classmethod
     def tearDownClass(cls):
@@ -456,7 +404,7 @@ class RailOpticalWiringGapTests(unittest.TestCase):
             rows, _ = wiring.reserve_checks(self.doc)
         return next(row for row in rows if row["object"] == "FCWiringClearanceReserve")
 
-    def test_saved_rail_contract_requires_actual_tray_with_unchanged_gap(self):
+    def test_common_platform_contract_requires_actual_tray_with_unchanged_gap(self):
         from gondola.parts import wiring_reserves
 
         self.assertIsNone(self.doc.getObject("OpticalMountBase"))
@@ -467,31 +415,25 @@ class RailOpticalWiringGapTests(unittest.TestCase):
         self.assertEqual(len(gaps), 6)
         self.assertIn("OpticalSensorTray", {item["object"] for item in gaps})
         self.assertNotIn("OpticalMountBase", {item["object"] for item in gaps})
-        for mode, target, absent in (
-            ("carrier", "OpticalMountBase", "OpticalSensorTray"),
-            ("rail", "OpticalSensorTray", "OpticalMountBase"),
-        ):
-            expected = {
-                "ModuleRadioEnvelope": 2.0,
-                "ModulePASEnvelope": 2.0,
-                "XT30ServiceReserve": 2.0,
-                "MTF02POpticalClearanceReserve": 1.5,
-                target: 1.5,
-                "CapacitorServiceReserve": 1.5,
-            }
-            actual = wiring_reserves.neighbour_gap_pairs(mode)[
-                "FCWiringClearanceReserve"
-            ]
-            self.assertEqual(actual, expected)
-            self.assertNotIn(absent, actual)
-            self.assertEqual(
-                wiring_reserves.reserve_contracts(optical_mode=mode)[
-                    "FCWiringClearanceReserve"
-                ]["minimum_neighbour_gaps_mm"],
-                expected,
-            )
+        expected = {
+            "ModuleRadioEnvelope": 2.0,
+            "ModulePASEnvelope": 2.0,
+            "XT30ServiceReserve": 2.0,
+            "MTF02POpticalClearanceReserve": 1.5,
+            "OpticalSensorTray": 1.5,
+            "CapacitorServiceReserve": 1.5,
+        }
+        self.assertEqual(
+            wiring_reserves.neighbour_gap_pairs()["FCWiringClearanceReserve"], expected
+        )
+        self.assertEqual(
+            wiring_reserves.reserve_contracts()["FCWiringClearanceReserve"][
+                "minimum_neighbour_gaps_mm"
+            ],
+            expected,
+        )
 
-    def test_missing_rail_tray_cannot_pass_as_an_inapplicable_base(self):
+    def test_missing_bracket_cannot_pass_as_an_inapplicable_base(self):
         registry = self.doc.DesignRegistry
         original = list(registry.PrintedParts)
         try:
@@ -510,12 +452,12 @@ class RailOpticalWiringGapTests(unittest.TestCase):
         finally:
             registry.PrintedParts = original
 
-    def test_clear_but_cramped_rail_tray_and_stale_base_metadata_are_rejected(self):
+    def test_clear_but_cramped_bracket_and_stale_base_metadata_are_rejected(self):
         from gondola.parts import wiring_reserves
         from gondola.validation.wiring import named_gap_checks
 
         source = Part.makeBox(2, 2, 2)
-        requirements = wiring_reserves.neighbour_gap_pairs("rail")
+        requirements = wiring_reserves.neighbour_gap_pairs()
         shapes = {
             "FCWiringClearanceReserve": source,
             **{
@@ -536,9 +478,10 @@ class RailOpticalWiringGapTests(unittest.TestCase):
         obj = self.doc.FCWiringClearanceReserve
         original = obj.WiringContract
         try:
-            obj.WiringContract = json.dumps(
-                wiring_reserves.reserve_contracts(optical_mode="carrier")[obj.Name]
-            )
+            stale = wiring_reserves.reserve_contracts()[obj.Name]
+            gaps = stale["minimum_neighbour_gaps_mm"]
+            gaps["OpticalMountBase"] = gaps.pop("OpticalSensorTray")
+            obj.WiringContract = json.dumps(stale)
             row = self.fc_result()
             self.assertFalse(row["native_wiring_contract_matches"])
             self.assertFalse(row["passed"])

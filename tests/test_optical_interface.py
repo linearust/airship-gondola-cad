@@ -1,5 +1,7 @@
-"""Compact foot reuses the common carrier slot and follows its native parent."""
+"""Rigid bracket uses two existing plate slots and explicit shared parentage."""
 
+import itertools
+import math
 import unittest
 
 try:
@@ -10,257 +12,112 @@ except ImportError:
 
 
 @unittest.skipIf(App is None, "Requires FreeCAD")
-class OpticalCarrierInterfaceTests(unittest.TestCase):
-    def new_carrier_mount(self, side="PositiveX"):
+class OpticalInstrumentInterfaceTests(unittest.TestCase):
+    def new_mount(self):
         from gondola.parts import mounting_plate, optical_mount
 
-        doc = App.newDocument("OpticalLocatorInterface")
+        doc = App.newDocument("OpticalInstrumentInterface")
         self.addCleanup(App.closeDocument, doc.Name)
-        host = doc.addObject("App::Part", "BatteryEquipmentModule")
-        plate = doc.addObject("Part::Feature", "BatteryMount")
+        host = doc.addObject("App::Part", "InstrumentPitchStage")
+        plate = doc.addObject("Part::Feature", "ElectronicsMount")
         plate.Shape = mounting_plate.shape()
         host.addObject(plate)
-        optical_mount.build_optical_mount(doc, host, side)
-        doc.recompute()
+        optical_mount.build_optical_mount(doc, host)
         return doc
 
-    def test_component_proxies_enclose_compact_base(self):
+    def test_component_proxies_enclose_complete_bracket_and_exclude_empty_window(self):
+        from gondola.cad import union
         from gondola.parts import optical_interface, optical_mount
 
-        shape = optical_mount.base_shape()
-        proxies = Part.makeCompound(
-            [s for _, s in optical_interface.base_component_proxies()]
-        )
+        shape = optical_mount.sensor_tray_shape()
+        proxies = union([s for _, s in optical_interface.base_component_proxies()])
         self.assertLess(abs(shape.cut(proxies).Volume), 1e-5)
-        self.assertEqual(len(optical_interface.base_component_proxies()), 3)
-        self.assertEqual((shape.BoundBox.XLength, shape.BoundBox.YLength), (8, 18))
+        # The empty space above the foot remains available for FC wiring;
+        # a single full bounding box would create a false collision here.
+        inside_window = Part.makeBox(10, 4, 8, App.Vector(-5, -2, 5))
+        self.assertLess(abs(inside_window.common(proxies).Volume), 1e-5)
 
-    def test_both_sides_reuse_existing_slot_without_intersecting_plate(self):
+    def test_both_existing_slots_and_both_bearing_lands_are_open(self):
         from gondola.parts import mounting_plate, optical_interface, optical_mount
 
         plate = mounting_plate.shape()
-        for side in optical_interface.SIDES:
-            pose = optical_interface.placement(side)
-            base = optical_mount.base_shape()
-            base.Placement = pose
-            self.assertLess(abs(base.common(plate).Volume), 1e-5)
-            self.assertAlmostEqual(abs(pose.Base.x), 27)
-            self.assertAlmostEqual(pose.Base.y, 0)
-            for x, y in optical_interface.CLAMP_CENTRES.values():
-                drill = Part.makeCylinder(1.25, 4, App.Vector(x, y, -3))
-                drill.Placement = pose
-                self.assertLess(abs(drill.common(plate).Volume), 1e-5)
+        shape = optical_mount.sensor_tray_shape()
+        shape.Placement = optical_interface.placement()
+        self.assertLess(abs(shape.common(plate).Volume), 1e-5)
+        for x in (-19, 19):
+            bore = Part.makeCylinder(1.1, 4, App.Vector(x, 27, 16))
+            self.assertLess(abs(bore.common(plate).Volume), 1e-5)
+            # Independent literal support strips on both sides of the 2.6mm slot.
+            for y in (28.5, 25.1):
+                land = Part.makeBox(2, 0.4, 0.2, App.Vector(x - 1, y, 17))
+                self.assertLess(abs(land.cut(plate).Volume), 1e-5)
+        self.assertEqual(tuple(optical_interface.placement().Base), (0.0, 27.0, 19.0))
 
-    def test_located_foot_seats_fully_and_reuses_positive_end_fastener(self):
-        from gondola.validation.optical import _carrier_interface_checks
+    def test_only_common_instrument_parent_is_accepted(self):
+        from gondola.contracts.optical_attachment import resolve_mount_mode
+        from gondola.parts import optical_interface, optical_mount
 
-        for side in ("PositiveX", "NegativeX"):
-            with self.subTest(side=side):
-                doc = self.new_carrier_mount(side)
-                result = _carrier_interface_checks(doc)
-                self.assertTrue(result["passed"], result)
-                self.assertIsNone(doc.getObject("OpticalFootBolt0"))
-                self.assertIsNone(doc.getObject("OpticalFootNut0"))
-                bolt = doc.OpticalFootBolt1
-                self.assertEqual(bolt.HardwareSKU, "M2X8_BUTTON_HEAD")
-                self.assertAlmostEqual(bolt.Shape.BoundBox.Center.y, 5.0)
-                self.assertEqual(doc.OpticalFootNut1.HardwareSKU, "M2_HEX_NUT")
-
-    def test_material_witness_rejects_missing_rotated_or_thin_locator(self):
-        from gondola.parts import optical_interface
-        from gondola.validation.optical import _carrier_interface_checks
-
-        doc = self.new_carrier_mount()
-        foot = doc.OpticalMountBase
-        original = foot.Shape.copy()
-        above = original.cut(Part.makeBox(10, 18, 3, App.Vector(-5, -9, -3)))
-        rotated = optical_interface.locator_shape()
-        rotated.rotate(App.Vector(0, -2, 0), App.Vector(0, 0, 1), 90)
-        thin = optical_interface.locator_shape().common(
-            Part.makeBox(1.0, 18, 3, App.Vector(-0.5, -9, -3))
+        doc = self.new_mount()
+        self.assertEqual(
+            optical_interface.attachment_description(doc.OpticalFlowModule)["host"],
+            "InstrumentPitchStage",
         )
-        for name, replacement in (
-            ("missing", None),
-            ("rotated", rotated),
-            ("thin", thin),
-        ):
-            with self.subTest(locator=name):
-                foot.Shape = above if replacement is None else above.fuse(replacement)
-                result = _carrier_interface_checks(doc)
-                self.assertFalse(result["passed"], result)
-                core = next(
-                    row
-                    for row in result["witnesses"]
-                    if row["kind"] == "rigid_locator_full_length_and_section"
-                )
-                self.assertFalse(core["passed"])
-        foot.Shape = original
-        self.assertTrue(_carrier_interface_checks(doc)["passed"])
+        for mode in ("carrier", "rail", "", [], None):
+            if mode is None:
+                self.assertEqual(resolve_mount_mode(mode), "instrument")
+            else:
+                with self.assertRaises(ValueError):
+                    resolve_mount_mode(mode)
+        other = doc.addObject("App::Part", "BatteryEquipmentModule")
+        with self.assertRaises(ValueError):
+            optical_mount.build_optical_mount(doc, other)
+        other.addObject(doc.OpticalFlowModule)
+        with self.assertRaises(ValueError):
+            optical_interface.attachment_description(doc.OpticalFlowModule)
 
-    def test_under_slot_blockage_and_incomplete_seating_are_rejected(self):
-        from gondola.cad import world_shape
-        from gondola.validation.optical import _carrier_interface_checks
+    def test_registration_reserve_bounds_combined_hole_and_slot_freedom(self):
+        from gondola.parts import optical_interface as interface
 
-        doc = self.new_carrier_mount()
-        plate = doc.BatteryMount
-        original = plate.Shape.copy()
-        # A shallow artificial ledge prevents the tongue from reaching the
-        # flat support plane, despite clear entry at the top of the slot.
-        ledge = Part.makeBox(3, 3, 0.4, App.Vector(-1.5, -4, -1.3))
-        ledge.Placement = doc.OpticalFlowModule.getGlobalPlacement().multiply(
-            ledge.Placement
+        per_joint = (2.9 - 1.8) / 2 + (2.5 - 1.8) / 2
+        yaw = math.asin(2 * per_joint / 38)
+        self.assertGreaterEqual(interface.MAX_REGISTRATION_YAW_RAD, yaw)
+        self.assertGreaterEqual(interface.MAX_REGISTRATION_Y, per_joint)
+        self.assertGreaterEqual(
+            interface.MAX_REGISTRATION_X, per_joint + 19 * (1 - math.cos(yaw))
         )
-        self.assertGreater(ledge.common(world_shape(doc.OpticalMountBase)).Volume, 0)
-        plate.Shape = original.fuse(ledge)
-        result = _carrier_interface_checks(doc)
-        self.assertFalse(result["passed"], result)
-        insertion = next(
-            row
-            for row in result["witnesses"]
-            if row["kind"] == "continuous_full_seating_insertion"
-        )
-        self.assertGreater(insertion["obstruction_mm3"], 0)
-        plate.Shape = original
-        foot = doc.OpticalMountBase
-        foot.Placement.Base.z += 0.1
-        result = _carrier_interface_checks(doc)
-        self.assertFalse(result["passed"], result)
-        self.assertTrue(
-            any(
-                row["kind"] == "foot_support_strip"
-                and row.get("surface") == "foot"
-                and not row["passed"]
-                for row in result["witnesses"]
-            )
+        self.assertFalse(
+            interface.interface_contract()["full_free_screw_offset_support_qualified"]
         )
 
-    def test_long_or_protruding_locator_cannot_pass_nominal_fit_screen(self):
-        from gondola.validation.optical import _carrier_interface_checks
-
-        doc = self.new_carrier_mount()
-        foot = doc.OpticalMountBase
-        original = foot.Shape.copy()
-        for name, protrusion in (
-            ("blocked slot end", Part.makeBox(2, 2, 1, App.Vector(-1, -7, -1))),
-            (
-                "underside intrusion",
-                Part.makeBox(1, 2, 2.5, App.Vector(-0.5, -3, -2.5)),
-            ),
-        ):
-            with self.subTest(defect=name):
-                foot.Shape = original.fuse(protrusion)
-                self.assertFalse(_carrier_interface_checks(doc)["passed"])
-
-    def test_dimensional_screen_preserves_underside_space_and_registration_bound(self):
-        import math
-
-        from gondola.parts import optical_interface
-
-        self.assertGreaterEqual(2.0 - 0.3 - (1.2 + 0.3), 0.19)
-        self.assertLess(
-            math.asin((2.9 - 2.1) / 5.7),
-            optical_interface.MAX_REGISTRATION_YAW_RAD,
-        )
-        self.assertAlmostEqual(optical_interface.LOCATOR_DEPTH, 1.2)
-        self.assertAlmostEqual(optical_interface.LOCATOR_WIDTH, 2.4)
-        self.assertAlmostEqual(optical_interface.CLAMP_HOLE_DIAMETER, 2.2)
-        self.assertAlmostEqual(
-            optical_interface.interface_contract()["locator"][
-                "nominal_slot_side_clearance_mm"
-            ],
-            0.1,
-        )
-
-    def test_registration_bound_encloses_rotated_and_shifted_sensor(self):
-        import math
-
+    def test_registration_bound_encloses_sensor_and_complete_bracket(self):
         from gondola.contracts.optical_sensors import get_sensor_profile
-        from gondola.parts import optical_interface, optical_sensor
+        from gondola.parts import (
+            optical_interface as interface,
+        )
+        from gondola.parts import (
+            optical_mount,
+            optical_sensor,
+        )
 
-        shape = optical_sensor.envelope_shape(get_sensor_profile("MTF01P"))
-        bound = optical_interface.registration_bound(shape)
-        for fraction in (-1, -0.5, 0, 0.5, 1):
-            for sign in (-1, 1):
+        for shape in (
+            optical_sensor.envelope_shape(get_sensor_profile("MTF01P")),
+            optical_mount.sensor_tray_shape(),
+        ):
+            bound = interface.registration_bound(shape)
+            for fraction, sx, sy in itertools.product(
+                (-1, -0.5, 0, 0.5, 1), (-1, 1), (-1, 1)
+            ):
                 actual = shape.copy()
                 actual.rotate(
                     App.Vector(),
                     App.Vector(0, 0, 1),
-                    math.degrees(fraction * optical_interface.MAX_REGISTRATION_YAW_RAD),
+                    math.degrees(fraction * interface.MAX_REGISTRATION_YAW_RAD),
                 )
                 actual.translate(
                     App.Vector(
-                        sign * optical_interface.MAX_REGISTRATION_X,
-                        -sign * optical_interface.MAX_REGISTRATION_Y,
+                        sx * interface.MAX_REGISTRATION_X,
+                        sy * interface.MAX_REGISTRATION_Y,
                         0,
                     )
                 )
                 self.assertLess(abs(actual.cut(bound).Volume), 1e-5)
-
-    def test_native_side_changes_and_reparenting_move_entire_mount(self):
-        from gondola.parts import optical_interface, optical_mount
-
-        doc = App.newDocument("OpticalCarrierInterface")
-        try:
-            hosts = [
-                doc.addObject("App::Part", name)
-                for name in optical_interface.SUPPORTED_HOSTS
-            ]
-            hosts[1].Placement.Base = App.Vector(-54, -0.1, 0)
-            kit = optical_mount.build_optical_mount(doc, hosts[0])
-            optical_interface.attach_to_host(kit["group"], hosts[1], "NegativeX")
-            self.assertEqual(kit["group"].getParentGeoFeatureGroup(), hosts[1])
-            self.assertEqual(kit["group"].CarrierHostName, hosts[1].Name)
-            self.assertEqual(
-                tuple(kit["pitch_stage"].getGlobalPlacement().Base), (-81, -0.1, 38)
-            )
-            self.assertNotIn("RailPositionX", kit["group"].PropertiesList)
-            kit["group"].MountSide = "PositiveX"
-            doc.recompute()
-            self.assertAlmostEqual(kit["pitch_stage"].getGlobalPlacement().Base.x, -27)
-            with self.assertRaises(ValueError):
-                optical_interface.placement("Unknown")
-            other = doc.addObject("App::Part", "NotACarrier")
-            with self.assertRaises(ValueError):
-                optical_interface.attach_to_host(kit["group"], other)
-        finally:
-            App.closeDocument(doc.Name)
-
-    def test_carrier_support_and_clamp_axis_witnesses_reject_missing_material(self):
-        from gondola.validation.optical import _carrier_interface_checks
-
-        doc = self.new_carrier_mount()
-        self.assertTrue(_carrier_interface_checks(doc)["passed"])
-        carrier = doc.BatteryMount
-        original = carrier.Shape.copy()
-        try:
-            # Remove real stock through the saved carrier's top 2mm deck;
-            # the outer support strip is at carrier X29..31, Y-8..8.
-            deck_bottom = original.BoundBox.ZMax - 2.0
-            defect = Part.makeBox(2, 2, 2, App.Vector(29, 0, deck_bottom))
-            self.assertAlmostEqual(original.common(defect).Volume, 8.0)
-            carrier.Shape = original.cut(defect)
-            result = _carrier_interface_checks(doc)
-            self.assertFalse(result["passed"])
-            support = next(
-                row
-                for row in result["witnesses"]
-                if row["kind"] == "foot_support_strip"
-                and row["surface"] == "carrier"
-                and row["x_min_mm"] == 2.0
-            )
-            self.assertFalse(support["passed"])
-            self.assertAlmostEqual(support["missing_material_mm3"], 0.8)
-        finally:
-            carrier.Shape = original
-        foot = doc.OpticalMountBase
-        original = foot.Shape.copy()
-        try:
-            foot.Shape = original.fuse(Part.makeCylinder(1, 2, App.Vector(0, 5, 0)))
-            result = _carrier_interface_checks(doc)
-            self.assertFalse(result["passed"])
-            self.assertTrue(
-                any(row.get("obstruction_mm3", 0) > 6 for row in result["witnesses"])
-            )
-        finally:
-            foot.Shape = original
-        self.assertTrue(_carrier_interface_checks(doc)["passed"])

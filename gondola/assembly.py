@@ -22,11 +22,6 @@ from gondola.contracts.design import (
     WIRING_PURCHASE_PLAN,
     release_status,
 )
-from gondola.contracts.optical_attachment import (
-    DEFAULT_CARRIER_HOST,
-    DEFAULT_CARRIER_SIDE,
-    resolve_mount_mode,
-)
 from gondola.contracts.power_options import POWER_ARTIFACT_NAMES, power_option_contract
 from gondola.mass_budget import mass_budget
 from gondola.parts.equipment_envelopes import build_equipment
@@ -80,6 +75,7 @@ def style_assembly(doc):
 def build_assembly():
     from gondola.parts import equipment_mounts as mounts
     from gondola.parts import (
+        instrument_mount,
         optical_interface,
         optical_mount,
         optical_sensor,
@@ -119,13 +115,9 @@ def build_assembly():
         "Accessories | navigation and Mini on a common plate",
     )
     propulsion_module = propulsion.build_propulsion_module(doc)
-    optical_mode = resolve_mount_mode()
-    optical_assembly = optical_mount.build_optical_mount(
-        doc,
-        doc.getObject(DEFAULT_CARRIER_HOST) if optical_mode == "carrier" else None,
-        DEFAULT_CARRIER_SIDE,
-        mode=optical_mode,
-    )
+    instrument = instrument_mount.build_mount(doc, electronics_module)
+    instrument_stage = instrument["pitch_stage"]
+    optical_assembly = optical_mount.build_optical_mount(doc, instrument_stage)
     modules = [doc.getObject(station.object_name) for station in MODULE_STATIONS]
     for module, station in zip(modules, MODULE_STATIONS, strict=True):
         x = station.x_mm
@@ -184,7 +176,7 @@ def build_assembly():
         module.Placement.Base.y = 0
     mount_parts = [
         mounts.build_mount(doc, battery_module, "battery"),
-        mounts.build_mount(doc, electronics_module, "electronics"),
+        instrument["upper"],
         mounts.build_mount(doc, accessory_module, "accessory"),
     ]
     rail_attachments = []
@@ -200,33 +192,35 @@ def build_assembly():
         if "MotorCarrier" in obj.Name:
             set_print_sku(obj, obj.Name)
     reference_parts, clearance_volumes = build_equipment(
-        doc, battery_module, electronics_module, accessory_module
+        doc, battery_module, instrument_stage, accessory_module
     )
     sensor_references, sensor_clearances = optical_sensor.build_sensor(
-        doc, optical_assembly["pitch_stage"]
+        doc, optical_assembly["sensor_frame"]
     )
     reference_parts += sensor_references + propulsion_module["references"]
     clearance_volumes += sensor_clearances
     clearance_volumes += propulsion_module["clearances"]
     clearance_volumes += propulsion_wiring.build_reserves(
-        doc, propulsion_module["group"], electronics_module
+        doc, propulsion_module["group"], instrument_stage
     )
     fit_coupons = rail.build_coupons(doc)
     fit_coupons["printed"] += propulsion.build_fit_coupons(doc)["printed"]
     printed_parts = (
         rail_assembly["printed"]
         + mount_parts
+        + [instrument["lower"]]
         + propulsion_module["printed"]
         + optical_assembly["printed"]
     )
     hardware_parts = (
         rail_attachments
+        + instrument["hardware"]
         + propulsion_module.get("hardware", [])
         + optical_assembly["hardware"]
     )
     for objects, category in [
         (rail_assembly["printed"], "Rail"),
-        (mount_parts, "Equipment mounts"),
+        (mount_parts + [instrument["lower"]], "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
         (optical_assembly["printed"], "Optical attachment and sensor tray"),
         (fit_coupons["printed"], "Fit samples"),
@@ -240,6 +234,7 @@ def build_assembly():
         ("FitCoupons", fit_coupons["printed"]),
         ("Modules", modules),
         ("EquipmentMounts", mount_parts),
+        ("InstrumentMountParts", instrument["printed"]),
         ("OpticalMountParts", optical_assembly["printed"]),
         ("RailSegments", rail_assembly["printed"]),
         ("RailLocks", rail_attachments),
@@ -323,11 +318,9 @@ def build_assembly():
         "equipment_mounts": {
             kind: mounts.mount_contract(kind) for kind in mounts.MOUNT_NAMES
         },
-        "optical_mount": optical_mount.mount_contract(optical_mode),
-        "optical_attachment_mode": optical_mode,
-        "optical_attachment_interface": optical_interface.interface_contract(
-            optical_mode
-        ),
+        "optical_mount": optical_mount.mount_contract(),
+        "instrument_mount": instrument_mount.mount_contract(),
+        "optical_attachment_interface": optical_interface.interface_contract(),
         "installed_printed_part_count": len(printed_parts),
         "purchased_hardware_count": len(hardware_parts),
         "unique_stl_count": manifest["unique_stl_count"],

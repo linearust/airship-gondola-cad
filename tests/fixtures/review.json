@@ -1,15 +1,15 @@
 {
-  "revision": "CH",
+  "revision": "CI",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
-  "old_fixture_sha256": "3bf1b6ea0d6f6c9c95ad7f81901f98205299780202bd6ea9ff3d03a2756f4933",
+  "candidate_sha256": "0eb95c67ceae9ee9737cfa44900e5949755f3286c1996dac74ce963a74fa8939",
+  "old_fixture_sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "ch_optical_upper_revision",
+      "ci_common_instrument_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "60c8b61a2e224cb1aca4c85f0f5f133460cf214a5cb60afb7241676ed0d33005"
+    "canonical_json_sha256": "a49860fb521b48cc3dab7b4c52f06dac11a9f95cfcdf94bb7842af023d8d193a"
   },
-  "scope": "Exact original lower pedestal restored; one extended upper tray supports carrier-stack pitch or fixed direct rail attachment. Independent saved geometry, placements, native controls, metadata, primitive witnesses and both-mode optical/service review. Nominal CAD only; physical qualification remains outstanding."
+  "scope": "Shared locked FC/optical pitch platform. Independently reconstructed instrument and optical solids, unchanged plate/shoe interfaces, native controls, all placements, metadata, procurement and export inventory. Nominal CAD regression baseline only; physical qualification remains outstanding."
 }

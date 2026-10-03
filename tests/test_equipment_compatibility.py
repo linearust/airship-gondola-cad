@@ -116,14 +116,46 @@ class EquipmentCompatibilityTests(unittest.TestCase):
         result = compatibility_check(self.doc)
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["combinations"]), 3)
+        self.assertTrue(result["all_options_screened"])
+        self.assertTrue(result["selected_combination_passed"])
+        self.assertEqual(
+            result["selected_combination"],
+            {"navigation_model": "PAS", "radio_model": "LR24FMINI"},
+        )
+        self.assertFalse(result["all_options_supported"])
         for row in result["combinations"]:
             self.assertEqual(len(row["optical_compatibility"]["sensor_screens"]), 2)
             if row["navigation_model"] == "MGF10A":
                 antenna = row["direct_antenna"]["optical_clearance"]
                 self.assertEqual(len(antenna["sensor_screens"]), 2)
+                self.assertFalse(row["passed"])
+                self.assertTrue(row["base_installation_passed"])
+                self.assertFalse(row["direct_antenna"]["passed"])
+                self.assertTrue(row["remote_antenna"]["supported_conditionally"])
+                self.assertFalse(row["remote_antenna"]["location_modeled"])
                 self.assertTrue(
-                    all(pose_row["passed"] for pose_row in antenna["sensor_screens"])
+                    any(
+                        not pose_row["passed"] for pose_row in antenna["sensor_screens"]
+                    )
                 )
+            else:
+                self.assertTrue(row["passed"])
+            if row["navigation_model"] == "PAS":
+                for screen in row["optical_compatibility"]["sensor_screens"]:
+                    refined = next(
+                        bound
+                        for bound in screen["continuous_external_bounds"]
+                        if bound["bound"] == "Instrument/FCWiringClearanceReserve"
+                    )
+                    pas = next(
+                        clearance
+                        for clearance in refined["clearances"]
+                        if clearance["object"] == "ModulePASEnvelope"
+                    )
+                    self.assertGreater(
+                        pas["conservative_bound_clearance"]["intersection_mm3"], 100
+                    )
+                    self.assertTrue(pas["actual_stock_pitch_certificate"]["passed"])
             services = {
                 service["device"]: service for service in row["bare_device_service"]
             }
@@ -187,22 +219,32 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.AccessoryEquipmentModule.getGlobalPlacement(),
         )
         actual = screens[0]["attachment"]
-        self.assertEqual(actual["mode"], "carrier")
-        self.assertEqual(actual["carrier_host"], "BatteryEquipmentModule")
-        self.assertEqual(actual["carrier_side"], "PositiveX")
+        self.assertEqual(actual["native_parent"], "InstrumentPitchStage")
+        self.assertEqual(actual["fixed_sensor_frame"], "OpticalSensorFrame")
+        self.assertEqual(actual["rail_module"], "ElectronicsEquipmentModule")
+        self.assertEqual(actual["instrument_pitch_range_deg"], (-20.0, 20.0))
         for required, expected in (
             (actual, True),
-            ({**actual, "carrier_side": "NegativeX"}, False),
-            ({**actual, "mode": "rail"}, False),
+            ({**actual, "native_parent": "BatteryEquipmentModule"}, False),
+            ({**actual, "instrument_pitch_range_deg": (0.0, 0.0)}, False),
         ):
             report = _optical_option_check(
                 screens,
-                {"NavigationDirectAntennaReserve": direct},
-                antenna=True,
+                {},
                 required_mount=required,
             )
             self.assertEqual(report["passed"], expected, report)
             self.assertEqual(report["installed_attachment_matches"], expected)
+        # The direct antenna reserve remains a real geometric input, even when
+        # the declared attachment is the correct common instrument stage.
+        antenna = _optical_option_check(
+            screens,
+            {"NavigationDirectAntennaReserve": direct},
+            antenna=True,
+            required_mount=actual,
+        )
+        self.assertTrue(antenna["installed_attachment_matches"])
+        self.assertFalse(antenna["passed"])
         # Unknown obstacles remain geometric inputs; no profile-name allowlist.
         blocked = _optical_option_check(
             screens, {"Unknown": screens[0]["continuous_field"]}
@@ -248,94 +290,94 @@ class EquipmentCompatibilityTests(unittest.TestCase):
 
 @unittest.skipIf(App is None, "Requires the FreeCAD Python runtime")
 class OpticalEquipmentScreenTests(unittest.TestCase):
-    def native_optical(self, mode):
-        from gondola.parts import optical_mount, rail
+    def native_optical(self):
+        from gondola.config import BASELINE_FILE
+        from gondola.provenance import file_sha256
 
-        doc = App.newDocument("EquipmentOpticalAttachment")
-        self.addCleanup(App.closeDocument, doc.Name)
-        if mode == "carrier":
-            host = doc.addObject("App::Part", "BatteryEquipmentModule")
-            host.Placement.Base.x = 84
-            optical_mount.build_optical_mount(doc, host, mode=mode)
-        else:
-            kit = optical_mount.build_optical_mount(doc, mode=mode)
-            group = kit["group"]
-            group.addProperty("App::PropertyLength", "RailPositionX")
-            group.RailPositionX = 140
-            group.setExpression("Placement.Base.x", "RailPositionX")
-            rail.build_attachment_hardware(doc, group, group.Name)
-        doc.recompute()
+        before = file_sha256(BASELINE_FILE)
+        doc = App.openDocument(str(BASELINE_FILE), hidden=True)
+
+        def close_without_saving():
+            App.closeDocument(doc.Name)
+            self.assertEqual(file_sha256(BASELINE_FILE), before)
+
+        self.addCleanup(close_without_saving)
         return doc
 
-    def test_both_sensor_models_keep_the_actual_attachment_mode_and_hardware(self):
+    def test_both_sensor_models_move_the_complete_saved_common_platform(self):
         from gondola.cad import world_shape
+        from gondola.parts import instrument_mount
         from gondola.validation.equipment_options import _optical_screens
 
-        for mode in ("rail", "carrier"):
-            with self.subTest(mode=mode):
-                doc = self.native_optical(mode)
-                screens = _optical_screens(doc)
-                self.assertEqual(
-                    {row["sensor"] for row in screens}, {"MTF01P", "MTF02P"}
-                )
-                for screen in screens:
-                    attachment = screen["attachment"]
-                    self.assertEqual(attachment["mode"], mode)
-                    self.assertEqual(
-                        attachment["rail_station_x_mm"], 140 if mode == "rail" else None
-                    )
-                    self.assertEqual(
-                        attachment["carrier_host"],
-                        None if mode == "rail" else "BatteryEquipmentModule",
-                    )
-                    self.assertEqual(
-                        attachment["carrier_side"],
-                        None if mode == "rail" else "PositiveX",
-                    )
-                    for pose in screen["poses"]:
-                        physical = pose["physical"]
-                        if mode == "rail":
-                            names = [
-                                "OpticalFlowModuleRailMountNut",
-                                "OpticalFlowModuleRailMountScrew",
-                            ]
-                            self.assertEqual(screen["saved_rail_hardware"], names)
-                            self.assertNotIn("OpticalFootBolt1", physical)
-                            for name in names:
-                                actual = world_shape(doc.getObject(name))
-                                self.assertLess(
-                                    physical[name].cut(actual).Volume
-                                    + actual.cut(physical[name]).Volume,
-                                    1e-7,
-                                )
-                        else:
-                            self.assertEqual(screen["saved_rail_hardware"], [])
-                            self.assertIn("OpticalFootBolt1", physical)
-                            self.assertIn("OpticalFootNut1", physical)
-                            self.assertNotIn(
-                                "OpticalFlowModuleRailMountScrew", physical
-                            )
+        doc = self.native_optical()
+        screens = _optical_screens(doc)
+        self.assertEqual({row["sensor"] for row in screens}, {"MTF01P", "MTF02P"})
+        names = {
+            "ElectronicsMount",
+            "ModuleFCEnvelope",
+            "OpticalSensorTray",
+            "OpticalFootBolt1",
+            "OpticalFootBolt2",
+            "OpticalFootNut1",
+            "OpticalFootNut2",
+        }
+        for screen in screens:
+            attachment = screen["attachment"]
+            self.assertEqual(attachment["native_parent"], "InstrumentPitchStage")
+            self.assertEqual(attachment["fixed_sensor_frame"], "OpticalSensorFrame")
+            self.assertEqual(attachment["rail_module"], "ElectronicsEquipmentModule")
+            self.assertEqual(attachment["rail_station_x_mm"], -82)
+            self.assertEqual(attachment["instrument_pitch_range_deg"], (-20, 20))
+            self.assertTrue(names.issubset(screen["saved_moving_parts"]))
+            for name in (
+                "OpticalFootBolt1",
+                "OpticalFootBolt2",
+                "OpticalFootNut1",
+                "OpticalFootNut2",
+            ):
+                self.assertIn("Instrument/" + name, screen["continuous_bounds"])
+            for pose in screen["poses"]:
+                instrument_mount.set_pitch(doc, pose["instrument_pitch_deg"])
+                for name in names:
+                    with self.subTest(
+                        sensor=screen["sensor"],
+                        angle=pose["instrument_pitch_deg"],
+                        object=name,
+                    ):
+                        actual = world_shape(doc.getObject(name))
+                        self.assertLess(
+                            pose["physical"][name].cut(actual).Volume
+                            + actual.cut(pose["physical"][name]).Volume,
+                            1e-7,
+                        )
+                self.assertIn("FCWiringClearanceReserve", pose["instrument_reserves"])
+                self.assertNotIn("InstrumentMountBase", pose["physical"])
+                self.assertNotIn("OpticalMountBase", pose["physical"])
+                self.assertNotIn("OpticalFlowModuleRailMountScrew", pose["physical"])
 
-    def test_saved_rail_hardware_is_a_geometric_obstacle_input(self):
+    def test_saved_mount_hardware_is_a_geometric_obstacle_input(self):
+        from gondola.cad import world_shape
         from gondola.validation.equipment_options import (
             _optical_option_check,
             _optical_screens,
         )
 
-        doc = self.native_optical("rail")
-        # Move actual saved hardware away from its generated nominal position.
-        # The option screen must still include this actual shape, not silently
-        # substitute a source-generated screw that misses the obstruction.
-        doc.OpticalFlowModuleRailMountScrew.Placement.Base.x = 20
+        doc = self.native_optical()
+        # Use the actual displaced saved bolt, rather than replacing it with a
+        # fresh nominal bolt that would miss this obstruction.
+        nominal = world_shape(doc.OpticalFootBolt2)
+        doc.OpticalFootBolt2.Placement.Base.x += 20
         doc.recompute()
         screens = _optical_screens(doc)
-        obstacle = Part.makeBox(0.2, 0.2, 0.2, App.Vector(159.9, -4.35, 5.9))
+        obstacle = world_shape(doc.OpticalFootBolt2)
+        self.assertGreater(obstacle.Volume, 0)
+        self.assertAlmostEqual(nominal.common(obstacle).Volume, 0)
         result = _optical_option_check(screens, {"UnknownHardwareObstacle": obstacle})
         self.assertFalse(result["passed"])
         self.assertTrue(
             all(
                 any(
-                    hit["moving"] == "OpticalFlowModuleRailMountScrew"
+                    hit["moving"] == "OpticalFootBolt2"
                     and hit["object"] == "UnknownHardwareObstacle"
                     for pose in row["sampled_attitudes"]
                     for hit in pose["collisions"]
@@ -344,24 +386,78 @@ class OpticalEquipmentScreenTests(unittest.TestCase):
             )
         )
 
-    def test_rail_screen_rejects_missing_hardware_and_mixed_attachment_controls(self):
+    def test_screen_rejects_missing_hardware_metadata_and_independent_controls(self):
         from gondola.validation.equipment_options import _optical_screens
 
-        doc = self.native_optical("rail")
-        optical = doc.OpticalFlowModule
-        optical.addProperty("App::PropertyString", "CarrierHostName")
-        with self.assertRaisesRegex(ValueError, "inconsistent native controls"):
+        doc = self.native_optical()
+        frame = doc.OpticalSensorFrame
+        frame.addProperty("App::PropertyAngle", "Pitch")
+        with self.assertRaises(ValueError):
             _optical_screens(doc)
-        optical.removeProperty("CarrierHostName")
-        obj = doc.OpticalFlowModuleRailMountNut
+        frame.removeProperty("Pitch")
+        obj = doc.OpticalFootNut2
         sku = obj.HardwareSKU
-        obj.HardwareSKU = "M2_HEX_NUT"
-        with self.assertRaisesRegex(ValueError, "rail hardware"):
+        obj.HardwareSKU = "M3_HEX_NUT"
+        with self.assertRaisesRegex(ValueError, "hardware"):
             _optical_screens(doc)
+
         obj.HardwareSKU = sku
-        doc.removeObject(obj.Name)
-        with self.assertRaisesRegex(ValueError, "rail hardware"):
+        registered = list(doc.DesignRegistry.HardwareParts)
+        doc.DesignRegistry.HardwareParts = [part for part in registered if part != obj]
+        with self.assertRaisesRegex(ValueError, "hardware"):
             _optical_screens(doc)
+        doc.DesignRegistry.HardwareParts = registered
+        doc.removeObject(obj.Name)
+        with self.assertRaisesRegex(ValueError, "hardware"):
+            _optical_screens(doc)
+
+    def test_unknown_moving_stock_between_samples_fails_continuous_certificate(self):
+        from gondola.cad import placed_shape, world_shape
+        from gondola.parts import instrument_mount
+        from gondola.validation.equipment_options import (
+            _optical_option_check,
+            _optical_screens,
+        )
+
+        doc = self.native_optical()
+        unknown = doc.addObject("Part::Feature", "UnknownInstrumentStock")
+        doc.OpticalFlowModule.addObject(unknown)
+        unknown.Shape = Part.makeSphere(0.5, App.Vector(200, 40, 8))
+        doc.DesignRegistry.ReferenceParts = [
+            *doc.DesignRegistry.ReferenceParts,
+            unknown,
+        ]
+        doc.recompute()
+        screens = _optical_screens(doc)
+        relative = world_shape(unknown)
+        relative.Placement = (
+            doc.InstrumentPitchStage.getGlobalPlacement()
+            .inverse()
+            .multiply(relative.Placement)
+        )
+        obstacle = placed_shape(
+            relative,
+            doc.ElectronicsEquipmentModule.getGlobalPlacement().multiply(
+                instrument_mount.stage_placement(5)
+            ),
+        )
+        for screen in screens:
+            for pose in screen["poses"]:
+                self.assertAlmostEqual(
+                    pose["physical"][unknown.Name].common(obstacle).Volume, 0
+                )
+        report = _optical_option_check(screens, {"BetweenSamples": obstacle})
+        self.assertFalse(report["passed"])
+        for screen in report["sensor_screens"]:
+            bound = next(
+                row
+                for row in screen["continuous_external_bounds"]
+                if row["bound"] == "Instrument/UnknownInstrumentStock"
+            )
+            self.assertFalse(bound["passed"])
+            self.assertFalse(
+                bound["clearances"][0]["actual_stock_pitch_certificate"]["passed"]
+            )
 
 
 if __name__ == "__main__":

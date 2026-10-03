@@ -51,32 +51,32 @@ class SlotBearingTests(unittest.TestCase):
 
     def test_optical_audit_rejects_missing_cap_beyond_old_centre_strip(self):
         from gondola.parts import mounting_plate, optical_mount
-        from gondola.validation.optical import _carrier_interface_checks
+        from gondola.validation.optical import _rigid_interface_checks
 
         doc = App.newDocument("OpticalHeadBearing")
         self.addCleanup(App.closeDocument, doc.Name)
-        host = doc.addObject("App::Part", "BatteryEquipmentModule")
-        plate = doc.addObject("Part::Feature", "BatteryMount")
+        host = doc.addObject("App::Part", "InstrumentPitchStage")
+        plate = doc.addObject("Part::Feature", "ElectronicsMount")
         host.addObject(plate)
         plate.Shape = mounting_plate.shape()
         optical_mount.build_optical_mount(doc, host)
-        self.assertTrue(_carrier_interface_checks(doc)["passed"])
+        self.assertTrue(_rigid_interface_checks(doc)["passed"])
         plate.Shape = plate.Shape.cut(
-            Part.makeBox(0.08, 0.08, 0.1, App.Vector(28.48, 5.65, 17))
+            Part.makeBox(0.08, 0.08, 0.1, App.Vector(19, 28.65, 17))
         )
-        result = _carrier_interface_checks(doc)
+        result = _rigid_interface_checks(doc)
         self.assertFalse(result["passed"])
         bearing = next(
             row
             for row in result["witnesses"]
-            if row["kind"] == "centred_slot_head_bearing"
+            if row["kind"] == "centred_slot_head_bearing" and row["index"] == 2
         )
         self.assertFalse(bearing["passed"])
         self.assertTrue(
             all(
                 row["passed"]
                 for row in result["witnesses"]
-                if row["kind"] == "transverse_clamp_bearing_land"
+                if row["kind"] == "nut_floor_bearing_land"
             )
         )
 

@@ -135,6 +135,7 @@ class EquipmentOptionShapeTests(unittest.TestCase):
     ):
         from gondola.cad import create_group
         from gondola.parts import equipment_envelopes as envelopes
+        from gondola.parts import instrument_mount
 
         with (
             patch.object(options, "SELECTED_NAVIGATION_KEY", "MGF10A"),
@@ -146,9 +147,11 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                 electronics = create_group(
                     doc, "ElectronicsEquipmentModule", "Electronics"
                 )
+                instrument = instrument_mount.build_mount(doc, electronics)
+                stage = instrument["pitch_stage"]
                 accessory = create_group(doc, "AccessoryEquipmentModule", "Accessory")
                 refs, reserves = envelopes.build_equipment(
-                    doc, battery, electronics, accessory
+                    doc, battery, stage, accessory
                 )
                 doc.recompute()
                 self.assertEqual(len(refs), 4)
@@ -173,9 +176,16 @@ class EquipmentOptionShapeTests(unittest.TestCase):
                 self.assertEqual(
                     doc.ModuleRadioEnvelope.getParentGeoFeatureGroup(), accessory
                 )
-                self.assertEqual(
-                    doc.FCWiringClearanceReserve.getParentGeoFeatureGroup(), electronics
-                )
+                for name in (
+                    "ModuleFCEnvelope",
+                    "FCWiringClearanceReserve",
+                    "XT30ServiceReserve",
+                    "CapacitorServiceReserve",
+                ):
+                    self.assertEqual(
+                        doc.getObject(name).getParentGeoFeatureGroup(), stage
+                    )
+                self.assertEqual(stage.getParentGeoFeatureGroup(), electronics)
                 self.assertEqual(
                     doc.RadioNegativeXConnectorReserve.getParentGeoFeatureGroup(),
                     accessory,
