@@ -43,10 +43,9 @@ class IntegralMountValidationTests(unittest.TestCase):
                 "ElectronicsMount",
                 "AccessoryMount",
                 "PropulsionFixedFrame",
-                "OpticalMountBase",
             },
         )
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 4)
         self.assertTrue(all(row["passed"] for row in rows), rows)
         frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
         self.assertEqual(
@@ -150,7 +149,6 @@ class IntegralMountValidationTests(unittest.TestCase):
             "BatteryMount",
             "ElectronicsMount",
             "AccessoryMount",
-            "OpticalMountBase",
         ):
             with self.subTest(part=name):
                 obj = self.doc.getObject(name)
@@ -205,14 +203,14 @@ class IntegralMountValidationTests(unittest.TestCase):
         self.assertFalse(frame["registered_once_as_print"])
         self.assertFalse(frame["passed"])
 
-    def test_selected_optical_comparison_still_checks_complete_registry(self):
+    def test_selected_mount_comparison_still_checks_complete_registry(self):
         from gondola.validation.rail_mount import saved_integral_mount_checks
 
         registry = self.doc.DesignRegistry
         rows = saved_integral_mount_checks(
-            self.doc, registry, module_names=("OpticalFlowModule",)
+            self.doc, registry, module_names=("BatteryEquipmentModule",)
         )
-        self.assertEqual([row["part"] for row in rows], ["OpticalMountBase"])
+        self.assertEqual([row["part"] for row in rows], ["BatteryMount"])
         self.assertTrue(rows[0]["passed"], rows)
         broken = SimpleNamespace(
             EquipmentMounts=list(registry.EquipmentMounts),
@@ -223,15 +221,15 @@ class IntegralMountValidationTests(unittest.TestCase):
             ],
         )
         rows = saved_integral_mount_checks(
-            self.doc, broken, module_names=("OpticalFlowModule",)
+            self.doc, broken, module_names=("BatteryEquipmentModule",)
         )
         self.assertFalse(rows[0]["complete_mount_registry_matches"])
         self.assertFalse(rows[0]["passed"])
         for invalid in (
             (),
             ("Unknown",),
-            ("OpticalFlowModule",) * 2,
-            "OpticalFlowModule",
+            ("BatteryEquipmentModule",) * 2,
+            "BatteryEquipmentModule",
         ):
             rows = saved_integral_mount_checks(self.doc, registry, module_names=invalid)
             self.assertFalse(rows[0]["passed"], rows)
@@ -242,10 +240,12 @@ class IntegralMountValidationTests(unittest.TestCase):
         self.doc.BatteryEquipmentModule.addObject(frame)
         row = next(row for row in self.checks() if row["part"] == frame.Name)
         self.assertFalse(row["parent_matches"])
+        self.assertFalse(row["geometry_checks_performed"])
+        self.assertEqual(row["error"], "Invalid native rail mount frame")
         self.assertFalse(row["passed"])
         self.doc.removeObject(frame.Name)
         rows = self.checks()
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 4)
         frame = next(row for row in rows if row["part"] == "PropulsionFixedFrame")
         self.assertFalse(frame["passed"])
         self.assertEqual(frame["error"], "Missing integral mount")

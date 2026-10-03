@@ -228,7 +228,7 @@ def build_assembly():
         (rail_assembly["printed"], "Rail"),
         (mount_parts, "Equipment mounts"),
         (propulsion_module["printed"], "Propulsion"),
-        (optical_assembly["printed"], "Optical base and manual pitch"),
+        (optical_assembly["printed"], "Optical attachment and sensor tray"),
         (fit_coupons["printed"], "Fit samples"),
     ]:
         set_print_category(objects, category)

@@ -300,7 +300,6 @@ class RailServiceTests(unittest.TestCase):
                 ("ElectronicsMount", "ElectronicsEquipmentModule"),
                 ("AccessoryMount", "AccessoryEquipmentModule"),
                 ("PropulsionFixedFrame", "MainPropulsionModule"),
-                ("OpticalMountBase", "OpticalFlowModule"),
             ):
                 with self.subTest(part=part):
                     doc.removeObject(part)

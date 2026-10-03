@@ -1,15 +1,15 @@
 {
-  "revision": "CG",
+  "revision": "CH",
   "status": "APPROVED_FOR_REGRESSION_FIXTURE_PROMOTION",
-  "candidate_sha256": "3bf1b6ea0d6f6c9c95ad7f81901f98205299780202bd6ea9ff3d03a2756f4933",
-  "old_fixture_sha256": "0a9f52e52734abb7382829185bd2603bc08882a96ad2d2bc6a5a7ef5cd877c03",
+  "candidate_sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
+  "old_fixture_sha256": "3bf1b6ea0d6f6c9c95ad7f81901f98205299780202bd6ea9ff3d03a2756f4933",
   "evidence": {
     "archive": "references/design_checks.json.gz",
     "record_path": [
-      "cg_optical_rail_revision",
+      "ch_optical_upper_revision",
       "independent_fixture_transition"
     ],
-    "canonical_json_sha256": "1b36e118e7e9f4804939bcbd92f671a169d2f9035c62dc5205b333977fd89cf3"
+    "canonical_json_sha256": "60c8b61a2e224cb1aca4c85f0f5f133460cf214a5cb60afb7241676ed0d33005"
   },
-  "scope": "Independent saved shape, placement, native control, metadata and literal geometry review of the standard direct-rail optical base, longer shared pitch head, tray corners, input-bearing wing roots and free cap perimeter. Both optical attachment modes are exercised. Nominal geometry only; physical fit, pointing retention, stiffness and propeller seating remain unqualified."
+  "scope": "Exact original lower pedestal restored; one extended upper tray supports carrier-stack pitch or fixed direct rail attachment. Independent saved geometry, placements, native controls, metadata, primitive witnesses and both-mode optical/service review. Nominal CAD only; physical qualification remains outstanding."
 }

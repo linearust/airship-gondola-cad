@@ -76,24 +76,21 @@ class NativeInterfaceTests(unittest.TestCase):
                         "MainPropulsionModule",
                         "ElectronicsEquipmentModule",
                         "AccessoryEquipmentModule",
-                        "OpticalFlowModule",
                     ],
                 )
-                self.assertIsNone(doc.OpticalFlowModule.getParentGeoFeatureGroup())
-                self.assertEqual(doc.OpticalFlowModule.OpticalAttachmentMode, "rail")
-                self.assertEqual(float(doc.OpticalFlowModule.RailPositionX), 140)
-                self.assertEqual(float(doc.OpticalFlowModule.RailContactLength), 16)
-                self.assertNotIn(
-                    "CarrierHostName", doc.OpticalFlowModule.PropertiesList
-                )
-                self.assertIsNone(doc.getObject("OpticalFootBolt1"))
-                self.assertIsNone(doc.getObject("OpticalFootNut1"))
                 self.assertEqual(
-                    doc.OpticalFlowModuleRailMountScrew.HardwareSKU, "M3X10_BUTTON_HEAD"
+                    doc.OpticalFlowModule.getParentGeoFeatureGroup(),
+                    doc.BatteryEquipmentModule,
                 )
+                self.assertEqual(doc.OpticalFlowModule.OpticalAttachmentMode, "carrier")
                 self.assertEqual(
-                    doc.OpticalFlowModuleRailMountNut.HardwareSKU, "M3_HEX_NUT"
+                    doc.OpticalFlowModule.CarrierHostName, "BatteryEquipmentModule"
                 )
+                self.assertNotIn("RailPositionX", doc.OpticalFlowModule.PropertiesList)
+                self.assertEqual(doc.OpticalFootBolt1.HardwareSKU, "M2X8_BUTTON_HEAD")
+                self.assertEqual(doc.OpticalFootNut1.HardwareSKU, "M2_HEX_NUT")
+                self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountScrew"))
+                self.assertIsNone(doc.getObject("OpticalFlowModuleRailMountNut"))
                 self.assertEqual(
                     doc.OpticalMountBase.getParentGeoFeatureGroup(),
                     doc.OpticalFlowModule,

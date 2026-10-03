@@ -456,7 +456,7 @@ class FrozenBaselineTests(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertEqual(len(result["cases"]), result["expected_case_count"])
         self.assertEqual(
-            sum(row["property"] == "RailPositionX" for row in result["cases"]), 10
+            sum(row["property"] == "RailPositionX" for row in result["cases"]), 8
         )
 
     def test_horn_clamp_cannot_silently_claim_qualified_manufacture(self):

@@ -21,7 +21,7 @@ def vector_m(value):
     return [round(float(component) / 1000, 9) for component in value]
 
 
-def optical_pitch_degrees(stage):
+def optical_pitch_degrees(stage, mode="carrier"):
     """Read signed local-Y pose; the saved command may exceed native limits."""
     import FreeCAD as App
 
@@ -33,8 +33,13 @@ def optical_pitch_degrees(stage):
         raise ValueError("Optical pitch metadata is missing or invalid.") from error
     if not all(math.isfinite(value) for value in (command, minimum, maximum)):
         raise ValueError("Optical pitch metadata must be finite.")
-    if abs(minimum + 20) > 1e-8 or abs(maximum - 20) > 1e-8:
+    if mode not in ("carrier", "rail"):
+        raise ValueError("Unknown optical attachment mode.")
+    limit = 20 if mode == "carrier" else 0
+    if abs(minimum + limit) > 1e-8 or abs(maximum - limit) > 1e-8:
         raise ValueError("Optical pitch limits changed; review the exported frame.")
+    if mode == "rail" and abs(command) > 1e-8:
+        raise ValueError("Rigid rail attachment has no optical pitch control.")
     if not all(math.isfinite(value) for value in rotation.Q):
         raise ValueError("Optical pitch rotation must be finite.")
     local_x = rotation.multVec(App.Vector(1, 0, 0))
@@ -100,13 +105,25 @@ def optical_attachment_geometry(doc):
             or "RailPositionX" in optical.PropertiesList
         ):
             raise ValueError("Optical carrier binding changed; review host and side.")
+    expected_origin = (0, 0, 19) if mode == "carrier" else (-12, 1.25, 6.5)
+    if any(
+        abs(float(actual) - expected) > 1e-7
+        for actual, expected in zip(stage.Placement.Base, expected_origin, strict=True)
+    ):
+        raise ValueError("Optical tray attachment datum changed.")
+    optical_pitch_degrees(stage, mode)
     return {
         "optical_attachment_mode": mode,
+        "optical_adjustment_degrees_of_freedom": 1 if mode == "carrier" else 0,
         "optical_native_parent": parent.Name if parent is not None else None,
         "optical_carrier_host": host_name,
         "optical_mount_side": side,
         "optical_rail_station_x_m": rail_station,
         "optical_module_origin_cad_m": vector_m(optical.getGlobalPlacement().Base),
+        "optical_tray_origin_cad_m": vector_m(stage.getGlobalPlacement().Base),
+        "optical_pitch_pivot_cad_m": vector_m(stage.getGlobalPlacement().Base)
+        if mode == "carrier"
+        else None,
     }
 
 
@@ -435,8 +452,9 @@ def extract(doc):
             },
             "centre_scope": "Envelope bounding-box centres, NOT measured centres of mass, IMU locations, optical apertures or navigation antenna phase centres.",
             **optical_attachment,
-            "optical_pitch_deg": optical_pitch_degrees(doc.OpticalPitchStage),
-            "optical_pitch_pivot_cad_m": point(doc.OpticalPitchStage),
+            "optical_pitch_deg": optical_pitch_degrees(
+                doc.OpticalPitchStage, optical_attachment["optical_attachment_mode"]
+            ),
             "rail_length_m": float(doc.ContinuousRail.Shape.BoundBox.XLength) / 1000,
         },
         "whole_airship": {
@@ -480,7 +498,7 @@ def export(cad, output):
         },
     ) as snapshot:
         result = {
-            "schema_version": 8,
+            "schema_version": 9,
             "units": {
                 "length": "m",
                 "mass": "kg",

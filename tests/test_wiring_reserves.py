@@ -379,5 +379,172 @@ class WiringReserveTests(unittest.TestCase):
         )
 
 
+@unittest.skipIf(App is None, "requires FreeCAD's Python runtime")
+class RailOpticalWiringGapTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from gondola.cad import set_property
+        from gondola.contracts import optical_attachment
+        from gondola.parts import (
+            equipment_envelopes,
+            equipment_mounts,
+            optical_mount,
+            optical_sensor,
+            rail,
+            wiring_reserves,
+        )
+
+        cls.doc = App.newDocument("RailOpticalWiringGapRegression")
+        parents = []
+        for name, x, yaw in (
+            ("BatteryEquipmentModule", 84, 0),
+            ("ElectronicsEquipmentModule", -56, 180),
+            ("AccessoryEquipmentModule", -140, 180),
+        ):
+            group = cls.doc.addObject("App::Part", name)
+            group.Placement = App.Placement(
+                App.Vector(x, 0, 0), App.Rotation(App.Vector(0, 0, 1), yaw)
+            )
+            parents.append(group)
+        printed = [
+            equipment_mounts.build_mount(cls.doc, parent, kind)
+            for parent, kind in zip(parents, ("battery", "electronics", "accessory"))
+        ]
+        # A rail-mode rebuild emits its native wiring contract from the selected
+        # mode. The audit below must independently read that saved mode.
+        with patch.object(optical_attachment, "SELECTED_MOUNT", "rail"):
+            refs, reserves = equipment_envelopes.build_equipment(cls.doc, *parents)
+        optical = optical_mount.build_optical_mount(cls.doc, mode="rail")
+        optical["group"].Placement = App.Placement(
+            App.Vector(140, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
+        sensor_refs, sensor_reserves = optical_sensor.build_sensor(
+            cls.doc, optical["pitch_stage"]
+        )
+        built_rail = rail.build_rail(cls.doc)
+        locks = rail.build_attachment_hardware(
+            cls.doc, optical["group"], "OpticalFlowModule"
+        )
+        registry = cls.doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
+        for name, values in {
+            "PrintedParts": printed + optical["printed"] + built_rail["printed"],
+            "HardwareParts": locks,
+            "ReferenceParts": refs + sensor_refs,
+            "ClearanceVolumes": reserves + sensor_reserves,
+            "TapeReferences": built_rail["tapes"],
+        }.items():
+            set_property(registry, name, values, "App::PropertyLinkListGlobal")
+        cls.reserve_names = tuple(wiring_reserves.reserve_shapes()) + (
+            "MTF02PConnectorReserve",
+            "MTF02POpticalClearanceReserve",
+            "CapacitorServiceReserve",
+        )
+        cls.doc.recompute()
+
+    @classmethod
+    def tearDownClass(cls):
+        App.closeDocument(cls.doc.Name)
+
+    def fc_result(self):
+        from gondola.validation import propulsion_wiring, wiring
+
+        self.assertIsNone(self.doc.getObject("MainPropulsionModule"))
+        with (
+            patch.object(wiring, "RESERVES", self.reserve_names),
+            patch.object(propulsion_wiring, "check", return_value={"routes": []}),
+        ):
+            rows, _ = wiring.reserve_checks(self.doc)
+        return next(row for row in rows if row["object"] == "FCWiringClearanceReserve")
+
+    def test_saved_rail_contract_requires_actual_tray_with_unchanged_gap(self):
+        from gondola.parts import wiring_reserves
+
+        self.assertIsNone(self.doc.getObject("OpticalMountBase"))
+        row = self.fc_result()
+        self.assertTrue(row["passed"], row)
+        self.assertTrue(row["native_wiring_contract_matches"])
+        gaps = row["neighbour_clearance_buffers"]
+        self.assertEqual(len(gaps), 6)
+        self.assertIn("OpticalSensorTray", {item["object"] for item in gaps})
+        self.assertNotIn("OpticalMountBase", {item["object"] for item in gaps})
+        for mode, target, absent in (
+            ("carrier", "OpticalMountBase", "OpticalSensorTray"),
+            ("rail", "OpticalSensorTray", "OpticalMountBase"),
+        ):
+            expected = {
+                "ModuleRadioEnvelope": 2.0,
+                "ModulePASEnvelope": 2.0,
+                "XT30ServiceReserve": 2.0,
+                "MTF02POpticalClearanceReserve": 1.5,
+                target: 1.5,
+                "CapacitorServiceReserve": 1.5,
+            }
+            actual = wiring_reserves.neighbour_gap_pairs(mode)[
+                "FCWiringClearanceReserve"
+            ]
+            self.assertEqual(actual, expected)
+            self.assertNotIn(absent, actual)
+            self.assertEqual(
+                wiring_reserves.reserve_contracts(optical_mode=mode)[
+                    "FCWiringClearanceReserve"
+                ]["minimum_neighbour_gaps_mm"],
+                expected,
+            )
+
+    def test_missing_rail_tray_cannot_pass_as_an_inapplicable_base(self):
+        registry = self.doc.DesignRegistry
+        original = list(registry.PrintedParts)
+        try:
+            registry.PrintedParts = [
+                obj for obj in original if obj.Name != "OpticalSensorTray"
+            ]
+            row = self.fc_result()
+            self.assertFalse(row["passed"])
+            tray = next(
+                item
+                for item in row["neighbour_clearance_buffers"]
+                if item["object"] == "OpticalSensorTray"
+            )
+            self.assertFalse(tray["passed"])
+            self.assertEqual(tray["error"], "missing solid shape")
+        finally:
+            registry.PrintedParts = original
+
+    def test_clear_but_cramped_rail_tray_and_stale_base_metadata_are_rejected(self):
+        from gondola.parts import wiring_reserves
+        from gondola.validation.wiring import named_gap_checks
+
+        source = Part.makeBox(2, 2, 2)
+        requirements = wiring_reserves.neighbour_gap_pairs("rail")
+        shapes = {
+            "FCWiringClearanceReserve": source,
+            **{
+                name: Part.makeBox(1, 1, 1, App.Vector(10, 0, 0))
+                for name in requirements["FCWiringClearanceReserve"]
+            },
+        }
+        for gap, passed in ((1.49, False), (1.5, True)):
+            shapes["OpticalSensorTray"] = Part.makeBox(
+                1, 1, 1, App.Vector(2 + gap, 0, 0)
+            )
+            row = next(
+                item
+                for item in named_gap_checks(shapes, requirements)
+                if item["object"] == "OpticalSensorTray"
+            )
+            self.assertEqual(row["passed"], passed)
+        obj = self.doc.FCWiringClearanceReserve
+        original = obj.WiringContract
+        try:
+            obj.WiringContract = json.dumps(
+                wiring_reserves.reserve_contracts(optical_mode="carrier")[obj.Name]
+            )
+            row = self.fc_result()
+            self.assertFalse(row["native_wiring_contract_matches"])
+            self.assertFalse(row["passed"])
+        finally:
+            obj.WiringContract = original
+
+
 if __name__ == "__main__":
     unittest.main()

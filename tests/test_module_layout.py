@@ -15,7 +15,7 @@ from gondola.contracts.rail_attachments import attachment_pattern
 class ModuleLayoutTests(unittest.TestCase):
     def test_battery_and_electronics_flank_neutral_propulsion(self):
         stations = {item.object_name: item for item in MODULE_STATIONS}
-        self.assertEqual(len(stations), 5)
+        self.assertEqual(len(stations), 4)
         self.assertEqual(stations["MainPropulsionModule"].x_mm, 14.0)
         self.assertEqual(stations["BatteryEquipmentModule"].x_mm, 84)
         self.assertEqual(stations["ElectronicsEquipmentModule"].x_mm, -56)
@@ -25,9 +25,7 @@ class ModuleLayoutTests(unittest.TestCase):
         propulsion = stations["MainPropulsionModule"]
         self.assertEqual(propulsion.contact_length_mm, 44)
         self.assertEqual(propulsion.x_mm + propulsion.attachment_offset_x_mm, 28)
-        self.assertEqual(stations["OpticalFlowModule"].x_mm, 140)
-        self.assertEqual(stations["OpticalFlowModule"].attachment_offsets_x_mm, (0,))
-        self.assertEqual(stations["OpticalFlowModule"].contact_length_mm, 16)
+        self.assertNotIn("OpticalFlowModule", stations)
 
     def test_shared_plate_stations_leave_room_for_the_larger_square(self):
         # Independent plan-view witness; full solid/wiring checks follow in CAD.
@@ -76,12 +74,12 @@ class ModuleLayoutTests(unittest.TestCase):
         direct = module_stations("rail")
         self.assertEqual(direct[:-1], carrier)
         self.assertEqual(len(carrier), 4)
-        self.assertEqual(direct[-1], ModuleStation("OpticalFlowModule", 140))
+        self.assertEqual(direct[-1], ModuleStation("OpticalFlowModule", 140, 180))
         self.assertEqual(DEFAULT_CARRIER_HOST, "BatteryEquipmentModule")
         self.assertEqual(DEFAULT_CARRIER_SIDE, "PositiveX")
-        self.assertEqual(pivot_z("carrier"), 23)
-        self.assertEqual(pivot_z("rail"), 42)
-        self.assertEqual(resolve_mount_mode(), "rail")
+        self.assertEqual(pivot_z("carrier"), 19)
+        self.assertEqual(pivot_z("rail"), 6.5)
+        self.assertEqual(resolve_mount_mode(), "carrier")
         for invalid in ("", "Rail", "side", True, 0, [], {}):
             with self.subTest(mode=invalid), self.assertRaises(ValueError):
                 module_stations(invalid)

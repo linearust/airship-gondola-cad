@@ -363,7 +363,7 @@ class OpticalAttachmentTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base),
-                    [0.14 if mode == "rail" else 0.111, 0, 0.042],
+                    [0.128, 0.00125, 0.0065] if mode == "rail" else [0.111, 0, 0.038],
                 )
                 path = Path(directory) / "optical.FCStd"
                 doc.saveAs(str(path))
@@ -383,7 +383,8 @@ class OpticalAttachmentTests(unittest.TestCase):
         self.assertEqual(result["optical_rail_station_x_m"], 0.139)
         self.assertEqual(result["optical_module_origin_cad_m"], [0.139, 0, 0])
         self.assertEqual(
-            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base), [0.139, 0, 0.042]
+            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base),
+            [0.127, 0.00125, 0.0065],
         )
         # A disconnected native control must not silently replace the actual pose.
         doc.OpticalFlowModule.setExpression("Placement.Base.x", None)
@@ -401,7 +402,7 @@ class OpticalAttachmentTests(unittest.TestCase):
         self.assertEqual(result["optical_mount_side"], "NegativeX")
         self.assertEqual(result["optical_module_origin_cad_m"], [0.074, 0, 0.019])
         self.assertEqual(
-            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base), [0.074, 0, 0.042]
+            vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base), [0.074, 0, 0.038]
         )
         host.Placement.Rotation = App.Rotation(App.Vector(0, 0, 1), 90)
         doc.recompute()
@@ -409,7 +410,7 @@ class OpticalAttachmentTests(unittest.TestCase):
         self.assertEqual(result["optical_module_origin_cad_m"], [0.101, -0.027, 0.019])
         self.assertEqual(
             vector_m(doc.OpticalPitchStage.getGlobalPlacement().Base),
-            [0.101, -0.027, 0.042],
+            [0.101, -0.027, 0.038],
         )
 
     def test_rail_parent_and_mixed_carrier_controls_are_rejected(self):
@@ -446,6 +447,42 @@ class OpticalAttachmentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "attachment mode"):
             optical_attachment_geometry(doc)
 
+    def test_direct_rail_exports_fixed_frame_without_a_pitch_pivot(self):
+        doc = self.native_optical("rail")
+        doc.OpticalFlowModule.Placement.Rotation = App.Rotation(
+            App.Vector(0, 0, 1), 180
+        )
+        doc.recompute()
+        result = optical_attachment_geometry(doc)
+        self.assertEqual(result["optical_adjustment_degrees_of_freedom"], 0)
+        self.assertIsNone(result["optical_pitch_pivot_cad_m"])
+        self.assertEqual(result["optical_tray_origin_cad_m"], [0.152, -0.00125, 0.0065])
+        self.assertEqual(optical_pitch_degrees(doc.OpticalPitchStage, "rail"), 0)
+        self.assertEqual(float(doc.OpticalPitchStage.MinimumAngle), 0)
+        self.assertEqual(float(doc.OpticalPitchStage.MaximumAngle), 0)
+        doc.OpticalPitchStage.Pitch = 3
+        doc.recompute()
+        with self.assertRaisesRegex(ValueError, "no optical pitch control"):
+            optical_attachment_geometry(doc)
+        doc.OpticalPitchStage.Pitch = 0
+        doc.OpticalPitchStage.setExpression("Placement.Rotation.Angle", None)
+        doc.OpticalPitchStage.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 1)
+        doc.recompute()
+        with self.assertRaisesRegex(ValueError, "outside its declared limits"):
+            optical_attachment_geometry(doc)
+
+    def test_direct_rail_rejects_stale_pedestal_origin_and_pitch_limits(self):
+        doc = self.native_optical("rail")
+        stage = doc.OpticalPitchStage
+        stage.Placement.Base.z = 42
+        with self.assertRaisesRegex(ValueError, "attachment datum"):
+            optical_attachment_geometry(doc)
+        stage.Placement.Base.z = 6.5
+        stage.MinimumAngle = -20
+        stage.MaximumAngle = 20
+        with self.assertRaisesRegex(ValueError, "pitch limits changed"):
+            optical_attachment_geometry(doc)
+
 
 class SavedGeometryTests(unittest.TestCase):
     def setUp(self):
@@ -476,13 +513,14 @@ class SavedGeometryTests(unittest.TestCase):
             frame["pivot_positions_m"],
             {"Port": [0, 0.075, 0.05], "Starboard": [0, -0.075, 0.05]},
         )
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.140, 0, 0.042])
-        self.assertEqual(geo["optical_attachment_mode"], "rail")
-        self.assertIsNone(geo["optical_native_parent"])
-        self.assertIsNone(geo["optical_carrier_host"])
-        self.assertIsNone(geo["optical_mount_side"])
-        self.assertEqual(geo["optical_rail_station_x_m"], 0.140)
-        self.assertEqual(geo["module_origins_cad_m"]["OpticalFlowModule"], [0.14, 0, 0])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.111, 0, 0.038])
+        self.assertEqual(geo["optical_attachment_mode"], "carrier")
+        self.assertEqual(geo["optical_adjustment_degrees_of_freedom"], 1)
+        self.assertEqual(geo["optical_native_parent"], "BatteryEquipmentModule")
+        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
+        self.assertEqual(geo["optical_mount_side"], "PositiveX")
+        self.assertIsNone(geo["optical_rail_station_x_m"])
+        self.assertNotIn("OpticalFlowModule", geo["module_origins_cad_m"])
         self.assertEqual(geo["servo_to_output_angle_ratio"], -3)
         for name in ("Port", "Starboard"):
             pod = self.doc.getObject(name + "Pod")
@@ -546,16 +584,15 @@ class SavedGeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Pivot alignment changed"):
             extract(self.doc)
 
-    def test_optical_pose_follows_its_rail_station_independently_of_carrier(self):
+    def test_optical_pose_follows_original_carrier_and_retains_pitch(self):
         self.doc.BatteryEquipmentModule.RailPositionX = 101
-        self.doc.OpticalFlowModule.RailPositionX = 139
         self.doc.OpticalPitchStage.Pitch = 20
         self.doc.recompute()
         geo = extract(self.doc)["exact_geometry"]
-        self.assertIsNone(geo["optical_carrier_host"])
-        self.assertIsNone(geo["optical_mount_side"])
-        self.assertEqual(geo["optical_rail_station_x_m"], 0.139)
-        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.139, 0, 0.042])
+        self.assertEqual(geo["optical_carrier_host"], "BatteryEquipmentModule")
+        self.assertEqual(geo["optical_mount_side"], "PositiveX")
+        self.assertIsNone(geo["optical_rail_station_x_m"])
+        self.assertEqual(geo["optical_pitch_pivot_cad_m"], [0.128, 0, 0.038])
         self.assertEqual(geo["optical_pitch_deg"], 20)
 
     def test_optical_export_uses_actual_clamped_pose_without_mutating_controls(self):
@@ -628,14 +665,14 @@ class SavedGeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "metadata"):
             optical_pitch_degrees(SimpleNamespace())
 
-    def test_rail_optical_cannot_be_reparented_as_a_carrier_accessory(self):
-        self.doc.BatteryEquipmentModule.addObject(self.doc.OpticalFlowModule)
-        with self.assertRaisesRegex(ValueError, "Optical rail binding"):
+    def test_carrier_optical_cannot_silently_change_its_bound_host(self):
+        self.doc.ElectronicsEquipmentModule.addObject(self.doc.OpticalFlowModule)
+        with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
             extract(self.doc)
 
-    def test_rail_optical_rejects_a_stale_carrier_mode_claim(self):
-        self.doc.OpticalFlowModule.OpticalAttachmentMode = "carrier"
-        with self.assertRaisesRegex(ValueError, "Optical carrier binding"):
+    def test_carrier_optical_rejects_a_stale_rail_mode_claim(self):
+        self.doc.OpticalFlowModule.OpticalAttachmentMode = "rail"
+        with self.assertRaisesRegex(ValueError, "Optical rail binding"):
             extract(self.doc)
 
     def test_unknown_vehicle_values_are_not_filled_with_zero(self):
@@ -717,7 +754,7 @@ class SavedGeometryTests(unittest.TestCase):
             ):
                 export(cad, output)
                 snapshot = json.loads(output.read_text())
-                self.assertEqual(snapshot["schema_version"], 8)
+                self.assertEqual(snapshot["schema_version"], 9)
                 self.assertNotIn("simplified_geometry", snapshot)
                 self.assertEqual(snapshot["basis"]["cad_sha256"], original_hash)
                 self.assertEqual(file_sha256(cad), original_hash)

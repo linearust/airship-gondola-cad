@@ -19,27 +19,54 @@ TOOL_APPROACH_LENGTH_MM = 15.0
 RELEASE_MARGIN_MM = 0.2
 
 
-def _tray_service_envelope(shape):
-    """Literal full pad/neck/ear stock, enclosing the saved rounded tray.
+def tray_stock_enclosures(shape):
+    """Literal raised pad, bridge, shoe, neck and ear around the saved tray.
 
     The pad's lower edge rounds include cylinders transverse to the Y move.
-    Filling only those outer rounds and the already released fastener holes
-    preserves the space below the pad instead of filling the whole tray box.
+    Filling the outer rounds, empty rail-shoe channel and released fastener
+    holes preserves the gap beside the narrow neck instead of filling the
+    entire tray box. The shoe begins at X4, tangent to the fixed post.
     """
-    envelope = union(
-        [
-            Part.makeCylinder(4, 2, V(), V(0, 1, 0)),
-            Part.makeBox(4, 2, 4.5, V(-2, 0, 0)),
-            Part.makeBox(18, 12, 2, V(-9, -6, 4.5)),
-        ]
-    )
-    envelope.Placement = shape.Placement
+    # Expand only free envelope faces by CAD precision to avoid coincident
+    # curved-face Boolean ambiguity. Keep mating Y=0 and shoe X=4 exact:
+    # expanding either toward the pedestal would create a false collision.
+    epsilon = 1e-6
+    regions = [
+        Part.makeCylinder(4 + epsilon, 2 + epsilon, V(), V(0, 1, 0)),
+        Part.makeBox(
+            4 + 2 * epsilon, 2 + epsilon, 8.5 + epsilon, V(-2 - epsilon, 0, 0)
+        ),
+        Part.makeBox(
+            18 + 2 * epsilon,
+            12 + 2 * epsilon,
+            2 + 2 * epsilon,
+            V(-9 - epsilon, -6 - epsilon, 8.5 - epsilon),
+        ),
+        Part.makeBox(10 + epsilon, 2 + epsilon, 4 + epsilon, V(-2, 0, 4.5)),
+        # Full unused shoe at S=(12,-1.25,-6.5), filling its empty channel.
+        Part.makeBox(
+            16 + epsilon,
+            10.5 + 2 * epsilon,
+            10 + 2 * epsilon,
+            V(4, -6.5 - epsilon, -4 - epsilon),
+        ),
+    ]
+    for region in regions:
+        region.Placement = shape.Placement
+    envelope = union(regions)
     missing = abs(shape.cut(envelope).Volume)
-    return envelope, missing
+    return regions, missing
+
+
+def _tray_service_envelope(shape):
+    regions, missing = tray_stock_enclosures(shape)
+    return union(regions), missing
 
 
 def pitch_tool_shape(mode="carrier"):
     """Module-local straight hex-key leg envelope, not a handle or socket model."""
+    if resolve_mount_mode(mode) != "carrier":
+        raise ValueError("Fixed direct rail tray has no M2 pitch fastener")
     x, y, z = optical_mount.pivot_centre(mode)
     return Part.makeCylinder(
         fasteners.SOCKET_KEY / math.sqrt(3),
@@ -51,6 +78,13 @@ def pitch_tool_shape(mode="carrier"):
 
 def pitch_tool_check(group, obstacles):
     """Check the fixed approach against supplied physical and reserved solids."""
+    if resolve_mount_mode(str(group.OpticalAttachmentMode)) == "rail":
+        return {
+            "applicable": False,
+            "collisions": [],
+            "passed": True,
+            "scope": "Fixed direct rail tray: no M2 pitch fastener or pitch tool operation. M3 access is checked by the standard rail service validation.",
+        }
     tool = pitch_tool_shape(str(group.OpticalAttachmentMode))
     tool.Placement = group.getGlobalPlacement()
     # The screw head is the tool's target; its exact socket is unmodeled.
@@ -82,6 +116,26 @@ def pitch_disassembly_check(doc, kit):
         for index in optical_interface.CLAMP_CENTRES
     }
     mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
+    if mode == "rail":
+        return {
+            "applicable": False,
+            "attachment_mode": mode,
+            "paths": [],
+            "passed": not any(
+                doc.getObject(name)
+                for name in (
+                    "OpticalMountBase",
+                    "OpticalPitchBolt",
+                    "OpticalPitchNut",
+                    "OpticalFootBolt1",
+                    "OpticalFootNut1",
+                )
+            )
+            and stage.Pitch.Value == 0
+            and stage.MinimumAngle.Value == 0
+            and stage.MaximumAngle.Value == 0,
+            "scope": "The fixed direct rail variant is one shared tray with no lower base or M2 joints. Its complete removal and M3 access use the standard rail attachment service check.",
+        }
     attachment_fasteners = (
         foot_fasteners
         if mode == "carrier"
@@ -103,7 +157,7 @@ def pitch_disassembly_check(doc, kit):
         if name == "TrayAssembly/OpticalSensorTray":
             sweep_input, missing = _tray_service_envelope(shape)
             enclosure = {
-                "kind": "literal full pad, neck and coaxial ear",
+                "kind": "literal full raised pad, bridge, unused rail shoe, neck and coaxial ear",
                 "uncovered_saved_stock_mm3": missing,
                 "passed": missing < TOL,
             }
@@ -139,11 +193,10 @@ def pitch_disassembly_check(doc, kit):
     fixed = {
         name: shape for name, shape in remaining.items() if name not in moving_names
     }
-    distance = (
-        max(shape.BoundBox.YMax for shape in fixed.values())
-        - min(remaining[name].BoundBox.YMin for name in moving_names)
-        + RELEASE_MARGIN_MM
-    )
+    # The shoe's trailing face moves from Y=-6.5 to +9.5, beyond the
+    # pedestal foot's Y=9 end. The taller sensor can retain overlapping Y
+    # bounds without touching the pedestal; every actual solid is swept.
+    distance = 16.0
     for name in sorted(moving_names):
         check_path("TrayAssembly/" + name, remaining[name], (0.0, distance, 0.0), fixed)
     return {
@@ -157,5 +210,5 @@ def pitch_disassembly_check(doc, kit):
         "passed": neutral
         and bool(moving_names)
         and all(row["passed"] for row in paths),
-        "scope": "Disconnect the sensor lead, use the checked rail-module or carrier-foot removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel separates the saved bounding boxes by 0.2 mm. The tray sweep uses a literal full-pad/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
+        "scope": "Disconnect the sensor lead, use the checked rail-module or carrier-foot removal sequence and support the complete optical head on a bench. Set pitch to zero and support the tray; keep the screw head seated while unthreading the nut along +Y beyond the tip, withdraw the screw along -Y, then move the tray and sensor together along +Y. Screw paths follow the actual nominal stack; tray travel is 16 mm, carrying the unused shoe beyond the foot end with 0.5 mm nominal axial separation. The tray sweep uses a literal raised-pad/bridge/unused-shoe/neck/ear enclosure only after proving that it contains all saved tray stock; its released holes and external rounds are conservatively filled while the space below the pad stays open. Continuous rigid translation checks do not model thread rotation, hand access, cables or force.",
     }

@@ -82,7 +82,7 @@ class OpticalProfileGeometryTests(unittest.TestCase):
                 group.OpticalAttachmentMode = mode
                 for profile in SENSOR_PROFILES.values():
                     bound, _ = external_field_bound(group, profile)
-                    for pitch in (-20, -11, 0, 13, 20):
+                    for pitch in (-20, -11, 0, 13, 20) if mode == "carrier" else (0,):
                         rotation = App.Rotation(App.Vector(0, 1, 0), pitch)
                         for distance in (0, 100, 400):
                             expansion = distance * math.tan(

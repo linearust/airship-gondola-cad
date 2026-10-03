@@ -121,10 +121,10 @@ def interface_contract(mode="carrier"):
             "mechanism": "The same integral U shoe as the universal carriers, with one transverse M3x10/ordinary M3 nut pair",
             "industry_standard_claimed": False,
             "rail_interface": rail.attachment_contract(),
-            "hardware": "One standard M3x10 rail pair replaces the carrier-foot M2 pair; one M2x8 pair still clamps pitch. No additional adapter, washer or printed part.",
+            "hardware": "One standard M3x10 rail pair replaces the carrier-foot M2 pair; direct rail mode has no pitch joint or M2 hardware. No additional adapter, washer or printed part.",
             "relocation": "Loosen the single rail pair for supported local trim; remove and reseat at a different clear wall station for larger moves. Recheck optical field, whole head, cable slack and service access after any position change.",
             "service": "Disconnect the sensor, support the head, remove its rail screw/nut from their open-bottom recesses, then lift the complete head. Use the checked saved-position rail service path; no connected-cable or arbitrary-position clearance claim.",
-            "qualification": "Nominal standard shoe contacts only. Production PA12 fit, local rail curvature, friction retention, pointing, adhesive and creep remain unqualified. The pitch joint does not self-level.",
+            "qualification": "Nominal standard shoe contacts only. Production PA12 fit, local rail curvature, friction retention, pointing, adhesive and creep remain unqualified. Direct rail mode has no pitch correction; use the stacked pedestal for manual alignment.",
         }
     return {
         "attachment_mode": mode,
@@ -285,6 +285,8 @@ def manufacturing_wall_probes(mode="carrier"):
     from . import optical_mount as mount
 
     mode = resolve_mount_mode(mode)
+    if mode == "rail":
+        return []
     x, y, z = mount.pivot_centre(mode)
     bottom = mount.base_top_z(mode)
     rows = [
@@ -331,14 +333,15 @@ def manufacturing_wall_probes(mode="carrier"):
             mount.FIXED_EAR_THICKNESS,
         ),
     ]
-    return rows if mode == "carrier" else rows[-2:]
+    return rows
 
 
 def base_component_proxies(mode="carrier"):
     from . import optical_mount as mount
-    from . import rail
 
     mode = resolve_mount_mode(mode)
+    if mode == "rail":
+        return [("OpticalRailTray", mount.rail_mounted_tray_shape())]
     x, y, z = mount.pivot_centre(mode)
     bottom = mount.base_top_z(mode)
     depth = mount.gusset_depth(mode)
@@ -347,7 +350,7 @@ def base_component_proxies(mode="carrier"):
             "OpticalFoot",
             union(
                 [
-                    rail.mount_base_shape() if mode == "rail" else foot_shape(),
+                    foot_shape(),
                     box(8, 0.5, 0.5, (-4, -mount.FIXED_EAR_THICKNESS - 0.5, bottom)),
                     # The sloping toe's tangency also extends behind Y=2 and
                     # above Z=2.5; enclose the complete obtuse R0.5 transition.

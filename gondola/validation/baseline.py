@@ -367,18 +367,15 @@ def control_behavior(doc):
         original = float(getattr(stage, property_name))
         module_placements = {module.Name: module.Placement.copy() for module in modules}
         optical_placement = optical.getGlobalPlacement()
+        limit = optical_mount.angle_limit_deg(resolve_mount_mode())
         declared_limits_match = (
-            abs(float(stage.MinimumAngle) + 20) < TOL
-            and abs(float(stage.MaximumAngle) - 20) < TOL
+            abs(float(stage.MinimumAngle) + limit) < TOL
+            and abs(float(stage.MaximumAngle) - limit) < TOL
+            and (limit > 0 or abs(original) < TOL)
         )
         try:
-            for requested, expected in (
-                (-999, -20),
-                (-10, -10),
-                (0, 0),
-                (10, 10),
-                (999, 20),
-            ):
+            for requested in (-999, -10, 0, 10, 999):
+                expected = max(-limit, min(limit, requested))
                 setattr(stage, property_name, requested)
                 doc.recompute()
                 independent = optical.getGlobalPlacement().isSame(

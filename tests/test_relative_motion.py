@@ -280,7 +280,7 @@ class NativeModuleExpressionTests(unittest.TestCase):
 
         result = _static_expression_contract(self.doc, self.spec)
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["checked_expression_count"], 14)
+        self.assertEqual(result["checked_expression_count"], 15)
 
     def test_optical_edge_formula_cannot_follow_propulsor_motion(self):
         from gondola.validation.relative_motion import _static_expression_contract

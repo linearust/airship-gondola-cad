@@ -1,7 +1,9 @@
 """Actual saved rail checks reject missing support, displaced bolts and bad bindings."""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 try:
@@ -16,6 +18,19 @@ class SavedRailValidationTests(unittest.TestCase):
     def setUp(self):
         from gondola.cad import set_property
         from gondola.parts import equipment_mounts, optical_mount, propulsion, rail
+        from gondola.validation import rail_interface, rail_mount
+
+        # Exercise the explicit rail alternative independently of the selected
+        # carrier-mode assembly fixture.
+        bindings = tuple(
+            row
+            for row in rail_interface.MOUNT_BINDINGS
+            if row[1] != "OpticalFlowModule"
+        ) + (("OpticalSensorTray", "OpticalFlowModule", "optical", 0.0, 16.0),)
+        for owner in (rail_interface, rail_mount):
+            active = patch.object(owner, "MOUNT_BINDINGS", bindings)
+            active.start()
+            self.addCleanup(active.stop)
 
         self.doc = App.newDocument("SavedSideSlotRailTest")
         self.root = self.doc.addObject("App::Part", "Root")
@@ -36,7 +51,7 @@ class SavedRailValidationTests(unittest.TestCase):
             ),
             ("AccessoryMount", "AccessoryEquipmentModule", "accessory", -140, 180, 0),
             ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 0, 14.0),
-            ("OpticalMountBase", "OpticalFlowModule", "optical", 140, 0, 0),
+            ("OpticalSensorTray", "OpticalFlowModule", "optical", 140, 180, 0),
         )
         for name, parent, kind, x, yaw, offset in specs:
             module = self.doc.addObject("App::Part", parent)
@@ -57,7 +72,13 @@ class SavedRailValidationTests(unittest.TestCase):
             obj = self.doc.addObject("Part::Feature", name)
             module.addObject(obj)
             if kind == "optical":
-                obj.Shape = optical_mount.base_shape(mode="rail")
+                stage = self.doc.addObject("App::Part", "OpticalPitchStage")
+                module.addObject(stage)
+                stage.addObject(obj)
+                stage.Placement.Base = App.Vector(-12, 1.25, 6.5)
+                for control in ("Pitch", "MinimumAngle", "MaximumAngle"):
+                    set_property(stage, control, 0.0, "App::PropertyAngle")
+                obj.Shape = optical_mount.sensor_tray_shape()
                 set_property(module, "OpticalAttachmentMode", "rail")
             elif kind is None:
                 obj.Shape = propulsion.fixed_frame_shape()
@@ -124,7 +145,8 @@ class SavedRailValidationTests(unittest.TestCase):
                 expected_axes[(row["module"], row["attachment_prefix"])],
             )
         optical = next(row for row in actual if row["module"] == "OpticalFlowModule")
-        self.assertEqual(optical["part"], "OpticalMountBase")
+        self.assertEqual(optical["part"], "OpticalSensorTray")
+        self.assertTrue(optical["native_mount_frame"]["fixed_optical_stage_matches"])
         self.assertFalse(optical["paired_propulsion_clamp"])
         self.assertCountEqual(
             [row["object"] for row in optical["installed_hardware"]],
@@ -138,8 +160,119 @@ class SavedRailValidationTests(unittest.TestCase):
             self.doc.OpticalFlowModuleRailMountNut.HardwareSKU, "M3_HEX_NUT"
         )
         self.assertNotIn(
-            self.doc.OpticalMountBase, self.doc.DesignRegistry.EquipmentMounts
+            self.doc.OpticalSensorTray, self.doc.DesignRegistry.EquipmentMounts
         )
+
+    def test_optical_shoe_is_normalized_from_its_saved_fixed_stage(self):
+        from gondola.cad import world_shape
+        from gondola.print_export import geometry_comparison
+        from gondola.validation.rail_mount import saved_integral_mount_checks
+
+        module, stage, tray = (
+            self.doc.OpticalFlowModule,
+            self.doc.OpticalPitchStage,
+            self.doc.OpticalSensorTray,
+        )
+        module.Placement = App.Placement(
+            App.Vector(140, 0, 0), App.Rotation(App.Vector(0, 0, 1), 180)
+        )
+        self.doc.recompute()
+
+        def check():
+            return saved_integral_mount_checks(
+                self.doc, self.doc.DesignRegistry, module_names=(module.Name,)
+            )[0]
+
+        good = check()
+        self.assertTrue(good["passed"], good)
+        self.assertEqual(good["expected_parent"], stage.Name)
+        self.assertLess(
+            good["independent_lower_mount_comparison"]["difference_mm3"], 1e-7
+        )
+        # A compensating child displacement keeps net shoe geometry unchanged;
+        # it must still fail the native canonical hierarchy/placement contract.
+        original_world = world_shape(tray)
+        stage.Placement.Base.x += 0.5
+        tray.Placement.Base.x -= 0.5
+        self.assertLess(
+            geometry_comparison(original_world, world_shape(tray))["difference_mm3"],
+            1e-7,
+        )
+        shifted = check()
+        self.assertFalse(shifted["part_local_placement_identity"])
+        self.assertFalse(shifted["fixed_optical_stage_matches"])
+        self.assertFalse(shifted["geometry_checks_performed"])
+        self.assertEqual(shifted["error"], "Invalid native rail mount frame")
+        self.assertFalse(shifted["passed"])
+
+    def test_optical_rail_stage_cannot_claim_pitch_or_change_parent(self):
+        from gondola.validation.rail_interface import mount_frame_check
+
+        module, stage, tray = (
+            self.doc.OpticalFlowModule,
+            self.doc.OpticalPitchStage,
+            self.doc.OpticalSensorTray,
+        )
+        for control in ("Pitch", "MinimumAngle", "MaximumAngle"):
+            with self.subTest(control=control):
+                setattr(stage, control, 1.0)
+                self.assertFalse(mount_frame_check(tray, module)["passed"])
+                setattr(stage, control, 0.0)
+        stage.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 0.1)
+        self.assertFalse(mount_frame_check(tray, module)["passed"])
+        stage.Placement.Rotation = App.Rotation()
+        module.addObject(tray)
+        self.assertFalse(mount_frame_check(tray, module)["parent_matches"])
+        stage.addObject(tray)
+        self.root.addObject(stage)
+        self.assertFalse(mount_frame_check(tray, module)["passed"])
+
+    def test_reopened_optical_tray_retains_shoe_frame_and_contained_service(self):
+        from gondola.parts import rail
+        from gondola.validation.rail_access import _lift_path
+        from gondola.validation.rail_interface import mount_shape_in_module
+        from gondola.validation.rail_mount import saved_integral_mount_checks
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "nested_optical_tray.FCStd"
+            self.doc.saveAs(str(path))
+            App.closeDocument(self.doc.Name)
+            self.doc = App.openDocument(str(path), hidden=True)
+            rows = saved_integral_mount_checks(
+                self.doc, self.doc.DesignRegistry, module_names=("OpticalFlowModule",)
+            )
+            self.assertTrue(rows[0]["passed"], rows)
+            shape = mount_shape_in_module(
+                self.doc.OpticalSensorTray, self.doc.OpticalFlowModule
+            )
+            report = _lift_path(
+                "OpticalSensorTray", shape, {"Rail": rail.rail_shape()}, 0
+            )
+            self.assertTrue(report["passed"], report)
+            self.assertLess(report["shape_outside_service_envelope_mm3"], 1e-7)
+
+    def test_optical_lower_shoe_defect_cannot_hide_in_source_agreement(self):
+        from gondola.cad import placed_shape
+        from gondola.validation.rail_mount import saved_integral_mount_checks
+
+        tray = self.doc.OpticalSensorTray
+        cut = Part.makeBox(1, 0.5, 1, App.Vector(14, 0.5, 0.5))
+        original = tray.Shape.copy()
+        tray.Shape = original.cut(cut)
+        self.assertGreater(original.Volume - tray.Shape.Volume, 0.49)
+        canonical = placed_shape(tray.Shape, self.doc.OpticalPitchStage.Placement)
+        with patch(
+            "gondola.validation.rail_mount.optical_mount.rail_mounted_tray_shape",
+            return_value=canonical,
+        ):
+            row = saved_integral_mount_checks(
+                self.doc, self.doc.DesignRegistry, module_names=("OpticalFlowModule",)
+            )[0]
+        self.assertLess(row["source_comparison"]["difference_mm3"], 1e-7)
+        self.assertGreater(
+            row["independent_lower_mount_comparison"]["difference_mm3"], 0.49
+        )
+        self.assertFalse(row["passed"])
 
     def test_paired_trim_extremes_preserve_real_seats_and_both_clamp_zones(self):
         for position in (11, 17):
@@ -323,6 +456,16 @@ class SavedRailValidationTests(unittest.TestCase):
             if row["part"] == "BatteryMount"
         )
         self.assertFalse(row["part_local_placement_identity"])
+        self.assertFalse(row["geometry_checks_performed"])
+        self.assertEqual(row["error"], "Invalid native rail mount frame")
+        installed = next(
+            row
+            for row in report["rails"][0]["installed_mounts"]
+            if row["part"] == "BatteryMount"
+        )
+        self.assertFalse(installed["native_mount_frame"]["passed"])
+        self.assertFalse(installed["geometry_checks_performed"])
+        self.assertFalse(installed["passed"])
 
     def test_missing_hardware_registry_entry_is_rejected(self):
         registry = self.doc.DesignRegistry

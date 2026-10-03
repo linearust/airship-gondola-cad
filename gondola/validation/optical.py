@@ -1,6 +1,6 @@
 """Read-only rail- or carrier-mounted optical evidence and clearance audit.
 
-Mechanism and connector-access checks sample five pitch attitudes at the saved attachment position. The separate broad
+Carrier mechanism and connector-access checks sample five pitch attitudes; the direct rail tray is checked at its one fixed attitude. The separate broad
 optical cone conservatively contains the external field over the entire angle
 range; neither check qualifies physical fit, friction, cables or gravity trim.
 """
@@ -15,7 +15,7 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import belongs_to_group, world_shape
-from gondola.contracts.design import MODULE_STATIONS
+from gondola.contracts.design import module_stations
 from gondola.contracts.optical_attachment import resolve_mount_mode
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
@@ -142,6 +142,20 @@ def _native_structure_check(doc):
                 {"error": "Carrier optical attachment has an independent rail control"}
             )
     elif group is not None and mode == "rail":
+        for name in (
+            "OpticalMountBase",
+            "OpticalPitchBolt",
+            "OpticalPitchNut",
+            "OpticalFootBolt1",
+            "OpticalFootNut1",
+        ):
+            if doc.getObject(name) is not None:
+                errors.append(
+                    {
+                        "object": name,
+                        "error": "Obsolete carrier-only part in fixed rail mode",
+                    }
+                )
         forbidden = {"CarrierHostName", "MountSide"}.intersection(group.PropertiesList)
         required_controls = {
             "RailPositionX",
@@ -175,7 +189,8 @@ def _rail_native_controls(group, registry):
     from .baseline import module_attachment_pose
 
     station = next(
-        (item for item in MODULE_STATIONS if item.object_name == group.Name), None
+        (item for item in module_stations("rail") if item.object_name == group.Name),
+        None,
     )
     if station is None:
         return {
@@ -409,8 +424,15 @@ def _source_evidence(doc):
                 actual.getParentGeoFeatureGroup().Name
                 == expected.getParentGeoFeatureGroup().Name
                 and (actual.Placement.Base - expected.Placement.Base).Length < TOL
-                and actual.MinimumAngle.Value == -optical_mount.ANGLE_LIMIT_DEG
-                and actual.MaximumAngle.Value == optical_mount.ANGLE_LIMIT_DEG
+                and actual.MinimumAngle.Value == -optical_mount.angle_limit_deg(mode)
+                and actual.MaximumAngle.Value == optical_mount.angle_limit_deg(mode)
+                and (
+                    mode != "rail"
+                    or (
+                        actual.Pitch.Value == 0
+                        and actual.getEditorMode("Pitch") == ["ReadOnly"]
+                    )
+                )
                 and list(actual.ExpressionEngine) == list(expected.ExpressionEngine)
                 and key in actual.PropertiesList
             )
@@ -473,11 +495,13 @@ def _placement_checks(doc, physical, kit, *, profile=None):
             reservations[name] = None
     external = {**fixed, **rotor}
     mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
-    tool_reserve = pitch_tool_shape(mode)
-    tool_reserve.Placement = group.getGlobalPlacement()
+    tool_reserve = None
+    if mode == "carrier":
+        tool_reserve = pitch_tool_shape(mode)
+        tool_reserve.Placement = group.getGlobalPlacement()
     rows = []
     maximum_depth = -math.inf
-    for pitch in PITCH_SAMPLE_ANGLES:
+    for pitch in PITCH_SAMPLE_ANGLES if mode == "carrier" else (0,):
         optical_mount.set_pitch(doc, pitch)
         own = {obj.Name: world_shape(obj) for obj in kit}
         collisions = []
@@ -520,7 +544,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
         for name, shape in (
             ("body", own["ModuleMTF02PEnvelope"]),
             ("connector", connector_reserve),
-            ("pitch_tool", tool_reserve),
+            *(([("pitch_tool", tool_reserve)]) if tool_reserve is not None else []),
         ):
             local = shape.copy()
             local.Placement = inverse_group.multiply(local.Placement)
@@ -552,7 +576,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
                 "MTF02POpticalClearanceReserve": optical_reserve,
                 "MTF02PConnectorReserve": connector_reserve,
             },
-            wiring_reserves.MINIMUM_NEIGHBOUR_GAPS,
+            wiring_reserves.neighbour_gap_pairs(mode),
             tolerance=TOL,
             validation_cache=validation_cache,
         )
@@ -845,7 +869,7 @@ def _foot_service_checks(doc, physical, kit):
         path(
             name,
             shape,
-            [(0, 0, 0), (0, 0, release_z), (20, 0, release_z), (20, 0, 40)],
+            [(0, 0, 0), (0, 0, release_z), (24, 0, release_z), (24, 0, 40)],
             {**host_parts, **remaining},
         )
     for index in optical_interface.CLAMP_CENTRES:
@@ -860,7 +884,7 @@ def _foot_service_checks(doc, physical, kit):
     for name, shape in remaining.items():
         path("CompleteOpticalMount/" + name, shape, [(0, 0, 0), (0, 0, 40)], host_parts)
     return {
-        "scope": f"Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut {release_z:g} mm, slide20 mm along optical-local+X outside the tray and lift; withdraw its screw{screw_withdrawal:g} mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
+        "scope": f"Disconnect leads; detach the populated carrier from the rail and support it on a bench. Turn the underside screw to release the pocket-held foot nut {release_z:g} mm, slide24 mm along optical-local+X outside the shared tray and its unused shoe and lift; withdraw its screw{screw_withdrawal:g} mm toward carrier underside, then lift the complete mount40 mm, clearing the integral 1.2 mm tongue. The balloon, hand/tool and connected harness are outside this bench-service model.",
         "paths": rows,
         "passed": all(row["passed"] for row in rows),
     }
@@ -877,9 +901,9 @@ def _rail_interface_checks(doc):
         "attachment_mode": "rail",
         "saved_mounts": rows,
         "passed": len(rows) == 1
-        and rows[0].get("part") == "OpticalMountBase"
+        and rows[0].get("part") == "OpticalSensorTray"
         and rows[0]["passed"],
-        "scope": "Standard rail shoe, independent lower-stock comparison and complete saved base. Seating, M3 hardware and ordered removal are additionally checked by the common rail audit.",
+        "scope": "Standard rail shoe, independent lower-stock comparison and complete saved shared tray. Seating, M3 hardware and ordered removal are additionally checked by the common rail audit.",
     }
 
 
@@ -898,6 +922,13 @@ def _nut_recess_checks(doc):
     """Saved shallow seats restrain minimum M2 nuts without raising outer surfaces."""
     from gondola.parts.purchased_hardware import hex_prism
 
+    if str(doc.OpticalFlowModule.OpticalAttachmentMode) == "rail":
+        return {
+            "applicable": False,
+            "seats": [],
+            "passed": True,
+            "scope": "No M2 nuts in the fixed rail variant; its M3 seat is checked by the common rail audit.",
+        }
     rows = []
     for name, part, parent, origin, rotation in (
         (
@@ -915,11 +946,6 @@ def _nut_recess_checks(doc):
             App.Rotation(V(1, 0, 0), -90),
         ),
     ):
-        if (
-            name == "OpticalFootNut1"
-            and str(doc.OpticalFlowModule.OpticalAttachmentMode) == "rail"
-        ):
-            continue
         support = world_shape(doc.getObject(part))
         support.Placement = (
             parent.getGlobalPlacement().inverse().multiply(support.Placement)
@@ -989,7 +1015,7 @@ def _restore_sensor_state(doc, state):
 def mtf_sensor_check(doc):
     """Audit both sensors on the saved rail or carrier attachment; never save."""
     report = {
-        "scope": "Saved CAD only: both mutually exclusive sensors, five sampled pitch attitudes and a conservative continuous external field. The standard rail audit covers selected module seating and ordered removal. Carrier mode additionally checks the optical foot on its detached host; rail mode releases its own M3 pair before bench pitch service. Actual print distortion, angular rocking, retention, optical origins, cables and pointing remain unqualified; host, side and rail-position changes require renewed clearance checks."
+        "scope": "Saved CAD only: both mutually exclusive sensors, five sampled carrier pitch attitudes or one fixed rail attitude, and a conservative external field. The standard rail audit covers selected module seating and ordered removal. Carrier mode additionally checks the optical foot on its detached host and both M2 service operations; rail mode uses the shared tray alone with its M3 pair and has no pitch disassembly. Actual print distortion, angular rocking, retention, optical origins, cables and pointing remain unqualified; host, side and rail-position changes require renewed clearance checks."
     }
     evidence = _source_evidence(doc)
     report["source_evidence"] = evidence

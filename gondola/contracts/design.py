@@ -28,7 +28,7 @@ from .servo_horns import SELECTED_BY_SIDE, preparation_note
 from .servo_horns import profile as horn_profile
 
 CREALLO_GUIDE_URL = "https://creallo.com/ko/guide/design-spec-guide"
-DESIGN_REVISION = "CG"
+DESIGN_REVISION = "CH"
 # Nominal local part dimensions, before print rotation; not delivered-size tolerance.
 MAX_PRINT_PART_DIMENSION_MM = 340.0
 # Chosen assembly length is independent of the supplier-screening size limit.
@@ -82,7 +82,7 @@ PART_SEPARATION_REASONS = {
     "motor_carriers_and_frame": "Independent rotating carriers remain shaft-supported from the inboard side only. The rear motor plate joins the protective ring at the keyed root and an opposite integral return arm, reducing the unsupported ring span without an outer bearing, shaft or added hardware. Preserve clearance through bounded rotation, wire-loop allowance and positive axial stops. Motor mounting face X=-5mm is a printed datum; actual propeller seating and full blade sweep remain unresolved. The current guard serves nominal40mm propellers;50mm is only a replacement-space provision requiring a new rotor. Ring impact resistance and loaded stiffness remain unqualified.",
     "horn_and_adapter": preparation_note()
     + " Keep the purchased spline, OEM centre screw, shaft-stop floor and gear/stub planes. Adapter openings and nut clearance accommodate fitting before tightening, not operating looseness. Follow the coupling contract for actual geometry and ordered service; source dimensions do not qualify strength or runout.",
-    "optical_head": "Two prints provide one lockable manual pitch-Y axis. Select the integral standard rail-shoe base or the carrier-slot base and rebuild; the same sensor tray fits both. Rail mode uses one M3x10 rail pair and one M2x8 pitch pair. Carrier mode uses two M2x8 pairs. In carrier mode, a rectangular foot attaches to an existing universal carrier side slot with an integral locating tongue and one M2 pair; one more pair clamps pitch. Both optical nuts have0.5mm-deep hex recesses with1.5mm floors; the pitch nut belongs to the moving tray so it follows pitch adjustment. The tongue limits assembly yaw without extending below the deck; the screw locks the seated foot. It does not self-level or remove the need to align before tightening. The rail base uses the unchanged standard U contact and clearances without an intermediate adapter or additional universal carrier. Use the checked host/edge configurations and validate complete sensor, service and power clearances after relocation. Rail centring does not correct roll or actively level the sensor. Qualify foot seating, pointing retention and PA12 creep.",
+    "optical_head": "The unchanged carrier pedestal and extended upper tray provide one manual pitch axis by default. The same upper print also has an integral standard rail shoe: use that tray alone with one M3x10 pair for fixed-angle direct attachment, omitting the pedestal and both M2 pairs. Carrier mode retains two M2x8 pairs, the shallow foot locator, both0.5mm-deep nut recesses and1.5mm floors. The moving nut follows its pitch ear. Qualify printed seating, pointing retention, adhesive and creep; no self-levelling. Rebuild and revalidate view, service and optional power clearances after changing attachment mode or position.",
 }
 
 
@@ -177,11 +177,11 @@ RAIL_ATTACHMENT_COUNT = 6 if OPTICAL_ON_RAIL else 5
 PURCHASED_HARDWARE_QUANTITIES = {
     "M3X10_BUTTON_HEAD": RAIL_ATTACHMENT_COUNT,
     "M3_HEX_NUT": RAIL_ATTACHMENT_COUNT,
-    "M2X8_BUTTON_HEAD": 1 if OPTICAL_ON_RAIL else 2,
+    **({} if OPTICAL_ON_RAIL else {"M2X8_BUTTON_HEAD": 2}),
     "M2X12_BUTTON_HEAD": 2,
     "M2X6_BUTTON_HEAD": 2,
     "M2X10_BUTTON_HEAD": 6,
-    "M2_HEX_NUT": 11 if OPTICAL_ON_RAIL else 12,
+    "M2_HEX_NUT": 10 if OPTICAL_ON_RAIL else 12,
     "M1_6X8_PAN_HEAD_KIT": 4,
     "M1_6_HEX_NUT_DIN934": 4,
     SELECTED_DRIVE.driver.sku: 2,
@@ -216,12 +216,12 @@ EXPECTED_INVENTORY = {
     "rails": 1,
     "equipment_mounts": 3,
     "tilting_propulsors": 2,
-    "installed_prints": 13,
-    "optical_mount_parts": 2,
+    "installed_prints": 12 if OPTICAL_ON_RAIL else 13,
+    "optical_mount_parts": 1 if OPTICAL_ON_RAIL else 2,
     "fit_coupons": 4,
     "purchased_hardware": sum(PURCHASED_HARDWARE_QUANTITIES.values()),
     "purchased_hardware_types": len(PURCHASED_HARDWARE_QUANTITIES),
-    "unique_print_files": 13,
+    "unique_print_files": 12 if OPTICAL_ON_RAIL else 13,
 }
 
 # Preserve the FC's previous world-heading basis in the 180-degree carrier.
@@ -232,7 +232,7 @@ MODULE_LAYOUT_DECISION = {
     "layout": "Three main mass regions use four equipment/propulsion rail modules: propulsion near the rail centre, battery on +X, and electronics on -X behind the neutral motors. The selected optical head either occupies its own standard rail station or follows an existing carrier; attachment mode requires a full rebuild. The electronics region comprises independent FC and navigation carriers of the same print used by the battery; the Mini uses the rail-facing side of the navigation plate outside the central saddle.",
     "trim": "Default stations are a wiring and clearance arrangement, not a verified mass balance. Adjust the battery carrier within its supported slot or relocate it to another wall segment for the actual pack or an empty carrier with external power; weigh the complete assembly and recheck cable slack, clearances and support after trim. Connector hardware remains unselected; optional electrical supply plans are defined separately in contracts/power_options.py.",
     "electronics": "Place the universal FC carrier behind the neutral motors and the identical navigation/radio carrier farther along the same rail end. Both carriers have a nominal 180deg Z orientation. Rotate the FC a further 180deg relative to its carrier to preserve the earlier world-heading design basis and underbody wire-corridor side. The accessory carrier retains the P-AS mounting pattern and adhesive support for MG-A01 or MG-F10-A alternatives, plus the selected Mini. Exact board heading, ports, connected cable access and firmware orientation remain physical checks.",
-    "optical": "One MTF-02P or MTF-01P shares the adhesive tray on a single-axis manual pitch head. Default rail mode uses the standard shoe atX140 with pivotZ42. Carrier mode retains the battery carrier positive-X slot option with local pivotZ23. Relocation requires complete optical-view, service, power and navigation checks; a common slot interface does not qualify every host or edge.",
+    "optical": "One MTF-02P or MTF-01P shares the extended dual-interface upper tray. Default: unchanged carrier pedestal at the battery positive-X edge, local pivotZ19, tray padZ8.5..10.5 above the pivot. Alternative: the same upper print alone, standard rail stationX140/yaw180, fixed0DOF. The offset shoe leaves the unused M2 ear outside the rail channel. Rebuild and check full view, service and populated-device clearances for every attachment change.",
     "service": "Disconnect harnesses and support modules. Loosen every shared M3 pair for local trim; remain within all foot support intervals. For propulsion removal, extract both screw/nut pairs, slide the whole supported module +X10 mm along the rail and lift Z30 mm to clear the FC carrier. This unclamped removal stroke is not an operating CG position. Keep both propulsion shoes seated during trim; no automatic centring. Carriers use one side pair; at the selected layout the FC carrier slides world -X4 mm before Z30 lift, while battery/accessory carriers lift directly. These temporary removal positions are not operating positions. Equipment stays mounted, but revalidate full tool/fastener/removal access after any layout change.",
 }
 
@@ -342,7 +342,7 @@ class ModuleStation:
 
 
 def module_stations(mode=None):
-    """Rail stations for a complete rebuild of the selected optical base."""
+    """Rail stations for a complete rebuild of the selected optical attachment."""
     stations = (
         ModuleStation("BatteryEquipmentModule", 84),
         ModuleStation(
@@ -355,7 +355,7 @@ def module_stations(mode=None):
         ModuleStation("AccessoryEquipmentModule", -140, 180),
     )
     if resolve_mount_mode(mode) == "rail":
-        stations += (ModuleStation("OpticalFlowModule", DEFAULT_RAIL_X),)
+        stations += (ModuleStation("OpticalFlowModule", DEFAULT_RAIL_X, 180),)
     return stations
 
 
@@ -434,11 +434,11 @@ UNRESOLVED_INTERFACES = (
     ),
     UnresolvedInterface(
         "optical_sensor_installation",
-        "Manually align the selected optical head to downward vertical at flight trim, lock the single pitch clamp, then verify the selected MTF-02P/MTF-01P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
+        "For the default stack, manually align to downward vertical at flight trim and lock the pitch clamp. Direct rail mode is fixed-angle; verify the actual rail orientation or use the stack. In either mode then verify the selected MTF-02P/MTF-01P lens datums, firmware yaw/position offsets, adhesive retention, connector slack and unobstructed field. Added mass does not by itself guarantee vertical alignment or active stabilization.",
     ),
     UnresolvedInterface(
         "optical_stack_retention",
-        "Seat the selected optical base: standard rail shoe with its M3 pair, or carrier foot and locating tongue in an existing carrier side slot with its M2 pair; manually align and lock the single pitch joint. Finish or reprint an interfering locator rather than pulling an unseated foot down with the screw. Verify foot seating, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead before removing or relocating the head. Recheck complete view cones after changing host, edge or rail station; common interfaces do not make every position acceptable.",
+        "Default stack: seat the original carrier foot and locating tongue, lock its M2 pair, then manually align and lock the M2 pitch joint. Alternative direct rail attachment uses the same upper tray alone with one M3 pair and no pitch adjustment. Finish or reprint an interfering locator rather than pulling an unseated foot down with the screw. Verify foot seating, full nut engagement, pointing friction, PA12 creep and cable loads. No spring preload or active stabilization is assumed. Disconnect the sensor lead before removing or relocating the head. Recheck complete view cones after changing host, edge or rail station; common interfaces do not make every position acceptable.",
     ),
     UnresolvedInterface(
         "rc_and_heading_installation",
@@ -490,7 +490,7 @@ def project_status():
         "manufacturing_decision": MANUFACTURING_DECISION,
         "structural_design_basis": "Ultralight indoor LTA gondola; lower stiffness than a sub-250g multirotor is accepted. First integrate parts with no necessary separation, make them manufacturable, then optimize their shape. Retain splits only for demonstrated assembly, motion or requested replacement functions. Redesign when the complete assembly improves in mass, simplicity, fit or serviceability, respecting current user constraints. The supported-input design requires six generic3x6x2.5 bearings, including the four already confirmed purchased; verify two additional matching bearings or spares without substituting flanged bearings. The design requirement does not record a new purchase. Allow modest mass increases for simpler integral parts and forgiving noncritical envelopes. Integrate fixed servo and output-bearing supports; retain individual servo and rotor serviceability. Use simple clearance or short slots where they reduce fit risk without adding parts; retain functional locating, torque and bearing surfaces. Do not add elaborate adjustment mechanisms. Compare complete torque/retention paths; minimize hardware varieties and omit unnecessary washers. Physical retention remains unverified.",
         "part_separation_reasons": PART_SEPARATION_REASONS,
-        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. The manually aligned optical head uses its own standard rail shoe by default, or an existing universal carrier side slot after selecting the alternative base and rebuilding. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
+        "scope": f"Indoor LTA blimp gondola including one {get_sensor_profile().model}: one flexible rail, two independently geared X06 main propulsors with bounded ±180deg output targets, compact battery and FC carriers, and one simple navigation/LR24-F-Mini accessory carrier. The default optical head stacks on an existing universal carrier; its extended upper tray can alternatively attach alone to the rail at a fixed angle after rebuilding. Each purchased {SELECTED_DRIVE.driver.teeth}T driver turns a {SELECTED_DRIVE.output.teeth}T output gear; no yaw motor or fin hardware is included.",
         "selected_drive": SELECTED_DRIVE.contract(),
         "flight_controller": flight_controller_contract(),
         "optional_power": power_option_contract(),
@@ -505,7 +505,7 @@ def project_status():
         "excluded_equipment": EXCLUDED_EQUIPMENT,
         "inventory": EXPECTED_INVENTORY,
         "wiring_purchase_plan": WIRING_PURCHASE_PLAN,
-        "optical_stack_scope": "One selected fixed base supports the adhesive tray through a manual pitch-Y clamp: a standard integral rail shoe by default, or the alternative carrier-slot foot. The rail pivot is Z42; the carrier pivot is local Z23 above its host deck. Pitch corrects longitudinal curvature only; roll is not corrected. Rail station or carrier host/edge, optical view and optional power/navigation combinations must pass composed checks. Physical pointing, fit, retention and creep remain unqualified.",
+        "optical_stack_scope": "Default optical stack retains the original lower pedestal and one manual pitch-Y clamp; only the common upper tray is extended and gains the standard rail interface. Direct rail mode uses that same upper print alone with no adjustable joint. Neither mode corrects roll or actively levels the sensor. Check complete optical, service, power and navigation clearances; pointing, fit, retention and creep remain physically unqualified.",
         "module_stations": [asdict(item) for item in MODULE_STATIONS],
         "module_layout_decision": MODULE_LAYOUT_DECISION,
         **release_status(),

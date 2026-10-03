@@ -165,7 +165,9 @@ def reserve_checks(doc):
     expected_shapes["MTF02PConnectorReserve"] = optical_sensor.connector_reserve_shape(
         profile
     )
-    expected_contracts = wiring.reserve_contracts()
+    optical_mode = str(doc.OpticalFlowModule.OpticalAttachmentMode)
+    expected_contracts = wiring.reserve_contracts(optical_mode=optical_mode)
+    minimum_gaps = wiring.neighbour_gap_pairs(optical_mode)
     expected_contracts["MTF02PConnectorReserve"] = optical_sensor.connector_contract(
         profile
     )
@@ -261,7 +263,7 @@ def reserve_checks(doc):
             )
         buffers = named_gap_checks(
             {**physical_shapes_by_name, **reserve_shapes_by_name},
-            {name: wiring.MINIMUM_NEIGHBOUR_GAPS.get(name, {})},
+            {name: minimum_gaps.get(name, {})},
             validation_cache=validation_cache,
         )
         intersections = [

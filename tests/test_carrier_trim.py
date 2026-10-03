@@ -94,38 +94,46 @@ class CarrierTrimTests(unittest.TestCase):
         )
         self.assertFalse(supported_carrier_slide(shapes, obstacles, pose)["passed"])
 
-    def test_optical_base_trim_keeps_open_channel_and_checks_all_post_stock(self):
+    def test_optical_tray_trim_keeps_open_channel_and_checks_all_saved_stock(self):
         from gondola.cad import translated_shape
         from gondola.parts import optical_mount, rail
         from gondola.validation.rail_access import supported_carrier_slide
 
-        base = optical_mount.base_shape(mode="rail")
-        pose = {"attachment_world_axes_x_mm": [140], "expected_carrier_yaw_deg": 0}
-        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=-140)}
+        base = optical_mount.rail_mounted_tray_shape()
+        pose = {"attachment_world_axes_x_mm": [140], "expected_carrier_yaw_deg": 180}
+        # In the yaw180 module frame the end wall lies at the rail's negative end.
+        obstacles = {"Rail": translated_shape(rail.rail_shape(), x=140)}
         shapes = {
-            "OpticalMountBase": base,
+            "OpticalSensorTray": base,
             "OpticalFlowModuleRailMountScrew": rail.attachment_screw_shape(),
             "OpticalFlowModuleRailMountNut": rail.nut_shape(),
         }
         good = supported_carrier_slide(shapes, obstacles, pose)
         self.assertTrue(good["passed"], good)
-        row = next(row for row in good["parts"] if row["part"] == "OpticalMountBase")
+        row = next(row for row in good["parts"] if row["part"] == "OpticalSensorTray")
         self.assertEqual(
             {r["region"] for r in row["regions"]},
-            {"OpticalMountBaseLower", "OpticalMountBaseUpper"},
+            {
+                "OpticalSensorTray" + region
+                for region in ("Lower", "PitchEar", "Neck", "Pad", "Bridge")
+            },
         )
         self.assertLess(row["shape_outside_service_envelope_mm3"], 1e-7)
-        # A narrow branch of actual saved post stock must participate in the
-        # upper sweep; its centre-path collision is absent at both endpoints.
+        # Unreviewed stock cannot be omitted from the containing proxy, even
+        # when a collision would occur only between placement endpoints.
         changed = base.fuse(Part.makeBox(0.1, 10, 1, App.Vector(0, -0.1, 40)))
         obstacle = Part.makeBox(0.1, 1, 0.5, App.Vector(0.4, 8, 40.2))
         for shift in (-3, 3):
             self.assertLess(
                 translated_shape(changed, x=shift).common(obstacle).Volume, 1e-7
             )
-        shapes["OpticalMountBase"] = changed
+        shapes["OpticalSensorTray"] = changed
         bad = supported_carrier_slide(shapes, {**obstacles, "Midpath": obstacle}, pose)
         self.assertFalse(bad["passed"], bad)
+        changed_row = next(
+            row for row in bad["parts"] if row["part"] == "OpticalSensorTray"
+        )
+        self.assertGreater(changed_row["shape_outside_service_envelope_mm3"], 0.9)
 
     def test_carrier_screw_sweep_rejects_uncovered_saved_protrusion(self):
         from gondola.parts import rail
@@ -171,7 +179,6 @@ class CarrierTrimTests(unittest.TestCase):
                 "BatteryEquipmentModule": "BatteryMount",
                 "ElectronicsEquipmentModule": "ElectronicsMount",
                 "AccessoryEquipmentModule": "AccessoryMount",
-                "OpticalFlowModule": "OpticalMountBase",
             }
             self.assertCountEqual(
                 [carrier["module"] for carrier in carriers], expected_mounts
@@ -190,9 +197,10 @@ class CarrierTrimTests(unittest.TestCase):
                     module_name + "RailMountNut",
                 ):
                     self.assertEqual(carried_parts.count(required), 1)
-                if module_name == "OpticalFlowModule":
+                if module_name == "BatteryEquipmentModule":
                     self.assertTrue(
                         {
+                            "OpticalMountBase",
                             "OpticalSensorTray",
                             "OpticalPitchBolt",
                             "OpticalPitchNut",

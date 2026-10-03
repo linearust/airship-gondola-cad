@@ -279,7 +279,7 @@ def _optical_screens(doc):
         physical = kit["printed"] + kit["hardware"]
         for profile in SENSOR_PROFILES.values():
             poses = []
-            for pitch in PITCH_SAMPLE_ANGLES:
+            for pitch in PITCH_SAMPLE_ANGLES if mode == "carrier" else (0,):
                 optical_mount.set_pitch(temporary, pitch)
                 pose = kit["pitch_stage"].getGlobalPlacement()
                 shapes = {
@@ -307,11 +307,17 @@ def _optical_screens(doc):
                         "connector": registered_shape(
                             optical_sensor.connector_reserve_shape(profile)
                         ),
-                        "pitch_tool": placed_shape(
-                            optical_interface.registration_bound(
-                                pitch_tool_shape(mode), mode
-                            ),
-                            kit["group"].getGlobalPlacement(),
+                        **(
+                            {
+                                "pitch_tool": placed_shape(
+                                    optical_interface.registration_bound(
+                                        pitch_tool_shape(mode), mode
+                                    ),
+                                    kit["group"].getGlobalPlacement(),
+                                )
+                            }
+                            if mode == "carrier"
+                            else {}
                         ),
                     }
                 )
@@ -350,7 +356,11 @@ def _optical_option_check(
                 **pose["physical"],
                 "OpticalField": pose["field"],
                 "OpticalConnector": pose["connector"],
-                "OpticalPitchToolAccess": pose["pitch_tool"],
+                **(
+                    {"OpticalPitchToolAccess": pose["pitch_tool"]}
+                    if "pitch_tool" in pose
+                    else {}
+                ),
             }.items():
                 hits.extend(
                     {"moving": name, **hit}
@@ -489,9 +499,9 @@ def compatibility_check(doc):
             {
                 "FCWiringClearanceReserve": {
                     name: gap
-                    for name, gap in wiring_reserves.MINIMUM_NEIGHBOUR_GAPS[
-                        "FCWiringClearanceReserve"
-                    ].items()
+                    for name, gap in wiring_reserves.neighbour_gap_pairs(
+                        str(doc.OpticalFlowModule.OpticalAttachmentMode)
+                    )["FCWiringClearanceReserve"].items()
                     if name in BODY_NAMES
                 }
             },

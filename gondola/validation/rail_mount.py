@@ -12,12 +12,14 @@ from gondola.print_export import geometry_comparison
 
 from . import rail_contact
 from .evidence import comparison_passed
-from .geometry import belongs_to_group, intersection_volume, local_shape
+from .geometry import intersection_volume, local_shape
 from .rail_curvature import angular_clearance_check, local_seat_check, root_stock_check
 from .rail_interface import (
     MOUNT_BINDINGS,
     attachment_sites,
     mount_binding,
+    mount_frame_check,
+    mount_shape_in_module,
     selected_mount_bindings,
     site_placement,
 )
@@ -362,9 +364,7 @@ def saved_integral_mount_checks(doc, registry, *, module_names=None):
         (obj := doc.getObject(name)) is not None
         and hasattr(obj, "Shape")
         and printed.count(obj) == 1
-        and obj.getParentGeoFeatureGroup() == doc.getObject(parent)
-        and obj.Placement.Base.Length < TOL
-        and abs(obj.Placement.Rotation.Angle) < TOL
+        and mount_frame_check(obj, doc.getObject(parent))["passed"]
         for name, parent, _, _, _ in MOUNT_BINDINGS
     )
     try:
@@ -379,11 +379,33 @@ def saved_integral_mount_checks(doc, registry, *, module_names=None):
                 {"part": name, "passed": False, "error": "Missing integral mount"}
             )
             continue
-        actual = local_shape(obj)
+        parent = doc.getObject(parent_name)
+        frame = mount_frame_check(obj, parent)
+        if parent is None:
+            rows.append(
+                {"part": name, "passed": False, "error": "Missing mount module"}
+            )
+            continue
+        if not frame["passed"]:
+            rows.append(
+                {
+                    "part": name,
+                    **frame,
+                    "mount_module": parent_name,
+                    "registered_once_as_print": printed.count(obj) == 1,
+                    "equipment_registry_matches": inventory,
+                    "complete_mount_registry_matches": mount_inventory,
+                    "geometry_checks_performed": False,
+                    "error": "Invalid native rail mount frame",
+                    "passed": False,
+                }
+            )
+            continue
+        actual = mount_shape_in_module(obj, parent)
         if kind is None:
             source = propulsion.fixed_frame_shape()
         elif kind == "optical":
-            source = optical_mount.base_shape(mode="rail")
+            source = optical_mount.rail_mounted_tray_shape()
         else:
             source = equipment_mounts.mount_shape(kind)
         complete = geometry_comparison(actual, source)
@@ -428,12 +450,7 @@ def saved_integral_mount_checks(doc, registry, *, module_names=None):
             }
             for site, region, witness in zip(sites, crops, literals)
         ]
-        parent = doc.getObject(parent_name)
-        parent_ok = parent is not None and obj.getParentGeoFeatureGroup() == parent
         registered = printed.count(obj) == 1
-        placement_ok = (
-            obj.Placement.Base.Length < TOL and abs(obj.Placement.Rotation.Angle) < TOL
-        )
         rows.append(
             {
                 "part": name,
@@ -442,14 +459,12 @@ def saved_integral_mount_checks(doc, registry, *, module_names=None):
                 "source_comparison": complete,
                 "independent_lower_mount_comparison": lower,
                 "source_lower_mount_comparison": source_lower,
-                "expected_parent": parent_name,
-                "parent_matches": parent_ok,
+                **frame,
+                "mount_module": parent_name,
                 "registered_once_as_print": registered,
-                "part_local_placement_identity": placement_ok,
                 "equipment_registry_matches": inventory,
                 "complete_mount_registry_matches": mount_inventory,
-                "passed": parent_ok
-                and placement_ok
+                "passed": frame["passed"]
                 and registered
                 and inventory
                 and mount_inventory
@@ -488,6 +503,25 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             )
             continue
         shared = module.Name == "MainPropulsionModule"
+        frame = mount_frame_check(part, module)
+        if not frame["passed"]:
+            rows.extend(
+                {
+                    "module": module.Name,
+                    "part": name,
+                    "attachment_prefix": site["prefix"],
+                    "attachment_local_x_mm": site["x_offset"],
+                    "attachment_side": site["side"],
+                    "paired_propulsion_clamp": shared,
+                    "native_mount_frame": frame,
+                    "geometry_checks_performed": False,
+                    "error": "Invalid native rail mount frame",
+                    "passed": False,
+                }
+                for site in attachment_sites(module.Name, offset)
+            )
+            continue
+        part_in_module = mount_shape_in_module(part, module)
         paired_support = None
         if shared:
             module_in_rail = inverse.multiply(module.getGlobalPlacement())
@@ -504,9 +538,7 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
             centred = abs(position.y) < TOL and abs(position.z) < TOL
             printed_in_rail = placed_shape(shapes[name], inverse)
             overlap = intersection_volume(printed_in_rail, rail_shape)
-            canonical_part = placed_shape(
-                local_shape(part), canonical_placement.inverse()
-            )
+            canonical_part = placed_shape(part_in_module, canonical_placement.inverse())
             lower = canonical_part.common(_lower_crop(0, 16))
             local_rail = placed_shape(rail_shape, foot_placement.inverse())
             screw_length, head_face_y = 10.0, -3.25
@@ -594,7 +626,8 @@ def _saved_mounts(registry, shapes, rail_obj, rail_shape):
                     "local_angular_clearance_screen": angular,
                     "paired_spine_support": paired_support,
                     "installed_hardware": hardware_rows,
-                    "passed": belongs_to_group(part, module)
+                    "native_mount_frame": frame,
+                    "passed": frame["passed"]
                     and position_check["passed"]
                     and centred
                     and lower.Volume > TOL

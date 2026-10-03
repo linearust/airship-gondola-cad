@@ -19,6 +19,7 @@ from .propulsion_service import contained_region_paths, continuous_path
 from .rail_interface import (
     attachment_sites,
     mount_binding,
+    mount_frame_check,
     selected_mount_bindings,
     site_placement,
 )
@@ -148,7 +149,7 @@ def _mount_service_regions(name, shape, offset):
         "ElectronicsMount",
         "AccessoryMount",
         "PropulsionFixedFrame",
-        "OpticalMountBase",
+        "OpticalSensorTray",
     }
     if name not in mount_names or bounds.ZMin >= rail.MOUNT_TOP_Z - TOL:
         return [(name, shape)]
@@ -174,14 +175,17 @@ def _mount_service_regions(name, shape, offset):
             V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
         )
         return [*lower_regions, (name + "Upper", shape.common(upper_region))]
-    if name == "OpticalMountBase":
-        upper_region = Part.makeBox(
-            bounds.XLength + 2,
-            bounds.YLength + 2,
-            bounds.ZLength + 1,
-            V(bounds.XMin - 1, bounds.YMin - 1, 12.5),
-        )
-        return [(name + "Lower", lower), (name + "Upper", shape.common(upper_region))]
+    if name == "OpticalSensorTray":
+        # The same upper print retains its unused M2 ear in rail mode. These
+        # literal envelopes are in the shoe frame, after inverse S. Separate
+        # regions preserve the U channel during both trim and vertical lift.
+        return [
+            (name + "Lower", lower),
+            (name + "PitchEar", Part.makeBox(8, 2, 8, V(-16, 1.25, 2.5))),
+            (name + "Neck", Part.makeBox(4, 2, 8.5, V(-14, 1.25, 6.5))),
+            (name + "Pad", Part.makeBox(18, 12, 2, V(-21, -4.75, 15))),
+            (name + "Bridge", Part.makeBox(10, 2, 4, V(-14, 1.25, 11))),
+        ]
     # The broad deck has narrow supports. A whole upper bounding box would
     # obstruct the adjacent servo cap during a real horizontal service slide.
     # These literal witnesses remain independent of the carrier builder.
@@ -283,6 +287,9 @@ def _service_preflight(doc, registry, bindings):
                 and list(registry.PrintedParts).count(mount) == 1,
                 "belongs_to_module": mount is not None
                 and belongs_to_group(mount, module),
+                "native_mount_frame_matches": mount_frame_check(mount, module)[
+                    "passed"
+                ],
                 "valid_solid": mount is not None
                 and hasattr(mount, "Shape")
                 and not mount.Shape.isNull()
@@ -440,7 +447,7 @@ def supported_carrier_slide(shapes, obstacles, pose):
             "BatteryMount",
             "ElectronicsMount",
             "AccessoryMount",
-            "OpticalMountBase",
+            "OpticalSensorTray",
         }:
             row = _lift_path(name, shape, obstacles, 0, waypoints=path)
         elif name.endswith("RailMountScrew"):

@@ -105,8 +105,8 @@ class EdgeBlendTests(unittest.TestCase):
 
         base = optical_mount.base_shape()
         tray = optical_mount.sensor_tray_shape()
-        self.solid(base, (0, -3.1, 2.1))
-        self.empty(base, (0, -3.49, 2.49))
+        self.solid(base, (0, -2.1, 2.1))
+        self.empty(base, (0, -2.49, 2.49))
         # The buttress toe is obtuse, so its quarter-circle stock differs
         # from the right-angle front root.
         self.solid(base, (0, 2.05, 2.05))
@@ -115,26 +115,26 @@ class EdgeBlendTests(unittest.TestCase):
         # Independent R1 plan outline: overlapping rectangles and four full
         # circles, without the production fillet selector. Above the R0.5
         # underside round, the entire pad retains 1.5 mm of flat seating stock.
-        pad = Part.makeBox(16, 12, 1.5, App.Vector(-8, -6, 5)).fuse(
-            Part.makeBox(18, 10, 1.5, App.Vector(-9, -5, 5))
+        pad = Part.makeBox(16, 12, 1.5, App.Vector(-8, -6, 9)).fuse(
+            Part.makeBox(18, 10, 1.5, App.Vector(-9, -5, 9))
         )
         for x in (-8, 8):
             for y in (-5, 5):
-                pad = pad.fuse(Part.makeCylinder(1, 1.5, App.Vector(x, y, 5)))
+                pad = pad.fuse(Part.makeCylinder(1, 1.5, App.Vector(x, y, 9)))
         self.assertAlmostEqual(pad.Volume, (18 * 12 - (4 - math.pi)) * 1.5)
         self.assertLess(pad.cut(tray).Volume, 1e-6)
-        top_band = Part.makeBox(20, 14, 1.5, App.Vector(-10, -7, 5))
+        top_band = Part.makeBox(20, 14, 1.5, App.Vector(-10, -7, 9))
         self.assertLess(tray.common(top_band).cut(pad).Volume, 1e-6)
-        above_seat = Part.makeBox(20, 14, 1, App.Vector(-10, -7, 6.5))
+        above_seat = Part.makeBox(20, 14, 1, App.Vector(-10, -7, 10.5))
         self.assertLess(tray.common(above_seat).Volume, 1e-6)
         # A literal oversized R2 corner loses required R1 seating stock.
-        wrong_corner = Part.makeBox(2, 2, 1.5, App.Vector(7, 4, 5)).cut(
-            Part.makeCylinder(2, 1.5, App.Vector(7, 4, 5))
+        wrong_corner = Part.makeBox(2, 2, 1.5, App.Vector(7, 4, 9)).cut(
+            Part.makeCylinder(2, 1.5, App.Vector(7, 4, 9))
         )
         damaged = tray.cut(wrong_corner)
         self.assertGreater(pad.cut(damaged).Volume, 0.1)
-        self.empty(tray, (8.99, 0, 4.51))
-        self.solid(tray, (8.4, 0, 4.6))
+        self.empty(tray, (8.99, 0, 8.51))
+        self.solid(tray, (8.4, 0, 8.6))
 
 
 if __name__ == "__main__":

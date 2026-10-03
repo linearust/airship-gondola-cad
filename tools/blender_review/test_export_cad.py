@@ -12,6 +12,7 @@ from tools.blender_review.export_cad import (
     check_mesh_placement,
     check_optical_attachment_basis,
     check_review_basis,
+    optical_review_plan,
     representation,
     review_objects,
 )
@@ -122,9 +123,10 @@ class ExportContractTests(unittest.TestCase):
             OpticalMountContract=json.dumps(
                 {
                     "attachment_mode": mode,
-                    "fixed_ear_thickness_mm": 3.0,
+                    "fixed_ear_thickness_mm": 2.0,
                     "ear_thickness_mm": 2.0,
-                    "bolt_tip_beyond_nut_mm": 1.9,
+                    "bolt_tip_beyond_nut_mm": 2.9 if mode == "carrier" else None,
+                    "adjustment_degrees_of_freedom": 1 if mode == "carrier" else 0,
                 }
             ),
             PropertiesList=["OpticalAttachmentMode"],
@@ -138,6 +140,8 @@ class ExportContractTests(unittest.TestCase):
             hardware = {
                 "OpticalFootBolt1": "M2X8_BUTTON_HEAD",
                 "OpticalFootNut1": "M2_HEX_NUT",
+                "OpticalPitchBolt": "M2X8_BUTTON_HEAD",
+                "OpticalPitchNut": "M2_HEX_NUT",
             }
         else:
             optical.RailPositionX = 140
@@ -149,22 +153,28 @@ class ExportContractTests(unittest.TestCase):
                 "OpticalFlowModuleRailMountNut": "M3_HEX_NUT",
             }
         optical.getGlobalPlacement = lambda: App.Placement(origin, App.Rotation())
+        stage_origin = (
+            App.Vector(0, 0, 19) if mode == "carrier" else App.Vector(-12, 1.25, 6.5)
+        )
         stage = SimpleNamespace(
             getParentGeoFeatureGroup=lambda: optical,
             getGlobalPlacement=lambda: App.Placement(
-                App.Vector(origin.x, 0, 42), App.Rotation()
+                origin + stage_origin, App.Rotation()
             ),
+            Placement=App.Placement(stage_origin, App.Rotation()),
+            Pitch=0,
+            MinimumAngle=-20 if mode == "carrier" else 0,
+            MaximumAngle=20 if mode == "carrier" else 0,
         )
         objects = {
             host.Name: host,
             "OpticalFlowModule": optical,
             "OpticalPitchStage": stage,
+            "OpticalSensorTray": SimpleNamespace(),
         }
-        for name, sku in {
-            **hardware,
-            "OpticalPitchBolt": "M2X8_BUTTON_HEAD",
-            "OpticalPitchNut": "M2_HEX_NUT",
-        }.items():
+        if mode == "carrier":
+            objects["OpticalMountBase"] = SimpleNamespace()
+        for name, sku in hardware.items():
             objects[name] = SimpleNamespace(HardwareSKU=sku)
         return SimpleNamespace(getObject=objects.get), objects
 
@@ -196,7 +206,7 @@ class ExportContractTests(unittest.TestCase):
                     self.assertEqual(expected["mode"], mode)
                     self.assertEqual(
                         expected["pitch_pivot_cad_mm"],
-                        [140, 0, 42] if mode == "rail" else [57, 0, 42],
+                        None if mode == "rail" else [57, 0, 38],
                     )
                     self.assertEqual(
                         expected["native_parent"],
@@ -256,7 +266,10 @@ class ExportContractTests(unittest.TestCase):
                 ("OpticalFlowModuleRailMountScrew", "OpticalFlowModuleRailMountNut"),
             ),
         ):
-            for name in (*names, "OpticalPitchBolt", "OpticalPitchNut"):
+            expected = names + (
+                ("OpticalPitchBolt", "OpticalPitchNut") if mode == "carrier" else ()
+            )
+            for name in expected:
                 for missing in (False, True):
                     with self.subTest(mode=mode, name=name, missing=missing):
                         doc, objects = self.optical_basis(mode)
@@ -283,9 +296,9 @@ class ExportContractTests(unittest.TestCase):
                 check_optical_attachment_basis(doc)
         for field, value in (
             ("attachment_mode", "rail"),
-            ("fixed_ear_thickness_mm", 2.0),
+            ("fixed_ear_thickness_mm", 3.0),
             ("ear_thickness_mm", 3.0),
-            ("bolt_tip_beyond_nut_mm", 2.9),
+            ("bolt_tip_beyond_nut_mm", 1.9),
         ):
             doc, objects = self.optical_basis("carrier")
             contract = json.loads(objects["OpticalFlowModule"].OpticalMountContract)
@@ -296,6 +309,40 @@ class ExportContractTests(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "ear/bolt contract"),
             ):
                 check_optical_attachment_basis(doc)
+
+    def test_rail_review_has_no_pitch_animation_or_phantom_pivot(self):
+        doc, objects = self.optical_basis("rail")
+        attachment = check_optical_attachment_basis(doc)
+        self.assertEqual(attachment["adjustment_degrees_of_freedom"], 0)
+        self.assertIsNone(attachment["pitch_pivot_cad_mm"])
+        self.assertEqual(attachment["tray_origin_cad_mm"], [128, 1.25, 6.5])
+        plan = optical_review_plan(attachment)
+        self.assertEqual(plan["pitch_points"], [(1, 0), (145, 0)])
+        self.assertIn("zero pitch adjustment", plan["description"])
+        self.assertNotIn("+/-20", plan["description"])
+        self.assertFalse(any("Pitch" in title for _, title in plan["markers"]))
+        for name in ("OpticalPitchBolt", "OpticalPitchNut"):
+            objects[name] = SimpleNamespace(HardwareSKU="M2X8_BUTTON_HEAD")
+            with self.assertRaisesRegex(RuntimeError, "mixes rail and carrier"):
+                check_optical_attachment_basis(doc)
+            del objects[name]
+        for field in ("Pitch", "MinimumAngle", "MaximumAngle"):
+            setattr(objects["OpticalPitchStage"], field, 1)
+            with self.assertRaisesRegex(RuntimeError, "degrees of freedom"):
+                check_optical_attachment_basis(doc)
+            setattr(objects["OpticalPitchStage"], field, 0)
+
+    def test_carrier_review_keeps_original_joint_and_full_pitch_travel(self):
+        doc, _ = self.optical_basis("carrier")
+        attachment = check_optical_attachment_basis(doc)
+        self.assertEqual(attachment["adjustment_degrees_of_freedom"], 1)
+        self.assertEqual(attachment["pitch_pivot_cad_mm"], [27, 0, 38])
+        plan = optical_review_plan(attachment)
+        self.assertEqual(
+            [angle for _, angle in plan["pitch_points"]], [0, 20, -20, 20, 0]
+        )
+        self.assertIn("two 2 mm ears", plan["description"])
+        self.assertIn("2.9 mm", plan["description"])
 
     @staticmethod
     def basis():

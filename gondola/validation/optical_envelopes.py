@@ -9,12 +9,12 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import placed_shape
+from gondola.cad import placed_shape, union
 from gondola.contracts.optical_attachment import resolve_mount_mode
 from gondola.contracts.optical_sensors import SENSOR_PROFILES
 from gondola.parts import optical_interface, optical_mount, optical_sensor
 
-from .optical_service import pitch_tool_shape
+from .optical_service import pitch_tool_shape, tray_stock_enclosures
 
 V = App.Vector
 PITCH_SAMPLE_ANGLES = (-20, -10, 0, 10, 20)
@@ -24,11 +24,11 @@ RAIL_ALIGNMENT_RESERVE_MM = 0.3
 def external_field_bound(group, profile=None):
     """Contain the field with a conservative assembly-alignment reserve."""
     profile = profile or optical_sensor.profile_for_document(group.Document)
-    angle = math.radians(optical_mount.ANGLE_LIMIT_DEG)
     half_x, half_y = (v / 2 for v in profile.size_mm[:2])
     front = optical_sensor.SENSOR_BOTTOM_Z + profile.optical_origin_min_z_mm
     mode = resolve_mount_mode(str(group.OpticalAttachmentMode))
     pivot = optical_mount.pivot_centre(mode)
+    angle = math.radians(optical_mount.angle_limit_deg(mode))
     z = pivot[2] + front * math.cos(angle) - half_x * math.sin(angle)
     registration = RAIL_ALIGNMENT_RESERVE_MM + math.hypot(
         optical_interface.MAX_REGISTRATION_X, optical_interface.MAX_REGISTRATION_Y
@@ -93,22 +93,67 @@ def motion_bounds(optical):
     """Both mutually exclusive sensors and connectors, continuous pitch."""
 
     mode = str(optical.OpticalAttachmentMode)
-    result = {
-        "OpticalPitchToolAccessBound": placed_shape(
+    result = {}
+    if mode == "carrier":
+        result["OpticalPitchToolAccessBound"] = placed_shape(
             optical_interface.registration_bound(pitch_tool_shape(mode), mode),
             optical.getGlobalPlacement(),
         )
-    }
+    # Keep empty space between the raised pad and offset shoe available. Each
+    # literal region independently bounds the entire pitch and registration
+    # domain; their union therefore contains the whole rigid tray at every
+    # allowed pose without filling the enclosing box between distant regions.
+    saved_tray = optical.Document.getObject("OpticalSensorTray")
+    stage = optical.Document.getObject("OpticalPitchStage")
+    if (
+        saved_tray is None
+        or stage is None
+        or saved_tray.getParentGeoFeatureGroup() != stage
+        or stage.getParentGeoFeatureGroup() != optical
+        or saved_tray.Shape.isNull()
+        or not saved_tray.Shape.isValid()
+        or len(saved_tray.Shape.Solids) != 1
+    ):
+        raise ValueError("Missing or inconsistent saved optical tray hierarchy")
+    limit = optical_mount.angle_limit_deg(mode)
+    controls = ("Pitch", "MinimumAngle", "MaximumAngle")
+    if any(name not in stage.PropertiesList for name in controls):
+        raise ValueError("Missing optical pitch controls")
+    pitch = float(stage.Pitch.Value)
+    if (
+        not math.isfinite(pitch)
+        or stage.MinimumAngle.Value != -limit
+        or stage.MaximumAngle.Value != limit
+        or (mode == "rail" and pitch != 0)
+        or (stage.Placement.Base - App.Vector(*optical_mount.pivot_centre(mode))).Length
+        > 1e-5
+        or not stage.Placement.Rotation.isSame(
+            App.Rotation(App.Vector(0, 1, 0), max(-limit, min(limit, pitch))), 1e-7
+        )
+    ):
+        raise ValueError(
+            "Saved optical tray stage differs from its bounded pitch domain"
+        )
+    tray = saved_tray.Shape.copy()
+    regions, missing = tray_stock_enclosures(tray)
+    if missing > 1e-5:
+        raise ValueError("Optical tray stock exceeds its literal continuous envelopes")
+    tray_bounds = []
+    for region in regions:
+        bound = pitch_bound(region, optical_mount.angle_limit_deg(mode))
+        bound.translate(App.Vector(*optical_mount.pivot_centre(mode)))
+        tray_bounds.append(optical_interface.registration_bound(bound, mode))
+    tray_bound = placed_shape(union(tray_bounds), optical.getGlobalPlacement())
     for key, profile in SENSOR_PROFILES.items():
         result[f"{key}ContinuousOpticalFieldBound"] = external_field_bound(
             optical, profile
         )[0]
+        result[f"{key}ContinuousTrayBound"] = tray_bound.copy()
         for name, shape in (
             ("Body", optical_sensor.envelope_shape(profile)),
             ("Connector", optical_sensor.connector_reserve_shape(profile)),
-            ("Tray", optical_mount.sensor_tray_shape()),
         ):
-            bound = pitch_bound(shape, optical_mount.ANGLE_LIMIT_DEG)
+            bound = pitch_bound(shape, optical_mount.angle_limit_deg(mode))
             bound.translate(App.Vector(*optical_mount.pivot_centre(mode)))
             bound = optical_interface.registration_bound(bound, mode)
             result[f"{key}Continuous{name}Bound"] = placed_shape(

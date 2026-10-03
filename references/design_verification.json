@@ -1,81 +1,72 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-03T01:13:56.298320+00:00",
-  "revision": "CG",
-  "change_kind": "Standard direct-rail optical base, longer shared pitch head and local edge blends",
-  "scope": "Nominal CAD geometry and ordered service only. The selected optical head uses the standard U rail shoe and M3x10 pair at X140; an alternative carrier-foot base retains the shared tray and manual pitch stage. Both base modes have nominal assembled pivot Z42, 4mm farther from the rail than the preceding carrier head. Fixed post and ear are 3mm thick; added root buttressing and tray corner rounds retain two installed optical prints. Input-bearing wing roots and free cap edges are blended without changing bearing seats or screw lands. Native rail/carrier hierarchy, hardware, optical field, tools, service paths and optional equipment configurations are checked. The approved fixture represents the selected rail mode; a separate fresh full carrier assembly provides alternative-mode evidence. Physical fit, strength, fatigue, creep, adhesion, moving wires and loaded retention remain unqualified. Motor-carrier fabrication remains on hold pending actual motor/propeller installation evidence.",
-  "predecessor_commit": "31ec2cb2abea60f3ba7f276c81b0448ca4ae04fb",
-  "source_fingerprint": "75f8ac8a2774e3ddc92c33cfc373be299393207e84be617d3b2274d715d4c4e7",
-  "cad_sha256": "5b4e6c3d1a913cdc1297758cffa9c409b04553fcf8278b8a3f06ae59d4544a45",
+  "recorded_utc": "2026-10-03T03:01:40.009140+00:00",
+  "revision": "CH",
+  "change_kind": "Restore original optical pedestal and extend one shared tray for stacked or direct rail mounting",
+  "scope": "Nominal CAD geometry and service only. Default carrier stack restores the exact original lower pedestal from 31ec2cb. The extended upper tray is the same print in both modes: its pad is 4 mm farther from the pitch ear and its integral unchanged standard rail shoe enables fixed-angle direct attachment without the pedestal or M2 pairs. Carrier mode retains manual +/-20 deg pitch and two M2x8 pairs; rail mode has zero pitch DOF and one M3x10 pair. Both full sensor configurations, complete tray stock, optical fields, fit datums and ordered hardware/removal paths are checked. Unrelated propulsion and rail solids remain unchanged. Physical fit, strength, loaded pointing, PA12 creep, adhesive and harnesses remain unqualified. Existing motor-carrier fabrication hold remains in effect.",
+  "predecessor_commit": "d05da62bd76a593d4e52d726d7c31d288d8f868b",
+  "source_fingerprint": "d4d7070c7bb344cbdf3b1708274f54d698a925c2a452a9283dbafe0258cb8e9d",
+  "cad_sha256": "13d8064b310cfc071e629e7d69ef6bf16da9e1c3a6cf0b1b48b078209f29c9c8",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
-    "sha256": "3bf1b6ea0d6f6c9c95ad7f81901f98205299780202bd6ea9ff3d03a2756f4933",
+    "sha256": "f33579b27d77e73d8c700be9eac850b1c68eab0df1958a06470a942b8539887d",
     "independently_reviewed": true
   },
   "native_tests": {
-    "testsRun": 871,
+    "passed": true,
+    "testsRun": 891,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
     "exact_discovery_coverage": true,
-    "frozen_input_identity": true,
-    "exit_codes": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "changed_inputs": [],
-    "started_utc": "2026-10-03T00:54:33.184328+00:00",
-    "completed_utc": "2026-10-03T01:13:24.773696+00:00",
-    "elapsed_seconds": 1131.589368727,
-    "passed": true
+    "per_execution_inputs_frozen": true,
+    "verification_strategy": "Full native discovery plus a complete changed-test-module rerun. Raw failed execution is retained; all earlier results from that module are superseded.",
+    "unique_tests_covered": 891,
+    "total_tests_executed": 916,
+    "rerun_test_count": 25,
+    "superseded_module": "test_relative_motion"
   },
   "pipeline": [
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 23.10474402399268,
-      "log_sha256": "6229ed71cc6d85f414d4641b1ed2e9518fd6ebd5af87d1bd2a564ee54acf3041"
+      "elapsed_seconds": 33.210198838001816,
+      "log_sha256": "693d675a4d89f2648118555e39b96e8cae167240cbf83666fbe10dc88fbce02f"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 40.67828930000542,
+      "elapsed_seconds": 42.96658546500839,
       "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 17.127041530009592,
+      "elapsed_seconds": 15.413299172010738,
       "log_sha256": "2b1eec01f01809ff4f349c03369b64b9dcb612d913b0b5a509a8f4717fadc5a3"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 1006.296239777992,
+      "elapsed_seconds": 1065.1171403909975,
       "log_sha256": "f6554241919e3d82db607e774ed4ee95da98655b5e1ec4a368a4c582c45e8439"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.36383850799757056,
-      "log_sha256": "58f73c715fb17dfe2f24f2ceff2fb13a836616380fe9824d7bb6d8e82f622aa9"
+      "elapsed_seconds": 0.3079152389836963,
+      "log_sha256": "dbf5ff8f32fadcbbaa194be08c830089abed60f24fd2df1233303cbc07b09660"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 15.861514952004654,
-      "log_sha256": "dfc47e48f35df447f67f3efa8928c2a8a6635dfc45b96b1cce747f9b091e61a7"
+      "elapsed_seconds": 14.823910364008043,
+      "log_sha256": "f15cde006f24ed6ce5c7be1299d7e5dda974047dfe8a629d3f4ffce6a49c84ea"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.6912931129918434,
+      "elapsed_seconds": 0.6202737169805914,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -96,15 +87,15 @@
     "discrepancy_count": 0
   },
   "native_cad_artifact_sha256": {
-    "gondola_attachment_detail.FCStd": "2d28e30e7de7d7cd1cd3db9eaaa759ceb997a4ef4e62446f0f168a7dfcb73e6c",
-    "gondola_power_options.FCStd": "79cd4b1bd00c3c109509cc1c1031f28c6a9f5659753075a6c79c3fd7fc7c3c43",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "b17be67f66e56b2328d4717847cdd22a5429fa02e8ca331bb8def4d9bdb7379f",
-    "gondola_print_parts.FCStd": "2c3c62ac5411461677513318677fd8942e2c79f5e6d06cc7d539480abb1657be",
-    "gondola.FCStd": "5b4e6c3d1a913cdc1297758cffa9c409b04553fcf8278b8a3f06ae59d4544a45"
+    "gondola_attachment_detail.FCStd": "5ef5d2d63366b8adc8f71bd9f46db2e76a7a2cd3af7b1e9a6d96837f9d7123d1",
+    "gondola_power_options.FCStd": "926ec011df2952406b405d8b389da925d1a226455e5a25faa45b2e61d5028c8f",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "a57315d087326433a2e1499f4c29b59957133a35b7a11dfc790d9dc772eb29e3",
+    "gondola_print_parts.FCStd": "18d3e555495c93b5899c964ea1264830748703de0d3c01db607434d54a40e260",
+    "gondola.FCStd": "13d8064b310cfc071e629e7d69ef6bf16da9e1c3a6cf0b1b48b078209f29c9c8"
   },
-  "print_bundle_sha256": "3f7d1a354aca56933f5c13a3de7e8c8e90b494da1573599824b7bee3d28a3aee",
-  "simulation_parameters_sha256": "70d81dbd118124d2acd0a06b276b07503b29afc0ccd50a9ffef24ee363c7f01e",
+  "print_bundle_sha256": "7632a0f9ac8d6c7f7125c2be3f3a9931751918138738d08f3a7a201c6850ebac",
+  "simulation_parameters_sha256": "c09c3147d6c7ae1f46ee1f8e804ebf85e992cd942a7306637f16dd0975050044",
   "evidence_archive": "design_checks.json.gz",
-  "evidence_record_key": "cg_optical_rail_revision",
-  "evidence_archive_sha256": "f514a58f7045ff374eb7fdb9b52644c90c64a70ca531bbcbeaed0ffa4e942ad6"
+  "evidence_record_key": "ch_optical_upper_revision",
+  "evidence_archive_sha256": "04c9c608be420e96f0e46ba1e1eebac1308de1109d644e0372b5e17f6c620958"
 }

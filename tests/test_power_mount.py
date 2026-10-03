@@ -208,7 +208,7 @@ class PowerMountTests(unittest.TestCase):
                     doc.recompute()
                     before_parent = optical.getParentGeoFeatureGroup()
                     before_pose = optical.Placement.copy()
-                    before_world = world_shape(doc.OpticalMountBase)
+                    before_world = world_shape(doc.OpticalSensorTray)
                     with self.assertRaisesRegex(RuntimeError, "restore test"):
                         with _illustrated_optical_mount(doc):
                             option = power_mount.create_option_document(doc)
@@ -243,7 +243,7 @@ class PowerMountTests(unittest.TestCase):
                             raise RuntimeError("restore test")
                     self.assertEqual(optical.getParentGeoFeatureGroup(), before_parent)
                     self.assertTrue(optical.Placement.isSame(before_pose, 1e-7))
-                    after_world = world_shape(doc.OpticalMountBase)
+                    after_world = world_shape(doc.OpticalSensorTray)
                     self.assertLess(abs(before_world.cut(after_world).Volume), 1e-6)
                     self.assertLess(abs(after_world.cut(before_world).Volume), 1e-6)
                 finally:
@@ -389,7 +389,7 @@ class PowerMountTests(unittest.TestCase):
         from gondola.cad import set_property
         from gondola.contracts.design import MODULE_STATIONS
         from gondola.contracts.power_options import power_option_contract
-        from gondola.parts import equipment_mounts, optical_interface
+        from gondola.parts import equipment_mounts, optical_mount
         from gondola.power_export import (
             ARTIFACT_NAMES,
             audit_power_options,
@@ -423,11 +423,10 @@ class PowerMountTests(unittest.TestCase):
                     obj.Shape = equipment_mounts.mount_shape(kind)
                     host.addObject(obj)
                     mounts.append(obj)
-                optical = doc.addObject("App::Part", "OpticalFlowModule")
-                optical.addProperty("App::PropertyString", "OpticalAttachmentMode")
-                optical.OpticalAttachmentMode = "carrier"
-                optical_interface.attach_to_host(
-                    optical, doc.BatteryEquipmentModule, "PositiveX"
+                # Configuration screening requires the actual saved tray and
+                # bounded native stage, not a metadata-only optical placeholder.
+                optical = optical_mount.build_optical_mount(
+                    doc, doc.BatteryEquipmentModule, "PositiveX", mode="carrier"
                 )
                 registry = doc.addObject("App::DocumentObjectGroup", "DesignRegistry")
                 set_property(registry, "OptionalPowerDocument", ARTIFACT_NAMES[0])
@@ -445,7 +444,13 @@ class PowerMountTests(unittest.TestCase):
                 ):
                     registry.addProperty("App::PropertyLinkListGlobal", category)
                     setattr(
-                        registry, category, mounts if category == "PrintedParts" else []
+                        registry,
+                        category,
+                        mounts + optical["printed"]
+                        if category == "PrintedParts"
+                        else optical["hardware"]
+                        if category == "HardwareParts"
+                        else [],
                     )
                 doc.recompute()
                 source = out / "gondola.FCStd"

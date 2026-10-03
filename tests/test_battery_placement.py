@@ -32,6 +32,8 @@ class BatteryPlacementTests(unittest.TestCase):
             cls.doc, cls.host, electronics, accessory
         )
         stack = cls.doc.addObject("App::Part", "OpticalFlowModule")
+        stack.addProperty("App::PropertyString", "OpticalAttachmentMode")
+        stack.OpticalAttachmentMode = "carrier"
         optical_interface.attach_to_host(stack, cls.host)
         base = cls.doc.addObject("Part::Feature", "OpticalMountBase")
         stack.addObject(base)

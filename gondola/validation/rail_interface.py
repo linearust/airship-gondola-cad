@@ -6,7 +6,10 @@ Solid witnesses and contact checks stay in their respective validators.
 
 import FreeCAD as App
 
+from gondola.cad import placed_shape
 from gondola.contracts.optical_attachment import resolve_mount_mode
+
+from .geometry import TOL, local_shape
 
 MOUNT_BINDINGS = (
     ("BatteryMount", "BatteryEquipmentModule", "battery", 0.0, 16.0),
@@ -14,10 +17,56 @@ MOUNT_BINDINGS = (
     ("AccessoryMount", "AccessoryEquipmentModule", "accessory", 0.0, 16.0),
     ("PropulsionFixedFrame", "MainPropulsionModule", None, 14.0, 44.0),
 ) + (
-    (("OpticalMountBase", "OpticalFlowModule", "optical", 0.0, 16.0),)
+    (("OpticalSensorTray", "OpticalFlowModule", "optical", 0.0, 16.0),)
     if resolve_mount_mode() == "rail"
     else ()
 )
+
+
+def mount_frame_check(obj, module):
+    """Require the literal native hierarchy before normalizing a shoe frame."""
+    optical = module is not None and module.Name == "OpticalFlowModule"
+    stage = module.Document.getObject("OpticalPitchStage") if optical else None
+    expected_parent = stage if optical else module
+    parent_matches = (
+        obj is not None
+        and expected_parent is not None
+        and obj.getParentGeoFeatureGroup() == expected_parent
+    )
+    identity = (
+        obj is not None
+        and obj.Placement.Base.Length < TOL
+        and abs(obj.Placement.Rotation.Angle) < TOL
+    )
+    stage_matches = not optical or (
+        stage is not None
+        and getattr(module, "OpticalAttachmentMode", None) == "rail"
+        and stage.getParentGeoFeatureGroup() == module
+        and (stage.Placement.Base - App.Vector(-12, 1.25, 6.5)).Length < TOL
+        and abs(stage.Placement.Rotation.Angle) < TOL
+        and all(
+            hasattr(stage, key) and abs(float(getattr(stage, key))) < TOL
+            for key in ("Pitch", "MinimumAngle", "MaximumAngle")
+        )
+    )
+    return {
+        "expected_parent": "OpticalPitchStage"
+        if optical
+        else getattr(module, "Name", None),
+        "parent_matches": parent_matches,
+        "part_local_placement_identity": identity,
+        "fixed_optical_stage_matches": stage_matches,
+        "expected_optical_stage_translation_mm": [-12.0, 1.25, 6.5]
+        if optical
+        else None,
+        "passed": parent_matches and identity and stage_matches,
+    }
+
+
+def mount_shape_in_module(obj, module):
+    """Use saved native transforms; do not silently replace a misplaced stage."""
+    relative = module.getGlobalPlacement().inverse().multiply(obj.getGlobalPlacement())
+    return placed_shape(local_shape(obj), relative)
 
 
 def mount_binding(module_name):

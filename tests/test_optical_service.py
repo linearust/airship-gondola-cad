@@ -66,7 +66,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
             result = pitch_disassembly_check(self.doc, self.kit)
             self.assertTrue(result["passed"], result)
             self.assertEqual(result["paths"][0]["part"], "OpticalPitchNut")
-            self.assertAlmostEqual(result["paths"][0]["translation_mm"][1], 3.7)
+            self.assertAlmostEqual(result["paths"][0]["translation_mm"][1], 4.7)
             self.assertEqual(result["paths"][1]["part"], "OpticalPitchBolt")
             self.assertAlmostEqual(result["paths"][1]["translation_mm"][1], -8.2)
         optical_mount.set_pitch(self.doc, 10)
@@ -150,7 +150,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
 
         tray = self.doc.OpticalSensorTray
         tray.Shape = tray.Shape.fuse(
-            Part.makeBox(1.1, 1, 1, App.Vector(8.9, 0, 5.5))
+            Part.makeBox(1.1, 1, 1, App.Vector(-10, 0, 9.5))
         ).removeSplitter()
         self.assertTrue(tray.Shape.isValid())
         self.assertEqual(len(tray.Shape.Solids), 1)
@@ -176,12 +176,12 @@ class OpticalPitchServiceTests(unittest.TestCase):
         original = base.Shape.copy()
         inverse = self.doc.OpticalFlowModule.getGlobalPlacement().inverse()
         nominal = pitch_disassembly_check(self.doc, self.kit)
-        # At Y6.7 the pad clears both installed Y<=6 and the shorter rail-base
-        # removal endpoint Y>=7.45; only the continuous sweep meets this blocker.
+        # At Y6.7 the raised pad clears installed Y<=6 and its Y+16 endpoint
+        # Y>=10; only the continuous sweep meets this blocker.
         for name, point in (
             ("OpticalPitchNut", (2.0, 4.3, self.pivot_z)),
             ("OpticalPitchBolt", (1.6, -8.0, self.pivot_z)),
-            ("TrayAssembly/OpticalSensorTray", (4.0, 6.7, self.pivot_z + 5.5)),
+            ("TrayAssembly/OpticalSensorTray", (-4.0, 6.7, self.pivot_z + 9.5)),
         ):
             with self.subTest(part=name):
                 blocker = Part.makeSphere(0.2, App.Vector(*point))
@@ -249,7 +249,7 @@ class OpticalPitchServiceTests(unittest.TestCase):
         )
         from gondola.validation.optical_envelopes import motion_bounds
 
-        blocker = Part.makeSphere(0.25, App.Vector(0, -11.5, self.pivot_z))
+        blocker = Part.makeSphere(0.25, App.Vector(0, -16, self.pivot_z))
         blocker.Placement = self.doc.OpticalFlowModule.getGlobalPlacement()
         report = _optical_option_check(
             _optical_screens(self.doc), {"ToolBlocker": blocker}

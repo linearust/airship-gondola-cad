@@ -187,12 +187,13 @@ class EquipmentCompatibilityTests(unittest.TestCase):
             self.doc.AccessoryEquipmentModule.getGlobalPlacement(),
         )
         actual = screens[0]["attachment"]
-        self.assertEqual(actual["mode"], "rail")
-        self.assertEqual(actual["rail_station_x_mm"], 140)
+        self.assertEqual(actual["mode"], "carrier")
+        self.assertEqual(actual["carrier_host"], "BatteryEquipmentModule")
+        self.assertEqual(actual["carrier_side"], "PositiveX")
         for required, expected in (
             (actual, True),
-            ({**actual, "rail_station_x_mm": 139}, False),
-            ({**actual, "mode": "carrier"}, False),
+            ({**actual, "carrier_side": "NegativeX"}, False),
+            ({**actual, "mode": "rail"}, False),
         ):
             report = _optical_option_check(
                 screens,

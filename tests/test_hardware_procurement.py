@@ -72,13 +72,13 @@ class HardwareSpecificationTests(unittest.TestCase):
         from gondola.procurement import hardware_material_code
 
         expected = {
-            "M3X10_BUTTON_HEAD": 6,
-            "M3_HEX_NUT": 6,
-            "M2X8_BUTTON_HEAD": 1,
+            "M3X10_BUTTON_HEAD": 5,
+            "M3_HEX_NUT": 5,
+            "M2X8_BUTTON_HEAD": 2,
             "M2X10_BUTTON_HEAD": 6,
             "M2X12_BUTTON_HEAD": 2,
             "M2X6_BUTTON_HEAD": 2,
-            "M2_HEX_NUT": 11,
+            "M2_HEX_NUT": 12,
             "BEARING_3X6X2_5": 6,
             "SS304_CUT3_L35_FLAT16_A0": 2,
         }
