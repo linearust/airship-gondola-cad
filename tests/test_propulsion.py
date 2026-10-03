@@ -20,7 +20,7 @@ class ContinuousServiceTests(unittest.TestCase):
     def test_midpath_obstacle_is_not_hidden_by_clear_endpoints(self):
         from gondola.cad import translated_shape
         from gondola.validation.geometry import intersection_volume
-        from gondola.validation.propulsion_service import continuous_path
+        from gondola.validation.service_geometry import continuous_path
 
         moving = Part.makeBox(0.1, 1, 1)
         obstacle = Part.makeBox(0.02, 1, 1, App.Vector(5.37, 0, 0))
@@ -505,7 +505,7 @@ class NativeGearedDriveTests(unittest.TestCase):
     ):
         from gondola.cad import world_shape
         from gondola.validation.propulsion import output_carrier_service_check
-        from gondola.validation.propulsion_service import continuous_path
+        from gondola.validation.service_geometry import continuous_path
 
         result = continuous_path(
             world_shape(self.doc.PortOutputShaftNegative),

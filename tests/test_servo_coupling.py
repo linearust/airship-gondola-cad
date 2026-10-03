@@ -310,7 +310,7 @@ class ServoCouplingTests(unittest.TestCase):
 
     def test_front_nuts_release_off_bridge_while_rear_bolts_remain(self):
         from gondola.parts import servo_coupling as c
-        from gondola.validation.propulsion_service import continuous_path
+        from gondola.validation.service_geometry import continuous_path
 
         # Driver gear and stub have already left the complete servo unit.
         hardware = {name: shape for name, shape, _ in c.horn_hardware_shapes()}

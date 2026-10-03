@@ -158,8 +158,8 @@ class ServoEarNutTests(unittest.TestCase):
         from gondola.validation.propulsion_service import (
             fastener_service_check,
             module_service_shapes,
-            retained_obstacles,
         )
+        from gondola.validation.service_geometry import retained_obstacles
 
         shapes, missing = module_service_shapes(self.doc, self.module)
         self.assertEqual(missing, [])

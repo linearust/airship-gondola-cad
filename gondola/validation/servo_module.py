@@ -11,9 +11,9 @@ from gondola.cad import belongs_to_group
 from gondola.contracts.drive import drive_for_document
 
 from .geometry import TOL
-from .propulsion_service import (
+from .propulsion_service import module_service_shapes
+from .service_geometry import (
     continuous_path,
-    module_service_shapes,
     retained_obstacles,
 )
 

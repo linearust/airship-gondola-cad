@@ -7,6 +7,25 @@ from collections import Counter
 TOL = 1e-5
 
 
+def bounding_box_distance(first, second):
+    """Separation of valid axis-aligned bounds in one coordinate frame.
+
+    This is a lower bound on the enclosed solids' distance. Zero means that
+    the bounds touch or overlap; it does not establish a solid collision.
+    """
+    return math.sqrt(
+        sum(
+            max(
+                0.0,
+                getattr(first, axis + "Min") - getattr(second, axis + "Max"),
+                getattr(second, axis + "Min") - getattr(first, axis + "Max"),
+            )
+            ** 2
+            for axis in ("X", "Y", "Z")
+        )
+    )
+
+
 def belongs_to_group(obj, group):
     from gondola.cad import belongs_to_group as native_membership
 
@@ -182,20 +201,7 @@ def certify_translation_clearance(
         report["maximum_depth_used"] = max(report["maximum_depth_used"], depth)
         unresolved = []
         for name in names:
-            other_bounds = bounds[name]
-            box_distance = math.sqrt(
-                sum(
-                    max(
-                        0.0,
-                        getattr(placed_bounds, axis + "Min")
-                        - getattr(other_bounds, axis + "Max"),
-                        getattr(other_bounds, axis + "Min")
-                        - getattr(placed_bounds, axis + "Max"),
-                    )
-                    ** 2
-                    for axis in ("X", "Y", "Z")
-                )
-            )
+            box_distance = bounding_box_distance(placed_bounds, bounds[name])
             if box_distance > half_travel + TOL:
                 continue
             obstacle = obstacles[name]

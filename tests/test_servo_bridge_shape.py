@@ -266,10 +266,8 @@ class IntegratedServoFrameTests(unittest.TestCase):
             self.assertGreater(frame.common(oversized).Volume, 1)
 
     def test_shaft_dogleg_catches_a_midway_lateral_obstacle(self):
-        from gondola.validation.propulsion_service import (
-            continuous_path,
-            module_service_shapes,
-        )
+        from gondola.validation.propulsion_service import module_service_shapes
+        from gondola.validation.service_geometry import continuous_path
         from gondola.validation.servo_module import input_shaft_service_waypoints
 
         shapes, _ = module_service_shapes(self.doc, self.module)

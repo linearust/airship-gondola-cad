@@ -16,12 +16,14 @@ from gondola.parts import servo_coupling as coupling
 
 from .geometry import certify_translation_clearance
 from .propulsion_service import (
-    continuous_path,
     driver_service_segment_check,
     fastener_service_check,
     module_service_shapes,
-    retained_obstacles,
     servo_lateral_service_check,
+)
+from .service_geometry import (
+    continuous_path,
+    retained_obstacles,
 )
 from .servo_module import (
     driver_gear_service_waypoints,

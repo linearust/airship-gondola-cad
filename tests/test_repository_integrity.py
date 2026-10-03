@@ -33,6 +33,22 @@ def imported_modules(path):
 
 
 class RepositoryIntegrityTests(unittest.TestCase):
+    def test_shared_service_geometry_stays_independent_of_parts_and_propulsion(self):
+        path = REPO_ROOT / "gondola/validation/service_geometry.py"
+        forbidden = (
+            "gondola.parts",
+            "gondola.validation.propulsion",
+            "gondola.validation.propulsion_service",
+        )
+        for module in imported_modules(path):
+            self.assertFalse(
+                any(
+                    module == item or module.startswith(item + ".")
+                    for item in forbidden
+                ),
+                module,
+            )
+
     def test_leaf_validation_checks_do_not_import_the_propulsion_coordinator(self):
         # Shared checks must remain usable without importing their coordinator
         # back, including imports inside functions.

@@ -117,7 +117,7 @@ class RailServiceTests(unittest.TestCase):
 
     def test_recessed_nut_removal_rejects_an_obstacle_between_endpoints(self):
         from gondola.parts import rail
-        from gondola.validation.propulsion_service import continuous_path
+        from gondola.validation.service_geometry import continuous_path
 
         nut = rail.nut_shape()
         obstacles = {"Rail": rail.rail_shape(), "Mount": rail.mount_base_shape()}

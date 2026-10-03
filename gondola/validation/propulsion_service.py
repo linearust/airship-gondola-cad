@@ -9,11 +9,12 @@ import math
 import FreeCAD as App
 import Part
 
-from gondola.cad import belongs_to_group, translated_shape, union, world_shape
+from gondola.cad import belongs_to_group, translated_shape, world_shape
 from gondola.contracts.drive import DRIVE_INWARD_OFFSET_MM, FACE_WIDTH_MM, MODULE_MM
 from gondola.parts import propulsion
 
-from .geometry import TOL, intersection_volume, translation_sweep
+from .geometry import TOL, intersection_volume
+from .service_geometry import continuous_path
 
 
 def module_service_shapes(doc, module):
@@ -41,67 +42,6 @@ def servo_bench_members(doc, shapes):
         name
         for name in shapes
         if belongs_to_group(doc.getObject(name), doc.ServoDriveModule)
-    }
-
-
-def retained_obstacles(physical, excluded, *, members=None):
-    """Retain installed obstacles within the declared whole-module or bench scope."""
-    return {
-        name: shape
-        for name, shape in physical.items()
-        if name not in excluded and (members is None or name in members)
-    }
-
-
-def continuous_path(shape, waypoints, obstacles):
-    """Check every point of a piecewise translation, not just its waypoints."""
-    rows = []
-    for start, end in zip(waypoints, waypoints[1:]):
-        placed = translated_shape(shape, *start)
-        swept, method = translation_sweep(
-            placed, tuple(b - a for a, b in zip(start, end))
-        )
-        collisions = {
-            name: intersection_volume(swept, obstacle)
-            for name, obstacle in obstacles.items()
-        }
-        rows.append(
-            {
-                "start_mm": list(start),
-                "end_mm": list(end),
-                "method": method,
-                "intersection_mm3": collisions,
-                "passed": all(v < TOL for v in collisions.values()),
-            }
-        )
-    return {
-        "obstacles": sorted(obstacles),
-        "segments": rows,
-        "passed": bool(rows) and all(row["passed"] for row in rows),
-    }
-
-
-def contained_region_paths(shape, regions, waypoints, obstacles):
-    """Sweep named stock regions only after accounting for the complete part.
-
-    Callers define their own conservative stock. Keeping regions separate avoids
-    filling empty corners with one bounding box; their union must contain every
-    part feature so an omitted region cannot silently pass the path check.
-    """
-    regions = tuple(regions)
-    uncovered = (
-        abs(shape.cut(union([part for _, part in regions])).Volume)
-        if regions
-        else abs(shape.Volume)
-    )
-    rows = [
-        {"region": label, **continuous_path(part, waypoints, obstacles)}
-        for label, part in regions
-    ]
-    return {
-        "regions": rows,
-        "uncovered_volume_mm3": uncovered,
-        "passed": bool(rows) and uncovered < TOL and all(row["passed"] for row in rows),
     }
 
 

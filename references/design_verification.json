@@ -1,12 +1,12 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-03T12:58:06.767591+00:00",
+  "recorded_utc": "2026-10-03T13:35:57.061956+00:00",
   "revision": "CK",
-  "change_kind": "Protected servo and instrument support root blends",
-  "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. CK adds R0.75 servo cradle/plinth roots, R1 lower instrument cheek roots and R0.5 upper outer support/deck roots. Only three printed parts gain local root stock; purchased interfaces, inventory, native controls and placements are unchanged. Shared cradle bounds select actual plinth overlap under case allowance changes; the instrument service partition retains every actual solid region including the added blends. The rail, bearing seats, nut pockets, FC mounting pattern and optical adhesive pad remain unchanged. Full-vehicle CG, actual sensor origins, installed wiring, physical fit, stiffness, creep and flight readiness remain unqualified. The motor-carrier fabrication hold remains in effect.",
-  "predecessor_commit": "c6d39cb94639d81e77ace7fee3cab731ded9a1fd",
-  "source_fingerprint": "69a1c5b6c26f4278172fa5618205963793423b536507f3573d5c67a5f9bc362f",
-  "cad_sha256": "1d54b51c91109078bd9161737c39d0a15494713fb0edae09a5dd6e1835eb5b7b",
+  "change_kind": "Behavior-preserving shared service geometry refactor",
+  "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. Extracts common translation paths, retained obstacle selection and side-driver envelopes from propulsion-specific validation. Unifies bounding-box separation within validation; independent dimensional witnesses and certificate policies are retained. CAD geometry, native controls, placements, purchased interfaces and inventory match the unchanged independently reviewed CK fixture. Full-vehicle CG, actual sensor origins, installed wiring, physical fit, stiffness, creep and flight readiness remain unqualified. The motor-carrier fabrication hold remains in effect.",
+  "predecessor_commit": "176be1d8389a6d0f4a4ae4276e44cb2e3af4da87",
+  "source_fingerprint": "21c676d87594772927926103259a09ad2b57f7df270c58bfb1d83c969ee76ab7",
+  "cad_sha256": "ddd3932067549011672bb24f5275eb0d5252e4abff8b2124fa2b0c5172bdc9c8",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "ba5f55cfe1b9f2bce67bd22c0aaeb1922d6e9bfa92a79f51b131509da9045287",
@@ -16,7 +16,7 @@
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 896,
+    "testsRun": 900,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -29,43 +29,43 @@
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 65.89052197799901,
-      "log_sha256": "c45be54c0ce865b23af29fcc388f608b87aa682cde9c6a2ccbfd6d2079c95a6e"
+      "elapsed_seconds": 65.21213604800141,
+      "log_sha256": "36ca2f2b6f55514ee11a3a4fbd7b0ad65efbeef9dd7e5bf92b25a3de41399388"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 52.35044464300154,
+      "elapsed_seconds": 52.09640907699941,
       "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 26.24561851800172,
+      "elapsed_seconds": 26.558377911998832,
       "log_sha256": "1949901efbae813af48554766b1ba8c77ebb2c6dd8d510acb2f80eca5926f64e"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 1233.6240625190003,
+      "elapsed_seconds": 1239.549099920001,
       "log_sha256": "fc64639a8965d3e62156f3626c63cc0d0a10105b9a8eb52480a42e9e58ebbd66"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.3844250530019053,
-      "log_sha256": "10d8681f3ba8239b82555dfb3d2a199e7c95a6a29348b134495c25a765d6bb9d"
+      "elapsed_seconds": 0.3356175000008079,
+      "log_sha256": "d4aa0ac5e46a7f9bb92145f88ecf9a07d180dce723fd52c650d008f1881aaaa2"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 13.74316229300166,
-      "log_sha256": "9848231571f846604e6d0e41d03a45f253a34605005bf3bf147c412134650e49"
+      "elapsed_seconds": 13.935680058999424,
+      "log_sha256": "ce45b551f198f7f3b4bf344dfba27c5ec2f4189c1c8d7188dc467d9f8aafecbb"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.5551728089994867,
+      "elapsed_seconds": 0.5777181340017705,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -88,15 +88,15 @@
     "writer_freshness_binding_passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "1d54b51c91109078bd9161737c39d0a15494713fb0edae09a5dd6e1835eb5b7b",
-    "gondola_print_parts.FCStd": "21e7c385bc7e4c462fa1eb6d487e101e1496a772de803032d03d7f1fd99b0ff5",
-    "gondola_attachment_detail.FCStd": "0cd4dfba65e64222934061aa1f71aadaa7b835bb9695f86aecfdb3f8f0d8984c",
-    "gondola_power_options.FCStd": "a43299af9a30019069a2a7e93c60365587e781e486ac2e574fbdfcfcaa0dbe8c",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "b810de6ec6fa4472c29506645bef94ae0ce3a154335eca1d34f67afab714124c"
+    "gondola.FCStd": "ddd3932067549011672bb24f5275eb0d5252e4abff8b2124fa2b0c5172bdc9c8",
+    "gondola_print_parts.FCStd": "7b75986d8a770dd05f658c89ed018677a708bc0312ef675b033f043f0798bc72",
+    "gondola_attachment_detail.FCStd": "e943e0002d661a97f8d9a30c8fe829f800c0dc19d29a9393d7d243e3657867e0",
+    "gondola_power_options.FCStd": "3ea58fa8dcff1d6763d7988c631ac9c49f73418060b5cc9ec4f36258dc6ddd12",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "d8aaaa8ec67cdbce2089d717a6e41e517d6d59663fdc806fc7d4d95e430f3a8f"
   },
-  "print_bundle_sha256": "0ad72efb6c090d5f1904ed5b9320ae9cc968ff21348f857da031464e9bf04901",
-  "simulation_parameters_sha256": "cb7acaf4dfce2ca863bd1a836ba095b6e0cdecde3989632efdea9fb0ec5b5ee2",
+  "print_bundle_sha256": "f5aaf0b5aa6d96fb6eb8a3114f2fa595f34181208c85472e7d80b90ebc02b2a9",
+  "simulation_parameters_sha256": "f2d1d1171977d43ef03794c80e8f7396b9e61c2b531ded9f98978642eca1757c",
   "evidence_archive": "design_checks.json.gz",
   "evidence_record_key": "ck_protected_root_blends",
-  "evidence_archive_sha256": "39eea79452d63cb29a69ad22666f1df82121f328734418fccc41c50c916e876d"
+  "evidence_archive_sha256": "373917b60043fd4a8febbf37e4d75115d30d54b4ce3c352eb46a3a91efd3b5fe"
 }

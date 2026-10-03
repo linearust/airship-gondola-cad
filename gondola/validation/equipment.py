@@ -846,7 +846,7 @@ def _fc_wiring_check(doc, physical_objects, physical_shapes_by_name):
 
 def _device_service_checks(doc, physical_objects, physical_shapes_by_name):
     """Bare-device paths keep the integral bridge and every other physical part."""
-    from .propulsion_service import continuous_path
+    from .service_geometry import continuous_path
 
     service_rows = []
     for name in (

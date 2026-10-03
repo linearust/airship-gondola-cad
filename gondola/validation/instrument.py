@@ -13,8 +13,14 @@ import Part
 from gondola.cad import belongs_to_group, placed_shape, union
 from gondola.parts import instrument_mount, mounting_plate, rail
 
-from .geometry import TOL, intersection_volume, local_shape, planar_contact_area
-from .propulsion_service import continuous_path
+from .geometry import (
+    TOL,
+    bounding_box_distance,
+    intersection_volume,
+    local_shape,
+    planar_contact_area,
+)
+from .service_geometry import continuous_path, side_driver_shape
 
 V = App.Vector
 
@@ -22,20 +28,6 @@ V = App.Vector
 def _pose(degrees):
     rotation = App.Rotation(V(0, 1, 0), degrees)
     return App.Placement(V(0, 0, 27.5) - rotation.multVec(V(0, 0, 8)), rotation)
-
-
-def _box_gap(a, b):
-    return math.sqrt(
-        sum(
-            max(
-                0,
-                getattr(a, axis + "Min") - getattr(b, axis + "Max"),
-                getattr(b, axis + "Min") - getattr(a, axis + "Max"),
-            )
-            ** 2
-            for axis in ("X", "Y", "Z")
-        )
-    )
 
 
 def certify_pitch_clearance(
@@ -71,7 +63,7 @@ def _certify_validated(
     radial_box = App.BoundBox(
         -radius, b.YMin, 27.5 - radius, radius, b.YMax, 27.5 + radius
     )
-    radial_gap = _box_gap(radial_box, o)
+    radial_gap = bounding_box_distance(radial_box, o)
     if radial_gap > TOL:
         return {
             "passed": True,
@@ -94,7 +86,7 @@ def _certify_validated(
         middle = (start + end) / 2
         placed = placed_shape(shape, _pose(middle))
         chord = 2 * radius * math.sin(math.radians(end - start) / 4)
-        gap = _box_gap(placed.BoundBox, o)
+        gap = bounding_box_distance(placed.BoundBox, o)
         if gap <= chord + TOL:
             gap = placed.distToShape(obstacle)[0]
         evaluations += 1
@@ -288,20 +280,6 @@ def fc_bridge_access_check(shape):
         "passed": all(value < TOL for value in overlaps.values()),
         "scope": "Four vertical Ø6.5 planning columns from the overall FC envelope top. Actual installed heads, tools, board bearing planes and removable damper stack remain unmeasured. Bare board exits laterally after those parts and leads are removed.",
     }
-
-
-def _driver_shape(bolt):
-    b = bolt.BoundBox
-    return union(
-        [
-            Part.makeCylinder(
-                2, 140, V(b.Center.x, b.YMin - 0.1, b.Center.z), V(0, -1, 0)
-            ),
-            Part.makeCylinder(
-                6, 40, V(b.Center.x, b.YMin - 140.1, b.Center.z), V(0, -1, 0)
-            ),
-        ]
-    )
 
 
 def _terminal_connections(doc, module, moving, fixed, include_installed):
@@ -603,7 +581,7 @@ def instrument_check(doc, *, include_installed=True):
             ],
         )
         drivers = {
-            "Instrument" + joint + "Driver": _driver_shape(
+            "Instrument" + joint + "Driver": side_driver_shape(
                 hardware["Instrument" + joint + "Bolt"]
             )
             for joint in ("Pivot", "Lock")

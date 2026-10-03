@@ -51,18 +51,20 @@ from .horn_coupling import horn_registration_check as horn_registration_check
 from .motion_clearance import carrier_axial_travel, carrier_metal_clearance_check
 from .propulsion_evidence import PROPULSION_EVIDENCE_COUNTS, propulsion_evidence_check
 from .propulsion_service import (
-    contained_region_paths,
-    continuous_path,
     driver_full_rotation_clearance_check,
     driver_service_segment_check,
     fastener_service_check,
     module_service_shapes,
-    retained_obstacles,
     servo_bench_members,
     split_housing_vertical_service,
 )
 from .rail_contact import attachment_check
 from .relative_motion import relative_motion_check
+from .service_geometry import (
+    contained_region_paths,
+    continuous_path,
+    retained_obstacles,
+)
 from .servo_interface import horn_spline_contact
 from .servo_module import integrated_frame_check, servo_service_preparation_check
 from .shaft_retention import (

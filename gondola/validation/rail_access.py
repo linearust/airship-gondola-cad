@@ -15,7 +15,6 @@ from gondola.parts import rail
 
 from .baseline import module_attachment_pose, module_control_bindings
 from .geometry import TOL, translation_sweep
-from .propulsion_service import contained_region_paths, continuous_path
 from .rail_interface import (
     attachment_sites,
     mount_binding,
@@ -23,20 +22,18 @@ from .rail_interface import (
     selected_mount_bindings,
     site_placement,
 )
+from .service_geometry import (
+    contained_region_paths,
+    continuous_path,
+    side_driver_shape,
+)
 
 V = App.Vector
 
 
 def side_driver_clearance(screw, obstacles):
     """Local -Y approach, including the stem, handle and full insertion path."""
-    bounds = screw.BoundBox
-    origin = V(bounds.Center.x, bounds.YMin - 0.1, bounds.Center.z)
-    tool = union(
-        [
-            Part.makeCylinder(2, 140, origin, V(0, -1, 0)),
-            Part.makeCylinder(6, 40, origin + V(0, -140, 0), V(0, -1, 0)),
-        ]
-    )
+    tool = side_driver_shape(screw)
     return {
         **continuous_path(tool, [(0, -25, 0), (0, 0, 0)], obstacles),
         "driver_stem_diameter_mm": 4.0,
