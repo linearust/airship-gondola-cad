@@ -58,8 +58,12 @@ class SavedPowerExportTests(unittest.TestCase):
             # screening, which has separate real-assembly native tests.
             patch(
                 "gondola.power_export.screen_configurations",
-                return_value={"passed": True, "default_configuration_clear": True},
-            ),
+                return_value={
+                    "passed": True,
+                    "default_configuration_clear": True,
+                    "configurations": [{"permitted": True}],
+                },
+            ) as screen,
         ):
             out = Path(directory)
             main = App.newDocument("PowerSerializationFixture")
@@ -97,7 +101,18 @@ class SavedPowerExportTests(unittest.TestCase):
                 App.closeDocument(main.Name)
 
             initial = audit_power_options(source, out)
+            screen.assert_called_once()
             self.assertTrue(initial["passed"], initial)
+            self.assertEqual(
+                initial["configuration_screen"],
+                initial["illustrated_configuration_screen"],
+            )
+            initial["illustrated_configuration_screen"]["configurations"][0][
+                "permitted"
+            ] = False
+            self.assertTrue(
+                initial["configuration_screen"]["configurations"][0]["permitted"]
+            )
             self.assertTrue(initial["manifest_matches"])
             self.assertTrue(initial["mesh_surface_comparison"]["passed"])
             self.assertTrue(initial["read_only_artifacts"])

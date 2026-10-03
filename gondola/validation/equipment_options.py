@@ -28,7 +28,6 @@ from gondola.parts import (
 )
 from gondola.parts import (
     instrument_mount,
-    optical_interface,
     optical_sensor,
     wiring_reserves,
 )
@@ -264,16 +263,11 @@ def _optical_screens(doc):
             )
             sensor_pose = stage_pose.multiply(optical_frame)
 
-            def registered(shape):
-                return placed_shape(
-                    optical_interface.registration_bound(shape), sensor_pose
-                )
-
             shapes = {
                 name: placed_shape(shape, stage_pose) for name, shape in moving.items()
             }
-            shapes["ModuleMTF02PEnvelope"] = registered(
-                optical_sensor.envelope_shape(profile)
+            shapes["ModuleMTF02PEnvelope"] = placed_shape(
+                optical_sensor.envelope_shape(profile), sensor_pose
             )
             poses.append(
                 {
@@ -286,8 +280,8 @@ def _optical_screens(doc):
                     "field": placed_shape(
                         optical_sensor.optical_reserve_shape(profile), sensor_pose
                     ),
-                    "connector": registered(
-                        optical_sensor.connector_reserve_shape(profile)
+                    "connector": placed_shape(
+                        optical_sensor.connector_reserve_shape(profile), sensor_pose
                     ),
                 }
             )

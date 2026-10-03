@@ -181,6 +181,117 @@ class OpticalClearanceTests(unittest.TestCase):
                 else:
                     self.assertEqual(value, after[name][key], (name, key))
 
+    def test_motion_bounds_validate_once_and_preserve_bounds_and_native_state(self):
+        from gondola.contracts.optical_sensors import SENSOR_PROFILES
+        from gondola.parts import instrument_mount, optical_sensor
+        from gondola.print_export import geometry_comparison
+        from gondola.validation import optical_envelopes
+        from gondola.validation.evidence import comparison_passed
+
+        instrument_mount.set_pitch(self.doc, 11)
+        group = self.doc.OpticalFlowModule
+        placements = {
+            obj.Name: obj.Placement.copy()
+            for obj in self.doc.Objects
+            if "Placement" in obj.PropertiesList
+        }
+        sensors = {
+            name: (
+                self.doc.getObject(name).Shape.exportBrepToString(),
+                self.doc.getObject(name).SensorProfileContract,
+                self.doc.getObject(name).Label,
+            )
+            for name in (
+                optical_sensor.SENSOR_OBJECT,
+                optical_sensor.FIELD_OBJECT,
+                optical_sensor.CONNECTOR_OBJECT,
+            )
+        }
+        model = str(group.SensorModel)
+        expected = {}
+        for key, profile in SENSOR_PROFILES.items():
+            expected[f"{key}ContinuousOpticalFieldBound"] = (
+                optical_envelopes.external_field_bound(group, profile)[0]
+            )
+            for name, shape in (
+                ("Body", optical_sensor.envelope_shape(profile)),
+                ("Connector", optical_sensor.connector_reserve_shape(profile)),
+            ):
+                expected[f"{key}Continuous{name}Bound"] = (
+                    optical_envelopes.registered_instrument_bound(group, shape)
+                )
+        with patch.object(
+            optical_envelopes,
+            "instrument_context",
+            wraps=optical_envelopes.instrument_context,
+        ) as context:
+            actual = optical_envelopes.motion_bounds(group)
+            context.assert_called_once_with(group)
+        self.assertEqual(set(actual), set(expected))
+        for key, shape in actual.items():
+            self.assertTrue(
+                comparison_passed(geometry_comparison(shape, expected[key]), 1e-5),
+                key,
+            )
+        self.assertEqual(float(self.doc.InstrumentPitchStage.Pitch), 11)
+        self.assertEqual(str(group.SensorModel), model)
+        for name, placement in placements.items():
+            self.assertTrue(
+                self.doc.getObject(name).Placement.isSame(placement, 1e-7), name
+            )
+        for name, state in sensors.items():
+            obj = self.doc.getObject(name)
+            self.assertEqual(
+                (obj.Shape.exportBrepToString(), obj.SensorProfileContract, obj.Label),
+                state,
+                name,
+            )
+
+    def test_motion_bounds_revalidate_changed_stock_and_frames_on_each_call(self):
+        from gondola.parts import optical_sensor
+        from gondola.validation import optical_envelopes
+
+        group = self.doc.OpticalFlowModule
+        carrier, frame, sensor = (
+            self.doc.ElectronicsMount,
+            self.doc.OpticalSensorFrame,
+            self.doc.getObject(optical_sensor.SENSOR_OBJECT),
+        )
+        mutations = (
+            (
+                carrier,
+                "Shape",
+                carrier.Shape.cut(Part.makeBox(2, 1, 2, App.Vector(-1, -1, 42))),
+            ),
+            (frame, "Placement", App.Placement(App.Vector(0.1, 0, 0), App.Rotation())),
+            (
+                sensor,
+                "Shape",
+                sensor.Shape.fuse(Part.makeBox(1, 1, 1, App.Vector(100, 0, 45))),
+            ),
+        )
+        with patch.object(
+            optical_envelopes,
+            "instrument_context",
+            wraps=optical_envelopes.instrument_context,
+        ) as context:
+            optical_envelopes.motion_bounds(group)
+            context.assert_called_once_with(group)
+            for obj, property_name, changed in mutations:
+                original = getattr(obj, property_name).copy()
+                with self.subTest(object=obj.Name, property=property_name):
+                    try:
+                        setattr(obj, property_name, changed)
+                        context.reset_mock()
+                        with self.assertRaises(ValueError):
+                            optical_envelopes.motion_bounds(group)
+                        context.assert_called_once_with(group)
+                    finally:
+                        setattr(obj, property_name, original)
+            context.reset_mock()
+            optical_envelopes.motion_bounds(group)
+            context.assert_called_once_with(group)
+
     def test_unknown_external_stock_is_not_filtered_from_field(self):
         from gondola.validation.optical_envelopes import external_field_bound
         from gondola.validation.wiring import collision_hits

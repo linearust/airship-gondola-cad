@@ -7,7 +7,7 @@ import Part
 
 from gondola.cad import placed_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES
-from gondola.parts import instrument_mount, optical_interface, optical_sensor
+from gondola.parts import instrument_mount, optical_sensor
 
 from .geometry import local_shape
 
@@ -157,12 +157,20 @@ def pitch_bound(shape, angle_limit_deg):
 def registered_instrument_bound(optical, shape):
     """Enclose the integral sensor frame throughout common-stage rotation."""
     module, _, frame, _ = instrument_context(optical)
-    registered = optical_interface.registration_bound(shape)
-    upper = placed_shape(registered, optical.Placement.multiply(frame.Placement))
+    return _registered_instrument_bound(
+        shape,
+        module.getGlobalPlacement(),
+        optical.Placement.multiply(frame.Placement),
+    )
+
+
+def _registered_instrument_bound(shape, module_placement, sensor_placement):
+    """Construct a body bound from placements checked during this invocation."""
+    upper = placed_shape(shape, sensor_placement)
     upper.translate(-V(*PIVOT_UPPER))
     bound = pitch_bound(upper, 20)
     bound.translate(V(*PIVOT_MODULE))
-    return placed_shape(bound, module.getGlobalPlacement())
+    return placed_shape(bound, module_placement)
 
 
 def external_field_bound(group, profile=None):
@@ -175,12 +183,16 @@ def external_field_bound(group, profile=None):
     """
     profile = profile or optical_sensor.profile_for_document(group.Document)
     module, _, _, _ = instrument_context(group)
+    return _external_field_bound(profile, module.getGlobalPlacement())
+
+
+def _external_field_bound(profile, module_placement):
+    """Construct the field cone after validating its native module placement."""
     half_x, half_y = (value / 2 for value in profile.size_mm[:2])
     front = optical_sensor.SENSOR_BOTTOM_Z + profile.optical_origin_min_z_mm
     face = Part.makeBox(2 * half_x, 2 * half_y, 1e-6, V(-half_x, -half_y, front))
-    registered = optical_interface.registration_bound(face)
-    registered.translate(V(*OPTICAL_ORIGIN) - V(*PIVOT_UPPER))
-    near = pitch_bound(registered, 20).BoundBox
+    face.translate(V(*OPTICAL_ORIGIN) - V(*PIVOT_UPPER))
+    near = pitch_bound(face, 20).BoundBox
     minimum_z = near.ZMin + PIVOT_MODULE[2]
     centre_y = OPTICAL_ORIGIN[1]
     radius = (
@@ -193,9 +205,7 @@ def external_field_bound(group, profile=None):
     angular_bound = math.radians(20) + math.atan(
         math.sqrt(2) * math.tan(math.radians(profile.flow_fov_deg / 2))
     )
-    far = optical_interface.registration_bound(
-        optical_sensor.optical_reserve_shape(profile)
-    )
+    far = optical_sensor.optical_reserve_shape(profile)
     far.translate(V(*OPTICAL_ORIGIN) - V(*PIVOT_UPPER))
     maximum_z = pitch_bound(far, 20).BoundBox.ZMax + PIVOT_MODULE[2]
     height = maximum_z - minimum_z
@@ -205,7 +215,7 @@ def external_field_bound(group, profile=None):
         height,
         V(0, centre_y, minimum_z),
     )
-    bound = placed_shape(bound, module.getGlobalPlacement())
+    bound = placed_shape(bound, module_placement)
     return bound, {
         "minimum_front_z_in_module_frame_mm": minimum_z,
         "initial_radius_mm": radius,
@@ -221,7 +231,7 @@ def external_field_bound(group, profile=None):
 
 def motion_bounds(optical):
     """Sensor envelopes only; the whole integral carrier is audited separately."""
-    _, _, frame, _ = instrument_context(optical)
+    module, _, frame, _ = instrument_context(optical)
     profile = optical_sensor.profile_for_document(optical.Document)
     for name, expected in (
         ("ModuleMTF02PEnvelope", optical_sensor.envelope_shape(profile)),
@@ -245,16 +255,20 @@ def motion_bounds(optical):
             raise ValueError(
                 "Saved optical sensor geometry exceeds its declared envelope: " + name
             )
+    # Reuse this invocation's checked placements, never validation from a prior
+    # call: callers may edit the saved stock or native hierarchy between calls.
+    module_placement = module.getGlobalPlacement()
+    sensor_placement = optical.Placement.multiply(frame.Placement)
     result = {}
     for key, profile in SENSOR_PROFILES.items():
-        result[f"{key}ContinuousOpticalFieldBound"] = external_field_bound(
-            optical, profile
+        result[f"{key}ContinuousOpticalFieldBound"] = _external_field_bound(
+            profile, module_placement
         )[0]
         for name, shape in (
             ("Body", optical_sensor.envelope_shape(profile)),
             ("Connector", optical_sensor.connector_reserve_shape(profile)),
         ):
-            result[f"{key}Continuous{name}Bound"] = registered_instrument_bound(
-                optical, shape
+            result[f"{key}Continuous{name}Bound"] = _registered_instrument_bound(
+                shape, module_placement, sensor_placement
             )
     return result

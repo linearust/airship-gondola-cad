@@ -15,7 +15,6 @@ from gondola.cad import belongs_to_group, placed_shape, world_shape
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 from gondola.parts import (
     instrument_mount,
-    optical_interface,
     optical_mount,
     optical_sensor,
     propulsion_wiring,
@@ -452,9 +451,7 @@ def _placement_checks(doc, physical, kit, *, profile=None):
             ("body", optical_sensor.envelope_shape(profile)),
             ("connector", optical_sensor.connector_reserve_shape(profile)),
         ):
-            bound = placed_shape(
-                optical_interface.registration_bound(shape), frame.getGlobalPlacement()
-            )
+            bound = placed_shape(shape, frame.getGlobalPlacement())
             hits = collision_hits(
                 bound, external, tolerance=TOL, validation_cache=cache
             )

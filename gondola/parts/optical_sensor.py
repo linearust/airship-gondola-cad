@@ -1,4 +1,4 @@
-"""One replaceable optical sensor, using the rigid common-platform adhesive bracket.
+"""One replaceable optical sensor on the integral carrier's adhesive pad.
 
 MTF02P-named native IDs are retained as stable assembly references, not a model
 selection. Labels, SensorModel and all evidence/shapes describe the active model.
@@ -11,14 +11,14 @@ import FreeCAD as App
 import Part
 
 from gondola.cad import create_reference, set_property
+from gondola.contracts.optical_attachment import ADHESIVE_THICKNESS_MM, PAD_TOP_Z_MM
 from gondola.contracts.optical_sensors import SENSOR_PROFILES, get_sensor_profile
 
-from . import optical_mount as mount
 from .equipment_metadata import add_interface_metadata
 from .wiring_reserves import device_connector_contract
 
 V = App.Vector
-SENSOR_BOTTOM_Z = mount.TRAY_TOP_Z + mount.ADHESIVE_ALLOWANCE
+SENSOR_BOTTOM_Z = PAD_TOP_Z_MM + ADHESIVE_THICKNESS_MM
 OPTICAL_RESERVE_LENGTH_MM = 400.0
 CONNECTOR_TRAVEL_MM = 12.0
 SENSOR_OBJECT = "ModuleMTF02PEnvelope"

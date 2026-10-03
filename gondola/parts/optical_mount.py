@@ -6,15 +6,11 @@ import math
 import FreeCAD as App
 
 from gondola.cad import box, create_group, set_property, union
-from gondola.contracts.optical_attachment import DEFAULT_HOST
+from gondola.contracts import optical_attachment as spec
 
 from . import optical_interface
 
 V = App.Vector
-TRAY_SIZE_MM = (18.0, 12.0)
-TRAY_BOTTOM_Z = 42.0
-TRAY_TOP_Z = 44.0
-ADHESIVE_ALLOWANCE = 1.0
 
 
 def optical_support_shape():
@@ -23,7 +19,14 @@ def optical_support_shape():
     length = 62 * math.sqrt(2)
     roof = box(length, 5, 3, (-length / 2, -2.5, 41))
     roof.rotate(V(), V(0, 0, 1), 45)
-    pieces.extend([roof, box(18, 12, 2, (-9, -6, TRAY_BOTTOM_Z))])
+    length_x, length_y = spec.PAD_SIZE_MM
+    pad = box(
+        length_x,
+        length_y,
+        spec.PAD_THICKNESS_MM,
+        (-length_x / 2, -length_y / 2, spec.PAD_BOTTOM_Z_MM),
+    )
+    pieces.extend([roof, pad])
     return union(pieces).removeSplitter()
 
 
@@ -39,10 +42,11 @@ def mount_contract():
         "support_part": "ElectronicsMount",
         "tray_origin_in_module_mm": (0.0, 0.0, 0.0),
         "attachment_interface": optical_interface.interface_contract(),
-        "tray_size_mm": TRAY_SIZE_MM,
-        "tray_bottom_z_in_sensor_frame_mm": TRAY_BOTTOM_Z,
-        "tray_top_z_in_sensor_frame_mm": TRAY_TOP_Z,
-        "adhesive_allowance_mm": ADHESIVE_ALLOWANCE,
+        # Keep serialized keys stable for saved CAD and evidence consumers.
+        "tray_size_mm": spec.PAD_SIZE_MM,
+        "tray_bottom_z_in_sensor_frame_mm": spec.PAD_BOTTOM_Z_MM,
+        "tray_top_z_in_sensor_frame_mm": spec.PAD_TOP_Z_MM,
+        "adhesive_allowance_mm": spec.ADHESIVE_THICKNESS_MM,
         "support_sections_mm": {
             "opposite_corner_post": (4.0, 4.0),
             "diagonal_roof_bar": (5.0, 3.0),
@@ -56,7 +60,7 @@ def mount_contract():
 
 def build_optical_mount(doc, host):
     """Create sensor reference frames; its printed support belongs to ElectronicsMount."""
-    if host.Document != doc or host.Name != DEFAULT_HOST:
+    if host.Document != doc or host.Name != spec.DEFAULT_HOST:
         raise ValueError(
             "Optical sensor requires InstrumentPitchStage in the same document"
         )

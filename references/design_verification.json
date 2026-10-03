@@ -1,12 +1,12 @@
 {
   "passed": true,
-  "recorded_utc": "2026-10-03T10:28:15.303432+00:00",
+  "recorded_utc": "2026-10-03T11:32:40.493498+00:00",
   "revision": "CJ",
-  "change_kind": "Integral FC/optical levelling carrier, two aligned bearing-cap pairs and reinforced support beam",
+  "change_kind": "Behavior-preserving optical support and validation refactor",
   "scope": "Nominal saved CAD, interfaces, prescribed motion and ordered service only. A distinct FC/optical upper carrier integrates the optical support and retains the standard rail interface and plate pattern. It shares the existing setup-only +/-20 degree pitch joint; no separate optical tray or foot hardware. Each keyed three-bearing cap uses two aligned M2x10 pairs. The bearing support beam is9.5mm thick. Rotor root height is8mm with small edge rounds; the necessary M2x12 shaft jack and external axial stops remain. Full-vehicle CG, actual sensor origins, installed wiring, physical fit, stiffness, creep and flight readiness remain unqualified. The motor-carrier fabrication hold remains in effect.",
-  "predecessor_commit": "1da5bd34a475cae5cc75728cbb8bb9c15b3b4ba2",
-  "source_fingerprint": "2af027fe52a0cfc97db5db1b1686acfeeae8a6410aedaa1e0b423fe9b7b6ba34",
-  "cad_sha256": "efe254ee7e2a7974f88ece221870f28d5f990884b60a4a96337166bf788f3fe7",
+  "predecessor_commit": "c55f3193ee542474a392f1267b51a4af7ea44843",
+  "source_fingerprint": "b42286273f20a9cba3d68fff813f1c338b5953041e97a4da340abe821b87a698",
+  "cad_sha256": "0548546bcb7bdbde4c1931b6deca03689cd4350e1ee5ab88808c34ca05263b0d",
   "fixture": {
     "path": "tests/fixtures/geometry.FCStd",
     "sha256": "0272eea29e3c857f17d754331de54a521d0da1e9b6c14de417b239a713b38882",
@@ -16,7 +16,7 @@
   },
   "native_tests": {
     "passed": true,
-    "testsRun": 891,
+    "testsRun": 892,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
@@ -29,43 +29,43 @@
     {
       "name": "build",
       "exit_code": 0,
-      "elapsed_seconds": 53.712028035,
-      "log_sha256": "eb70d66260056933af6cdf4197d9158020dcbbce738f36886563d2bb5a0ec611"
+      "elapsed_seconds": 60.242762449999645,
+      "log_sha256": "c7a4845112bcbcb11f77f53af80847fbe19f17a2f3f4c219afbbe43d0b62a6ff"
     },
     {
       "name": "preview",
       "exit_code": 0,
-      "elapsed_seconds": 51.88843268400069,
-      "log_sha256": "74362888cba5f2fe89466d67bed5c32cef34f9fd1d4eee1f88ab4bf1a53ae499"
+      "elapsed_seconds": 51.25583170699974,
+      "log_sha256": "f15524fe59cf7a9e5024601c7f1951ca8ab403612dda536e4bc769f3b58abcdf"
     },
     {
       "name": "compare",
       "exit_code": 0,
-      "elapsed_seconds": 24.80706775999988,
+      "elapsed_seconds": 25.22998134199952,
       "log_sha256": "1949901efbae813af48554766b1ba8c77ebb2c6dd8d510acb2f80eca5926f64e"
     },
     {
       "name": "validate",
       "exit_code": 0,
-      "elapsed_seconds": 1495.4369158679992,
+      "elapsed_seconds": 1243.9146791919993,
       "log_sha256": "fc64639a8965d3e62156f3626c63cc0d0a10105b9a8eb52480a42e9e58ebbd66"
     },
     {
       "name": "bundle",
       "exit_code": 0,
-      "elapsed_seconds": 0.3355564060002507,
-      "log_sha256": "6dc0cd7ec91665820e4c2d3a70309308b606cd6715db0791b33245e0792a73fe"
+      "elapsed_seconds": 0.3619707699999708,
+      "log_sha256": "2536e1c5e601357d3d9e3beeb432ee1b967a376959bf9ef6c2e57956e75b1ddf"
     },
     {
       "name": "blender",
       "exit_code": 0,
-      "elapsed_seconds": 13.72383217099923,
-      "log_sha256": "04401b26c6011c585a7c5011ef4acce6fbf085e69acb7b83caa1faa5064201de"
+      "elapsed_seconds": 14.465426803999435,
+      "log_sha256": "7957770f05a3f6ce00d819de1ab9625ad299509505dc39fce6796f8b485561ae"
     },
     {
       "name": "simulation",
       "exit_code": 0,
-      "elapsed_seconds": 0.5799698649989296,
+      "elapsed_seconds": 0.6565211810011533,
       "log_sha256": "db65c90ee3b4a138c37a74826b43ac76eb972d73c3697a5e13712bb14bc4fe21"
     }
   ],
@@ -88,15 +88,15 @@
     "writer_freshness_binding_passed": true
   },
   "native_cad_artifact_sha256": {
-    "gondola.FCStd": "efe254ee7e2a7974f88ece221870f28d5f990884b60a4a96337166bf788f3fe7",
-    "gondola_print_parts.FCStd": "e214e0660c03a6b28579050178241e19930da9c799cfd177811c6f2f37331127",
-    "gondola_attachment_detail.FCStd": "361458750206fbe2408d45fa4b02edc59718080c0ce062b2a67d5e22fa20e1ef",
-    "gondola_power_options.FCStd": "9ae7699c8230be084c6553b59628c1b3f16bd66cbe9a2ba853350e65fc3cb31f",
-    "SLS-MJF_PA12__gondola_power_platform.FCStd": "0a5fd8d4a69b23b2b8d60cd231ed09bfc05ac7d29492b6d61a31b4fc90d84828"
+    "gondola.FCStd": "0548546bcb7bdbde4c1931b6deca03689cd4350e1ee5ab88808c34ca05263b0d",
+    "gondola_print_parts.FCStd": "102ce6726ca3aec74e4de1f17a49faac272d0ef3291d746cbcd1d0f17e27eba6",
+    "gondola_attachment_detail.FCStd": "a8aaabad4d9e5b5b3e1bc855b15e4cfc65942d181d7882242ba395334dc79142",
+    "gondola_power_options.FCStd": "9a369eca575a64707fe1078c64fae7002016ffa0e093be04c815f21ce90177f5",
+    "SLS-MJF_PA12__gondola_power_platform.FCStd": "d47aa084bc47f591853c0ccaa31caae9b1455887283ddbb452080046949511fb"
   },
-  "print_bundle_sha256": "812af92861d96ac08977e536923c5397c27ab6da6b53725238268c43292d04a7",
-  "simulation_parameters_sha256": "447afc70bd20c3ed1178235ca26a65b6f628b5b383d755e3e89408f1973b237f",
+  "print_bundle_sha256": "905e8c264f036d0ee300fc9112a6ad88a0b5adc57042691719811abaf4b04671",
+  "simulation_parameters_sha256": "1949b93263bba0459225bbfb7662522410d390abc22f5eca9f3b10f43b66a428",
   "evidence_archive": "design_checks.json.gz",
   "evidence_record_key": "cj_integral_instrument_and_bearing_revision",
-  "evidence_archive_sha256": "2942b8b3bb27131181fa8c26f35e3095d0bbb21927d91c0e1b97f76f7598c485"
+  "evidence_archive_sha256": "3eb97c6dd645b74e1012a08a28b5e7c9bb3dcb8901ccf32df01af85fba66c79d"
 }

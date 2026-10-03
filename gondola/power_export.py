@@ -4,6 +4,7 @@ The optional platform does not enter the default print or equipment inventory.
 Validation refreshes only its report; it never regenerates exported artifacts.
 """
 
+import copy
 import functools
 import hashlib
 import json
@@ -838,7 +839,11 @@ def audit_power_options(source=None, output_dir=None):
             "passed"
         ]
         report["configuration_screen"] = screen_configurations(main)
-        report["illustrated_configuration_screen"] = screen_configurations(main)
+        # Both report fields describe the same saved main document. Reuse its
+        # costly geometric screen while retaining independent report payloads.
+        report["illustrated_configuration_screen"] = copy.deepcopy(
+            report["configuration_screen"]
+        )
         report["illustrated_configuration_clear"] = report[
             "illustrated_configuration_screen"
         ].get("default_configuration_clear", False)

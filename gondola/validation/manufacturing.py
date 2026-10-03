@@ -248,9 +248,9 @@ def review(doc, registry):
         (
             "integral_optical_pad_thickness",
             "ElectronicsMount",
-            (0, 4, optical_mount.TRAY_BOTTOM_Z - 0.01),
-            (0, 4, optical_mount.TRAY_TOP_Z + 0.01),
-            optical_mount.TRAY_TOP_Z - optical_mount.TRAY_BOTTOM_Z,
+            (0, 4, 41.99),
+            (0, 4, 44.01),
+            2.0,
         ),
     ]
     analytic.extend(

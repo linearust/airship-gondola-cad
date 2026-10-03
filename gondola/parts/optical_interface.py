@@ -7,6 +7,9 @@ import FreeCAD as App
 from gondola.cad import set_property
 from gondola.contracts.optical_attachment import (
     DEFAULT_HOST,
+    PAD_SIZE_MM,
+    PAD_THICKNESS_MM,
+    PAD_TOP_Z_MM,
     SENSOR_FRAME_ORIGIN_IN_STAGE,
 )
 
@@ -25,8 +28,8 @@ def interface_contract():
         "default_host": DEFAULT_HOST,
         "support_part": "ElectronicsMount",
         "sensor_frame_origin_in_stage_mm": SENSOR_FRAME_ORIGIN_IN_STAGE,
-        "pad_size_mm": (18.0, 12.0, 2.0),
-        "pad_top_in_stage_mm": 44.0,
+        "pad_size_mm": (*PAD_SIZE_MM, PAD_THICKNESS_MM),
+        "pad_top_in_stage_mm": PAD_TOP_Z_MM,
         "hardware": "No separate optical support or foot fasteners",
         "registration": "No detachable printed joint. Adhesive placement, thickness, finished pad flatness and measured sensor orientation remain unqualified.",
         "service": "Disconnect the sensor, release external retention and lift the bare sensor local +Z40 mm. The integral bridge remains on the upper carrier. FC service requires neutral 0 degrees, then uses the open local X passage after its actual mounting hardware and leads are removed. Restore and verify the calibrated body-reference setup angle before operation.",
@@ -55,11 +58,6 @@ def annotate_interface(obj):
         json.dumps(interface_contract(), sort_keys=True),
     )
     set_property(obj, "OpticalFitVerified", False, "App::PropertyBool")
-
-
-def registration_bound(shape):
-    """The integral support has no printed-joint registration play."""
-    return shape.copy()
 
 
 def manufacturing_wall_probes():

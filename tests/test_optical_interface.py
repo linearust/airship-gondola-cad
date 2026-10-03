@@ -32,6 +32,7 @@ class OpticalInstrumentInterfaceTests(unittest.TestCase):
         self.assertEqual(contract["pad_top_in_stage_mm"], 44)
         self.assertFalse(contract["industry_standard_claimed"])
         self.assertNotIn("foot_bolt_centres_xy_mm", contract)
+        self.assertIn("Adhesive placement", contract["registration"])
 
     def test_only_common_instrument_parent_is_accepted(self):
         from gondola.contracts.optical_attachment import resolve_mount_mode
@@ -54,19 +55,6 @@ class OpticalInstrumentInterfaceTests(unittest.TestCase):
         other.addObject(doc.OpticalFlowModule)
         with self.assertRaises(ValueError):
             optical_interface.attachment_description(doc.OpticalFlowModule)
-
-    def test_registration_copy_does_not_invent_a_detachable_tolerance_stack(self):
-        from gondola.parts import optical_interface, optical_sensor
-
-        shape = optical_sensor.envelope_shape()
-        result = optical_interface.registration_bound(shape)
-        self.assertLess(result.cut(shape).Volume, 1e-7)
-        self.assertLess(shape.cut(result).Volume, 1e-7)
-        result.translate(App.Vector(10, 0, 0))
-        self.assertGreater(shape.cut(result).Volume, 1)
-        self.assertIn(
-            "Adhesive placement", optical_interface.interface_contract()["registration"]
-        )
 
     def test_integral_pad_matches_both_selected_sensor_back_footprints(self):
         from gondola.contracts.optical_sensors import SENSOR_PROFILES
